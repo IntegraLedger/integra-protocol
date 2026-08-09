@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "No types:[node] here (unlike binding-solana): this package is PURE-TS with no chain SDK, so no dependency .d.ts references Node globals. The src uses only Web APIs (TextEncoder/TextDecoder). types:[node] stays out of the build so dist declarations never depend on @types/node.",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+  "include": ["src"]
+}

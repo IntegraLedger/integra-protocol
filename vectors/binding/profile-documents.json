@@ -1,0 +1,755 @@
+{
+  "cases": [
+    {
+      "name": "x402 native-field profile (the published integra-x402-nonce-v1)",
+      "input": {
+        "profile": "integra-x402-nonce-v1",
+        "rail": "evm:x402",
+        "protocol": "x402",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "instant, final settlement (EIP-3009) — no on-rail reversal; recourse is the record's elected forum, and finality is never represented as dispute resolution (PAY-3/RCS-5) The atrHash welded as the EIP-3009 nonce MUST be per-transaction: an EIP-3009 nonce is one-time use, so one payer paying twice under the same ATR reproduces the same authorization and the token rejects the second with no LCP-level diagnostic. LCP §6.1 wants a per-transaction ATR anyway."
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "offCanonical": {
+          "profile": "integra-x402-nonce-v1"
+        },
+        "lifecycleStates": ["proposed", "welded-settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published escrow profile (integra-escrow-salt-v1) validates",
+      "input": {
+        "profile": "integra-escrow-salt-v1",
+        "rail": "evm:escrow",
+        "pattern": "native-field",
+        "nativeField": "PaymentInfo.salt",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "carried",
+        "successGate": "structural",
+        "indexing": "event-data-scan:paymentInfoHash",
+        "finality": {
+          "reversible": true,
+          "note": "on-rail void/refund within refundExpiry — not dispute resolution (RCS-5); capture is not reversed, refund is a fresh on-rail remedy The atrHash welded into PaymentInfo.salt MUST be per-transaction: salt is specified as the struct's entropy source (\"a source of entropy to ensure unique hashes across different payments\") and an atrHash carries none, so a repeat purchase under one ATR with the same payer, caps and expiries produces a PaymentInfo the escrow has already seen and reverts."
+        },
+        "weldGrades": {
+          "ERC3009": "signature",
+          "Permit2": "signature",
+          "SpendPermission": "signature",
+          "PreApproval": "tx"
+        },
+        "lifecycleStates": [
+          "proposed",
+          "authorized",
+          "captured",
+          "charged",
+          "voided",
+          "reclaimed",
+          "refunded"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Solana SPL-Memo profile (integra-solana-memo-v1) validates",
+      "input": {
+        "profile": "integra-solana-memo-v1",
+        "rail": "solana",
+        "pattern": "native-field",
+        "nativeField": "spl-memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "none",
+        "successGate": "raw-field",
+        "indexing": "signature-scan:memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on confirmation (SPL transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "spl-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published MPP-EVM id-reuse profile (mpp-evm-derived-v1) validates — the pattern is named honestly, not banned",
+      "input": {
+        "profile": "mpp-evm-derived-v1",
+        "rail": "evm:mpp",
+        "protocol": "mpp",
+        "pattern": "id-reuse",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": false,
+          "forwardIndexable": false
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "none",
+        "finality": {
+          "reversible": false,
+          "note": "scoped to MPP's `authorization` credential type (§5.3), the only one of the four whose challengeHash reaches the chain — under the RECOMMENDED `permit2` type (§5.2) the same derived value is signature-committed in an off-chain EIP-712 witness, and `transaction`/`hash` (§5.4/§5.5) bind no challenge at all. Within that scope: final on settlement — the EIP-3009 authorization is consumed on-chain and there is no on-rail reversal; the weld is derivation-bound (nonce = keccak256(abi.encodePacked(challenge.id, challenge.realm)), draft-evm-charge-00 §5.3.1), so a candidate atrHash is VERIFIED against the on-chain nonce and never recovered from it; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution. The §8.3.5 discharge rests on the ATR STATING the transaction parameters (LCP §6.1), not on ATR uniqueness: MPP binds the challenge id to the challenge parameters, and uniqueness alone does not satisfy that (§C.1). The tree checks it as OFR — `offerBoundStep`, required at TC-4 — so this weld is only as strong as the record's class. Zero-party-recoverable on-chain binding on this rail still requires an Overlay Contract per §8.3.2"
+        },
+        "weldGrades": {
+          "authorization": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "unknown pattern token (typo) rejected — the LCP §8.3 enum is pinned",
+      "input": {
+        "profile": "typo",
+        "rail": "evm:x402",
+        "pattern": "field-native",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "id_reuse with an underscore is not the LCP §8.3 token (rejected)",
+      "input": {
+        "profile": "typo2",
+        "rail": "evm:mpp",
+        "pattern": "id_reuse",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": false,
+          "forwardIndexable": false
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "none",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "derived": "signature"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "native-field WITHOUT nativeField rejected (the iff catch)",
+      "input": {
+        "profile": "missing-native-field",
+        "rail": "evm:x402",
+        "pattern": "native-field",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "non-native pattern WITH nativeField rejected (the iff's other direction)",
+      "input": {
+        "profile": "overlay-with-native-field",
+        "rail": "evm:overlay",
+        "pattern": "overlay-contract",
+        "nativeField": "some.field",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "none",
+        "successGate": "structural",
+        "indexing": "event",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "call": "tx"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "missing required rail rejected",
+      "input": {
+        "profile": "no-rail",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "none",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "weldGrade value outside {signature,tx} rejected",
+      "input": {
+        "profile": "bad-grade",
+        "rail": "evm:x402",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "onchain"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "recovery missing a triple member rejected",
+      "input": {
+        "profile": "partial-recovery",
+        "rail": "evm:x402",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "lifecycleStates": ["proposed"]
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown top-level property rejected (additionalProperties false)",
+      "input": {
+        "profile": "extra",
+        "rail": "evm:x402",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "lifecycleStates": ["proposed"],
+        "surprise": "not allowed"
+      },
+      "expected": false
+    },
+    {
+      "name": "empty lifecycleStates rejected",
+      "input": {
+        "profile": "no-states",
+        "rail": "evm:x402",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "x"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "lifecycleStates": []
+      },
+      "expected": false
+    },
+    {
+      "name": "the published XRPL InvoiceID native-field profile (integra-xrpl-invoice-id-v1) validates — a declared protocol beside a native field",
+      "input": {
+        "profile": "integra-xrpl-invoice-id-v1",
+        "rail": "xrpl",
+        "pattern": "native-field",
+        "protocol": "x402",
+        "nativeField": "InvoiceID",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "none",
+        "successGate": "raw-field",
+        "indexing": "tx-scan:invoice-id",
+        "finality": {
+          "reversible": false,
+          "note": "final on validation (tesSUCCESS) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "invoice-id": "signature",
+          "tx-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true,
+      "$comment": "The weld moved off Payment.Memos on 2026-08-08. Verified at x402-foundation/x402 HEAD: the exact-XRPL scheme's §9 Safety Checks require a facilitator to reject transactions with \"Memos present\", and §8 says \"Memos MUST NOT be used for invoice binding\" — so the memo weld could not settle through an x402-XRPL facilitator at all. InvoiceID is a native 256-bit field of exactly the atrHash's width. The atrHash rides it DIRECTLY rather than through x402's extra.invoiceId, whose on-chain value is SHA-256(invoiceId): that route is facilitator-enforced but destroys zero-party recoverability, and recoverability is most of why an on-chain weld exists."
+    },
+    {
+      "name": "the published Hedera transaction-memo profile (integra-hedera-memo-v1) validates",
+      "input": {
+        "profile": "integra-hedera-memo-v1",
+        "rail": "hedera",
+        "pattern": "native-field",
+        "nativeField": "transaction-memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "none",
+        "successGate": "raw-field",
+        "indexing": "mirror-scan:memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on consensus (HTS transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "transaction-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Sui Pay402 profile (integra-sui-pay402-v1) validates",
+      "input": {
+        "profile": "integra-sui-pay402-v1",
+        "rail": "sui",
+        "protocol": "x402",
+        "pattern": "native-field",
+        "nativeField": "pay402-payment-id",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "proposal-only",
+        "successGate": "structural",
+        "indexing": "event-scan:PaymentSettled.payment_id",
+        "finality": {
+          "reversible": false,
+          "note": "final on checkpoint (Pay402 settle_payment) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "pay402": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Stellar CAP-67 mux profile (integra-stellar-mux-v1) validates — prefix-8, non-recoverable",
+      "input": {
+        "profile": "integra-stellar-mux-v1",
+        "rail": "stellar",
+        "pattern": "native-field",
+        "nativeField": "cap67-mux-id",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": false,
+          "forwardIndexable": false
+        },
+        "assetBinding": "none",
+        "successGate": "raw-field",
+        "indexing": "account-scan:mux-prefix8",
+        "finality": {
+          "reversible": false,
+          "note": "final on ledger close (Soroban SAC transfer) — no on-rail reversal; only atrHash[:8] rides in the CAP-67 mux id, so settlement alone confirms the prefix-8 match but does NOT recover the full hash (the full atrHash comes from off-chain extensions.legalContext.info); recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "cap67-mux": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Aptos lcp_payment overlay-contract profile (integra-aptos-overlay-v1) validates — overlay-contract carries NO nativeField (the iff)",
+      "input": {
+        "profile": "integra-aptos-overlay-v1",
+        "rail": "aptos",
+        "pattern": "overlay-contract",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "proposal-only",
+        "successGate": "raw-field",
+        "indexing": "candidate-set:payment::PaymentSettled",
+        "finality": {
+          "reversible": false,
+          "note": "final on execution (Move settle_payment) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "settle-payment": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Cardano metadata profile (integra-cardano-metadata-v1) validates",
+      "input": {
+        "profile": "integra-cardano-metadata-v1",
+        "rail": "cardano",
+        "pattern": "native-field",
+        "nativeField": "tx-metadata-8847",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "none",
+        "successGate": "raw-field",
+        "indexing": "metadata-label-index:8847",
+        "finality": {
+          "reversible": false,
+          "note": "final on settlement confirmation (native ADA transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "tx-metadata": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Canton LcpAnchor overlay-contract profile (integra-canton-overlay-v1) validates — overlay-contract with NO nativeField (the iff's valid direction)",
+      "input": {
+        "profile": "integra-canton-overlay-v1",
+        "rail": "canton",
+        "pattern": "overlay-contract",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": false,
+          "forwardIndexable": false
+        },
+        "assetBinding": "none",
+        "successGate": "structural",
+        "indexing": "participant-query:LcpAnchor.atrHash",
+        "finality": {
+          "reversible": false,
+          "note": "an LcpAnchor contract is only ever archived by a NEW transaction (Daml has no reversal); recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "lcp-anchor": "tx"
+        },
+        "lifecycleStates": ["proposed", "anchored"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Canton x402-memo profile (integra-canton-x402-memo-v1) validates — a declared protocol, a nativeField, and a carried asset binding",
+      "$comment": "The second Canton rail, added 2026-08-08. x402's exact-Canton scheme defines PaymentRequirements.extra.memo (\"Seller-defined UTF-8 string, max 256 bytes. When present, the client MUST include it in the transfer's metadata\"), enforced by facilitator safety check 12. It settles Canton Coin ONLY, which is why it is a second rail rather than a replacement for the LcpAnchor overlay above: one chain, two carriers, the same shape EVM already has with evm:x402 / evm:escrow / evm:mpp.",
+      "input": {
+        "profile": "integra-canton-x402-memo-v1",
+        "rail": "canton:x402",
+        "pattern": "native-field",
+        "protocol": "x402",
+        "nativeField": "x402.memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": false,
+          "forwardIndexable": false
+        },
+        "assetBinding": "carried",
+        "successGate": "structural",
+        "indexing": "participant-updates:transfer.meta.x402.memo",
+        "finality": {
+          "reversible": false,
+          "note": "a Canton transfer consumes the input holdings it names and Canton has no reversal, so an executed transfer's memo is permanent; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "x402-memo": "tx"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the published Tempo TIP-20 memo profile (integra-tempo-mpp-memo-v1) validates — a native-field profile carrying the full recovery triple, indexed by the reference itself, and declaring two weld grades for two call paths of one event",
+      "input": {
+        "profile": "integra-tempo-mpp-memo-v1",
+        "rail": "tempo:mpp",
+        "protocol": "mpp",
+        "pattern": "native-field",
+        "nativeField": "tip20.memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "topic:TransferWithMemo.memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on confirmation (TIP-20 transferWithMemo) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "tip20-transferWithMemo": "signature",
+          "tip20-transferFromWithMemo": "tx"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "a profile MAY declare its commerce protocol (optional, closed enum)",
+      "input": {
+        "profile": "integra-x402-nonce-v1",
+        "rail": "evm:x402",
+        "protocol": "x402",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "instant, final settlement (EIP-3009) — no on-rail reversal; recourse is the record's elected forum, and finality is never represented as dispute resolution (PAY-3/RCS-5) The atrHash welded as the EIP-3009 nonce MUST be per-transaction: an EIP-3009 nonce is one-time use, so one payer paying twice under the same ATR reproduces the same authorization and the token rejects the second with no LCP-level diagnostic. LCP §6.1 wants a per-transaction ATR anyway."
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "offCanonical": {
+          "profile": "integra-x402-nonce-v1"
+        },
+        "lifecycleStates": ["proposed", "welded-settled"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an unknown protocol token is rejected — the enum is closed, and a typo must not mint a protocol",
+      "input": {
+        "profile": "integra-x402-nonce-v1",
+        "rail": "evm:x402",
+        "protocol": "banana",
+        "pattern": "native-field",
+        "nativeField": "eip3009.nonce",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": true
+        },
+        "assetBinding": "filtered",
+        "successGate": "structural",
+        "indexing": "nonce-topic:AuthorizationUsed",
+        "finality": {
+          "reversible": false,
+          "note": "instant, final settlement (EIP-3009)"
+        },
+        "weldGrades": {
+          "ERC3009": "signature"
+        },
+        "offCanonical": {
+          "profile": "integra-x402-nonce-v1"
+        },
+        "lifecycleStates": ["proposed", "welded-settled"]
+      },
+      "expected": false
+    },
+    {
+      "name": "missing assetBinding rejected — a profile must say whether recovery observes the asset",
+      "input": {
+        "profile": "integra-solana-memo-v1",
+        "rail": "solana",
+        "pattern": "native-field",
+        "nativeField": "spl-memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "successGate": "raw-field",
+        "indexing": "signature-scan:memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on confirmation (SPL transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "spl-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": false
+    },
+    {
+      "name": "missing successGate rejected — a profile must say HOW recovery knows the settlement happened, not only whether it observes the asset",
+      "input": {
+        "profile": "integra-solana-memo-v1",
+        "rail": "solana",
+        "pattern": "native-field",
+        "nativeField": "spl-memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "indexing": "signature-scan:memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on confirmation (SPL transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "spl-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"],
+        "assetBinding": "none"
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown successGate value rejected — the enum is deliberately two-valued; 'none' is NOT a posture a profile may publish, it is the defect the sweep closed",
+      "input": {
+        "profile": "integra-solana-memo-v1",
+        "rail": "solana",
+        "pattern": "native-field",
+        "nativeField": "spl-memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "successGate": "none",
+        "indexing": "signature-scan:memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on confirmation (SPL transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "spl-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"],
+        "assetBinding": "none"
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown assetBinding value rejected — the enum is measured (four cases), a fifth token must not mint itself",
+      "input": {
+        "profile": "integra-solana-memo-v1",
+        "rail": "solana",
+        "pattern": "native-field",
+        "nativeField": "spl-memo",
+        "recovery": {
+          "onChain": true,
+          "zeroPartyRecoverable": true,
+          "forwardIndexable": false
+        },
+        "assetBinding": "token-filtered",
+        "successGate": "raw-field",
+        "indexing": "signature-scan:memo",
+        "finality": {
+          "reversible": false,
+          "note": "final on confirmation (SPL transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+        },
+        "weldGrades": {
+          "spl-memo": "signature"
+        },
+        "lifecycleStates": ["proposed", "settled"]
+      },
+      "expected": false
+    }
+  ]
+}

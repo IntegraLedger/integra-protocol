@@ -1,0 +1,140 @@
+{
+  "cases": [
+    {
+      "name": "honest TC-2 report",
+      "input": {
+        "verified": true,
+        "assurance": "L2",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [
+          { "name": "atr-hash", "outcome": { "status": "proved" } },
+          {
+            "name": "buyer-acceptance",
+            "outcome": { "status": "not-attempted", "depth": "no-buyer-port" }
+          }
+        ],
+        "coverage": { "ports": ["evm"], "bindings": ["escrow"] },
+        "settlements": {
+          "found": [{ "chain": "base-sepolia", "tx": "0xabc" }],
+          "multiplySettled": false
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "failed step carries a halt class",
+      "input": {
+        "verified": false,
+        "assurance": "L2",
+        "supportedClass": "TC-1",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [
+          {
+            "name": "acceptance-sig",
+            "outcome": {
+              "status": "failed",
+              "haltClass": "verification-failure"
+            }
+          }
+        ],
+        "coverage": { "ports": ["evm"], "bindings": ["escrow"] },
+        "settlements": { "found": [], "multiplySettled": false }
+      },
+      "expected": true
+    },
+    {
+      "name": "multiply-settled fingerprint flagged",
+      "input": {
+        "verified": true,
+        "assurance": "L2",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [
+          {
+            "name": "settlement-enum",
+            "outcome": { "status": "indeterminate" }
+          }
+        ],
+        "coverage": { "ports": ["evm"], "bindings": ["escrow", "x402"] },
+        "settlements": {
+          "found": [
+            { "chain": "base", "tx": "0x1" },
+            { "chain": "base", "tx": "0x2" }
+          ],
+          "multiplySettled": true
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "missing verified",
+      "input": {
+        "assurance": "L2",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [],
+        "coverage": { "ports": [], "bindings": [] },
+        "settlements": { "found": [], "multiplySettled": false }
+      },
+      "expected": false
+    },
+    {
+      "name": "failed step missing haltClass",
+      "input": {
+        "verified": false,
+        "assurance": "L2",
+        "supportedClass": "TC-1",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [
+          { "name": "acceptance-sig", "outcome": { "status": "failed" } }
+        ],
+        "coverage": { "ports": ["evm"], "bindings": ["escrow"] },
+        "settlements": { "found": [], "multiplySettled": false }
+      },
+      "expected": false
+    },
+    {
+      "name": "missing settlements block",
+      "input": {
+        "verified": true,
+        "assurance": "L2",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [],
+        "coverage": { "ports": [], "bindings": [] }
+      },
+      "expected": false
+    },
+    {
+      "name": "P4 honest thin-TC-3 report — acceptance proved, authority chain walked, evidence self-contained (authority-producer-ref)",
+      "$comment": "The report verify emits for the P4 thin-TC-3 slice: the minimal grant + signed timestamped acceptance walk to supportedClass TC-3 as an HONEST readout (every rung — signed acceptance, four-dimension grant checked as-of settlement, forum/law elections, self-contained evidence — is present). verified stays false (verify is confirm-or-impeach, structural). Schema-validated here; its canonical JCS serialization lands in report/serialization.json.",
+      "input": {
+        "verified": false,
+        "assurance": "attested",
+        "supportedClass": "TC-3",
+        "asOf": "2026-07-01T12:00:00Z",
+        "steps": [
+          { "name": "atr-fingerprint", "outcome": { "status": "proved" } },
+          {
+            "name": "settlement-enumeration",
+            "outcome": { "status": "proved" }
+          },
+          { "name": "buyer-acceptance", "outcome": { "status": "proved" } },
+          {
+            "name": "authority-attenuation",
+            "outcome": { "status": "proved" }
+          },
+          { "name": "commitment-vs-leaf", "outcome": { "status": "proved" } },
+          { "name": "resolve-party", "outcome": { "status": "proved" } }
+        ],
+        "coverage": { "ports": ["evm"], "bindings": ["evm:escrow"] },
+        "settlements": {
+          "found": [{ "chainId": 84532, "txHash": "0xabc" }],
+          "multiplySettled": false
+        }
+      },
+      "expected": true
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+// The DOM-typed variant of tsconfig.base.json, for the packages that consume viem.
+//
+// The base config deliberately ships `lib: ["ES2024", "WebWorker"]` rather than `DOM`. WebWorker supplies
+// every web-standard global this codebase actually uses — TextEncoder, crypto/SubtleCrypto, BufferSource,
+// fetch/Response, URL, AbortController — while withholding `document`, `window`, `localStorage` and the
+// HTML element tree. That difference is load-bearing: the kernel, verify, conformance and the buyer-side
+// gate must run unmodified in Node, a browser, Deno, Bun and a CF Worker, and typing them against browser
+// globals that do not exist in half those runtimes turns a runtime failure into a silent compile pass.
+//
+// viem's `ox` dependency types WebAuthn (AuthenticatorAttestationResponse, AuthenticationExtensionsClient-
+// Outputs), which lives only in lib.dom.d.ts. Under `skipLibCheck: false` those declarations are checked,
+// so viem's consumers need DOM. Five packages extend this file, and the fifth is the one to know about:
+// the four EVM packages (binding-evm-common/-escrow/-x402/-mpp) reach viem directly, and `rail-invariants`
+// reaches it TRANSITIVELY — it imports every binding at once, which is the whole point of the package, so
+// it inherits the DOM requirement from the EVM ones. Extending this file is that admission, made per
+// package and visible in the diff — rather than granting the whole workspace browser globals to satisfy the
+// ones that drag in viem. Derive this list by grepping the extenders; it has been stale before.
+//
+// DOM REPLACES WebWorker here rather than joining it: the two libs redeclare the same ~200 identifiers
+// (BufferSource, AlgorithmIdentifier, every GL* alias) and listing both produces thousands of TS2300
+// duplicate-identifier errors from inside the lib files themselves. DOM is a superset of the web-standard
+// globals WebWorker carries, so nothing is lost — only the runtime-agnosticism guarantee, which is the
+// trade this file exists to make explicit.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"]
+  }
+}

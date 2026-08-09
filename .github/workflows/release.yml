@@ -1,0 +1,145 @@
+name: release
+
+# Triggered by `ci` CONCLUDING, not by the push itself. `needs:` cannot express this — it orders jobs
+# within one workflow, and `ci` is a separate file — so the dependency has to be a `workflow_run`.
+#
+# Why it must exist at all: on a `push` trigger this workflow raced `ci` and won. Measured on this repo,
+# release finishes in 77-114s against ci's 286-294s, so a commit that breaks the suite could reach the
+# registry ~3 minutes before the run that would have caught it went red. That was survivable on GitHub
+# Packages. It is not survivable on npmjs, where `check-versions.mjs` already documents the reason:
+# deleting a package's sole version burns the name permanently.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+# PUBLISHING MODEL — ruled 2026-08-08 (DS-4). Read this before changing any step below.
+#
+# Steady state is STAGE-ONLY TRUSTED PUBLISHING, and it has three properties worth stating because each
+# one is why a step looks the way it does:
+#
+#   - No `NPM_TOKEN` exists. Authentication is OIDC, which is why `id-token: write` is required below.
+#   - The trusted-publisher configuration on npmjs is stage-only, so the REGISTRY rejects a bare
+#     `npm publish` from this workflow. The gate does not depend on this file being correct.
+#   - Nothing is installable until a human approves the staged artifact with 2FA. The gate is applied to
+#     the exact bytes going live, so it holds even if this workflow is compromised.
+#
+# WHY NOT `changeset publish`: @changesets/cli hardcodes the subcommand (`spawn(tool, ["publish", …])`)
+# and exposes no hook to emit `npm stage publish`. Verified against 2.31.1. Changesets keeps versioning
+# and changelogs; the publish loop below is ours. Derive the set from `private`, never a name pattern —
+# a name filter has silently broken twice here.
+#
+# BOOTSTRAP EXCEPTION, one time only: npm can neither configure trusted publishing for a package that does
+# not exist (npm/cli#8544) nor stage a brand-new name — the docs are explicit that "you cannot stage a
+# brand-new package". So the FIRST publish of the `lcp-*` names cannot use this path at all. It runs once
+# under a short-lived granular token with the `npm-publish` environment gate, and then this workflow takes
+# over permanently. If you are reading this because a publish failed with "package does not exist", that
+# bootstrap has not happened yet — it is a deliberate, supervised one-off, not something to work around here.
+#
+# PROVENANCE: `npm publish --provenance` and GitHub artifact attestations both require a PUBLIC source
+# repository. Under D7 that arrives by archive-and-recreate rather than a visibility flip. `NPM_CONFIG_
+# PROVENANCE` is set below and is harmless while private only because this workflow is disabled until the
+# cutover; if you re-enable it before D7 lands, remove it — npm FAILS the publish rather than degrading.
+permissions:
+  # `contents: write` so the per-package tags can be pushed (see the final step).
+  contents: write
+  # OIDC. This is the whole of the publishing credential — there is no token to leak.
+  id-token: write
+
+concurrency:
+  # Serialize, and NEVER cancel. The publish loop is non-atomic: it stages package by package, so
+  # interrupting it mid-flight leaves part of a coordinated release staged and the rest not. Staging is
+  # recoverable where publishing is not — a staged version can be rejected — but a half-staged release
+  # still has to be reconciled by hand before approval.
+  # Two rapid pushes to main must therefore queue behind each other rather than race or pre-empt.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # `workflow_run` fires on completion regardless of outcome, so the conclusion is checked here. Without
+    # this the gate above would be decorative: a red `ci` would still trigger a green release.
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Pin to the COMMIT `ci` actually verified. A `workflow_run` checkout defaults to the tip of the
+          # default branch, which is not necessarily the tree that passed — a push landing during the ~5
+          # minutes `ci` takes would otherwise publish an unverified commit under a green tick.
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: ".nvmrc", cache: "pnpm", registry-url: "https://registry.npmjs.org" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      # Packed BEFORE staging so the retained artifacts are the exact tarballs the next step uploads, not a
+      # later rebuild — the approval gate is only meaningful if the approved bytes are the kept bytes. Kept as its own step rather than folded away because it is also the
+      # hook signed provenance would attach to if the plan ever allows it (see the header).
+      - name: Pack the publishable set
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist-tarballs"
+          # The publishable set is derived from `private` in each manifest, never a name pattern: a name
+          # filter silently stops being correct the moment a package is renamed or a second private
+          # package appears — both have now happened. Same rule as scripts/publish-integrity.mjs.
+          for dir in packages/*/; do
+            node -e "process.exit(require('./${dir}package.json').private ? 1 : 0)" || continue
+            ( cd "$dir" && pnpm pack --pack-destination "$GITHUB_WORKSPACE/dist-tarballs" )
+          done
+          ls -1 "$GITHUB_WORKSPACE/dist-tarballs"
+
+      # SBOM over the resolved dependency graph — what a consumer needs to answer "am I exposed to CVE-X"
+      # without re-resolving our lockfile. Syft reads the pnpm lockfile, so it reflects what was actually
+      # installed for this build rather than what the manifests would permit.
+      #
+      # Unattested, per the header: signing it needs the same feature the provenance step needs. An
+      # unsigned SBOM is still the useful half — it says WHAT is in the release; the signature would say
+      # who built it. Retained for a year because a CVE disclosure routinely reaches back further than 90
+      # days, and the question it answers is always asked about a release already in the field.
+      - name: Generate the SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          artifact-name: sbom-integra-protocol.cyclonedx.json
+          output-file: "${{ github.workspace }}/sbom.cyclonedx.json"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-sbom-and-tarballs
+          path: |
+            ${{ github.workspace }}/sbom.cyclonedx.json
+            ${{ github.workspace }}/dist-tarballs/*.tgz
+          retention-days: 365
+
+      - name: Stage the publishable set
+        run: |
+          shopt -s nullglob
+          staged=0
+          for tarball in "$GITHUB_WORKSPACE"/dist-tarballs/*.tgz; do
+            echo "::group::stage $(basename "$tarball")"
+            if npm stage publish "$tarball" 2>&1 | tee /tmp/stage.log; then
+              staged=$((staged+1))
+            elif grep -qiE "cannot publish over|previously published|already exists" /tmp/stage.log; then
+              echo "already on the registry at this version — skipping"
+            else
+              echo "::error::staging failed for $(basename "$tarball")"; exit 1
+            fi
+            echo "::endgroup::"
+          done
+          echo "staged $staged package(s) — NONE are installable until approved with 2FA"
+          echo "approve with: npm stage list --json  then  npm stage approve <id> --otp <code>"
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+
+      # NO TAGS ARE PUSHED HERE, and that is deliberate. `changeset publish` used to create one annotated
+      # tag per published package in the runner; this workflow only STAGES, and a staged version is not
+      # published — it can still be rejected. A tag for a version that never went live is a worse record
+      # than no tag at all, which is the rule this file already applied when it pushed tags after publish
+      # rather than before.
+      #
+      # Tagging moves to the moment of approval, where a version actually becomes installable:
+      # `scripts/approve-staged.mjs` tags exactly what it approved and pushes those refs. `contents: write`
+      # remains granted above because that path runs against this repository.

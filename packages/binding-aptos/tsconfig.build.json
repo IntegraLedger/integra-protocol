@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "types:[node] is REQUIRED here (as for binding-solana): @aptos-labs/ts-sdk's .d.ts references the Node `NodeJS` namespace (dist/core/crypto/encryption/symmetric.d.ts); skipLibCheck is false workspace-wide, so the SDK's Node types must resolve.",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "types": ["node"] },
+  "include": ["src"]
+}

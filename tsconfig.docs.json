@@ -1,0 +1,28 @@
+{
+  // Doc snippets: full workspace strictness, minus what only makes sense for shipped code.
+  // Teaching fences declare values they never use, and nothing here emits.
+  //
+  // `types: ["node"]` is the SAME declaration every package tsconfig in this workspace carries, and it is
+  // load-bearing rather than cosmetic: under `skipLibCheck: false` a fence importing a rail binding also
+  // typechecks that binding's chain SDK, and @solana/web3.js's own .d.ts references Node's `http`/`https`.
+  // Without this, eight of the twelve rails could never appear in a CHECKED fence. It narrows automatic
+  // @types inclusion rather than relaxing anything — every strictness flag in the base config still applies.
+  // DOM, not the base's WebWorker. A doc-snippet file is ONE compilation containing fences from every
+  // package at once, so it inherits the strictest requirement in the set: the EVM packages reach viem,
+  // whose `ox` dependency types WebAuthn in lib.dom.d.ts, and `skipLibCheck: false` checks it. The five
+  // packages that extend tsconfig.dom.json make this admission individually; this compilation contains
+  // all of them, so it makes the same admission once. It does not weaken any strictness flag, and it does
+  // not grant browser globals to shipped code — nothing here emits.
+  "extends": "./tsconfig.dom.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "isolatedDeclarations": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["node"]
+  },
+  "include": ["reports/doc-snippets"]
+}

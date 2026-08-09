@@ -1,0 +1,24 @@
+{
+  "profile": "integra-tempo-mpp-memo-v1",
+  "rail": "tempo:mpp",
+  "protocol": "mpp",
+  "pattern": "native-field",
+  "nativeField": "tip20.memo",
+  "recovery": {
+    "onChain": true,
+    "zeroPartyRecoverable": true,
+    "forwardIndexable": true
+  },
+  "assetBinding": "filtered",
+  "successGate": "structural",
+  "indexing": "topic:TransferWithMemo.memo",
+  "finality": {
+    "reversible": false,
+    "note": "final on confirmation (TIP-20 transferWithMemo) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+  },
+  "weldGrades": {
+    "tip20-transferWithMemo": "signature",
+    "tip20-transferFromWithMemo": "tx"
+  },
+  "lifecycleStates": ["proposed", "settled"]
+}

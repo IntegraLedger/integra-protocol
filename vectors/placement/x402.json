@@ -1,0 +1,935 @@
+{
+  "$comment": "x402 reference placement — the HTTP-LAYER CARRIER, cut against the live x402 v2 specification (x402-foundation/x402@1fec3aa04e41, specs/x402-specification-v2.md, read 2026-07-30) and reconciled with LCP v1.37 §C.4 the same day. THIS IS NOT THE x402 WELD: @integraledger/lcp-binding-evm-x402 binds atrHash into the EIP-3009 nonce and answers 'what did the money commit to?'. This area answers a different question — 'where does the reference ride on the wire?' — and both are true at once. GATE (§7): the live spec confirms (a) `extensions` is carried on PaymentRequired, PaymentPayload AND SettlementResponse, (b) each entry carries `info` ('Extension-specific data provided by the server') and `schema` ('JSON Schema defining the expected structure of info'), (c) the echo rule — 'The client must include at least the info received; it may append additional info but cannot delete or overwrite existing info' — and (d) `extra` is 'Scheme-specific additional information' on a PaymentRequirements entry. (c) is why the top-level map is CANONICAL here: it is the carrier the protocol itself protects. (d) is why `place` never writes into `extra`: that object belongs to the payment scheme, and the atrHash there is READ because shipped sellers emit it, not written because we chose the spelling. DRIFT from v1.37 §C.4, recorded rather than silently absorbed: v1.37 renders the echo rule in RFC-2119 caps ('MAY append to but MUST NOT delete or overwrite') and states it about the extensions map; the live spec states it in lower case and about the `info` payload, and it additionally carries `extra` on PaymentPayload.accepted, which §C.4 does not mention. Same rule, weaker modality — the host spec wins and the drift is reported. THE ALIAS HAS A DIFFERENT ENCODING FROM THE CANONICAL FIELD, and x402 is the only protocol in the set where that is true: the canonical slot holds a §8.1 {type,value} object, `accepts[0].extra.atrHash` holds a BARE hash. Writing an `lcp:` string there would emit a field neither our own seller nor any x402 counterparty parses. The alias is index 0 ONLY, matching what buyer parsers read (accepts[0]); a wildcard segment would add a path language to the locator that nothing else in the set needs. The extension KEY is `legalContext`, not a reverse-domain name: x402 imposes no namespace rule (keys are implementation-defined strings) and `legalContext` is what sellers emit, what buyer parsers read, and what §C.4's own illustration shows. The ruled com.integraledger.* namespace governs hosts that REQUIRE a reverse-domain namespace (UCP), not this one. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit `detail`; success arms pin the WHOLE Outcome, in the exact key order the adapter emits, because the runner's deepEqual is JSON.stringify equality.",
+  "manifest": {
+    "protocol": "x402",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "reference-object",
+    "container": {
+      "kind": "object-path"
+    },
+    "field": "extensions.legalContext.info",
+    "readAlso": [
+      {
+        "path": "accepts.0.extra.atrHash",
+        "encoding": "bare-value",
+        "bareType": "sha256"
+      }
+    ],
+    "termsUrlField": "extensions.legalContext.info.legalContextUrl",
+    "carrierTypes": ["sha256", "url"],
+    "specRef": "x402 v2 (x402-foundation/x402@1fec3aa04e41 specs/x402-specification-v2.md, read 2026-07-30) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra is scheme-specific (gate discharged: see README)"
+  },
+  "cases": [
+    {
+      "name": "place writes the extensions.legalContext entry with info and schema",
+      "$comment": "The slot does not hold the reference directly — it holds {info, schema}, where `schema` is a $ref pointing at the carrier schema and is never fetched. That wrapper is why this is the one placement in the plan that overrides the kit's `place`.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "base-sepolia"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "base-sepolia"
+            }
+          ],
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "a server-advertised sibling extension survives — clients MUST NOT delete or overwrite",
+      "$comment": "x402's own rule about x402's own map. A placement that pruned a sibling extension would make the client that used it non-conformant.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": [],
+          "extensions": {
+            "someOther": {
+              "info": {}
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "x402Version": 2,
+          "accepts": [],
+          "extensions": {
+            "someOther": {
+              "info": {}
+            },
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "our OWN entry is replaced in place, keeping its position among the siblings",
+      "$comment": "Two rules at once: re-placing a reference overwrites rather than duplicating, and the sibling merge is `{...siblings, legalContext}` — the reverse order would let a stale legalContext win over the one being placed.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+              }
+            },
+            "someOther": {
+              "info": {
+                "a": 1
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            },
+            "someOther": {
+              "info": {
+                "a": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place never touches the per-requirement extra — that object is the SCHEME's",
+      "$comment": "The live spec defines `extra` as 'Scheme-specific additional information', and its example content is token metadata (name/version). We READ an atrHash there because sellers emit one; writing into a scheme's own object is not ours to do, which is why the alias declares no `write`.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "base-sepolia",
+              "extra": {
+                "name": "USDC",
+                "version": "2"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "base-sepolia",
+              "extra": {
+                "name": "USDC",
+                "version": "2"
+              }
+            }
+          ],
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place accepts a url carrier — the OTHER type this field permits",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/terms/abc.md"
+        },
+        "doc": {}
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "url",
+                "value": "https://seller.example/terms/abc.md"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a challenge whose extensions is a STRING — that map is ABOVE the field's direct holder",
+      "$comment": "THE MALFORMED-CONTAINER RULE, re-derived from the declared manifest rather than from the granularity this override happens to write at. `field` is `extensions.legalContext.info`, so the field's DIRECT HOLDER is `legalContext` and `extensions` sits one level ABOVE it — and binding-core's ratified rule is: a present-but-unmergeable container is replaced when it IS the direct holder and REFUSED when it is anywhere above, because replacing an intermediate discards everything beneath it. A stranger holding only the published manifest and the kit computes `x402/document-malformed` for this document; the override must compute the same answer, or the manifest is not the artifact it claims to be.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "extensions": "legalContext"
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES an ARRAY extensions map — the case where replacing it would DESTROY host data",
+      "$comment": "The string case alone cannot prove the rule: dropping `\"legalContext\"` loses a scalar, and a reader could believe replacement is harmless. Here the host's own entries are in the array, and an override that replaced `extensions` would emit a challenge with them silently gone. This is the exact harm the ratified rule names — 'Replacing an intermediate would discard everything beneath it'.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "extensions": [
+            {
+              "someOther": {
+                "info": {
+                  "a": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a NUMERIC extensions map — the branch a string and an array both leave untested",
+      "$comment": "`typeof 7` is not 'object' and `Array.isArray(7)` is false, so a guard written as one of those two checks alone would let this through. Spreading a number yields `{}`, which is the quietest corruption of the three: the host's declared map becomes an empty one and nothing reports it.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "extensions": 7
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a NULL extensions map — present-holding-null is not absent",
+      "$comment": "Absent is created (that is the extension point working); present-but-unmergeable above the direct holder refuses. A JSON null is PRESENT, and the kit reads it that way too: `Object.hasOwn` is true, so it never reaches the create branch. Treating null as absent here would be the one input on which this override and the kit still disagreed.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "extensions": null
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "an unmergeable OWN entry IS replaced — the other half of the same rule, at the direct holder",
+      "$comment": "The distinction the four refusals above would otherwise leave as an assertion. `extensions.legalContext` is the direct holder of `.info`, so a present-but-unmergeable value THERE is replaced — and it costs the host nothing, because `legalContext` is our own extension key and the only thing dropped is a value that was never a conformant entry. The sibling `someOther` proves the replacement is scoped to our entry and not to the map.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "extensions": {
+            "legalContext": "junk",
+            "someOther": {
+              "info": 1
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            },
+            "someOther": {
+              "info": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a null document — minting the challenge is not the extension point working",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES an ARRAY document — a JSON array is not an x402 challenge",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": []
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a NON-OBJECT document — a string is not a challenge with room in it",
+      "$comment": "The case that distinguishes the guard from its absence. Without the typeof half, `{...\"challenge\"}` spreads the string into {0:'c',1:'h',…} and the placement emits a corrupted document instead of refusing — null and [] both pass the other two halves of the same guard, so neither of them proves it.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": "challenge"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a carrier type the manifest does not permit",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": {
+          "x402Version": 2
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a permitted type whose VALUE is not valid for it",
+      "$comment": "Bare digits are not a sha256 carrier. The override renders through the codec, so a corrupt value refuses instead of landing on the wire as an extension a buyer's parser would reject.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-malformed"
+      }
+    },
+    {
+      "name": "place is pure — the input challenge is not mutated",
+      "input": {
+        "protocol": "x402",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": [],
+          "extensions": {
+            "someOther": {}
+          }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "extract reads the canonical extensions slot",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract reads the long-standing shipped carrier, verbatim",
+      "$comment": "This case closes the undisclosed-drift gap: the document is exactly what buildLegalContextCarrier emits — `info` carrying a legalContextUrl beside type/value, `schema` beside `info`, and the same pair repeated in accepts[0].extra. The sibling key inside `info` is tolerated for the same reason §C.3's disputeResolution siblings are: the entry payload is ours and a reader that rejected our own shipped shape would be the defect.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "base-sepolia",
+              "payTo": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+              "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+              "amount": "1000",
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          ],
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract also reads the per-requirement extra.atrHash alias — a BARE hash, not an lcp: string",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "accepts": [
+            {
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "the bare alias accepts UPPERCASE hex and returns it unnormalized",
+      "$comment": "Hex is case-insensitive (the ATR-canon any-case rule), so a conformant counterparty advertising uppercase must not be false-negatived. Normalization belongs to the comparison — verify's referencePlacementStep canonicalizes both sides — not to the read.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "accepts": [
+            {
+              "extra": {
+                "atrHash": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+        }
+      }
+    },
+    {
+      "name": "the canonical extensions slot wins when both carriers are present",
+      "$comment": "Strength order as data: the canonical field answers first even when the alias carries a different datum. A reader that took the alias would let whichever carrier a middlebox rewrote decide what the record cites. DISCLOSED DIVERGENCE from a strict buyer gate: such a reader may prefer accepts[].extra (the per-requirement carrier) and REFUSES outright when the two carriers disagree, where this area answers with the canonical slot and says nothing. A placement is structural and does not adjudicate the host's document; a buyer parser may. Both behaviours are designed, the divergence is recorded in the README rather than left for a universal buyer parser to discover, and that parser is where the two readers reconcile.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "url",
+                "value": "https://canonical.example/t.md"
+              }
+            }
+          },
+          "accepts": [
+            {
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "url",
+          "value": "https://canonical.example/t.md"
+        }
+      }
+    },
+    {
+      "name": "a canonical slot that is present but UNREADABLE is not abandoned for the alias",
+      "$comment": "The anti-substitution rule. An unknown carrier type in the canonical slot refuses; it does not silently fall through to the weaker carrier, which would let a counterparty that corrupted the protected map steer the read to the scheme's own object.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha512",
+                "value": "0xdead"
+              }
+            }
+          },
+          "accepts": [
+            {
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a decoded carrier type this field may not hold",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "ipfs",
+                "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "extract REFUSES a corrupt bare hash in the alias",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "accepts": [
+            {
+              "extra": {
+                "atrHash": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-malformed"
+      }
+    },
+    {
+      "name": "extract refuses when neither carrier is present",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-absent"
+      }
+    },
+    {
+      "name": "an entry advertising `schema` but no `info` reads as ABSENT",
+      "$comment": "The declared field is the `.info` leaf, not the entry. A server that advertised the extension without data has carried no reference, and reading the entry itself as one would hand a caller {schema:{...}} to decode.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "LCP legal-context reference",
+                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "type": "object",
+                "required": ["type", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["sha256", "url", "ipfs", "ar"],
+                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-absent"
+      }
+    },
+    {
+      "name": "an accepts value that is not an array reads as ABSENT — the kit's read-side convention",
+      "$comment": "Same ratified convention placement-acp established (metadata holding a number reads as absent): an unreadable container yields no reference on the READ side, and document-malformed is reserved for a non-object document.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "accepts": {
+            "extra": {
+              "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-absent"
+      }
+    },
+    {
+      "name": "the alias is index 0 ONLY — a hash on the SECOND requirement is not read",
+      "$comment": "The declared locator is `accepts.0.extra.atrHash` and the manifest means it. Buyer parsers read accepts[0] for the same reason: the reference must bind to the requirement actually being paid, and 'search every requirement' would let a seller hide a second set of terms behind an alternative it never expects to be chosen.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "accepts": [
+            {
+              "scheme": "exact"
+            },
+            {
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/reference-absent"
+      }
+    },
+    {
+      "name": "extract REFUSES a null document",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    }
+  ]
+}

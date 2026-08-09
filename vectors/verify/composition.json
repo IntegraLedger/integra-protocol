@@ -1,0 +1,614 @@
+{
+  "$comment": "The TC-4 composition readout (P6) over the re-derived class ladder. `atrBytes_utf8` is hashed by the harness to produce `settledAtrHash`, so the fingerprint proves by construction and the cases isolate the composition logic; `acceptanceVerifier` names a deterministic port the harness supplies. AMENDED 2026-07-24: the TC-4 cases previously carried placeholder TC-3 rungs — an empty-bounds authority chain that proved trivially, no acceptance, no elections — and still read verified:true. They now supply the inherited rungs for real, and two net-new cases pin the inheritance directly (drop the acceptance, drop the forum → TC-4 no longer verifies). Composition steps are still appended ONLY when a composition slot is supplied, so the base walk is unchanged in shape. SUPERSEDED PIN (2026-08-07): dispute-resolution examples generalized -- no provider names in illustrative examples; atrHash 0xa5215e6a2f6af04c310e1298ead8b5733ce7221e0691836edb1aabb7437cd225 -> 0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413, re-derived independently with python3 hashlib over the exact atrBytes_utf8.",
+  "cases": [
+    {
+      "name": "TC-4 verified when every TC-3 rung + composition slot proved",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["chain"],
+          "bindings": ["x402"]
+        },
+        "depth": "mechanical",
+        "atrBytes_utf8": "{\"lcp\":\"0.3\",\"terms\":\"Seller delivers one dataset licence on settlement.\",\"id\":\"0198f2b7-11c4-7a2e-9d63-4f8b0e5a7c92\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules\",\"disputeMethod\":\"arbitration\"}}",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xfeed"
+          }
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              }
+            ]
+          }
+        },
+        "acceptance": {
+          "atrHash": "0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "claimedClass": "TC-4",
+        "composition": {
+          "offerBound": true,
+          "operations": {
+            "orderStateRef": true,
+            "reconciliationIds": true
+          },
+          "discoveryIntegrity": "ok",
+          "proportionalityTier": 3
+        }
+      },
+      "verified": true,
+      "supportedClass": "TC-4"
+    },
+    {
+      "name": "TC-4 NOT verified when a composition slot (operations) is absent",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["chain"],
+          "bindings": ["x402"]
+        },
+        "depth": "mechanical",
+        "atrBytes_utf8": "{\"lcp\":\"0.3\",\"terms\":\"Seller delivers one dataset licence on settlement.\",\"id\":\"0198f2b7-11c4-7a2e-9d63-4f8b0e5a7c92\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules\",\"disputeMethod\":\"arbitration\"}}",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xfeed"
+          }
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              }
+            ]
+          }
+        },
+        "acceptance": {
+          "atrHash": "0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "claimedClass": "TC-4",
+        "composition": {
+          "offerBound": true,
+          "discoveryIntegrity": "ok",
+          "proportionalityTier": 3
+        }
+      },
+      "verified": false,
+      "supportedClass": "TC-4"
+    },
+    {
+      "name": "TC-4 NOT verified when the inherited TC-3 acceptance is absent — the ladder is cumulative",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["chain"],
+          "bindings": ["x402"]
+        },
+        "depth": "mechanical",
+        "atrBytes_utf8": "{\"lcp\":\"0.3\",\"terms\":\"Seller delivers one dataset licence on settlement.\",\"id\":\"0198f2b7-11c4-7a2e-9d63-4f8b0e5a7c92\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules\",\"disputeMethod\":\"arbitration\"}}",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xfeed"
+          }
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              }
+            ]
+          }
+        },
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "claimedClass": "TC-4",
+        "composition": {
+          "offerBound": true,
+          "operations": {
+            "orderStateRef": true,
+            "reconciliationIds": true
+          },
+          "discoveryIntegrity": "ok",
+          "proportionalityTier": 3
+        }
+      },
+      "verified": false,
+      "supportedClass": "TC-4"
+    },
+    {
+      "name": "TC-4 NOT verified when the record elects no forum — RCS-1 is a TC-3 rung TC-4 inherits",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["chain"],
+          "bindings": ["x402"]
+        },
+        "depth": "mechanical",
+        "atrBytes_utf8": "{\"lcp\":\"0.3\",\"terms\":\"Seller delivers one dataset licence on settlement.\",\"id\":\"0198f2b7-11c4-7a2e-9d63-4f8b0e5a7c92\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\"}}",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xfeed"
+          }
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              }
+            ]
+          }
+        },
+        "acceptance": {
+          "atrHash": "0x43ae6cf83355189e3805b1620dd592fced0c6dbd59d39513adc211d20b92a31f",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "claimedClass": "TC-4",
+        "composition": {
+          "offerBound": true,
+          "operations": {
+            "orderStateRef": true,
+            "reconciliationIds": true
+          },
+          "discoveryIntegrity": "ok",
+          "proportionalityTier": 3
+        }
+      },
+      "verified": false,
+      "supportedClass": "TC-4"
+    },
+    {
+      "name": "a GATED FRC signal impeaches TC-4 to TC-0 (the stack gated)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["chain"],
+          "bindings": ["x402"]
+        },
+        "depth": "mechanical",
+        "atrBytes_utf8": "{\"lcp\":\"0.3\",\"terms\":\"Seller delivers one dataset licence on settlement.\",\"id\":\"0198f2b7-11c4-7a2e-9d63-4f8b0e5a7c92\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules\",\"disputeMethod\":\"arbitration\"}}",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xfeed"
+          }
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              }
+            ]
+          }
+        },
+        "acceptance": {
+          "atrHash": "0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "claimedClass": "TC-4",
+        "composition": {
+          "offerBound": true,
+          "operations": {
+            "orderStateRef": true,
+            "reconciliationIds": true
+          },
+          "discoveryIntegrity": "ok",
+          "proportionalityTier": 3,
+          "frcSignals": [
+            {
+              "role": "attestation",
+              "gated": true
+            }
+          ]
+        }
+      },
+      "verified": false,
+      "supportedClass": "TC-0"
+    },
+    {
+      "name": "a TC-2 verify WITHOUT composition appends no composition steps — the base walk is seven",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["chain"],
+          "bindings": ["x402"]
+        },
+        "depth": "mechanical",
+        "atrBytes_utf8": "{\"lcp\":\"0.3\",\"terms\":\"Seller delivers one dataset licence on settlement.\",\"id\":\"0198f2b7-11c4-7a2e-9d63-4f8b0e5a7c92\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules\",\"disputeMethod\":\"arbitration\"}}",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xfeed"
+          }
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              }
+            ]
+          }
+        },
+        "acceptance": {
+          "atrHash": "0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "claimedClass": "TC-2"
+      },
+      "verified": true,
+      "supportedClass": "TC-2",
+      "stepCount": 7
+    }
+  ]
+}

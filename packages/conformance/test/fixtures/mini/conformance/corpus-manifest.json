@@ -1,0 +1,7 @@
+{
+  "version": "1",
+  "areas": [
+    { "id": "mini.early", "file": "mini/early.json", "class": "echo", "phase": "P1" },
+    { "id": "mini.late", "file": "mini/late.json", "class": "echo", "phase": "P4" }
+  ]
+}

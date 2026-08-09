@@ -1,0 +1,111 @@
+{
+  "cases": [
+    {
+      "name": "minimal bundle (ATR only)",
+      "input": {
+        "entries": [
+          {
+            "role": "atr",
+            "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "ref-terms bundle retains the referenced terms document",
+      "input": {
+        "entries": [
+          {
+            "role": "atr",
+            "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          {
+            "role": "referenced terms document",
+            "ref": "lcp:sha256:0x00c0cc74a529e001ec0659ade0a613c26654c7ae6ac2220baa70313b2d50cd69"
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "as-of snapshots present",
+      "input": {
+        "entries": [
+          {
+            "role": "atr",
+            "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          {
+            "role": "status-list-snapshot",
+            "ref": "lcp:sha256:0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925"
+          },
+          {
+            "role": "issuer-key-state",
+            "ref": "lcp:sha256:0x630dcd2966c4336691125448bbb25b4ff412a49c732db2c8abc1b8581bd710dd"
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "empty entries",
+      "input": {
+        "entries": []
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown role",
+      "input": {
+        "entries": [
+          {
+            "role": "mystery",
+            "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "malformed ref (bare hash, not lcp:sha256:)",
+      "input": {
+        "entries": [
+          {
+            "role": "atr",
+            "ref": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "entry missing ref",
+      "input": {
+        "entries": [
+          {
+            "role": "atr"
+          }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "settlement-response role — the unsigned HTTP-layer settlement artifact",
+      "$comment": "x402 v2's SettlementResponse rides PAYMENT-RESPONSE unsigned (v1.37 §C.4: the extensions map is not covered by the offer or receipt signature). The role names that artifact honestly — neither an attestation (it is unsigned) nor a second timestamp (the receipt echo already holds that role).",
+      "input": {
+        "entries": [
+          {
+            "role": "atr",
+            "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          {
+            "role": "settlement-response",
+            "ref": "lcp:sha256:0x2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+          }
+        ]
+      },
+      "expected": true
+    }
+  ]
+}

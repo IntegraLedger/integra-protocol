@@ -1,0 +1,222 @@
+{
+  "$comment": "Behavioral vectors for authority.verifyAcceptanceStructure — the PURE, chain-free half of TRM-6 acceptance verification: the atrHash-binding gate (case-insensitive, ATR canon) and the ATA-4 commitment-vs-leaf containment gate. This is the portable behavior the conformance corpus certifies cross-implementation; the CRYPTOGRAPHIC signature gate (EOA offline recover + smart-account ERC-1271/6492 on-chain) is exercised in binding-evm-common's package tests against a live chain, not this deterministic corpus (it needs secp256k1/a chain, and a stubbed verifier would be a mock). Output contract: { ok: true } on pass, { refused: true, haltClass, code } on any gate. ata4 (when present) = { commitment, leafBounds } as ATA-2 Bounds; the inverted forbiddenClauseCategories case is the load-bearing one (a commitment that DROPS a category the leaf forbids has WIDENED).",
+  "cases": [
+    {
+      "name": "valid-matching-atrhash",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": { "ok": true }
+    },
+    {
+      "name": "case-insensitive-atrhash-match",
+      "input": {
+        "acceptance": {
+          "atrHash": "0xE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip191",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "atrHash"
+        },
+        "expectedAtrHash": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "expected": { "ok": true }
+    },
+    {
+      "name": "atrhash-mismatch-rejects",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acceptance/atrhash-mismatch"
+      }
+    },
+    {
+      "name": "commitment-within-leaf-ok",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "ata4": {
+          "commitment": {
+            "caps": { "USDC": "1000000" },
+            "jurisdictions": ["US-DE"]
+          },
+          "leafBounds": {
+            "caps": { "USDC": "5000000" },
+            "jurisdictions": ["US-DE", "US-NY"]
+          }
+        }
+      },
+      "expected": { "ok": true }
+    },
+    {
+      "name": "commitment-exceeds-leaf-cap-rejects",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "ata4": {
+          "commitment": { "caps": { "USDC": "9000000" } },
+          "leafBounds": { "caps": { "USDC": "5000000" } }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acceptance/commitment-exceeds-grant"
+      }
+    },
+    {
+      "name": "commitment-exceeds-leaf-jurisdiction-rejects",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "ata4": {
+          "commitment": { "jurisdictions": ["US-CA"] },
+          "leafBounds": { "jurisdictions": ["US-DE", "US-NY"] }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acceptance/commitment-exceeds-grant"
+      }
+    },
+    {
+      "name": "commitment-drops-forbidden-category-rejects-inverted",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xabcd",
+          "signedAt": "2025-11-13T04:53:20Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "ata4": {
+          "commitment": { "forbiddenClauseCategories": ["auto-renewal"] },
+          "leafBounds": {
+            "forbiddenClauseCategories": ["auto-renewal", "class-action-waiver"]
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acceptance/commitment-exceeds-grant"
+      }
+    },
+    {
+      "name": "P4 produced acceptance over the eip712 envelope binds atrHash — structural pass (authority-producer-ref round-trip)",
+      "$comment": "The exact acceptance authority-producer-ref's produceAcceptance emits and verifyAcceptanceStructure passes: an eip712 acceptance-envelope acceptance carrying grantRef + forum/law elections (RCS-1/2), signedAt present (TRM-6). The CRYPTOGRAPHIC gate (the real EIP-712 signature the injected LcpEvmSigner produces) is proven in the package tests through binding-evm-common's makeEvmAcceptanceVerifier; this corpus certifies the portable structural half.",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x5d36c6eecf2349475bcb6f146e3e998631fb3dc74790e1c783d4d8f7dc41e8d7",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xproducedsig",
+          "signedAt": "2026-07-01T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0x00c0cc74a529e001ec0659ade0a613c26654c7ae6ac2220baa70313b2d50cd69",
+          "elections": { "forum": "Arbitration Forum", "governingLaw": "US-DE" }
+        },
+        "expectedAtrHash": "0x5d36c6eecf2349475bcb6f146e3e998631fb3dc74790e1c783d4d8f7dc41e8d7"
+      },
+      "expected": { "ok": true }
+    },
+    {
+      "name": "P4 produced acceptance commitment within the produced leaf grant — structural pass",
+      "$comment": "The acceptance's commitment (500000 USDC, US-DE, arbitration, forbids indemnity-waiver) is contained by the minimal grant's leaf bounds (1000000 USDC via the delegation, US-DE, arbitration, forbids indemnity-waiver) — ATA-4 containment holds on the produced record.",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x5d36c6eecf2349475bcb6f146e3e998631fb3dc74790e1c783d4d8f7dc41e8d7",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xproducedsig",
+          "signedAt": "2026-07-01T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x5d36c6eecf2349475bcb6f146e3e998631fb3dc74790e1c783d4d8f7dc41e8d7",
+        "ata4": {
+          "commitment": {
+            "caps": { "USDC": "500000" },
+            "jurisdictions": ["US-DE"],
+            "disputeMethods": ["arbitration"],
+            "forbiddenClauseCategories": ["indemnity-waiver"]
+          },
+          "leafBounds": {
+            "caps": { "USDC": "1000000" },
+            "jurisdictions": ["US-DE"],
+            "disputeMethods": ["arbitration"],
+            "forbiddenClauseCategories": ["indemnity-waiver"]
+          }
+        }
+      },
+      "expected": { "ok": true }
+    },
+    {
+      "name": "P4 produced acceptance commitment EXCEEDS the produced leaf cap — reject (over-cap on a real record, ATA-4)",
+      "$comment": "A produced record whose accepted commitment (2000000 USDC) exceeds the leaf grant's cap (1000000 USDC) — ATA-4's commitment-vs-leaf containment at work on a real acceptance. verifyAcceptanceStructure MUST refuse acceptance/commitment-exceeds-grant, never affirm.",
+      "input": {
+        "acceptance": {
+          "atrHash": "0x5d36c6eecf2349475bcb6f146e3e998631fb3dc74790e1c783d4d8f7dc41e8d7",
+          "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "scheme": "evm:eip712",
+          "signature": "0xproducedsig",
+          "signedAt": "2026-07-01T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope"
+        },
+        "expectedAtrHash": "0x5d36c6eecf2349475bcb6f146e3e998631fb3dc74790e1c783d4d8f7dc41e8d7",
+        "ata4": {
+          "commitment": { "caps": { "USDC": "2000000" } },
+          "leafBounds": { "caps": { "USDC": "1000000" } }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acceptance/commitment-exceeds-grant"
+      }
+    }
+  ]
+}

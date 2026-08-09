@@ -1,0 +1,23 @@
+{
+  "$comment": "Canonical-CBOR bytes of the LCP label-8847 metadatum {v, atrHash} (text-keyed map, RFC 8949 §4.2.1 canonical: keys ordered length-then-bytewise, so `v` before `atrHash`). Authored from the CBOR spec + the proven on-chain shape, then cross-checked BYTE-FOR-BYTE against the independent `cborg` oracle (a throwaway script, since deleted — never a runtime dep). `atrHash` is bare lowercase hex (no 0x), 64 chars = 64 bytes = exactly Cardano's per-string metadatum limit (a 0x-prefixed 66-byte form would overflow, which is why the on-chain value is bare hex). `cbor` is lowercase hex of the metadatum bytes.",
+  "cases": [
+    {
+      "name": "canonical LCP metadatum (all-ab atrHash, v=0.1.38)",
+      "atrHash": "0xabababababababababababababababababababababababababababababababab",
+      "v": "0.1.38",
+      "cbor": "a2617666302e312e33386761747248617368784061626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162"
+    },
+    {
+      "name": "canonical LCP metadatum (SHA-256('') atrHash, v=0.1.38)",
+      "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+      "v": "0.1.38",
+      "cbor": "a2617666302e312e33386761747248617368784037663833623136353766663166633533623932646331383134386131643635646663326434623166613364363737323834616464643230303132366439303639"
+    },
+    {
+      "name": "canonical LCP metadatum (all-zero atrHash, v=0.0.0-test)",
+      "atrHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "v": "0.0.0-test",
+      "cbor": "a261766a302e302e302d746573746761747248617368784030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030"
+    }
+  ]
+}

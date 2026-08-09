@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "types:[node] is REQUIRED here (like binding-solana): @stellar/stellar-sdk's .d.ts references Node globals (Buffer/http) and the codec uses Buffer to bridge StrKey's Buffer API; skipLibCheck is false workspace-wide, so the SDK's Node types must resolve.",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "types": ["node"] },
+  "include": ["src"]
+}

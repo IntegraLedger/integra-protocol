@@ -1,0 +1,376 @@
+{
+  "$comment": "The class ladder's verified-computation truth table. Authored from the specification, never from an implementation: each class requires exactly the capabilities the specification marks for it, mapped to the walk step that can mechanically evidence it. AMENDED 2026-07-24: TC-1/TC-2 gain the PAY + IDN rungs they always carried; TC-3 gains TRM-6 (buyer-acceptance) and RCS-1/2/4 (recourse-elections), without which a record read verified at TC-3/TC-4 with no acceptance at all. ASP is marked at TC-1 with no walk step (verify carries no rail decoder) — declared in required.ts and reached indirectly through the RCS-4 spend-artifact role. frc-non-gating is deliberately NOT required at TC-4: it impeaches when it fails, its absence never blocks.",
+  "cases": [
+    {
+      "name": "structural depth is always unverified even when every step proved",
+      "input": {
+        "depth": "structural",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "structural depth is unverified even for a complete TC-3 walk",
+      "input": {
+        "depth": "structural",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-0 requires nothing — mechanically vacuous, verified holds over an empty walk",
+      "input": { "depth": "mechanical", "claimedClass": "TC-0", "steps": [] },
+      "expected": true
+    },
+    {
+      "name": "TC-0 is still impeached by a failed step",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-0",
+        "steps": [{ "name": "atr-fingerprint", "status": "failed" }]
+      },
+      "expected": false
+    },
+    {
+      "name": "mechanical TC-1 verified on PAY + IDN — TRM is not a TC-1 rung, an unattempted fingerprint is fine",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-1",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "not-attempted" }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "TC-1 NOT verified when settlement-enumeration is not-attempted (PAY)",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-1",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "not-attempted" },
+          { "name": "resolve-party", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-1 NOT verified when resolve-party is not-attempted (IDN)",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-1",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "not-attempted" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "mechanical TC-2 verified on PAY + IDN + the welded fingerprint",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "not-attempted" },
+          { "name": "authority-attenuation", "status": "not-attempted" }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "TC-2 NOT verified when the fingerprint is not-attempted (TRM/WLD)",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "not-attempted" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-2 NOT verified when the fingerprint is indeterminate (unretrievable ATR)",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "indeterminate" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-2 NOT verified when the inherited IDN rung is not-attempted — a weld nobody can attribute",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "not-attempted" },
+          { "name": "atr-fingerprint", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-2 NOT verified when the inherited PAY rung is not-attempted",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "not-attempted" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "any failed step impeaches to unverified even at mechanical depth",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-2",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "authority-attenuation", "status": "failed" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "mechanical TC-3 verified when all seven required rungs are proved",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "TC-3 NOT verified without the signed acceptance (TRM-6) — the rung that defines the class",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "not-attempted" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-3 NOT verified without the recorded elections + evidence package (RCS-1/2/4)",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "not-attempted" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-3 NOT verified without the walked ATA chain",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "not-attempted" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-3 NOT verified without ATA-4 commitment containment",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "not-attempted" },
+          { "name": "recourse-elections", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-3 NOT verified when the inherited IDN rung is not-attempted",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-3",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "not-attempted" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "mechanical TC-4 verified when the seven TC-3 rungs plus the four commerce-plane rungs are proved",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-4",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" },
+          { "name": "offer-bound", "status": "proved" },
+          { "name": "operations-bound", "status": "proved" },
+          { "name": "discovery-integrity", "status": "proved" },
+          { "name": "proportionality-declared", "status": "proved" }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "TC-4 NOT verified without the inherited TC-3 acceptance — the ladder is cumulative",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-4",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "not-attempted" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" },
+          { "name": "offer-bound", "status": "proved" },
+          { "name": "operations-bound", "status": "proved" },
+          { "name": "discovery-integrity", "status": "proved" },
+          { "name": "proportionality-declared", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-4 NOT verified without a bound offer (OFR)",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-4",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" },
+          { "name": "offer-bound", "status": "not-attempted" },
+          { "name": "operations-bound", "status": "proved" },
+          { "name": "discovery-integrity", "status": "proved" },
+          { "name": "proportionality-declared", "status": "proved" }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "TC-4 verified with frc-non-gating NOT attempted — FRC is impeachment-only, never required",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-4",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" },
+          { "name": "offer-bound", "status": "proved" },
+          { "name": "operations-bound", "status": "proved" },
+          { "name": "discovery-integrity", "status": "proved" },
+          { "name": "proportionality-declared", "status": "proved" },
+          { "name": "frc-non-gating", "status": "not-attempted" }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "TC-4 NOT verified when frc-non-gating FAILED — a signal that gated impeaches, though its absence never blocks",
+      "input": {
+        "depth": "mechanical",
+        "claimedClass": "TC-4",
+        "steps": [
+          { "name": "settlement-enumeration", "status": "proved" },
+          { "name": "resolve-party", "status": "proved" },
+          { "name": "atr-fingerprint", "status": "proved" },
+          { "name": "buyer-acceptance", "status": "proved" },
+          { "name": "authority-attenuation", "status": "proved" },
+          { "name": "commitment-vs-leaf", "status": "proved" },
+          { "name": "recourse-elections", "status": "proved" },
+          { "name": "offer-bound", "status": "proved" },
+          { "name": "operations-bound", "status": "proved" },
+          { "name": "discovery-integrity", "status": "proved" },
+          { "name": "proportionality-declared", "status": "proved" },
+          { "name": "frc-non-gating", "status": "failed" }
+        ]
+      },
+      "expected": false
+    }
+  ]
+}

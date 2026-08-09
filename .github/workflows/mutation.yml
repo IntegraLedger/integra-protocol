@@ -1,0 +1,61 @@
+name: mutation
+# A green suite proves the tests RAN; the mutation score is the only thing that says they CONSTRAIN. A
+# defect can sit under a fully green suite indefinitely; this is the instrument that finds it.
+#
+# Fanned out one job per package. Sequentially this is 15+ minutes and grows with every package; in
+# parallel it is the slowest single package. The package list comes from scripts/mutation.mjs so it
+# lives in exactly one place.
+#
+# Its own workflow rather than a step in `verify` — it re-runs the suite once per surviving mutant and
+# has no business in the inner loop.
+on: [push]
+
+permissions:
+  contents: read
+
+concurrency:
+  # The fan-out is the most expensive thing in CI; a superseded push should not keep eighteen runners busy.
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.enumerate.outputs.list }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        # package-manager-cache OFF: setup-node auto-detects `packageManager` and tries to prime a
+        # pnpm cache, but this job only runs a plain node script — pnpm is never installed here, and the
+        # detection fails the step before it reaches the one command that matters.
+        with: { node-version-file: ".nvmrc", package-manager-cache: false }
+      - id: enumerate
+        run: echo "list=$(node scripts/mutation.mjs --list)" >> "$GITHUB_OUTPUT"
+
+  mutation:
+    needs: packages
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # one package below its ratchet must not hide the others' results
+      matrix:
+        package: ${{ fromJSON(needs.packages.outputs.list) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: ".nvmrc", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build      # the sandbox runs the real suite, which consumes workspace dist/
+      # PKG goes through env rather than inline `${{ }}`: the value is our own directory name today, but
+      # interpolating a matrix value straight into a shell string is the injection shape, and the habit is
+      # what matters — the list is produced by a script, and scripts change.
+      - run: pnpm mutation "$PKG"   # fails below this package's ratchet
+        env:
+          PKG: ${{ matrix.package }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mutation-${{ matrix.package }}
+          path: reports/mutation/
+          retention-days: 14

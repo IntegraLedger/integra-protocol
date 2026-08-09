@@ -1,0 +1,363 @@
+{
+  "cases": [
+    {
+      "name": "unknown-blake3",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:blake3:abc123def456"
+      },
+      "expected": null
+    },
+    {
+      "name": "unknown-uppercase-sha256",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:SHA256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": null
+    },
+    {
+      "name": "unknown-arweave-long-form",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:arweave:bNbA3DWNQJ"
+      },
+      "expected": null
+    },
+    {
+      "name": "unknown-https-as-type",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:https://example.com/terms.md"
+      },
+      "expected": null
+    },
+    {
+      "name": "unknown-type-object",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "blake3",
+            "value": "abc123"
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "no-legal-context-key",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "somethingElse": {
+            "type": "sha256",
+            "value": "0xdead"
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "legal-context-not-an-object",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": "lcp:sha256:0xdead"
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "missing-value-field",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "sha256"
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "missing-type-field",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "value": "0xdead"
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "non-string-value",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "sha256",
+            "value": 123
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "null-carrier",
+      "input": {
+        "op": "decodeJson",
+        "arg": null
+      },
+      "expected": null
+    },
+    {
+      "name": "non-object-carrier",
+      "input": {
+        "op": "decodeJson",
+        "arg": "lcp:sha256:0xdead"
+      },
+      "expected": null
+    },
+    {
+      "name": "recognized-type-empty-value-is-corrupt",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "sha256",
+            "value": ""
+          }
+        }
+      },
+      "error": "carrier/empty-value"
+    },
+    {
+      "name": "recognized-url-type-empty-value-is-corrupt",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "url",
+            "value": ""
+          }
+        }
+      },
+      "error": "carrier/empty-value"
+    },
+    {
+      "name": "sha256-missing-0x",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "error": "carrier/bad-sha256"
+    },
+    {
+      "name": "sha256-too-short",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:sha256:0x7f83b165"
+      },
+      "error": "carrier/bad-sha256"
+    },
+    {
+      "name": "sha256-uppercase-hex",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:sha256:0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+      }
+    },
+    {
+      "name": "sha256-bad-value",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "sha256",
+          "value": "not-a-hash"
+        }
+      },
+      "error": "carrier/bad-sha256"
+    },
+    {
+      "name": "empty-value",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "url",
+          "value": ""
+        }
+      },
+      "error": "carrier/empty-value"
+    },
+    {
+      "name": "ipfs-has-no-byte-form",
+      "input": {
+        "op": "encodeBytes",
+        "arg": {
+          "type": "ipfs",
+          "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+        }
+      },
+      "error": "carrier/no-byte-form"
+    },
+    {
+      "name": "url-has-no-byte-form",
+      "input": {
+        "op": "encodeBytes",
+        "arg": {
+          "type": "url",
+          "value": "https://example.com/terms.md"
+        }
+      },
+      "error": "carrier/no-byte-form"
+    },
+    {
+      "name": "exactly-32-bytes",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "too-short-31-bytes",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b8"
+      },
+      "error": "carrier/bad-byte-length"
+    },
+    {
+      "name": "too-long-33-bytes",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855ff"
+      },
+      "error": "carrier/bad-byte-length"
+    },
+    {
+      "name": "empty",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0x"
+      },
+      "error": "carrier/bad-byte-length"
+    },
+    {
+      "name": "bytes-missing-0x-prefix",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "error": "carrier/bad-hex"
+    },
+    {
+      "name": "bytes-odd-length-hex",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xabc"
+      },
+      "error": "carrier/bad-hex"
+    },
+    {
+      "name": "bytes-non-hex-characters",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      },
+      "error": "carrier/bad-hex"
+    },
+    {
+      "name": "bytes-non-hex-tail-after-valid-prefix",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xabababababababababababababababababababababababababababababababgg"
+      },
+      "error": "carrier/bad-hex"
+    },
+    {
+      "name": "legal-context-null",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": null
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "string-without-lcp-prefix",
+      "input": {
+        "op": "decodeString",
+        "arg": "https://example.com/terms.md"
+      },
+      "expected": null
+    },
+    {
+      "name": "known-type-sha256",
+      "input": {
+        "op": "isKnownType",
+        "arg": "sha256"
+      },
+      "expected": true
+    },
+    {
+      "name": "known-type-ipfs",
+      "input": {
+        "op": "isKnownType",
+        "arg": "ipfs"
+      },
+      "expected": true
+    },
+    {
+      "name": "known-type-ar",
+      "input": {
+        "op": "isKnownType",
+        "arg": "ar"
+      },
+      "expected": true
+    },
+    {
+      "name": "known-type-url",
+      "input": {
+        "op": "isKnownType",
+        "arg": "url"
+      },
+      "expected": true
+    },
+    {
+      "name": "unknown-type-blake3",
+      "input": {
+        "op": "isKnownType",
+        "arg": "blake3"
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown-type-empty-string",
+      "input": {
+        "op": "isKnownType",
+        "arg": ""
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown-type-uppercase-sha256",
+      "input": {
+        "op": "isKnownType",
+        "arg": "SHA256"
+      },
+      "expected": false
+    }
+  ]
+}

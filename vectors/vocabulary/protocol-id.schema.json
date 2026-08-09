@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/vocabulary/protocol-id.schema.json",
+  "title": "Commerce protocol id",
+  "$comment": "The closed set of commerce protocols an LCP reference can be carried through. CLOSED, not open: an open string type lets a typo mint a protocol, and the compatibility registry has nothing to iterate over. Members are ordered settlement-first, then placements, matching the registry's protocol taxonomy. NOT a member: `escrow` (a settlement MECHANISM that several protocols settle through) and any scheme id such as `evm:x402` (that is BindingManifest.rail, a different field with a different job). The binding profile and placement manifest schemas INLINE these same values (as the halt-class schema's consumers do) so each validates standalone under the inline-schema subject protocol; package tests guard every copy against this file.",
+  "enum": [
+    "x402",
+    "mpp",
+    "ap2",
+    "ack",
+    "acp",
+    "ucp",
+    "visa-tap",
+    "mastercard-vi",
+    "a2a",
+    "mcp"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "No types:[node] (the binding-xrpl posture, not binding-solana's): this package is PURE-TS with no chain SDK — Tempo is EVM, but viem is fenced to binding-evm-* by dependency-cruiser's viem-isolated rule, and nothing here needs it (the memo IS topic 3 of the log, so recovery decodes no ABI). src uses only Web APIs, so dist declarations never depend on @types/node.",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+  "include": ["src"]
+}

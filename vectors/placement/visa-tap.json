@@ -1,0 +1,347 @@
+{
+  "$comment": "Visa TAP (Trusted Agent Protocol) reference placement, cut against the LIVE TAP specification published at Visa Developer (developer.visa.com/capabilities/trusted-agent-protocol/trusted-agent-protocol-specifications), the visa/trusted-agent-protocol reference implementation's RFC 9421 documentation, and RFC 9421 itself — gate discharged 2026-07-30 and reconciled against LCP v1.37 §C.6 the same day. THE STRENGTH, STATED HONESTLY: TAP's agent recognition signature covers exactly two derived components, @authority and @path, plus the signature parameters (created/expires/keyid/alg/nonce/tag). RFC 9421 §1.1 defines covered components as the ordered set the signature covers and §2.5 builds the signature base from exactly that set, so a header absent from Signature-Input is NOT in the base: x-lcp-hash is replaceable in transit while every TAP signature still verifies. That is why the pattern is §8.3.7 http-advisory and why nothing in this file or the package claims a binding. It is NOT §8.3.3 sidecar-attestation — that pattern is a separate ON-CHAIN transaction anchored to a settlement, and TAP settles nothing on-chain; an earlier draft assigned that token and it was wrong. The BOUND paths (inside one of the two signed body objects, or a new sibling object carrying its own nonce/kid/alg/signature quartet, or naming x-lcp-hash in Signature-Input) all require coordination with TAP's stewards or a payment scheme and are therefore Tier B; no manifest is declared for any of them, because a manifest asserting a field shape whose owner has not defined it asserts a shape whose owner has not defined it, which this set does not do. This is the only header-map container in the placement set: RFC 9110 field names compare case-insensitively, so extract FOLDS CASE (reading the container correctly, not a heuristic) and place REUSES an existing key's casing rather than emitting a second spelling of one header. encoding is bare-value with carrierTypes exactly [\"sha256\"] — a header holds a scalar and the field's own name fixes the type, so a second permitted type would leave a reader unable to tell a hash from a URL. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit `detail` (human-facing prose); success arms pin the WHOLE Outcome. TWO DELIBERATE DIVERGENCES from the draft cases this area was first cut from, each pinned with its own $comment below: place preserves the counterparty's header casing instead of re-spelling it, and a document with no readable headers map reads as ABSENT rather than document-malformed (the kit's ratified read-side convention). ONE CASE DELIBERATELY ABSENT FROM THE CORPUS: a document carrying BOTH X-LCP-Hash and x-lcp-hash as distinct JSON keys. First-key-wins would oblige a foreign subject to iterate its header map in insertion order, which a Go implementation's map cannot promise — the corpus must not require a language feature to pass. Absent from the corpus is not unpinned: BOTH halves of that input, the read and the write, are pinned in this package's own tests, where insertion order is this runtime's to guarantee.",
+  "manifest": {
+    "protocol": "visa-tap",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "bare-value",
+    "container": { "kind": "header-map" },
+    "field": "headers.x-lcp-hash",
+    "carrierTypes": ["sha256"],
+    "specRef": "Visa TAP — custom HTTP header outside the Signature-Input covered set (@authority, @path); RFC 9421 §1.1/§2.5 (gate discharged 2026-07-30: see README)"
+  },
+  "cases": [
+    {
+      "name": "place writes the lowercase header form the manifest declares",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "headers": { "content-type": "application/json" } }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "headers": {
+            "content-type": "application/json",
+            "x-lcp-hash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      }
+    },
+    {
+      "name": "place CREATES an absent headers map — an absent extension point is the extension point working",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "method": "POST", "path": "/checkout" }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "method": "POST",
+          "path": "/checkout",
+          "headers": {
+            "x-lcp-hash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      }
+    },
+    {
+      "name": "place REUSES the counterparty's header casing rather than leaving two spellings of one header",
+      "$comment": "DELIBERATE DIVERGENCE from the draft case this area was first cut with, which expected the header re-spelled to x-lcp-hash. RFC 9110 makes X-LCP-Hash and x-lcp-hash the SAME field, so re-spelling would rewrite a key whose spelling the counterparty owns while changing nothing about what the request means. What this case pins is narrower than that, and the narrow claim is the true one: a document arriving with ONE spelling of this field leaves with one, because the reference is written INTO that key rather than beside it. The general invariant — place always yields exactly one spelling — is FALSE and is not claimed here. The kit's ratified header-map write rule (binding-core placement.ts) updates the FIRST key that folds to the locator, so a document that ALREADY carries two spellings of this one field, malformed at the HTTP layer before this placement ever sees it, comes back still carrying two, the unmatched one still stale. place does not repair that document and this file does not pretend otherwise; the state is pinned in the package's own tests so it cannot drift silently. Repairing it would change ratified kit behaviour for every header-map protocol at once, which is a kit decision and not this placement's to make.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "headers": {
+            "X-LCP-Hash": "0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "headers": {
+            "X-LCP-Hash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      }
+    },
+    {
+      "name": "place REPLACES a present-but-unmergeable headers value and never spreads it",
+      "$comment": "The malformed-container rule: the header map is the field's DIRECT HOLDER, so an absent one is created and a present-but-unmergeable one is replaced. Spreading a string would mint numeric header names ({0:'x',1:'-',…}) and silently corrupt the request. Siblings above the header map survive untouched.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "headers": "x-lcp-hash: 0xstale", "method": "POST" }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "headers": {
+            "x-lcp-hash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "method": "POST"
+        }
+      }
+    },
+    {
+      "name": "extract reads a header case-INSENSITIVELY — RFC 9110 field names are not case-sensitive",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": {
+          "headers": {
+            "X-LCP-Hash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract reads an ALL-CAPS spelling too — the fold is per-character, not an allow list of spellings",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": {
+          "headers": {
+            "X-LCP-HASH": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract ACCEPTS uppercase hex and returns the value EXACTLY as received",
+      "$comment": "The ATR any-case decode rule: a counterparty's carrier is validated case-insensitively (0x + 64 hex), and the value is never normalized on the way through — a reference is compared with atrHashEquals, not by string identity, so re-casing it here would edit a counterparty's datum for no gain. Note the 0x prefix itself is lowercase-only.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": {
+          "headers": {
+            "x-lcp-hash": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+        }
+      }
+    },
+    {
+      "name": "a url ref is refused — a header is a scalar carrier and the manifest permits sha256 only",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": { "type": "url", "value": "https://seller.example/terms.md" },
+        "doc": { "headers": {} }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "an ipfs ref is refused for the same reason — bare-value fixes exactly ONE type",
+      "$comment": "carrierTypes has length 1 by manifest hygiene, so every non-sha256 type refuses on the same rule. Pinned separately from the url case because the two would otherwise be indistinguishable from a manifest that happened to permit ipfs.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": { "headers": {} }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a null document — minting the request is not the extension point working",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a short sha256 rather than minting a header nothing can parse",
+      "$comment": "The reference is rendered through the §8.1 codec, never interpolated, so a value that is not 0x + 64 hex refuses BEFORE it reaches the wire. A header carrying 0xdeadbeef would read back as reference-malformed forever.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": { "type": "sha256", "value": "0xdeadbeef" },
+        "doc": { "headers": {} }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-malformed"
+      }
+    },
+    {
+      "name": "a bare value that is not a 32-byte hex refuses — nothing else forces it through the codec",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": { "headers": { "x-lcp-hash": "not-a-hash" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-malformed"
+      }
+    },
+    {
+      "name": "a present-but-EMPTY header value is corrupt, not absent",
+      "$comment": "LCP §8.2 ignores an unrecognized type; a recognized type with an empty value is a corrupt carrier and fails loud. An uncovered header is exactly the place a stripping intermediary leaves an empty one behind, so the distinction is not academic.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": { "headers": { "x-lcp-hash": "" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-malformed"
+      }
+    },
+    {
+      "name": "a non-string header value refuses — a header field value is text",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": { "headers": { "x-lcp-hash": 42 } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-malformed"
+      }
+    },
+    {
+      "name": "extract refuses when the header is absent",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": { "headers": { "content-type": "application/json" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-absent"
+      }
+    },
+    {
+      "name": "a differently-NAMED header is not read — the fold is over case, never over spelling",
+      "$comment": "Only the declared name exists to this placement. Reading x-lcp-terms as though it were x-lcp-hash would be the heuristic tolerance the readAlso seam exists to replace: an accepted shape that is not declared does not exist.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": {
+          "headers": {
+            "x-lcp-terms": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-absent"
+      }
+    },
+    {
+      "name": "a document with no headers map reads as ABSENT — the kit's ratified read-side convention",
+      "$comment": "DELIBERATE DIVERGENCE from the draft case this area was first cut with, which expected document-malformed. The convention established by placement-acp (a metadata holding a number reads as absent) and re-pinned by placement-ucp is that an unreadable CONTAINER yields no reference on the read side; document-malformed is reserved for a non-object DOCUMENT, which the next two cases pin.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": { "body": {} }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-absent"
+      }
+    },
+    {
+      "name": "a headers value that is not a map likewise reads as ABSENT, never repaired",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": { "headers": "x-lcp-hash: 0xstale" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/reference-absent"
+      }
+    },
+    {
+      "name": "a non-object document IS malformed — this is what the code is reserved for",
+      "input": { "protocol": "visa-tap", "op": "extract", "doc": null },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/document-malformed"
+      }
+    },
+    {
+      "name": "place is pure — the input document is not mutated",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "headers": { "content-type": "application/json" } }
+      },
+      "expected": true
+    }
+  ]
+}

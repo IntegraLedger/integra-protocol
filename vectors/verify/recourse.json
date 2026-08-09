@@ -1,0 +1,595 @@
+{
+  "$comment": "RCS-1/2/4 as a verification step (the recourse family, TRM-9). RCS-1: every consequential transaction MUST carry a forum designation, recorded INSIDE the terms record — so the elections are read from the hashed ATR bytes themselves, never from a caller-supplied side channel; what is proved is what was welded. RCS-2: governing law MUST be elected and recorded. RCS-4: the transaction MUST produce a self-contained evidence package — the required roles are the specification's own enumeration (terms artifact; acceptance signature and its authority chain; the spend-authorization artifact or a verifiable reference; identity attestations and their assurance; the settlement reference and weld; timestamps), minus its explicitly conditional clause (fulfillment/order-state, 'where performance is disputed'). This step NEVER returns failed: an absent election is absence of proof, not a contradiction in the record, and must not impeach supportedClass to TC-0. Authored from the specification before the implementation existed.",
+  "cases": [
+    {
+      "name": "elections recorded and the evidence package complete — RCS-1/2/4 proved",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "dispute method is optional — RCS-1/2 require forum and law, TRM-9's third field is not a MUST",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "a package carrying MORE than the required roles still proves — the required set is a floor",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp",
+          "order-state",
+          "fulfillment",
+          "orc4-log"
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "duplicate role entries do not disturb completeness",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp",
+          "settlement",
+          "weld"
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "no ATR bytes — nothing to read the elections from",
+      "input": {
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-atr-bytes"
+      }
+    },
+    {
+      "name": "prose ATR (a ratified markdown template) is not machine-readable — an honest gap, never a failure",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "# Terms of Service\n\nGoverning law: Delaware. Disputes: binding arbitration.\n"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "atr-not-machine-readable"
+      }
+    },
+    {
+      "name": "well-formed JSON that is not an LCP envelope (no lcp version) is not machine-readable here",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"governingLaw\":\"Delaware\",\"forum\":\"Arbitration Forum\"}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "atr-not-machine-readable"
+      }
+    },
+    {
+      "name": "a JSON array is not an LCP envelope",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "[]"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "atr-not-machine-readable"
+      }
+    },
+    {
+      "name": "envelope with no recourse slot at all — no elections recorded",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\"}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-elections-recorded"
+      }
+    },
+    {
+      "name": "governing law elected but no forum designated (RCS-1)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-forum-elected"
+      }
+    },
+    {
+      "name": "an empty-string forum is not a designation (RCS-1)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-forum-elected"
+      }
+    },
+    {
+      "name": "a non-string forum is not a designation (RCS-1)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":42}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-forum-elected"
+      }
+    },
+    {
+      "name": "forum designated but governing law not elected (RCS-2)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-governing-law-elected"
+      }
+    },
+    {
+      "name": "an empty-string governing law is not an election (RCS-2)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"governingLaw\":\"   \"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-governing-law-elected"
+      }
+    },
+    {
+      "name": "elections recorded but no evidence package supplied (RCS-4)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-evidence-package"
+      }
+    },
+    {
+      "name": "an empty evidence package is incomplete, not absent",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": []
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"atr\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"signed acceptance\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"authority chain\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"spend artifact\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"attestation\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"settlement\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"weld\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "RCS-4 incomplete — the package omits \"timestamp\"",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "REF-TERMS: the package omits the referenced terms document — a hash without a document is not a self-contained package (RCS-4/TRM-7)",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"lcp:sha256:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "referenced-terms-not-retained"
+      }
+    },
+    {
+      "name": "REF-TERMS: the package retains the referenced terms document — complete, RCS-1/2/4 proved",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"lcp:sha256:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp",
+          "referenced terms document"
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "INLINE-TERMS: no referenced terms document is required — the document IS the ATR",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    }
+  ]
+}

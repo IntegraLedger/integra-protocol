@@ -1,0 +1,53 @@
+{
+  "$comment": "Behavioral: build a manifest-rooted CARv1 evidence bundle from role-tagged artifacts, encode, decode, and recompute every block CID. `expected` is the ordered manifest entries (role + lcp:sha256: ref) recovered after the roundtrip — the refs are SHA-256 of the artifact bytes (semantic-derived, deterministic), so a bundle whose blocks no longer hash to their manifest refs fails integrity. Consumed by evidence's package tests (not a conformance corpus area — the cross-party byte formats are carDeterminism + cidAtrHash).",
+  "cases": [
+    {
+      "name": "atr + referenced terms + signed acceptance roundtrips; manifest refs recompute",
+      "input": {
+        "artifacts": [
+          {
+            "role": "atr",
+            "encoding": "utf8",
+            "data": "# Terms v1\nGoverning law: NY.\n"
+          },
+          {
+            "role": "referenced terms document",
+            "encoding": "utf8",
+            "data": "# Terms v1\nGoverning law: NY.\n"
+          },
+          {
+            "role": "signed acceptance",
+            "encoding": "utf8",
+            "data": "{\"sig\":\"0xabc\"}"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "role": "atr",
+          "ref": "lcp:sha256:0x2a5698b528063ef3985685a603ce3470a54101a589b3a0d1a4ce862ddb527397"
+        },
+        {
+          "role": "referenced terms document",
+          "ref": "lcp:sha256:0x2a5698b528063ef3985685a603ce3470a54101a589b3a0d1a4ce862ddb527397"
+        },
+        {
+          "role": "signed acceptance",
+          "ref": "lcp:sha256:0x2f966fd0ed0d73fc691185409e82b70c65f7839113170d3b42753c5ce73e203c"
+        }
+      ]
+    },
+    {
+      "name": "single-artifact bundle (atr only)",
+      "input": {
+        "artifacts": [{ "role": "atr", "encoding": "utf8", "data": "minimal" }]
+      },
+      "expected": [
+        {
+          "role": "atr",
+          "ref": "lcp:sha256:0xa703788f832056626d71b7db4d8055243ceafe416d1798cd634b9143c9074b54"
+        }
+      ]
+    }
+  ]
+}

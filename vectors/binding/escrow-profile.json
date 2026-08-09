@@ -1,0 +1,33 @@
+{
+  "profile": "integra-escrow-salt-v1",
+  "rail": "evm:escrow",
+  "pattern": "native-field",
+  "nativeField": "PaymentInfo.salt",
+  "recovery": {
+    "onChain": true,
+    "zeroPartyRecoverable": true,
+    "forwardIndexable": false
+  },
+  "assetBinding": "carried",
+  "successGate": "structural",
+  "indexing": "event-data-scan:paymentInfoHash",
+  "finality": {
+    "reversible": true,
+    "note": "on-rail void/refund within refundExpiry — not dispute resolution (RCS-5); capture is not reversed, refund is a fresh on-rail remedy The atrHash welded into PaymentInfo.salt MUST be per-transaction: salt is specified as the struct's entropy source (\"a source of entropy to ensure unique hashes across different payments\") and an atrHash carries none, so a repeat purchase under one ATR with the same payer, caps and expiries produces a PaymentInfo the escrow has already seen and reverts."
+  },
+  "weldGrades": {
+    "ERC3009": "signature",
+    "Permit2": "signature",
+    "SpendPermission": "signature",
+    "PreApproval": "tx"
+  },
+  "lifecycleStates": [
+    "proposed",
+    "authorized",
+    "captured",
+    "charged",
+    "voided",
+    "reclaimed",
+    "refunded"
+  ]
+}

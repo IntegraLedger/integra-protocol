@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "types:[node] is REQUIRED here (unlike the other bindings): @solana/web3.js's .d.ts references Node's http/https and the adapter uses Buffer; skipLibCheck is false workspace-wide, so the SDK's Node types must resolve.",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "types": ["node"] },
+  "include": ["src"]
+}

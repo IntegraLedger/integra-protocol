@@ -1,0 +1,1313 @@
+{
+  "cases": [
+    {
+      "name": "a minimal placement manifest validates",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "the full ACP manifest validates — optional termsUrlField and specRef",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "termsUrlField": "metadata.legal_context_url",
+        "carrierTypes": ["sha256", "url"],
+        "specRef": "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)"
+      },
+      "expected": true
+    },
+    {
+      "name": "a settlement pattern is rejected — a placement has no settlement to bind into",
+      "input": {
+        "protocol": "acp",
+        "pattern": "native-field",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "id-reuse is likewise a settlement pattern and rejected",
+      "input": {
+        "protocol": "mpp",
+        "pattern": "id-reuse",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an unknown protocol token is rejected",
+      "input": {
+        "protocol": "banana",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "empty carrierTypes rejected — a field that can hold nothing is not a placement",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": []
+      },
+      "expected": false
+    },
+    {
+      "name": "an unknown carrier type is rejected",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha512"]
+      },
+      "expected": false
+    },
+    {
+      "name": "missing field rejected",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an empty field path rejected — a stranger cannot look nowhere",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "missing protocol rejected",
+      "input": {
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "settlement properties are rejected — no rail on a placement (additionalProperties false)",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"],
+        "rail": "evm:x402"
+      },
+      "expected": false
+    },
+    {
+      "name": "a bare non-object is not a manifest",
+      "input": "metadata.legal_context",
+      "expected": false
+    },
+    {
+      "name": "tier is REQUIRED — a manifest that cannot say whether it works today is rejected",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"],
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "tier A — works against stock implementations today, no upstream coordination",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "a UCP vendor capability is tier A — no central registry, no maintainer approval (v1.37 §C.3)",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "extensions.legal-context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "tier B — the host's own verification procedure must change; declared, never presented as available",
+      "input": {
+        "protocol": "mastercard-vi",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "constraints.mandate-legal-terms-hash",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "protocol-extension at tier A is a CONTRADICTION — LCP 8.3.6 is Tier B by definition",
+      "input": {
+        "protocol": "mastercard-vi",
+        "pattern": "protocol-extension",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "constraints.mandate-legal-terms-hash",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an unknown tier token is rejected — the axis is closed",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "C",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "encoding is REQUIRED — how the value sits in the field is not guessable",
+      "input": {
+        "protocol": "mpp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "field": "methodDetails.atrHash",
+        "carrierTypes": ["sha256"],
+        "container": {
+          "kind": "object-path"
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "bare-value encoding with exactly one carrier type is coherent",
+      "input": {
+        "protocol": "mpp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "bare-value",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "methodDetails.atrHash",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "bare-value with TWO carrier types is INCOHERENT — nothing on the wire says which type it is",
+      "input": {
+        "protocol": "mpp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "bare-value",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "methodDetails.atrHash",
+        "carrierTypes": ["sha256", "url"]
+      },
+      "expected": false
+    },
+    {
+      "name": "lcp-string encoding may permit several carrier types — the string names its own type",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256", "url"]
+      },
+      "expected": true
+    },
+    {
+      "name": "reference-object encoding may likewise permit several — the object names its own type",
+      "input": {
+        "protocol": "a2a",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legalContext",
+        "carrierTypes": ["sha256", "url"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an unknown encoding token is rejected — the axis is closed",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "base64",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a reference field permitting NO integrity carrier type is rejected — discovery is not a placement",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "bare-value",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "links.terms_of_service",
+        "carrierTypes": ["url"]
+      },
+      "expected": false
+    },
+    {
+      "name": "readAlso declares alias fields extract also accepts, and place writes only those flagged",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "metadata.legalContext",
+            "encoding": "reference-object"
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an alias may declare a discovery carrierClass and a write flag",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "extensions.legal-context",
+        "readAlso": [
+          {
+            "path": "links.terms_of_service",
+            "encoding": "bare-value",
+            "bareType": "url",
+            "carrierClass": "discovery",
+            "write": true
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an unknown carrierClass token is rejected — the axis is closed",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "metadata.legalContext",
+            "carrierClass": "advisory"
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an empty readAlso is rejected — declare aliases or omit the key, never an empty claim",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "duplicate aliases are rejected — uniqueItems",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "metadata.legalContext"
+          },
+          {
+            "path": "metadata.legalContext"
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a bare-string alias is rejected — an alias declares its own shape or it is a silent convention",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": ["metadata.legalContext"],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "container is REQUIRED — how the field is reached is not guessable",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an object-path container declares itself and carries no extra data",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "a tagged-array container declares its tag and value fields, and field is the full locator",
+      "$comment": "UCP's links and Mastercard VI's Layer-2 constraints reduce to the SAME rule with different data — an array of entries, find by a tag field's value, the reference in a value field. Two unrelated protocols sharing one rule is the evidence the abstraction is discovered rather than invented. `field` here is a human-readable LOCATOR; `container` carries the machine-readable form.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "bare-value",
+        "container": {
+          "kind": "tagged-array",
+          "at": "constraints",
+          "tagField": "type",
+          "tag": "urn:example:lcp-terms-hash",
+          "valueField": "value"
+        },
+        "field": "constraints[type=urn:example:lcp-terms-hash].value",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "a tagged-array container missing its tag is rejected — nothing says which entry",
+      "input": {
+        "protocol": "mastercard-vi",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "bare-value",
+        "container": {
+          "kind": "tagged-array",
+          "at": "constraints",
+          "tagField": "type",
+          "valueField": "value"
+        },
+        "field": "constraints[type=urn:example:lcp-terms-hash].value",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a header-map container needs no extra data — the last path segment IS the header name",
+      "input": {
+        "protocol": "visa-tap",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "bare-value",
+        "container": {
+          "kind": "header-map"
+        },
+        "field": "headers.x-lcp-hash",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an unknown container kind is rejected — the set is closed",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "graph-query"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an object-path container carrying tagged-array data is rejected — each kind is closed",
+      "$comment": "additionalProperties: false per kind. A manifest that declared object-path but carried `at`/`tagField` would be two claims at once, and the looser of them would win silently.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path",
+          "at": "links"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an alias may declare its OWN container — UCP's two carriers are different SHAPES",
+      "$comment": "v1.37 §C.3: the canonical capability is an object-path at extensions.<reverse-domain>.legal-context while the discovery carrier is a tagged-array at links[type=terms_of_service].url. Without a per-alias container one manifest cannot declare both, and the write flag — built for exactly this advice — would be unusable by the one protocol that asks for it.",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "extensions.com-integraledger-legal-context",
+        "readAlso": [
+          {
+            "path": "links[type=terms_of_service].url",
+            "encoding": "bare-value",
+            "bareType": "url",
+            "carrierClass": "discovery",
+            "write": true,
+            "container": {
+              "kind": "tagged-array",
+              "at": "links",
+              "tagField": "type",
+              "tag": "terms_of_service",
+              "valueField": "url"
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an alias container of an unknown kind is rejected — the same closed set as the manifest's",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "extensions.com-integraledger-legal-context",
+        "readAlso": [
+          {
+            "path": "links.url",
+            "container": {
+              "kind": "graph-query"
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an alias tagged-array container missing its tag is rejected, exactly as the manifest's is",
+      "$comment": "Proves the alias reuses the SAME definition rather than a looser second copy — a duplicated closed set is a set that drifts.",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "extensions.com-integraledger-legal-context",
+        "readAlso": [
+          {
+            "path": "links[type=terms_of_service].url",
+            "container": {
+              "kind": "tagged-array",
+              "at": "links",
+              "tagField": "type",
+              "valueField": "url"
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an alias omitting container inherits the manifest's — the override is optional",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "extensions.com-integraledger-legal-context",
+        "readAlso": [
+          {
+            "path": "extensions.legacy-legal-context"
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an object-path container may declare SEGMENTS — a key containing literal dots is addressable",
+      "$comment": "Forced by UCP, whose capability keys follow [reverse-domain].{service}.{capability} — com.integraledger.legal-context is ONE key under `extensions`, not four nested objects. A dot-split locator cannot address it, and hyphenating our capability name to suit the walker would put a spelling on the wire UCP's own naming convention does not use. When segments is present, `field` stays the human-readable locator and segments carries the machine-readable form — the same division of labour tagged-array already established.",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path",
+          "segments": ["extensions", "com.integraledger.legal-context"]
+        },
+        "field": "extensions[\"com.integraledger.legal-context\"]",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "empty segments are rejected — a walker cannot step nowhere",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path",
+          "segments": []
+        },
+        "field": "extensions[\"com.integraledger.legal-context\"]",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an empty STRING segment is rejected for the same reason",
+      "input": {
+        "protocol": "ucp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path",
+          "segments": ["extensions", ""]
+        },
+        "field": "extensions[\"com.integraledger.legal-context\"]",
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a manifest-level writeCondition validates — the gate ACP's closed session schema forces",
+      "$comment": "The declared-extension placement, where the top-level field IS the reference field. v1.37 §C.2 and ACP's own extensions documentation (agenticcommerce.dev/docs/concepts/extensions, read 2026-07-30): a checkout session RESPONSE reports the extensions active for that session at capabilities.extensions[], as objects carrying name / extends / schema / spec, and the declaration whose `extends` names `$.CheckoutSession.legal_context` is what authorizes that field. `CheckoutSessionBase` is additionalProperties:false, so writing it into a session that declares nothing has stock ACP reject the whole session. Because the field IS the placement, an unmet gate leaves nothing placed and `place` refuses. The gate rides a tagged array while the reference is an object-path — a DIFFERENT container kind — which is why writeCondition.container is required rather than inherited. WHY NOT MASTERCARD VI: its constraints specification (verifiableintent.dev/spec/constraints/, read 2026-07-30) says 'Constraints appear ONLY in Autonomous mode credentials', puts the constraints array solely in Autonomous L2 open mandates, and states 'Constraints do NOT appear in Immediate mode credentials (vct: \"mandate.checkout.1\" and vct: \"mandate.payment.1\")' — the only two non-open values — while in the open ones 'Regardless of strictness mode, verifiers MUST reject open mandates containing unknown constraint types'. No value of vct admits a custom LCP constraint, so VI is not a consumer of this axis and v1.37 §C.7's Tier A is drift owed back to the spec — the host wins.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": ["com.integraledger.legal-context"]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an ALIAS carries its own writeCondition — ACP's negotiated-extension carrier",
+      "$comment": "The SAME gate on the SAME field as the case above, but as `placement-acp` will ship it: an alias beside the unconditional metadata.legal_context. The condition sits on the ALIAS and not on the manifest because ACP's metadata carrier requires nothing of the counterparty, so an unmet gate must leave that placement standing rather than refuse it. The gate searches the active declarations for our identifier — a tagged array whose valueField IS its tagField, the entry that identifies itself, so the reader can only ever return the tag and `permits` must list it. Namespace is the deployment's own reverse-domain.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "write": true,
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"]
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "a writeCondition without a container is rejected — the gate's container is never inherited",
+      "$comment": "ACP's gate sits in a DIFFERENT container kind than either carrier it guards: it searches capabilities.extensions[] by tagged array, while the declared-extension placement's `legal_context` and placement-acp's alias beside `metadata.legal_context` are both object-paths. Inheriting the manifest's container would be wrong on both, and would read the wrong place rather than read nothing.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "permits": ["com.integraledger.legal-context"]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a writeCondition without permits is rejected — a gate naming no permitted value gates nothing",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          }
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a writeCondition without a path is rejected — nothing says what is read",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": ["com.integraledger.legal-context"]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an EMPTY permits list is rejected — a condition that can never be satisfied is not a condition",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": []
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a non-string permits entry is rejected — the gate compares wire STRINGS",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": [true]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an empty-STRING permits entry is rejected for the same reason a segment cannot be empty",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": [""]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "duplicate permits entries are rejected — a list that says the same thing twice",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": [
+            "com.integraledger.legal-context",
+            "com.integraledger.legal-context"
+          ]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a writeCondition carrying a DENY-list is rejected — the axis is an allow-list by design",
+      "$comment": "additionalProperties:false, and the omission is deliberate rather than incidental. The values a gate must refuse cannot be enumerated — a session's active-extension list may carry any third party's identifier — so a deny-list would have to name everything and would fail open on the first value nobody thought of. An allow-list refuses anything it does not name, including a value nobody has seen yet.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "tagged-array",
+            "at": "capabilities.extensions",
+            "tagField": "name",
+            "tag": "com.integraledger.legal-context",
+            "valueField": "name"
+          },
+          "permits": ["com.integraledger.legal-context"],
+          "excludes": ["com.other.extension"]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a writeCondition container of an unknown kind is rejected — the same closed set as the manifest's",
+      "$comment": "Proves the gate reuses the SAME container definition rather than a looser second copy — a duplicated closed set is a set that drifts.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "reference-object",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "legal_context",
+        "writeCondition": {
+          "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+          "container": {
+            "kind": "graph-query"
+          },
+          "permits": ["com.integraledger.legal-context"]
+        },
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an alias declaring a writeCondition but NOT write is rejected — the condition would be inert",
+      "$comment": "A condition gates a write. On an alias that is never written it reads as a guard while guarding nothing, which is worse than absent: a reviewer sees a gate and infers the carrier is conditional when in fact it never lands at all. binding-core's assertManifestHygiene rejects the same combination, because a manifest authored in TypeScript never meets this schema.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"]
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an alias declaring a writeCondition with write FALSE is rejected for the same reason",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "write": false,
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"]
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a TWO-TERM writeCondition validates — ACP's declaration plus the document kind it authorizes",
+      "$comment": "`placement-acp` as it ships. An extension declaration authorizes a field on the ONE schema its `extends` target names, and ACP's own core `discount` extension enumerates $.CheckoutSessionCreateRequest.discounts, $.CheckoutSessionUpdateRequest.discounts and $.CheckoutSession.discounts as three separate targets to prove it. Ours names $.CheckoutSession.legal_context, the response only — while `Capabilities` is ONE definition shared by request and response whose `extensions` oneOf is UNDISCRIMINATED, so a schema-valid CheckoutSessionCreateRequest may carry declaration objects and satisfy the first term. Measured against the live schema on 2026-07-30, that alone turns a valid create request into an invalid one. The second term reads `status`: REQUIRED on CheckoutSessionBase, a closed eleven-value enum, and absent from every request schema, all of which are additionalProperties:false. Note the two terms sit in DIFFERENT container kinds, which is the same reason a gate never inherits the manifest's.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "write": true,
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"],
+              "and": [
+                {
+                  "path": "status",
+                  "container": {
+                    "kind": "object-path"
+                  },
+                  "permits": [
+                    "incomplete",
+                    "not_ready_for_payment",
+                    "requires_escalation",
+                    "authentication_required",
+                    "ready_for_payment",
+                    "pending_approval",
+                    "complete_in_progress",
+                    "completed",
+                    "canceled",
+                    "in_progress",
+                    "expired"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": true
+    },
+    {
+      "name": "an EMPTY and is rejected — a conjunction that names no further term is the single-term gate",
+      "$comment": "Declaring the key and leaving it empty reads as a stricter gate than it is, which is the failure mode the whole axis is built against: a reviewer infers a second fact is checked when nothing is. The single-term gate is spelled by OMITTING the key. binding-core's assertManifestHygiene throws on the same shape, for manifests authored in TypeScript that never meet this schema.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "write": true,
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"],
+              "and": []
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "a NESTED and is rejected — the conjunction is exactly two levels deep",
+      "$comment": "A gate whose terms carry gates is an expression language, and a manifest that needs one has stopped being data — the whole point of the seam is that a stranger can act on the manifest alone. Held in the schema by `not: {required: [and]}` on the items, which is also why the items can reference the SAME writeCondition definition without letting depth run away.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "write": true,
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"],
+              "and": [
+                {
+                  "path": "status",
+                  "container": {
+                    "kind": "object-path"
+                  },
+                  "permits": [
+                    "incomplete",
+                    "not_ready_for_payment",
+                    "requires_escalation",
+                    "authentication_required",
+                    "ready_for_payment",
+                    "pending_approval",
+                    "complete_in_progress",
+                    "completed",
+                    "canceled",
+                    "in_progress",
+                    "expired"
+                  ],
+                  "and": [
+                    {
+                      "path": "protocol",
+                      "container": {
+                        "kind": "object-path"
+                      },
+                      "permits": ["acp"]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an and term without a container is rejected, exactly as the head term is",
+      "$comment": "The items reference the SAME writeCondition definition as the head, so every rule the head must meet a term must meet too — a second, looser copy of the gate's shape is the drift this hoisting exists to prevent.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "http-advisory",
+        "tier": "A",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "readAlso": [
+          {
+            "path": "legal_context",
+            "encoding": "reference-object",
+            "write": true,
+            "writeCondition": {
+              "path": "capabilities.extensions[name=com.integraledger.legal-context].name",
+              "container": {
+                "kind": "tagged-array",
+                "at": "capabilities.extensions",
+                "tagField": "name",
+                "tag": "com.integraledger.legal-context",
+                "valueField": "name"
+              },
+              "permits": ["com.integraledger.legal-context"],
+              "and": [
+                {
+                  "path": "status",
+                  "permits": [
+                    "incomplete",
+                    "not_ready_for_payment",
+                    "requires_escalation",
+                    "authentication_required",
+                    "ready_for_payment",
+                    "pending_approval",
+                    "complete_in_progress",
+                    "completed",
+                    "canceled",
+                    "in_progress",
+                    "expired"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    }
+  ]
+}

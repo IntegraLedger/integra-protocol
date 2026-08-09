@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/placement/placement.schema.json",
+  "title": "Reference placement manifest",
+  "$comment": "A protocol that never settles still has to say WHERE the lcp: reference rides, so a stranger can find it. This is the non-settling sibling of binding/profile.schema.json — no rail, no WLD-3 recovery triple, no indexing, no finality, no lifecycle: none of those mean anything without a settlement, and a manifest carrying them with hollow values would declare properties nobody can check.",
+  "$defs": {
+    "container": {
+      "$comment": "Hoisted so `readAlso[].container` references the SAME definition rather than a second copy. A duplicated closed set is a set that drifts, and the repo's convention is to guard duplicated enums with a test — cheaper to have one definition. Internal $ref is same-document, so the runner's inline-schema validator resolves it (verified against @cfworker/json-schema).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "object-path"
+            },
+            "segments": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "OPTIONAL — the exact key sequence the walker takes, overriding the dot-split of `field`. Needed when a KEY contains literal dots: UCP capability keys follow [reverse-domain].{service}.{capability}, so com.integraledger.legal-context is ONE key under `extensions`. When present, `field` is documentation for humans and this is the machine-readable form — the same division tagged-array uses."
+            }
+          },
+          "description": "The path resolves directly to the slot. ACP, A2A, AP2, ACK, MPP, x402."
+        },
+        {
+          "type": "object",
+          "required": ["kind", "at", "tagField", "tag", "valueField"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "tagged-array"
+            },
+            "at": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tagField": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "valueField": {
+              "type": "string",
+              "minLength": 1
+            },
+            "constants": {
+              "type": "object",
+              "minProperties": 1,
+              "description": "OPTIONAL — sibling fields written onto a NEWLY CREATED entry because the HOST's schema requires them, never applied when merging into an entry that already exists (a counterparty's own prose is theirs). UCP is the consumer: policies[] entries are required:[type,description], so an entry carrying only a tag and a value is an invalid document, and a writer emitting one would assert a shape the host rejects. A constant may not name the entry's own tagField or valueField — assertManifestHygiene refuses that, because a manifest declaring a constant the writer would drop is stating something it does not mean."
+            }
+          },
+          "description": "An array of entries; find the entry whose tagField equals tag; the reference lives in valueField. UCP (links / type=terms_of_service / url) and Mastercard VI (constraints / type=<ns>.lcp-terms-hash / value) reduce to the SAME rule with different data — two protocols with nothing else in common sharing one rule is the evidence the abstraction is discovered rather than invented."
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "header-map"
+            }
+          },
+          "description": "Case-insensitive key equality per RFC 9110. Visa TAP."
+        }
+      ]
+    },
+    "writeCondition": {
+      "$comment": "Hoisted for the same reason `container` is: the manifest and each alias reference the SAME definition, so the gate cannot drift into a looser second copy. ACP makes an otherwise-conformant write non-conformant depending on the document in hand: CheckoutSessionBase is additionalProperties:false, and what authorizes a top-level legal_context is a declaration at capabilities.extensions[] whose `extends` names $.CheckoutSession.legal_context, so the gate reads the authorization for the field it is about to write. Neither tier, pattern nor carrierClass expresses this: all three describe a carrier's standing in the abstract, and this describes one document. Note what the gate does NOT claim — it reads the session a seller composed, not the agent's request, so it cannot verify a declaration was itself negotiated; that obligation sits upstream of placement. Four of the five authoring rules live here and are mirrored in binding-core's assertManifestHygiene, which catches manifests authored in TypeScript; the fifth — a tagged-array gate reading its own tagField must list `container.tag` in `permits`, since that is then the only value the reader can return — has no schema half because JSON Schema cannot compare two sibling values.",
+      "type": "object",
+      "required": ["path", "container", "permits"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The locator of the value that decides — human-readable, with `container` carrying the machine-readable form, the same division of labour `field` uses."
+        },
+        "container": {
+          "$ref": "#/$defs/container",
+          "description": "REQUIRED, and never inherited from the manifest. ACP's gate sits in a DIFFERENT container kind than either carrier it guards: it searches capabilities.extensions[] by tagged array, while the declared-extension placement's `legal_context` and placement-acp's alias beside `metadata.legal_context` are both object-paths. A default would be wrong on both, and would read the wrong place rather than read nothing."
+        },
+        "permits": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "The values at `path` that PERMIT the write. An ALLOW-list because the values a gate must refuse cannot be enumerated — a session's active-extension list may carry any third party's identifier, so a deny-list would have to name everything and would fail open on the first value nobody thought of. A SET rather than a single string because a gate resolving through object-path compares a scalar, where presence alone would fail open — and Mastercard VI needs two of them, the two vct values whose credential type carries a constraints array at all, where ACP's tagged-array gate is the degenerate single-value case. Absent, non-string and unlisted values all decline the write."
+        },
+        "and": {
+          "$comment": "A GATE IS A CONJUNCTION, and ACP is why. An extension declaration authorizes a field on the ONE schema its `extends` target names — ACP's core `discount` extension enumerates $.CheckoutSessionCreateRequest.discounts, $.CheckoutSessionUpdateRequest.discounts and $.CheckoutSession.discounts as three separate targets — while `Capabilities` is ONE definition shared by request and response whose `extensions` oneOf is undiscriminated. So a schema-valid CheckoutSessionCreateRequest may carry declaration OBJECTS, and an identifier-only gate would write a top-level field into a document that is additionalProperties:false and names it nowhere: measured against the live schema, a valid create request in and an invalid one out. Items reference this SAME definition so a term cannot drift into a looser shape, and `not: {required: [and]}` holds depth at exactly two — a nested gate is an expression language, and a manifest that needs one has stopped being data. binding-core's assertManifestHygiene holds the two rules JSON Schema cannot: terms must not repeat a `path`, since the looser copy would silently decide the gate.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/writeCondition"
+              },
+              {
+                "not": {
+                  "required": ["and"]
+                }
+              }
+            ]
+          },
+          "description": "OPTIONAL — further terms, ALL of which must hold. A conjunction and never a disjunction: each term names an independent fact that must be true of the document, and an OR over facts passes on the weakest of them. ACP's declared-extension carrier is the consumer — its second term reads `status`, REQUIRED on CheckoutSessionBase, absent from every request schema in the live spec, and a closed eleven-value enum, so it is the host's own evidence that the document in hand is the CheckoutSession the declaration extends."
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": [
+    "protocol",
+    "pattern",
+    "tier",
+    "encoding",
+    "container",
+    "field",
+    "carrierTypes"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$comment": "LCP §8.3.6 states Protocol Extension is Tier B BY DEFINITION — it means the host protocol's own verification and settlement procedure is atrHash-aware, which no host has agreed to, so stock implementations reject the extended variant. A manifest claiming both is internally inconsistent and is rejected here rather than in prose. Note the converse is NOT asserted: a Tier B placement need not be a protocol-extension, and a strong Tier A carrier riding a host's own extensions framework is http-advisory, not protocol-extension, because the host still does nothing with the hash.",
+      "if": {
+        "properties": {
+          "pattern": {
+            "const": "protocol-extension"
+          }
+        },
+        "required": ["pattern"]
+      },
+      "then": {
+        "properties": {
+          "tier": {
+            "const": "B"
+          }
+        }
+      }
+    },
+    {
+      "$comment": "A bare value carries no type tag, so the field's contract must fix the type unambiguously. More than one permitted carrierType under bare-value means a reader cannot tell a sha256 from a url — the manifest would be declaring an unresolvable field.",
+      "if": {
+        "properties": {
+          "encoding": {
+            "const": "bare-value"
+          }
+        },
+        "required": ["encoding"]
+      },
+      "then": {
+        "properties": {
+          "carrierTypes": {
+            "maxItems": 1
+          }
+        }
+      }
+    },
+    {
+      "$comment": "The REFERENCE field must be able to hold an integrity-bearing carrier — sha256, ipfs and ar are content-addressed; url only locates a document and commits to nothing about its content. A manifest whose reference field permits only `url` is declaring discovery and calling it a placement, which is precisely the weakest-available-reading failure this branch exists to stop. THE RULE STANDS ON ITS OWN REASONING, not on a citation: a url locates a document and commits to nothing about its content, so a reference field that can hold only a url cannot support any claim the record makes about the terms — it is discovery wearing a placement's name. LCP v1.38 §C.2 agrees ('A terms-of-use policy page is not a per-transaction terms record and is not a substitute for one') but states it as a description rather than a prohibition; v1.37's wording was 'MUST NOT be substituted for one', and this comment quoted that as the ground until 2026-08-08. It is now support, not the ground — the enforcement here does not depend on which way the appendix words it. A protocol's discovery carrier is declared as `termsUrlField`, or as a readAlso alias with carrierClass `discovery` — never as the reference field itself.",
+      "properties": {
+        "carrierTypes": {
+          "contains": {
+            "enum": ["sha256", "ipfs", "ar"]
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "protocol": {
+      "enum": [
+        "x402",
+        "mpp",
+        "ap2",
+        "ack",
+        "acp",
+        "ucp",
+        "visa-tap",
+        "mastercard-vi",
+        "a2a",
+        "mcp"
+      ],
+      "description": "The commerce protocol this placement describes. The enum is INLINED from vocabulary/protocol-id.schema.json rather than $ref'd — the runner passes schemas inline and the subject's validator has no file resolver for a relative external ref — and a package test guards this copy against that file."
+    },
+    "pattern": {
+      "enum": [
+        "protocol-extension",
+        "sidecar-attestation",
+        "http-advisory",
+        "opaque-challenge"
+      ],
+      "description": "The LCP §8.3 pattern subset a non-settling protocol can exhibit. native-field, id-reuse and overlay-contract are SETTLEMENT patterns and are excluded by construction — a placement has no settlement to bind into."
+    },
+    "tier": {
+      "enum": ["A", "B"],
+      "description": "LCP §8.3 wire compatibility. A = works today against stock implementations, no upstream coordination. B = requires a coordinated change to the host protocol's specification. Required, because a placement that cannot state which it is will be read as available when it is not. NOTE the axis is deliberately coarse: it does NOT separate a protocol's strong Tier A carrier from its weak one — both ACP's declared extension and its metadata fallback are Tier A. That separation is carrier strength, declared per carrier, not per manifest.",
+      "$comment": "v1.37 §C.3 corrected an earlier reading that placed UCP's vendor capability at Tier B. UCP requires no central registry and no maintainer approval for a capability under a reverse-domain namespace the author controls, so the hash-bearing carrier is Tier A and available today. What replaces registration is authority binding, not approval."
+    },
+    "field": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The LOCATOR a stranger uses to find the reference. For an object-path container it is a dotted path (metadata.legal_context). For a tagged array it reads links[type=terms_of_service].url — that form is documentation for humans, and `container` carries the machine-readable version. For a header map the LAST segment is the header name. Before `container` existed this property meant a resolvable path on six protocols and a bare CONTAINER NAME on two (UCP's `links`, Mastercard VI's `constraints`), so a stranger reading it found an array and no rule for searching it — the declared property was not the declared thing."
+    },
+    "encoding": {
+      "enum": ["lcp-string", "reference-object", "bare-value"],
+      "description": "How the reference SITS in the declared field. `lcp-string` = the canonical `lcp:{type}:{value}` string. `reference-object` = the LCP §8.1 `{type, value}` object. `bare-value` = the raw value alone, with its type implied by the field's own contract (x402's `extra.atrHash`, MPP's `methodDetails.atrHash`, a UCP terms URL). REQUIRED: the host protocol decides this, not us, and writing the wrong shape produces a field no counterparty recognizes."
+    },
+    "container": {
+      "$ref": "#/$defs/container",
+      "description": "How the declared field is REACHED inside a host document. A closed set of three, derived from the ten protocols rather than imagined. Required: without it a tagged-array manifest could only name its container, defeating the reason the manifest exists."
+    },
+    "writeCondition": {
+      "$ref": "#/$defs/writeCondition",
+      "description": "OPTIONAL — the condition under which writing `field` is valid at all. Unmet, `place` REFUSES <protocol>/write-condition-unmet: the reference field IS the placement, so a document we may not write it into is a document nothing was placed in. Omitted means unconditional, which is what every carrier but ACP's top-level legal_context is — the axis does not change the behaviour of a manifest that does not declare it."
+    },
+    "readAlso": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["path"],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "$comment": "A condition gates a WRITE. On an alias that is never written it guards nothing while reading as a guard, which is worse than absent: a reviewer infers the carrier is conditional when in fact it never lands at all. binding-core's assertManifestHygiene rejects the same pairing, because a manifest authored in TypeScript never meets this schema.",
+            "if": {
+              "required": ["writeCondition"]
+            },
+            "then": {
+              "required": ["write"],
+              "properties": {
+                "write": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "encoding": {
+            "enum": ["lcp-string", "reference-object", "bare-value"]
+          },
+          "bareType": {
+            "enum": ["sha256", "ipfs", "ar", "url"]
+          },
+          "carrierClass": {
+            "enum": ["integrity", "discovery"]
+          },
+          "write": {
+            "type": "boolean"
+          },
+          "writeCondition": {
+            "$ref": "#/$defs/writeCondition",
+            "description": "OPTIONAL — the condition under which THIS alias's write is valid. Unmet, the alias is not written and the placement stands: an alias is an addition, and the reference already landed in `field`. That asymmetry with the manifest-level property is one rule, not two — a carrier whose condition is unmet is not written, and what that means depends on whether the carrier IS the placement. ACP is why the alias half must not refuse: its metadata carrier needs nothing from the counterparty, so refusing would mean no legal context could be recorded against any counterparty that has not adopted the extensions framework."
+          },
+          "container": {
+            "$ref": "#/$defs/container",
+            "description": "OPTIONAL — the container this alias resolves through, defaulting to the manifest's. Needed because a protocol's carriers are not always the same SHAPE of thing: UCP's canonical capability is an object-path at extensions.<reverse-domain>.legal-context while its discovery carrier is a tagged-array at links[type=terms_of_service].url. An alias already declares its own `encoding`; declaring where it sits is the same kind of fact one level further out."
+          }
+        }
+      },
+      "description": "OPTIONAL — additional field paths `extract` also accepts, declared as DATA so no accepted shape is a silent convention. Each entry may carry its OWN `encoding`, defaulting to the manifest's: an alias frequently differs in shape from the canonical slot — ACP's canonical field holds an `lcp:` string while its Appendix-C alias holds a §8.1 object, and x402's canonical `extensions` slot holds an object while its `extra.atrHash` alias holds a bare hash. `bareType` fixes the type for a `bare-value` alias, since a bare value carries no type tag. `carrierClass` defaults to `integrity`; `discovery` marks a carrier that only LOCATES the terms document and commits to nothing about its content, and a discovery hit is reported as such so it can never be mistaken for an integrity read. `write` defaults to false — strict write — and `true` means `place` populates this carrier as well as `field`, which is what UCP §C.3 advises for a capability that may be silently pruned from the negotiated intersection.",
+      "$comment": "An entry is an OBJECT, not a bare string. A string[] would silently assume every alias has the canonical field's shape, and neither of the two protocols we can check against actually does — it would force each adapter to hard-code its alias decoding, putting the shape back into code, which is what declaring it as data was for (P-3). The rule 'readAlso may not repeat field' is NOT expressible in draft 2020-12 without $data — it compares two properties of the same object — so it is enforced by assertManifestHygiene in binding-core, which every placement package's manifest test calls. Do not assume the schema catches it."
+    },
+    "termsUrlField": {
+      "type": "string",
+      "minLength": 1,
+      "description": "OPTIONAL — the dotted path of the field carrying the human-readable terms URL, where the protocol has room for one. Declared rather than left to convention because a buyer-side parser that REQUIRES the URL against a placement that never places it cannot round-trip. Absent means this protocol carries no terms URL and a parser must not demand one."
+    },
+    "carrierTypes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": ["sha256", "ipfs", "ar", "url"]
+      },
+      "description": "Which binding-core carrier types this field can legally hold. A field with a tight length budget may accept only the shortest forms. Widening is a vector amendment, never a code-side default."
+    },
+    "specRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Citation for the protocol's own spec section that owns this field."
+    }
+  }
+}

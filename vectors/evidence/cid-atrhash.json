@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "name": "atrHash (sha256 of \"hello\") frames to a raw-CIDv1 (base32) — CID == atrHash, no re-hash",
+      "input": "0x2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      "expected": "bafkreibm6jg3ux5qumhcn2b3flc3tyu6dmlb4xa7u5bf44yegnrjhc4yeq"
+    },
+    {
+      "name": "all-zero digest",
+      "input": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "all-ff digest",
+      "input": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "expected": "bafkreih777777777777777777777777777777777777777777777777774"
+    },
+    {
+      "name": "uppercase-hex atrHash accepted (ATR canon is case-insensitive) — same CID",
+      "input": "0x2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824",
+      "expected": "bafkreibm6jg3ux5qumhcn2b3flc3tyu6dmlb4xa7u5bf44yegnrjhc4yeq"
+    },
+    {
+      "name": "too-short digest rejected — an atrHash is exactly 32 bytes (fail-loud)",
+      "input": "0xdead",
+      "error": "cid/bad-atrhash-length"
+    },
+    {
+      "name": "non-hex rejected",
+      "input": "0xZZ",
+      "error": "cid/bad-atrhash"
+    }
+  ]
+}

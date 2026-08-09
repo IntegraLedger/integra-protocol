@@ -1,0 +1,396 @@
+{
+  "$comment": "ATA-3 at ISSUANCE — authority.linkAttenuates. The `authority.attenuation` area covers isWithin (bounds only, silent on delegable/maxDepth); this area covers the DELEGATION gates that decide whether a link was permitted to exist at all. Composite predicate: the parent permitted delegation, depth remains below it, the link stated a depth that fits, and the bounds are contained. An absent `delegable` is non-delegable (restrictive default); an absent `maxDepth` is UNBOUNDED, which is why omitting it below a depth-bounded parent is an escalation rather than an inherited default. Producer and verifier must not diverge — the verify-side mirror of these cases is verify/authority-walk.json.",
+  "cases": [
+    {
+      "name": "a narrower link from a delegable parent with depth to spare attenuates",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "delegable": false,
+            "maxDepth": 0
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 2
+          }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "a parent that never permitted delegation refuses the link however well its bounds attenuate",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": false,
+            "maxDepth": 0
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": false,
+            "maxDepth": 9
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "an ABSENT delegable on the parent is non-delegable — the restrictive default, not an unstated yes",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": false,
+            "maxDepth": 0
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            }
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "a depth-exhausted parent (maxDepth 0 = leaf) admits nothing below it",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": false,
+            "maxDepth": 0
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 0
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "a link that mints itself MORE onward depth than the parent held is refused",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 99
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 1
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "a link that OMITS its depth below a depth-bounded parent is refused — absent is unbounded, not inherited",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": true
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 1
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "an omitted link depth below an UNBOUNDED parent attenuates — nothing was escalated",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": true
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true
+          }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "a link consuming exactly the depth the parent had left attenuates",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 2
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 3
+          }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "a link claiming EXACTLY its parent's depth is refused — the ceiling is parentDepth - 1, not parentDepth",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "1"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 3
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 3
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "a WIDENING link is refused even when every delegation gate passes — the bounds half still governs",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "50000000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 0
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "10000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 1
+          }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "equal bounds attenuate — containment is reflexive, a link need not narrow to be valid",
+      "input": {
+        "link": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:child",
+            "bounds": {
+              "caps": {
+                "USD": "10000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 0
+          }
+        },
+        "parent": {
+          "@context": ["https://www.w3.org/ns/credentials/v2"],
+          "type": ["VerifiableCredential"],
+          "issuer": "did:web:integraledger.com",
+          "credentialSubject": {
+            "id": "did:example:root",
+            "bounds": {
+              "caps": {
+                "USD": "10000"
+              }
+            },
+            "delegable": true,
+            "maxDepth": 1
+          }
+        }
+      },
+      "expected": true
+    }
+  ]
+}

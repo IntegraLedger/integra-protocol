@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "types:[node] is REQUIRED here (the convention is to say why): the runner/CLI are a Node shell by design — node:fs to load the packed corpus, node:child_process for the CLI subject adapter — so Node globals must resolve in the build graph.",
+  "compilerOptions": { "types": ["node"], "outDir": "dist", "rootDir": "src" },
+  "include": ["src"]
+}

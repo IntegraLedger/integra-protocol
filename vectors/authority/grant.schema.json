@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/authority/grant.schema.json",
+  "title": "ATA grant / delegation link (W3C VC 2.0 + Data Integrity, IDN-4)",
+  "$comment": "A grant authorizes a subject to act within `bounds` (ATA-2); a delegation link is the same VC 2.0 shape re-issued below a parent and MUST attenuate (verified by authority.isWithin, not by schema). `validFrom`/`validUntil` bound the lifecycle (IDN-5); `credentialStatus` is the Bitstring Status List revocation entry checked as-of settlement. The proof is structural here — cryptographic verification is the authority chain walk's, through its injected proof-verification port.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "credentialSubject"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "type": {
+      "type": "array",
+      "items": { "type": "string" },
+      "contains": { "const": "VerifiableCredential" }
+    },
+    "issuer": { "type": "string", "minLength": 1 },
+    "validFrom": { "type": "string" },
+    "validUntil": { "type": "string" },
+    "credentialSubject": {
+      "type": "object",
+      "required": ["id", "bounds"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "bounds": {
+          "type": "object",
+          "properties": {
+            "jurisdictions": { "type": "array", "items": { "type": "string" } },
+            "caps": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              }
+            },
+            "disputeMethods": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "forbiddenClauseCategories": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "delegable": { "type": "boolean" },
+        "maxDepth": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "credentialStatus": {
+      "type": "object",
+      "required": ["type", "statusListCredential", "statusListIndex"],
+      "properties": {
+        "type": { "type": "string" },
+        "statusListCredential": { "type": "string" },
+        "statusListIndex": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "type": "object",
+      "required": ["type", "verificationMethod", "proofPurpose", "proofValue"],
+      "properties": {
+        "type": { "type": "string" },
+        "created": { "type": "string" },
+        "verificationMethod": { "type": "string" },
+        "proofPurpose": { "type": "string" },
+        "proofValue": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

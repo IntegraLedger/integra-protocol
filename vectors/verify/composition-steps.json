@@ -1,0 +1,120 @@
+{
+  "cases": [
+    {
+      "name": "fully composed TC-4 slots all proved",
+      "composition": {
+        "offerBound": true,
+        "operations": {
+          "orderStateRef": true,
+          "reconciliationIds": true
+        },
+        "discoveryIntegrity": "ok",
+        "proportionalityTier": 3,
+        "frcSignals": [
+          {
+            "role": "attestation",
+            "gated": false
+          }
+        ]
+      },
+      "expect": {
+        "offerBound": "proved",
+        "operations": "proved",
+        "discoveryIntegrity": "proved",
+        "proportionality": "proved",
+        "frcNonGating": "proved"
+      }
+    },
+    {
+      "name": "operations incomplete (no reconciliation) is not-attempted, not failed",
+      "composition": {
+        "offerBound": true,
+        "operations": {
+          "orderStateRef": true
+        },
+        "discoveryIntegrity": "ok",
+        "proportionalityTier": 2
+      },
+      "expect": {
+        "offerBound": "proved",
+        "operations": "not-attempted",
+        "discoveryIntegrity": "proved",
+        "proportionality": "proved",
+        "frcNonGating": "not-attempted"
+      }
+    },
+    {
+      "name": "discovery mismatch is a hard failure (DSC-2 violation)",
+      "composition": {
+        "offerBound": true,
+        "operations": {
+          "orderStateRef": true,
+          "reconciliationIds": true
+        },
+        "discoveryIntegrity": "mismatch",
+        "proportionalityTier": 1
+      },
+      "expect": {
+        "offerBound": "proved",
+        "operations": "proved",
+        "discoveryIntegrity": "failed",
+        "proportionality": "proved",
+        "frcNonGating": "not-attempted"
+      }
+    },
+    {
+      "name": "an FRC signal that GATED impeaches (FRC-1 violation), recorded as risk-block",
+      "composition": {
+        "offerBound": true,
+        "operations": {
+          "orderStateRef": true,
+          "reconciliationIds": true
+        },
+        "discoveryIntegrity": "ok",
+        "proportionalityTier": 4,
+        "frcSignals": [
+          {
+            "role": "attestation",
+            "gated": true
+          }
+        ]
+      },
+      "expect": {
+        "offerBound": "proved",
+        "operations": "proved",
+        "discoveryIntegrity": "proved",
+        "proportionality": "proved",
+        "frcNonGating": "failed"
+      }
+    },
+    {
+      "name": "proportionality tier absent is not-attempted (CMP-6 undeclared)",
+      "composition": {
+        "offerBound": true,
+        "operations": {
+          "orderStateRef": true,
+          "reconciliationIds": true
+        },
+        "discoveryIntegrity": "ok"
+      },
+      "expect": {
+        "offerBound": "proved",
+        "operations": "proved",
+        "discoveryIntegrity": "proved",
+        "proportionality": "not-attempted",
+        "frcNonGating": "not-attempted"
+      }
+    },
+    {
+      "name": "empty composition — every step not-attempted (honest coverage)",
+      "composition": {},
+      "expect": {
+        "offerBound": "not-attempted",
+        "operations": "not-attempted",
+        "discoveryIntegrity": "not-attempted",
+        "proportionality": "not-attempted",
+        "frcNonGating": "not-attempted"
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "cases": [
+    {
+      "name": "risk-block refusal",
+      "input": {
+        "refused": true,
+        "haltClass": "risk-block",
+        "code": "policy.max-amount"
+      },
+      "expected": true
+    },
+    {
+      "name": "refusal with detail",
+      "input": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "sig.mismatch",
+        "detail": "display hash != signed hash"
+      },
+      "expected": true
+    },
+    {
+      "name": "refusal without haltClass",
+      "input": { "refused": true, "code": "policy.max-amount" },
+      "expected": false
+    },
+    {
+      "name": "refusal with unknown haltClass",
+      "input": { "refused": true, "haltClass": "banana", "code": "x" },
+      "expected": false
+    },
+    {
+      "name": "refused not true",
+      "input": { "refused": false, "haltClass": "risk-block", "code": "x" },
+      "expected": false
+    }
+  ]
+}

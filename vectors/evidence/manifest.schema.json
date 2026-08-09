@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/evidence/manifest.schema.json",
+  "title": "Evidence manifest — manifest-rooted bundle",
+  "$comment": "Every artifact listed by lcp:sha256: reference with a role. The status-list-snapshot and issuer-key-state roles are the as-of mechanism: Bitstring Status List has no historical query, so the list credential fetched at settlement time is snapshotted and verify checks the hash-pinned snapshot, never a live dereference presented as historical truth. The `referenced terms document` role is present whenever the envelope's terms slot is an lcp:sha256: reference (the TRM-2/TRM-7 reading) — a ref-terms envelope with no such entry is an incomplete bundle (fail-fast in the evidence consumer).",
+  "type": "object",
+  "required": ["entries"],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "ref"],
+        "properties": {
+          "role": { "$ref": "#/$defs/role" },
+          "ref": { "$ref": "#/$defs/lcpSha256Ref" },
+          "assurance": {
+            "type": "string",
+            "description": "stated assurance for attestation entries"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "lcpSha256Ref": {
+      "type": "string",
+      "pattern": "^lcp:sha256:0x[0-9a-fA-F]{64}$"
+    },
+    "role": {
+      "enum": [
+        "atr",
+        "referenced terms document",
+        "signed acceptance",
+        "authority chain",
+        "spend artifact",
+        "attestation",
+        "settlement",
+        "settlement-response",
+        "weld",
+        "terminal-state",
+        "witnessed-transition",
+        "timestamp",
+        "orc4-log",
+        "fulfillment",
+        "order-state",
+        "reconciliation-id",
+        "status-list-snapshot",
+        "issuer-key-state"
+      ]
+    }
+  }
+}

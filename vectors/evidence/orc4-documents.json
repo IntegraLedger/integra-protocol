@@ -1,0 +1,69 @@
+{
+  "cases": [
+    {
+      "name": "clean pass entry",
+      "input": {
+        "entries": [
+          {
+            "timestamp": "2026-07-16T00:00:00Z",
+            "artifactsVerified": ["atr", "acceptance"],
+            "rulesFired": ["max-amount", "allowlist"]
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "halted entry with escalation and approver",
+      "input": {
+        "entries": [
+          {
+            "timestamp": "2026-07-16T00:00:01Z",
+            "artifactsVerified": ["atr"],
+            "rulesFired": ["max-amount"],
+            "haltClass": "policy-rejection",
+            "escalations": [
+              { "approver": "0x00000000000000000000000000000000000000a1" }
+            ]
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "entry carrying a record-quality flag",
+      "input": {
+        "entries": [
+          {
+            "timestamp": "2026-07-16T00:00:02Z",
+            "artifactsVerified": ["atr"],
+            "rulesFired": [],
+            "recordQualityFlags": ["low-entropy-id"]
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "entry missing timestamp",
+      "input": {
+        "entries": [{ "artifactsVerified": ["atr"], "rulesFired": [] }]
+      },
+      "expected": false
+    },
+    {
+      "name": "entry with unknown halt class",
+      "input": {
+        "entries": [
+          {
+            "timestamp": "2026-07-16T00:00:03Z",
+            "artifactsVerified": [],
+            "rulesFired": [],
+            "haltClass": "banana"
+          }
+        ]
+      },
+      "expected": false
+    }
+  ]
+}

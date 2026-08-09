@@ -1,0 +1,14 @@
+Integra Protocol
+Copyright 2026 Integra Ledger
+
+This product includes software developed by Integra Ledger (https://integraledger.com).
+
+"Integra", "Integra Ledger", and the Integra logo are trademarks of Integra Ledger.
+Trademark use is not granted by the Apache License 2.0 (see Section 6).
+
+The Legal Context Protocol is co-stewarded by Integra Ledger and AAA-ICDR. This repository is a
+reference implementation of the standard's open layer; the specification itself is published at
+https://legalcontextprotocol.org/standard and is not part of this distribution.
+
+The vendored submodule under lib/commerce-payments is Coinbase's AuthCaptureEscrow and carries its own
+MIT licence at lib/commerce-payments/LICENSE.md. It is not covered by the Apache License above.

@@ -1,0 +1,181 @@
+{
+  "cases": [
+    {
+      "name": "valid delegable grant with bounds + lifecycle",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential", "AtaGrant"],
+        "issuer": "did:web:integraledger.com",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "validUntil": "2027-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "did:pkh:eip155:8453:0x00000000000000000000000000000000000000a1",
+          "bounds": {
+            "jurisdictions": ["US"],
+            "caps": { "USD": "1000000" },
+            "forbiddenClauseCategories": ["indemnity-waiver"]
+          },
+          "delegable": true,
+          "maxDepth": 2
+        },
+        "credentialStatus": {
+          "type": "BitstringStatusListEntry",
+          "statusListCredential": "https://integraledger.com/status/1",
+          "statusListIndex": "94567"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verificationMethod": "did:web:integraledger.com#key-1",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z3..."
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "minimal grant (no lifecycle, no status, no proof)",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential"],
+        "issuer": "did:web:integraledger.com",
+        "credentialSubject": { "id": "did:example:leaf", "bounds": {} }
+      },
+      "expected": true
+    },
+    {
+      "name": "missing issuer rejected",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential"],
+        "credentialSubject": { "id": "did:example:leaf", "bounds": {} }
+      },
+      "expected": false
+    },
+    {
+      "name": "type missing VerifiableCredential rejected",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["AtaGrant"],
+        "issuer": "did:web:integraledger.com",
+        "credentialSubject": { "id": "did:example:leaf", "bounds": {} }
+      },
+      "expected": false
+    },
+    {
+      "name": "credentialSubject missing bounds rejected",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential"],
+        "issuer": "did:web:integraledger.com",
+        "credentialSubject": { "id": "did:example:leaf" }
+      },
+      "expected": false
+    },
+    {
+      "name": "non-integer cap string rejected (base-unit integers only)",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential"],
+        "issuer": "did:web:integraledger.com",
+        "credentialSubject": {
+          "id": "did:example:leaf",
+          "bounds": { "caps": { "USD": "10.5" } }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown bound key rejected (bounds additionalProperties false)",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential"],
+        "issuer": "did:web:integraledger.com",
+        "credentialSubject": {
+          "id": "did:example:leaf",
+          "bounds": { "region": ["x"] }
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "P4 produced minimal ATA grant — all four ATA-2 dimensions stated, status from issuance, Data Integrity proof (authority-producer-ref round-trip)",
+      "$comment": "The exact document authority-producer-ref's produceGrant emits for the minimal thin-TC-3 slice: ATA-1 authority to accept terms, all FOUR ATA-2 dimensions present (an absent dimension is refused at issuance, not shipped), caps as decimal-integer base-unit strings, delegable+maxDepth explicit, a Bitstring Status List entry FROM issuance (ATA-3 revocability), VC 2.0 + a Data Integrity proof. Authored from the spec, then produced-then-verified against grant.schema.json.",
+      "input": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2",
+          "https://w3id.org/security/data-integrity/v2"
+        ],
+        "type": ["VerifiableCredential", "AtaGrant"],
+        "issuer": "did:web:integraledger.com",
+        "validFrom": "2026-07-01T00:00:00Z",
+        "validUntil": "2027-07-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "bounds": {
+            "jurisdictions": ["US-DE"],
+            "caps": { "USDC": "5000000" },
+            "disputeMethods": ["arbitration"],
+            "forbiddenClauseCategories": ["indemnity-waiver"]
+          },
+          "delegable": true,
+          "maxDepth": 2
+        },
+        "credentialStatus": {
+          "type": "BitstringStatusListEntry",
+          "statusPurpose": "revocation",
+          "statusListCredential": "https://integraledger.com/status/atr/1",
+          "statusListIndex": "128"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "created": "2026-07-01T00:00:00Z",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:web:integraledger.com#key-1",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z2producedPrincipalSignaturePlaceholder"
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "P4 produced grant with an EXPLICIT EMPTY forbiddenClauseCategories — an empty list is a statement (authority-producer-ref)",
+      "$comment": "forbiddenClauseCategories: [] is a POSITIVE statement (nothing forbidden), structurally distinct from an ABSENT dimension which produceGrant refuses fail-fast. The schema accepts the empty array; issuance's fail-fast on a missing dimension is a producer contract exercised in the package tests, not the schema.",
+      "input": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2",
+          "https://w3id.org/security/data-integrity/v2"
+        ],
+        "type": ["VerifiableCredential", "AtaGrant"],
+        "issuer": "did:web:integraledger.com",
+        "validFrom": "2026-07-01T00:00:00Z",
+        "validUntil": "2027-07-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "bounds": {
+            "jurisdictions": ["US-DE"],
+            "caps": { "USDC": "5000000" },
+            "disputeMethods": ["arbitration"],
+            "forbiddenClauseCategories": []
+          },
+          "delegable": true,
+          "maxDepth": 2
+        },
+        "credentialStatus": {
+          "type": "BitstringStatusListEntry",
+          "statusPurpose": "revocation",
+          "statusListCredential": "https://integraledger.com/status/atr/1",
+          "statusListIndex": "129"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "created": "2026-07-01T00:00:00Z",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:web:integraledger.com#key-1",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z2producedEmptyForbiddenPlaceholder"
+        }
+      },
+      "expected": true
+    }
+  ]
+}

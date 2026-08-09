@@ -1,0 +1,692 @@
+{
+  "$comment": "ACP reference placement, cut against the live ACP spec (stable 2026-04-17, spec/2026-04-17/json-schema/schema.agentic_checkout.json, re-read independently 2026-07-28 — plan 8 §13). `pattern` is `http-advisory` (LCP §8.3.7), NOT `protocol-extension`: ACP has defined no atrHash-aware semantics in its own verification procedure and we are not in its `Capabilities.extensions` registry — and §8.3.6 is Tier B by definition, which would misdescribe a placement that works today against stock ACP implementations as one that fragments adoption until upstream registration lands (the same determination made for UCP and ACK). The session object is TOP-LEVEL — there is no `checkout.` wrapper on the wire — so the declared field is `metadata.legal_context`. `CheckoutSessionBase` is `additionalProperties: false`, so the metadata map is not a preference over a native top-level field: it is the only conformant home. The case documents below are deliberate MINIMAL FRAGMENTS, not schema-valid sessions (a valid one also requires currency/line_items/totals/fulfillment_options/messages/links/capabilities) — a placement is structural and is not an ACP validator, and because `place` copies its input and adds only an allowed property it is schema-preserving on a session that was valid to begin with. Carrier values carry the canonical 0x-prefixed sha256 form (binding-core refuses the bare-digits form as a corrupt carrier). Case inputs are shaped {protocol, op, ref?, doc} under an `input` key because the conformance runner passes `c.input` to the subject and compares `c.expected`; a case that states `op`/`doc` at the top level is unreadable by the runner and the area would certify nothing. The PROTOCOL ID rides the case input for the same reason the verify step name does (plan 8 §12): the runner passes only `c.input` and an optional inline schema, so an area cannot parameterize its class — and a case stays self-describing when read alone. Phase C's five placements therefore register areas without another adapter change. Refusal `expected`s pin {refused, haltClass, code} and omit `detail`: the subject class normalizes the prose away before comparing, the same convention the `acceptance` and `chainWalk` classes follow, because the code is the cross-implementation contract and the sentence is not. A successful `place` pins the WHOLE Outcome — {ok:true, value:<document>} — not the bare document, exactly as `extract` does. Unwrapping the success arm would leave `ok` uncertified while `refused` is pinned on the refusal arm, so a foreign implementation could return the bare document and read green while every conformant caller narrowing on the discriminant broke. WRITE HALF, 2026-07-30: the top-level `legal_context` carrier is now WRITTEN as well as read, gated by a `writeCondition` on its alias. Re-read against the live ACP specification the same day (spec/2026-04-17/json-schema/schema.extension.json and schema.agentic_checkout.json, and agenticcommerce.dev/docs/concepts/extensions) — seven facts the gate rests on, each checked rather than assumed. (1) `CheckoutSessionBase` is `additionalProperties: false` and `capabilities` is REQUIRED on it, so a top-level field is conformant only where a declaration authorizes it. (2) `Capabilities.extensions` is a `oneOf`: the agent's REQUEST carries an array of identifier STRINGS, the seller's RESPONSE an array of `ExtensionDeclaration` OBJECTS — so a request in its DOCUMENTED form cannot satisfy a declaration gate at all, a tagged-array reader being unable to match a bare string entry (gating on that form is a fourth container kind, owed the day a consumer places into a request). What does NOT follow is that a request is out of reach: `Capabilities` is ONE definition shared by request and response and the `oneOf` is UNDISCRIMINATED, so a schema-valid `CheckoutSessionCreateRequest` may carry declaration objects and satisfy the declaration term. That is why the gate has a second term — see (6). (3) `ExtensionDeclaration` requires only `name`; `extends`, `schema` and `spec` are OPTIONAL, so the gate matches on the identifier and a minimal declaration must permit the write. (4) The `extension_identifier` pattern `^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9_-]*)+(@\\d{4}-\\d{2}-\\d{2})?$` admits `com.integraledger.legal-context` (a deployment's own reverse-domain namespace), while the `extends_target` pattern `^\\$\\.[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9_]*)*$` admits `$.CheckoutSession.legal_context` and REJECTS `legal-context` — so the host's own grammar fixes the spelling of the TOP-LEVEL, extension-declared field. It fixes nothing about the canonical `metadata.legal_context`: `metadata` is `additionalProperties: true` and accepts any key, so that spelling is ours, following the convention ACP's own schema is written in. The suffix group `(@\\d{4}-\\d{2}-\\d{2})?` in the identifier pattern is real and optional — see (7). (5) ACP does have a well-known discovery document (`/.well-known/acp.json`, `DiscoveryResponse`), and its `capabilities.extensions[]` entries are `DiscoveryExtension` — `{name, spec, schema}`, NO `extends` — a coarser shape than the session's declaration. Advertising there is a deployment act and owes published schema and spec URLs; the gate reads only the document in hand, which is the only thing `place` is given. (6) AN EXTENSION DECLARATION AUTHORIZES A FIELD ON THE ONE SCHEMA ITS `extends` TARGET NAMES, and ACP's own core extension proves the granularity: `core_extensions.discount.extends` enumerates `$.CheckoutSessionCreateRequest.discounts`, `$.CheckoutSessionUpdateRequest.discounts` AND `$.CheckoutSession.discounts` as three separate targets. Ours names `$.CheckoutSession.legal_context` — the response and nothing else, and it could not honestly name the create request, because at create time the agent has sent the identifiers it understands and the seller has declared nothing. So the gate's SECOND term reads `status`: REQUIRED on `CheckoutSessionBase`, a closed ELEVEN-value enum, and absent from `CheckoutSessionCreateRequest`, `CheckoutSessionUpdateRequest` and `CheckoutSessionCompleteRequest`, all three `additionalProperties: false`. It is the host's own evidence of document kind, and it fails CLOSED: a status ACP adds later declines the strong carrier until the enum is re-read, and never emits a field nothing authorized. (7) THE VERSION SUFFIX IS ADMITTED BY THE HOST AND DECLINED BY THE GATE. `com.integraledger.legal-context@2026-04-17` is a conformant identifier and the gate matches EXACTLY, so it is declined — deliberately: we publish ONE unversioned identifier, so a dated suffix names a version of our extension that does not exist. Widening `permits` cannot reach it either, the tagged-array reader filtering on `container.tag` before `permits` is consulted. The day a versioned identifier is published, family matching is owed. Both facts are pinned as cases below, so each decline is a declared boundary rather than a silence. ONE FINDING FROM THAT RE-READ, recorded because it shapes two cases below: `Capabilities.extensions` is a `oneOf` of a string array and a declaration array, and an EMPTY array matches both, so the live schema as written rejects `extensions: []` — the conformant way for a seller to declare no extensions is to OMIT the key, which the docs state directly. Both shapes appear below and the gate declines on both; the omitted-key case is the conformant one and the empty-array case is tolerated, because a placement is structural and is not an ACP validator. ONE CASE BELOW IS A COMPLETE, SCHEMA-VALID DOCUMENT rather than a minimal fragment, because its claim IS about validity: with the declaration term alone, a schema-valid `CheckoutSessionCreateRequest` went in and a schema-INVALID one came out — `legal_context` against `additionalProperties: false`, named by nothing. That measurement is what put the second term on the gate.",
+  "manifest": {
+    "protocol": "acp",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "lcp-string",
+    "container": {
+      "kind": "object-path"
+    },
+    "field": "metadata.legal_context",
+    "readAlso": [
+      {
+        "path": "legal_context",
+        "encoding": "reference-object"
+      },
+      {
+        "path": "metadata.legalContext",
+        "encoding": "reference-object"
+      }
+    ],
+    "termsUrlField": "metadata.legal_context_url",
+    "carrierTypes": ["sha256", "url"],
+    "specRef": "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)"
+  },
+  "cases": [
+    {
+      "name": "place puts an lcp: string at the declared field",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_1",
+          "status": "ready_for_payment",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_session_1",
+          "status": "ready_for_payment",
+          "metadata": {
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      }
+    },
+    {
+      "name": "place is pure — the input document is not mutated",
+      "input": {
+        "protocol": "acp",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_1",
+          "metadata": {}
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "place creates the metadata map when absent — the extension point working",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_2",
+          "status": "ready_for_payment"
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_session_2",
+          "status": "ready_for_payment",
+          "metadata": {
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      }
+    },
+    {
+      "name": "place preserves the metadata already on the session",
+      "$comment": "`metadata` is documented 'Arbitrary metadata for merchant use' and additionalProperties: true — the merchant's own keys are none of this placement's business. A placement that replaced the map would destroy seller state, and the failure would be invisible on a document that happened to carry no other keys.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_8",
+          "metadata": {
+            "merchant_order_ref": "SO-4417",
+            "campaign": "spring"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_session_8",
+          "metadata": {
+            "merchant_order_ref": "SO-4417",
+            "campaign": "spring",
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a null document — creating the SESSION is not the extension point working",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a non-object document",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": "not-a-session"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/document-malformed"
+      }
+    },
+    {
+      "name": "extract round-trips",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_1",
+          "metadata": {
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        }
+      }
+    },
+    {
+      "name": "extract REFUSES on an absent reference",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_3",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-absent"
+      }
+    },
+    {
+      "name": "extract REFUSES an unparseable lcp string rather than guessing",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_4",
+          "metadata": {
+            "legal_context": "not-an-lcp-string"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a bare-digits sha256 — binding-core's own decoder calls it corrupt",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_7",
+          "metadata": {
+            "legal_context": "lcp:sha256:3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a carrier type this field may not hold",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_5",
+          "metadata": {
+            "legal_context": "lcp:ipfs:bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a carrier type this field may not hold",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": {
+          "id": "checkout_session_6",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a permitted type whose VALUE is not valid for it",
+      "$comment": "sha256 is a PERMITTED type here, so the carrier-type gate passes and the codec is what refuses: encodeLegalContextString runs assertValidValue and throws CarrierError for a value that is not a 32-byte 0x hex. Without this case the entire encode try/catch is unreached, and a placement that minted corrupt carrier strings would read green.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xdeadbeef"
+        },
+        "doc": {
+          "id": "checkout_session_9",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-malformed"
+      }
+    },
+    {
+      "name": "place onto a session whose metadata is not an object REPLACES it rather than spreading it",
+      "$comment": "A non-object `metadata` is not a map to merge into. Spreading a string would explode it into {0:'n',1:'o',...} and silently corrupt the session; the guard exists to prevent exactly that, and only this case proves the guard is load-bearing.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_10",
+          "metadata": "not-a-map"
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_session_10",
+          "metadata": {
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      }
+    },
+    {
+      "name": "place onto a session whose metadata is an ARRAY replaces it too",
+      "$comment": "Arrays are objects to `typeof`, so the null check alone would let one through and `{...['a','b']}` would emit {0:'a',1:'b'} as the metadata map.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_11",
+          "metadata": ["a", "b"]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_session_11",
+          "metadata": {
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      }
+    },
+    {
+      "name": "extract REFUSES a null document",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/document-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a non-object document",
+      "$comment": "Distinguished from `reference-absent`: a document that is not a session at all is malformed, and reporting it as a merely-missing reference would tell a caller to look for a field on something that has no fields.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": "not-a-session"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/document-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES an ARRAY document",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": []
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/document-malformed"
+      }
+    },
+    {
+      "name": "extract reports an ABSENT reference when metadata is null",
+      "$comment": "`typeof null === 'object'`, so without the explicit null check this would index into null and THROW — breaking `extract`'s totality, which is the one property every caller relies on.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_12",
+          "metadata": null
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-absent"
+      }
+    },
+    {
+      "name": "place accepts a url carrier — the OTHER type this field permits",
+      "$comment": "`carrierTypes` declares sha256 AND url. Without this pair nothing proves the second one works, and a manifest may not permit a form the implementation has never round-tripped.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/terms/abc?v=2"
+        },
+        "doc": {
+          "id": "checkout_session_13",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_session_13",
+          "metadata": {
+            "legal_context": "lcp:url:https://seller.example/terms/abc?v=2"
+          }
+        }
+      }
+    },
+    {
+      "name": "extract round-trips a url carrier, colons and query string intact",
+      "$comment": "The LCP §8.1 parse rule splits on the first colon for the namespace and the second for the type, and the VALUE keeps every later colon. A url carrier is the only permitted form that exercises that rule — a naive split on every colon would truncate this to 'https'.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_13",
+          "metadata": {
+            "legal_context": "lcp:url:https://seller.example/terms/abc?v=2"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "url",
+          "value": "https://seller.example/terms/abc?v=2"
+        }
+      }
+    },
+    {
+      "name": "the alias path accepts the object reference form",
+      "$comment": "LCP v1.37 §C.2 illustrates ACP with a §8.1 {type,value} OBJECT at metadata.legalContext, while our canonical field holds an lcp: STRING at metadata.legal_context. Appendix C is informative and does not move our canonical field — but an implementer who followed it literally holds a real reference, so extract reads it. This is the alias's OWN encoding at work: same reference, two shapes.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "the canonical field WINS when a document carries both spellings",
+      "$comment": "A document holding two spellings is answered with ours, never with whichever was enumerated first. The alias here carries a DIFFERENT hash, so a reader that preferred the alias would return the wrong record and this case would catch it.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legal_context": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "an object reference with an unknown type refuses, exactly as the string form does",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "sha512",
+              "value": "0xdead"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-malformed"
+      }
+    },
+    {
+      "name": "an object reference with a corrupt value refuses — bare digits are not a sha256 carrier",
+      "$comment": "The bare-digits form is CORRUPT rather than absent, and binding-core throws CarrierError on it. Routed through the object path it must produce the same refusal the string path does, which is what proves the object path shares the codec rather than reimplementing it.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/reference-malformed"
+      }
+    },
+    {
+      "name": "place still writes the STRING form to the canonical field only — never the alias, never an object",
+      "$comment": "Strict write is still the DEFAULT. `readAlso` declares what `extract` accepts; `place` writes `field` plus only those aliases that declare `write`, and only where a declared `writeCondition` is met. This session declares no extensions, so the gated top-level carrier is declined, and `metadata.legalContext` carries no `write` flag at all and is never a candidate. A place that populated it would be asserting a second spelling onto the wire that no counterparty asked for. Byte-identical across the write half: the outcome for THIS document does not move, which is what makes the case the regression test for the gate's default.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "metadata": {
+            "legal_context": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      }
+    },
+    {
+      "name": "extract reads the DECLARED-EXTENSION carrier at top-level legal_context",
+      "$comment": "LCP v1.37 §C.2 confirms a second Tier A option requiring nothing from OpenAI or Stripe: a third-party extension under a reverse-domain identifier, admitted by ACP's extensions framework without upstream coordination. Its `extends: [\"$.CheckoutSession.legal_context\"]` places the reference at a TOP-LEVEL legal_context field, not inside metadata. Note the reverse-domain string is the EXTENSION'S NAME and never appears in the field path, which is why reading this carrier needs no namespace decision. A counterparty that adopted the framework holds a real reference there and extract reads it (the declared-extension carrier).",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_20",
+          "legal_context": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "the declared-extension carrier is preferred over the Appendix-C camelCase spelling",
+      "$comment": "Alias ORDER is declared, not incidental. The top-level field is the negotiated, discoverable, schema-published carrier; metadata.legalContext is an informative illustration someone transcribed. When a document carries both, the stronger one answers. The two carry DIFFERENT hashes here, so a reader that took them in the wrong order would return the wrong record.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "legal_context": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "our own canonical metadata field still outranks the declared-extension carrier",
+      "$comment": "The canonical-field-wins rule is not softened by adding a stronger alias. A document carrying our spelling is answered with ours — the alias set governs what we ACCEPT from strangers, never which record we trust more than our own.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legal_context": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "legal_context": {
+            "type": "sha256",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract is NOT gated — the declared-extension carrier is read out of a session declaring nothing",
+      "$comment": "A condition says what WE may write; a counterparty's document is evidence either way. This session declares no extension and yet carries the field, so it is either non-conformant upstream (its `[]` alone is — see the empty-list case) or was declared in a round this document does not show, and in both cases the reference is real and refusing to read it would discard evidence. Gating the read would also make `extract` disagree with `place`'s own output on a session whose declaration was dropped downstream.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_33",
+          "capabilities": {
+            "extensions": []
+          },
+          "legal_context": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "place NEVER writes the top-level carrier, even on a session that declares the extension",
+      "$comment": "LCP v1.38 §C.2: CheckoutSessionBase is additionalProperties:false and CheckoutSession is a bare allOf over it, so no ExtensionDeclaration can authorise a new top-level key. The declaration remains worth sending for discovery and negotiation; it is not an authorisation. Measured with ajv 8.20 against spec/2026-04-17: declaration-only VALID, metadata carrier VALID, declared-and-gated top-level legal_context INVALID.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xabababababababababababababababababababababababababababababababab"
+        },
+        "doc": {
+          "id": "cs_123",
+          "status": "ready_for_payment",
+          "capabilities": {
+            "extensions": [
+              {
+                "name": "com.integraledger.legal-context"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "cs_123",
+          "status": "ready_for_payment",
+          "capabilities": {
+            "extensions": [
+              {
+                "name": "com.integraledger.legal-context"
+              }
+            ]
+          },
+          "metadata": {
+            "legal_context": "lcp:sha256:0xabababababababababababababababababababababababababababababababab"
+          }
+        }
+      }
+    }
+  ]
+}

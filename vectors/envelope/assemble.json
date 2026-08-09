@@ -1,0 +1,384 @@
+{
+  "cases": [
+    {
+      "name": "minimal record",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "# Terms\nService provided as-is."
+        },
+        {
+          "slot": "id",
+          "value": "0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c"
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"# Terms\\nService provided as-is.\",\"id\":\"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c\"}",
+        "hash": "0xebbd7d8d17a7c988bee53682175446806f235f0d6c5ff054c39077d2e62d3df8"
+      }
+    },
+    {
+      "name": "duplicate slot",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "terms",
+          "value": "b"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        }
+      ],
+      "error": "assemble/duplicate-slot"
+    },
+    {
+      "name": "integer-like slot",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "1",
+          "value": "x"
+        }
+      ],
+      "error": "assemble/numeric-slot"
+    },
+    {
+      "name": "escaping pin (the JSON.stringify wire contract)",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "NFC:é nonBMP:😀 ctrl:\u0007 tab:\t quote:\" backslash:\\ loneSurrogate:\ud800"
+        },
+        {
+          "slot": "id",
+          "value": "0x01"
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"}",
+        "hash": "0x12698cb24a1ab844d075dd09b986ee4e1b623ff9f34acb1e55e7f7e566302166"
+      }
+    },
+    {
+      "name": "__proto__ slot preserved as an own key (no silent drop)",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "__proto__",
+          "value": {
+            "a": 1
+          }
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"__proto__\":{\"a\":1}}",
+        "hash": "0x68b9e5b4cefba11f69be0744661800714b4a9ffb785d671b2448ec496478f5b0"
+      }
+    },
+    {
+      "name": "ref component placed at slot",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "spendAuthority",
+          "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"spendAuthority\":\"lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"}",
+        "hash": "0xb1494ae1db38db44ac048673fc676df720c65f589467afa0b0b398b642cd6e4c"
+      }
+    },
+    {
+      "name": "component with both value and ref",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "x",
+          "value": "v",
+          "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      ],
+      "error": "assemble/component-shape"
+    },
+    {
+      "name": "component with neither value nor ref",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "x"
+        }
+      ],
+      "error": "assemble/component-shape"
+    },
+    {
+      "name": "invalid ref",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "x",
+          "ref": "lcp:sha256:0xZZ"
+        }
+      ],
+      "error": "assemble/bad-ref"
+    },
+    {
+      "name": "missing id",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        }
+      ],
+      "error": "assemble/missing-id"
+    },
+    {
+      "name": "empty id",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": ""
+        }
+      ],
+      "error": "assemble/missing-id"
+    },
+    {
+      "name": "missing terms",
+      "input": [
+        {
+          "slot": "id",
+          "value": "0x00"
+        }
+      ],
+      "error": "assemble/missing-terms"
+    },
+    {
+      "name": "empty terms",
+      "input": [
+        {
+          "slot": "terms",
+          "value": ""
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        }
+      ],
+      "error": "assemble/missing-terms"
+    },
+    {
+      "name": "caps raw number",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "caps",
+          "value": {
+            "max": 9007199254740992
+          }
+        }
+      ],
+      "error": "assemble/caps-raw-number"
+    },
+    {
+      "name": "caps nested raw number",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "caps",
+          "value": {
+            "perAsset": {
+              "usdc": 1e21
+            }
+          }
+        }
+      ],
+      "error": "assemble/caps-raw-number"
+    },
+    {
+      "name": "nested integer-like keys sort ahead of string keys, ascending",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "meta",
+          "value": {
+            "2": "b",
+            "1": "a",
+            "10": "c"
+          }
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\"}}",
+        "hash": "0x23c05ae8021d13454dbef3e5eb6626f3971a78cac96b5fd85c8743d471f430a9"
+      }
+    },
+    {
+      "name": "array-index boundary: 2^32-2 is an index, 2^32-1 is an ordinary key",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "meta",
+          "value": {
+            "b": "x",
+            "4294967295": "a",
+            "4294967294": "z"
+          }
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"4294967294\":\"z\",\"b\":\"x\",\"4294967295\":\"a\"}}",
+        "hash": "0xc84417cc5e3397d0647b9d8de8727e6181e3861b6b740d8e0d4c164a16e369da"
+      }
+    },
+    {
+      "name": "integer-key ordering applies at depth, not only at the envelope top level",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "meta",
+          "value": {
+            "inner": {
+              "3": "c",
+              "1": "a"
+            },
+            "z": "last"
+          }
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"inner\":{\"1\":\"a\",\"3\":\"c\"},\"z\":\"last\"}}",
+        "hash": "0x1b3b516260d740f50fa7e6b853085794cbf4db6ebf54088c38b3c16723946da1"
+      }
+    },
+    {
+      "name": "unpaired surrogate in a SLOT NAME (the escaping pin covers values only)",
+      "input": [
+        {
+          "slot": "\ud800",
+          "value": "x"
+        },
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"\\ud800\":\"x\",\"terms\":\"a\",\"id\":\"0x00\"}",
+        "hash": "0xfd961ce7f82f53620615298225dcd1f0d9dc6039dd8a54903cafd0407f17514d"
+      }
+    },
+    {
+      "name": "raw numbers outside caps: Number::toString incl. the 1e21 exponent threshold",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "metrics",
+          "value": {
+            "half": 3.5,
+            "exp": 1e21
+          }
+        }
+      ],
+      "expected": {
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"exp\":1e+21}}",
+        "hash": "0xc6e1d4084743252cb5a88e67d5e33683aa9f2b2bceae70fd8c879b003a53ed3c"
+      }
+    }
+  ]
+}

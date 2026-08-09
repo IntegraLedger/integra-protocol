@@ -1,0 +1,102 @@
+{
+  "cases": [
+    {
+      "name": "served terms hash equals the advertised atrHash → ok",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "markdown",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "ok",
+      "ok": true,
+      "hashesMatch": true,
+      "machineReadable": true
+    },
+    {
+      "name": "served terms differ from what was advertised → mismatch (DSC-2 caught)",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "markdown",
+      "advertisedAtrHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "mismatch",
+      "ok": false,
+      "hashesMatch": false,
+      "machineReadable": true
+    },
+    {
+      "name": "listing declares pdf → not machine-readable (DSC-1 refuses before DSC-2)",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "pdf",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "listing-format-not-machine-readable",
+      "ok": false,
+      "hashesMatch": true,
+      "machineReadable": false
+    },
+    {
+      "name": "listing declares html → not machine-readable",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "html",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "listing-format-not-machine-readable",
+      "ok": false,
+      "hashesMatch": true,
+      "machineReadable": false
+    },
+    {
+      "name": "an unknown format token is not machine-readable either",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "text/markdown",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "listing-format-not-machine-readable",
+      "ok": false,
+      "hashesMatch": true,
+      "machineReadable": false
+    },
+    {
+      "name": "json is machine-readable → the fingerprint decides",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "json",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "ok",
+      "ok": true,
+      "hashesMatch": true,
+      "machineReadable": true
+    },
+    {
+      "name": "plain is machine-readable → the fingerprint decides",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "plain",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "ok",
+      "ok": true,
+      "hashesMatch": true,
+      "machineReadable": true
+    },
+    {
+      "name": "no termsFormat declared → the guard does not fire, the fingerprint decides",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "advertisedAtrHash": "__HASH_OF_SERVED__",
+      "status": "ok",
+      "ok": true,
+      "hashesMatch": true,
+      "machineReadable": true
+    },
+    {
+      "name": "no termsFormat declared, served terms differ → still a plain mismatch",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "advertisedAtrHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "mismatch",
+      "ok": false,
+      "hashesMatch": false,
+      "machineReadable": true
+    },
+    {
+      "name": "pdf AND a genuine mismatch → both facts reported, neither masking the other",
+      "servedTerms_utf8": "governing law: NY. disputes: binding arbitration.",
+      "termsFormat": "pdf",
+      "advertisedAtrHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "listing-format-not-machine-readable",
+      "ok": false,
+      "hashesMatch": false,
+      "machineReadable": false
+    }
+  ]
+}

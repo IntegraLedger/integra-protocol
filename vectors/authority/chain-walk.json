@@ -1,0 +1,1652 @@
+{
+  "$comment": "ATA chain CUSTODY at verification time — authority.walkChainStructure. A flattened AuthorityLink readout cannot express what the walk checks, so a consumer of one is trusting whoever produced it. The walk consumes presented AtaGrant VCs and refuses what no per-link readout can express: a spliced link (signed by a key that is not the parent's subject), a root issued by someone other than the declared principal, a leaf granted to anyone but the acceptance signer. It then applies the SAME delegation gates linkAttenuates enforces at issuance, plus lifecycle as-of the settlement instant (expiry windows; revocation from the hash-pinned status-list snapshot, never a live dereference). This corpus certifies the STRUCTURAL half — deterministic over presented documents; the cryptographic proof gate (does the proof verify over the grant AS PRESENTED?) is port-injected and proven in the authority package tests, exactly the acceptance split. Outcome discipline is verify's three-way rule: a chain that CONTRADICTS itself is refused (verification-failure); a missing or unwalkable input is not-attempted, never failed, never passed. Key order in `expected` mirrors the outcome objects as constructed; refusal `detail` prose is deliberately not pinned.",
+  "cases": [
+    {
+      "name": "no chain supplied — a gap, never a proof",
+      "input": {},
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-authority-chain"
+      }
+    },
+    {
+      "name": "an EMPTY chain walks nothing — a placeholder proves no custody",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "empty-authority-chain"
+      }
+    },
+    {
+      "name": "no declared principal — custody has no root to bind to",
+      "input": {
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-principal"
+      }
+    },
+    {
+      "name": "no acceptance signer — the leaf has nothing to bind to",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-acceptance-signer"
+      }
+    },
+    {
+      "name": "no settlement instant — lifecycle has no as-of to be evaluated at",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-settlement-instant"
+      }
+    },
+    {
+      "name": "an unreadable settlement instant is a gap, not a verdict",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "not-a-time"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "unreadable-settlement-instant"
+      }
+    },
+    {
+      "name": "a chain element that is not a grant makes the chain unwalkable — a gap, never a failure",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": ["not-a-grant"],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a link with no proof cannot establish custody — missing evidence is a gap, not a contradiction",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "unproven-link"
+      }
+    },
+    {
+      "name": "a malformed credentialStatus is a gap — the walk cannot read what revocation state it claims",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "not-an-index",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-credential-status"
+      }
+    },
+    {
+      "name": "a status list with no snapshot supplied cannot be checked as-of settlement — never a pass",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "512",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-status-snapshot"
+      }
+    },
+    {
+      "name": "an unreadable status snapshot is a gap — fail closed, never a pass",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "512",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "not-multibase-gzip"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "unreadable-status-snapshot"
+      }
+    },
+    {
+      "name": "a status index beyond the snapshot is unknowable — a gap, never a pass",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "999999",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "status-index-out-of-range"
+      }
+    },
+    {
+      "name": "a root issued by anyone but the declared principal is refused",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:mallory.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:mallory.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/root-not-principal"
+      }
+    },
+    {
+      "name": "a root signed by a key that is not its issuer's is refused",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:mallory.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/root-key-mismatch"
+      }
+    },
+    {
+      "name": "a SPLICED middle link — signed by a key that is not the parent's subject — is refused",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 1
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-spliced"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "50000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": [
+                  "indemnity-waiver",
+                  "class-action-waiver"
+                ]
+              },
+              "delegable": false,
+              "maxDepth": 0
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-leaf"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/spliced-link"
+      }
+    },
+    {
+      "name": "a link whose STATED issuer is not the parent's subject is refused, even under the right key",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": false,
+              "maxDepth": 0
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-link"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/issuer-discontinuity"
+      }
+    },
+    {
+      "name": "the forged empty link {} under a restricting parent is refused — absent is unbounded, not inherited",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {}
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-forged"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/widened-bounds"
+      }
+    },
+    {
+      "name": "a link below a NON-DELEGABLE parent is forged, however well its bounds attenuate",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": false
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": false
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-link"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/parent-not-delegable"
+      }
+    },
+    {
+      "name": "a link that mints itself more onward depth than its parent held is refused",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 99
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-link"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/depth-escalation"
+      }
+    },
+    {
+      "name": "a link claiming EXACTLY its parent's depth is refused — the ceiling is parentMaxDepth - 1",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-link"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/depth-escalation"
+      }
+    },
+    {
+      "name": "a link that OMITS its depth below a depth-bounded parent is refused — omission is the same escalation",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-link"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/depth-escalation"
+      }
+    },
+    {
+      "name": "a link REVOKED as-of settlement is refused — the bit was set in the pinned snapshot",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "512",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/revoked-link"
+      }
+    },
+    {
+      "name": "a link EXPIRED as-of settlement is refused — expiry is lifecycle exactly like revocation",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2026-07-10T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/inactive-link"
+      }
+    },
+    {
+      "name": "a link not yet valid as-of settlement is refused — validFrom is a gate, not a decoration",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-08-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/inactive-link"
+      }
+    },
+    {
+      "name": "a leaf granted to someone other than the acceptance signer is refused — custody ends at the wrong key",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "refused",
+        "haltClass": "verification-failure",
+        "code": "walk/leaf-not-signer"
+      }
+    },
+    {
+      "name": "a single direct grant to the signer walks — did:pkh binds the scheme-canonical account",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "walked",
+        "links": [
+          {
+            "bounds": {
+              "caps": {
+                "USDC": "5000000"
+              }
+            },
+            "parentBounds": {},
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "a leaf whose subject IS the signer identifier binds exactly — no did:pkh needed, any rail",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+              "bounds": {
+                "caps": {
+                  "USDC": "1000"
+                }
+              }
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "walked",
+        "links": [
+          {
+            "bounds": {
+              "caps": {
+                "USDC": "1000"
+              }
+            },
+            "parentBounds": {},
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "an unrevoked link with its snapshot walks — the bit was checked and was clear",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "12",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "walked",
+        "links": [
+          {
+            "bounds": {
+              "caps": {
+                "USDC": "5000000"
+              }
+            },
+            "parentBounds": {},
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "the two-hop chain — root grant and attenuating delegation — walks to the full readout",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-01-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": [
+                  "indemnity-waiver",
+                  "class-action-waiver"
+                ]
+              },
+              "delegable": false,
+              "maxDepth": 0
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-link"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "walked",
+        "links": [
+          {
+            "bounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "5000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": ["indemnity-waiver"]
+            },
+            "parentBounds": {},
+            "parentDelegable": true,
+            "maxDepth": 2,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "1000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": [
+                "indemnity-waiver",
+                "class-action-waiver"
+              ]
+            },
+            "parentBounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "5000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": ["indemnity-waiver"]
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 2,
+            "maxDepth": 0,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "the three-hop chain walks when every hop is permitted, continuous, and narrowing",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "5000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 2
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "1000000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": ["indemnity-waiver"]
+              },
+              "delegable": true,
+              "maxDepth": 1
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-mid"
+            }
+          },
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaDelegation"],
+            "issuer": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+              "bounds": {
+                "jurisdictions": ["US-DE"],
+                "caps": {
+                  "USDC": "50000"
+                },
+                "disputeMethods": ["arbitration"],
+                "forbiddenClauseCategories": [
+                  "indemnity-waiver",
+                  "class-action-waiver"
+                ]
+              },
+              "delegable": false,
+              "maxDepth": 0
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc#key",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-leaf"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+        "asOf": "2026-07-20T00:00:00Z"
+      },
+      "expected": {
+        "status": "walked",
+        "links": [
+          {
+            "bounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "5000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": ["indemnity-waiver"]
+            },
+            "parentBounds": {},
+            "parentDelegable": true,
+            "maxDepth": 2,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "1000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": ["indemnity-waiver"]
+            },
+            "parentBounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "5000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": ["indemnity-waiver"]
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 2,
+            "maxDepth": 1,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "50000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": [
+                "indemnity-waiver",
+                "class-action-waiver"
+              ]
+            },
+            "parentBounds": {
+              "jurisdictions": ["US-DE"],
+              "caps": {
+                "USDC": "1000000"
+              },
+              "disputeMethods": ["arbitration"],
+              "forbiddenClauseCategories": ["indemnity-waiver"]
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 1,
+            "maxDepth": 0,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "a credentialStatus with no statusPurpose is a gap — the entry names no semantics to apply (Bitstring Status List v1.0 requires it)",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "12"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-credential-status"
+      }
+    },
+    {
+      "name": "a statusPurpose the walk has no semantics for is a gap — never read as revocation, never a pass",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "12",
+              "statusPurpose": "suspension"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "unsupported-status-purpose"
+      }
+    },
+    {
+      "name": "an unrevoked link whose entry states statusPurpose revocation walks — the bit was checked and was clear",
+      "input": {
+        "principal": "did:web:acme.example",
+        "chain": [
+          {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "type": ["VerifiableCredential", "AtaGrant"],
+            "issuer": "did:web:acme.example",
+            "validFrom": "2026-07-01T00:00:00Z",
+            "validUntil": "2027-07-01T00:00:00Z",
+            "credentialSubject": {
+              "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+              "bounds": {
+                "caps": {
+                  "USDC": "5000000"
+                }
+              }
+            },
+            "credentialStatus": {
+              "type": "BitstringStatusListEntry",
+              "statusListCredential": "https://acme.example/status/1",
+              "statusListIndex": "12",
+              "statusPurpose": "revocation"
+            },
+            "proof": {
+              "type": "DataIntegrityProof",
+              "verificationMethod": "did:web:acme.example#key-1",
+              "proofPurpose": "assertionMethod",
+              "proofValue": "z-root"
+            }
+          }
+        ],
+        "acceptanceSigner": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "asOf": "2026-07-20T00:00:00Z",
+        "statusSnapshots": {
+          "https://acme.example/status/1": "uH4sIAAAAAAACE2NgoAw0MIyCUTAKhioAAEP5zuYABAAA"
+        }
+      },
+      "expected": {
+        "status": "walked",
+        "links": [
+          {
+            "bounds": {
+              "caps": {
+                "USDC": "5000000"
+              }
+            },
+            "parentBounds": {},
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      }
+    }
+  ]
+}

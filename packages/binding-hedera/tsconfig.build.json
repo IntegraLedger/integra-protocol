@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "No types:[node] here (unlike binding-solana): binding-hedera is PURE-TS — src/ imports no chain SDK and uses only TextEncoder/TextDecoder (ES2023+DOM lib), so no SDK .d.ts references Node globals in the build graph. There is deliberately NO @hashgraph/sdk anywhere, not even as a devDependency — the opt-in integration test drives the public mirror-node REST API bare (its docblock records why).",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+  "include": ["src"]
+}

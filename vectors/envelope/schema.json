@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/envelope/schema.json",
+  "title": "ATR envelope v0.3",
+  "$comment": "Envelope required set = lcp + terms + id; terms + id present AND non-empty (fail-fast at assemble()); lcp = the literal \"0.3\" (envelope format version, distinct from the LCP spec version); id = a non-empty string (low-entropy values accepted-but-flagged at the weld boundary, never kernel-graded — no strict 128-bit pattern); slot placement: governing law + liability under recourse, declarations + caps top-level, all slot values open (unknown keys preserved).",
+  "type": "object",
+  "required": ["lcp", "terms", "id"],
+  "properties": {
+    "lcp": {
+      "const": "0.3",
+      "description": "envelope format version, engine-stamped (distinct from the LCP spec version)"
+    },
+    "terms": {
+      "type": "string",
+      "minLength": 1,
+      "description": "inline agreement prose (Markdown default) OR an lcp:sha256: reference to the complete terms document — a content address to a byte-stable retained artifact, never a mutable link (TRM-2 reading below)"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "guaranteed-unique element, required on every record; random 128-bit recommended, low-entropy accepted-but-flagged"
+    },
+    "identity": {},
+    "spendAuthority": {},
+    "acceptanceAuthority": {},
+    "intent": {},
+    "offer": {},
+    "regime": {
+      "enum": ["arms-length", "augmented"],
+      "description": "Regime discriminant (CMP-2); absent = arms-length — every Plane-I function self-carried"
+    },
+    "standingTrust": {
+      "type": "object",
+      "description": "CMP-2's explicit standing-trust references — which account, which agreement, which fingerprinted baseline; required when regime = augmented (the if/then below)",
+      "properties": {
+        "identityRoot": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the standing account serving as identity root (IDN-6)"
+        },
+        "agreement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the master agreement / account terms serving as the standing terms corpus (TRM-8)"
+        },
+        "baselineHash": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{64}$",
+          "description": "fingerprint of the standing-terms baseline document"
+        }
+      }
+    },
+    "recourse": {
+      "type": "object",
+      "properties": {
+        "governingLaw": { "type": "string" },
+        "forum": { "type": "string" },
+        "disputeMethod": { "type": "string" },
+        "liabilityAllocation": {},
+        "returns": {}
+      }
+    },
+    "declarations": {},
+    "caps": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/capValue" },
+      "description": "machine-decided bounds; keys open, value types pinned — monetary amounts are decimal-integer strings of base units, never JSON numbers; the string rule is the pattern keyword in $defs/capValue, not prose"
+    }
+  },
+  "additionalProperties": {},
+  "if": {
+    "properties": { "regime": { "const": "augmented" } },
+    "required": ["regime"]
+  },
+  "then": { "required": ["standingTrust"] },
+  "$defs": {
+    "capValue": {
+      "not": { "type": "number" },
+      "if": { "type": "string" },
+      "then": { "pattern": "^[0-9]+$" },
+      "additionalProperties": { "$ref": "#/$defs/capValue" },
+      "items": { "$ref": "#/$defs/capValue" }
+    }
+  }
+}

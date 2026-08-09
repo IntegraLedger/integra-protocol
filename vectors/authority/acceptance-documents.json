@@ -1,0 +1,127 @@
+{
+  "cases": [
+    {
+      "name": "evm:eip191 acceptance over atrHash",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a1",
+        "scheme": "evm:eip191",
+        "signature": "0xdeadbeef",
+        "signedAt": "2026-07-16T00:00:00Z",
+        "payloadType": "atrHash"
+      },
+      "expected": true
+    },
+    {
+      "name": "evm:eip712 acceptance with grant reference and elections",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a2",
+        "scheme": "evm:eip712",
+        "signature": "0xcafe",
+        "signedAt": "2026-07-16T00:00:01Z",
+        "payloadType": "eip712-acceptance-envelope",
+        "grantRef": "lcp:sha256:0x00c0cc74a529e001ec0659ade0a613c26654c7ae6ac2220baa70313b2d50cd69",
+        "elections": {
+          "forum": "Arbitration Forum",
+          "governingLaw": "NY"
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "evm:erc1271 contract-wallet acceptance",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a3",
+        "scheme": "evm:erc1271",
+        "signature": "0x01",
+        "signedAt": "2026-07-16T00:00:02Z",
+        "payloadType": "atrHash"
+      },
+      "expected": true
+    },
+    {
+      "name": "evm:erc6492 pre-deploy acceptance",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a4",
+        "scheme": "evm:erc6492",
+        "signature": "0x02",
+        "signedAt": "2026-07-16T00:00:03Z",
+        "payloadType": "atrHash"
+      },
+      "expected": true
+    },
+    {
+      "name": "missing atrHash",
+      "input": {
+        "signer": "0x00000000000000000000000000000000000000a1",
+        "scheme": "evm:eip191",
+        "signature": "0xdeadbeef",
+        "signedAt": "2026-07-16T00:00:00Z",
+        "payloadType": "atrHash"
+      },
+      "expected": false
+    },
+    {
+      "name": "missing signedAt (TRM-6 timestamp required)",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a1",
+        "scheme": "evm:eip191",
+        "signature": "0xdeadbeef",
+        "payloadType": "atrHash"
+      },
+      "expected": false
+    },
+    {
+      "name": "un-namespaced scheme rejects (names no family, so no port is answerable for it)",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a1",
+        "scheme": "schnorr",
+        "signature": "0xdeadbeef",
+        "signedAt": "2026-07-16T00:00:00Z",
+        "payloadType": "atrHash"
+      },
+      "expected": false
+    },
+    {
+      "name": "namespaced non-EVM scheme is a valid document (open set; verification fails closed at the port)",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+        "scheme": "jose:ES256",
+        "signature": "eyJhbGciOiJFUzI1NiJ9..MEUCIQDx",
+        "signedAt": "2026-07-27T00:00:00Z",
+        "payloadType": "atrHash"
+      },
+      "expected": true
+    },
+    {
+      "name": "evm scheme with a non-address signer rejects (the family's canonical signer form is enforced)",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+        "scheme": "evm:eip191",
+        "signature": "0xdeadbeef",
+        "signedAt": "2026-07-27T00:00:00Z",
+        "payloadType": "atrHash"
+      },
+      "expected": false
+    },
+    {
+      "name": "scheme with empty method rejects (both halves of family:method are required)",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signer": "0x00000000000000000000000000000000000000a1",
+        "scheme": "evm:",
+        "signature": "0xdeadbeef",
+        "signedAt": "2026-07-27T00:00:00Z",
+        "payloadType": "atrHash"
+      },
+      "expected": false
+    }
+  ]
+}

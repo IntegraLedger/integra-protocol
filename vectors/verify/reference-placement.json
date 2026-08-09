@@ -1,0 +1,130 @@
+{
+  "$comment": "A reference placement is REPORTED, never REQUIRED. It impeaches when it FAILS (the reference found in the protocol's native field contradicts the record) and its absence never blocks, exactly as frc-non-gating does. The `ladder` block below is the executable form of that ruling: no class may list this step. Carrier values carry the canonical 0x-prefixed sha256 form — binding-core's own decoder refuses the bare-digits form as a corrupt carrier, so a vector pinning it would certify references no conformant counterparty can read. `depth` tokens are short kebab identifiers, not prose, matching verify/authority-walk.json: they are load-bearing gap reasons a foreign implementation must reproduce, which prose could not be.",
+  "ladder": {
+    "stepMustNotAppearIn": ["TC-0", "TC-1", "TC-2", "TC-3", "TC-4"]
+  },
+  "cases": [
+    {
+      "name": "extracted reference matches the record fingerprint",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "an UPPERCASE conformant counterparty is not false-negatived — hex is case-insensitive",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "type": "sha256",
+          "value": "0x3F786850E387550FDAB836ED7E6DC881DE23001B3F786850E387550FDAB836ED"
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "extracted reference CONTRADICTS the record — impeaches",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "type": "sha256",
+          "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "no placement supplied — a gap, never a failure",
+      "input": {
+        "step": "reference-placement",
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-placement-input"
+      }
+    },
+    {
+      "name": "a placement slot with no extracted reference is a gap",
+      "input": {
+        "step": "reference-placement",
+        "extracted": null,
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-extracted-reference"
+      }
+    },
+    {
+      "name": "malformed extraction reads out as a gap (steps are total)",
+      "input": {
+        "step": "reference-placement",
+        "extracted": "not-an-object",
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-extracted-reference"
+      }
+    },
+    {
+      "name": "an extracted reference with a non-string value is a gap, not a failure",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "type": "sha256",
+          "value": 42
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-extracted-reference"
+      }
+    },
+    {
+      "name": "no record fingerprint to compare against is a gap",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        }
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-record-fingerprint"
+      }
+    },
+    {
+      "name": "same digits without the 0x prefix still PROVES — impeachment means a different record, not an odd form",
+      "$comment": "Both sides are normalized to the 0x form before comparison rather than stripped. A prefix difference is a CARRIER-FORM defect, and binding-core's decoder already refuses the bare-digits form upstream at extract time, so a conformant placement never emits one. Letting this step FAIL on it would drive supportedClass to TC-0 over formatting — impeaching a record whose reference names it correctly. Impeachment is reserved for a reference that names a DIFFERENT record.",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "type": "sha256",
+          "value": "3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "proved"
+      }
+    }
+  ]
+}

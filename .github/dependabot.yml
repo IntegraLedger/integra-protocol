@@ -1,0 +1,79 @@
+# Automated dependency updates.
+#
+# Action pins drift silently without it: manual sweeps only happen when someone goes looking.
+#
+# Dependabot rather than Renovate: Renovate needs its GitHub App installed on the org before a config file
+# does anything at all, and a config that silently does nothing is worse than no config. Dependabot is
+# native, so this file takes effect on merge.
+#
+# THE 24h QUARANTINE STILL GOVERNS. pnpm-workspace.yaml sets `minimumReleaseAge: 1440`, enforced at INSTALL
+# time — so even if Dependabot opens a PR for a release minutes old, `pnpm install` refuses it and the PR
+# fails CI until the release is 24h old. The supply-chain posture cannot be short-circuited from here.
+#
+# ⚠️ CATALOG COVERAGE is unconfirmed: most runtime dependencies live in pnpm-workspace.yaml's `catalog:`
+# rather than in a package.json. If Dependabot's npm ecosystem does not surface catalog entries, those need
+# a periodic `pnpm outdated -r` sweep — check a batch of PRs and record the answer here rather than
+# assuming they are covered.
+#
+# ⛔ MEASURED 2026-08-03 — SECURITY UPDATES FOR TRANSITIVE DEPS DO NOT WORK HERE. Recording it as the note
+# above asks, because the failure mode is a FALSE NEGATIVE and therefore invisible: Dependabot does not
+# report "I could not do this", it reports that the update is impossible.
+#
+# GHSA-fxqj-rqcc-2cmp (postcss, fixed 8.5.23) raised a security job in BOTH repos. Both failed with:
+#
+#   security_update_not_possible
+#     dependency-name: postcss
+#     latest-resolvable-version: 8.5.19      <- the version already installed
+#     conflicting-dependencies: []           <- nothing was actually blocking it
+#
+# That verdict is FALSE. postcss arrives only under vite (via vitest), vite's own range is `^8.5.16`, and a
+# one-line `postcss: ">=8.5.23"` override in pnpm-workspace.yaml resolves 8.5.25 in a ~2s install with no
+# conflict. Dependabot will not write a pnpm `overrides:` entry, so a transitive dep it cannot reach through
+# a direct manifest reads to it as unfixable. Treat `security_update_not_possible` on anything transitive as
+# "Dependabot cannot do this", never as "this cannot be done", and check it by hand.
+#
+# This repo's run showed NO other error — no registry 401, since its own `@integraledger` packages are
+# `workspace:*`. The commerce repo additionally 401s on GitHub Packages for that scope, and still produced
+# the identical verdict here without it, which is how we know the transitive limitation stands alone.
+#
+# Until that is addressed, npm SECURITY updates here are advisory-only. The github-actions ecosystem below
+# is unaffected — it has been succeeding throughout.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for the routine action bumps — they move together and reviewing them apart is noise.
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      dev-tooling:
+        patterns:
+          - "@biomejs/*"
+          - "@stryker-mutator/*"
+          - "@swc/*"
+          - "dependency-cruiser"
+          - "publint"
+          - "@arethetypeswrong/*"
+          - "vitest"
+        update-types: ["minor", "patch"]
+    ignore:
+      # @types/node is FLOOR-pinned to `engines.node` on purpose: the types must never describe APIs the
+      # oldest supported runtime lacks, or code typechecks against something that is not there at runtime.
+      # A major bump here is a deliberate decision that follows raising the engines floor — never automatic.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "chore"

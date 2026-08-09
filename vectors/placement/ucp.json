@@ -1,0 +1,415 @@
+{
+  "$comment": "UCP reference placement, cut against the live UCP spec (2026-04-08, ucp.dev — overview §capabilities, §namespace-governance, §intersection-algorithm, and the checkout capability's response schema), gate discharged 2026-07-29 and reconciled against LCP v1.37 §C.3 the same day. THE RE-CUT: an earlier draft specced a links-only placement on the premise that UCP's strict schema rejects unregistered keys and no Tier A integrity path exists. The live spec falsifies that premise — vendors MUST use their own reverse-domain namespace for custom capabilities, no central registry and no maintainer approval; what replaces registration is AUTHORITY BINDING (the origin of the capability's spec and schema URLs MUST match the namespace authority, and platforms MUST validate the binding). So the hash-bearing capability is Tier A, available today, and it is the CANONICAL carrier here; the links entry is the declared DISCOVERY alias, not the ceiling. The gate also falsified the earlier draft's claim that links[].type is a closed enum — the checkout schema says businesses MAY define custom types, so the set is OPEN; terms_of_service is a recommended well-known type. `pattern` is `http-advisory`, NOT `protocol-extension`: a vendor capability rides UCP's extensions framework but UCP itself does nothing atrHash-aware with it — §8.3.6 means the HOST's own verification and settlement procedure understands the hash, which no UCP implementation does. The same determination is made for ACP. The capability KEY contains literal dots (com.integraledger.legal-context — UCP naming is [reverse-domain].{service}.{capability}), so the container declares SEGMENTS: the key sequence is [extensions, com.integraledger.legal-context], two keys, and `field` is human documentation. The links alias carries the terms URL — a DIFFERENT datum than the hash — so it has no `write` flag: a conformant UCP merchant already publishes links[] (REQUIRED on checkout responses, terms_of_service a SHOULD), and place() holds one reference, not two data. termsUrlField is deliberately OMITTED: the terms URL rides a tagged-array locator that a dotted-path parser cannot resolve, and declaring an unresolvable locator would repeat the unresolvable-locator defect the kit-hardening pass fixed for `field`; the discovery alias declares the same fact WITH its machine-readable container. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit detail; success arms pin the WHOLE Outcome. One divergence from the draft vectors, deliberate: a document whose links is not an array reads as ABSENT (ucp/reference-absent), not document-malformed — the kit's ratified read-side convention, established by placement-acp (metadata: 7 reads as absent), is that an unreadable container yields no reference; document-malformed is reserved for a non-object DOCUMENT.",
+  "manifest": {
+    "protocol": "ucp",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "reference-object",
+    "container": {
+      "kind": "tagged-array",
+      "at": "policies",
+      "tagField": "type",
+      "tag": "com.integraledger.policy.legal_context",
+      "valueField": "com.integraledger.legal_context",
+      "constants": {
+        "description": {
+          "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+        }
+      }
+    },
+    "field": "policies[type=com.integraledger.policy.legal_context]",
+    "readAlso": [
+      {
+        "path": "links[type=terms_of_service].url",
+        "encoding": "bare-value",
+        "bareType": "url",
+        "carrierClass": "discovery",
+        "container": {
+          "kind": "tagged-array",
+          "at": "links",
+          "tagField": "type",
+          "tag": "terms_of_service",
+          "valueField": "url"
+        }
+      }
+    ],
+    "carrierTypes": ["sha256", "url"],
+    "specRef": "UCP checkout — policies[] entry under a reverse-DNS custom type (source/schemas/shopping/types/policy.json: base schema, required [type, description], additionalProperties true, type an open reverse-DNS vocabulary whose unknown values platforms MUST tolerate); checkout links[] entry typed terms_of_service (both re-verified at HEAD 2026-08-08: see README)"
+  },
+  "cases": [
+    {
+      "name": "place writes a policies[] entry carrying the type, the reference, and the description UCP requires",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "id": "checkout_1"
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_1",
+          "policies": [
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "$comment": "Verified at universal-commerce-protocol/ucp HEAD 2026-08-08. checkout.json has eighteen properties and `extensions` is NOT one of them — its own description reads \"Base checkout schema. Extensions compose onto this using allOf.\" The prior container wrote into a property UCP does not define; additionalProperties:true meant the write LANDED and was never read, which is silent rather than rejected. policies[] is in the base schema, its `type` is an open reverse-DNS vocabulary whose unknown values platforms MUST tolerate, and `description` is REQUIRED alongside `type` — and it is a Description OBJECT ({plain|html|markdown}, minProperties 1), not a bare string."
+    },
+    {
+      "name": "place appends to policies[] and preserves the entries already there",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "policies": [
+            {
+              "type": "dev.ucp.shopping.policy.return",
+              "description": {
+                "plain": "30-day returns."
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "policies": [
+            {
+              "type": "dev.ucp.shopping.policy.return",
+              "description": {
+                "plain": "30-day returns."
+              }
+            },
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "place is pure — the input document is not mutated",
+      "input": {
+        "protocol": "ucp",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "id": "checkout_1",
+          "policies": []
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "place REFUSES a null document — creating the checkout is not the extension point working",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a carrier type the manifest does not permit",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": {}
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "extract round-trips the policies[] entry",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "policies": [
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract tolerates the disputeResolution siblings §C.3's own example carries",
+      "$comment": "The capability payload is OUR schema (hosted at the namespace authority when advertised), and v1.37 §C.3's canonical example carries disputeResolution alongside type/value. A reader that rejected the spec's own example would repeat the defect v1.37 records for the x402 parser — read the host's example before trusting a plan's description of it.",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "policies": [
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ],
+          "disputeResolution": {
+            "method": "arbitration"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract falls to the links DISCOVERY carrier when the capability was pruned from the intersection",
+      "$comment": "§C.3's failure mode: a vendor capability the counterparty did not declare is SILENTLY excluded by the negotiation algorithm, not rejected loudly. The links entry survives, and the url carrier type is itself the discovery signal — it locates the terms, it attests nothing about them.",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "links": [
+            {
+              "type": "privacy_policy",
+              "url": "https://seller.example/privacy"
+            },
+            {
+              "type": "terms_of_service",
+              "url": "https://seller.example/terms/abc"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "url",
+          "value": "https://seller.example/terms/abc"
+        }
+      }
+    },
+    {
+      "name": "the policies[] entry WINS over links when both are present — even when the link is http:",
+      "$comment": "Two rules proven at once: alias order (the integrity carrier answers first) and the https rule's SCOPE (it applies to url-typed results only, so a sha256 answer is never blocked by a bad link sitting beside it).",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "policies": [
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ],
+          "links": [
+            {
+              "type": "terms_of_service",
+              "url": "http://insecure.example/terms"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract REFUSES an http: terms link — a rewritable reference is not one anyone should rely on",
+      "$comment": "The one protocol rule the kit cannot know (S7's anticipated composition). An http: link is rewritable in transit, so accepting it would put an unauthenticated document behind a reference the record cites.",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "links": [
+            {
+              "type": "terms_of_service",
+              "url": "http://seller.example/terms"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/insecure-terms-url"
+      }
+    },
+    {
+      "name": "extract REFUSES when neither carrier is present",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "links": [
+            {
+              "type": "privacy_policy",
+              "url": "https://seller.example/privacy"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/reference-absent"
+      }
+    },
+    {
+      "name": "a links value that is not an array reads as ABSENT — the kit's read-side convention",
+      "$comment": "Deliberate divergence from the draft vectors, which expected document-malformed here. The kit's ratified convention (established by placement-acp: metadata holding a number reads as absent) is that an unreadable container yields no reference on the READ side; document-malformed is reserved for a non-object document. Pinned so the convention is a contract, not an accident.",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "links": {
+            "type": "terms_of_service",
+            "url": "https://seller.example/terms"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/reference-absent"
+      }
+    },
+    {
+      "name": "a corrupt policies[] reference refuses — bare digits are not a sha256 carrier",
+      "input": {
+        "protocol": "ucp",
+        "op": "extract",
+        "doc": {
+          "policies": [
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/reference-malformed"
+      }
+    },
+    {
+      "name": "place MERGES into an existing entry and leaves the counterparty's own description alone",
+      "$comment": "The constants are written only when the entry is CREATED. A counterparty that already declared this policy type wrote its own description, and overwriting it would edit their prose in order to place our reference — a change to their document nobody asked for.",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "policies": [
+            {
+              "type": "com.integraledger.policy.legal_context",
+              "description": {
+                "plain": "Our own wording, thanks."
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "policies": [
+            {
+              "type": "com.integraledger.policy.legal_context",
+              "description": {
+                "plain": "Our own wording, thanks."
+              },
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

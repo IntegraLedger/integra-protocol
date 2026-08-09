@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/evidence/orc4-log.schema.json",
+  "title": "ORC-4 gate/middleware log",
+  "$comment": "haltClass inlines the canonical vocabulary/halt-class.schema.json set (local $defs) so this schema validates standalone under the inline-schema subject protocol. recordQualityFlags is the evidence-log half of the low-entropy-uniqueness duty: flagged at the weld boundary AND in the evidence log; the seller's uniqueness check writes it.",
+  "type": "object",
+  "required": ["entries"],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "artifactsVerified", "rulesFired"],
+        "properties": {
+          "timestamp": { "type": "string" },
+          "artifactsVerified": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "rulesFired": { "type": "array", "items": { "type": "string" } },
+          "haltClass": { "$ref": "#/$defs/haltClass" },
+          "escalations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["approver"],
+              "properties": { "approver": { "type": "string" } },
+              "additionalProperties": true
+            }
+          },
+          "recordQualityFlags": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "haltClass": {
+      "enum": ["risk-block", "policy-rejection", "verification-failure"]
+    }
+  }
+}

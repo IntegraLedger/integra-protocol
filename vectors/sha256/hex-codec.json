@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "name": "empty",
+      "input": "0x",
+      "expected": ""
+    },
+    {
+      "name": "single-byte",
+      "input": "0xff",
+      "expected": "ff"
+    },
+    {
+      "name": "three-bytes",
+      "input": "0x010203",
+      "expected": "010203"
+    },
+    {
+      "name": "thirty-two-incrementing-bytes",
+      "input": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "expected": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "name": "missing-0x-prefix",
+      "input": "deadbeef",
+      "error": "input must start with \"0x\""
+    },
+    {
+      "name": "odd-length",
+      "input": "0xabc",
+      "error": "odd-length hex"
+    },
+    {
+      "name": "non-hex-character",
+      "input": "0xzz",
+      "error": "invalid hex character"
+    },
+    {
+      "name": "uppercase-0X-prefix",
+      "input": "0X010203",
+      "error": "uppercase 0X prefix rejected; prefix is lowercase 0x"
+    }
+  ]
+}

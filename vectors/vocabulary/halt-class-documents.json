@@ -1,0 +1,17 @@
+{
+  "cases": [
+    { "name": "risk-block", "input": "risk-block", "expected": true },
+    {
+      "name": "policy-rejection",
+      "input": "policy-rejection",
+      "expected": true
+    },
+    {
+      "name": "verification-failure",
+      "input": "verification-failure",
+      "expected": true
+    },
+    { "name": "unknown class", "input": "banana", "expected": false },
+    { "name": "bare boolean", "input": true, "expected": false }
+  ]
+}

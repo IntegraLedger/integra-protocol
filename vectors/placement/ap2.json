@@ -1,0 +1,472 @@
+{
+  "$comment": "AP2 reference placement, cut against the live spec — AP2 v0.2 (docs/ap2/specification.md, docs/ap2/checkout_mandate.md, docs/ap2/payment_mandate.md at google-agentic-commerce/AP2 @ main, release 0.2.0 dated 2026-04-28) and the v0.2 reference samples (code/samples/python/src/common/constants.py, .../a2a_message_builder.py, .../roles/merchant_agent/tools.py). Gate discharged 2026-07-30; three findings amend the draft this area was first cut from and one records drift against LCP v1.37 §C.5. (1) AP2 DEFINES NO TRANSPORT: 'AP2 operates as a security feature within a Commerce Protocol. The exact details of the Commerce Protocol ... are outside the scope of AP2.' The transport in the reference samples is A2A, and that is where this placement's Tier A claim is grounded — an A2A Message carries a free-form `metadata` object ('Any metadata to provide along with the message'), with no reserved-key constraint, which AP2 itself never writes to. (2) THE MANDATE IS AN SD-JWT STRING, NOT A JSON OBJECT: v0.2's mandates are Checkout and Payment Mandates carried as SD-JWTs in A2A DataParts keyed `ap2.mandates.CheckoutMandateSdJwt` / `ap2.mandates.PaymentMandateSdJwt`, beside sibling DataParts such as `risk_data`. The draft fixtures used `{ type: 'CartMandate', credentialSubject: {} }` — AP2 v0.1 vocabulary, which v0.2 retired along with the IntentMandate/CartMandate names. Fixtures are re-cut to the v0.2 envelope. (3) THE DRAFT'S sha512 CASE EXPECTED THE WRONG CODE: a type outside LCP's §8.2 registry does not reach the permitted-types check — the kit's decoder returns undefined for an unrecognized type and `extract` refuses `reference-malformed`. `carrier-type-not-permitted` is for a KNOWN carrier type this field may not hold, so that case is pinned with `ipfs`. Same convention as placement-acp ('an object reference with an unknown type refuses, exactly as the string form does'). TIER B is embedding the reference inside the mandate, and v0.2 makes it harder than §C.5 states: the mandate is a signed SD-JWT whose `vct` MUST match exactly including its version suffix, so an added claim is a new credential type, not a tolerated extra field — and the closed mandate's key-binding signature is made at presentation over `sd_hash`, so nothing can be inserted after signing. The real forward path is v0.2's Mandate Constraints extension point (a uniquely defined `type`, a schema naming its selectively-disclosable fields, and an evaluation algorithm), which is a filing, not a field. We do not emit that shape and we deliberately do not READ it: cases 13 and 14 pin both the AP2 v0.1 VC shape a live integration was observed emitting and the v0.2 sibling-DataPart temptation as NOT read. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit detail; success arms pin the WHOLE Outcome. The SD-JWT in the fixtures is deliberately abbreviated — its header and payload are real base64url ({alg:ES256, typ:kb+sd-jwt} and {vct:mandate.checkout.1}) so the shape is legible, its signature segment is the literal text <signature> so it can never be mistaken for a verifiable credential. The placement never parses it: it is carried through by reference.",
+  "manifest": {
+    "protocol": "ap2",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "reference-object",
+    "container": { "kind": "object-path" },
+    "field": "metadata.legalContext",
+    "readAlso": [{ "path": "metadata.legal_context" }],
+    "carrierTypes": ["sha256", "url"],
+    "specRef": "AP2 v0.2 (2026-04-28) §Mandates — the Commerce Protocol carrying the mandate is outside AP2's scope; in the v0.2 reference samples that transport is A2A, whose Message.metadata is a free-form key/value object AP2 never writes to (gate discharged 2026-07-30: see README)"
+  },
+  "cases": [
+    {
+      "name": "place puts the reference in transport metadata, ALONGSIDE the mandate",
+      "$comment": "The whole package in one case. The mandate rides its own DataPart as an opaque SD-JWT; the reference rides the envelope's metadata map, which AP2 never touches. Nothing about the mandate changes, and no counterparty has to accept a field it has not agreed to.",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "kind": "message",
+          "messageId": "0f2a1c9e4b7d4a3f8c1e5b6a7d8f9012",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImNoZWNrb3V0X2p3dCIsIjxtZXJjaGFudC1zaWduZWQtY2hlY2tvdXQtand0PiJd~"
+              }
+            },
+            { "kind": "data", "data": { "risk_data": "" } }
+          ],
+          "metadata": { "traceId": "t-1" }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "kind": "message",
+          "messageId": "0f2a1c9e4b7d4a3f8c1e5b6a7d8f9012",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImNoZWNrb3V0X2p3dCIsIjxtZXJjaGFudC1zaWduZWQtY2hlY2tvdXQtand0PiJd~"
+              }
+            },
+            { "kind": "data", "data": { "risk_data": "" } }
+          ],
+          "metadata": {
+            "traceId": "t-1",
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "the MANDATE is returned byte-identical — we never write inside it (that is tier B)",
+      "$comment": "The metadata map is CREATED when the envelope carries none: an absent free-form map is the extension point working, not a malformed document. The DataPart carrying the SD-JWT comes back unchanged because the container writes exactly one path and the mandate is not on it.",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "kind": "message",
+          "messageId": "4c8d3e2f1a094b6d8e7f0a1b2c3d4e5f",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.PaymentMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLnBheW1lbnQuMSJ9.<signature>~"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "kind": "message",
+          "messageId": "4c8d3e2f1a094b6d8e7f0a1b2c3d4e5f",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.PaymentMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLnBheW1lbnQuMSJ9.<signature>~"
+              }
+            }
+          ],
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place accepts a url carrier — the OTHER type this field permits",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/terms/abc?v=2"
+        },
+        "doc": { "kind": "message", "role": "agent", "parts": [] }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "kind": "message",
+          "role": "agent",
+          "parts": [],
+          "metadata": {
+            "legalContext": {
+              "type": "url",
+              "value": "https://seller.example/terms/abc?v=2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place onto an envelope whose metadata is not a map REPLACES it rather than spreading it",
+      "$comment": "The kit's malformed-container rule, ratified by placement-acp: the map is the field's DIRECT holder, so a present-but-unmergeable value there is replaced. Spreading `metadata: 7` would emit nothing and spreading a string would mint numeric keys. The mandate DataPart is still untouched — a placement declines to corrupt, it does not adjudicate the host's document.",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~"
+              }
+            }
+          ],
+          "metadata": 7
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~"
+              }
+            }
+          ],
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a null document — minting the transport envelope is not this package's job",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a carrier type this field may not hold",
+      "$comment": "`ipfs` is a KNOWN LCP §8.2 carrier type that this manifest does not permit, which is what `carrier-type-not-permitted` means. Contrast case 15.",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": { "kind": "message", "role": "agent", "parts": [] }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a permitted type whose VALUE is not valid for it",
+      "$comment": "Bare digits are not an atrHash carrier. The reference is rendered through binding-core's codec, never by interpolation, so a corrupt value refuses here instead of landing on the wire for a reader to reject later.",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "kind": "message", "role": "agent", "parts": [] }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-malformed"
+      }
+    },
+    {
+      "name": "place is pure — the input envelope is not mutated",
+      "input": {
+        "protocol": "ap2",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "metadata": { "traceId": "t-1" } }
+      },
+      "expected": true
+    },
+    {
+      "name": "extract reads the canonical spelling",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract reads the declared snake_case alias",
+      "$comment": "AP2's own claim names are snake_case (`checkout_hash`, `risk_data`), so a counterparty that spells the metadata key that way is following the protocol's own convention rather than inventing one. Tolerance is DECLARED as a readAlso entry, never inferred — see case 12.",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legal_context": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "the canonical spelling WINS when an envelope carries both",
+      "$comment": "A document carrying two spellings is answered with ours, never with whichever happened to be enumerated first.",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "url",
+              "value": "https://canonical.example/terms.md"
+            },
+            "legal_context": {
+              "type": "url",
+              "value": "https://alias.example/terms.md"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "url",
+          "value": "https://canonical.example/terms.md"
+        }
+      }
+    },
+    {
+      "name": "an UNDECLARED spelling is not accepted — tolerance is declared, never inferred",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalCtx": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-absent"
+      }
+    },
+    {
+      "name": "a reference INSIDE the mandate is NOT read — that placement is tier B and we do not emit it",
+      "$comment": "THE CASE THAT MATTERS MOST, and the one with a live counter-example: a working AP2 integration was observed placing `atrHash` inside CartMandateSubject.paymentMethod and `legalContextUrl` on credentialSubject — the AP2 v0.1 VC shape, which v0.2 retired. That integration controls both ends, so it could define its own mandate shape; a shipped package cannot, because doing so requires every AP2 counterparty to accept our mandate fields, which is exactly the assertion a placement must not make. Reading this shape would quietly bless a placement we cannot emit, so it reads as ABSENT.",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "mandate": {
+            "type": "CartMandate",
+            "credentialSubject": {
+              "paymentMethod": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              },
+              "legalContextUrl": "https://seller.example/terms/abc"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-absent"
+      }
+    },
+    {
+      "name": "a reference in a sibling DataPart is NOT read either — the v0.2 form of the same temptation",
+      "$comment": "The v0.2 analog of case 13. The samples put `risk_data` and `debug_mode` in their own DataParts beside the mandate, so a key of ours there looks plausible — but AP2 defines no such key, and inventing one asserts a shape counterparties must accept. Reading a DataPart would also need a fourth container kind, matching on 'the first part whose data object owns key K'; nothing in the ten protocols asks for it. A2A's free-form Message metadata needs neither.",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "kind": "message",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~",
+                "legalContext": {
+                  "type": "sha256",
+                  "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-absent"
+      }
+    },
+    {
+      "name": "a carrier type outside LCP's registry refuses as MALFORMED, not as not-permitted",
+      "$comment": "Corrects the draft this case was first cut with, which expected `carrier-type-not-permitted` here. A type LCP §8.2 does not recognize never reaches the permitted-types check: the kit's decoder returns undefined and `extract` refuses `reference-malformed`. Same determination placement-acp pinned as 'an object reference with an unknown type refuses, exactly as the string form does'. `carrier-type-not-permitted` is case 6's meaning — a known type this field may not hold.",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": { "legalContext": { "type": "sha512", "value": "0xab" } }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a carrier type this field may not hold",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "ar",
+              "value": "hK9mQ2nR4sT6uV8wX0yZ1aB3cD5eF7gH9iJ2kL4mN6o"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "a corrupt reference value refuses — bare digits are not a sha256 carrier",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-malformed"
+      }
+    },
+    {
+      "name": "a metadata value that is not a map reads as ABSENT — the kit's read-side convention",
+      "$comment": "The read half of case 4. An unreadable container yields no reference; `document-malformed` is reserved for a non-object DOCUMENT (case 19).",
+      "input": { "protocol": "ap2", "op": "extract", "doc": { "metadata": 7 } },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/reference-absent"
+      }
+    },
+    {
+      "name": "extract REFUSES a non-object document",
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/document-malformed"
+      }
+    }
+  ]
+}

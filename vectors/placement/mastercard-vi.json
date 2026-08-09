@@ -1,0 +1,313 @@
+{
+  "$comment": "Mastercard Verifiable Intent reference placement, cut against the LIVE Verifiable Intent specification (verifiableintent.dev/spec/ and verifiableintent.dev/spec/constraints/, read 2026-07-30) — gate discharged the same day and reconciled against LCP v1.37 §C.7, which it CORRECTS. THE MECHANISM: an LCP constraint is an ordinary custom Layer-2 constraint type, which the host permits outright — §9.1 admits URI-namespaced custom types with no registration, and the constraints document requires 'collision-resistant naming (URN or reverse-DNS)'. It rides the L2 mandate claims, signed with the key bound in L1 cnf.jwk, so it inherits Layer 2's signature and never reaches a chain: that is §8.3.4 opaque-challenge exactly. It is NOT sidecar-attestation (no anchored on-chain transaction exists) and it is not a disclosure mechanic of the credential format — an earlier draft said both, and both were wrong. TIER B, NOT TIER A, AND THAT IS THIS UNIT'S HEADLINE CORRECTION. The live spec puts the `constraints` array in Autonomous-mode L2 open mandates ONLY (vct mandate.checkout.open.1 / mandate.payment.open.1) — 'Constraints do NOT appear in Immediate mode credentials (vct: \"mandate.checkout.1\" and vct: \"mandate.payment.1\")' — and in the open ones, 'Regardless of strictness mode, verifiers MUST reject open mandates containing unknown constraint types'. §9.1's skip-in-permissive rule therefore never reaches this carrier: the only credentials that could skip it are the only ones that MUST reject it. A stock verifier does not ignore our constraint, it rejects the whole mandate, so the carrier does not work against stock implementations and the tier is B. The coordinated change that lifts it is registering an LCP-aware L2 constraint type — §C.7's own Tier B forward work. v1.37 §C.7's Tier A rests on a `\"stage\": \"closed\"` mandate carrying constraints; the live spec has NO `stage` field, layering rides `vct`/`typ`, and no closed credential carries constraints at all. That is drift owed back to the appendix — the host governs — along with §C.7's `\"layer\": 2` claim and its flat {type, value} spelling of the REGISTERED types (the live registered eight carry type-specific fields — currency/min/max, allowed, items — and `type` is the only common one). THE DOCUMENT VIEW is therefore the mandate as the host's own examples show it: `vct` and `constraints` as sibling top-level claims, and the registered entries below are the spec's example shapes verbatim. THE GATE: writeCondition pins the write to the two vct values whose credential type carries constraints at all — the FIRST gate in the set needing more than one permitted value, and a rule that survives registration, because an Immediate-mode mandate will never carry a constraints array however standing changes. `extract` is NEVER gated: a condition says what WE may write, and a counterparty's document is evidence either way. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit `detail` (human-facing prose); success arms pin the WHOLE Outcome. THREE DELIBERATE DIVERGENCES from the draft cases this area was first cut from, each with its own $comment below: a mandate with no constraints array reads ABSENT rather than document-malformed (the kit's ratified read-side convention), the namespace is com.integraledger, the deployment's own reverse-domain, rather than com.example, and the mandate carries `vct` rather than `layer`/`stage`.",
+  "manifest": {
+    "protocol": "mastercard-vi",
+    "pattern": "opaque-challenge",
+    "tier": "B",
+    "encoding": "bare-value",
+    "container": {
+      "kind": "tagged-array",
+      "at": "constraints",
+      "tagField": "type",
+      "tag": "com.integraledger.lcp-terms-hash",
+      "valueField": "value"
+    },
+    "field": "constraints[type=com.integraledger.lcp-terms-hash].value",
+    "carrierTypes": ["sha256"],
+    "specRef": "Mastercard Verifiable Intent — custom Layer-2 constraint type under reverse-DNS naming (§9.1); constraints appear only in Autonomous open mandates, where unknown types MUST be rejected — so this placement is DECLARATION-ONLY per LCP v1.38 §C.7 and `place` refuses (withdrawn 2026-08-08; gate originally discharged 2026-07-30: see README)"
+  },
+  "cases": [
+    {
+      "name": "extract reads the constraint back",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract is NOT gated — a counterparty's document is evidence either way",
+      "$comment": "The mandate is Immediate-mode, so `place` would refuse it (the credential type carries no constraints). Reading is the opposite obligation: a condition states what WE may write, and refusing to read a document that already carries a reference would discard evidence because we disapprove of how it got there.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "a duplicated tag reads FIRST-wins — a later entry cannot forge over an earlier one",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            },
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": "0xabababababababababababababababababababababababababababababababab"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "a constraint in ANOTHER deployment's namespace is not read — namespaces do not bleed",
+      "$comment": "The namespace is the deployment's own and reaches the adapter through the manifest's container tag, matched exactly. Reading a foreign namespace's constraint would attribute one deployment's terms record to another's credential.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.example.lcp-terms-hash",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-absent"
+      }
+    },
+    {
+      "name": "the tag is compared EXACTLY — an upper-cased spelling of our own type is not ours",
+      "$comment": "DNS labels compare case-insensitively; a constraint TYPE is a string the host never folds. Rather than fold it here — which would make two spellings claim one carrier — the factory refuses an upper-cased namespace outright, so this placement never mints the second spelling and never reads one.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "COM.INTEGRALEDGER.LCP-TERMS-HASH",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-absent"
+      }
+    },
+    {
+      "name": "a registered constraint is not read as a reference — only the declared tag is ours",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.payment.open.1",
+          "constraints": [
+            {
+              "type": "mandate.payment.amount_range",
+              "currency": "USD",
+              "min": 10000,
+              "max": 40000
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-absent"
+      }
+    },
+    {
+      "name": "a malformed constraint value refuses",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": "nope"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-malformed"
+      }
+    },
+    {
+      "name": "a present-but-EMPTY value is corrupt, not absent",
+      "$comment": "LCP §8.2 ignores an unrecognized type; a recognized carrier with an empty value is corrupt and fails loud. The distinction matters most where the constraint is signed — an empty value would be signed as though it were a terms record.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-malformed"
+      }
+    },
+    {
+      "name": "a non-string value refuses — a constraint value is text",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash",
+              "value": 42
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-malformed"
+      }
+    },
+    {
+      "name": "an entry with the right tag and NO value field reads as absent",
+      "$comment": "The tagged-array reader answers `undefined` for a matched entry missing its value field, which is the same answer as no matched entry — nothing was placed either way. Pinned so a later reader cannot start treating a tag-only entry as a corrupt reference.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": [
+            {
+              "type": "com.integraledger.lcp-terms-hash"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-absent"
+      }
+    },
+    {
+      "name": "a mandate with no constraints array reads as ABSENT — the kit's ratified read-side convention",
+      "$comment": "DELIBERATE DIVERGENCE from the draft case this area was first cut with, which expected document-malformed for a body carrying no constraints. The convention established by placement-acp (a metadata holding a number reads as absent) and re-pinned by placement-ucp and placement-visa-tap is that an unreadable CONTAINER yields no reference on the read side; document-malformed is reserved for a non-object DOCUMENT.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1"
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-absent"
+      }
+    },
+    {
+      "name": "a constraints value that is not an array likewise reads as ABSENT, never repaired",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": "junk"
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/reference-absent"
+      }
+    },
+    {
+      "name": "a non-object document IS malformed — this is what the code is reserved for",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "extract",
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES on every mandate — this placement is declaration-only",
+      "$comment": "LCP v1.38 §C.7 (:1699): \"A deployment MUST NOT write an unregistered legal-context constraint into a VI mandate and expect it to travel.\" The host leaves no carrier: only OPEN mandates carry a constraints array, and there \"regardless of strictness mode, verifiers MUST reject open mandates containing unknown constraint types\"; the Immediate-mode credentials a permissive verifier would tolerate carry no constraints array at all. So a written constraint does not degrade — it causes the WHOLE mandate to be rejected. This case uses a checkout OPEN mandate, the exact document the withdrawn writeCondition permitted, so it fails if the write ever returns. `tier: \"B\"` was a label: binding-core gates place() on writeCondition alone and never reads tier.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xabababababababababababababababababababababababababababababababab"
+        },
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": []
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/tier-b-not-writable"
+      }
+    }
+  ]
+}

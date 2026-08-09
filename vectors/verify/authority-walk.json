@@ -1,0 +1,714 @@
+{
+  "$comment": "ATA-3 at VERIFICATION time — verify.authorityStep. The verification-side mirror of authority/link-attenuates.json; producer and verifier must not diverge, so every delegation gate appears in both. This is the load-bearing rung of the walk: a forged chain that clears it carries a class it never earned. Outcomes follow the walk's two rules — a chain that CONTRADICTS itself (unpermitted, depth-escalated, widened, revoked, expired) is `failed(verification-failure)` and impeaches the class to TC-0; a chain that is merely ABSENT or empty is `not-attempted`, a gap that never proves — and that includes a link that never STATES its revocation (`no-revocation-stated`) or liveness (`no-liveness-stated`), because 'the flattener never consulted a status list' and 'the pinned snapshot says unrevoked' must not be the same value. A non-boolean in either slot is the caller's shape error (`malformed-authority-chain`), never the record's contradiction. Key order in `expected` mirrors the outcome objects as constructed.",
+  "cases": [
+    {
+      "name": "no chain supplied — a gap, never a proof",
+      "input": {},
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-authority-chain"
+      }
+    },
+    {
+      "name": "an EMPTY chain walks nothing and cannot prove — a placeholder must not clear the ATA rung",
+      "input": {
+        "chain": []
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "empty-authority-chain"
+      }
+    },
+    {
+      "name": "a single link whose parent permitted delegation and whose bounds narrow is proved",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "a link below a NON-DELEGABLE parent fails, however well its bounds attenuate",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": false
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a link below a depth-exhausted parent (parentMaxDepth 0) fails",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 0
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a link that mints itself more onward depth than its parent held fails",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 1,
+            "maxDepth": 99
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a link that OMITS its depth below a depth-bounded parent fails — absent is unbounded, not inherited",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 1
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "an omitted depth below an UNBOUNDED parent is proved — nothing was escalated",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "a STATED depth below an unbounded parent is proved — an unbounded parent bounds nothing",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "maxDepth": 9,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "a link consuming exactly the depth available is proved",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 2,
+            "maxDepth": 1,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "a link claiming EXACTLY its parent's depth fails — the ceiling is parentMaxDepth - 1",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 3,
+            "maxDepth": 3
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a FORGED WIDENING fails — the bounds gate is independent of the delegation gates",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "50000000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "10000"
+              }
+            },
+            "parentDelegable": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a REVOKED link fails as-of settlement (evidence snapshot)",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "an EXPIRED link (active false as-of settlement) fails",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "active": false,
+            "revoked": false
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a multi-hop chain in which every hop is permitted and narrows is proved",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "100000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 3,
+            "maxDepth": 2,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "100000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 2,
+            "maxDepth": 1,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "caps": {
+                "USD": "50"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 1,
+            "maxDepth": 0,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "proved"
+      }
+    },
+    {
+      "name": "the WHOLE chain fails when any single interior hop is unauthorized",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "100000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "100000"
+              }
+            },
+            "parentDelegable": false
+          },
+          {
+            "bounds": {
+              "caps": {
+                "USD": "50"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentDelegable": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "the depth cascade — a hop that omits its depth fails even when earlier hops were impeccable",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "100000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 3,
+            "maxDepth": 2,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "100000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 2
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a link with NO bounds is the caller's shape error, not the record's contradiction",
+      "$comment": "The authority-step totality guard. The step reaches isWithin(link.bounds, link.parentBounds) with both undefined and Object.keys() throws, violating the module's stated totality over its inputs. The walk already screens this upstream (walkableBounds: \"or isWithin would crash mid-walk\") and refuses it as malformed-authority-chain; the step must agree, so walk and step stay categorically aligned. not-attempted rather than failed for the same reason a non-finite depth is: a caller's shape corruption says nothing about whether the RECORD contradicts itself, and reporting it as failed would impeach a record to TC-0 over the caller's mistake. A well-formed readout always carries objects — the walk supplies parentBounds {} for a root link.",
+      "input": {
+        "chain": [
+          {
+            "parentDelegable": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a link whose bounds is a non-object is malformed on the same rule",
+      "$comment": "The totality guard's typed-corruption arm: bounds present but not an object. Object.keys(\"\") does not throw, so this arm would silently read as an EMPTY bounds — unbounded — and a forged-widening check against it would answer on nonsense rather than refusing.",
+      "input": {
+        "chain": [
+          {
+            "parentDelegable": true,
+            "bounds": "unbounded",
+            "parentBounds": {}
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a link whose parentBounds is null is malformed — null is an object to typeof, and crashes",
+      "$comment": "The totality guard's null arm. typeof null === \"object\", so a guard written on typeof alone still reaches Object.keys(null) and throws. Pinned separately so the fix cannot be written as a typeof check.",
+      "input": {
+        "chain": [
+          {
+            "parentDelegable": true,
+            "bounds": {},
+            "parentBounds": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a link whose bounds is an ARRAY is malformed — Object.keys answers indices, not a refusal",
+      "$comment": "The totality guard's array arm. typeof [] === \"object\" and [] !== null, so a guard written on those two terms alone admits an array — and Object.keys([]) answers [] rather than throwing, so the array would read as a bounds with NO dimensions, i.e. unbounded, and the forged-widening check would answer on it. Pinned separately because it is the only input that distinguishes the Array.isArray term from the rest of the guard.",
+      "input": {
+        "chain": [
+          {
+            "parentDelegable": true,
+            "bounds": [],
+            "parentBounds": {}
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a link that never states its revocation status is a GAP — the pinned snapshot was never consulted",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-revocation-stated"
+      }
+    },
+    {
+      "name": "a link that never states its liveness is a GAP — unchecked and checked-and-live are not the same value",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-liveness-stated"
+      }
+    },
+    {
+      "name": "a NON-BOOLEAN revoked is the caller's shape error, not the record's contradiction",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": "false",
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a NON-BOOLEAN active is malformed on the same ground",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": 1
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a CONTRADICTION outranks an unstated revocation — a widened link fails even with the slots absent",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "9000000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "the gap is per-hop — a multi-hop chain whose LAST hop omits revocation does not prove on the strength of the first",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          },
+          {
+            "bounds": {
+              "caps": {
+                "USD": "100"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentDelegable": true,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-revocation-stated"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "profile": "integra-x402-nonce-v1",
+  "rail": "evm:x402",
+  "protocol": "x402",
+  "pattern": "native-field",
+  "nativeField": "eip3009.nonce",
+  "recovery": {
+    "onChain": true,
+    "zeroPartyRecoverable": true,
+    "forwardIndexable": true
+  },
+  "assetBinding": "filtered",
+  "successGate": "structural",
+  "indexing": "nonce-topic:AuthorizationUsed",
+  "finality": {
+    "reversible": false,
+    "note": "instant, final settlement (EIP-3009) — no on-rail reversal; recourse is the record's elected forum, and finality is never represented as dispute resolution (PAY-3/RCS-5) The atrHash welded as the EIP-3009 nonce MUST be per-transaction: an EIP-3009 nonce is one-time use, so one payer paying twice under the same ATR reproduces the same authorization and the token rejects the second with no LCP-level diagnostic. LCP §6.1 wants a per-transaction ATR anyway."
+  },
+  "weldGrades": {
+    "ERC3009": "signature"
+  },
+  "offCanonical": {
+    "profile": "integra-x402-nonce-v1"
+  },
+  "lifecycleStates": ["proposed", "welded-settled"]
+}

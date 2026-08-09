@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "types:[node] is REQUIRED here (the convention is to say why): the hardened resolver lazily imports node:dns/promises for its unicast SSRF gate, so Node's module types must resolve in the build graph.",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "types": ["node"] },
+  "include": ["src"]
+}

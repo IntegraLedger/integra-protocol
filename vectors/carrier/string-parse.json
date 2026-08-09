@@ -1,0 +1,131 @@
+{
+  "cases": [
+    {
+      "name": "sha256-simple",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      }
+    },
+    {
+      "name": "url-with-scheme-colon",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:url:https://example.com/terms/v3.md"
+      },
+      "expected": {
+        "type": "url",
+        "value": "https://example.com/terms/v3.md"
+      }
+    },
+    {
+      "name": "url-with-scheme-and-port-colons",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:url:https://example.com:8443/terms/v3.md"
+      },
+      "expected": {
+        "type": "url",
+        "value": "https://example.com:8443/terms/v3.md"
+      }
+    },
+    {
+      "name": "unknown-type-still-parses-structurally",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:blake3:abc123"
+      },
+      "expected": {
+        "type": "blake3",
+        "value": "abc123"
+      }
+    },
+    {
+      "name": "value-is-a-bare-lcp-looking-string",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:url:lcp:sha256:0xdead"
+      },
+      "expected": {
+        "type": "url",
+        "value": "lcp:sha256:0xdead"
+      }
+    },
+    {
+      "name": "empty-string",
+      "input": {
+        "op": "parseString",
+        "arg": ""
+      },
+      "expected": null
+    },
+    {
+      "name": "plain-url-no-prefix",
+      "input": {
+        "op": "parseString",
+        "arg": "https://example.com/terms/v3.md"
+      },
+      "expected": null
+    },
+    {
+      "name": "bare-atrhash-no-prefix",
+      "input": {
+        "op": "parseString",
+        "arg": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": null
+    },
+    {
+      "name": "different-namespace",
+      "input": {
+        "op": "parseString",
+        "arg": "did:web:example.com"
+      },
+      "expected": null
+    },
+    {
+      "name": "lcp-substring-not-prefix",
+      "input": {
+        "op": "parseString",
+        "arg": "x-lcp:sha256:0xdead"
+      },
+      "expected": null
+    },
+    {
+      "name": "prefix-only",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:"
+      },
+      "error": "carrier/malformed"
+    },
+    {
+      "name": "type-but-no-value-separator",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:sha256"
+      },
+      "error": "carrier/malformed"
+    },
+    {
+      "name": "empty-type-segment",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp::0xdead"
+      },
+      "error": "carrier/malformed"
+    },
+    {
+      "name": "empty-value-segment",
+      "input": {
+        "op": "parseString",
+        "arg": "lcp:sha256:"
+      },
+      "error": "carrier/malformed"
+    }
+  ]
+}

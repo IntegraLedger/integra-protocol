@@ -1,0 +1,254 @@
+{
+  "$comment": "IDN-1/IDN-3 — the attribution rung. `resolve-party` answers one question: did this record state WHO the parties are and HOW each was resolved? It is required for TC-1 and every class above, so an implementation that proves it from an identity stating nothing reports an attribution nobody supplied, and every class claim resting on it inherits that. These cases are NORMATIVE for that reason: the failure they pin is not a coding slip but a reading of the spec in which presence substitutes for statement. Ours read the resolution chain's array LENGTH and never its contents until verify 0.11.0, so `subject: \"\"` and `chain: [{}]` proved attribution exactly as a real identity did. Blank runs count as empty throughout — whitespace is not a name and not a method. The step is TOTAL: malformed input reads out, it never throws, because a walk that crashes on a bad record cannot report the badness.",
+  "cases": [
+    {
+      "name": "a fully-resolved identity proves the attribution rung",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }, { "via": "legal-party" }]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "proved" }
+    },
+    {
+      "name": "an absent identity slot is not attempted, not failed — nothing was claimed",
+      "input": { "step": "resolve-party" },
+      "expected": { "status": "not-attempted", "depth": "no-identity" }
+    },
+    {
+      "name": "a party present with NO resolution chain is unresolved",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party"
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-resolution" }
+    },
+    {
+      "name": "an EMPTY resolution chain is unresolved",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": []
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-resolution-chain" }
+    },
+    {
+      "name": "IDN-1 — a party resolved to the empty string names NOBODY",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }]
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-subject" }
+    },
+    {
+      "name": "IDN-1 — a subject of only whitespace is blank, not a name",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "   ",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }]
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-subject" }
+    },
+    {
+      "name": "IDN-3 — an EMPTY chain entry states no method: length alone is not evidence",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{}]
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-resolution-method" }
+    },
+    {
+      "name": "IDN-3 — a chain entry whose method is blank states nothing",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{ "via": "" }]
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-resolution-method" }
+    },
+    {
+      "name": "IDN-3 — ANY blank link breaks the chain, not merely the first",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }, { "via": "" }]
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-resolution-method" }
+    },
+    {
+      "name": "the rung is read on BOTH parties — a blank buyer is as unresolved as a blank seller",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }]
+          },
+          "buyer": {
+            "subject": "",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-subject" }
+    },
+    {
+      "name": "TOTAL over a null chain entry — a malformed record reads out, it never throws",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [null]
+          },
+          "buyer": {
+            "subject": "0xb15d",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-resolution-method" }
+    },
+    {
+      "name": "IDN-3 — a party stating NO assurance level does not prove: presence is not statement",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-assurance-stated" }
+    },
+    {
+      "name": "IDN-3 — an assurance of only whitespace states no level",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{ "via": "domain-control" }]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "  ",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-assurance-stated" }
+    },
+    {
+      "name": "the assurance gate reads BOTH parties — an unstated seller level is as unproved as an unstated buyer's",
+      "input": {
+        "step": "resolve-party",
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "chain": [{ "via": "domain-control" }]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "wallet-signature-only",
+            "chain": [{ "via": "key" }]
+          }
+        }
+      },
+      "expected": { "status": "not-attempted", "depth": "no-assurance-stated" }
+    }
+  ]
+}

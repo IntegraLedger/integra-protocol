@@ -1,0 +1,418 @@
+{
+  "cases": [
+    {
+      "name": "sha256-empty-hash/encode-string",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "sha256",
+          "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "expected": "lcp:sha256:0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sha256-empty-hash/decode-string",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:sha256:0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "sha256-empty-hash/encode-json",
+      "input": {
+        "op": "encodeJson",
+        "arg": {
+          "type": "sha256",
+          "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "expected": {
+        "legalContext": {
+          "type": "sha256",
+          "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "name": "sha256-empty-hash/decode-json",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "sha256",
+            "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        }
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "sha256-empty-hash/encode-bytes",
+      "input": {
+        "op": "encodeBytes",
+        "arg": {
+          "type": "sha256",
+          "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "expected": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sha256-empty-hash/decode-bytes",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "sha256-spec-example-hash/encode-string",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      },
+      "expected": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+    },
+    {
+      "name": "sha256-spec-example-hash/decode-string",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      }
+    },
+    {
+      "name": "sha256-spec-example-hash/encode-json",
+      "input": {
+        "op": "encodeJson",
+        "arg": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      },
+      "expected": {
+        "legalContext": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "sha256-spec-example-hash/decode-json",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          }
+        }
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      }
+    },
+    {
+      "name": "sha256-spec-example-hash/encode-bytes",
+      "input": {
+        "op": "encodeBytes",
+        "arg": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      },
+      "expected": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+    },
+    {
+      "name": "sha256-spec-example-hash/decode-bytes",
+      "input": {
+        "op": "decodeBytes",
+        "arg": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": {
+        "type": "sha256",
+        "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      }
+    },
+    {
+      "name": "ipfs-cid/encode-string",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "ipfs",
+          "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+        }
+      },
+      "expected": "lcp:ipfs:QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+    },
+    {
+      "name": "ipfs-cid/decode-string",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:ipfs:QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+      },
+      "expected": {
+        "type": "ipfs",
+        "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+      }
+    },
+    {
+      "name": "ipfs-cid/encode-json",
+      "input": {
+        "op": "encodeJson",
+        "arg": {
+          "type": "ipfs",
+          "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+        }
+      },
+      "expected": {
+        "legalContext": {
+          "type": "ipfs",
+          "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+        }
+      }
+    },
+    {
+      "name": "ipfs-cid/decode-json",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "ipfs",
+            "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+          }
+        }
+      },
+      "expected": {
+        "type": "ipfs",
+        "value": "QmYwAPJzv5CZsnAztbCQ1vYUuNoLFTnVQ4kWmZpqL8X2cD"
+      }
+    },
+    {
+      "name": "ar-tx-id/encode-string",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "ar",
+          "value": "bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+        }
+      },
+      "expected": "lcp:ar:bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+    },
+    {
+      "name": "ar-tx-id/decode-string",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:ar:bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+      },
+      "expected": {
+        "type": "ar",
+        "value": "bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+      }
+    },
+    {
+      "name": "ar-tx-id/encode-json",
+      "input": {
+        "op": "encodeJson",
+        "arg": {
+          "type": "ar",
+          "value": "bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+        }
+      },
+      "expected": {
+        "legalContext": {
+          "type": "ar",
+          "value": "bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+        }
+      }
+    },
+    {
+      "name": "ar-tx-id/decode-json",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "ar",
+            "value": "bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+          }
+        }
+      },
+      "expected": {
+        "type": "ar",
+        "value": "bNbA3DWNQJ3xT5tF1pZqMzVrPqL8X2cDk9fG7hJ4mNp"
+      }
+    },
+    {
+      "name": "url-https-terms/encode-string",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "url",
+          "value": "https://example.com:8443/terms/v3.md"
+        }
+      },
+      "expected": "lcp:url:https://example.com:8443/terms/v3.md"
+    },
+    {
+      "name": "url-https-terms/decode-string",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:url:https://example.com:8443/terms/v3.md"
+      },
+      "expected": {
+        "type": "url",
+        "value": "https://example.com:8443/terms/v3.md"
+      }
+    },
+    {
+      "name": "url-https-terms/encode-json",
+      "input": {
+        "op": "encodeJson",
+        "arg": {
+          "type": "url",
+          "value": "https://example.com:8443/terms/v3.md"
+        }
+      },
+      "expected": {
+        "legalContext": {
+          "type": "url",
+          "value": "https://example.com:8443/terms/v3.md"
+        }
+      }
+    },
+    {
+      "name": "url-https-terms/decode-json",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "url",
+            "value": "https://example.com:8443/terms/v3.md"
+          }
+        }
+      },
+      "expected": {
+        "type": "url",
+        "value": "https://example.com:8443/terms/v3.md"
+      }
+    },
+    {
+      "name": "url-points-at-legal-context-json/encode-string",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "url",
+          "value": "https://example.com/.well-known/legal-context.json"
+        }
+      },
+      "expected": "lcp:url:https://example.com/.well-known/legal-context.json"
+    },
+    {
+      "name": "url-points-at-legal-context-json/decode-string",
+      "input": {
+        "op": "decodeString",
+        "arg": "lcp:url:https://example.com/.well-known/legal-context.json"
+      },
+      "expected": {
+        "type": "url",
+        "value": "https://example.com/.well-known/legal-context.json"
+      }
+    },
+    {
+      "name": "url-points-at-legal-context-json/encode-json",
+      "input": {
+        "op": "encodeJson",
+        "arg": {
+          "type": "url",
+          "value": "https://example.com/.well-known/legal-context.json"
+        }
+      },
+      "expected": {
+        "legalContext": {
+          "type": "url",
+          "value": "https://example.com/.well-known/legal-context.json"
+        }
+      }
+    },
+    {
+      "name": "url-points-at-legal-context-json/decode-json",
+      "input": {
+        "op": "decodeJson",
+        "arg": {
+          "legalContext": {
+            "type": "url",
+            "value": "https://example.com/.well-known/legal-context.json"
+          }
+        }
+      },
+      "expected": {
+        "type": "url",
+        "value": "https://example.com/.well-known/legal-context.json"
+      }
+    },
+    {
+      "name": "spec-example-byte-order/byte-order",
+      "input": {
+        "op": "encodeBytes",
+        "arg": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      },
+      "expected": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+    },
+    {
+      "name": "empty-hash-byte-order/byte-order",
+      "input": {
+        "op": "encodeBytes",
+        "arg": {
+          "type": "sha256",
+          "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "expected": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "sha256-uppercase/encode-string EMITS lowercase (§2.5 RECOMMENDED)",
+      "$comment": "LCP v0.1.38 §2.5 gained a RECOMMENDED that an atrHash is EMITTED lowercase. Emission only: the read side returns a received value verbatim, which vectors/placement/visa-tap.json pins as its own case. A caller holding an uppercase-digit spelling of a hash gets one wire form out of this encoder.",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "sha256",
+          "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+        }
+      },
+      "expected": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+    },
+    {
+      "name": "url/encode-string preserves case EXACTLY — only sha256 is folded",
+      "$comment": "The normalization is scoped to sha256 and that scoping is load-bearing, not tidiness. A URL's path and query are case-SENSITIVE, so lowercasing one would rewrite the reference into a different document. The same is true of the other content-addressed types: base58btc CIDs are mixed-case by construction and Arweave ids are base64url. §2.5's recommendation is about an atrHash's hex digits and nothing else.",
+      "input": {
+        "op": "encodeString",
+        "arg": {
+          "type": "url",
+          "value": "https://Seller.Example/Terms?Ref=AbC"
+        }
+      },
+      "expected": "lcp:url:https://Seller.Example/Terms?Ref=AbC"
+    }
+  ]
+}

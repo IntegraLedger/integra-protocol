@@ -1,0 +1,68 @@
+{
+  "$id": "https://legalcontextprotocol.org/schema/0.1.38/legal-context.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "terms": {
+      "type": "string",
+      "pattern": "^https:\\/\\/[^\\s]+$"
+    },
+    "termsFormat": {
+      "type": "string"
+    },
+    "atrHash": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "acceptanceRequired": {
+      "type": "boolean"
+    },
+    "disputeResolution": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "jurisdiction": {
+          "type": "string"
+        },
+        "contact": {
+          "type": "string"
+        },
+        "clauseId": {
+          "type": "string",
+          "pattern": "^sha256:0x[0-9a-fA-F]{64}$"
+        },
+        "source": {
+          "type": "string"
+        },
+        "catalog": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "returns": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "legal": {
+          "type": "string"
+        },
+        "technical": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "api": {
+      "type": "string"
+    }
+  },
+  "required": ["terms"],
+  "additionalProperties": {},
+  "title": "legal-context.json",
+  "description": "LCP discovery document served at /.well-known/legal-context.json (spec v0.1.38 §2.4–2.5)."
+}

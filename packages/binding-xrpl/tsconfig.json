@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  "comment": "The on-chain integration test is excluded from typecheck: it dynamically imports the XRPL signing SDK (ripple-keypairs / ripple-binary-codec), which is a DEV dependency only — the published package stays pure-TS, no chain SDK, so the SDK must never enter the build graph. vitest still runs it (skipping LOUD without XRPL_TESTNET_SEED).",
+  "include": ["src", "test"],
+  "exclude": ["test/integration.onchain.test.ts"]
+}

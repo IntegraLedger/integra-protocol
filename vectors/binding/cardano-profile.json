@@ -1,0 +1,22 @@
+{
+  "profile": "integra-cardano-metadata-v1",
+  "rail": "cardano",
+  "pattern": "native-field",
+  "nativeField": "tx-metadata-8847",
+  "recovery": {
+    "onChain": true,
+    "zeroPartyRecoverable": true,
+    "forwardIndexable": true
+  },
+  "assetBinding": "none",
+  "successGate": "raw-field",
+  "indexing": "metadata-label-index:8847",
+  "finality": {
+    "reversible": false,
+    "note": "final on settlement confirmation (native ADA transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+  },
+  "weldGrades": {
+    "tx-metadata": "signature"
+  },
+  "lifecycleStates": ["proposed", "settled"]
+}

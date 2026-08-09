@@ -1,0 +1,130 @@
+{
+  "cases": [
+    {
+      "name": "minimal record",
+      "input": {
+        "lcp": "0.3",
+        "terms": "# Terms",
+        "id": "0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c"
+      },
+      "expected": true
+    },
+    {
+      "name": "fully populated",
+      "input": {
+        "lcp": "0.3",
+        "terms": "# Terms",
+        "id": "0x01",
+        "recourse": { "governingLaw": "NY", "forum": "Arbitration Forum" },
+        "declarations": {},
+        "caps": {}
+      },
+      "expected": true
+    },
+    {
+      "name": "unknown key preserved",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "custom": { "a": 1 }
+      },
+      "expected": true
+    },
+    {
+      "name": "missing id",
+      "input": { "lcp": "0.3", "terms": "x" },
+      "expected": false
+    },
+    {
+      "name": "missing terms",
+      "input": { "lcp": "0.3", "id": "0x01" },
+      "expected": false
+    },
+    {
+      "name": "missing lcp",
+      "input": { "terms": "x", "id": "0x01" },
+      "expected": false
+    },
+    {
+      "name": "empty terms",
+      "input": { "lcp": "0.3", "terms": "", "id": "0x01" },
+      "expected": false
+    },
+    {
+      "name": "empty id",
+      "input": { "lcp": "0.3", "terms": "x", "id": "" },
+      "expected": false
+    },
+    {
+      "name": "wrong format version",
+      "input": { "lcp": "0.2", "terms": "x", "id": "0x01" },
+      "expected": false
+    },
+    {
+      "name": "caps as decimal-integer strings",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "caps": { "max": "1000000000000000000000" }
+      },
+      "expected": true
+    },
+    {
+      "name": "caps with a raw JSON number",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "caps": { "max": 9007199254740993 }
+      },
+      "expected": false
+    },
+    {
+      "name": "caps with a nested raw number",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "caps": { "perAsset": { "usdc": 1e21 } }
+      },
+      "expected": false
+    },
+    {
+      "name": "caps with a non-numeric string",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "caps": { "max": "banana" }
+      },
+      "expected": false
+    },
+    {
+      "name": "augmented regime with explicit references",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "regime": "augmented",
+        "standingTrust": {
+          "identityRoot": "acct:coinbase:0xabc",
+          "agreement": "msa-2026-001",
+          "baselineHash": "0x4242424242424242424242424242424242424242424242424242424242424242"
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "augmented regime without standingTrust",
+      "input": {
+        "lcp": "0.3",
+        "terms": "x",
+        "id": "0x01",
+        "regime": "augmented"
+      },
+      "expected": false
+    }
+  ]
+}

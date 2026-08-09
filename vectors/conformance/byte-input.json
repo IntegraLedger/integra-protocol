@@ -1,0 +1,108 @@
+{
+  "cases": [
+    {
+      "name": "utf8-empty",
+      "input": {
+        "encoding": "utf8",
+        "data": ""
+      },
+      "expected": ""
+    },
+    {
+      "name": "utf8-ascii",
+      "input": {
+        "encoding": "utf8",
+        "data": "abc"
+      },
+      "expected": "616263"
+    },
+    {
+      "name": "utf8-multibyte",
+      "input": {
+        "encoding": "utf8",
+        "data": "café — 日本語 — 😀"
+      },
+      "expected": "636166c3a920e2809420e697a5e69cace8aa9e20e2809420f09f9880"
+    },
+    {
+      "name": "hex-empty",
+      "input": {
+        "encoding": "hex",
+        "data": "0x"
+      },
+      "expected": ""
+    },
+    {
+      "name": "hex-three-bytes",
+      "input": {
+        "encoding": "hex",
+        "data": "0x010203"
+      },
+      "expected": "010203"
+    },
+    {
+      "name": "hex-uppercase-normalizes-to-lowercase-octets",
+      "input": {
+        "encoding": "hex",
+        "data": "0xDEADBEEF"
+      },
+      "expected": "deadbeef"
+    },
+    {
+      "name": "hex-thirty-two-zero-bytes",
+      "input": {
+        "encoding": "hex",
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "name": "unknown-encoding",
+      "input": {
+        "encoding": "base64",
+        "data": "YWJj"
+      },
+      "error": "byteInput/unknown-encoding"
+    },
+    {
+      "name": "hex-missing-0x-prefix",
+      "input": {
+        "encoding": "hex",
+        "data": "010203"
+      },
+      "error": "byteInput/bad-hex"
+    },
+    {
+      "name": "hex-odd-length",
+      "input": {
+        "encoding": "hex",
+        "data": "0x123"
+      },
+      "error": "byteInput/bad-hex"
+    },
+    {
+      "name": "hex-non-hex-digit",
+      "input": {
+        "encoding": "hex",
+        "data": "0x12zz"
+      },
+      "error": "byteInput/bad-hex"
+    },
+    {
+      "name": "non-string-value",
+      "input": {
+        "encoding": "utf8",
+        "data": 123
+      },
+      "error": "byteInput/bad-data"
+    },
+    {
+      "name": "uppercase-0X-prefix",
+      "input": {
+        "encoding": "hex",
+        "data": "0X010203"
+      },
+      "error": "byteInput/bad-hex"
+    }
+  ]
+}

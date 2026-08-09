@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "name": "valid revocation status point",
+      "input": {
+        "id": "https://integraledger.com/status/1#94567",
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "94567",
+        "statusListCredential": "https://integraledger.com/status/1"
+      },
+      "expected": true
+    },
+    {
+      "name": "valid suspension status point",
+      "input": {
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "suspension",
+        "statusListIndex": "0",
+        "statusListCredential": "https://integraledger.com/status/1"
+      },
+      "expected": true
+    },
+    {
+      "name": "wrong type rejected",
+      "input": {
+        "type": "StatusList2021Entry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "1",
+        "statusListCredential": "https://integraledger.com/status/1"
+      },
+      "expected": false
+    },
+    {
+      "name": "non-numeric statusListIndex rejected",
+      "input": {
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "abc",
+        "statusListCredential": "https://integraledger.com/status/1"
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown statusPurpose rejected",
+      "input": {
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "archival",
+        "statusListIndex": "1",
+        "statusListCredential": "https://integraledger.com/status/1"
+      },
+      "expected": false
+    },
+    {
+      "name": "missing statusListCredential rejected",
+      "input": {
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "1"
+      },
+      "expected": false
+    }
+  ]
+}

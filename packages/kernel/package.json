@@ -1,0 +1,58 @@
+{
+  "name": "@integraledger/lcp-kernel",
+  "version": "0.9.0",
+  "description": "ATR assembly and hashing — the smallest thing every other LCP package agrees on.",
+  "keywords": [
+    "lcp",
+    "legal-context-protocol",
+    "legal-terms",
+    "agentic-commerce",
+    "atr",
+    "hashing",
+    "kernel"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IntegraLedger/integra-protocol.git",
+    "directory": "packages/kernel"
+  },
+  "bugs": {
+    "url": "https://github.com/IntegraLedger/integra-protocol/issues"
+  },
+  "homepage": "https://github.com/IntegraLedger/integra-protocol/tree/main/packages/kernel#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "node ../../scripts/sync-license.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

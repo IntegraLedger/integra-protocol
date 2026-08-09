@@ -1,0 +1,279 @@
+{
+  "$comment": "MPP-EVM Id-Reuse (LCP §8.3.5) behavioral vectors. THE HOST RULE, cited exactly: `nonce = keccak256(abi.encodePacked(challenge.id, challenge.realm))` — draft-evm-charge-00 §5.3.1 (paymentauth.org), read 2026-07-30, which also states the nonce IS the `challengeHash`. `abi.encodePacked` over two strings is raw UTF-8 concatenation with no length prefix and no padding; that was confirmed against Foundry's own encoder (`cast abi-encode --packed 'f(string,string)'`), not assumed. Every `nonce` below was derived by TWO independent keccak-256 oracles that agree byte-for-byte — pycryptodome `Crypto.Hash.keccak(digest_bits=256)` and Foundry `cast keccak` — and NEITHER is the implementation under test (viem). The Id-Reuse weld sets `challenge.id = atrHash`; the atrHash is carried in its canonical LCP spelling, LOWERCASE and 0x-PREFIXED, and the derivation is over that exact string INCLUDING the prefix — strip the `0x` and you derive a different nonce, so the spelling is part of the binding. The last two derive cases record a property of the host rule rather than of our code: packed concatenation has no delimiter, so ('ab','c') and ('a','bc') collide. That ambiguity is UNREACHABLE for this binding because `challenge.id` is a fixed-length 66-character atrHash, which is why the code validates the length before deriving — the security argument is the fixed length, not the hash.",
+  "cases": [
+    {
+      "name": "the canonical Id-Reuse weld — challenge.id IS the atrHash, realm api.example.com",
+      "input": {
+        "op": "derive",
+        "challengeId": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com"
+      },
+      "expected": "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+    },
+    {
+      "name": "the same atrHash under a different realm derives a different nonce — realm is a derivation input, not decoration",
+      "input": {
+        "op": "derive",
+        "challengeId": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "seller.example"
+      },
+      "expected": "0x5124d8c120472fde6ed8434e2cf12ffc6cf8a239cc4b5e11f58d25146145b3db"
+    },
+    {
+      "name": "an ordinary MPP challenge id derives too — the rule is MPP's, not LCP's (the EVM spec's own example id)",
+      "input": {
+        "op": "derive",
+        "challengeId": "aB3cDeF4gHiJkLmN",
+        "realm": "api.example.com"
+      },
+      "expected": "0x899e3a8fe6830644e150b972d4ba1fce69bcdf0bf9ea7f13d57cada71c6f281d"
+    },
+    {
+      "name": "packed concatenation has no delimiter — ('ab','c') is a property of the HOST rule, recorded not repaired",
+      "input": { "op": "derive", "challengeId": "ab", "realm": "c" },
+      "expected": "0x4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"
+    },
+    {
+      "name": "…and ('a','bc') collides with it — unreachable here only because challenge.id is a fixed-length atrHash",
+      "input": { "op": "derive", "challengeId": "a", "realm": "bc" },
+      "expected": "0x4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"
+    },
+    {
+      "name": "bind yields the challenge the seller emits: id = atrHash verbatim, plus the nonce the buyer will sign",
+      "input": {
+        "op": "bind",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com"
+      },
+      "expected": {
+        "challengeId": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "nonce": "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+      }
+    },
+    {
+      "name": "an uppercase-hex atrHash canonicalizes to lowercase BEFORE derivation — same nonce as the canonical case",
+      "input": {
+        "op": "bind",
+        "atrHash": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069",
+        "realm": "api.example.com"
+      },
+      "expected": {
+        "challengeId": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "nonce": "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+      }
+    },
+    {
+      "name": "a candidate atrHash that reproduces the on-chain nonce is CONFIRMED — verification, never recovery",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "confirmed": true,
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "realm": "api.example.com",
+          "nonce": "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        }
+      }
+    },
+    {
+      "name": "the candidate is confirmed on whichever of a settlement's nonces matches",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "confirmed": true,
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "realm": "api.example.com",
+          "nonce": "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        }
+      }
+    },
+    {
+      "name": "an uppercase-hex candidate confirms against an uppercase on-chain nonce — both canonicalized, one answer",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xB0E5403D5A7C3F550610AF8A488DB2D8AA1837FCF917FD6961CB5A5023B54F14"
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "confirmed": true,
+          "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+          "realm": "api.example.com",
+          "nonce": "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        }
+      }
+    },
+    {
+      "name": "the wrong realm does not confirm — a nonce is only meaningful inside its protection space",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "seller.example",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/candidate-mismatch"
+      }
+    },
+    {
+      "name": "a different atrHash does not confirm against this settlement's nonce",
+      "input": {
+        "op": "check",
+        "atrHash": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/candidate-mismatch"
+      }
+    },
+    {
+      "name": "no AuthorizationUsed nonce at all — nothing to verify against, and that is not a mismatch",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "observedNonces": []
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/no-settlement-event"
+      }
+    },
+    {
+      "name": "a malformed candidate refuses as DATA under audit — the auditor's input is never a crash",
+      "input": {
+        "op": "check",
+        "atrHash": "nope",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/candidate-malformed"
+      }
+    },
+    {
+      "name": "a short-hex candidate is malformed too — 32 bytes exactly, because the fixed length IS the anti-ambiguity argument",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b165",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/candidate-malformed"
+      }
+    },
+    {
+      "name": "a candidate with trailing bytes after the 32 is malformed — the value must END there",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069ff",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/candidate-malformed"
+      }
+    },
+    {
+      "name": "a candidate with junk BEFORE the 0x is malformed — the value must START there",
+      "input": {
+        "op": "check",
+        "atrHash": "lcp:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/candidate-malformed"
+      }
+    },
+    {
+      "name": "a malformed observed nonce refuses LOUDLY rather than being skipped past",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "observedNonces": ["0x1234"]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/nonce-malformed"
+      }
+    },
+    {
+      "name": "one malformed nonce beside a matching one still refuses — a broken settlement view is not silently narrowed",
+      "input": {
+        "op": "check",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "realm": "api.example.com",
+        "observedNonces": [
+          "0x1234",
+          "0xb0e5403d5a7c3f550610af8a488db2d8aa1837fcf917fd6961cb5a5023b54f14"
+        ]
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/nonce-malformed"
+      }
+    },
+    {
+      "name": "recovery refuses BY CONSTRUCTION — keccak256 has no inverse, so there is no zero-party recovery to offer",
+      "input": { "op": "recover" },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp-evm/not-recoverable-by-construction"
+      }
+    }
+  ]
+}

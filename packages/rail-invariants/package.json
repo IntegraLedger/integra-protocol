@@ -1,0 +1,31 @@
+{
+  "name": "@integraledger/lcp-rail-invariants",
+  "version": "0.9.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "Test-only. Cross-rail invariants that no single binding package can assert about itself \u2014 it imports EVERY binding so a new rail cannot quietly opt out. Never published.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@integraledger/lcp-binding-aptos": "workspace:*",
+    "@integraledger/lcp-binding-canton": "workspace:*",
+    "@integraledger/lcp-binding-canton-x402": "workspace:*",
+    "@integraledger/lcp-binding-cardano": "workspace:*",
+    "@integraledger/lcp-binding-core": "workspace:*",
+    "@integraledger/lcp-binding-evm-escrow": "workspace:*",
+    "@integraledger/lcp-binding-evm-mpp": "workspace:*",
+    "@integraledger/lcp-binding-evm-x402": "workspace:*",
+    "@integraledger/lcp-binding-hedera": "workspace:*",
+    "@integraledger/lcp-binding-solana": "workspace:*",
+    "@integraledger/lcp-binding-stellar": "workspace:*",
+    "@integraledger/lcp-binding-sui": "workspace:*",
+    "@integraledger/lcp-binding-tempo-mpp": "workspace:*",
+    "@integraledger/lcp-binding-xrpl": "workspace:*",
+    "@integraledger/lcp-placement-x402": "workspace:*",
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  }
+}

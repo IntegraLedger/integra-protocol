@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "types:[node] is needed for the TESTS only (process.env gates the live-chain suite). The build config deliberately omits it — see tsconfig.build.json.",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["src", "test"]
+}

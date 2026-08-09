@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/binding/profile.schema.json",
+  "title": "LCP binding profile (§8.3 / §8.3.1)",
+  "$comment": "A named binding-profile document — the serialized BindingManifest a rail publishes. `pattern` is pinned to the §8.3 seven-name enum: this is the TYPE-LEVEL catch for the misclassification (x402 nonce=atrHash was archived as `id-reuse` by reading MPP-EVM's Appendix-C.1 derivation-MUST onto a path that has no derivation; ruled off-canonical Native Field per §8.3.1/B.1 on 2026-07-16). `nativeField` is present iff `pattern` is `native-field`.",
+  "type": "object",
+  "required": [
+    "profile",
+    "rail",
+    "pattern",
+    "recovery",
+    "assetBinding",
+    "successGate",
+    "indexing",
+    "finality",
+    "weldGrades",
+    "lifecycleStates"
+  ],
+  "properties": {
+    "profile": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The named-profile identifier (e.g. integra-x402-nonce-v1)."
+    },
+    "rail": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The settlement rail this profile binds (evm:x402 | evm:escrow | solana | …)."
+    },
+    "protocol": {
+      "enum": [
+        "x402",
+        "mpp",
+        "ap2",
+        "ack",
+        "acp",
+        "ucp",
+        "visa-tap",
+        "mastercard-vi",
+        "a2a",
+        "mcp"
+      ],
+      "description": "OPTIONAL — the commerce protocol this binding is specific to, and never required. Absent iff the binding is protocol-neutral: evm:escrow is a MECHANISM several protocols settle through, and the bare-rail bindings bind no protocol at all, so absence is the correct state for 8 of the 12 shipped profiles. `rail` above stays the scheme id; the two are different fields with different jobs. The enum is INLINED from vocabulary/protocol-id.schema.json rather than $ref'd — the runner passes schemas inline and the subject's validator has no file resolver for a relative external ref — and a package test guards this copy against that file."
+    },
+    "pattern": {
+      "enum": [
+        "native-field",
+        "overlay-contract",
+        "sidecar-attestation",
+        "opaque-challenge",
+        "id-reuse",
+        "protocol-extension",
+        "http-advisory"
+      ],
+      "description": "The LCP §8.3 binding-pattern name — load-bearing; an unknown value is rejected here, not silently accepted as prose."
+    },
+    "nativeField": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The existing protocol field carrying the binding value — present iff pattern = native-field."
+    },
+    "recovery": {
+      "type": "object",
+      "required": ["onChain", "zeroPartyRecoverable", "forwardIndexable"],
+      "properties": {
+        "onChain": {
+          "type": "boolean"
+        },
+        "zeroPartyRecoverable": {
+          "type": "boolean"
+        },
+        "forwardIndexable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "The WLD-3 recovery triple."
+    },
+    "assetBinding": {
+      "enum": ["filtered", "carried", "proposal-only", "none"],
+      "description": "Whether — and how — the recovery path observes the settled asset. filtered: recovery reads the token's own log, so the record proves THIS token moved. carried: the token's identity is written into the record itself. proposal-only: the asset is named when the payment is proposed but never re-checked at recovery. none: recovery never observes the asset — the weld rides the transaction envelope, which is indifferent to its payload (the same property that makes the rail asset-independent). Four values because measurement found four cases (2026-08-03); a boolean cannot express proposal-only honestly. The zeroPartyRecoverable precedent governs: a weaker evidentiary claim is DECLARED as weaker, never enforced away — recorder, not judge."
+    },
+    "successGate": {
+      "enum": ["raw-field", "structural"],
+      "description": "HOW the recovery path knows the settlement actually happened — the sibling axis to assetBinding (that one declares whether recovery observes WHAT moved; this declares whether it observes THAT anything moved). raw-field: the rail RECORDS failed transactions along with their weld payload, so the reader supplies the chain's own outcome field and recovery gates on it, fail-closed — absent is never evidence of success. structural: the rail cannot produce a failed transaction that still carries a weld (a reverted EVM tx emits no logs, an aborted Sui PTB discards its events, a Daml command that did not commit leaves no contract), so no field is read; the claim is about the rail and is only as durable as the reader's data source. Deliberately NO third value — 'recovery cannot tell' is not a posture a profile may publish, it is the defect the 2026-08-03 success-gate sweep closed on stellar and cardano. Unlike assetBinding's 'none', which is an honest declaration that a rail does not observe the asset, no rail may legitimately not observe settlement and still claim to record one."
+    },
+    "indexing": {
+      "type": "string",
+      "minLength": 1,
+      "description": "How settlements are forward-indexed to the atrHash (nonce-topic:… | event-data-scan:… | …)."
+    },
+    "finality": {
+      "type": "object",
+      "required": ["reversible", "note"],
+      "properties": {
+        "reversible": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "PAY-3/RCS-5 finality declaration — finality is never represented as dispute resolution."
+    },
+    "weldGrades": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "enum": ["signature", "tx"]
+      },
+      "description": "Per-collection-path weld grade — signature-grade (the payer's signature commits the binding) or tx-grade."
+    },
+    "offCanonical": {
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "§8.3.1 off-canonical Native Field variant reference (the named-profile name, not a hedge)."
+    },
+    "lifecycleStates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "description": "The lifecycle state set for this binding."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$comment": "native-field REQUIRES nativeField.",
+      "if": {
+        "required": ["pattern"],
+        "properties": {
+          "pattern": {
+            "const": "native-field"
+          }
+        }
+      },
+      "then": {
+        "required": ["nativeField"]
+      }
+    },
+    {
+      "$comment": "a non-native pattern MUST NOT carry nativeField — the iff's other direction.",
+      "if": {
+        "required": ["pattern"],
+        "properties": {
+          "pattern": {
+            "not": {
+              "const": "native-field"
+            }
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": ["nativeField"]
+        }
+      }
+    }
+  ]
+}

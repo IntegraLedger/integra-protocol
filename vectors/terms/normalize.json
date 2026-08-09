@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "name": "crlf-to-lf-and-trailing-newline",
+      "input": "# Terms\r\n\r\nLine one.\r\nLine two.",
+      "expected": "# Terms\n\nLine one.\nLine two.\n"
+    },
+    {
+      "name": "collapse-multiple-trailing-newlines",
+      "input": "hello\n\n\n",
+      "expected": "hello\n"
+    },
+    {
+      "name": "nfc-decomposed",
+      "input": "Café terms",
+      "expected": "Café terms\n"
+    },
+    {
+      "name": "nfc-precomposed-same-hash",
+      "input": "Café terms",
+      "expected": "Café terms\n"
+    }
+  ]
+}

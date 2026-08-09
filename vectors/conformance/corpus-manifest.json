@@ -1,0 +1,282 @@
+{
+  "version": "5",
+  "areas": [
+    {
+      "id": "byteInput",
+      "file": "conformance/byte-input.json",
+      "class": "byteInput",
+      "phase": "P1"
+    },
+    {
+      "id": "atrhash.compute",
+      "file": "atrhash/compute-atrhash.json",
+      "class": "hashAtr",
+      "phase": "P1"
+    },
+    {
+      "id": "envelope.schema",
+      "file": "envelope/documents.json",
+      "class": "schema",
+      "schema": "envelope/schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "envelope.assemble",
+      "file": "envelope/assemble.json",
+      "class": "assemble",
+      "phase": "P1"
+    },
+    {
+      "id": "terms.normalize",
+      "file": "terms/normalize.json",
+      "class": "termsNormalize",
+      "phase": "P1"
+    },
+    {
+      "id": "vocabulary.haltClass",
+      "file": "vocabulary/halt-class-documents.json",
+      "class": "schema",
+      "schema": "vocabulary/halt-class.schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "vocabulary.refusal",
+      "file": "vocabulary/refusal-documents.json",
+      "class": "schema",
+      "schema": "vocabulary/refusal.schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "report.schema",
+      "file": "report/documents.json",
+      "class": "schema",
+      "schema": "report/schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "evidence.manifest",
+      "file": "evidence/manifest-documents.json",
+      "class": "schema",
+      "schema": "evidence/manifest.schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "evidence.orc4",
+      "file": "evidence/orc4-documents.json",
+      "class": "schema",
+      "schema": "evidence/orc4-log.schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "authority.acceptance",
+      "file": "authority/acceptance-documents.json",
+      "class": "schema",
+      "schema": "authority/acceptance.schema.json",
+      "phase": "P1"
+    },
+    {
+      "id": "carrier.stringParse",
+      "file": "carrier/string-parse.json",
+      "class": "carrier",
+      "phase": "P3"
+    },
+    {
+      "id": "carrier.typeRegistry",
+      "file": "carrier/type-registry.json",
+      "class": "carrier",
+      "phase": "P3"
+    },
+    {
+      "id": "carrier.roundTrip",
+      "file": "carrier/round-trip.json",
+      "class": "carrier",
+      "phase": "P3"
+    },
+    {
+      "id": "legalContext.documents",
+      "file": "legal-context/documents.json",
+      "class": "legalContext",
+      "phase": "P3"
+    },
+    {
+      "id": "binding.profiles",
+      "file": "binding/profile-documents.json",
+      "class": "schema",
+      "schema": "binding/profile.schema.json",
+      "phase": "P3"
+    },
+    {
+      "id": "evidence.carDeterminism",
+      "file": "evidence/car-determinism.json",
+      "class": "carEncode",
+      "phase": "P3"
+    },
+    {
+      "id": "evidence.cidAtrHash",
+      "file": "evidence/cid-atrhash.json",
+      "class": "cidForAtrHash",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.attenuation",
+      "file": "authority/attenuation.json",
+      "class": "isWithin",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.linkAttenuates",
+      "file": "authority/link-attenuates.json",
+      "class": "linkAttenuates",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.grant",
+      "file": "authority/grant-documents.json",
+      "class": "schema",
+      "schema": "authority/grant.schema.json",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.delegation",
+      "file": "authority/delegation-documents.json",
+      "class": "schema",
+      "schema": "authority/grant.schema.json",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.statusPoint",
+      "file": "authority/status-point-documents.json",
+      "class": "schema",
+      "schema": "authority/status-point.schema.json",
+      "phase": "P3"
+    },
+    {
+      "id": "report.serialization",
+      "file": "report/serialization.json",
+      "class": "jcs",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.acceptanceVerify",
+      "file": "authority/acceptance.json",
+      "class": "acceptance",
+      "phase": "P3"
+    },
+    {
+      "id": "authority.chainWalk",
+      "file": "authority/chain-walk.json",
+      "class": "chainWalk",
+      "phase": "P3"
+    },
+    {
+      "id": "verify.authorityWalk",
+      "file": "verify/authority-walk.json",
+      "class": "authorityWalk",
+      "phase": "P4"
+    },
+    {
+      "id": "verify.classLadder",
+      "file": "verify/mechanical.json",
+      "class": "verifyClass",
+      "phase": "P4"
+    },
+    {
+      "id": "verify.recourse",
+      "file": "verify/recourse.json",
+      "class": "recourse",
+      "phase": "P4"
+    },
+    {
+      "id": "verify.identity",
+      "file": "verify/identity.json",
+      "class": "verifyStep",
+      "phase": "P4"
+    },
+    {
+      "id": "vocabulary.protocolId",
+      "file": "vocabulary/protocol-id-documents.json",
+      "class": "schema",
+      "schema": "vocabulary/protocol-id.schema.json",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.manifestSchema",
+      "file": "placement/placement-documents.json",
+      "class": "schema",
+      "schema": "placement/placement.schema.json",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.acp",
+      "file": "placement/acp.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.ap2",
+      "file": "placement/ap2.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.ucp",
+      "file": "placement/ucp.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.a2a",
+      "file": "placement/a2a.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.x402",
+      "file": "placement/x402.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.ack",
+      "file": "placement/ack.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.mpp",
+      "file": "placement/mpp.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.visa-tap",
+      "file": "placement/visa-tap.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.mastercard-vi",
+      "file": "placement/mastercard-vi.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "placement.dispatch",
+      "file": "placement/dispatch.json",
+      "class": "placement",
+      "phase": "P8"
+    },
+    {
+      "id": "verify.referencePlacement",
+      "file": "verify/reference-placement.json",
+      "class": "verifyStep",
+      "phase": "P8"
+    },
+    {
+      "id": "discovery.capability",
+      "file": "discovery/capability-documents.json",
+      "class": "capability",
+      "phase": "P8"
+    }
+  ]
+}

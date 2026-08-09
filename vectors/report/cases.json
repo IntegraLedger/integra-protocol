@@ -1,0 +1,1452 @@
+{
+  "$comment": "Walk scenarios (verify package fixture, not a conformance corpus area — the cross-party format is the JCS serialization). `input` is a verify() input: `atrBytes` uses the {encoding,data} byte convention, and `acceptanceVerifier` names a deterministic port the harness supplies ('accepts' | 'rejects') because a signature-verifier port is a function, not serializable JSON. `expected` pins verified, supportedClass (the honest readout — TC-0 on any failure, never raised), assurance (the BUYER's stated level), and each step's status. AMENDED 2026-07-24: the walk gained `recourse-elections` (RCS-1/2/4), the acceptance rung became signature-gated, and the thin TC-3 case landed. Note what the last four cases pin: a gap (no verifier, unreadable prose elections, an incomplete package, an empty chain) leaves verified false WITHOUT impeaching supportedClass, while a contradiction (a bad signature, a widened link, a mismatched fingerprint) impeaches to TC-0. SUPERSEDED PINS (2026-08-07): dispute-resolution examples generalized -- illustrative examples name no provider; atrHash 0x6de976ec4ab4ed507b467975a34c9a147a928aa570bf9f9145e7f5e18c4ae631 -> 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 (JSON terms doc) and 0xf7975153e43b4e63bcb3ce565c584deb335a919edb840384799844178e96742a -> 0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98 (markdown terms doc), each re-derived independently with python3 hashlib over the exact data bytes.",
+  "cases": [
+    {
+      "name": "fully-supplied structural walk — every rung proved, class shaped for TC-2, unverified",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-2",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "the thin TC-3 slice — every TC-3 rung proved, verified raised honestly at mechanical depth",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        },
+        "depth": "mechanical",
+        "claimedClass": "TC-3"
+      },
+      "expected": {
+        "verified": true,
+        "supportedClass": "TC-3",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "TC-3 with no signature verifier — the acceptance cannot prove, verified false, class NOT impeached",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        },
+        "depth": "mechanical",
+        "claimedClass": "TC-3"
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-3",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "TC-3 with a signature that does not verify — impeached to TC-0",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "rejects",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        },
+        "depth": "mechanical",
+        "claimedClass": "TC-3"
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-0",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "failed",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "TC-3 over a prose ATR — the elections are unreadable to a machine, verified false, class NOT impeached",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "# Terms of Service v1\n\nGoverning law: Delaware. Disputes: binding arbitration.\n"
+        },
+        "settledAtrHash": "0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        },
+        "depth": "mechanical",
+        "claimedClass": "TC-3"
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-3",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "TC-3 whose evidence package omits the spend artifact — RCS-4 incomplete, verified false",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        },
+        "depth": "mechanical",
+        "claimedClass": "TC-3"
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-3",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "an EMPTY authority chain proves nothing — the ATA rung is not-attempted, never proved",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        },
+        "depth": "mechanical",
+        "claimedClass": "TC-3"
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-3",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "not-attempted",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "proved"
+        }
+      }
+    },
+    {
+      "name": "forged-widening authority link impeaches the class to TC-0",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "50000000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "10000"
+              }
+            },
+            "parentDelegable": true
+          }
+        ]
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-0",
+        "assurance": "no-assurance-stated",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "failed",
+          "commitment-vs-leaf": "not-attempted",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "not-attempted"
+        }
+      }
+    },
+    {
+      "name": "a link below a NON-DELEGABLE parent impeaches the class to TC-0 (ATA-3)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": false
+          }
+        ]
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-0",
+        "assurance": "no-assurance-stated",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "failed",
+          "commitment-vs-leaf": "not-attempted",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "not-attempted"
+        }
+      }
+    },
+    {
+      "name": "a link that mints itself more delegation depth than its parent held impeaches to TC-0 (ATA-3)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 1,
+            "maxDepth": 99
+          }
+        ]
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-0",
+        "assurance": "no-assurance-stated",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "failed",
+          "commitment-vs-leaf": "not-attempted",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "not-attempted"
+        }
+      }
+    },
+    {
+      "name": "a link that OMITS its depth below a depth-bounded parent impeaches to TC-0 (ATA-3 — absent means unbounded, which is strictly more than the parent held)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "parentMaxDepth": 1
+          }
+        ]
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-0",
+        "assurance": "no-assurance-stated",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "failed",
+          "commitment-vs-leaf": "not-attempted",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "not-attempted"
+        }
+      }
+    },
+    {
+      "name": "unretrievable ATR — fingerprint indeterminate (not a failure), class not impeached",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": [],
+          "bindings": []
+        }
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-2",
+        "assurance": "no-assurance-stated",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "indeterminate",
+          "settlement-enumeration": "not-attempted",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "not-attempted",
+          "commitment-vs-leaf": "not-attempted",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "not-attempted"
+        }
+      }
+    },
+    {
+      "name": "fingerprint mismatch — settled hash differs from recomputed — failed, TC-0",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "settlements": [
+          {
+            "chainId": 1,
+            "txHash": "0x1"
+          },
+          {
+            "chainId": 8453,
+            "txHash": "0x2"
+          }
+        ]
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-0",
+        "assurance": "no-assurance-stated",
+        "multiplySettled": true,
+        "statuses": {
+          "atr-fingerprint": "failed",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "not-attempted",
+          "authority-attenuation": "not-attempted",
+          "commitment-vs-leaf": "not-attempted",
+          "recourse-elections": "not-attempted",
+          "resolve-party": "not-attempted"
+        }
+      }
+    },
+    {
+      "name": "resolve-party is NOT proved by a chain entry stating a blank method (IDN-3)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": ""
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-2",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "not-attempted"
+        }
+      },
+      "$comment": "A resolution chain records HOW a party was resolved. An entry whose `via` is empty records nothing, so the chain is present in shape only. Proving attribution from it would let a record claim both parties were resolved while naming no method for either."
+    },
+    {
+      "name": "resolve-party is NOT proved by an EMPTY chain entry (IDN-1)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "did:web:seller.example",
+            "assurance": "legal-party",
+            "chain": [{}]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-2",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "not-attempted"
+        }
+      },
+      "$comment": "`chain: [{}]` is a non-empty array of nothing. Length alone is not evidence: the step must read what the entries say, or an array of blanks passes the same gate a real resolution does."
+    },
+    {
+      "name": "resolve-party is NOT proved for a party with no subject (IDN-1)",
+      "input": {
+        "asOf": "2026-07-24T12:05:00Z",
+        "coverage": {
+          "ports": ["evm", "artifacts"],
+          "bindings": ["evm:x402"]
+        },
+        "atrBytes": {
+          "encoding": "utf8",
+          "data": "{\"lcp\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+        },
+        "settledAtrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+        "settlements": [
+          {
+            "chainId": 84532,
+            "txHash": "0xabc"
+          }
+        ],
+        "acceptance": {
+          "atrHash": "0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1",
+          "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+          "scheme": "evm:eip712",
+          "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
+          "signedAt": "2026-07-24T12:00:00Z",
+          "payloadType": "eip712-acceptance-envelope",
+          "grantRef": "lcp:sha256:0xba0dc314c4bf40779884fb3d53d6a3183471fc42bb8937ef42ce7ec159e78d1f",
+          "elections": {
+            "forum": "Expedited Commercial Arbitration Rules, seat New York, NY",
+            "governingLaw": "Delaware, United States of America"
+          }
+        },
+        "acceptanceVerifier": "accepts",
+        "authorityChain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": true,
+            "revoked": false,
+            "active": true
+          }
+        ],
+        "commitment": {
+          "commitment": {
+            "caps": {
+              "USD": "5000"
+            }
+          },
+          "leafBounds": {
+            "caps": {
+              "USD": "5000"
+            }
+          }
+        },
+        "evidenceRoles": [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp"
+        ],
+        "identity": {
+          "seller": {
+            "subject": "",
+            "assurance": "legal-party",
+            "chain": [
+              {
+                "via": "domain-control",
+                "ref": "https://seller.example"
+              },
+              {
+                "via": "legal-party"
+              }
+            ]
+          },
+          "buyer": {
+            "subject": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
+            "assurance": "attested",
+            "chain": [
+              {
+                "via": "key"
+              },
+              {
+                "via": "attestation"
+              },
+              {
+                "via": "grant"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "verified": false,
+        "supportedClass": "TC-2",
+        "assurance": "attested",
+        "multiplySettled": false,
+        "statuses": {
+          "atr-fingerprint": "proved",
+          "settlement-enumeration": "proved",
+          "buyer-acceptance": "proved",
+          "authority-attenuation": "proved",
+          "commitment-vs-leaf": "proved",
+          "recourse-elections": "proved",
+          "resolve-party": "not-attempted"
+        }
+      },
+      "$comment": "IDN-1 is the statement of WHO. A party resolved to the empty string names nobody, so the record cannot carry an attribution rung for it."
+    }
+  ]
+}

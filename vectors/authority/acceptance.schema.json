@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/authority/acceptance.schema.json",
+  "title": "Signed acceptance record (TRM-6)",
+  "$comment": "The TRM-6 acceptance record (NOT an ATA authority record — ATA-6 requires both and keeps them distinct). Rail-neutral: `scheme` is a namespaced OPEN set (`<family>:<method>` — the family names the port answerable for it), `signer` is the scheme's canonical identifier, and `payloadType` is open for the same reason. The EVM family's registered forms are enforced conditionally below (a 0x-address signer under evm:*); other families validate at their port, which refuses (fail-closed) anything it does not implement. Seeded here because the vectors-first rule admits no exception for the artifact carrying the buyer's legal assent.",
+  "type": "object",
+  "required": [
+    "atrHash",
+    "signer",
+    "scheme",
+    "signature",
+    "signedAt",
+    "payloadType"
+  ],
+  "properties": {
+    "atrHash": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "signer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the accepting party's identifier in the scheme's canonical form: a 0x-address for evm:* (enforced below), a key identifier (JWK thumbprint URI / kid) for a JOSE family, a base58 public key for an ed25519 rail, a DID where a family defines one"
+    },
+    "scheme": {
+      "type": "string",
+      "pattern": "^[^:\\s]+:[^\\s]+$",
+      "description": "namespaced `<family>:<method>` — registered: evm:eip191, evm:eip712, evm:erc1271, evm:erc6492 (binding-evm-common). Open set: a new rail adds schemes with its port; an un-namespaced scheme names no family and is rejected"
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signedAt": {
+      "type": "string",
+      "description": "RFC 3339 — TRM-6's required timestamp, the signer-attested claim; the settlement's chain-anchored time remains the independent anchor that corroborates or impeaches it (PRS-4/WLD-4)"
+    },
+    "payloadType": {
+      "type": "string",
+      "minLength": 1,
+      "description": "what the signature covers — registered: atrHash (the raw 32-byte fingerprint, rail-neutral), eip712-acceptance-envelope (the EVM typed-data envelope). Open set; a port refuses payload types it cannot reconstruct"
+    },
+    "grantRef": {
+      "type": "string",
+      "pattern": "^lcp:sha256:0x[0-9a-fA-F]{64}$",
+      "description": "an lcp:sha256: reference to the ATA grant"
+    },
+    "elections": {
+      "type": "object",
+      "properties": {
+        "forum": {
+          "type": "string"
+        },
+        "governingLaw": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$comment": "the EVM family's canonical signer form — strict where the semantics are known, open where they are not",
+      "if": {
+        "properties": {
+          "scheme": {
+            "pattern": "^evm:"
+          }
+        },
+        "required": ["scheme"]
+      },
+      "then": {
+        "properties": {
+          "signer": {
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          }
+        }
+      }
+    }
+  ]
+}

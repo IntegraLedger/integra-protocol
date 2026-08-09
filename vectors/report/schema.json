@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/report/schema.json",
+  "title": "VerificationReport",
+  "$comment": "The reviewed report FORMAT. Its deterministic serialization convention is RFC 8785 JCS (multi-producer convergence); the byte-level serialization vectors land with `verify` — same review discipline as the envelope. haltClass inlines the canonical halt-class union (local $defs).",
+  "type": "object",
+  "required": [
+    "verified",
+    "assurance",
+    "supportedClass",
+    "steps",
+    "asOf",
+    "coverage",
+    "settlements"
+  ],
+  "properties": {
+    "verified": { "type": "boolean" },
+    "assurance": {
+      "type": "string",
+      "description": "the stated assurance level the report attests"
+    },
+    "supportedClass": {
+      "type": "string",
+      "description": "the transaction class the record honestly supports (TC-0..TC-4) — an honest readout, never a target"
+    },
+    "asOf": {
+      "type": "string",
+      "description": "the settlement's chain-anchored time every validity check is evaluated against (as-of-settlement-time)"
+    },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+    "coverage": {
+      "type": "object",
+      "description": "supplied ports/bindings — coverage is part of honest depth",
+      "required": ["ports", "bindings"],
+      "properties": {
+        "ports": { "type": "array", "items": { "type": "string" } },
+        "bindings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "settlements": {
+      "type": "object",
+      "description": "every settlement found for the fingerprint across the supplied forward-indexable bindings",
+      "required": ["found", "multiplySettled"],
+      "properties": {
+        "found": { "type": "array", "items": { "type": "object" } },
+        "multiplySettled": {
+          "type": "boolean",
+          "description": "true when more than one settlement is found for the fingerprint"
+        }
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "haltClass": {
+      "enum": ["risk-block", "policy-rejection", "verification-failure"]
+    },
+    "step": {
+      "type": "object",
+      "required": ["name", "outcome"],
+      "properties": {
+        "name": { "type": "string" },
+        "outcome": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["status"],
+              "properties": { "status": { "const": "proved" } }
+            },
+            {
+              "type": "object",
+              "required": ["status", "haltClass"],
+              "properties": {
+                "status": { "const": "failed" },
+                "haltClass": { "$ref": "#/$defs/haltClass" }
+              }
+            },
+            {
+              "type": "object",
+              "required": ["status"],
+              "properties": { "status": { "const": "indeterminate" } }
+            },
+            {
+              "type": "object",
+              "required": ["status", "depth"],
+              "properties": {
+                "status": { "const": "not-attempted" },
+                "depth": { "type": "string" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

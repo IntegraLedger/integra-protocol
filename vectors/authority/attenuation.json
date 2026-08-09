@@ -1,0 +1,289 @@
+{
+  "$comment": "ATA-2 bounds attenuation as a meet-semilattice: isWithin(child, parent) is true iff the child's bounds are no wider than the parent's, dimension by dimension. jurisdictions/disputeMethods attenuate by SUBSET (child ⊆ parent); caps attenuate by ≤ (decimal-integer base units); forbiddenClauseCategories attenuates by SUPERSET (child ⊇ parent — a restriction set attenuates by forbidding MORE, so a child that DROPS a parent's forbidden category has WIDENED). A parent dimension left undefined is unbounded (child always within). Any unrecognized bound key fails closed. Same predicate serves ATA-4's commitment-vs-leaf containment. Authored FROM THE ATA-2 SEMANTICS (the deepening gate's net-new vector — never derived from bounds.ts).",
+  "cases": [
+    {
+      "name": "empty child within an EMPTY (unbounded) parent — nothing restricts, within",
+      "input": { "child": {}, "parent": {} },
+      "expected": true
+    },
+    {
+      "name": "empty child does NOT escape a restricting parent — absent dimension = unbounded = wider (the forged-empty-link)",
+      "input": {
+        "child": {},
+        "parent": { "jurisdictions": ["US"], "caps": { "USD": "10000" } }
+      },
+      "expected": false
+    },
+    {
+      "name": "child omitting ONE restricted dimension is rejected (partial escape — caps present but jurisdictions absent)",
+      "input": {
+        "child": { "caps": { "USD": "5" } },
+        "parent": { "caps": { "USD": "10" }, "jurisdictions": ["US"] }
+      },
+      "expected": false
+    },
+    {
+      "name": "explicit empty caps ({}) is MORE restrictive than a capped parent — within",
+      "input": {
+        "child": { "caps": {} },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": true
+    },
+    {
+      "name": "jurisdictions subset (child ⊆ parent)",
+      "input": {
+        "child": { "jurisdictions": ["US"] },
+        "parent": { "jurisdictions": ["US", "EU"] }
+      },
+      "expected": true
+    },
+    {
+      "name": "jurisdiction not in parent — widened, reject",
+      "input": {
+        "child": { "jurisdictions": ["US", "CN"] },
+        "parent": { "jurisdictions": ["US", "EU"] }
+      },
+      "expected": false
+    },
+    {
+      "name": "caps ≤ parent (decimal-integer base units)",
+      "input": {
+        "child": { "caps": { "USD": "5000" } },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": true
+    },
+    {
+      "name": "caps equal is within",
+      "input": {
+        "child": { "caps": { "USD": "10000" } },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": true
+    },
+    {
+      "name": "the forged-widening case — a $10k grant delegating a $50M link MUST reject",
+      "input": {
+        "child": { "caps": { "USD": "50000000" } },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": false
+    },
+    {
+      "name": "cap currency not authorized by parent — reject",
+      "input": {
+        "child": { "caps": { "EUR": "1" } },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": false
+    },
+    {
+      "name": "big-integer cap comparison (beyond Number precision) within",
+      "input": {
+        "child": { "caps": { "USD": "99999999999999999999999999" } },
+        "parent": { "caps": { "USD": "100000000000000000000000000" } }
+      },
+      "expected": true
+    },
+    {
+      "name": "non-integer cap string fails closed",
+      "input": {
+        "child": { "caps": { "USD": "10.5" } },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": false
+    },
+    {
+      "name": "disputeMethods subset (narrowing acceptable methods)",
+      "input": {
+        "child": { "disputeMethods": ["arbitration"] },
+        "parent": { "disputeMethods": ["arbitration", "litigation"] }
+      },
+      "expected": true
+    },
+    {
+      "name": "disputeMethod not in parent — reject",
+      "input": {
+        "child": { "disputeMethods": ["litigation"] },
+        "parent": { "disputeMethods": ["arbitration"] }
+      },
+      "expected": false
+    },
+    {
+      "name": "forbiddenClauseCategories SUPERSET (child forbids more) is within — the inverted direction",
+      "input": {
+        "child": {
+          "forbiddenClauseCategories": [
+            "indemnity-waiver",
+            "class-action-waiver"
+          ]
+        },
+        "parent": { "forbiddenClauseCategories": ["indemnity-waiver"] }
+      },
+      "expected": true
+    },
+    {
+      "name": "forbiddenClauseCategories equal is within",
+      "input": {
+        "child": { "forbiddenClauseCategories": ["indemnity-waiver"] },
+        "parent": { "forbiddenClauseCategories": ["indemnity-waiver"] }
+      },
+      "expected": true
+    },
+    {
+      "name": "forbiddenClauseCategories DROPS a parent category — WIDENED, reject (a subset-for-both impl wrongly accepts this)",
+      "input": {
+        "child": { "forbiddenClauseCategories": ["indemnity-waiver"] },
+        "parent": {
+          "forbiddenClauseCategories": [
+            "indemnity-waiver",
+            "class-action-waiver"
+          ]
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "forbiddenClauseCategories child forbids nothing while parent forbids one — reject",
+      "input": {
+        "child": { "forbiddenClauseCategories": [] },
+        "parent": { "forbiddenClauseCategories": ["indemnity-waiver"] }
+      },
+      "expected": false
+    },
+    {
+      "name": "parent leaves a dimension unbounded — child within",
+      "input": {
+        "child": { "jurisdictions": ["US"], "caps": { "USD": "5" } },
+        "parent": { "jurisdictions": ["US"] }
+      },
+      "expected": true
+    },
+    {
+      "name": "all four dimensions valid together",
+      "input": {
+        "child": {
+          "jurisdictions": ["US"],
+          "caps": { "USD": "5000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["a", "b"]
+        },
+        "parent": {
+          "jurisdictions": ["US", "EU"],
+          "caps": { "USD": "10000" },
+          "disputeMethods": ["arbitration", "litigation"],
+          "forbiddenClauseCategories": ["a"]
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "one bad dimension among valid ones fails the whole (cap exceeds)",
+      "input": {
+        "child": {
+          "jurisdictions": ["US"],
+          "caps": { "USD": "50000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["a"]
+        },
+        "parent": {
+          "jurisdictions": ["US", "EU"],
+          "caps": { "USD": "10000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["a"]
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown bound key in child fails closed",
+      "input": {
+        "child": { "region": ["x"] },
+        "parent": { "jurisdictions": ["US"] }
+      },
+      "expected": false
+    },
+    {
+      "name": "unknown bound key in parent fails closed",
+      "input": {
+        "child": { "jurisdictions": ["US"] },
+        "parent": { "region": ["x"] }
+      },
+      "expected": false
+    },
+    {
+      "name": "ATA-4 commitment within leaf grant bounds",
+      "input": {
+        "child": { "caps": { "USD": "5000" }, "jurisdictions": ["US"] },
+        "parent": { "caps": { "USD": "10000" }, "jurisdictions": ["US", "EU"] }
+      },
+      "expected": true
+    },
+    {
+      "name": "ATA-4 commitment EXCEEDS leaf grant — reject (the walk would otherwise affirm a chain-valid acceptance the grant never covered)",
+      "input": {
+        "child": { "caps": { "USD": "50000" } },
+        "parent": { "caps": { "USD": "10000" } }
+      },
+      "expected": false
+    },
+    {
+      "name": "P4 two-hop chain — the officer link WIDENS the org's caps (5x) → non-attenuating, reject (authority-producer-ref widening guard)",
+      "$comment": "The Task-4 non-attenuating officer link on a real chain (org → officer → agent): the officer's link grants a cap the org never held (5000000 > 1000000). isWithin(officerBounds, orgBounds) MUST be false so the chain walk fails rather than affirming a forged deeper authority. produceDelegationLink refuses to MINT this link at issuance (linkAttenuates false); the verifier rejects it if presented.",
+      "input": {
+        "child": {
+          "jurisdictions": ["US-DE"],
+          "caps": { "USDC": "5000000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["indemnity-waiver"]
+        },
+        "parent": {
+          "jurisdictions": ["US-DE"],
+          "caps": { "USDC": "1000000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["indemnity-waiver"]
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "P4 two-hop chain — the officer link ADDS a dispute method the org never held → non-attenuating, reject",
+      "$comment": "A subtler non-attenuating officer link: caps and jurisdictions attenuate, but disputeMethods WIDENS (adds 'litigation' the org's grant never permitted). isWithin MUST reject on the disputeMethods dimension alone — a chain that narrows money but widens the acceptable forum is still an escape.",
+      "input": {
+        "child": {
+          "jurisdictions": ["US-DE"],
+          "caps": { "USDC": "500000" },
+          "disputeMethods": ["arbitration", "litigation"],
+          "forbiddenClauseCategories": ["indemnity-waiver"]
+        },
+        "parent": {
+          "jurisdictions": ["US-DE"],
+          "caps": { "USDC": "1000000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["indemnity-waiver"]
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "P4 commitment-exceeds-grant on the four-dimension leaf — commitment adds a jurisdiction the leaf never granted → reject",
+      "$comment": "ATA-4 containment on the produced leaf: an acceptance whose commitment claims a jurisdiction (US-NY) outside the leaf grant's single jurisdiction (US-DE) exceeds the grant. commitmentWithinLeaf (isWithin) MUST reject — the record commits to more than the grant covers.",
+      "input": {
+        "child": {
+          "jurisdictions": ["US-DE", "US-NY"],
+          "caps": { "USDC": "500000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["indemnity-waiver"]
+        },
+        "parent": {
+          "jurisdictions": ["US-DE"],
+          "caps": { "USDC": "1000000" },
+          "disputeMethods": ["arbitration"],
+          "forbiddenClauseCategories": ["indemnity-waiver"]
+        }
+      },
+      "expected": false
+    }
+  ]
+}

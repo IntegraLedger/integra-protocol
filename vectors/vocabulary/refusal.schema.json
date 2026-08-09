@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/vocabulary/refusal.schema.json",
+  "title": "Refusal value (refusals are values, not exceptions)",
+  "$comment": "haltClass inlines the canonical vocabulary/halt-class.schema.json set (local $defs) so this schema validates standalone under the inline-schema subject protocol.",
+  "type": "object",
+  "required": ["refused", "haltClass", "code"],
+  "properties": {
+    "refused": { "const": true },
+    "haltClass": { "$ref": "#/$defs/haltClass" },
+    "code": { "type": "string", "minLength": 1 },
+    "detail": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "haltClass": {
+      "enum": ["risk-block", "policy-rejection", "verification-failure"]
+    }
+  }
+}

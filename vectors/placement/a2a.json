@@ -1,0 +1,426 @@
+{
+  "$comment": "A2A (Agent-to-Agent Protocol) reference placement, cut against the LIVE A2A specification — `specification/a2a.proto` in a2aproject/A2A at commit 0ef1b02, plus docs/specification.md, docs/topics/extensions.md and docs/topics/extension-and-binding-governance.md at the same commit — gate discharged 2026-07-30 and reconciled against LCP v1.37 §C.8 the same day. 0ef1b02 is `main`, dated 2026-07-23, and NOT the v1.0.1 tag: that release is 2026-05-28 and points at 3303592, and the trees differ — AgentInterface.url's comment was reworded at proto 337 to admit a gRPC host:port address, which shifts every later line by one. EVERY proto line number below is 0ef1b02's. The normative carrier is `google.protobuf.Struct metadata = 6` on `Task` (proto line 183, comment: 'A key/value object to store custom metadata about a task'), with NO reserved keys and no constraint beyond JSON validity, so the reference rides it with zero coordination — Tier A, LCP §8.3.7 http-advisory. It is deliberately NOT §8.3.6 protocol-extension: A2A HAS a formal extensions framework, and riding an arbitrary metadata map instead is exactly the weaker, undeclared, unnegotiated carrier — which is what makes it work today against stock implementations, where a protocol-extension claim would be Tier B by definition and false of this placement. camelCase is canonical and snake_case is the alias — the REVERSE of ACP — because A2A's JSON wire is proto3 lowerCamelCase throughout (`contextId`, `messageId`, `defaultInputModes`) and the host protocol's own conventions decide, not a house rule of ours. The container is `object-path` and NOT `header-map`: a Struct is a JSON object whose keys are case-SENSITIVE, unlike the gRPC/HTTP transport metadata whose keys fold per RFC 9110 — folding case here would accept a key A2A treats as a different key. THREE CORRECTIONS TO THE DRAFT VECTORS this area was first cut from, all recorded per §7's own rule. (1) The draft expected `a2a/carrier-type-not-permitted` for an object carrying `type: sha512`. That is wrong against the ratified kit: an unregistered type is not decoded at all (LCP §8.2 'ignore unrecognized types' → `decodeLegalContextJson` returns undefined), so the refusal is `a2a/reference-malformed` — the same code, for the same reason, that placement-acp pins for its own unknown-type case. (2) The two members do NOT behave alike on `a2a/carrier-type-not-permitted`, because `carrierTypes` is the complete §8.2 registry: A2A imposes no length budget on a metadata value, so narrowing the set to make a refusal arm reachable would be inventing a host constraint A2A does not have. On `extract` the arm is therefore unreachable — every registered type is permitted, and an unregistered one refuses as malformed per (1). On `place` it is reachable for a ref whose type is outside the registry, which TypeScript forbids at every call site but an untyped door does not, and this subject IS that door — so the arm is PINNED here rather than asserted unreachable. (3) The draft's 9 cases are extended to 20: the write-direction fact that all EIGHT A2A metadata carriers (`Task` 183, `Part` 236, `Message` 272, `Artifact` 290, `TaskStatusUpdateEvent` 304, `TaskArtifactUpdateEvent` 321, `SendMessageRequest` 658, `CancelTaskRequest` 723) are the SAME `google.protobuf.Struct metadata` field, so one locator serves all eight; the case-sensitivity rule; the two remaining permitted carrier types; the unregistered-type refusal on `place`; and the kit's document-malformed and absent-container conventions. WHAT THIS AREA DOES NOT COVER, deliberately: the Agent Card at /.well-known/agent-card.json declares LCP requirements under `capabilities.extensions[]` as an `AgentExtension` (`uri`, `description`, `required`, `params` — four fields; LCP §C.8 lists three). That is a DIFFERENT DOCUMENT carrying REQUIREMENTS, not a reference to a terms document, so it is not a readAlso alias of this manifest at any carrier class — it belongs to @integraledger/lcp-discovery. Declaration there is also not activation: A2A extensions 'default to being inactive', a client activates by naming URIs in the `A2A-Extensions` request header, and the agent's response SHOULD echo the activated set. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit `detail`; success arms pin the WHOLE Outcome.",
+  "manifest": {
+    "protocol": "a2a",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "reference-object",
+    "container": { "kind": "object-path" },
+    "field": "metadata.legalContext",
+    "readAlso": [{ "path": "metadata.legal_context" }],
+    "carrierTypes": ["sha256", "url", "ipfs", "ar"],
+    "specRef": "A2A Task.metadata, a free-form google.protobuf.Struct with no reserved keys (specification/a2a.proto at a2aproject/A2A@0ef1b02 — main 2026-07-23, after the v1.0.1 release; gate discharged 2026-07-30: see README)"
+  },
+  "cases": [
+    {
+      "name": "place puts the §8.1 reference object at metadata.legalContext",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "id": "task_1", "metadata": { "traceId": "t-9" } }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "task_1",
+          "metadata": {
+            "traceId": "t-9",
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place creates the metadata map when absent — the Struct is optional on every A2A message",
+      "$comment": "`google.protobuf.Struct metadata = 6` carries no REQUIRED field_behavior, so a conformant Task may omit it entirely. Creating it is the extension point working, not a repair.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": { "type": "url", "value": "https://seller.example/terms.md" },
+        "doc": { "id": "task_2" }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "task_2",
+          "metadata": {
+            "legalContext": {
+              "type": "url",
+              "value": "https://seller.example/terms.md"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "the same locator serves a Message — every A2A metadata carrier is the same Struct",
+      "$comment": "EIGHT messages declare a `google.protobuf.Struct metadata` field, and they are all the same free-form map: Task (proto 183), Part (236), Message (272), Artifact (290), TaskStatusUpdateEvent (304), TaskArtifactUpdateEvent (321), SendMessageRequest (658) and CancelTaskRequest (723). Task.id is server-generated, so a CLIENT cannot write Task.metadata at all — it writes the Message it sends, the agent writes the Task, and the streaming path writes the two update events. One locator therefore covers every direction, which is why the manifest names a path and not a message type.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "messageId": "msg_1",
+          "role": "ROLE_USER",
+          "parts": [{ "text": "ship it" }]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "messageId": "msg_1",
+          "role": "ROLE_USER",
+          "parts": [{ "text": "ship it" }],
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place is pure — the input document is not mutated",
+      "input": {
+        "protocol": "a2a",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "metadata": { "traceId": "t-9" } }
+      },
+      "expected": true
+    },
+    {
+      "name": "place REFUSES a null document — minting the Task is not the extension point working",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a non-object document",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": "task_1"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/document-malformed"
+      }
+    },
+    {
+      "name": "place accepts an ipfs reference — A2A imposes no length budget on a metadata value",
+      "$comment": "Struct values are `google.protobuf.Value`, i.e. any JSON value, and docs/specification.md §3.2.5 states only that a metadata value 'can be any valid value that can be represented in JSON'. So carrierTypes is the complete §8.2 registry rather than the two short forms ACP's practical budget allows.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": { "id": "task_3" }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "task_3",
+          "metadata": {
+            "legalContext": {
+              "type": "ipfs",
+              "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a permitted type whose VALUE is not valid for it",
+      "$comment": "The type is permitted and the value is not an atrHash. Rendering happens through the codec, never by interpolation, so a corrupt carrier refuses here rather than landing on the wire for a reader to reject later.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": { "id": "task_4" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/reference-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a carrier type outside the §8.2 registry — the one arm the whole registry leaves reachable",
+      "$comment": "carrierTypes is the complete §8.2 registry, so no REGISTERED type can be refused as not permitted; what is left is a type the registry does not define at all. TypeScript forbids that ref at every call site, which is exactly why the case belongs in the corpus and not in a unit test: the subject decodes `ref` out of JSON with no runtime narrowing, as any non-TypeScript subject must, and a2a/carrier-type-not-permitted is the answer a stranger's implementation owes at that door. Contrast the extract case for the SAME sha512 type, which refuses as reference-malformed: there the type arrives inside the document, where §8.2's ignore-unrecognized rule makes it undecodable before any permission check runs. Two codes for one type is the asymmetry between the members, not an inconsistency.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": { "type": "sha512", "value": "0xab" },
+        "doc": { "id": "task_7", "metadata": {} }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place writes the camelCase field ONLY — the snake_case alias is read, never written",
+      "$comment": "The alias carries no `write` flag, so a document already carrying the snake_case spelling keeps it untouched and gains the canonical one. Writing both would put two spellings of the same fact on the wire and leave a reader to decide which is current.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "id": "task_5",
+          "metadata": {
+            "legal_context": {
+              "type": "url",
+              "value": "https://stale.example/terms.md"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "id": "task_5",
+          "metadata": {
+            "legal_context": {
+              "type": "url",
+              "value": "https://stale.example/terms.md"
+            },
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "extract reads the canonical camelCase spelling",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "extract round-trips an ar carrier — the fourth permitted type",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "ar",
+              "value": "_DAuMpd7NHB84hlqVOwcl9z7Onc8v-k9sx1oBmFPWFc"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "ar",
+          "value": "_DAuMpd7NHB84hlqVOwcl9z7Onc8v-k9sx1oBmFPWFc"
+        }
+      }
+    },
+    {
+      "name": "extract also reads the DECLARED snake_case alias",
+      "$comment": "A2A's JSON wire is camelCase, but proto field names are snake_case and an implementer generating from the .proto by hand may emit that spelling. It is a real shape in the wild, so it is DECLARED and read — never inferred.",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legal_context": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        }
+      }
+    },
+    {
+      "name": "the canonical spelling wins when a document carries both",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": {
+              "type": "url",
+              "value": "https://canonical.example/t.md"
+            },
+            "legal_context": {
+              "type": "url",
+              "value": "https://alias.example/t.md"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": { "type": "url", "value": "https://canonical.example/t.md" }
+      }
+    },
+    {
+      "name": "an UNDECLARED spelling is not accepted — tolerance is declared, never inferred",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalCtx": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/reference-absent"
+      }
+    },
+    {
+      "name": "a differently-CASED spelling is not accepted either — Struct keys are case-sensitive",
+      "$comment": "The reason the container is object-path and not header-map. Task.metadata is a google.protobuf.Struct — a JSON object, case-sensitive keys — whereas the gRPC/HTTP transport metadata that carries an A2A call folds key case per RFC 9110. Folding here would accept a key A2A itself treats as a different key.",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "LegalContext": {
+              "type": "sha256",
+              "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/reference-absent"
+      }
+    },
+    {
+      "name": "an object whose carrier type is outside the §8.2 registry refuses as unparseable",
+      "$comment": "CORRECTED from the draft this case was first cut with, which expected a2a/carrier-type-not-permitted. An unregistered type is never decoded — LCP §8.2 says ignore unrecognized types, so the codec returns undefined and the refusal is reference-malformed. Same code, same reason, as placement-acp's own unknown-type case. carrier-type-not-permitted is unreachable on THIS member — carrierTypes is the complete registry, because the host imposes no constraint to mirror — but not on `place`, where the same unregistered type arrives as the caller's own ref and is refused as not permitted. The pair of cases is the asymmetry.",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": {
+          "metadata": {
+            "legalContext": { "type": "sha512", "value": "0xab" }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/reference-malformed"
+      }
+    },
+    {
+      "name": "a metadata ARRAY is not traversed as a map",
+      "$comment": "A Struct is a map. An array where the manifest declares a map is a malformed document, not a container to index into — and on the READ side the kit's ratified convention is that an unreadable container yields no reference, so this is absent rather than document-malformed (which is reserved for a non-object DOCUMENT).",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": { "metadata": [{ "legalContext": {} }] }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/reference-absent"
+      }
+    },
+    {
+      "name": "a Task with no metadata at all reads as ABSENT, not as an error",
+      "$comment": "metadata is optional on every A2A message, so a Task without it is fully conformant. Reporting that as malformed would call the host protocol's own baseline document broken.",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": { "id": "task_6", "contextId": "ctx_1" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/reference-absent"
+      }
+    },
+    {
+      "name": "extract REFUSES a non-object document",
+      "input": {
+        "protocol": "a2a",
+        "op": "extract",
+        "doc": "task_1"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/document-malformed"
+      }
+    }
+  ]
+}

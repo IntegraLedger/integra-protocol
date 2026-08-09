@@ -1,0 +1,66 @@
+{
+  "name": "@integraledger/lcp-binding-evm-x402",
+  "version": "0.9.0",
+  "description": "Welds an ATR hash into an x402 instant settlement on any EVM chain.",
+  "keywords": [
+    "lcp",
+    "legal-context-protocol",
+    "legal-terms",
+    "agentic-commerce",
+    "settlement",
+    "atr-hash",
+    "evm",
+    "x402",
+    "usdc",
+    "eip-3009"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IntegraLedger/integra-protocol.git",
+    "directory": "packages/binding-evm-x402"
+  },
+  "bugs": {
+    "url": "https://github.com/IntegraLedger/integra-protocol/issues"
+  },
+  "homepage": "https://github.com/IntegraLedger/integra-protocol/tree/main/packages/binding-evm-x402#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "node ../../scripts/sync-license.mjs"
+  },
+  "dependencies": {
+    "@integraledger/lcp-binding-core": "workspace:*",
+    "@integraledger/lcp-binding-evm-common": "workspace:*",
+    "@integraledger/lcp-kernel": "workspace:*",
+    "viem": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

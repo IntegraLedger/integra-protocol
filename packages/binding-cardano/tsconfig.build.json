@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "No types:[node] here (unlike binding-solana): this rail is pure-TS with no chain SDK, so no .d.ts references Node globals. The hand-rolled CBOR uses only TextEncoder/TextDecoder + Uint8Array (web-standard, in lib DOM/ES2023).",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+  "include": ["src"]
+}

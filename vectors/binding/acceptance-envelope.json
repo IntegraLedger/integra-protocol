@@ -1,0 +1,38 @@
+{
+  "$comment": "EIP-712 digests of the LCP acceptance envelope Acceptance{bytes32 atrHash,uint256 signedAt} under domain {name:'LCP Acceptance',version:'1',chainId} (NO verifyingContract) — the exact shape proven to verify on Base Sepolia via a stock Coinbase Smart Wallet (CDP Server Wallet v2). Authored from that shape; each digest cross-checked two independent ways (viem hashTypedData vs a hand-assembled 0x1901‖domainSeparator‖structHash), sharing only the keccak256 primitive. These pin binding-evm-common's buildAcceptanceTypedData byte-for-byte; the signature verification itself (EOA offline recover + smart-account ERC-1271/6492 on-chain) is proven in the package test against a live chain, not this fixture.",
+  "cases": [
+    {
+      "name": "base-sepolia-envelope",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "signedAt": "1763000000",
+        "chainId": 84532
+      },
+      "expected": {
+        "digest": "0x5292fd136b0976724c99c4bb4812fad8f078205d67e1810d0d503ec4fc337bb6"
+      }
+    },
+    {
+      "name": "base-mainnet-envelope",
+      "input": {
+        "atrHash": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signedAt": "1700000000",
+        "chainId": 8453
+      },
+      "expected": {
+        "digest": "0x774a39cd08085e36693060dee6610781b20c9581fca1f378ccfb98b0763aab69"
+      }
+    },
+    {
+      "name": "uppercase-atrhash-lowercased",
+      "input": {
+        "atrHash": "0xE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+        "signedAt": "0",
+        "chainId": 1
+      },
+      "expected": {
+        "digest": "0xec99ebd050b382d085a8b171a7b8700d7455e8964eb3d640ffed4cd69d4d5b48"
+      }
+    }
+  ]
+}

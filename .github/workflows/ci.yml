@@ -1,0 +1,37 @@
+name: ci
+on: [push]        # work lands directly on main; there is no PR surface to trigger on
+
+# Least privilege, declared rather than inherited: without this block a job gets the repository default,
+# which is org-configurable and historically read/write. This workflow only reads the tree.
+permissions:
+  contents: read
+
+concurrency:
+  # A superseded push has nothing left to prove — cancel its run instead of paying for it. Safe here
+  # precisely because nothing in `ci` is outward-facing; contrast release.yml, which must never cancel.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # `engines` promises `>=24` open-ended; a single-version CI never exercises that claim. The matrix
+      # runs the floor (24, mirrors .nvmrc — move both together) and the newest current line, so "works on
+      # every supported Node" is measured rather than asserted.
+      matrix:
+        node: ["24", "26"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10    # no version input — package.json's packageManager is the single source of truth
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: "${{ matrix.node }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify        # verify builds first (pnpm -r build): workspace packages consume each other via built dist/, so kernel must be built before conformance is typechecked/tested. Build also produces the dist/ + tarball publint/attw inspect below.
+      # publish-integrity (publint + attw) runs on the packages that GET PUBLISHED. The script derives that
+      # set from `private` in each manifest rather than a name pattern: a private package has no published
+      # type/export surface and fails both gates by design, and the old name-pattern filter silently
+      # stopped being correct the moment a SECOND private package existed. Packages are
+      # intentionally ESM-only (§12); the esm-only profile ignores the expected node10/CJS resolution failures.
+      - run: node scripts/publish-integrity.mjs

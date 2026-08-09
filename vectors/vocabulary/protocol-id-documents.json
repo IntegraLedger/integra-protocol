@@ -1,0 +1,27 @@
+{
+  "cases": [
+    { "name": "x402", "input": "x402", "expected": true },
+    { "name": "mpp", "input": "mpp", "expected": true },
+    { "name": "ap2", "input": "ap2", "expected": true },
+    { "name": "ack", "input": "ack", "expected": true },
+    { "name": "acp", "input": "acp", "expected": true },
+    { "name": "ucp", "input": "ucp", "expected": true },
+    { "name": "visa-tap", "input": "visa-tap", "expected": true },
+    { "name": "mastercard-vi", "input": "mastercard-vi", "expected": true },
+    { "name": "a2a", "input": "a2a", "expected": true },
+    { "name": "mcp", "input": "mcp", "expected": true },
+    { "name": "unknown protocol", "input": "banana", "expected": false },
+    {
+      "name": "escrow is a mechanism, not a protocol",
+      "input": "escrow",
+      "expected": false
+    },
+    {
+      "name": "scheme id is not a protocol id",
+      "input": "evm:x402",
+      "expected": false
+    },
+    { "name": "casing is exact", "input": "X402", "expected": false },
+    { "name": "bare boolean", "input": true, "expected": false }
+  ]
+}

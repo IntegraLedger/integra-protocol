@@ -1,0 +1,314 @@
+{
+  "cases": [
+    {
+      "name": "minimal-level-1",
+      "input": {
+        "terms": "https://example.com/terms/v3.md"
+      },
+      "expected": true
+    },
+    {
+      "name": "level-2-atrhash-spec-example",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": true
+    },
+    {
+      "name": "level-2-atrhash-real-digest",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "termsFormat": "markdown",
+        "atrHash": "0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+      },
+      "expected": true
+    },
+    {
+      "name": "atrhash-uppercase-hex-is-conformant",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+      },
+      "expected": true
+    },
+    {
+      "name": "atrhash-mixed-case-hex-is-conformant",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7F83b1657ff1FC53b92dc18148a1d65dFC2d4b1fa3d677284ADDd200126d9069"
+      },
+      "expected": true
+    },
+    {
+      "name": "level-3-acceptance-required",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "acceptanceRequired": true
+      },
+      "expected": true
+    },
+    {
+      "name": "acceptance-required-false-explicit",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "acceptanceRequired": false
+      },
+      "expected": true
+    },
+    {
+      "name": "full-level-4",
+      "input": {
+        "terms": "https://example.com/terms/v3.json",
+        "termsFormat": "json",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "acceptanceRequired": true,
+        "disputeResolution": {
+          "method": "Commercial Arbitration Rules",
+          "jurisdiction": "New York, USA",
+          "contact": "disputes@example.com",
+          "clauseId": "sha256:0xbfa4965d262fd5b1f257950b6b0600f37c2b31e85644f9a777bfb3638cf4c893",
+          "source": "https://example.org/clauses/commercial-arbitration",
+          "catalog": "https://example.org/.well-known/dispute-services.json"
+        },
+        "returns": "https://example.com/api/returns",
+        "contact": {
+          "legal": "legal@example.com",
+          "technical": "api-support@example.com"
+        },
+        "api": "https://api.example.com/legal-context/v1"
+      },
+      "expected": true
+    },
+    {
+      "name": "dispute-resolution-partial",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {
+          "method": "Expedited Commercial Arbitration Rules",
+          "jurisdiction": "California, USA"
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "dispute-resolution-empty-object",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {}
+      },
+      "expected": true
+    },
+    {
+      "name": "unrecognized-top-level-field-ignored",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "x-vendor-extension": {
+          "anything": [1, 2, 3]
+        },
+        "futureFieldNotYetStandardized": "tolerated"
+      },
+      "expected": true
+    },
+    {
+      "name": "unrecognized-nested-field-ignored",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {
+          "method": "Commercial Arbitration Rules",
+          "providerSpecificParam": "ignored"
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "application-specific-terms-format",
+      "input": {
+        "terms": "https://example.com/terms/v3.cbor",
+        "termsFormat": "application/cbor"
+      },
+      "expected": true
+    },
+    {
+      "name": "missing-terms",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": false
+    },
+    {
+      "name": "terms-not-https",
+      "input": {
+        "terms": "http://example.com/terms/v3.md"
+      },
+      "expected": false
+    },
+    {
+      "name": "terms-relative-path",
+      "input": {
+        "terms": "/terms/v3.md"
+      },
+      "expected": false
+    },
+    {
+      "name": "terms-wrong-type",
+      "input": {
+        "terms": 42
+      },
+      "expected": false
+    },
+    {
+      "name": "terms-embedded-newline-second-url",
+      "input": {
+        "terms": "https://good.example.com/terms.md\nhttps://evil.example.com/terms.md"
+      },
+      "expected": false
+    },
+    {
+      "name": "terms-trailing-space",
+      "input": {
+        "terms": "https://example.com/terms/v3.md "
+      },
+      "expected": false
+    },
+    {
+      "name": "terms-scheme-only-with-space",
+      "input": {
+        "terms": "https:// "
+      },
+      "expected": false
+    },
+    {
+      "name": "atrhash-trailing-newline",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\n"
+      },
+      "expected": false
+    },
+    {
+      "name": "atrhash-trailing-whitespace",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069 "
+      },
+      "expected": false
+    },
+    {
+      "name": "atrhash-missing-0x-prefix",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": false
+    },
+    {
+      "name": "atrhash-too-short",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0x7f83b165"
+      },
+      "expected": false
+    },
+    {
+      "name": "atrhash-contenthash-legacy-field-not-honored",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "atrHash": "0xnothex",
+        "contentHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+      },
+      "expected": false
+    },
+    {
+      "name": "acceptance-required-wrong-type",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "acceptanceRequired": "true"
+      },
+      "expected": false
+    },
+    {
+      "name": "dispute-clauseid-wrong-format",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {
+          "clauseId": "0xbfa4965d262fd5b1f257950b6b0600f37c2b31e85644f9a777bfb3638cf4c893"
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "dispute-resolution-wrong-type",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": "Commercial Arbitration Rules"
+      },
+      "expected": false
+    },
+    {
+      "name": "contact-wrong-type",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "contact": "legal@example.com"
+      },
+      "expected": false
+    },
+    {
+      "name": "document-not-object-array",
+      "input": ["https://example.com/terms/v3.md"],
+      "expected": false
+    },
+    {
+      "name": "document-not-object-null",
+      "input": null,
+      "expected": false
+    },
+    {
+      "name": "document-not-object-string",
+      "input": "https://example.com/terms/v3.md",
+      "expected": false
+    },
+    {
+      "name": "dispute-resolution-blank-method — a stated-but-empty election is not an election",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {
+          "method": ""
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "dispute-resolution-whitespace-jurisdiction — whitespace is blank",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {
+          "jurisdiction": "   "
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "contact-blank-legal — the same rule on the contact block",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "contact": {
+          "legal": ""
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "dispute-resolution-stated-method — a real election still validates",
+      "input": {
+        "terms": "https://example.com/terms/v3.md",
+        "disputeResolution": {
+          "method": "arbitration"
+        }
+      },
+      "expected": true
+    }
+  ]
+}

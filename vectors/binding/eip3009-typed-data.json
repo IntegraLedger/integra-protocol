@@ -1,0 +1,108 @@
+{
+  "cases": [
+    {
+      "name": "base-usdc-spec-example-hash",
+      "input": {
+        "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x2222222222222222222222222222222222222222",
+        "value": "1000000",
+        "validAfter": "0",
+        "validBefore": "4102444800",
+        "chainId": 8453,
+        "tokenName": "USD Coin",
+        "tokenVersion": "2",
+        "verifyingContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+      },
+      "expected": {
+        "authorization": {
+          "from": "0x1111111111111111111111111111111111111111",
+          "to": "0x2222222222222222222222222222222222222222",
+          "value": "1000000",
+          "validAfter": "0",
+          "validBefore": "4102444800",
+          "nonce": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "digest": "0x915d88e15f85a5edaa8ddd9cfa476aa115ddda774175685f0347fa5f59f483af"
+      }
+    },
+    {
+      "name": "base-sepolia-usdc-uppercase-hash-lowercased",
+      "input": {
+        "atrHash": "0xE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+        "from": "0x3333333333333333333333333333333333333333",
+        "to": "0x4444444444444444444444444444444444444444",
+        "value": "250000",
+        "validAfter": "0",
+        "validBefore": "4102444800",
+        "chainId": 84532,
+        "tokenName": "USDC",
+        "tokenVersion": "2",
+        "verifyingContract": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+      },
+      "expected": {
+        "authorization": {
+          "from": "0x3333333333333333333333333333333333333333",
+          "to": "0x4444444444444444444444444444444444444444",
+          "value": "250000",
+          "validAfter": "0",
+          "validBefore": "4102444800",
+          "nonce": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "digest": "0x9a761d09c2f367f3486cebe5b24fa856130dde51bf66d0241f033590a8d9fa16"
+      }
+    },
+    {
+      "name": "avalanche-usdc-shared-message-usd-coin-name",
+      "input": {
+        "atrHash": "0x03e07ab3d8d98adf1d01c7fbb965a199d6d3df2634c846dc9a8398810885b62c",
+        "from": "0x5555555555555555555555555555555555555555",
+        "to": "0x6666666666666666666666666666666666666666",
+        "value": "1500000",
+        "validAfter": "0",
+        "validBefore": "4102444800",
+        "chainId": 43114,
+        "tokenName": "USD Coin",
+        "tokenVersion": "2",
+        "verifyingContract": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"
+      },
+      "expected": {
+        "authorization": {
+          "from": "0x5555555555555555555555555555555555555555",
+          "to": "0x6666666666666666666666666666666666666666",
+          "value": "1500000",
+          "validAfter": "0",
+          "validBefore": "4102444800",
+          "nonce": "0x03e07ab3d8d98adf1d01c7fbb965a199d6d3df2634c846dc9a8398810885b62c"
+        },
+        "digest": "0x5a6e645a1f54bd5cacddccb1fcb3cf109faa7c6fcb9fe684c9b2cf7aa737bc3e"
+      }
+    },
+    {
+      "name": "monad-usdc-shared-message-usdc-name",
+      "input": {
+        "atrHash": "0x03e07ab3d8d98adf1d01c7fbb965a199d6d3df2634c846dc9a8398810885b62c",
+        "from": "0x5555555555555555555555555555555555555555",
+        "to": "0x6666666666666666666666666666666666666666",
+        "value": "1500000",
+        "validAfter": "0",
+        "validBefore": "4102444800",
+        "chainId": 143,
+        "tokenName": "USDC",
+        "tokenVersion": "2",
+        "verifyingContract": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
+      },
+      "expected": {
+        "authorization": {
+          "from": "0x5555555555555555555555555555555555555555",
+          "to": "0x6666666666666666666666666666666666666666",
+          "value": "1500000",
+          "validAfter": "0",
+          "validBefore": "4102444800",
+          "nonce": "0x03e07ab3d8d98adf1d01c7fbb965a199d6d3df2634c846dc9a8398810885b62c"
+        },
+        "digest": "0x30cdbdf5ab91c357edde85967392d61248843ea2b0fc1042281f881e538fae43"
+      }
+    }
+  ]
+}

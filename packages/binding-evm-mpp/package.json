@@ -1,0 +1,64 @@
+{
+  "name": "@integraledger/lcp-binding-evm-mpp",
+  "version": "0.9.0",
+  "description": "Welds an LCP record into an MPP settlement on EVM by Id-Reuse (LCP \u00a78.3.5).",
+  "keywords": [
+    "lcp",
+    "legal-context-protocol",
+    "legal-terms",
+    "agentic-commerce",
+    "settlement",
+    "atr-hash",
+    "evm",
+    "mpp"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IntegraLedger/integra-protocol.git",
+    "directory": "packages/binding-evm-mpp"
+  },
+  "bugs": {
+    "url": "https://github.com/IntegraLedger/integra-protocol/issues"
+  },
+  "homepage": "https://github.com/IntegraLedger/integra-protocol/tree/main/packages/binding-evm-mpp#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "node ../../scripts/sync-license.mjs"
+  },
+  "dependencies": {
+    "@integraledger/lcp-binding-core": "workspace:*",
+    "@integraledger/lcp-binding-evm-common": "workspace:*",
+    "@integraledger/lcp-kernel": "workspace:*",
+    "viem": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

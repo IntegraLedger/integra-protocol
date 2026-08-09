@@ -1,0 +1,45 @@
+-- | The LCP anchor overlay contract.
+--
+-- Carries an ATR hash alongside a Canton settlement that has no room for one. The atrHash is stored as
+-- 64-character LOWERCASE HEX WITHOUT the `0x` prefix — the form `atrHashToLedgerText` produces and the
+-- form a participant `/v1/query` filters on. The TypeScript codec normalizes to and from LCP's canonical
+-- `0x`-prefixed spelling at the package boundary, so the on-ledger value has exactly one shape.
+--
+-- STAKEHOLDERS ARE THE TWO TRANSACTING PARTIES AND NOBODY ELSE. `buyer` is the signatory (the party whose
+-- authority creates the contract) and `seller` is an observer. Daml contract visibility is limited to
+-- stakeholders, which is precisely why the binding manifest declares `zeroPartyRecoverable: false`: a
+-- neutral verifier holding only a settlement reference sees nothing here until one of them grants access.
+-- Adding a third observer would widen that, and would be a change to the binding's declared recovery
+-- properties rather than a detail — do not add one without moving the manifest with it.
+--
+-- The template is deliberately minimal. It is an ANCHOR, not an agreement: it asserts that these two
+-- parties associated this record with this transaction, and nothing about the terms themselves, which live
+-- in the ATR the hash commits to. Anything more would put contract logic where the terms document belongs.
+module Main where
+
+template LcpAnchor
+  with
+    buyer : Party
+      -- ^ The signatory. Creating the anchor is the buyer's act.
+    seller : Party
+      -- ^ An observer, so the counterparty can see and query the anchor it is a party to.
+    atrHash : Text
+      -- ^ 64-char lowercase hex, no `0x` prefix. Validated off-ledger by `atrHashToLedgerText`.
+    paymentRef : Text
+      -- ^ An opaque reference to the settlement this anchors. Empty when the deployment has none.
+    createdAt : Text
+      -- ^ ISO-8601 UTC, stamped by the creating client. Evidence of when, never used as a gate.
+  where
+    signatory buyer
+    observer seller
+
+    -- An anchor asserting an empty hash would be indistinguishable from an anchor asserting nothing, and
+    -- a query filtered on `atrHash` would match it for every caller who passed an empty string.
+    ensure atrHash /= ""
+
+    -- Withdrawal is the buyer's alone, because the buyer is the signatory: archiving is undoing their own
+    -- assertion. The seller keeps whatever it observed — Canton has no reversal, and an archived contract
+    -- was still recorded in the transaction that created it.
+    choice Withdraw : ()
+      controller buyer
+      do pure ()

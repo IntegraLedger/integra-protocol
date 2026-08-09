@@ -1,0 +1,714 @@
+{
+  "$comment": "ACK (Agent Commerce Kit) reference placement, cut against the LIVE reference implementation — agentcommercekit/ack @ main, pushed 2026-07-29, packages read 2026-07-30: packages/ack-pay/src/create-payment-receipt.ts, packages/ack-pay/src/schemas/valibot.ts, packages/vc/src/create-credential.ts, packages/did/src/did-resolvers/get-did-resolver.ts, and docs/ack-pay/receipt-verification.mdx. ACK publishes no specification release train, no working group and no extension registry, so 'what ACK does' IS that code and the docs beside it — §7's gate is discharged against the implementation, not against a version string. THE SOCKET: createPaymentReceipt builds `const attestation: Record<string, unknown> = { paymentRequestToken, paymentOptionId }` and then `if (metadata) { attestation.metadata = metadata }`, and createCredential spreads the result — verbatim `credentialSubject: { id: subject, ...attestation },` — so the map is at credentialSubject.metadata. (Those are the host's own lines, quoted; an earlier revision of this comment compressed the two-statement build into one spread expression, which is the same semantics but is NOT what the file says, and a gate record that reads as a quotation has to quote.) Its schema is `metadata: v.optional(v.record(v.string(), v.unknown()))` — optional and wholly unconstrained — and the docs state it verbatim: 'credentialSubject.metadata is optional and should be treated as an extension point for verifier-specific payment evidence', with 'Metadata fields are non-normative'. ACK ASKS FOR THIS BY NAME, which makes it the strongest host-governs posture in the ten-protocol set — not merely permitted, invited. Verbatim from the same section: 'put references or hashes to external policy, mandate, execution, and settlement records in metadata when a deployment needs a richer audit trail.' An atrHash is a hash to an external record, and the docs' own example map already carries policyRef, policySnapshotHash, mandateRef, executionRef, executionReceiptHash, settlementNetwork and settlementReference. No coordination, no schema change, nothing asked of Catena — the host governs, and this host asked for it. PLAN DRIFT, recorded rather than encoded: the completion plan calls ACK 'the only protocol in the set with no LCP Appendix C section'. That was true at v1.36 and is FALSE at v1.37, which added §C.10 — and §C.10 agrees with the code, including the camelCase `legalContext` spelling this file makes canonical. PATTERN = http-advisory (§8.3.7), NOT sidecar-attestation, even though §C.10 correctly observes the reference is covered by the issuer's proof: §8.3.3 prices 'one extra transaction per payment (gas cost varies by rail)' and locates recovery in an attestation indexer keyed by the settlement transaction hash, and an ACK receipt is an off-chain Verifiable Credential that costs no transaction and is indexed on no ledger. Proof coverage strengthens an ADVISORY carrier — it is signed rather than merely transported — without converting it into a settlement binding, which is the only thing §8.3's six patterns grade. THE PRECONDITION THAT MAKES PROOF COVERAGE TRUE, and it is ENFORCED, not assumed: the reference is covered only if it is in the payload the issuer signs, so `place` REFUSES a document that already carries a `proof` (code ack/receipt-already-issued). §C.10 states the coverage and is silent on the ordering; the host is not. createCredential's own docblock says it returns 'a new, unsigned Verifiable Credential', signCredential returns a JwtString (did-jwt-vc enveloping — ACK's verifyProof supports JwtProof2020 ONLY and throws UnsupportedProofTypeError on anything else), and docs/ack-pay/receipt-verification.mdx's verification step 1 is 'Verify the cryptographic signature (`proof`) on the VC ... This ensures the receipt hasn't been tampered with since issuance.' Writing into an issued receipt IS tampering since issuance, and it fails BOTH of ACK's proof shapes: on the docs' embedded-proof receipt the signature stops verifying, and on the object parseJwtCredential returns the field is outside the JWT and is silently dropped — parse-jwt-credential.ts warns in as many words that 'any outer object wrapping the proof can carry tampered fields that the proof does not attest to' and that callers MUST treat the JWT-decoded value as authoritative. So the refusal asserts nothing of ACK: it declines to emit a document ACK's own procedure would reject or overwrite, which is the same fail-fast rule as refusing a corrupt carrier value. EXTRACT is deliberately NOT guarded — a proof-bearing receipt is exactly what a verifier holds, and reading the reference back out of the artifact ACK's verification chain returned is the whole point of a receipt-time placement. Not protocol-extension either: that is Tier B by definition (§8.3.6) and would misdescribe a placement that works today, and ACK has defined no atrHash-aware semantics in any verification procedure — the same determination made for ACP and UCP. RECEIPT-TIME, not proposal-time: the reference lands in the artifact that attests the payment happened, so an ACK record's terms reference is recoverable from the receipt alone. ACK-ID is a SEPARATE seam and is not this file: getDidResolver registers did:key, did:web, did:jwks and did:pkh, and ControllerCredential binds owner to agent — those are identity and delegation inputs and land in the identity workstream, reusing the existing identity path rather than minting a second one. termsUrlField is OMITTED: ACK's receipt models no terms-URL field, and declaring a locator the host has no room for is the defect S7 fixed for `field`. TWO LEVELS ABOVE THE FIELD — ACK is the first shipped placement whose path is credentialSubject → metadata → leaf, so it is the first real protocol to evidence BOTH halves of the kit's malformed-container rule: an unmergeable metadata (the field's DIRECT HOLDER) is replaced, an unmergeable credentialSubject (an INTERMEDIATE) is refused, because replacing it would discard the payer's identity. ACP could not evidence that distinction; its path has one segment above the field. ORACLE VALUES are derived here and independently reproducible, deliberately NOT copied from acp.json or ucp.json so a cross-file paste is visible: H = sha256('ack-placement-vector-terms') = 0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294 and H2 = sha256('ack-placement-vector-terms-alias') = 0x32da190248aec2ed130f649a99861d4eb6c21d118b880c7c36b4c3b896e6e93f (reproduce: printf 'ack-placement-vector-terms' | shasum -a 256, then 0x-prefix). Case documents are deliberate MINIMAL FRAGMENTS, not schema-valid credentials — ACK's W3CCredential type also requires @context, issuer, issuanceDate and a JWT-shaped paymentRequestToken — because a placement is structural and is NOT an ACK validator, and since `place` copies its input and adds only an allowed property it is schema-preserving on a receipt that was valid to begin with. A `proof` is NOT among those missing members and never could be: ACK's W3CCredential has no proof, Verifiable<W3CCredential> adds it, and the whole point of the ordering rule above is that `place`'s input is the credential BEFORE that member exists. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input, so the protocol id rides the input like the verify step name); refusal expecteds pin {refused, haltClass, code} and omit `detail` because the code is the cross-implementation contract and the prose is not; a successful place or extract pins the WHOLE Outcome, never the bare document, so `ok` is certified rather than inferred.",
+  "manifest": {
+    "protocol": "ack",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "reference-object",
+    "container": {
+      "kind": "object-path"
+    },
+    "field": "credentialSubject.metadata.legalContext",
+    "readAlso": [
+      {
+        "path": "credentialSubject.metadata.legal_context"
+      }
+    ],
+    "carrierTypes": ["sha256", "url"],
+    "specRef": "ACK-Pay PaymentReceiptCredential — credentialSubject.metadata, an optional unconstrained record (agentcommercekit/ack packages/ack-pay/src/{create-payment-receipt.ts,schemas/valibot.ts}; gate discharged 2026-07-30: see README)"
+  },
+  "cases": [
+    {
+      "name": "place puts the reference in receipt metadata beside ACK's own refs — we are a guest in this map",
+      "$comment": "The sibling-preservation guarantee at BOTH levels at once: credentialSubject keeps id/paymentRequestToken/paymentOptionId and metadata keeps every non-normative ref the ACK docs' own example carries. A hand-rolled two-level write that spread the wrong level would drop one of these sets silently.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "policyRef": "policy://merchant-spend-v3",
+              "policySnapshotHash": "sha256:8a0f",
+              "mandateRef": "ap2:mandate:checkout-123",
+              "executionRef": "urn:ack:execution:checkout-123",
+              "executionReceiptHash": "sha256:5b1d",
+              "settlementNetwork": "eip155:8453",
+              "settlementReference": "0xabc123"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "policyRef": "policy://merchant-spend-v3",
+              "policySnapshotHash": "sha256:8a0f",
+              "mandateRef": "ap2:mandate:checkout-123",
+              "executionRef": "urn:ack:execution:checkout-123",
+              "executionReceiptHash": "sha256:5b1d",
+              "settlementNetwork": "eip155:8453",
+              "settlementReference": "0xabc123",
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place creates the nested metadata map when absent, without disturbing credentialSubject",
+      "$comment": "`metadata` is OPTIONAL on the receipt claim (v.optional), so its absence is the ordinary case, not a defect. Creating it is the extension point working.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "credentialSubject": { "id": "did:web:buyer.example" }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "credentialSubject": {
+            "id": "did:web:buyer.example",
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place creates credentialSubject itself when absent — both levels, one write",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": { "type": ["VerifiableCredential"] }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": ["VerifiableCredential"],
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place is pure — the input receipt is not mutated",
+      "input": {
+        "protocol": "ack",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "credentialSubject": {
+            "metadata": { "policyRef": "policy://merchant-spend-v3" }
+          }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "place accepts a url carrier — the OTHER type this field permits",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/atr/checkout-123.md"
+        },
+        "doc": {}
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "url",
+                "value": "https://seller.example/atr/checkout-123.md"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place writes ONLY the canonical camelCase key — the snake_case alias is read, never written",
+      "$comment": "The alias carries no `write` flag: one declared field, ours. A document already carrying the snake_case spelling keeps it untouched and gains ours beside it — two spellings on the wire is the host's business, and `extract` answers with ours (see the both-spellings case below).",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legal_context": {
+                "type": "sha256",
+                "value": "0x32da190248aec2ed130f649a99861d4eb6c21d118b880c7c36b4c3b896e6e93f"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "credentialSubject": {
+            "metadata": {
+              "legal_context": {
+                "type": "sha256",
+                "value": "0x32da190248aec2ed130f649a99861d4eb6c21d118b880c7c36b4c3b896e6e93f"
+              },
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place onto a receipt whose metadata is not a map REPLACES it — the DIRECT HOLDER half of the rule",
+      "$comment": "Spreading a string would explode it into {0:'n',1:'o',…} and silently corrupt the credential. A placement declines to corrupt; it does not adjudicate the host's document. The payer's id survives because it sits one level up.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "credentialSubject": {
+            "id": "did:web:buyer.example",
+            "metadata": "not-a-map"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "credentialSubject": {
+            "id": "did:web:buyer.example",
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES an unmergeable credentialSubject — the INTERMEDIATE half of the rule",
+      "$comment": "ACK is the first shipped placement with two segments above the field, so this arm has never been evidenced by a real protocol before. Replacing an intermediate would discard everything beneath it — here, the payer's identity — which is a substantially larger act than dropping one unmergeable value where the field's own holder belongs. Nothing asks for it, so it refuses.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": { "credentialSubject": "did:web:buyer.example" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a null document — minting a receipt is not the extension point working",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a carrier type the receipt metadata may not hold",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "ipfs",
+          "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        },
+        "doc": {}
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a permitted type whose VALUE is not valid for it",
+      "$comment": "A short hex string is not an atrHash. Refusing here rather than writing it means a corrupt carrier never reaches the payload the issuer signs, where the proof would then cover it.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": { "type": "sha256", "value": "0xdeadbeef" },
+        "doc": {}
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/reference-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES an ISSUED receipt — the reference must be inside what the issuer signs",
+      "$comment": "The precondition §C.10's proof-coverage claim rests on, enforced rather than assumed. The document is the shape ACK's own parseJwtCredential returns: a Verifiable<W3CCredential> whose proof is {type: 'JwtProof2020', jwt}. Writing here fails ACK both ways. On the embedded-proof receipt docs/ack-pay/receipt-verification.mdx illustrates, verification step 1 — 'Verify the cryptographic signature (proof) on the VC ... This ensures the receipt hasn't been tampered with since issuance' — stops passing. On this JWT-proof object the reference sits OUTSIDE the signed payload, and parse-jwt-credential.ts warns that 'any outer object wrapping the proof can carry tampered fields that the proof does not attest to' while returning the JWT-decoded credential as authoritative — so the reference is silently dropped, which is worse than a loud break. Refusing asserts nothing of ACK: it declines to emit a document ACK's own procedure rejects or overwrites.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "@context": ["https://www.w3.org/2018/credentials/v1"],
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "issuer": { "id": "did:web:receipts.example" },
+          "issuanceDate": "2026-07-30T00:00:00.000Z",
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base"
+          },
+          "proof": {
+            "type": "JwtProof2020",
+            "jwt": "eyJhbGciOiJFUzI1NksifQ.e30.sig"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/receipt-already-issued"
+      }
+    },
+    {
+      "name": "place ACCEPTS that same receipt BEFORE it is issued — createCredential returns an UNSIGNED credential",
+      "$comment": "Byte-for-byte the case above with `proof` removed, which is what makes the refusal a statement about the proof and not about any of the other seven members. createCredential's own docblock says it returns 'a new, unsigned Verifiable Credential' and signCredential then returns a JwtString, so this — not the issued artifact — is the document ACK hands a caller to enrich.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "@context": ["https://www.w3.org/2018/credentials/v1"],
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "issuer": { "id": "did:web:receipts.example" },
+          "issuanceDate": "2026-07-30T00:00:00.000Z",
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "@context": ["https://www.w3.org/2018/credentials/v1"],
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "issuer": { "id": "did:web:receipts.example" },
+          "issuanceDate": "2026-07-30T00:00:00.000Z",
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place ACCEPTS a document whose proof is NULL — the host's own predicate, not ours",
+      "$comment": "ACK's isDecodedCredential (parse-jwt-credential.ts) tests `'proof' in value && value.proof != null`, so a null proof is not an issued credential BY ACK'S OWN RULE and this document is unsigned. Mirroring the host's predicate rather than inventing a presence-only one is the difference between honouring ACK's model and asserting a rule over it. The mirror diverges in exactly ONE direction and it is the permissive one: our walker is own-property where ACK's is `in`, so a prototype-borne proof reads as issued to ACK and places here. Acceptable rather than stricter \u2014 JSON.parse never sets a prototype, so no receipt off the wire takes that path, and the kit's write spreads own keys only, so the emitted document does not carry the inherited proof at all.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": { "proof": null, "credentialSubject": { "id": "did:web:x" } }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "proof": null,
+          "credentialSubject": {
+            "id": "did:web:x",
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "extract reads an ISSUED receipt — the ordering rule binds the WRITE half only",
+      "$comment": "The asymmetry is the point, and it is not a leniency. A proof-bearing credential is exactly what a verifier holds, and the object ACK's verification chain returns is decoded FROM the signed JWT payload — so its reference IS the proof-covered one, and refusing to read it would break the receipt-time story this placement exists for.",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "issuer": { "id": "did:web:receipts.example" },
+          "credentialSubject": {
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          },
+          "proof": {
+            "type": "JwtProof2020",
+            "jwt": "eyJhbGciOiJFUzI1NksifQ.e30.sig"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        }
+      }
+    },
+    {
+      "name": "extract reads it back",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        }
+      }
+    },
+    {
+      "name": "extract reads §C.10's own canonical example shape, siblings and all",
+      "$comment": "v1.37 §C.10 illustrates the reference beside paymentRequestToken and paymentOptionId. Reading the host's published example before trusting a plan's description of it is the rule v1.37 itself established the hard way — a parser that rejected the appendix's own example was the defect found an hour after v1.37 shipped.",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "credentialSubject": {
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        }
+      }
+    },
+    {
+      "name": "extract reads the declared snake_case alias",
+      "$comment": "ACK's own keys are camelCase throughout (paymentRequestToken, policyRef, settlementReference), so legalContext is the host's house style and is what we write. The snake_case spelling is declared because an implementer arriving from ACP — whose schema is snake_case throughout — holds a real reference in it, and a declared alias is auditable where a heuristic is not.",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legal_context": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        }
+      }
+    },
+    {
+      "name": "the canonical camelCase key WINS when a receipt carries both spellings",
+      "$comment": "Order is declared, not incidental. Both carriers are `integrity` — this is a spelling difference, never a guarantee difference — so the tie is broken by the canonical field, never by whichever key happened to be enumerated first.",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legal_context": {
+                "type": "sha256",
+                "value": "0x32da190248aec2ed130f649a99861d4eb6c21d118b880c7c36b4c3b896e6e93f"
+              },
+              "legalContext": {
+                "type": "sha256",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        }
+      }
+    },
+    {
+      "name": "extract round-trips a url carrier, scheme and query string intact",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "url",
+                "value": "https://seller.example/atr/checkout-123.md?v=1"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "url",
+          "value": "https://seller.example/atr/checkout-123.md?v=1"
+        }
+      }
+    },
+    {
+      "name": "extract refuses when credentialSubject has no metadata",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": { "credentialSubject": { "id": "did:web:x" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/reference-absent"
+      }
+    },
+    {
+      "name": "extract refuses when the credential carries no credentialSubject at all",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": { "type": ["VerifiableCredential", "PaymentReceiptCredential"] }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/reference-absent"
+      }
+    },
+    {
+      "name": "a metadata value that is not a map reads as ABSENT — the kit's read-side convention",
+      "$comment": "The write half REPLACES this same shape (see above) and the read half reports nothing. That asymmetry is the ratified convention, established by placement-acp: an unreadable container yields no reference on read, and document-malformed is reserved for a non-object DOCUMENT.",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": { "credentialSubject": { "metadata": "not-a-map" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/reference-absent"
+      }
+    },
+    {
+      "name": "extract REFUSES a null document",
+      "input": { "protocol": "ack", "op": "extract", "doc": null },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/document-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a non-object document — a receipt is a credential, not a string",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": "PaymentReceiptCredential"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/document-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES an ARRAY document — a credential is not a list of them",
+      "input": { "protocol": "ack", "op": "extract", "doc": [] },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/document-malformed"
+      }
+    },
+    {
+      "name": "a corrupt carrier value refuses — bare digits are not a sha256 carrier",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "sha256",
+                "value": "b055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/reference-malformed"
+      }
+    },
+    {
+      "name": "an unknown carrier type is ignored per LCP §8.2, so the read reports no parseable reference",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "sha512",
+                "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/reference-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a carrier type this field may not hold",
+      "$comment": "A well-formed ipfs reference someone else put in the map. It decodes, and then the manifest's own carrierTypes rule it out — a different refusal from a corrupt value, and the distinction is what tells an operator whether the writer or the manifest is wrong.",
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": {
+          "credentialSubject": {
+            "metadata": {
+              "legalContext": {
+                "type": "ipfs",
+                "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/carrier-type-not-permitted"
+      }
+    }
+  ]
+}

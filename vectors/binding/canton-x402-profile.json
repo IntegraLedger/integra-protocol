@@ -1,0 +1,23 @@
+{
+  "profile": "integra-canton-x402-memo-v1",
+  "rail": "canton:x402",
+  "pattern": "native-field",
+  "protocol": "x402",
+  "nativeField": "x402.memo",
+  "recovery": {
+    "onChain": true,
+    "zeroPartyRecoverable": false,
+    "forwardIndexable": false
+  },
+  "assetBinding": "carried",
+  "successGate": "structural",
+  "indexing": "participant-updates:transfer.meta.x402.memo",
+  "finality": {
+    "reversible": false,
+    "note": "a Canton transfer consumes the input holdings it names and Canton has no reversal, so an executed transfer's memo is permanent; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution"
+  },
+  "weldGrades": {
+    "x402-memo": "tx"
+  },
+  "lifecycleStates": ["proposed", "settled"]
+}

@@ -1,0 +1,76 @@
+{
+  "cases": [
+    {
+      "name": "empty",
+      "input": {
+        "encoding": "utf8",
+        "data": ""
+      },
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "abc",
+      "input": {
+        "encoding": "utf8",
+        "data": "abc"
+      },
+      "expected": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "hello",
+      "input": {
+        "encoding": "utf8",
+        "data": "hello"
+      },
+      "expected": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    },
+    {
+      "name": "hello-world",
+      "input": {
+        "encoding": "utf8",
+        "data": "hello world"
+      },
+      "expected": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+    },
+    {
+      "name": "markdown-terms",
+      "input": {
+        "encoding": "hex",
+        "data": "0x23205465726d73206f6620536572766963650a0a56657273696f6e20332e204279207472616e73616374696e6720796f7520616772656520746f207468657365207465726d732e0a"
+      },
+      "expected": "00c0cc74a529e001ec0659ade0a613c26654c7ae6ac2220baa70313b2d50cd69"
+    },
+    {
+      "name": "unicode-multibyte",
+      "input": {
+        "encoding": "hex",
+        "data": "0x636166c3a920e2809420e697a5e69cace8aa9e20e2809420f09f9880"
+      },
+      "expected": "4d7755744e943f0b54dec2726fcb7fbd8d8a8b8b04645b3bfb35650526817760"
+    },
+    {
+      "name": "three-bytes-010203",
+      "input": {
+        "encoding": "hex",
+        "data": "0x010203"
+      },
+      "expected": "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
+    },
+    {
+      "name": "thirty-two-zero-bytes",
+      "input": {
+        "encoding": "hex",
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925"
+    },
+    {
+      "name": "thirty-two-incrementing-bytes",
+      "input": {
+        "encoding": "hex",
+        "data": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "expected": "630dcd2966c4336691125448bbb25b4ff412a49c732db2c8abc1b8581bd710dd"
+    }
+  ]
+}

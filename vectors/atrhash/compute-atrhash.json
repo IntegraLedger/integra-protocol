@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "empty-terms",
+      "input": {
+        "encoding": "utf8",
+        "data": ""
+      },
+      "expected": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "hello-world",
+      "input": {
+        "encoding": "utf8",
+        "data": "hello world"
+      },
+      "expected": "0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+    },
+    {
+      "name": "markdown-terms",
+      "input": {
+        "encoding": "hex",
+        "data": "0x23205465726d73206f6620536572766963650a0a56657273696f6e20332e204279207472616e73616374696e6720796f7520616772656520746f207468657365207465726d732e0a"
+      },
+      "expected": "0x00c0cc74a529e001ec0659ade0a613c26654c7ae6ac2220baa70313b2d50cd69"
+    }
+  ]
+}

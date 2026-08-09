@@ -1,0 +1,26 @@
+node_modules/
+dist/
+# Every env variant, not just the bare name — a mainnet .env.production must never be committable.
+.env
+.env.*
+!.env.example
+# build artifact — the packaged tree copy (Task 9); the root vectors/ is the source of truth
+packages/conformance/vectors/
+
+# Stryker mutation testing: sandbox + generated reports
+**/.stryker-tmp/
+reports/
+
+# macOS Finder metadata — never part of a curated export tree.
+.DS_Store
+
+# Per-package LICENSE/NOTICE copies — written at prepack by scripts/sync-license.mjs from the root
+# originals, which are the only tracked ones. Committing these would recreate the drift the script exists
+# to prevent.
+packages/*/LICENSE
+packages/*/NOTICE
+
+# Daml build output. `daml build` writes .daml/dist/*.dar next to the source; the DAR is a build artifact
+# whose package id is its own hash, so it is produced by the deployment rather than shipped.
+packages/*/daml/.daml/
+.DS_Store

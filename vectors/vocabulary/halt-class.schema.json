@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/vocabulary/halt-class.schema.json",
+  "title": "FRC-3 halt class",
+  "$comment": "The canonical halt-class union. P3 consumers derive from this file; the refusal and ORC-4 schemas inline the same three values (local $defs) so each validates standalone under the inline-schema subject protocol.",
+  "enum": ["risk-block", "policy-rejection", "verification-failure"]
+}

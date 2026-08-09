@@ -1,0 +1,60 @@
+{
+  "name": "@integraledger/lcp-discovery",
+  "version": "0.9.0",
+  "description": "Both sides of the LCP bilateral handshake, including the /.well-known/legal-context.json document.",
+  "keywords": [
+    "lcp",
+    "legal-context-protocol",
+    "legal-terms",
+    "agentic-commerce",
+    "discovery",
+    "well-known"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IntegraLedger/integra-protocol.git",
+    "directory": "packages/discovery"
+  },
+  "bugs": {
+    "url": "https://github.com/IntegraLedger/integra-protocol/issues"
+  },
+  "homepage": "https://github.com/IntegraLedger/integra-protocol/tree/main/packages/discovery#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "node ../../scripts/sync-license.mjs"
+  },
+  "dependencies": {
+    "@integraledger/lcp-kernel": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

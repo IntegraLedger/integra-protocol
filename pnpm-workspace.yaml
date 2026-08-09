@@ -1,0 +1,74 @@
+packages:
+  - "packages/*"
+# @swc/core's build script is deliberately NOT run (decision: false): its native parser binding is the
+# prebuilt @swc/core-<platform> optional dependency (verified — parseSync works with the script ignored),
+# and dependency-cruiser's swc parser needs only that binding. Keeping arbitrary postinstall execution
+# off is the supply-chain posture; the ignoredBuiltDependencies list documents the deliberate skip.
+allowBuilds:
+  # bufferutil / utf-8-validate are OPTIONAL native accelerators of `ws` (a @solana/web3.js transitive dep);
+  # both have pure-JS fallbacks and binding-solana uses only HTTP RPC (no websocket subscriptions), so their
+  # native builds are deliberately skipped — same no-arbitrary-postinstall posture as @swc/core.
+  '@swc/core': false
+  bufferutil: false
+  utf-8-validate: false
+ignoredBuiltDependencies:
+  - "@swc/core"
+  - "bufferutil"
+  - "utf-8-validate"
+catalog:
+  zod: "4.4.3" # trust boundaries only — never the kernel
+  viem: "2.55.11" # EVM client / typed-data + 1271/6492 verify — the EVM bindings, and the escrow drift guard
+  multiformats: "14.0.5" # raw-CIDv1 content addressing (CID == atrHash) — evidence bundles
+  "@solana/web3.js": "1.98.4" # Solana SPL-Memo native-field binding — isolated to binding-solana
+  bs58: "6.0.0" # base58 decode for a memo instruction the RPC returns partially-decoded (binding-solana)
+  "@mysten/sui": "2.23.2" # Sui Pay402 payment_id native-field binding — isolated to binding-sui
+  "@stellar/stellar-sdk": "16.2.0" # Stellar CAP-67 muxed-address native-field binding — StrKey/MuxedAccount; isolated to binding-stellar
+  "@types/json-schema": "7.0.15" # canonical types for the `json-schema` module @stellar/stellar-sdk's contract/spec.d.ts imports (skipLibCheck:false workspace-wide) — dev-only, binding-stellar
+  "@aptos-labs/ts-sdk": "7.2.0" # Aptos lcp_payment Move-module overlay-contract binding — isolated to binding-aptos
+  ripple-binary-codec: "2.8.0" # XRPL memo hex codec — dev-only, the opt-in integration test signs with it (binding-xrpl)
+  ripple-keypairs: "3.0.0" # XRPL test-wallet keys — dev-only, same opt-in integration lane (binding-xrpl)
+  vitest: "4.1.10"
+  fast-check: "4.9.0"
+  "@cfworker/json-schema": "4.1.1" # 2020-12 validator for the conformance schema class (ESM, runtime-agnostic)
+  "@types/node": "24.13.3" # FLOOR-pinned to engines (>=24) — types never exceed the oldest supported runtime
+minimumReleaseAge: 1440 # supply-chain default: 24h quarantine on new releases
+
+# pnpm ≥ 11's exotic-subdependency blocking (§3's other supply-chain default) ships on by default — no override.
+
+# Transitive-CVE overrides. None is a direct dependency: each arrives under a third-party package pinning an
+# older range, so forcing the patched version is the fix available to us. Reviewed on every audit run —
+# delete an entry once the upstream's own range covers it.
+overrides:
+  # GHSA proxy-inheritance (high) + 9 moderates. Reaches consumers via the published binding-stellar.
+  axios: ">=1.18.1"
+  # Missing buffer bounds check in v3/v5/v6 when a buf is passed; @solana/web3.js pins ^8.
+  uuid: ">=11.1.1"
+  # qs.stringify DoS on null entries in comma-format arrays. Dev-only, reached via
+  # @stryker-mutator/core > typed-rest-client.
+  qs: ">=6.15.2"
+  # GHSA-rgw5-rvv9-x895 (high): unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation.
+  # Dev-only and NOT a consumer path — the sole route is @stryker-mutator/core > minimatch, so nothing
+  # published reaches it. Caught on 2026-08-03 by the audit stage of `pnpm verify`, mid-release; the
+  # advisory landed against the already-resolved 5.0.8 rather than arriving with any dependency change.
+  brace-expansion: ">=5.0.9"
+  # GHSA-fxqj-rqcc-2cmp (moderate, published 2026-08-03): the incomplete fix of GHSA-6g55-p6wh-862q — an
+  # attacker-controlled sourceMappingURL still reads arbitrary .map files when `from` is unset. Dev-only:
+  # the sole path is vite (under vitest), whose own range is `^8.5.16` and already admits the fix, and no
+  # published package reaches it. Added AHEAD of the audit gate — npm's advisory DB had not yet picked this
+  # up when it was added, so `pnpm audit` was still green on a version GitHub already flagged.
+  postcss: ">=8.5.23"
+  # nanoid <3.3.17 (high, published 2026-08-07): predictable output. Dev-only and NOT a consumer path —
+  # the sole route is @stryker-mutator/vitest-runner > vitest > vite > postcss, so nothing published
+  # reaches it. postcss@8.5.25 already declares `nanoid: ^3.3.16`, which PERMITS 3.3.17; nothing upstream
+  # forbids the patch, pnpm simply will not re-resolve a transitive dependency the lockfile already
+  # satisfies. Caught by the audit stage of `pnpm verify` against an unchanged tree. Bounded to the 3.x
+  # line ON PURPOSE: postcss declares `^3.3.16`, and an unbounded `>=3.3.17` resolves to 6.x, which is
+  # ESM-only with a changed API — that would satisfy the auditor by breaking the dependency. The floor is
+  # the PATCH, not the newest 3.x: 3.3.18 exists but is inside `minimumReleaseAge`'s 24h quarantine, and
+  # demanding it fails the install outright. It is taken automatically once it ages past the threshold.
+  nanoid: ">=3.3.17 <4"
+  # GHSA-7p8r-x3mc-p8w7 (high, published 2026-08-03): host confusion via a backslash authority introducer.
+  # Dev-only and NOT a consumer path — the sole route is @stryker-mutator/core > ajv, so nothing published
+  # reaches it. Caught by the audit stage of `pnpm verify` mid-session, against an unchanged tree.
+  fast-uri: ">=3.1.5"
+

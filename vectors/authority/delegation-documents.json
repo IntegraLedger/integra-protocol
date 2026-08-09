@@ -1,0 +1,110 @@
+{
+  "$comment": "Delegation links are the same VC 2.0 shape (grant.schema.json). The schema validates STRUCTURE; whether a link ATTENUATES its parent is authority.isWithin's job (attenuation.json), not the schema's — a structurally valid link can still be a forged widening.",
+  "cases": [
+    {
+      "name": "valid delegation link (narrower bounds, non-delegable leaf)",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential", "AtaDelegation"],
+        "issuer": "did:pkh:eip155:8453:0x00000000000000000000000000000000000000a1",
+        "validFrom": "2026-02-01T00:00:00Z",
+        "validUntil": "2026-06-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "did:pkh:eip155:8453:0x00000000000000000000000000000000000000b2",
+          "bounds": {
+            "jurisdictions": ["US"],
+            "caps": { "USD": "50000" },
+            "forbiddenClauseCategories": [
+              "indemnity-waiver",
+              "class-action-waiver"
+            ]
+          },
+          "delegable": false,
+          "maxDepth": 0
+        },
+        "credentialStatus": {
+          "type": "BitstringStatusListEntry",
+          "statusListCredential": "https://integraledger.com/status/1",
+          "statusListIndex": "12"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verificationMethod": "did:pkh:eip155:8453:0x...a1#key",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z4..."
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "delegation link missing proof is still structurally valid (proof optional; the chain walk reports it as a custody gap)",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential", "AtaDelegation"],
+        "issuer": "did:example:parent",
+        "credentialSubject": {
+          "id": "did:example:child",
+          "bounds": { "caps": { "USD": "1" } }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "delegation link with a malformed credentialStatus rejected",
+      "input": {
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential", "AtaDelegation"],
+        "issuer": "did:example:parent",
+        "credentialSubject": { "id": "did:example:child", "bounds": {} },
+        "credentialStatus": {
+          "type": "BitstringStatusListEntry",
+          "statusListIndex": "12"
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "P4 produced org→agent delegation link — narrower bounds, attenuates its parent (authority-producer-ref round-trip)",
+      "$comment": "The exact link authority-producer-ref's produceDelegationLink emits below the minimal grant: narrower caps (1000000 ≤ 5000000), same jurisdiction, same disputeMethods, forbiddenClauseCategories a SUPERSET of the parent's (adds a category — attenuates in the inverted direction), non-delegable leaf. Structurally valid here; that it ATTENUATES is authority.linkAttenuates's job (exercised in attenuation.json + the package tests), refused at issuance if it widens.",
+      "input": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2",
+          "https://w3id.org/security/data-integrity/v2"
+        ],
+        "type": ["VerifiableCredential", "AtaDelegation"],
+        "issuer": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        "validFrom": "2026-07-01T00:00:00Z",
+        "validUntil": "2027-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "did:pkh:eip155:84532:0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+          "bounds": {
+            "jurisdictions": ["US-DE"],
+            "caps": { "USDC": "1000000" },
+            "disputeMethods": ["arbitration"],
+            "forbiddenClauseCategories": [
+              "indemnity-waiver",
+              "class-action-waiver"
+            ]
+          },
+          "delegable": false,
+          "maxDepth": 0
+        },
+        "credentialStatus": {
+          "type": "BitstringStatusListEntry",
+          "statusPurpose": "revocation",
+          "statusListCredential": "https://integraledger.com/status/atr/1",
+          "statusListIndex": "512"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "created": "2026-07-01T00:00:00Z",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:pkh:eip155:84532:0x70997970c51812dc3a010c7d01b50e0d17dc79c8#key",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z2producedDelegationLinkPlaceholder"
+        }
+      },
+      "expected": true
+    }
+  ]
+}

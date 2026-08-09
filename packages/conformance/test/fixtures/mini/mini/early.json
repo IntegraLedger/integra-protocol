@@ -1,0 +1,6 @@
+{
+  "cases": [
+    { "name": "expects-an-output", "input": { "say": "hello" }, "expected": { "say": "hello" } },
+    { "name": "expects-a-refusal-code", "input": { "fail": "mini/expected-code" }, "error": "mini/expected-code" }
+  ]
+}

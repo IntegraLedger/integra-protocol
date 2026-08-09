@@ -1,0 +1,44 @@
+# gitleaks configuration — the publication secrets gate.
+#
+# The gate this serves is "clean, or stop and fix before anything is pushed", so a scan that reports
+# known-public constants as leaks does not make the tree safer; it trains the reader to wave findings
+# through, which is how a real one gets missed.
+#
+# Every entry below is allowlisted BY VALUE, never by file or by rule. A new secret appearing in any of
+# these same files still trips the gate — only these exact, publicly-documented constants are exempt.
+# Each states what it is and where anyone can verify it independently.
+
+title = "integra-protocol publication gate"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Publicly-documented test constants and on-chain addresses — not credentials."
+regexes = [
+  # Anvil/Hardhat deterministic account #1. Published in Foundry's own documentation and shared by every
+  # EVM project that uses the default mnemonic; it holds no mainnet value and signs nothing but fixtures.
+  # Used deliberately because RFC 6979 ECDSA makes its signatures stable, which is what pins the vectors.
+  '''0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d''',
+  # USDC on Base Sepolia — a public ERC-20 contract address, not a secret.
+  '''0x036CbD53842c5426634e7929541eC2318f3dCF7e''',
+  # Coinbase's `AuthCaptureEscrow` (same address on Base Mainnet and Base Sepolia) — a public contract.
+  '''0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff''',
+  # `did:key:` identifiers. This is a method whose identifier IS the public key, so a did:key can never
+  # be a secret whatever its entropy. Matched WITHOUT the `did:key:` prefix because gitleaks tests these
+  # regexes against the extracted secret rather than the whole line, and the extractor drops the method.
+  # `z6Mk` is the base58btc multibase marker plus the Ed25519 multicodec prefix, so this stays narrow to
+  # Ed25519 public keys rather than exempting base58 strings generally.
+  '''z6Mk[1-9A-HJ-NP-Za-km-z]{40,}''',
+  # The ACK fixtures' `paymentRequestToken`. It is a JWT only in shape: the header decodes to
+  # {"alg":"ES256K"}, the payload to {} — the empty object — and the signature segment is the literal
+  # three characters `sig`. There is no claim set to leak and no signature to verify, which anyone can
+  # confirm by base64url-decoding the two segments. Allowlisted because the publication gate is
+  # "clean, or stop": eight guaranteed hits on a known-empty placeholder is exactly the noise this file's
+  # header warns trains a reader to wave findings through.
+  '''eyJhbGciOiJFUzI1NksifQ\.e30\.sig''',
+  # Repeated-nibble placeholder values in fixtures (0x1111…, 0x2222…, … 0xffff…), as addresses and as
+  # bytes32. Spelled as an alternation because gitleaks uses Go's RE2, which has no backreferences.
+  # Nothing with 20+ identical hex characters in a row is a key anyone generated.
+  '''0x(?:0{20,}|1{20,}|2{20,}|3{20,}|4{20,}|5{20,}|6{20,}|7{20,}|8{20,}|9{20,}|[aA]{20,}|[bB]{20,}|[cC]{20,}|[dD]{20,}|[eE]{20,}|[fF]{20,})''',
+]

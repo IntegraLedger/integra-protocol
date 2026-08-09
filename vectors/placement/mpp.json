@@ -1,0 +1,378 @@
+{
+  "$comment": "MPP (Machine Payments Protocol) reference placement, cut against the LIVE specification family at paymentauth.org, §7 gate discharged 2026-07-30. THE DOCUMENT IS THE `request` BODY — the base64url(JCS(JSON)) payload carried by the `request` auth-param of a `WWW-Authenticate: Payment` challenge, and slot 3 of the challenge-binding canonicalization. `methodDetails` is an OPTIONAL member of that body (draft-payment-intent-charge-00 §5.1.2, Table 3), so `methodDetails.atrHash` is inside the bound input byte-for-byte. THREE GATE FINDINGS CORRECT THE DRAFT AND LCP v1.37 §C.1. (1) VERSION: the core scheme is now `draft-httpauth-payment-00` (29 July 2026, expires 30 January 2027), which re-issues `draft-ryan-httpauth-payment-01` (18 March 2026) without the personal-submission prefix and so restarts at -00. v1.37 was checked 2026-07-28, one day before it landed. Bodies diff to four additions — §7.4 `Accept-Payment` + its IANA/ABNF/example text, §11.2.2 challenge-binding secret management, a hardened non-empty `id` requirement, and a no-derivative-works notice. THE SEVEN-SLOT CANONICALIZATION IS UNCHANGED: slots 0-6 = realm, method, intent, request, expires, digest, opaque; joined with `|`; absent optionals are empty segments; HMAC-SHA256 under a server secret; base64url-nopad (§5.1.2.1.1). (2) STRENGTH: binding the challenge id to the challenge parameters is a server MUST (§5.1.1), but the MECHANISM is implementation-defined — the seven-slot HMAC is the RECOMMENDED realization and a stateful database lookup is equally conformant (§5.1.2.1) — and the key is a server secret that §11.2.2 says MUST NOT be disclosed to clients. So the buyer cannot verify the MAC. What the carrier gets is tamper-evidence: a seller cannot honour a credential whose `request` differs from the one it bound, and a client cannot alter the advertised values and still be accepted. That is stronger than a bare advisory field and it is NOT a buyer-verifiable seller commitment. `pattern` stays `http-advisory` and `tier` stays `A`. (3) NAMESPACE: `methodDetails` belongs to the METHOD — 'Payment methods MAY define additional fields in the methodDetails object ... MUST be documented in the payment method specification' (charge intent §5.3). Every published charge method was read on 2026-07-30 (card, evm, tempo, stripe, solana, stellar, lightning, hedera): each defines its own field table, NONE closes the object, NONE rejects unknown keys, and none documents a legal-context field. So `atrHash` is tolerated by all eight today — Tier A holds — while sitting in a namespace whose authority is each method spec. The per-method record is in the README. CONVENTIONS: case inputs nest under `input` (the runner passes only `c.input`); refusal expecteds pin {refused, haltClass, code} and omit `detail`, which is human-facing prose; success arms pin the WHOLE Outcome. ORACLES: the two atrHash values are SHA-256 over real terms bytes, derived independently with shasum and openssl — 0x215ef240… = sha256('MPP charge: 1500 usd base units to acct_1. Governing law: Delaware. Disputes: binding arbitration.\\n') and 0xfe0d0b99… = sha256('MPP tempo charge: 1000000 base units on chain 42431. Governing law: Delaware. Disputes: binding arbitration.\\n'). DIVERGENCES FROM THE DRAFT VECTORS, all deliberate: the documents are real per-method bodies quoted from the drafts (stripe §6.2, stellar §4.2) rather than the sketch's `{network: 'base-sepolia'}`, which is an x402 spelling MPP does not use, and `currency` is lowercase per the charge intent's ISO-4217 rule. SUPERSEDED PINS (2026-08-07): dispute-resolution examples generalized in the two oracle preimages (the provider-named forum sentence became 'Disputes: binding arbitration.' — illustrative examples name no provider); atrHash 0xb4ffdce59f4119d178e2d9b57a604cf0822c494d12c9ae0858c9b37bd968bd74 -> 0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29 and 0xd298e44ea9df41a669b0530f853f440e936e087cbf335e6feca789ffc942cd70 -> 0xfe0d0b999a9b0cfea1a2b764cd4645a39f32bfcace5daf634f6c03d2e9e6b9b6, re-derived independently (python3 hashlib; shasum cross-check below); the truncated-value case tracks the new value minus its final hex char.",
+  "manifest": {
+    "protocol": "mpp",
+    "pattern": "http-advisory",
+    "tier": "A",
+    "encoding": "bare-value",
+    "container": { "kind": "object-path" },
+    "field": "methodDetails.atrHash",
+    "termsUrlField": "methodDetails.legalContextUrl",
+    "carrierTypes": ["sha256"],
+    "specRef": "MPP core draft-httpauth-payment-00 §5.1.1/§5.1.2.1.1 — the challenge-bound `request` body; draft-payment-intent-charge-00 §5.1.2/§5.3 — methodDetails (gate discharged per method 2026-07-30: see README)"
+  },
+  "cases": [
+    {
+      "name": "place writes a bare atrHash into methodDetails, beside the method's own fields",
+      "$comment": "The document is draft-stripe-charge-00 §6.2's own example body. The hash lands as a sibling of the method-defined fields and nothing else moves — that is the whole placement, and because the body is JCS-serialized into slot 3 the new key is inside the bound input.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "doc": {
+          "amount": "5000",
+          "currency": "usd",
+          "description": "Premium API access for 1 month",
+          "externalId": "order_12345",
+          "methodDetails": {
+            "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+            "paymentMethodTypes": ["card", "link"]
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "amount": "5000",
+          "currency": "usd",
+          "description": "Premium API access for 1 month",
+          "externalId": "order_12345",
+          "methodDetails": {
+            "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+            "paymentMethodTypes": ["card", "link"],
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+          }
+        }
+      }
+    },
+    {
+      "name": "place creates methodDetails when absent — it is an OPTIONAL member of the request body",
+      "$comment": "draft-payment-intent-charge-00 Table 3 makes methodDetails optional, so a conformant charge body may carry only the shared fields. Creating the absent object is the extension point working, not a repair.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "doc": { "amount": "1500", "currency": "usd" }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": {
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+          }
+        }
+      }
+    },
+    {
+      "name": "place is pure — the challenge body handed in is not mutated",
+      "$comment": "A seller mints the challenge once and binds it; a place that mutated the caller's body could change what is served after the binding was computed.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place-purity",
+        "ref": {
+          "type": "sha256",
+          "value": "0xfe0d0b999a9b0cfea1a2b764cd4645a39f32bfcace5daf634f6c03d2e9e6b9b6"
+        },
+        "doc": {
+          "amount": "10000000",
+          "currency": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4W",
+          "recipient": "GBHEGW3KWOY2OFH767EDALFGCUTBOEVBDQMCKU",
+          "methodDetails": { "network": "stellar:testnet", "feePayer": true }
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "a url ref is refused — methodDetails.atrHash is a bare hash slot",
+      "$comment": "`bare-value` encoding fixes the type from the field's own contract, so the slot permits exactly one carrier type. A url written here would be indistinguishable from a hash to every reader, and v1.37 §C.2 forbids substituting a located document for an attested one. The terms URL has its own field — see termsUrlField.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/.well-known/legal-context.json"
+        },
+        "doc": { "amount": "1500", "currency": "usd", "methodDetails": {} }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a null document — minting a charge body is not placing a reference",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "doc": null
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/document-malformed"
+      }
+    },
+    {
+      "name": "place REPLACES a methodDetails that is present but unmergeable — the direct holder rule",
+      "$comment": "The kit's ratified malformed-container rule: an absent container is created, a present-but-unmergeable container is replaced when it is the field's DIRECT HOLDER, and refused anywhere above it. Spreading a string here would explode it into {0:'s',1:'t',…} and silently corrupt the body that is about to be bound. A placement declines to corrupt; it does not adjudicate the host's schema.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "doc": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": "stripe"
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": {
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a truncated bytes32 — 63 hex digits is not an atrHash",
+      "$comment": "The realistic integrator error on this family of rails: MPP's own bytes32 carriers (Tempo's methodDetails.memo) are fixed-width, and a value one nibble short must never reach the wire as though it were a hash.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f2"
+        },
+        "doc": { "amount": "1500", "currency": "usd" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-malformed"
+      }
+    },
+    {
+      "name": "place leaves an existing legalContextUrl alone — it writes the hash, never the URL",
+      "$comment": "termsUrlField is DECLARED so a parser knows the URL's home, but place(ref, doc) holds one reference, not two data. The URL is the deployment's datum and publishing it is the deployment's act; this call adds the hash beside it.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xfe0d0b999a9b0cfea1a2b764cd4645a39f32bfcace5daf634f6c03d2e9e6b9b6"
+        },
+        "doc": {
+          "amount": "10000000",
+          "currency": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4W",
+          "recipient": "GBHEGW3KWOY2OFH767EDALFGCUTBOEVBDQMCKU",
+          "methodDetails": {
+            "network": "stellar:pubnet",
+            "feePayer": true,
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "amount": "10000000",
+          "currency": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4W",
+          "recipient": "GBHEGW3KWOY2OFH767EDALFGCUTBOEVBDQMCKU",
+          "methodDetails": {
+            "network": "stellar:pubnet",
+            "feePayer": true,
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json",
+            "atrHash": "0xfe0d0b999a9b0cfea1a2b764cd4645a39f32bfcace5daf634f6c03d2e9e6b9b6"
+          }
+        }
+      }
+    },
+    {
+      "name": "extract reads the bare hash back out of §C.1's own shape",
+      "$comment": "LCP v1.37 §C.1's illustration carries network, atrHash and legalContextUrl together. The reference read answers with the hash and is untroubled by either sibling.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": {
+          "amount": "1500",
+          "currency": "usd",
+          "recipient": "acct_1",
+          "methodDetails": {
+            "network": "stellar:testnet",
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29",
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        }
+      }
+    },
+    {
+      "name": "extract accepts UPPERCASE hex and answers verbatim — the ATR canon is case-insensitive",
+      "$comment": "Mixed-case hex is idiomatic on the rails MPP fronts (EIP-55 on evm, and draft-evm-charge-00 §4.1 makes implementations compare addresses by decoded value, never by string form). The read path consumes a counterparty's carrier, so it MUST accept any case — and it returns what was written rather than a normalization the counterparty never sent.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": {
+            "atrHash": "0xB4FFDCE59F4119D178E2D9B57A604CF0822C494D12C9AE0858C9B37BD968BD74"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "type": "sha256",
+          "value": "0xB4FFDCE59F4119D178E2D9B57A604CF0822C494D12C9AE0858C9B37BD968BD74"
+        }
+      }
+    },
+    {
+      "name": "a non-hex methodDetails.atrHash refuses",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": { "methodDetails": { "atrHash": "nope" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-malformed"
+      }
+    },
+    {
+      "name": "a present-but-EMPTY atrHash is corrupt, not absent",
+      "$comment": "An empty string is a slot somebody populated and got wrong. Reading it as absent would let a seller ship an unreferenced challenge that passes as merely un-annotated.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": { "amount": "1500", "methodDetails": { "atrHash": "" } }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-malformed"
+      }
+    },
+    {
+      "name": "a §8.1 reference OBJECT in the bare-hash slot refuses — the slot holds the raw hash",
+      "$comment": "The encoding axis exists for exactly this. `{type, value}` is what A2A, AP2 and ACK carry; MPP's slot is bare, and writing the wrapper here would produce a field no MPP integrator recognizes. The read half refuses it rather than unwrapping and pretending both shapes were always legal.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": {
+          "methodDetails": {
+            "atrHash": {
+              "type": "sha256",
+              "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-malformed"
+      }
+    },
+    {
+      "name": "extract refuses when methodDetails carries no atrHash",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": { "network": "stellar:testnet" }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-absent"
+      }
+    },
+    {
+      "name": "extract refuses when methodDetails is absent entirely",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": { "amount": "1500", "currency": "usd" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-absent"
+      }
+    },
+    {
+      "name": "a methodDetails that is not an object reads as ABSENT — the kit's read-side convention",
+      "$comment": "Asymmetric with the write half on purpose, and ratified by placement-acp: an unreadable container yields no reference, while document-malformed is reserved for a non-object DOCUMENT. A placement is not the host protocol's schema validator.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": { "amount": "1500", "methodDetails": "stripe" }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-absent"
+      }
+    },
+    {
+      "name": "an ARRAY document is malformed — typeof says object, a charge body is not a list",
+      "input": { "protocol": "mpp", "op": "extract", "doc": [] },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/document-malformed"
+      }
+    },
+    {
+      "name": "a legalContextUrl ALONE is not a reference — no discovery carrier is declared here",
+      "$comment": "The load-bearing negative. MPP's slot is bare-value, which caps carrierTypes at one, so a url-typed discovery alias cannot be declared on this manifest at all — and that is the right answer, not a limitation to work around. The reason is the carrier's own: a located document commits to nothing about its content, so it cannot stand in for an attested one. LCP v1.38 §C.2 puts it descriptively — 'A terms-of-use policy page is not a per-transaction terms record and is not a substitute for one' — where v1.37 wrote 'MUST NOT be substituted for one'; this comment quoted the prohibition until 2026-08-08. A reader that wants the terms page reads termsUrlField knowing what it is.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": {
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/reference-absent"
+      }
+    }
+  ]
+}

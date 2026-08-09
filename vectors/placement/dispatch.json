@@ -1,0 +1,48 @@
+{
+  "$comment": "The `placement` CLASS contract, independent of any one protocol — the harness-level errors a subject must report when a case names something it cannot dispatch. Kept in its own area rather than repeated inside every placement file: these cases say nothing about ACP, and Phase C's five remaining placements inherit them for free. The same role `conformance/byte-input.json`'s reject cases play for the byte-input convention. `expected` is absent on purpose: the runner compares `c.error` against the subject's declared error string when a case states one, which is how a port-level failure is pinned rather than a protocol-level refusal.",
+  "cases": [
+    {
+      "name": "a protocol with no registered placement is a PORT error, not a refusal",
+      "$comment": "The distinction is load-bearing. A refusal means the placement ruled on the document; this means no placement ruled at all. Reporting an unregistered protocol as `refused` would let a subject that implements nothing certify as a subject that correctly rejects everything.",
+      "input": {
+        "protocol": "nope",
+        "op": "extract",
+        "doc": { "id": "checkout_session_1" }
+      },
+      "error": "unknown-placement-protocol:nope"
+    },
+    {
+      "name": "a KNOWN protocol id with no placement is the same PORT error, never a throw",
+      "$comment": "The sibling arm of the case above, and the one a subject can fail independently. `nope` is not a protocol id at all; `mcp` IS one — LCP v1.37 §C.9 and §10 describe an LCP-aware MCP *server* (tools, resources, prompts, and a `capabilities.extensions` negotiation map) with no document field for a reference to ride in, so MCP is not a field placement and its absence from any registry is the correct terminal state rather than a gap. A subject that dispatched membership in the closed protocol set and registration as one question would pass with `nope` alone; the two must converge on the identical error, and neither may be a refusal or a crash. The failure this forbids is the throwing stub: filling the absence with a placement that raises turns 'this protocol has no field carrier' into an error the caller cannot distinguish from a malformed document.",
+      "input": {
+        "protocol": "mcp",
+        "op": "extract",
+        "doc": { "id": "checkout_session_1" }
+      },
+      "error": "unknown-placement-protocol:mcp"
+    },
+    {
+      "name": "an unknown op is a PORT error naming the op",
+      "input": {
+        "protocol": "acp",
+        "op": "frobnicate",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": { "id": "checkout_session_1" }
+      },
+      "error": "unknown-placement-op:frobnicate"
+    },
+    {
+      "name": "a place case with no ref is a PORT error, never a placement of nothing",
+      "$comment": "`place` requires a reference. A subject that defaulted the missing ref — to a zero hash, or to whatever the document already carried — would emit a document the vector cannot distinguish from a correct one.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "doc": { "id": "checkout_session_1" }
+      },
+      "error": "placement/missing-ref"
+    }
+  ]
+}

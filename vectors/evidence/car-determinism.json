@@ -1,0 +1,50 @@
+{
+  "cases": [
+    {
+      "name": "two raw blocks (hello, world), root = block 0 (hello)",
+      "input": {
+        "blocks": [
+          { "encoding": "utf8", "data": "hello" },
+          { "encoding": "utf8", "data": "world" }
+        ],
+        "rootIndex": 0
+      },
+      "expected": "3aa265726f6f747381d82a582500015512202cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b98246776657273696f6e0129015512202cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b982468656c6c6f2901551220486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a7776f726c64"
+    },
+    {
+      "name": "root = block 1 (world) — the root need not be the first block",
+      "input": {
+        "blocks": [
+          { "encoding": "utf8", "data": "hello" },
+          { "encoding": "utf8", "data": "world" }
+        ],
+        "rootIndex": 1
+      },
+      "expected": "3aa265726f6f747381d82a58250001551220486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a76776657273696f6e0129015512202cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b982468656c6c6f2901551220486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a7776f726c64"
+    },
+    {
+      "name": "single raw block, root = itself",
+      "input": {
+        "blocks": [{ "encoding": "utf8", "data": "only" }],
+        "rootIndex": 0
+      },
+      "expected": "3aa265726f6f747381d82a58250001551220f905b19542ed08c9a9c26543cca32e5711d207dcffb81b4cdb44ce0b989431c96776657273696f6e012801551220f905b19542ed08c9a9c26543cca32e5711d207dcffb81b4cdb44ce0b989431c96f6e6c79"
+    },
+    {
+      "name": "binary block bytes (0xdeadbeef) framed correctly",
+      "input": {
+        "blocks": [{ "encoding": "hex", "data": "0xdeadbeef" }],
+        "rootIndex": 0
+      },
+      "expected": "3aa265726f6f747381d82a582500015512205f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa8139536776657273696f6e0128015512205f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953deadbeef"
+    },
+    {
+      "name": "empty block (zero-length data) — section is CID-only",
+      "input": {
+        "blocks": [{ "encoding": "hex", "data": "0x" }],
+        "rootIndex": 0
+      },
+      "expected": "3aa265726f6f747381d82a58250001551220e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b8556776657273696f6e012401551220e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

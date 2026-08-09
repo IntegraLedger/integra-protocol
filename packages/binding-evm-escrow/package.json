@@ -1,0 +1,65 @@
+{
+  "name": "@integraledger/lcp-binding-evm-escrow",
+  "version": "0.9.0",
+  "description": "Welds an ATR hash into an authorize-and-capture escrow settlement on EVM chains.",
+  "keywords": [
+    "lcp",
+    "legal-context-protocol",
+    "legal-terms",
+    "agentic-commerce",
+    "settlement",
+    "atr-hash",
+    "evm",
+    "escrow"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IntegraLedger/integra-protocol.git",
+    "directory": "packages/binding-evm-escrow"
+  },
+  "bugs": {
+    "url": "https://github.com/IntegraLedger/integra-protocol/issues"
+  },
+  "homepage": "https://github.com/IntegraLedger/integra-protocol/tree/main/packages/binding-evm-escrow#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "drift": "vitest run --config vitest.drift.config.ts",
+    "prepack": "node ../../scripts/sync-license.mjs"
+  },
+  "dependencies": {
+    "@integraledger/lcp-binding-core": "workspace:*",
+    "@integraledger/lcp-binding-evm-common": "workspace:*",
+    "viem": "catalog:"
+  },
+  "devDependencies": {
+    "@integraledger/lcp-kernel": "workspace:*",
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,0 +1,1173 @@
+{
+  "cases": [
+    {
+      "name": "emit-a2a places the four AgentExtension proto fields in field order, required defaulting to false",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": ["New York, USA"],
+          "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+        }
+      },
+      "expected": {
+        "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+        "required": false,
+        "params": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": ["New York, USA"],
+          "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+        }
+      }
+    },
+    {
+      "name": "emit-a2a carries description — the fourth proto field LCP v1.37 §C.8 omits",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "description": "Declines counterparties whose terms are not hash-verifiable."
+        }
+      },
+      "expected": {
+        "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+        "description": "Declines counterparties whose terms are not hash-verifiable.",
+        "required": false,
+        "params": {
+          "minimumLevel": 2
+        }
+      }
+    },
+    {
+      "name": "emit-a2a required true is an explicit deployment choice, never a default",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 3,
+          "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+        },
+        "options": {
+          "required": true
+        }
+      },
+      "expected": {
+        "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+        "required": true,
+        "params": {
+          "minimumLevel": 3,
+          "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+        }
+      }
+    },
+    {
+      "name": "emit-a2a canonicalizes params key order — level, jurisdictions, methods",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "acceptedDisputeMethods": ["Expedited Commercial Arbitration Rules"],
+          "acceptedJurisdictions": ["California, USA"],
+          "minimumLevel": 4
+        }
+      },
+      "expected": {
+        "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+        "required": false,
+        "params": {
+          "minimumLevel": 4,
+          "acceptedJurisdictions": ["California, USA"],
+          "acceptedDisputeMethods": ["Expedited Commercial Arbitration Rules"]
+        }
+      }
+    },
+    {
+      "name": "emit-a2a level 1 alone is a complete declaration",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 1
+        }
+      },
+      "expected": {
+        "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+        "required": false,
+        "params": {
+          "minimumLevel": 1
+        }
+      }
+    },
+    {
+      "name": "emit-a2a refuses level 0 — LCP §3 defines four levels",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 0
+        }
+      },
+      "error": "capability/minimum-level-invalid"
+    },
+    {
+      "name": "emit-a2a refuses level 5 — above the ladder",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 5
+        }
+      },
+      "error": "capability/minimum-level-invalid"
+    },
+    {
+      "name": "emit-a2a refuses a fractional level",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2.5
+        }
+      },
+      "error": "capability/minimum-level-invalid"
+    },
+    {
+      "name": "emit-a2a refuses a stringified level",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": "2"
+        }
+      },
+      "error": "capability/minimum-level-invalid"
+    },
+    {
+      "name": "emit-a2a refuses a declaration with no minimumLevel — an advertisement that requires nothing",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "acceptedJurisdictions": ["New York, USA"]
+        }
+      },
+      "error": "capability/minimum-level-invalid"
+    },
+    {
+      "name": "emit-a2a refuses an empty acceptedJurisdictions list — it reads as accepting nowhere",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": []
+        }
+      },
+      "error": "capability/accepted-list-empty"
+    },
+    {
+      "name": "emit-a2a refuses an empty acceptedDisputeMethods list",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedDisputeMethods": []
+        }
+      },
+      "error": "capability/accepted-list-empty"
+    },
+    {
+      "name": "emit-a2a refuses a non-array acceptedJurisdictions",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": "New York, USA"
+        }
+      },
+      "error": "capability/accepted-list-not-an-array"
+    },
+    {
+      "name": "emit-a2a refuses a whitespace-only jurisdiction entry",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": ["  "]
+        }
+      },
+      "error": "capability/accepted-entry-blank"
+    },
+    {
+      "name": "emit-a2a refuses a non-string dispute-method entry",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedDisputeMethods": [7]
+        }
+      },
+      "error": "capability/accepted-entry-blank"
+    },
+    {
+      "name": "emit-a2a refuses an unrecognized requirement — a signing threshold is not published",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2,
+          "signingThreshold": 500
+        }
+      },
+      "error": "capability/unrecognized-field"
+    },
+    {
+      "name": "emit-a2a refuses a null declaration",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": null
+      },
+      "error": "capability/declaration-not-an-object"
+    },
+    {
+      "name": "emit-a2a refuses a missing declaration",
+      "input": {
+        "op": "emit-a2a"
+      },
+      "error": "capability/declaration-not-an-object"
+    },
+    {
+      "name": "emit-a2a refuses an array declaration",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": []
+      },
+      "error": "capability/declaration-not-an-object"
+    },
+    {
+      "name": "emit-a2a refuses a non-boolean required option",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "required": "yes"
+        }
+      },
+      "error": "capability/required-not-a-boolean"
+    },
+    {
+      "name": "emit-a2a refuses a non-string description option",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "description": 3
+        }
+      },
+      "error": "capability/description-not-a-string"
+    },
+    {
+      "name": "emit-a2a refuses a blank description — proto3 cannot tell an empty string from an absent field",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "description": ""
+        }
+      },
+      "error": "capability/description-blank"
+    },
+    {
+      "name": "emit-a2a refuses a whitespace-only description",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "description": "   "
+        }
+      },
+      "error": "capability/description-blank"
+    },
+    {
+      "name": "emit-a2a refuses non-object options",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": "required"
+      },
+      "error": "capability/options-not-an-object"
+    },
+    {
+      "name": "emit-a2a refuses a misspelled required option rather than silently emitting false",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "requird": true
+        }
+      },
+      "error": "capability/unrecognized-option"
+    },
+    {
+      "name": "emit-a2a refuses an option that tries to override the extension URI",
+      "input": {
+        "op": "emit-a2a",
+        "declaration": {
+          "minimumLevel": 2
+        },
+        "options": {
+          "uri": "https://evil.example/ext/legal-context/v1"
+        }
+      },
+      "error": "capability/unrecognized-option"
+    },
+    {
+      "name": "emit-ucp keys one array-valued declaration under the vendor capability name",
+      "input": {
+        "op": "emit-ucp",
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": ["New York, USA"],
+          "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+        }
+      },
+      "expected": {
+        "com.integraledger.legal-context": [
+          {
+            "version": "2026-07-30",
+            "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+            "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+            "config": {
+              "minimumLevel": 2,
+              "acceptedJurisdictions": ["New York, USA"],
+              "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "emit-ucp level alone — spec and schema origins still bind to the namespace authority",
+      "input": {
+        "op": "emit-ucp",
+        "declaration": {
+          "minimumLevel": 4
+        }
+      },
+      "expected": {
+        "com.integraledger.legal-context": [
+          {
+            "version": "2026-07-30",
+            "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+            "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+            "config": {
+              "minimumLevel": 4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "emit-ucp shares the one declaration validator — level 0 refuses identically",
+      "input": {
+        "op": "emit-ucp",
+        "declaration": {
+          "minimumLevel": 0
+        }
+      },
+      "error": "capability/minimum-level-invalid"
+    },
+    {
+      "name": "emit-ucp shares the one declaration validator — an unrecognized requirement refuses identically",
+      "input": {
+        "op": "emit-ucp",
+        "declaration": {
+          "minimumLevel": 2,
+          "commitmentCap": "500 USD"
+        }
+      },
+      "error": "capability/unrecognized-field"
+    },
+    {
+      "name": "read-a2a reads the declaration and an absent required as proto3 false",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "name": "Recipe Agent",
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "params": {
+                  "minimumLevel": 2,
+                  "acceptedJurisdictions": ["New York, USA"]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "required": false,
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": ["New York, USA"]
+        }
+      }
+    },
+    {
+      "name": "read-a2a reads required true — the counterparty will refuse an agent that cannot comply",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "streaming": true,
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "description": "Level 3 or the exchange does not start.",
+                "required": true,
+                "params": {
+                  "minimumLevel": 3
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "description": "Level 3 or the exchange does not start.",
+        "required": true,
+        "declaration": {
+          "minimumLevel": 3
+        }
+      }
+    },
+    {
+      "name": "read-a2a answers null for a card whose extensions are all foreign",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://example.com/ext/konami-code/v1",
+                "required": false
+              }
+            ]
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "read-a2a answers null for capabilities with no extensions — proto3 omits an empty repeated field",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "streaming": true
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "read-a2a answers null for an empty extensions array",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": []
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "read-a2a round-trips a proto3 default-emission encoding of exactly what emit-a2a produces",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "description": "",
+                "required": false,
+                "params": {
+                  "minimumLevel": 2,
+                  "acceptedJurisdictions": ["New York, USA"],
+                  "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "required": false,
+        "declaration": {
+          "minimumLevel": 2,
+          "acceptedJurisdictions": ["New York, USA"],
+          "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+        }
+      }
+    },
+    {
+      "name": "read-a2a reads a blank description as absent — proto3 has no presence to distinguish it",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "description": "   ",
+                "params": {
+                  "minimumLevel": 3
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "required": false,
+        "declaration": {
+          "minimumLevel": 3
+        }
+      }
+    },
+    {
+      "name": "read-a2a reads a null description as absent — proto3 JSON maps null to the field default",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "description": null,
+                "params": {
+                  "minimumLevel": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "required": false,
+        "declaration": {
+          "minimumLevel": 1
+        }
+      }
+    },
+    {
+      "name": "read-a2a reads a null required as false — proto3 JSON maps null to the field default",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "required": null,
+                "params": {
+                  "minimumLevel": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "required": false,
+        "declaration": {
+          "minimumLevel": 4
+        }
+      }
+    },
+    {
+      "name": "read-a2a refuses a card with no capabilities — the host marks the field REQUIRED",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "name": "Recipe Agent"
+        }
+      },
+      "error": "capability/a2a-capabilities-missing"
+    },
+    {
+      "name": "read-a2a refuses a non-object capabilities",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": "full"
+        }
+      },
+      "error": "capability/a2a-capabilities-missing"
+    },
+    {
+      "name": "read-a2a refuses a non-array extensions",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": {
+              "uri": "x"
+            }
+          }
+        }
+      },
+      "error": "capability/a2a-extensions-not-an-array"
+    },
+    {
+      "name": "read-a2a refuses a null entry in extensions",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [null]
+          }
+        }
+      },
+      "error": "capability/a2a-extension-not-an-object"
+    },
+    {
+      "name": "read-a2a refuses two entries claiming the LCP URI — which requirement governs is undecidable",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "params": {
+                  "minimumLevel": 2
+                }
+              },
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "params": {
+                  "minimumLevel": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "error": "capability/a2a-duplicate-extension"
+    },
+    {
+      "name": "read-a2a refuses an LCP extension with no params — a declaration that states no requirement",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "required": true
+              }
+            ]
+          }
+        }
+      },
+      "error": "capability/params-missing"
+    },
+    {
+      "name": "read-a2a refuses params carrying a requirement this version cannot evaluate",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "params": {
+                  "minimumLevel": 2,
+                  "requiredIdentityAttestation": "lei"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "error": "capability/unrecognized-field"
+    },
+    {
+      "name": "read-a2a refuses a non-boolean required on the wire",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "required": 1,
+                "params": {
+                  "minimumLevel": 2
+                }
+              }
+            ]
+          }
+        }
+      },
+      "error": "capability/required-not-a-boolean"
+    },
+    {
+      "name": "read-a2a refuses a non-string description on the wire",
+      "input": {
+        "op": "read-a2a",
+        "doc": {
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+                "description": ["two", "lines"],
+                "params": {
+                  "minimumLevel": 2
+                }
+              }
+            ]
+          }
+        }
+      },
+      "error": "capability/description-not-a-string"
+    },
+    {
+      "name": "read-a2a refuses a non-object card",
+      "input": {
+        "op": "read-a2a",
+        "doc": "https://agent.example/card"
+      },
+      "error": "capability/document-not-an-object"
+    },
+    {
+      "name": "read-ucp reads the declaration from config at the supported version",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "version": "2026-04-08",
+            "capabilities": {
+              "dev.ucp.shopping.checkout": [
+                {
+                  "version": "2026-04-08",
+                  "spec": "https://ucp.dev/2026-04-08/specification/checkout",
+                  "schema": "https://ucp.dev/2026-04-08/schemas/shopping/checkout.json"
+                }
+              ],
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2,
+                    "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "minimumLevel": 2,
+        "acceptedDisputeMethods": ["Commercial Arbitration Rules"]
+      }
+    },
+    {
+      "name": "read-ucp selects the supported version from an array that also declares another",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2027-01-01",
+                  "spec": "https://integraledger.com/lcp/ucp/2027-01-01/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2027-01-01/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 4
+                  }
+                },
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "minimumLevel": 1
+      }
+    },
+    {
+      "name": "read-ucp answers null for a profile with no capabilities map",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "version": "2026-04-08"
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "read-ucp answers null for a profile declaring only foreign capabilities",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "dev.ucp.shopping.cart": [
+                {
+                  "version": "2026-04-08",
+                  "spec": "https://ucp.dev/2026-04-08/specification/cart",
+                  "schema": "https://ucp.dev/2026-04-08/schemas/shopping/cart.json"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "read-ucp refuses a document with no ucp envelope — it is not the profile it claims to be",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "capabilities": {}
+        }
+      },
+      "error": "capability/ucp-envelope-missing"
+    },
+    {
+      "name": "read-ucp refuses a non-object ucp envelope",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": []
+        }
+      },
+      "error": "capability/ucp-envelope-missing"
+    },
+    {
+      "name": "read-ucp refuses a non-object profile",
+      "input": {
+        "op": "read-ucp",
+        "doc": null
+      },
+      "error": "capability/document-not-an-object"
+    },
+    {
+      "name": "read-ucp refuses a non-object capabilities map",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": []
+          }
+        }
+      },
+      "error": "capability/ucp-capabilities-not-an-object"
+    },
+    {
+      "name": "read-ucp refuses a single-object capability value — the host declares an array",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": {
+                "version": "2026-07-30",
+                "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                "config": {
+                  "minimumLevel": 2
+                }
+              }
+            }
+          }
+        }
+      },
+      "error": "capability/ucp-declarations-not-an-array"
+    },
+    {
+      "name": "read-ucp refuses an empty declaration array",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": []
+            }
+          }
+        }
+      },
+      "error": "capability/ucp-declarations-empty"
+    },
+    {
+      "name": "read-ucp refuses a null declaration in the array",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [null]
+            }
+          }
+        }
+      },
+      "error": "capability/ucp-declaration-not-an-object"
+    },
+    {
+      "name": "read-ucp refuses two declarations at the same version",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                },
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/ucp-duplicate-version"
+    },
+    {
+      "name": "read-ucp refuses a declaration at an unsupported version — a requirement it cannot read is not absent",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2027-01-01",
+                  "spec": "https://integraledger.com/lcp/ucp/2027-01-01/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2027-01-01/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 4
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/version-unsupported"
+    },
+    {
+      "name": "read-ucp ACCEPTS a spec URL served off the namespace authority — only `schema` is bound",
+      "$comment": "Verified verbatim at universal-commerce-protocol/ucp HEAD 2026-08-08, docs/specification/overview.md §Authority Binding: \"The `spec` URL is documentation, not part of the machine trust path, so its origin is NOT authority-bound: it MUST be `https` but MAY be served from any host (e.g. a docs subdomain or third-party docs host). Only the `schema` URL carries the authority binding defined below.\" This case previously expected capability/authority-binding-violated, which refused a conformant counterparty — the host's own example of a permitted spec host is a docs subdomain.",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com.evil.example/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "minimumLevel": 2
+      }
+    },
+    {
+      "name": "read-ucp refuses a schema URL whose origin is not the namespace authority",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://cdn.example/lcp/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/authority-binding-violated"
+    },
+    {
+      "name": "read-ucp refuses a plain-http spec URL of the right host — the origin includes the scheme",
+      "$comment": "Still a refusal, but on UCP's scheme rule rather than its authority binding: \"A `spec` URL MUST be a valid `https` URL\" while its origin \"MAY be served from any host\". The code moved from capability/authority-binding-violated to capability/spec-not-https on 2026-08-08 so the two failures are distinguishable — one says the counterparty does not control the namespace, the other says the document is fetchable over a rewritable transport.",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "http://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/spec-not-https"
+    },
+    {
+      "name": "read-ucp refuses a malformed spec URL",
+      "$comment": "Still a refusal, but on UCP's scheme rule rather than its authority binding: \"A `spec` URL MUST be a valid `https` URL\" while its origin \"MAY be served from any host\". The code moved from capability/authority-binding-violated to capability/spec-not-https on 2026-08-08 so the two failures are distinguishable — one says the counterparty does not control the namespace, the other says the document is fetchable over a rewritable transport.",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/spec-not-https"
+    },
+    {
+      "name": "read-ucp refuses an array-wrapped spec URL — string coercion is not an origin check",
+      "$comment": "Still a refusal, but on UCP's scheme rule rather than its authority binding: \"A `spec` URL MUST be a valid `https` URL\" while its origin \"MAY be served from any host\". The code moved from capability/authority-binding-violated to capability/spec-not-https on 2026-08-08 so the two failures are distinguishable — one says the counterparty does not control the namespace, the other says the document is fetchable over a rewritable transport.",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": [
+                    "https://integraledger.com/lcp/ucp/2026-07-30/legal-context"
+                  ],
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/spec-not-https"
+    },
+    {
+      "name": "read-ucp refuses a declaration with no config",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/config-missing"
+    },
+    {
+      "name": "read-ucp refuses config carrying a requirement this version cannot evaluate",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "capabilities": {
+              "com.integraledger.legal-context": [
+                {
+                  "version": "2026-07-30",
+                  "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2,
+                    "requiredIdentityAttestation": "lei"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "error": "capability/unrecognized-field"
+    },
+    {
+      "name": "an unknown capability op is named, never guessed",
+      "input": {
+        "op": "negotiate",
+        "declaration": {
+          "minimumLevel": 2
+        }
+      },
+      "error": "unknown-capability-op:negotiate"
+    }
+  ]
+}

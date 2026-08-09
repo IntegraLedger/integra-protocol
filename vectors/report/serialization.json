@@ -1,0 +1,181 @@
+{
+  "cases": [
+    {
+      "name": "keys sorted at top level",
+      "input": {
+        "b": 1,
+        "a": 2,
+        "c": 3
+      },
+      "expected": "{\"a\":2,\"b\":1,\"c\":3}"
+    },
+    {
+      "name": "integer-like keys sort by UTF-16 code unit, NOT numerically (RFC 8785 §3.2.3)",
+      "input": {
+        "10": 1,
+        "9": 2,
+        "a": 3
+      },
+      "expected": "{\"10\":1,\"9\":2,\"a\":3}"
+    },
+    {
+      "name": "integer-like keys interleave with the rest by code unit ('1' < '10' < '2')",
+      "input": {
+        "2": "b",
+        "10": "a",
+        "1": "c"
+      },
+      "expected": "{\"1\":\"c\",\"10\":\"a\",\"2\":\"b\"}"
+    },
+    {
+      "name": "integer-like keys nested inside a settlements entry (the reachable report path)",
+      "input": {
+        "settlements": {
+          "found": [
+            {
+              "20": "twenty",
+              "3": "three",
+              "logIndex": 7
+            }
+          ],
+          "multiplySettled": false
+        }
+      },
+      "expected": "{\"settlements\":{\"found\":[{\"20\":\"twenty\",\"3\":\"three\",\"logIndex\":7}],\"multiplySettled\":false}}"
+    },
+    {
+      "name": "nested objects sorted recursively",
+      "input": {
+        "z": {
+          "y": 1,
+          "x": 2
+        },
+        "a": [
+          {
+            "n": 1,
+            "m": 2
+          }
+        ]
+      },
+      "expected": "{\"a\":[{\"m\":2,\"n\":1}],\"z\":{\"x\":2,\"y\":1}}"
+    },
+    {
+      "name": "arrays preserve order; objects within sort",
+      "input": {
+        "list": [
+          {
+            "b": 2,
+            "a": 1
+          },
+          {
+            "d": 4,
+            "c": 3
+          }
+        ]
+      },
+      "expected": "{\"list\":[{\"a\":1,\"b\":2},{\"c\":3,\"d\":4}]}"
+    },
+    {
+      "name": "unicode key ordering by UTF-16 code unit (z=U+007A < é=U+00E9)",
+      "input": {
+        "é": 1,
+        "z": 2,
+        "a": 3
+      },
+      "expected": "{\"a\":3,\"z\":2,\"é\":1}"
+    },
+    {
+      "name": "booleans, null, empty containers",
+      "input": {
+        "verified": false,
+        "x": null,
+        "arr": [],
+        "obj": {}
+      },
+      "expected": "{\"arr\":[],\"obj\":{},\"verified\":false,\"x\":null}"
+    },
+    {
+      "name": "monetary values are decimal-integer STRINGS (JCS numbers never touch money)",
+      "input": {
+        "cap": "1000000000000000000",
+        "count": 3
+      },
+      "expected": "{\"cap\":\"1000000000000000000\",\"count\":3}"
+    },
+    {
+      "name": "a realistic VerificationReport",
+      "input": {
+        "verified": false,
+        "assurance": "wallet-signature-only",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [
+          {
+            "name": "atr-fingerprint",
+            "outcome": {
+              "status": "proved"
+            }
+          },
+          {
+            "name": "buyer-acceptance",
+            "outcome": {
+              "status": "not-attempted",
+              "depth": "no-buyer-port"
+            }
+          },
+          {
+            "name": "authority-attenuation",
+            "outcome": {
+              "status": "failed",
+              "haltClass": "verification-failure"
+            }
+          }
+        ],
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:x402"]
+        },
+        "settlements": {
+          "found": [
+            {
+              "chainId": 84532,
+              "txHash": "0x11"
+            }
+          ],
+          "multiplySettled": false
+        }
+      },
+      "expected": "{\"asOf\":\"2026-07-16T00:00:00Z\",\"assurance\":\"wallet-signature-only\",\"coverage\":{\"bindings\":[\"evm:x402\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0x11\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"depth\":\"no-buyer-port\",\"status\":\"not-attempted\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"haltClass\":\"verification-failure\",\"status\":\"failed\"}}],\"supportedClass\":\"TC-2\",\"verified\":false}"
+    },
+    {
+      "name": "a thin-TC-3 VerificationReport (P4 — acceptance proved, authority chain walked to minimal depth, honest readout)",
+      "$comment": "The canonical JCS of the P4 thin-TC-3 report authority-producer-ref's slice produces: supportedClass TC-3 as an honest readout, every walk step proved, verified still false (structural). Expected authored from the RFC 8785 sort and cross-checked byte-for-byte against an independent recursive-key-sort oracle (not the verify package) before landing.",
+      "input": {
+        "verified": false,
+        "assurance": "attested",
+        "supportedClass": "TC-3",
+        "asOf": "2026-07-01T12:00:00Z",
+        "steps": [
+          { "name": "atr-fingerprint", "outcome": { "status": "proved" } },
+          {
+            "name": "settlement-enumeration",
+            "outcome": { "status": "proved" }
+          },
+          { "name": "buyer-acceptance", "outcome": { "status": "proved" } },
+          {
+            "name": "authority-attenuation",
+            "outcome": { "status": "proved" }
+          },
+          { "name": "commitment-vs-leaf", "outcome": { "status": "proved" } },
+          { "name": "resolve-party", "outcome": { "status": "proved" } }
+        ],
+        "coverage": { "ports": ["evm"], "bindings": ["evm:escrow"] },
+        "settlements": {
+          "found": [{ "chainId": 84532, "txHash": "0xabc" }],
+          "multiplySettled": false
+        }
+      },
+      "expected": "{\"asOf\":\"2026-07-01T12:00:00Z\",\"assurance\":\"attested\",\"coverage\":{\"bindings\":[\"evm:escrow\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0xabc\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"settlement-enumeration\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"commitment-vs-leaf\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"resolve-party\",\"outcome\":{\"status\":\"proved\"}}],\"supportedClass\":\"TC-3\",\"verified\":false}"
+    }
+  ]
+}

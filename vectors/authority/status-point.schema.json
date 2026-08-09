@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectors.integraledger.dev/authority/status-point.schema.json",
+  "title": "Bitstring Status List v1.0 entry (revocation status point)",
+  "$comment": "The credentialStatus entry that points a grant into a status list. As-of-settlement checking reads the HASH-PINNED snapshot of the referenced statusListCredential (Bitstring Status List has no historical query), never a live dereference presented as historical truth (status.ts).",
+  "type": "object",
+  "required": [
+    "type",
+    "statusPurpose",
+    "statusListIndex",
+    "statusListCredential"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "const": "BitstringStatusListEntry" },
+    "statusPurpose": { "enum": ["revocation", "suspension"] },
+    "statusListIndex": { "type": "string", "pattern": "^[0-9]+$" },
+    "statusListCredential": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}
