@@ -8,11 +8,21 @@ name: release
 # registry ~3 minutes before the run that would have caught it went red. That was survivable on GitHub
 # Packages. It is not survivable on npmjs, where `check-versions.mjs` already documents the reason:
 # deleting a package's sole version burns the name permanently.
+#
+# A `workflow_run` trigger is silently inert on a freshly created repository. This repo was recreated on
+# 2026-08-09 and the first THREE successful `ci` runs on main produced no release run at all — no queued
+# run, no skipped run, nothing to find in the API. The fourth push wired it up and it has fired normally
+# since. Nothing in the configuration below changed. If you have just recreated this repository and the
+# release is missing, push again before you debug this file.
 on:
   workflow_run:
     workflows: [ci]
     types: [completed]
     branches: [main]
+  # A release must be re-runnable without a commit: `workflow_run` gives no manual entry point, so before
+  # this existed a failed publish could only be retried by pushing something. The guards are identical on
+  # this path — the staging step decides what to stage by asking the registry, not by trusting the trigger.
+  workflow_dispatch:
 
 # PUBLISHING MODEL — ruled 2026-08-08 (DS-4). Read this before changing any step below.
 #
@@ -30,17 +40,19 @@ on:
 # and changelogs; the publish loop below is ours. Derive the set from `private`, never a name pattern —
 # a name filter has silently broken twice here.
 #
-# BOOTSTRAP EXCEPTION, one time only: npm can neither configure trusted publishing for a package that does
-# not exist (npm/cli#8544) nor stage a brand-new name — the docs are explicit that "you cannot stage a
-# brand-new package". So the FIRST publish of the `lcp-*` names cannot use this path at all. It runs once
-# under a short-lived granular token with the `npm-publish` environment gate, and then this workflow takes
-# over permanently. If you are reading this because a publish failed with "package does not exist", that
-# bootstrap has not happened yet — it is a deliberate, supervised one-off, not something to work around here.
+# BOOTSTRAP: DONE, 2026-08-09, and not repeatable. npm can neither configure trusted publishing for a
+# package that does not exist (npm/cli#8544) nor stage a brand-new name, so the first publish of the `lcp-*`
+# names could not use this path at all; it ran once from Actions under a short-lived granular token and this
+# workflow has owned publishing since. The bootstrap workflow was deleted rather than disabled, so no
+# standing credential path remains — see AGENTS.md for what it taught, including why it had to run in
+# Actions rather than from a laptop. A NEW package name added later needs that one-off again; it is a
+# deliberate, supervised exception, not something to work around here.
 #
-# PROVENANCE: `npm publish --provenance` and GitHub artifact attestations both require a PUBLIC source
-# repository. Under D7 that arrives by archive-and-recreate rather than a visibility flip. `NPM_CONFIG_
-# PROVENANCE` is set below and is harmless while private only because this workflow is disabled until the
-# cutover; if you re-enable it before D7 lands, remove it — npm FAILS the publish rather than degrading.
+# PROVENANCE: live. `npm publish --provenance` and GitHub artifact attestations both require a PUBLIC source
+# repository, which D7 delivered by archive-and-recreate on 2026-08-09. `NPM_CONFIG_PROVENANCE` is set below
+# and is now load-bearing rather than inert: every `lcp-*` at 0.9.0 carries an attestation on the registry.
+# npm FAILS a publish it cannot attest rather than degrading to an unattested one, so if this repository is
+# ever made private again this workflow starts failing — that is the intended behaviour, not a regression.
 permissions:
   # `contents: write` so the per-package tags can be pushed (see the final step).
   contents: write
@@ -61,14 +73,35 @@ jobs:
     runs-on: ubuntu-latest
     # `workflow_run` fires on completion regardless of outcome, so the conclusion is checked here. Without
     # this the gate above would be decorative: a red `ci` would still trigger a green release.
-    if: github.event.workflow_run.conclusion == 'success'
+    # On `workflow_dispatch` there is no `workflow_run` payload to read, so the equivalent check runs as a
+    # step below against the API — the gate must hold on BOTH entry points or the manual one is a way round it.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Pin to the COMMIT `ci` actually verified. A `workflow_run` checkout defaults to the tip of the
           # default branch, which is not necessarily the tree that passed — a push landing during the ~5
           # minutes `ci` takes would otherwise publish an unverified commit under a green tick.
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # The dispatch half of the gate above. `workflow_run` proves `ci` was green because it carries the
+      # conclusion; a manual run proves nothing on its own, so ask the API whether THIS commit has a
+      # successful `ci` run and refuse otherwise. Without this, dispatching is a one-click bypass of the
+      # only thing standing between an unverified tree and the approval queue.
+      - name: Require a green ci for this commit
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -o pipefail
+          conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}" \
+            --jq '[.workflow_runs[] | select(.name == "ci")] | first | .conclusion // "none"')
+          echo "ci for ${SHA}: ${conclusion}"
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::refusing to release ${SHA}: its ci run concluded '${conclusion}', not success"
+            exit 1
+          fi
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version-file: ".nvmrc", cache: "pnpm", registry-url: "https://registry.npmjs.org" }
@@ -116,21 +149,45 @@ jobs:
 
       - name: Stage the publishable set
         run: |
+          # `bash -e` does NOT fail a pipeline on a non-final command, so `npm stage publish | tee` reported
+          # tee's status — always 0. Both the skip and the hard-fail branch below were therefore unreachable,
+          # and the first real run of this workflow rejected all 31 packages and still printed "staged 31"
+          # under a green tick. A publishing step that cannot report its own failure is worse than none.
+          set -o pipefail
           shopt -s nullglob
           staged=0
+          skipped=0
           for tarball in "$GITHUB_WORKSPACE"/dist-tarballs/*.tgz; do
-            echo "::group::stage $(basename "$tarball")"
-            if npm stage publish "$tarball" 2>&1 | tee /tmp/stage.log; then
+            # `console.log`, not `process.stdout.write`: `read` returns non-zero when it reaches EOF without
+            # a trailing newline, and under `bash -e` that non-zero kills the step on the first package.
+            read -r name version < <(tar -xzOf "$tarball" package/package.json |
+              node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);console.log(`${j.name} ${j.version}`)})')
+            echo "::group::$name@$version"
+            # Ask the registry BEFORE attempting, and ask the only endpoint that answers truthfully: the
+            # packument and `npm view` both serve cached documents that can still omit a version minutes
+            # after it went live (AGENTS.md records the bootstrap this cost). Deciding here is what makes a
+            # no-op push a green no-op, rather than leaving that decision to a parse of npm's English.
+            if curl -sf -o /dev/null "https://registry.npmjs.org/$name/$version"; then
+              echo "$version is already on the registry — skipping"
+              skipped=$((skipped+1))
+            elif npm stage publish "$tarball" 2>&1 | tee /tmp/stage.log; then
               staged=$((staged+1))
             elif grep -qiE "cannot publish over|previously published|already exists" /tmp/stage.log; then
-              echo "already on the registry at this version — skipping"
+              # Lost a race between the check above and this attempt. Rare, and not a failure.
+              echo "$version appeared on the registry mid-run — skipping"
+              skipped=$((skipped+1))
             else
-              echo "::error::staging failed for $(basename "$tarball")"; exit 1
+              echo "::error::staging failed for $name@$version"; exit 1
             fi
             echo "::endgroup::"
           done
-          echo "staged $staged package(s) — NONE are installable until approved with 2FA"
-          echo "approve with: npm stage list --json  then  npm stage approve <id> --otp <code>"
+          echo "staged $staged package(s); skipped $skipped already on the registry"
+          if [ "$staged" -eq 0 ]; then
+            echo "nothing new to release — no version in this tree is absent from the registry"
+          else
+            echo "NONE are installable until approved with 2FA"
+            echo "approve with: npm stage list --json  then  npm stage approve <id> --otp <code>"
+          fi
         env:
           NPM_CONFIG_PROVENANCE: "true"
 
