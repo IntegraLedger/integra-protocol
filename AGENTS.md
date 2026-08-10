@@ -78,6 +78,24 @@ well-known documents · `conformance` the corpus runner · `binding-*` thirteen 
 - Refusals are returned values, not exceptions. Narrow an `Outcome` with `"refused" in result` — `Refusal`
   carries no `ok`, so the union cannot discriminate on one.
 
+## Publishing
+
+Steady state is **trusted publishing over OIDC** — `release.yml` holds no token, and `pnpm release:approve`
+is the human half. Two things about that are worth knowing before you touch it.
+
+**A brand-new package name cannot use it.** npm can neither configure trusted publishing for a package that
+does not exist nor stage a name that has never been published, so the first release of any new name needs a
+one-time token-gated publish. Run it **from GitHub Actions, never from a laptop**: registry auth is the
+token but the attestation is the workflow's OIDC identity, and provenance is minted at publish time while an
+npm version can never be reused — so a laptop publish leaves that version permanently unattested. The
+workflow that bootstrapped `0.9.0` is in this repository's history and is the template; it was deleted
+after use so no standing credential path remains.
+
+**The registry lags itself.** Immediately after a publish, `npm view` and the full packument endpoint can
+both still report the package as absent — cached documents, not truth. The version-specific endpoint
+(`registry.npmjs.org/<pkg>/<version>`) is authoritative. A post-publish check that trusts the other two will
+report a successful release as a failure, which is exactly what happened on the `0.9.0` bootstrap.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution gate and the two testing tiers, and
