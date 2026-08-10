@@ -48,23 +48,6 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
       && github.actor != 'dependabot[bot]'
     steps:
-      - name: Require CLAUDE_API_KEY
-        # The `if:` above excludes every population that legitimately lacks the key, so an empty key HERE
-        # is a missing repository secret, not a fork. Without this step the reviewer fails mid-run with an
-        # auth error naming neither the secret nor the cause; with it, the run dies in seconds naming
-        # exactly what to restore. Same spirit as the guard in product-integration.yml — and load-bearing
-        # for the same reason: a repo recreate resets Actions secrets while leaving this file in the tree,
-        # and a `skipped` run is indistinguishable from "could not have authenticated" without a step that
-        # checks.
-        env:
-          KEY: ${{ secrets.CLAUDE_API_KEY }}
-        run: |
-          if [ -z "$KEY" ]; then
-            echo "::error::CLAUDE_API_KEY is not set — the security review cannot authenticate."
-            echo "Restore it with: printf '%s' '<key>' | gh secret set CLAUDE_API_KEY --repo ${{ github.repository }}"
-            exit 1
-          fi
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}

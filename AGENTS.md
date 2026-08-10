@@ -96,30 +96,6 @@ both still report the package as absent — cached documents, not truth. The ver
 (`registry.npmjs.org/<pkg>/<version>`) is authoritative. A post-publish check that trusts the other two will
 report a successful release as a failure, which is exactly what happened on the `0.9.0` bootstrap.
 
-## A recreate resets configuration, not content
-
-This repository was published by archive-and-recreate (2026-08-09). The tree, history and branches came
-across; **Actions secrets and variables, environments and their protection rules, branch protection,
-webhooks and deploy keys did not** — none of that lives in the tree, and nothing warns. The workflows look
-intact and they run; each then reports a symptom (an ungated seam, a skipped job, a JSON parse error)
-rather than the cause. `release.yml` is the one publishing path this cannot break — OIDC, no standing
-credential.
-
-Any recreate therefore **ends with a secrets-and-settings audit**, because nothing else will perform one:
-
-```bash
-# what the workflows ask for
-grep -rhoE 'secrets\.[A-Z0-9_]+' .github/workflows/ | sed 's/secrets\.//' | sort -u
-# what actually exists
-gh api repos/<owner>/<repo>/actions/secrets --jq '.secrets[].name'
-gh api repos/<owner>/<repo>/environments   --jq '.environments[]?.name'
-```
-
-…then branch protection and webhooks against the predecessor. Restore secrets with
-`printf '%s' '<value>' | gh secret set <NAME> --repo <owner>/<repo>`, never by hand in the web UI: a pasted
-value has twice carried an invisible trailing newline whose downstream error named neither the secret nor
-the whitespace.
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution gate and the two testing tiers, and
