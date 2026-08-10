@@ -101,7 +101,7 @@ report a successful release as a failure, which is exactly what happened on the 
 This repository was published by archive-and-recreate (2026-08-09). The tree, history and branches came
 across; **Actions secrets and variables, environments and their protection rules, branch protection,
 webhooks and deploy keys did not** — none of that lives in the tree, and nothing warns. The workflows look
-intact and they run; each then fails naming a symptom (an ungated seam, a skipped job, a JSON parse error)
+intact and they run; each then reports a symptom (an ungated seam, a skipped job, a JSON parse error)
 rather than the cause. `release.yml` is the one publishing path this cannot break — OIDC, no standing
 credential.
 

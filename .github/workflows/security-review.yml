@@ -54,8 +54,8 @@ jobs:
         # auth error naming neither the secret nor the cause; with it, the run dies in seconds naming
         # exactly what to restore. Same spirit as the guard in product-integration.yml — and load-bearing
         # for the same reason: a repo recreate resets Actions secrets while leaving this file in the tree,
-        # and every other state this job can reach (`skipped`, green) is indistinguishable from "could not
-        # have authenticated".
+        # and a `skipped` run is indistinguishable from "could not have authenticated" without a step that
+        # checks.
         env:
           KEY: ${{ secrets.CLAUDE_API_KEY }}
         run: |
