@@ -11,7 +11,7 @@ pnpm workspace, Node >= 24, TypeScript with `isolatedDeclarations`. Apache-2.0.
 
 ```
 check:versions → check:docblocks → corpus-seal --check → audit → build → check:dist → lint → depcruise
-  → typecheck → check:docs → check:public-docs → test
+  → typecheck → check:docs → test
 ```
 
 Build comes before typecheck deliberately: workspace packages consume each other through built `dist/`, so
