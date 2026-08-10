@@ -58,6 +58,12 @@ permissions:
   contents: write
   # OIDC. This is the whole of the publishing credential — there is no token to leak.
   id-token: write
+  # For the dispatch gate below, which reads this commit's `ci` conclusion from the runs API. Declaring
+  # any `permissions:` block sets every scope not named here to `none`, so this is not redundant with the
+  # repository default — the same trap `codeql.yml` documents, where the omission 403s the whole step.
+  # It reads as optional today only because a public repository serves that endpoint unauthenticated;
+  # the gate would fail closed the moment this repository went private again.
+  actions: read
 
 concurrency:
   # Serialize, and NEVER cancel. The publish loop is non-atomic: it stages package by package, so
