@@ -24,6 +24,24 @@ import type { BindingManifest } from "@integraledger/lcp-binding-core";
  * So the carrier works on bare Solana AND through x402, which is what protocol-neutrality means here. A
  * `protocol: "x402"` declaration would narrow a binding that is genuinely wider — the opposite of the
  * error the axis exists to catch.
+ *
+ * **BUT THE TWO MEMOS CANNOT BOTH RIDE, AND THAT IS A DEPLOYMENT RULE, NOT A CODEC ONE.** x402's exact-SVM
+ * scheme (re-read 2026-08-11) makes the memo count normative in both verification paths: "If `extra.memo`
+ * is present, the facilitator MUST verify that **exactly one** Memo instruction exists and that its data
+ * matches `extra.memo` encoded as UTF-8", mirrored for the smart-wallet path so "a seller-required memo
+ * cannot be bypassed by routing through a smart wallet". A memo-count mismatch is a semantic failure the
+ * scheme forbids from falling through to any other error. So:
+ *
+ *   - `extra.memo` ABSENT — the client's memo is the one x402 already requires (the alternative is a random
+ *     nonce), so encoding the atrHash there is exactly one memo and settles.
+ *   - `extra.memo` SET TO THIS BINDING'S MEMO — one memo, and it is the weld. This is the intended route.
+ *   - `extra.memo` SET TO ANYTHING ELSE while an LCP memo is also emitted — TWO memos, and the facilitator
+ *     MUST reject the transaction. A seller using `extra.memo` for its own reconciliation has spent the
+ *     carrier, the same way an x402 `invoiceId` spends XRPL's `InvoiceID`.
+ *
+ * Nothing in this package can detect that: it encodes and decodes one memo and never sees the challenge.
+ * The rule is stated here because the deployment is the only party holding both facts, and a settlement
+ * rejected for memo count reports nothing an LCP reader could trace back to this cause.
  */
 export const SOLANA_MANIFEST: BindingManifest = {
   rail: "solana",

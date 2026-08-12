@@ -143,16 +143,17 @@ export function createX402Adapter(config: X402AdapterConfig): WeldAdapter {
       if (events.length === 0) {
         // An empty transition list is a POSITIVE claim: this transaction settled nothing of this asset.
         // That is true only when the token did not move. If it did, the payment settled through a path
-        // this binding cannot read the weld from — in practice x402's Permit2 fallback
-        // (`x402ExactPermit2Proxy`), which exposes no payer-controlled nonce, which is exactly why
-        // `filterAssetTransferMethod` refuses it on the propose side. Answering `[]` here would let the
+        // this binding cannot read the weld from. x402's exact-EVM scheme defines two such paths, not one:
+        // `permit2` (settled through `x402ExactPermit2Proxy`) and `erc7710` (smart-account delegation,
+        // verified by simulation). Neither exposes a payer-controlled nonce, which is exactly why
+        // `filterAssetTransferMethod` refuses both on the propose side. Answering `[]` here would let the
         // observe side quietly assert the opposite of what the propose side refuses to allow.
         if (assetWasTransferred(logs, config.asset))
           return {
             refused: true,
             haltClass: "verification-failure",
             code: "x402/not-eip3009-settlement",
-            detail: `token ${config.asset} was transferred by settlement ${ref.txHash} but it emitted no EIP-3009 AuthorizationUsed — the atrHash weld rides only on the payer-controlled nonce of transferWithAuthorization, so a settlement reached by any other path (the Permit2 fallback among them) carries no on-chain weld this binding can report`,
+            detail: `token ${config.asset} was transferred by settlement ${ref.txHash} but it emitted no EIP-3009 AuthorizationUsed — the atrHash weld rides only on the payer-controlled nonce of transferWithAuthorization, so a settlement reached by any other path (x402's permit2 and erc7710 asset-transfer methods among them) carries no on-chain weld this binding can report`,
           };
         return { ok: true, value: [] };
       }

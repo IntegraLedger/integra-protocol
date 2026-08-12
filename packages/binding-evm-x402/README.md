@@ -78,7 +78,7 @@ convenient one is wrong:
 
 | Refusal | When |
 |---|---|
-| `x402/not-eip3009-settlement` | The token moved and no `AuthorizationUsed` accompanied it. The payment settled — through the Permit2 fallback or another path that carries no payer-controlled nonce — so there is no weld to report. An empty transition list would say the opposite: that nothing settled. |
+| `x402/not-eip3009-settlement` | The token moved and no `AuthorizationUsed` accompanied it. The payment settled — through `permit2` or `erc7710`, the other two asset-transfer methods x402's exact-EVM scheme defines, or another path that carries no payer-controlled nonce — so there is no weld to report. An empty transition list would say the opposite: that nothing settled. |
 | `x402/ambiguous-settlement` | One transaction carries several `AuthorizationUsed` events with *different* nonces and the `SettlementRef` pins no `logIndex`. Answering either one would be a coin flip presented as a recovery. Pin one with `ref.logIndex`. Repeats of the *same* nonce are one weld seen twice, and resolve normally. |
 
 `x402/permit2-fallback` is the propose-side counterpart: an offer requesting a non-EIP-3009 transfer

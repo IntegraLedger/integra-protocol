@@ -60,7 +60,8 @@ describe("x402 placement — manifest matches the tree", () => {
   it("the exported schema is the one the vectors pin — the seller cannot drift from it", () => {
     // `schema` is a REQUIRED x402 member, so this literal is on the wire of every challenge. It was a
     // `$ref` at a URL that returned 404 until 2026-08-08; inlining removes a hosting dependency the
-    // deployment does not meet, and matches both extensions published in the x402 repository.
+    // deployment does not meet, and matches all nine extensions published in the x402 repository — one of
+    // which, Bazaar, forbids an external `$ref` outright. See the manifest docblock.
     const vec = read("../../../vectors/placement/x402.json") as {
       cases: { expected?: unknown }[];
     };

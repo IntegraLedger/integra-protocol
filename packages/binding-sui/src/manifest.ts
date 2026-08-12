@@ -24,9 +24,11 @@ import type { BindingManifest } from "@integraledger/lcp-binding-core";
  *
  * **pattern = "native-field"** — the atrHash rides the FULL 32 raw bytes of Pay402's
  * `settle_payment<T>(.., payment_id: vector<u8>, ..)` argument (canonical LCP §8.3.1 per the LCP per-chain
- * table; Pay402 is the MIT-licensed canonical Sui x402 facilitator, not a custom LCP overlay). The buyer
- * signs the settlement transaction carrying `payment_id`, so the weld is **signature-grade** — the payer's
- * signature commits to `payment_id` atomically with the coin transfer.
+ * table; Pay402 is an MIT-licensed third-party Sui x402 facilitator, not a custom LCP overlay). It is NOT
+ * x402's canonical Sui facilitator, and the paragraph above is why: x402 publishes its own exact-Sui scheme
+ * and does not name Pay402 anywhere in it. The buyer signs the settlement transaction carrying
+ * `payment_id`, so the weld is **signature-grade** — the payer's signature commits to `payment_id`
+ * atomically with the coin transfer.
  *
  * **recovery.forwardIndexable = false** — Sui's `suix_queryEvents` filters by `MoveEventType`
  * (`<pkg>::payment::PaymentSettled`), NOT by the `payment_id` bytes. `recover` reads `payment_id` from a

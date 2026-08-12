@@ -80,7 +80,8 @@ export interface TempoProposalContext {
 export interface TempoMemoProposal {
   /**
    * Merge into the MPP challenge's `methodDetails` (inside the MAC-protected request body). `memo` only —
-   * `TempoMethodDetails` is `{ chainId?, feePayer?, memo?, splits? }` and has no token member, so the
+   * `TempoMethodDetails` is `{ chainId?, feePayer?, memo?, splits?, supportedModes? }` (every member
+   * OPTIONAL, `draft-tempo-charge-00` Method Details, read 2026-08-11) and has no token member, so the
    * token travels in the charge's own payment-method selection, not in a field LCP invented.
    */
   readonly methodDetails: { readonly memo: `0x${string}` };

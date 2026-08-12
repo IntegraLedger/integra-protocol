@@ -9,10 +9,22 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * that does not break, not a reason to ship it. (`https://legalcontextprotocol.org/schemas/lcp-extension.json`
  * returns **404**, measured 2026-08-08 — the schema is inlined instead.)
  *
- * **Both extensions published in the x402 repository inline a complete JSON Schema** rather than
- * referencing an external document, and LCP v1.38 §C.4 says to do one or the other: "Because `schema` is a
- * REQUIRED member, publish a resolvable schema or inline it." Inlining also removes a hosting dependency
- * the deployment does not currently meet — the same dependency the UCP capability still owes.
+ * **All nine extensions published in the x402 repository inline a complete JSON Schema** rather than
+ * referencing an external document — `bazaar`, `builder-code`, `eip2612GasSponsoring`,
+ * `erc20ApprovalGasSponsoring`, `auth-hints`, `offer-receipt`, `http-message-signatures`,
+ * `payment-identifier`, `sign-in-with-x`, read at `x402-foundation/x402` HEAD 2026-08-11. Note that two of
+ * the nine are camelCase, so this package's `legalContext` key follows an established minority spelling
+ * rather than diverging from a unanimous one. LCP v1.38 §C.4
+ * says to do one or the other: "Because `schema` is a REQUIRED member, publish a resolvable schema or
+ * inline it." Inlining also removes a hosting dependency the deployment does not currently meet — the same
+ * dependency the UCP capability still owes.
+ *
+ * **One of the nine makes it a rule, which settles the question.** The Bazaar extension requires a
+ * `schema`'s `$ref`/`$id` values to be "same-document JSON Pointer fragments (starting with `#`); external
+ * references (`http(s)://`, `file://`, or any other absolute/relative URI) are not allowed", and says a
+ * facilitator "must not resolve external `$ref`/`$id` values … when validating an untrusted `schema`". So a
+ * `$ref` here would not merely be unresolvable to a counterparty — it would be rejected outright by any
+ * facilitator cataloguing this extension.
  *
  * The shape is the §8.1 reference object this placement writes into `info`, and nothing more: it describes
  * the carrier, not the terms behind it.

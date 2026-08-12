@@ -2,8 +2,9 @@
  * Sui network constants for the LCP Pay402 `payment_id` binding. The atrHash rides the
  * FULL 32 raw bytes of the Pay402 Move facilitator's `settle_payment<T>(.., payment_id: vector<u8>, ..)`
  * argument — no truncation (canonical LCP §8.3.1 Native Field per the LCP per-chain binding table; Pay402 is
- * the MIT-licensed canonical Sui x402 facilitator, hamiha70/Pay402). The buyer signs the settlement
- * transaction that carries `payment_id`, so the weld is signature-grade. The facilitator emits a
+ * an MIT-licensed third-party Sui x402 facilitator, hamiha70/Pay402 — NOT the canonical one, because x402
+ * publishes its own exact-Sui scheme and does not name Pay402; see the manifest). The buyer signs the
+ * settlement transaction that carries `payment_id`, so the weld is signature-grade. The facilitator emits a
  * `PaymentSettled { payment_id, buyer, merchant, .. }` Move event carrying the same 32 bytes back.
  */
 
