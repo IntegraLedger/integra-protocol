@@ -178,8 +178,8 @@ matches the manifest's rail.
 
 - **Not the MPP placement.** A *placement* would write an advisory reference at `methodDetails.atrHash`, a
   key MPP does not read; this package writes `methodDetails.memo`, the host's own settlement instruction,
-  which commits the reference to the transaction. Different keys, different jobs. There is no MPP placement
-  package yet — it is unbuilt — so nothing here depends on one.
+  which commits the reference to the transaction. Different keys, different jobs, and nothing here depends
+  on the other: `@integraledger/lcp-placement-mpp` ships that advisory placement separately.
 - **Not a payment verifier.** It reports what the memo bound. Whether the amount, currency and recipient were
   right is MPP's server-side verification, and whether the funds reached the named recipient is a separate
   fact — a `TransferWithMemo` proves a memo rode a transfer of the scoped token, not that the transfer

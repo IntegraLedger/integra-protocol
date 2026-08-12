@@ -181,16 +181,18 @@ the same defect as a carrier nobody can find.
   x402 defines only `info` and `schema` for an entry and the `legalContext` key is ours, so owning the entry is
   the point for the *seller* direction; entries *beside* ours in the `extensions` map are preserved
   unconditionally.
-- **`LEGAL_CONTEXT_SCHEMA_REF` points at a document the LCP TSC has not published yet**
-  (`https://legalcontextprotocol.org/schemas/lcp-extension.json`). It is byte-identical to what emitters
-  emits, and it is never fetched by anything in x402. Publishing it — or repointing it — is a **wire change
-  and must be made in both repos at once**; repointing it here alone would recreate the drift this package
-  exists to close.
+- **`LEGAL_CONTEXT_SCHEMA` is INLINED, not a reference.** It was a `$ref` at
+  `https://legalcontextprotocol.org/schemas/lcp-extension.json`, which returns 404 — re-measured
+  2026-08-11 — and x402 makes `schema` a REQUIRED member of every extension entry, so that shipped a
+  required member no counterparty could resolve. All nine extensions published in the x402 repository inline
+  a complete JSON Schema, and one of them, Bazaar, forbids an external `$ref` outright. The exported value is
+  now a frozen literal that is byte-identical to what the placement emits. Changing it is a **wire change**:
+  it appears in every challenge.
 
 ## Provenance
 
 Cut against x402 v2 (`x402-foundation/x402@1fec3aa04e41`, `specs/x402-specification-v2.md`, read 2026-07-30) and reconciled
-against LCP v1.37 §C.4 the same day. The **paths and shapes** are matched field-for-field against the shipped
+against LCP v1.37 §C.4 the same day. The **paths and shapes** are matched field-for-field against the
 shipped seller carrier and the buyer parsers that read it; the **resolution semantics diverge from a strict
 buyer gate in three recorded ways**, and *Drift from a strict buyer-side reader*
 above states each one and who closes it. Both drift sections are the disclosure, not a to-do list — a

@@ -94,10 +94,14 @@ These are absolute in this codebase and a change that violates one will not land
 
 ## How work reaches us
 
-This repository is private today and CI runs `on: [push]`; work lands directly on `main` and there is no
-pull-request surface yet. Until that changes, contributions and proposals reach the maintainers through
-the co-stewards rather than through this repository's issue tracker — with one exception: **security
-reports follow `SECURITY.md`**, whose channel is authoritative for vulnerabilities.
+This repository is public and forking is enabled, but **CI runs `on: [push]` only** — a pull request from a
+fork triggers no checks, so a PR cannot demonstrate green here. Work lands directly on `main`.
+
+Issues are open, and a bug report, a question about a manifest, or a correction to something a package
+claims about a host protocol is welcome as one. Larger proposals — a new binding, a new placement, a change
+to the conformance corpus — reach the maintainers through the co-stewards, because those are decisions about
+the protocol rather than about this tree. **Security reports are the one thing that must not be an issue:
+follow `SECURITY.md`**, whose private channel is authoritative for vulnerabilities.
 
 ## Licence, and what you are attesting
 

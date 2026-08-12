@@ -33,7 +33,8 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * **Still not a settlement binding.** `binding-evm-mpp` and `binding-tempo-mpp` own that, and the
  * two differ enormously in strength on the same wire format: Tempo's `methodDetails.memo` is a documented
  * `bytes32` field whose presence obliges the client to call `transferWithMemo` and obliges the server to
- * verify the emitted memo (`draft-tempo-charge-00` §4.2, §7 step 5), which is a Native Field weld; MPP-EVM
+ * verify the emitted memo (`draft-tempo-charge-00` §4.2, and step 5 of its Transaction Verification
+ * section — cited by name because the draft numbers no sections), which is a Native Field weld; MPP-EVM
  * offers only Id-Reuse. Neither claim rides here.
  *
  * **`methodDetails` is the METHOD's namespace, and that is the honest caveat.** The charge intent §5.3:

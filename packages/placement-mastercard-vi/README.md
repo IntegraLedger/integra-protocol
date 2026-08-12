@@ -28,11 +28,19 @@ npm install @integraledger/lcp-placement-mastercard-vi
 ```ts
 import { makeMastercardViPlacement } from "@integraledger/lcp-placement-mastercard-vi";
 
+declare const mandate: unknown; // an SD-JWT Layer-2 mandate a counterparty issued
+
 const placement = makeMastercardViPlacement("com.example"); // your own reverse domain
+
+// READ is what this package is for: a counterparty who wrote a reference holds a real one.
+const found = placement.extract(mandate);
+
+// WRITE always refuses. Not conditionally — on every document, by design; see below.
 const placed = placement.place(
   { type: "sha256", value: "0x…" },
-  { vct: "mandate.checkout.open.1", constraints: [/* the registered ones */] },
+  { vct: "mandate.checkout.open.1", constraints: [] },
 );
+// => { refused: true, code: "mastercard-vi/tier-b-not-writable", … }
 ```
 
 ## Declaration only — `place` refuses
@@ -162,29 +170,29 @@ The namespace reaches the adapter through the manifest's `container.tag` and is 
 Another deployment's `com.other.lcp_terms_hash` is not our reference, and reading it would attribute one
 party's terms record to another party's credential.
 
-## The write condition, and the one thing it does not claim
+## There is no write condition, because there is no write
 
-`place` refuses `mastercard-vi/write-condition-unmet` unless the mandate's `vct` is one of the two
-constraint-bearing credential types. The reference field *is* the placement, so a document we may not write
-into is a document nothing was placed in — a silent skip would leave a caller believing a record exists.
+Until 2026-08-08 this package wrote the constraint behind a `writeCondition` permitting the two
+constraint-bearing credential types, and refused `mastercard-vi/write-condition-unmet` otherwise. Both are
+gone: the manifest declares no `writeCondition`, and that refusal code exists nowhere in the tree. `place`
+refuses `mastercard-vi/tier-b-not-writable` on every document instead, because the condition was answering
+the wrong question — a permitted mandate still gets rejected in whole by any stock verifier, so gating the
+write on document shape licensed a write that could not travel.
 
-This half of the reading **survives registration**: an Immediate-mode mandate will never grow a `constraints`
-array however LCP's standing changes, so the gate is not a stand-in for the tier. What the gate does not
-claim is that a permitted mandate will be *accepted* — at Tier B it will not be, by any verifier that has not
-adopted the type. Tier carries that fact; the gate carries the document-shape fact.
-
-`extract` is **never** gated. A condition states what we may write; a counterparty's document is evidence
-either way, and refusing to read a reference already present would discard evidence because we disapprove of
-how it arrived.
+`extract` is **never** gated, and that is unchanged. A counterparty's document is evidence either way, and
+refusing to read a reference already present would discard evidence because we disapprove of how it
+arrived.
 
 ## What this package does not do
 
+- It does not write. `place` refuses unconditionally, so it creates no `constraints` array, replaces no
+  entry and repairs no mandate. The manifest records where the reference WOULD sit if the type were
+  registered; nothing puts it there.
 - It does not validate the mandate. A placement is structural: it declines to corrupt a document, it does not
-  adjudicate one. In particular, `place` will create an absent `constraints` array, and a mandate whose only
-  constraint is legal context is not a bounded authorization — supplying the registered constraints is the
-  credential provider's obligation, not this package's.
-- It does not repair a mandate that already carries two entries under one type. The first is replaced and the
-  second is left exactly as the host wrote it, matching the read rule so the two halves cannot disagree.
+  adjudicate one. A mandate whose only constraint were legal context would not be a bounded authorization —
+  supplying the registered constraints is the credential provider's obligation, not this package's.
+- It does not repair a mandate carrying two entries under one type. `extract` reads the FIRST and leaves the
+  rest exactly as the host wrote them, so a later entry cannot forge over an earlier one.
 - It does not raise the class ladder. `verify` reads this as a placement, so a signed constraint can
   never be mistaken for evidence of a settlement weld. Recovery is honest: not on-chain, not zero-party
   recoverable — an auditor needs the credential, which suits a forum that can compel it.

@@ -52,10 +52,14 @@ gate falsified the design this package was specced from, twice:
 1. **Vendor capabilities are Tier A.** It specced a links-only placement on the premise that UCP's
    strict schema rejects unregistered keys, making the integrity path Tier B. The live spec says the
    opposite: "Vendors MUST use their own reverse-domain namespace for custom capabilities" — no central
-   registry, no maintainer approval. What replaces registration is **authority binding**: "the origin of
-   these URLs MUST match the namespace authority" and "Platform MUST validate this binding and SHOULD
-   reject capabilities where the spec origin does not match." Built as planned, this package would have
-   shipped a URL and no hash while a hash-bearing carrier was available the whole time.
+   registry, no maintainer approval. What replaces registration is **authority binding**, and it binds the
+   `schema` URL alone: "a declared `schema` URL's origin MUST match the namespace authority in its name",
+   with a platform obliged to "validate each business-declared `schema` URL before fetching it". The `spec`
+   URL is expressly outside the trust path. Built as planned, this package would have shipped a URL and no
+   hash while a hash-bearing carrier was available the whole time. (Verified verbatim at UCP HEAD
+   2026-08-11. An earlier release quoted the host as also saying platforms "SHOULD reject capabilities where
+   the spec origin does not match" — that sentence is nowhere in UCP, and it inverts the rule above;
+   `discovery/src/capability-identity.ts` records the search that established it.)
 2. **`links[].type` is an OPEN set** ("Businesses MAY define custom types"), not the closed enum the plan
    claimed — that enum is ACP's; an earlier reading conflated the two protocols. `links[]` is REQUIRED on checkout
    responses; entries are `{type (req), url (req), title (opt)}`; `terms_of_service` is a recommended

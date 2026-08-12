@@ -82,7 +82,8 @@ The governing rule is the charge intent §5.3: "Payment methods MAY define addit
 methodDetails object. These fields are method-specific and MUST be documented in the payment method
 specification."
 
-Every published charge method was read on **2026-07-30**:
+The eight charge methods published as of **2026-07-30**, all read that day — `usdc` and `nearintents`
+followed and are handled below:
 
 | Method | Draft | `methodDetails` fields it defines | Closes the object? |
 |---|---|---|---|
@@ -96,7 +97,8 @@ Every published charge method was read on **2026-07-30**:
 | hedera | `draft-hedera-charge-00` | `chainId` | no |
 
 **None of the eight closes `methodDetails`, none rejects unknown keys, and none documents a legal-context
-field.** So `atrHash` is tolerated by all eight today — which is what Tier A means — while sitting in a
+field** — and re-reading the full family of ten on 2026-08-08 did not change that. So `atrHash` is tolerated
+by every published method today — which is what Tier A means — while sitting in a
 namespace whose authority is each method specification. A deployment on a method that later constrains
 `methodDetails` must discharge this gate for **that** method rather than assume this one carries over. The
 right forward ask is the steward invitation (standard placement per method), not a core-spec change.

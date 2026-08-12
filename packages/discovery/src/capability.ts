@@ -467,9 +467,13 @@ function originOf(value: string): string | null {
 }
 
 /**
- * UCP's authority binding, enforced: "The origin of these URLs MUST match the namespace authority" and
- * "Platform MUST validate this binding". `com.integraledger.*` is documented at `integraledger.com`, so
- * anything else under our capability name is a claim on our namespace by a party that does not hold it.
+ * UCP's authority binding, enforced. Verbatim at HEAD 2026-08-11: "a declared `schema` URL's origin MUST
+ * match the namespace authority in its name", and a platform "MUST validate each business-declared `schema`
+ * URL before fetching it". `com.integraledger.*` is documented at `integraledger.com`, so anything else
+ * under our capability name is a claim on our namespace by a party that does not hold it.
+ *
+ * The binding is on `schema` ONLY — see {@link LCP_CAPABILITY_AUTHORITY_ORIGIN} for the host's own sentence
+ * putting the `spec` URL outside the trust path, and for the invented quotation that once said otherwise.
  *
  * The scheme is part of an origin, so a plain-`http` URL at the right host fails too — a spec document
  * fetched over http is rewritable in transit, which is the same reasoning `placement-ucp` applies to the

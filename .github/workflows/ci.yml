@@ -1,5 +1,6 @@
 name: ci
-on: [push]        # work lands directly on main; there is no PR surface to trigger on
+on: [push]        # work lands directly on main. A fork's PR therefore gets no CI — stated in CONTRIBUTING
+                  # so a contributor knows they cannot demonstrate green here, rather than discovering it.
 
 # Least privilege, declared rather than inherited: without this block a job gets the repository default,
 # which is org-configurable and historically read/write. This workflow only reads the tree.

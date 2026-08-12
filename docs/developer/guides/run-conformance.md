@@ -195,7 +195,7 @@ console.log(report.failed[0]);
 ```
 
 ```text
-conformance: 3 passed, 809 failed, 0 skipped
+conformance: 13 passed, 799 failed, 0 skipped
 failing areas: 43 of 44
 {
   area: 'atrhash.compute',
@@ -205,8 +205,8 @@ failing areas: 43 of 44
 }
 ```
 
-That is what day one looks like, and it is the right shape: the three `hashAtr` cases pass because that one
-operation class is implemented, and the other forty-three areas are open. The failure list is a work queue with the areas already
+That is what day one looks like, and it is the right shape: the thirteen `byteInput` cases pass because that
+one operation class is implemented, and the other forty-three areas are open. The failure list is a work queue with the areas already
 grouped. The command runs from the parent process's working directory, so `["subject.py"]` resolves relative
 to wherever you start the script.
 

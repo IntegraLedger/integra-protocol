@@ -189,15 +189,22 @@ Read against each host's live specification, never LCP's informative Appendix C.
 **UCP** — the live specification at `ucp.dev`, version `2026-04-08` (`specification/overview`, namespace
 governance and the capability definition; profile shape cross-read against a published implementer profile).
 
-1. A capability declaration is `{ version, spec, schema }` REQUIRED, `{ id, config, extends }` OPTIONAL, and
-   the value under a capability name in `ucp.capabilities` is an **array** — one entry per supported version.
-   `config` is "Entity-specific configuration. Structure defined by each entity's schema", which is where the
-   requirements ride.
+1. A capability declaration requires `version`; `capability.json` then requires `schema` of a
+   business-declared capability and `spec` as well of a platform-declared one, leaving `{ id, config,
+   extends }` optional. The value under a capability name in `ucp.capabilities` is an **array** — one entry
+   per supported version. `config` is "Entity-specific configuration. Structure defined by each entity's
+   schema", which is where the requirements ride.
 2. **Authority binding replaces registration.** "Vendors MUST use their own reverse-domain namespace for
-   custom capabilities"; "The `spec` and `schema` fields are REQUIRED for all capabilities. The origin of
-   these URLs MUST match the namespace authority"; and a platform "MUST validate this binding". No central
-   registry, no maintainer approval. `readUcpProfile` implements the platform side, and the scheme is part of
-   an origin, so plain `http` at the right host fails too.
+   custom capabilities", and what replaces registration is a binding on ONE of the two URLs: "a declared
+   `schema` URL's origin MUST match the namespace authority in its name", derived "from the `schema` URL
+   host". The `spec` URL is explicitly outside it — "its origin is **not** authority-bound: it **MUST** be
+   `https` but **MAY** be served from any host". A platform "MUST validate each business-declared `schema`
+   URL before fetching it" and MUST reject the entity on a mismatch. No central registry, no maintainer
+   approval. `readUcpProfile` implements the platform side: it binds the origin of `schema` alone and holds
+   `spec` to `https` only, which is what the host actually says.
+
+   *Every quotation in this section was re-verified verbatim against `universal-commerce-protocol/ucp` at
+   HEAD on 2026-08-11.*
 3. **No `required`.** The host has no notion of a capability being mandatory of a counterparty; capabilities
    activate only inside the negotiated intersection. A2A's flag has no analogue here and none is invented.
 4. **No `extends`.** The intersection algorithm removes "any capability where extends is set but none of its
@@ -241,10 +248,14 @@ redirector would give one capability two custodians.
 
 The two UCP URLs (`spec`, `schema`) and the A2A extension URI point at documents **not yet served** from
 `https://integraledger.com/`. Nothing in this package fetches them, and reading or writing a declaration does
-not depend on them. But UCP's authority binding is a platform-side MUST, and a platform that fetches as well
-as compares origins will 404 — so **publishing those documents is a precondition for advertising the
-capability in a live `/.well-known/ucp`**, not for using this package. `placement-ucp`'s README records the
-same debt for the same reason.
+not depend on them.
+
+**The failure mode is worse than a 404, and it is measured rather than predicted.** Both UCP URLs answer
+**HTTP 200 with the site's SPA index** — `text/html`, 2241 bytes, re-measured 2026-08-11. A platform that
+only compares origins is unaffected; one that also FETCHES gets a success and a document that is not the one
+advertised, which no absence check detects. So **publishing those documents is a precondition for
+advertising the capability in a live `/.well-known/ucp`**, not for using this package — and do not rely on a
+404 reading as "not yet". `placement-ucp`'s README records the same debt for the same reason.
 
 ## Machine-readable formats
 

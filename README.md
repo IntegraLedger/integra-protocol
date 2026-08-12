@@ -38,7 +38,7 @@ artifact for a year — long enough that a disclosure reaching back past ninety 
 ### What `0.9.0` means
 
 Every package here is at **0.9.0**, and the number is a statement rather than an accident. This is a release
-candidate for 1.0: the implementation is complete against LCP v1.37 and certified by the conformance
+candidate for 1.0: the implementation is complete against LCP v1.38 and certified by the conformance
 corpus on every commit. It is not a preview, and it is not a first draft.
 
 It is not `1.0` because **the distance left to travel is the specification's, not the implementation's.** LCP
@@ -250,7 +250,7 @@ have both — x402 does, and the two answer different questions.
 | [`placement-acp`](packages/placement-acp) | ACP | A | session `metadata.legal_context`; the top-level `legal_context` is READ only — v1.38 §C.2 withdrew the write |
 | [`placement-ucp`](packages/placement-ucp) | UCP | A | `policies[type=com.integraledger.policy.legal_context]`, reading also the `terms_of_service` link |
 | [`placement-visa-tap`](packages/placement-visa-tap) | Visa TAP | A | `headers.x-lcp-hash` — the set's only `header-map` container, outside `Signature-Input` |
-| [`placement-mastercard-vi`](packages/placement-mastercard-vi) | Mastercard VI | B | a custom Layer-2 constraint under the **deployment's own** reverse-DNS namespace |
+| [`placement-mastercard-vi`](packages/placement-mastercard-vi) | Mastercard VI | B | a custom Layer-2 constraint under the **deployment's own** reverse-DNS namespace — declaration only; `place` refuses unconditionally, per v1.38 §C.7 |
 | [`placement-a2a`](packages/placement-a2a) | A2A | A | task `metadata.legalContext` |
 
 `mcp` is a known protocol id with **no placement**, and that is terminal rather than pending: LCP §C.9 and
@@ -265,7 +265,7 @@ against stock, unmodified implementations.
 ```bash
 pnpm install
 pnpm verify          # versions → docblocks → corpus-seal → audit → build → dist → lint → depcruise
-                     #   → typecheck → docs → public-docs → test
+                     #   → typecheck → docs → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 ```
 

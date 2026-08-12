@@ -41,7 +41,14 @@
  */
 import type { X402AdapterConfig } from "./adapter.js";
 
-/** The deployments whose EIP-712 domain values have been read from their own USDC contract. */
+/**
+ * The deployments whose EIP-712 domain values have been read from their own USDC contract.
+ *
+ * NOT a list of what x402 supports, in either direction. The specification names far more networks than
+ * these four — `eip155:43114` and `eip155:43113` among them — so `avalanche` is a verified domain row on a
+ * network x402 does define. (Re-checked at HEAD 2026-08-11: it is the Go SDK's `constants.go` that carries
+ * no 43114 entry, not the specification.) Adding a chain means adding a verified row, nothing more.
+ */
 export type X402DeploymentName =
   | "base"
   | "base-sepolia"
