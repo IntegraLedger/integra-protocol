@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   getSolanaConfig,
   MEMO_PROGRAM_ID,
+  SOLANA_USDC_DECIMALS,
   type SolanaNetwork,
   TOKEN_PROGRAM_ID,
-  USDC_DECIMALS,
 } from "../src/constants.js";
 
 describe("program ids are cluster-independent", () => {
@@ -56,6 +56,6 @@ describe("getSolanaConfig", () => {
   });
 
   it("USDC on Solana is 6 decimals", () => {
-    expect(USDC_DECIMALS).toBe(6);
+    expect(SOLANA_USDC_DECIMALS).toBe(6);
   });
 });

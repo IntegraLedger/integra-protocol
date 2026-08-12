@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   getHederaConfig,
   HEDERA_MEMO_MAX_BYTES,
+  HEDERA_USDC_DECIMALS,
   type HederaNetwork,
-  USDC_DECIMALS,
 } from "../src/constants.js";
 
 describe("getHederaConfig", () => {
@@ -61,6 +61,6 @@ describe("ledger limits", () => {
   });
 
   it("USDC on Hedera is 6 decimals", () => {
-    expect(USDC_DECIMALS).toBe(6);
+    expect(HEDERA_USDC_DECIMALS).toBe(6);
   });
 });

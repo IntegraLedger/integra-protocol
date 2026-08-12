@@ -11,8 +11,8 @@ import {
   MUX_ID_BYTES,
   MUX_SCHEME,
   PUBNET_PASSPHRASE,
+  STELLAR_USDC_DECIMALS,
   TESTNET_PASSPHRASE,
-  USDC_DECIMALS,
 } from "../src/constants.js";
 
 describe("getStellarConfig", () => {
@@ -87,9 +87,9 @@ describe("the prefix-8 scheme constants", () => {
   });
 });
 
-describe("USDC_DECIMALS", () => {
+describe("STELLAR_USDC_DECIMALS", () => {
   it("is 7 on Stellar — not the 6 every other rail in this repo uses", () => {
-    expect(USDC_DECIMALS).toBe(7);
-    expect(10 ** USDC_DECIMALS).toBe(10_000_000);
+    expect(STELLAR_USDC_DECIMALS).toBe(7);
+    expect(10 ** STELLAR_USDC_DECIMALS).toBe(10_000_000);
   });
 });

@@ -17,10 +17,10 @@ export {
 export {
   getSolanaConfig,
   MEMO_PROGRAM_ID,
+  SOLANA_USDC_DECIMALS,
   type SolanaNetwork,
   type SolanaNetworkConfig,
   TOKEN_PROGRAM_ID,
-  USDC_DECIMALS,
 } from "./constants.js";
 export { SOLANA_MANIFEST } from "./manifest.js";
 export {

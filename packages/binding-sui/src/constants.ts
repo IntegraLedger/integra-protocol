@@ -61,5 +61,14 @@ export function pay402SettleTarget(packageId: string): string {
   return `${packageId}::${PAY402_MODULE}::${PAY402_SETTLE_FUNCTION}`;
 }
 
-/** USDC on Sui has 6 decimals — 1 USDC = 1_000_000 base units. */
-export const USDC_DECIMALS = 6;
+/**
+ * USDC on Sui has 6 decimals — 1 USDC = 1_000_000 base units.
+ *
+ * RAIL-QUALIFIED ON PURPOSE. Four bindings publish a USDC decimal count and they are NOT all the same —
+ * Stellar's is 7 where Hedera's, Solana's and Sui's are 6. A bare `USDC_DECIMALS` exported four times
+ * from four packages is one name with two meanings, and the way that fails is silent: a consumer who reads
+ * it from one rail and applies it on another is off by a factor of ten in an amount, at settlement rather
+ * than at compile time. Each value is correct for its own chain, which is why no per-package test can
+ * catch the clash; the prefix is what makes it impossible to import the wrong one by accident.
+ */
+export const SUI_USDC_DECIMALS = 6;

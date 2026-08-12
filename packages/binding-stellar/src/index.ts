@@ -15,10 +15,10 @@ export {
   MUX_ID_BYTES,
   MUX_SCHEME,
   PUBNET_PASSPHRASE,
+  STELLAR_USDC_DECIMALS,
   type StellarNetwork,
   type StellarNetworkConfig,
   TESTNET_PASSPHRASE,
-  USDC_DECIMALS,
 } from "./constants.js";
 export { STELLAR_MANIFEST } from "./manifest.js";
 export {

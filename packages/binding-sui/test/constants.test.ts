@@ -14,7 +14,7 @@ import {
   PAY402_SETTLED_EVENT,
   pay402SettledEventType,
   pay402SettleTarget,
-  USDC_DECIMALS,
+  SUI_USDC_DECIMALS,
 } from "../src/constants.js";
 
 const PKG =
@@ -77,9 +77,9 @@ describe("fully-qualified Pay402 Move names", () => {
   });
 });
 
-describe("USDC_DECIMALS", () => {
+describe("SUI_USDC_DECIMALS", () => {
   it("is 6 — the base-unit scale amounts are quoted in", () => {
-    expect(USDC_DECIMALS).toBe(6);
-    expect(10n ** BigInt(USDC_DECIMALS)).toBe(1_000_000n);
+    expect(SUI_USDC_DECIMALS).toBe(6);
+    expect(10n ** BigInt(SUI_USDC_DECIMALS)).toBe(1_000_000n);
   });
 });

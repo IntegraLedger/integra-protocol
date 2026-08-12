@@ -15,9 +15,9 @@ export {
   PAY402_SETTLED_EVENT,
   pay402SettledEventType,
   pay402SettleTarget,
+  SUI_USDC_DECIMALS,
   type SuiNetwork,
   type SuiNetworkConfig,
-  USDC_DECIMALS,
 } from "./constants.js";
 export { SUI_MANIFEST } from "./manifest.js";
 export {
