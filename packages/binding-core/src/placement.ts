@@ -133,12 +133,18 @@ export type PlacementContainer =
       /**
        * OPTIONAL — the exact key sequence the walker takes, overriding the dot-split of `field`.
        *
-       * Needed when a KEY contains literal dots. UCP capability keys follow
-       * `[reverse-domain].{service}.{capability}`, so `com.integraledger.legal-context` is ONE key under
-       * `extensions` — a dot-split locator would walk four segments into a document that has two. Hyphenating
-       * our capability name to suit the walker would put a spelling on the wire UCP's own naming convention
-       * does not use, so the walker adapts instead. When present, `field` stays the human-readable
-       * locator and this carries the machine-readable form — the division of labour tagged-array established.
+       * Needed when a KEY contains literal dots — a reverse-domain name used as a single map key is the
+       * general case. A dot-split locator would walk one segment per component into a document that has
+       * one key, and respelling the name to suit the walker would put a spelling on the wire the host's own
+       * naming convention does not use. So the walker adapts instead: when present, `field` stays the
+       * human-readable locator and this carries the machine-readable form — the division of labour
+       * tagged-array established.
+       *
+       * **NO SHIPPED MANIFEST DECLARES THIS TODAY.** The motivating case was UCP's vendor capability under
+       * an `extensions` map, and that carrier was retired once UCP turned out to define no such map on a
+       * checkout response — `placement-ucp` writes a `policies[]` entry, which is a tagged-array. The field
+       * is kept because the shape it describes is not UCP-specific and the next host that keys a map by
+       * reverse domain will need it; it is not kept because anything here uses it.
        */
       readonly segments?: readonly string[];
     }

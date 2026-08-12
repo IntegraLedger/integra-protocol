@@ -22,7 +22,7 @@
                 "type": "string",
                 "minLength": 1
               },
-              "description": "OPTIONAL — the exact key sequence the walker takes, overriding the dot-split of `field`. Needed when a KEY contains literal dots: UCP capability keys follow [reverse-domain].{service}.{capability}, so com.integraledger.legal-context is ONE key under `extensions`. When present, `field` is documentation for humans and this is the machine-readable form — the same division tagged-array uses."
+              "description": "OPTIONAL — the exact key sequence the walker takes, overriding the dot-split of `field`. Needed when a KEY contains literal dots: UCP capability keys follow [reverse-domain].{service}.{capability}, so com.integraledger.legal_context is ONE key under `extensions`. When present, `field` is documentation for humans and this is the machine-readable form — the same division tagged-array uses."
             }
           },
           "description": "The path resolves directly to the slot. ACP, A2A, AP2, ACK, MPP, x402."
@@ -57,7 +57,7 @@
               "description": "OPTIONAL — sibling fields written onto a NEWLY CREATED entry because the HOST's schema requires them, never applied when merging into an entry that already exists (a counterparty's own prose is theirs). UCP is the consumer: policies[] entries are required:[type,description], so an entry carrying only a tag and a value is an invalid document, and a writer emitting one would assert a shape the host rejects. A constant may not name the entry's own tagField or valueField — assertManifestHygiene refuses that, because a manifest declaring a constant the writer would drop is stating something it does not mean."
             }
           },
-          "description": "An array of entries; find the entry whose tagField equals tag; the reference lives in valueField. UCP (links / type=terms_of_service / url) and Mastercard VI (constraints / type=<ns>.lcp-terms-hash / value) reduce to the SAME rule with different data — two protocols with nothing else in common sharing one rule is the evidence the abstraction is discovered rather than invented."
+          "description": "An array of entries; find the entry whose tagField equals tag; the reference lives in valueField. UCP (links / type=terms_of_service / url) and Mastercard VI (constraints / type=<ns>.lcp_terms_hash / value) reduce to the SAME rule with different data — two protocols with nothing else in common sharing one rule is the evidence the abstraction is discovered rather than invented."
         },
         {
           "type": "object",

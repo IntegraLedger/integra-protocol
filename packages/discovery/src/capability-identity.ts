@@ -10,10 +10,24 @@
 // cannot slip the reserved namespace in through one of them while the others still read correctly.
 
 /**
- * The UCP vendor capability name, and the SAME spelling `placement-ucp` writes at
- * `extensions["com.integraledger.legal-context"]`. One spelling for one capability across the two packages:
- * a profile that advertises it and a checkout that carries it are talking about the same thing, and two
- * spellings would let a counterparty honour one and miss the other.
+ * The UCP vendor capability name — the profile-level advertisement, not a carrier. `placement-ucp` writes
+ * the reference into a `policies[]` entry, keyed `com.integraledger.legal_context` inside a policy tagged
+ * `com.integraledger.policy.legal_context`; UCP has no `extensions` map for a checkout response to carry
+ * one in. The three are distinct surfaces and are deliberately spelled with ONE vocabulary, so a
+ * counterparty reading a profile and a counterparty reading a checkout are demonstrably looking at the same
+ * deployment's claim.
+ *
+ * **UNDERSCORE, MATCHING THE HOST.** This was `com.integraledger.legal-context`. UCP spells its own
+ * vocabulary with underscores throughout and uses no hyphens — `dev.ucp.shopping.checkout`,
+ * `com.example.loyalty_gold`, `com.example.policy.price_match` — and our own policy carrier already
+ * followed that while this name did not. No host forces either spelling (ACP's identifier pattern admits
+ * both, and it is the only host that constrains the shape at all), which is exactly why the house had to
+ * rule it rather than inherit it. The rule is: follow the vocabulary you are writing into. That is also why
+ * `LEGAL_CONTEXT_WELL_KNOWN_PATH` keeps its hyphen — RFC 8615 well-known names are hyphenated.
+ *
+ * The retired spelling survives on purpose in `binding-core`'s kit fixtures, where it is sample input to
+ * container-validation cases cut against v1.37 §C.3's `extensions` shape. Those are historical by
+ * construction and assert nothing about this deployment's identity.
  *
  * UCP's convention is `[reverse-domain].{service}.{capability}`. Three components rather than four is the
  * host's own vendor pattern (`com.example.*`, `org.acme.*`), and the registered names run to five
@@ -21,7 +35,7 @@
  * count. The authority is the leading reverse domain, which is what {@link LCP_CAPABILITY_AUTHORITY_ORIGIN}
  * has to match.
  */
-export const LCP_CAPABILITY_NAME = "com.integraledger.legal-context";
+export const LCP_CAPABILITY_NAME = "com.integraledger.legal_context";
 
 /**
  * The origin the `schema` URL under {@link LCP_CAPABILITY_NAME} must have — the `spec` URL is NOT bound to

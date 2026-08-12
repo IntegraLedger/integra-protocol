@@ -48,8 +48,16 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * The container is `header-map`, the only one in the placement set: RFC 9110 field names compare
  * case-insensitively, so the kit folds case on read and reuses an existing key's casing on write. Neither is
  * a heuristic — it is what reading and writing an HTTP field map correctly means.
+ *
+ * **THE TIER IS NOT IN THE NAME, AND THAT IS DELIBERATE.** This constant was `VISA_TAP_PLACEMENT_TIER_A`.
+ * The tier is a manifest FIELD precisely because it can move: Tier A here rests on a specific reading —
+ * that TAP's `Signature-Input` covers exactly `"@authority" "@path"`, so a custom header is uncovered and a
+ * stock verifier tolerates it. If TAP widens that coverage the field below changes, and an identifier
+ * carrying the old answer could only be corrected by a breaking rename. It is the same hazard
+ * `placement-mastercard-vi` states in capitals — `tier: "B"` IS A LABEL, NOT A GATE — one level up, at the
+ * API. Every sibling placement exports `<PROTOCOL>_PLACEMENT`; this one now does too.
  */
-export const VISA_TAP_PLACEMENT_TIER_A: PlacementManifest = {
+export const VISA_TAP_PLACEMENT: PlacementManifest = {
   protocol: "visa-tap",
   pattern: "http-advisory",
   tier: "A",

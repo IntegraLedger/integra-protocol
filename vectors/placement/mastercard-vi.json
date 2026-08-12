@@ -9,10 +9,10 @@
       "kind": "tagged-array",
       "at": "constraints",
       "tagField": "type",
-      "tag": "com.integraledger.lcp-terms-hash",
+      "tag": "com.integraledger.lcp_terms_hash",
       "valueField": "value"
     },
-    "field": "constraints[type=com.integraledger.lcp-terms-hash].value",
+    "field": "constraints[type=com.integraledger.lcp_terms_hash].value",
     "carrierTypes": ["sha256"],
     "specRef": "Mastercard Verifiable Intent — custom Layer-2 constraint type under reverse-DNS naming (§9.1); constraints appear only in Autonomous open mandates, where unknown types MUST be rejected — so this placement is DECLARATION-ONLY per LCP v1.38 §C.7 and `place` refuses (withdrawn 2026-08-08; gate originally discharged 2026-07-30: see README)"
   },
@@ -26,7 +26,7 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
             }
           ]
@@ -50,7 +50,7 @@
           "vct": "mandate.checkout.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
             }
           ]
@@ -73,11 +73,11 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
             },
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": "0xabababababababababababababababababababababababababababababababab"
             }
           ]
@@ -101,7 +101,7 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.example.lcp-terms-hash",
+              "type": "com.example.lcp_terms_hash",
               "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
             }
           ]
@@ -167,7 +167,7 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": "nope"
             }
           ]
@@ -189,7 +189,7 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": ""
             }
           ]
@@ -210,7 +210,7 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash",
+              "type": "com.integraledger.lcp_terms_hash",
               "value": 42
             }
           ]
@@ -232,7 +232,7 @@
           "vct": "mandate.checkout.open.1",
           "constraints": [
             {
-              "type": "com.integraledger.lcp-terms-hash"
+              "type": "com.integraledger.lcp_terms_hash"
             }
           ]
         }

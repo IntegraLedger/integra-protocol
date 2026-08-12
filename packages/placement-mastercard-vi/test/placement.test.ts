@@ -61,7 +61,7 @@ describe("Mastercard VI placement — the namespace rules the corpus cannot pin"
     const theirs = makeMastercardViPlacement("com.example");
     const mandate = {
       vct: "mandate.checkout.open.1",
-      constraints: [{ type: "com.integraledger.lcp-terms-hash", value: HASH }],
+      constraints: [{ type: "com.integraledger.lcp_terms_hash", value: HASH }],
     };
     expect(ours.extract(mandate)).toEqual({
       ok: true,
@@ -111,7 +111,7 @@ describe("Mastercard VI placement — the namespace rules the corpus cannot pin"
     const out = ours.extract({
       vct: "mandate.checkout.open.1",
       constraints: [
-        { type: "com.integraledger.lcp-terms-hash", value: "not-a-hash" },
+        { type: "com.integraledger.lcp_terms_hash", value: "not-a-hash" },
       ],
     });
     expect(out).toMatchObject({ code: "mastercard-vi/reference-malformed" });

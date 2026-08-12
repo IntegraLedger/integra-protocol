@@ -24,7 +24,7 @@ npm install @integraledger/lcp-placement-visa-tap
 ## Use
 
 ```ts
-import { VISA_TAP_PLACEMENT_TIER_A, visaTapPlacement } from "@integraledger/lcp-placement-visa-tap";
+import { VISA_TAP_PLACEMENT, visaTapPlacement } from "@integraledger/lcp-placement-visa-tap";
 
 declare const request: { headers: Record<string, string> }; // the TAP request, as received
 
@@ -95,7 +95,7 @@ HTTP-Layer Advisory, which is exactly what an uncovered header is.
 
 ## The surface is deliberately two exports
 
-`visaTapPlacement` is `makePlacement(VISA_TAP_PLACEMENT_TIER_A)` — `makePlacement` comes from
+`visaTapPlacement` is `makePlacement(VISA_TAP_PLACEMENT)` — `makePlacement` comes from
 [`@integraledger/lcp-binding-core`](../binding-core#readme) — and nothing else — the manifest *is* the
 adapter (S7). Both members are total: a refusal is a returned value, never a thrown exception.
 

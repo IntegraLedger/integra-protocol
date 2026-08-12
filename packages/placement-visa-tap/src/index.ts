@@ -1,2 +1,2 @@
-export { VISA_TAP_PLACEMENT_TIER_A } from "./manifest.js";
+export { VISA_TAP_PLACEMENT } from "./manifest.js";
 export { visaTapPlacement } from "./placement.js";

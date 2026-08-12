@@ -77,9 +77,9 @@ documents where the field is, rather than creating one. Measured with ajv 8.20 a
 | declared *and* gated top-level `legal_context` | **INVALID** — `additionalProperties` |
 
 ```jsonc
-// a session RESPONSE declaring com.integraledger.legal-context → ONE carrier lands
+// a session RESPONSE declaring com.integraledger.legal_context → ONE carrier lands
 { id: "cs_1", status: "ready_for_payment",
-  capabilities: { extensions: [{ name: "com.integraledger.legal-context" }] },
+  capabilities: { extensions: [{ name: "com.integraledger.legal_context" }] },
   metadata: { legal_context: "lcp:sha256:0x…" } }
 ```
 
@@ -125,7 +125,7 @@ the `http-advisory` determination rests on the same text it always did.
 The conditional write was cut against the same release's `schema.extension.json`, re-read 2026-07-30.
 `ExtensionDeclaration` requires only `name`; `Capabilities.extensions` is a `oneOf` whose request arm is
 identifier strings and whose response arm is declaration objects, shared by one `Capabilities` definition and
-undiscriminated; `extension_identifier` admits `com.integraledger.legal-context` and an optional dated version
+undiscriminated; `extension_identifier` admits `com.integraledger.legal_context` and an optional dated version
 suffix; and `extends_target` admits `$.CheckoutSession.legal_context` while rejecting `legal-context` — which
 fixes the snake_case spelling of the **extension-declared** field. It fixes nothing about
 `metadata.legal_context`: `metadata` is `additionalProperties: true` and takes any key, so that spelling is

@@ -131,10 +131,10 @@ describe("the placement registry", () => {
     const mine = placementFor("mastercard-vi", DEPLOYMENT);
     const theirs = placementFor("mastercard-vi", OTHER_DEPLOYMENT);
     expect(mine?.manifest.field).toBe(
-      "constraints[type=com.example.lcp-terms-hash].value",
+      "constraints[type=com.example.lcp_terms_hash].value",
     );
     expect(theirs?.manifest.field).toBe(
-      "constraints[type=net.other.lcp-terms-hash].value",
+      "constraints[type=net.other.lcp_terms_hash].value",
     );
     // Two deployments, two carriers. Reading one deployment's constraint as another's would attribute one
     // party's terms to another party's credential, which is why the tag is matched exactly on read.

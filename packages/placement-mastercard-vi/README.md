@@ -16,7 +16,7 @@ npm install @integraledger/lcp-placement-mastercard-vi
 | **Chain** | none — a mandate authorizes a payment, it settles nothing on-chain |
 | **Pattern** | `opaque-challenge` (LCP §8.3.4) — the first placement in the set to use it |
 | **Tier** | **B** — a stock verifier rejects an open mandate carrying an unrecognized constraint type |
-| **Field** | `constraints[type=<reverse-domain>.lcp-terms-hash].value` — a `tagged-array` container |
+| **Field** | `constraints[type=<reverse-domain>.lcp_terms_hash].value` — a `tagged-array` container |
 | **Write** | **none — declaration only.** `place` refuses; `extract` reads |
 | **Carrier types** | `sha256` only |
 | **Signature** | inherited — Layer 2's claims are signed with the key bound in Layer 1's `cnf.jwk` |
@@ -159,7 +159,7 @@ deployment that forgot to pass one. The factory refuses three arguments outright
 - **`org.legalcontextprotocol.*`**: reserved for a TSC-ratified capability, and reserved is not available.
 
 The namespace reaches the adapter through the manifest's `container.tag` and is matched **exactly** on read.
-Another deployment's `com.other.lcp-terms-hash` is not our reference, and reading it would attribute one
+Another deployment's `com.other.lcp_terms_hash` is not our reference, and reading it would attribute one
 party's terms record to another party's credential.
 
 ## The write condition, and the one thing it does not claim

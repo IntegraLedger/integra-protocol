@@ -1,7 +1,7 @@
 import type { PlacementManifest } from "@integraledger/lcp-binding-core";
 
 /** The local-name suffix of the LCP terms-hash constraint. The full type is `<reverse-domain>.<suffix>`. */
-export const LCP_TERMS_HASH_SUFFIX = "lcp-terms-hash";
+export const LCP_TERMS_HASH_SUFFIX = "lcp_terms_hash";
 
 /**
  * The namespace reserved for a TSC-ratified capability, and therefore the one namespace this factory
@@ -82,7 +82,9 @@ const REVERSE_DNS = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
  * the class ladder, so a signed constraint can never be mistaken for a settlement weld.
  *
  * **`encoding: "bare-value"` with exactly one carrier type.** The constraint value is a bare `0x` hash, as
- * §C.7 illustrates and as every non-ACP carrier in the set holds. The type name says `lcp-terms-hash`, and
+ * §C.7 illustrates and as every non-ACP carrier in the set holds. The type name says `lcp_terms_hash` —
+ * underscored to match Verifiable Intent's own registered types, all eight of which are underscored
+ * (`mandate.checkout.allowed_merchants`, `mandate.payment.amount_range`, …); it was `lcp-terms-hash` — and
  * its schema is ours to write because a custom type's schema belongs to whoever defines it — so a URL would
  * be a DIFFERENT constraint type, not a different value in this one. `bare-value` also forces the list to
  * exactly one: a bare value carries no type tag, so a second permitted type would leave a reader unable to

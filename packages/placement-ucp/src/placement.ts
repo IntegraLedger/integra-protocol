@@ -9,9 +9,11 @@ const base = makePlacement(UCP_PLACEMENT);
 /**
  * The UCP reference placement — the kit plus ONE protocol rule the kit cannot know.
  *
- * `makePlacement(UCP_PLACEMENT)` supplies everything structural: the dotted-key capability write (the
- * container's `segments` make `com.integraledger.legal-context` ONE key, not four), the tagged-array read of
- * the `links` discovery alias, strength-ordered extraction, purity, and every refusal the vectors pin. This
+ * `makePlacement(UCP_PLACEMENT)` supplies everything structural: the tagged-array write into `policies[]`,
+ * the tagged-array read of the `links` discovery alias, strength-ordered extraction, purity, and every
+ * refusal the vectors pin. (An earlier revision described a dotted-key capability write through the
+ * container's `segments`; that carrier was retired when UCP turned out to define no `extensions` map, and
+ * `segments` now has no shipped declarer.) This
  * file adds only the rule that is UCP's semantics rather than any container's mechanics: **a terms link must
  * be HTTPS.** An `http:` URL is rewritable in transit, so accepting one would put an unauthenticated document
  * behind a reference the record cites.

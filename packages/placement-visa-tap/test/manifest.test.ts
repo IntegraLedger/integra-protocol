@@ -3,7 +3,7 @@ import { Validator } from "@cfworker/json-schema";
 import { assertManifestHygiene } from "@integraledger/lcp-binding-core";
 import { describe, expect, it } from "vitest";
 import * as pkg from "../src/index.js";
-import { VISA_TAP_PLACEMENT_TIER_A } from "../src/index.js";
+import { VISA_TAP_PLACEMENT } from "../src/index.js";
 
 const read = (rel: string): unknown =>
   JSON.parse(readFileSync(new URL(rel, import.meta.url), "utf8"));
@@ -13,7 +13,7 @@ describe("Visa TAP placement — manifest matches the tree", () => {
     const vec = read("../../../vectors/placement/visa-tap.json") as {
       manifest: Record<string, unknown>;
     };
-    expect(JSON.parse(JSON.stringify(VISA_TAP_PLACEMENT_TIER_A))).toEqual(
+    expect(JSON.parse(JSON.stringify(VISA_TAP_PLACEMENT))).toEqual(
       vec.manifest,
     );
   });
@@ -24,33 +24,31 @@ describe("Visa TAP placement — manifest matches the tree", () => {
     ) as ConstructorParameters<typeof Validator>[0];
     expect(
       new Validator(schema, "2020-12", false).validate(
-        JSON.parse(JSON.stringify(VISA_TAP_PLACEMENT_TIER_A)),
+        JSON.parse(JSON.stringify(VISA_TAP_PLACEMENT)),
       ).valid,
     ).toBe(true);
   });
 
   it("passes the hygiene guard — the coherence rules JSON Schema cannot express", () => {
-    expect(() =>
-      assertManifestHygiene(VISA_TAP_PLACEMENT_TIER_A),
-    ).not.toThrow();
+    expect(() => assertManifestHygiene(VISA_TAP_PLACEMENT)).not.toThrow();
   });
 
   it("declares tier A http-advisory — nothing here implies the header is bound", () => {
-    expect(VISA_TAP_PLACEMENT_TIER_A.tier).toBe("A");
-    expect(VISA_TAP_PLACEMENT_TIER_A.pattern).toBe("http-advisory");
+    expect(VISA_TAP_PLACEMENT.tier).toBe("A");
+    expect(VISA_TAP_PLACEMENT.pattern).toBe("http-advisory");
   });
 
   it("is sha256-ONLY — a bare value carries no type tag, so the list must fix one type", () => {
     // Not conservatism: a header holds a scalar, and a second permitted type would leave a reader unable to
     // tell a hash from a URL. `url` is excluded so an uncovered header is never also an unattested target.
-    expect(VISA_TAP_PLACEMENT_TIER_A.carrierTypes).toEqual(["sha256"]);
+    expect(VISA_TAP_PLACEMENT.carrierTypes).toEqual(["sha256"]);
   });
 
   it("declares NO alias — TAP offers exactly one Tier A carrier and inventing a second would be a claim", () => {
     // Six of the ten Appendix C protocols carry two Tier A carriers; TAP is not one of them. §C.6's other
     // integration points all require coordination, so there is nothing to read besides the header.
-    expect(VISA_TAP_PLACEMENT_TIER_A.readAlso).toBeUndefined();
-    expect(VISA_TAP_PLACEMENT_TIER_A.termsUrlField).toBeUndefined();
+    expect(VISA_TAP_PLACEMENT.readAlso).toBeUndefined();
+    expect(VISA_TAP_PLACEMENT.termsUrlField).toBeUndefined();
   });
 
   it("exports NO helper that builds an unsigned sibling body object", () => {
@@ -62,7 +60,7 @@ describe("Visa TAP placement — manifest matches the tree", () => {
     // The export surface is PINNED, not pattern-matched: a regex only catches names someone guessed, while an
     // exact set catches ANY new export — including one added later under a name nobody thought to forbid.
     expect(Object.keys(pkg).sort()).toEqual([
-      "VISA_TAP_PLACEMENT_TIER_A",
+      "VISA_TAP_PLACEMENT",
       "visaTapPlacement",
     ]);
   });

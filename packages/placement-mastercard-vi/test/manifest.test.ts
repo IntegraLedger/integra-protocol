@@ -66,7 +66,7 @@ describe("Mastercard VI placement — manifest matches the tree", () => {
     //
     // The last two cases exist for the END anchor specifically, and they are the ones a real deployment hits:
     // a namespace whose PREFIX is a valid reverse domain and whose tail is not. Without the anchor,
-    // `"com.example "` would build the tag `com.example .lcp-terms-hash` — a wire spelling with a space in it
+    // `"com.example "` would build the tag `com.example .lcp_terms_hash` — a wire spelling with a space in it
     // that no counterparty could ever match — and the trailing-junk spellings would each mint a distinct
     // carrier under what reads as one namespace.
     for (const bad of [
@@ -103,7 +103,7 @@ describe("Mastercard VI placement — manifest matches the tree", () => {
     if (m.container.kind !== "tagged-array")
       throw new Error("the container is a tagged array");
     expect(m.container.tag).toBe(`com.example.${LCP_TERMS_HASH_SUFFIX}`);
-    expect(m.field).toBe(`constraints[type=com.example.lcp-terms-hash].value`);
+    expect(m.field).toBe(`constraints[type=com.example.lcp_terms_hash].value`);
     expect(m.container.at).toBe("constraints");
     expect(m.container.tagField).toBe("type");
     expect(m.container.valueField).toBe("value");

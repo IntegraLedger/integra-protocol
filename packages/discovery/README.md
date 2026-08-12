@@ -143,7 +143,7 @@ walker states for attacker-influenced input. A document whose fields are all inh
 
 | | A2A Agent Card | UCP profile |
 |---|---|---|
-| **Slot** | `capabilities.extensions[]` entry | `ucp.capabilities["com.integraledger.legal-context"]`, an array |
+| **Slot** | `capabilities.extensions[]` entry | `ucp.capabilities["com.integraledger.legal_context"]`, an array |
 | **Requirements ride** | `params` | `config` |
 | **Can demand support?** | yes — `required` | **no such notion**; a capability the counterparty does not declare is silently pruned |
 | **Authority binding** | none — a URI is only an identifier | **enforced**: `spec` and `schema` origins MUST match the namespace authority |
@@ -207,7 +207,7 @@ governance and the capability definition; profile shape cross-read against a pub
 5. Naming is `[reverse-domain].{service}.{capability}`. Three components is the host's own vendor pattern
    (`com.example.*`, `org.acme.*`) and its registered names run to five
    (`dev.ucp.shopping.catalog.search`), so the template describes the naming rather than fixing a segment
-   count — and `com.integraledger.legal-context` is the spelling `placement-ucp` already writes.
+   count — and `com.integraledger.legal_context` is the spelling `placement-ucp` already writes.
 
 **MCP is not here.** LCP §10 and v1.37 §C.9 put MCP's surface in the delivery layer, and its capability
 advertisement belongs to the MCP server package rather than to this one.

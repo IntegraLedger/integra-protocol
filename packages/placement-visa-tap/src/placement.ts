@@ -2,7 +2,7 @@ import {
   makePlacement,
   type ReferencePlacementAdapter,
 } from "@integraledger/lcp-binding-core";
-import { VISA_TAP_PLACEMENT_TIER_A } from "./manifest.js";
+import { VISA_TAP_PLACEMENT } from "./manifest.js";
 
 /**
  * The Visa TAP reference placement. The manifest IS the adapter (S7) — there is nothing else here, and that
@@ -21,6 +21,5 @@ import { VISA_TAP_PLACEMENT_TIER_A } from "./manifest.js";
  * would make the header any more bound than it is. The export set is pinned by a test for the related
  * reason — no helper here may build an unsigned sibling body object.
  */
-export const visaTapPlacement: ReferencePlacementAdapter = makePlacement(
-  VISA_TAP_PLACEMENT_TIER_A,
-);
+export const visaTapPlacement: ReferencePlacementAdapter =
+  makePlacement(VISA_TAP_PLACEMENT);
