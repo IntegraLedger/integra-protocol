@@ -36,7 +36,10 @@ const arg = (flag) => {
 const has = (flag) => argv.includes(flag);
 
 const run = (cmd, args) =>
-  execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  execFileSync(cmd, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
 /** What npm currently holds staged for this account. */
 function staged() {
@@ -52,7 +55,10 @@ function staged() {
         "not authenticated to npm. Approval is a proof-of-presence action tied to your account — run\n" +
           "`npm login` first. CI cannot do this step and is not supposed to be able to.",
       );
-    if (/Unknown command|not a valid command|stage/i.test(msg) && /Unknown|Usage/i.test(msg))
+    if (
+      /Unknown command|not a valid command|stage/i.test(msg) &&
+      /Unknown|Usage/i.test(msg)
+    )
       throw new Error(
         `this npm CLI has no \`stage\` command (npm ${run("npm", ["--version"]).trim()}). Staged publishing\n` +
           "needs npm 11.15.0 or newer.",
@@ -61,7 +67,9 @@ function staged() {
   }
   const parsed = JSON.parse(out);
   // npm's shape has moved between minors; accept an array or a wrapped list rather than guessing one.
-  const rows = Array.isArray(parsed) ? parsed : (parsed.staged ?? parsed.results ?? []);
+  const rows = Array.isArray(parsed)
+    ? parsed
+    : (parsed.staged ?? parsed.results ?? []);
   return rows.map((r) => ({
     id: r.id ?? r.stageId ?? r.stage_id,
     name: r.name ?? r.package,
@@ -134,10 +142,15 @@ for (const r of approved) {
   try {
     run("git", ["tag", "-a", tag, "-m", tag]);
   } catch (cause) {
-    if (!/already exists/i.test(String(cause.stderr ?? cause.message))) throw cause;
+    if (!/already exists/i.test(String(cause.stderr ?? cause.message)))
+      throw cause;
   }
 }
 run("git", ["push", "origin", "--tags"]);
-console.log(`pushed. ${approved.length} of ${rows.length} staged version(s) are live and tagged.`);
+console.log(
+  `pushed. ${approved.length} of ${rows.length} staged version(s) are live and tagged.`,
+);
 if (approved.length !== rows.length)
-  console.log(`${rows.length - approved.length} still staged — re-run with a fresh --otp.`);
+  console.log(
+    `${rows.length - approved.length} still staged — re-run with a fresh --otp.`,
+  );

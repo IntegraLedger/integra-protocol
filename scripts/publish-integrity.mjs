@@ -30,7 +30,12 @@ const publishable = [];
 const skipped = [];
 for (const entry of readdirSync(packagesDir).sort()) {
   const manifestPath = join(packagesDir, entry, "package.json");
-  if (!statSync(join(packagesDir, entry), { throwIfNoEntry: false })?.isDirectory()) continue;
+  if (
+    !statSync(join(packagesDir, entry), {
+      throwIfNoEntry: false,
+    })?.isDirectory()
+  )
+    continue;
   let manifest;
   try {
     manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -41,13 +46,17 @@ for (const entry of readdirSync(packagesDir).sort()) {
 }
 
 if (publishable.length === 0) {
-  console.error("publish-integrity: no publishable packages found — refusing to pass vacuously");
+  console.error(
+    "publish-integrity: no publishable packages found — refusing to pass vacuously",
+  );
   process.exit(1);
 }
 
 console.log(`publish-integrity: ${publishable.length} publishable package(s)`);
 if (skipped.length > 0)
-  console.log(`  skipped (private, no published surface): ${skipped.join(", ")}`);
+  console.log(
+    `  skipped (private, no published surface): ${skipped.join(", ")}`,
+  );
 
 const filters = publishable.flatMap((name) => ["--filter", name]);
 for (const [label, argv] of [

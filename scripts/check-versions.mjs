@@ -64,7 +64,9 @@ if (offenders.length > 0) {
 }
 
 if (provenanceGaps.length > 0) {
-  const lines = provenanceGaps.map(([dir, f]) => `  - packages/${dir} has no \`${f}\``);
+  const lines = provenanceGaps.map(
+    ([dir, f]) => `  - packages/${dir} has no \`${f}\``,
+  );
   console.error(
     `\nRefusing to verify: ${provenanceGaps.length} missing provenance field(s) on publishable packages.\n\n${lines.join("\n")}\n\n` +
       `npm renders \`bugs\` and \`homepage\` on the package page, so a consumer who finds the tarball and\n` +

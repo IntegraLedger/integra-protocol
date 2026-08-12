@@ -4,6 +4,9 @@
     "includes": [
       "packages/**/*.ts",
       "vectors/**/*.json",
+      "scripts/**/*.mjs",
+      "stryker.config.mjs",
+      ".dependency-cruiser.cjs",
       "!**/dist",
       "!**/.stryker-tmp",
       "!**/reports"

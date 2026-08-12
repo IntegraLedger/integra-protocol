@@ -14,7 +14,14 @@
 // Fences MUST open at column 0 — the extractor sees nothing else. An indented ts fence is a hard
 // error rather than a silent skip, so a snippet can never look checked while never being checked.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
@@ -87,14 +94,18 @@ for (const md of mdFiles) {
       // path begins `../../` and the slug begins with a DOT — a hidden file, which TypeScript excludes
       // from a directory `include` without a word. The fences were extracted, counted and reported as
       // "typechecked clean" while tsc never opened one of them.
-      const slug = relative(ROOT, md).replaceAll("/", "__").replace(/\.md$/, "");
+      const slug = relative(ROOT, md)
+        .replaceAll("/", "__")
+        .replace(/\.md$/, "");
       writeFileSync(join(OUT, `${slug}__L${start}.ts`), `${buf.join("\n")}\n`);
     } else {
       fence.buf.push(line);
     }
   }
   if (fence) {
-    console.error(`check:docs — unclosed \`\`\` fence in ${relative(ROOT, md)} at line ${fence.start}`);
+    console.error(
+      `check:docs — unclosed \`\`\` fence in ${relative(ROOT, md)} at line ${fence.start}`,
+    );
     process.exit(1);
   }
 }
@@ -115,12 +126,20 @@ for (const md of mdFiles) {
 const expectedDocs = (() => {
   let n = existsSync(rootReadme) ? 1 : 0;
   for (const entry of readdirSync(PACKAGES, { withFileTypes: true }))
-    if (entry.isDirectory() && existsSync(join(PACKAGES, entry.name, "README.md"))) n++;
+    if (
+      entry.isDirectory() &&
+      existsSync(join(PACKAGES, entry.name, "README.md"))
+    )
+      n++;
   const countMd = (dir) => {
     if (!existsSync(dir)) return 0;
     let c = 0;
     for (const e of readdirSync(dir, { withFileTypes: true }))
-      c += e.isDirectory() ? countMd(join(dir, e.name)) : e.name.endsWith(".md") ? 1 : 0;
+      c += e.isDirectory()
+        ? countMd(join(dir, e.name))
+        : e.name.endsWith(".md")
+          ? 1
+          : 0;
     return c;
   };
   return n + countMd(DOCS);
@@ -170,11 +189,15 @@ if (snippets !== expectedSnippets) {
 }
 
 try {
-  execFileSync("pnpm", ["exec", "tsc", "-p", "tsconfig.docs.json"], { stdio: "inherit" });
+  execFileSync("pnpm", ["exec", "tsc", "-p", "tsconfig.docs.json"], {
+    stdio: "inherit",
+  });
 } catch {
   console.error(
     `check:docs — FAILED. Each reports/doc-snippets/<doc>__L<line>.ts above maps to that doc's fence at that line.`,
   );
   process.exit(1);
 }
-console.log(`check:docs — ${snippets}/${expectedSnippets} snippet(s) across ${mdFiles.length}/${expectedDocs} doc(s) typechecked clean`);
+console.log(
+  `check:docs — ${snippets}/${expectedSnippets} snippet(s) across ${mdFiles.length}/${expectedDocs} doc(s) typechecked clean`,
+);

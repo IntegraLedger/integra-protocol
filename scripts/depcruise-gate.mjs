@@ -20,7 +20,13 @@ let stdout;
 try {
   stdout = execFileSync(
     "depcruise",
-    ["packages", "--config", ".dependency-cruiser.cjs", "--output-type", "json"],
+    [
+      "packages",
+      "--config",
+      ".dependency-cruiser.cjs",
+      "--output-type",
+      "json",
+    ],
     { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
   );
 } catch (err) {

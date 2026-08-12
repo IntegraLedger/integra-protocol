@@ -24,7 +24,7 @@
  * fewer exports than the tree holds — the failure mode of a text parser is to stop matching, and a gate
  * that silently matches nothing passes everything.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -35,7 +35,8 @@ const EXPORT_FLOOR = 450;
 
 const DECL =
   /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function|type|interface|class|enum)\s+([A-Za-z_$][\w$]*)/;
-const FROM_BLOCK = /export\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
+const FROM_BLOCK =
+  /export\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
 const STAR = /export\s+\*\s+from\s+["']([^"']+)["']/g;
 
 /** Does the block comment ENDING at `endIdx` open with `/**`? */
@@ -79,7 +80,8 @@ function reexports(file) {
         local: aliased ? aliased[1] : spec,
       });
     }
-  for (const m of text.matchAll(STAR)) names.set("*", { mod: m[1], local: "*" });
+  for (const m of text.matchAll(STAR))
+    names.set("*", { mod: m[1], local: "*" });
   return names;
 }
 
@@ -96,7 +98,8 @@ function moduleFiles(dir) {
     const p = join(dir, f);
     if (statSync(p).isDirectory()) {
       for (const g of readdirSync(p))
-        if (g.endsWith(".ts")) out.set(`./${f}/${g.replace(/\.ts$/, ".js")}`, join(p, g));
+        if (g.endsWith(".ts"))
+          out.set(`./${f}/${g.replace(/\.ts$/, ".js")}`, join(p, g));
     } else if (f.endsWith(".ts")) {
       out.set(`./${f.replace(/\.ts$/, ".js")}`, p);
     }
@@ -132,7 +135,8 @@ for (const dir of readdirSync(join(root, "packages")).sort()) {
 
   const record = (name, info, where) => {
     total++;
-    if (!info.documented) undocumented.push(`packages/${dir}/src/${where}:${info.line}  ${name}`);
+    if (!info.documented)
+      undocumented.push(`packages/${dir}/src/${where}:${info.line}  ${name}`);
   };
 
   for (const [exported, { mod, local }] of reexports(index)) {
@@ -149,12 +153,15 @@ for (const dir of readdirSync(join(root, "packages")).sort()) {
     if (info === undefined) {
       // A name re-exported straight through from another package is documented where it is declared.
       if (external.get(mod)?.has(local)) continue;
-      unresolved.push(`packages/${dir}/src/index.ts  ${exported} (from "${mod}")`);
+      unresolved.push(
+        `packages/${dir}/src/index.ts  ${exported} (from "${mod}")`,
+      );
       continue;
     }
     record(exported, info, sourceOf(mod));
   }
-  for (const [name, info] of declaredExports(index)) record(name, info, "index.ts");
+  for (const [name, info] of declaredExports(index))
+    record(name, info, "index.ts");
 }
 
 if (unresolved.length > 0) {

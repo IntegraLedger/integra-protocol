@@ -61,7 +61,9 @@ for (const pkg of readdirSync(PACKAGES).sort()) {
 }
 
 if (clean) {
-  console.log(`cleaned dist/ in ${packages} package(s) — run \`pnpm -r build\` to rebuild.`);
+  console.log(
+    `cleaned dist/ in ${packages} package(s) — run \`pnpm -r build\` to rebuild.`,
+  );
   process.exit(0);
 }
 

@@ -164,9 +164,10 @@ function staleCorpusFigures(totals, rootDigest) {
       for (let i = 0; i < lines.length; i++) {
         const where = `${relative(root, file)}:${i + 1}`;
         // `corpus: 44/44 areas, 812/812 cases, root 149de2a398ea3ead… (authentic)`
-        const provenance = /corpus:\s*(\d+)\/(\d+)\s+areas,\s*(\d+)\/(\d+)\s+cases,\s*root\s+([0-9a-f]+)/.exec(
-          lines[i],
-        );
+        const provenance =
+          /corpus:\s*(\d+)\/(\d+)\s+areas,\s*(\d+)\/(\d+)\s+cases,\s*root\s+([0-9a-f]+)/.exec(
+            lines[i],
+          );
         if (provenance !== null) {
           const [, a1, a2, c1, c2, quoted] = provenance;
           if (Number(a1) !== totals.areas || Number(a2) !== totals.areas)
@@ -178,11 +179,14 @@ function staleCorpusFigures(totals, rootDigest) {
         }
         // `conformance: 812 passed, 0 failed, 0 skipped (none)` — only the UNNARROWED run is pinned; a
         // `--phase` sample legitimately reports fewer, and its own skip list names what it left out.
-        const full = /conformance:\s*(\d+)\s+passed,\s*0\s+failed,\s*0\s+skipped\s*\(none\)/.exec(
-          lines[i],
-        );
+        const full =
+          /conformance:\s*(\d+)\s+passed,\s*0\s+failed,\s*0\s+skipped\s*\(none\)/.exec(
+            lines[i],
+          );
         if (full !== null && Number(full[1]) !== totals.cases)
-          out.push(`${where}  full run ${full[1]} passed, corpus holds ${totals.cases}`);
+          out.push(
+            `${where}  full run ${full[1]} passed, corpus holds ${totals.cases}`,
+          );
         // The prose restatements of the same number. These rotted independently of the pinned lines above
         // — one page said 823 in three sentences while the code fence beside them said 812.
         for (const re of [
@@ -192,7 +196,9 @@ function staleCorpusFigures(totals, rootDigest) {
         ]) {
           const m = re.exec(lines[i]);
           if (m !== null && Number(m[1]) !== totals.cases)
-            out.push(`${where}  prose says ${m[1]} cases, corpus holds ${totals.cases}`);
+            out.push(
+              `${where}  prose says ${m[1]} cases, corpus holds ${totals.cases}`,
+            );
         }
       }
     }

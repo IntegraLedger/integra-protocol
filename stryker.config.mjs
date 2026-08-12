@@ -40,50 +40,50 @@
 const RATCHET = {
   authority: 98,
   // RAISED 89 -> 91. Measured 91.81 twice on 2026-08-09, identical to two decimal places.
-  'binding-aptos': 91,
+  "binding-aptos": 91,
   // RAISED 94 -> 95. Measured 95.48 twice on 2026-08-09.
-  'binding-canton': 95,
+  "binding-canton": 95,
   // RAISED 94 -> 96. Measured 96.58 twice on 2026-08-09. The floor was seeded at the sibling overlay
   // rail's number when this package split out, and had never been measured against its own suite.
-  'binding-canton-x402': 96,
+  "binding-canton-x402": 96,
   // RAISED 89 -> 91. Measured 91.37 twice on 2026-08-09.
-  'binding-cardano': 91,
+  "binding-cardano": 91,
   // RAISED 91 -> 92. The conditional-write axis's conjunction (`WriteCondition.and`) measured 92.18 at
   // 625/678, up from 91.95 at 594/646 — the new code came in with 31 more killed mutants and three survivors,
   // and all three are the SEPARATOR literal inside a message (`permits.join("/")`, `.join(" and ")`,
   // `paths.join("/")`). Those are refusal and throw prose: the tests assert the message NAMES every term, which
   // is the contract, and pinning its punctuation would encode one implementation's phrasing as the standard.
-  'binding-core': 92,
+  "binding-core": 92,
   // RAISED 97 -> 98. Measured 98.31 on 2026-08-08. `assetWasTransferred` was promoted into this package
   // WITHOUT its tests and landed as fifteen NoCoverage mutants — the ratchet caught a module that had been
   // fully exercised in its old home the day before. erc20.test.ts pins every arm; the floor holds it.
-  'binding-evm-common': 98,
+  "binding-evm-common": 98,
   // RAISED 90 -> 97. Measured 97.22 on 2026-08-08 after the recover ambiguity work. The floor had been
   // seven points below the real score, which is the shape the handoff warned about: a ratchet that passes
   // on headroom rather than on kills reports green for a suite that has stopped covering something.
-  'binding-evm-escrow': 97,
+  "binding-evm-escrow": 97,
   // RAISED 96 -> 99. Measured 99.32 twice on 2026-08-09, up from the 96.53 the floor was set at: the
   // §8.3.5 id-reuse work landed with tests. The surviving mutants are refusal `detail` prose literals,
   // left alive deliberately — pinning them would encode one implementation's phrasing as the standard.
   // Everything with behaviour — the derivation, the candidate check, the logIndex disambiguation, the
   // credential-type classifier, the refusal codes — is killed.
-  'binding-evm-mpp': 99,
+  "binding-evm-mpp": 99,
   // Raised 96 → 97 when the deployment registry landed: 97.08 measured, 133/137, and constants.ts itself
   // sits at 100/26. The four survivors are all refusal `detail` prose literals in adapter.ts and
   // permit2-filter.ts, left alive on the same reasoning as binding-evm-mpp above — pinning phrasing would
   // encode one implementation's wording as the standard. The registry's own prose is the exception and IS
   // pinned: its message names the two `cast` calls that produce a correct EIP-712 domain, which is
   // actionable instruction rather than phrasing, and a caller who loses it re-derives a wrong config.
-  'binding-evm-x402': 97,
+  "binding-evm-x402": 97,
   // RAISED 91 -> 94. Measured 94.33 twice on 2026-08-09, after the MPP attribution-memo discrimination
   // work brought its own tests.
-  'binding-hedera': 94,
+  "binding-hedera": 94,
   // RAISED 91 -> 92. Measured 92.51 twice on 2026-08-09.
-  'binding-solana': 92,
+  "binding-solana": 92,
   // RAISED 93 -> 97. Measured 97.40 twice on 2026-08-09 — the largest headroom in the tree, and the
   // shape the handoff warned about: a floor four points low passes on headroom rather than on kills.
-  'binding-stellar': 97,
-  'binding-sui': 97,
+  "binding-stellar": 97,
+  "binding-sui": 97,
   // 94.17 measured over 343 mutants; 20 unkilled = 19 SURVIVED + 1 with NO COVERAGE, and every one is
   // accounted for below. Two different reasons, and conflating them would be the dishonest part — some are
   // prose we decline to pin, the rest are equivalents nothing could kill:
@@ -105,8 +105,8 @@ const RATCHET = {
   //     - hex 48 — dropping `value === undefined` falls through to `Number.parseInt(undefined, 16)` → NaN,
   //       which the next line already maps to the same `null`.
   // Baseline was 84 before the log/hex/calls edge cases were added.
-  'binding-tempo-mpp': 94,
-  'binding-xrpl': 95,
+  "binding-tempo-mpp": 94,
+  "binding-xrpl": 95,
   // 88 -> 92 on 2026-08-08. Briefly 94, which was WRONG and is the note worth keeping: 94 was set at a
   // single run's 94.47, and the confirming run of the identical tree measured 93.81 and failed its own
   // floor. Nothing in this package changed between them. This suite carries a ~46-second CLI/stdio test,
@@ -164,14 +164,14 @@ const RATCHET = {
   // 100 at 17/17, and the 17 is the point: every mutant lives in the MANIFEST, because
   // `makePlacement(A2A_PLACEMENT)` is the whole adapter and holds no literal to mutate. A2A asks for no rule
   // the kit does not already hold, so a survivor here would mean a manifest value nothing pins.
-  'placement-a2a': 100,
+  "placement-a2a": 100,
   // 100, measured 30/30 with zero survivors (15/15 before the wrap, which doubled the mutant count and left
   // none of it uncovered). A manifest plus `makePlacement(ACK_PLACEMENT)` plus ONE wrap — the ordering rule —
   // and the pinned-manifest equality test kills every StringLiteral mutant in the manifest by construction.
   // The wrap's own branches are covered by the four ordering vectors (issued refuses, unissued places, a null
   // proof places, extract is unguarded) and by the package-local test that pins its `detail` prose. If this
   // ever dips, a branch of the wrap lost its case — fix the tests, never this number.
-  'placement-ack': 100,
+  "placement-ack": 100,
   // 100, and it can stay there: S7 moved every mechanic into binding-core's kit, so this package is now a
   // manifest plus `makePlacement(ACP_PLACEMENT)`. There is no logic left for a mutant to survive in. Measured
   // 48/48 with the write half's two-term `writeCondition` on board — the gate more than tripled the manifest's
@@ -179,42 +179,42 @@ const RATCHET = {
   // and the eleven `CheckoutSessionBase.status` values of the document-kind term), and the pinned-manifest
   // equality test kills every one by construction. A dip here means the gate's own values stopped being
   // pinned — fix the pin, never this number.
-  'placement-acp': 100,
+  "placement-acp": 100,
   // 100 with nothing to argue about: `placement.ts` is one annotated `makePlacement` call, so every mutant
   // Stryker finds (15 of them) is a literal in the manifest, and the pinned-manifest equality test kills the
   // lot. Measured 15/15 at first run. A dip here means the manifest gained a value the vector tree does not
   // pin — fix the pin, never this number.
-  'placement-ap2': 100,
+  "placement-ap2": 100,
   // 100, measured 51/51 — and this is the one placement whose manifest is BUILT, so 50 of the 51 mutants sit
   // in `manifest.ts`: the pinned-manifest equality test kills every literal, and the namespace guard's own
   // branches are killed by the empty / malformed / reserved cases. The Regex mutant that drops the END anchor
   // needed its own inputs (`"com.example "`, `"com.exampleX"`) — a prefix that IS a valid reverse domain with
   // junk after it, which without the anchor would mint a tag carrying a space. If this dips, the guard has
   // lost a case or the manifest gained a value the vector tree does not pin — fix those, never this number.
-  'placement-mastercard-vi': 100,
+  "placement-mastercard-vi": 100,
   // 100, and every one of the 12 mutants lives in `manifest.ts`: `placement.ts` is a single annotated call to
   // `makePlacement`, so there is no operator for stryker to flip there at all. The manifest is pinned
   // byte-for-byte against the vector tree AND asserted claim-by-claim (the bare-slot cap, the absent
   // discovery alias, both locators inside methodDetails), so a StringLiteral or ObjectLiteral mutant has
   // nowhere to hide. If this ever dips, the manifest's own guards have gone missing — fix them, not this.
-  'placement-mpp': 100,
+  "placement-mpp": 100,
   // 100 by the same S7 logic — a manifest whose every value is pinned byte-for-byte against the vector tree
   // leaves nothing for a StringLiteral mutant to change unnoticed. Measured at 27/27 before this was set.
   // The HTTPS wrap (P1's next unit) adds real branches; if the score dips below 100 then, the wrap's own
   // tests are missing cases — fix the tests, never this number.
-  'placement-ucp': 100,
+  "placement-ucp": 100,
   // 97, not 100, and the gap is the override: this is the one placement whose `place` is hand-written, so it
   // has real branches for a mutant to sit in. Two survive deliberately — the `document-malformed` detail
   // prose (killable only by pinning phrasing) and the `instanceof CarrierError` re-throw (needs a non-carrier
   // fault injected, which would be a mock). `ext !== null` used to survive as a true equivalent mutant on the
   // reasoning that `{...null}` IS `{}`; that stopped being true when a present-but-unmergeable `extensions`
   // began to REFUSE, and the null-extensions vector now kills it. Measured 97.40 at 50 tests.
-  'placement-x402': 97,
+  "placement-x402": 97,
   // 100 again, and for the strongest of the three reasons: this package is a manifest plus
   // `makePlacement(...)`, with no wrap at all — `header-map` needs no protocol rule the kit cannot know.
   // Measured 11/11 killed. Every mutant lives in a manifest value the pinned-manifest equality test compares
   // byte-for-byte, so a dip below 100 means the manifest and the vector tree have parted company.
-  'placement-visa-tap': 100,
+  "placement-visa-tap": 100,
   // 100, measured 52/52 with zero survivors on the first run. Data plus three total functions, and every
   // mutant lands somewhere a test looks: the nine registration ObjectLiterals and their `kind` discriminants
   // die on the key-matches-manifest loop and the kind census, the `namespaced` branch and its throw message
