@@ -4,14 +4,27 @@ packages:
 # prebuilt @swc/core-<platform> optional dependency (verified — parseSync works with the script ignored),
 # and dependency-cruiser's swc parser needs only that binding. Keeping arbitrary postinstall execution
 # off is the supply-chain posture; the ignoredBuiltDependencies list documents the deliberate skip.
-# ONE list, not two. This file previously also carried an `allowBuilds:` map naming the same three
-# packages with `false` values. `allowBuilds` is not a key `pnpm install --help` documents in 11.20, and
-# every entry said what the list below says, so the two could only ever agree or confuse — measured
-# 2026-08-12 and consolidated here.
+# TWO KEYS, AND THEY ARE NOT REDUNDANT — do not consolidate them. I removed `allowBuilds` on 2026-08-12
+# reasoning that it duplicated the list below and is absent from `pnpm install --help`; CI failed on the
+# next push with `ERR_PNPM_IGNORED_BUILDS` and a clean clone reproduces it. The two do different jobs:
+#
+#   allowBuilds              the DECISION. pnpm 11 refuses an install that silently skips a build script
+#                            unless the choice is recorded, which is what `pnpm approve-builds` writes here.
+#                            Without it `pnpm install --frozen-lockfile` EXITS 1.
+#   ignoredBuiltDependencies the RECORD, for a reader — which packages are skipped, so the list is legible
+#                            without inferring it from a map of `false`.
+#
+# The trap is that a warm `node_modules` does not re-run the decision, so `pnpm verify` stays green locally
+# while a cold install fails. Test a change here with a fresh clone, never with an existing tree.
 #
 # bufferutil / utf-8-validate are OPTIONAL native accelerators of `ws` (a @solana/web3.js transitive dep);
 # both have pure-JS fallbacks and binding-solana uses only HTTP RPC (no websocket subscriptions), so their
-# native builds are deliberately skipped — same no-arbitrary-postinstall posture as @swc/core.
+# native builds are deliberately skipped — same no-arbitrary-postinstall posture as @swc/core, whose native
+# parser binding ships prebuilt as an optional dependency (verified: dependency-cruiser's swc parser works).
+allowBuilds:
+  '@swc/core': false
+  bufferutil: false
+  utf-8-validate: false
 ignoredBuiltDependencies:
   - "@swc/core"
   - "bufferutil"
