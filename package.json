@@ -17,6 +17,7 @@
     "corpus:seal": "node scripts/corpus-seal.mjs",
     "depcruise": "node scripts/depcruise-gate.mjs",
     "drift": "pnpm --filter @integraledger/lcp-binding-evm-escrow drift",
+    "spec-drift": "node scripts/spec-drift.mjs",
     "lint": "biome check .",
     "mutation": "node scripts/mutation.mjs",
     "release:approve": "node scripts/approve-staged.mjs",

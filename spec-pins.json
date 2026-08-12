@@ -1,0 +1,141 @@
+{
+  "$comment": [
+    "THE HOST SPECIFICATIONS THIS TREE MAKES CLAIMS ABOUT, PINNED BY REVISION.",
+    "",
+    "Every binding and placement asserts things about a protocol it does not own — that x402 reserves two",
+    "keys in `extra`, that UCP binds authority to the `schema` URL alone, that Verifiable Intent rejects",
+    "unknown constraint types in open mandates. Those assertions were true when they were read, and nothing",
+    "in this repository could tell when they stopped being true: they were pinned by DATE. A date cannot be",
+    "checked. Measured 2026-08-12, shipped source carried thirty-six date-pinned host claims and about ten",
+    "pinned by revision.",
+    "",
+    "`drift-guard.yml` already solves this for the one host that is a contract: it reads the deployed escrow",
+    "weekly and compares against derivations transcribed from a pinned commit. This file is the same idea one",
+    "level up, for hosts that are SPECIFICATIONS rather than chains. `pnpm spec-drift` is its runner, and it",
+    "is run BY HAND: this repository stands alone, and a scheduled job against eight third-party APIs would",
+    "be a standing dependency on other people's uptime for something that cannot make a payment go wrong.",
+    "",
+    "`readAt` is the last commit touching `paths` at the moment this tree read them — path-scoped, because a",
+    "typo fix in a host's README is not drift in its specification. `status` is the claim this file makes:",
+    "`current` means the tree agrees with that revision, `drifted` means the host has moved and the re-read",
+    "is owed. A `drifted` entry is a recorded debt, not a broken gate, which is why the weekly job fails only",
+    "on a `current` entry that moved. An entry that is permanently red is an entry everyone learns to ignore."
+  ],
+  "hosts": [
+    {
+      "id": "x402",
+      "repo": "x402-foundation/x402",
+      "paths": ["specs"],
+      "readAt": "db5da2e65952e76a4961e0f548d4828c7f37adda",
+      "readOn": "2026-08-11",
+      "status": "current",
+      "citedBy": [
+        "binding-evm-x402",
+        "binding-evm-escrow",
+        "binding-canton",
+        "binding-canton-x402",
+        "binding-solana",
+        "binding-sui",
+        "binding-xrpl",
+        "placement-x402"
+      ],
+      "note": "The §6.1 reserved keys and paymentFlow axis landed in this very commit. Nine published extensions, all inlining a complete JSON Schema; Bazaar forbids an external $ref."
+    },
+    {
+      "id": "mpp",
+      "repo": "tempoxyz/mpp-specs",
+      "paths": ["specs"],
+      "readAt": "f9506cd3472d10f31b4a6c790b3fe6b0ff377f96",
+      "readOn": "2026-08-11",
+      "status": "current",
+      "citedBy": ["binding-evm-mpp", "binding-tempo-mpp", "binding-hedera", "placement-mpp"],
+      "note": "Ten charge methods. The core scheme has two identities: paymentauth.org publishes draft-httpauth-payment-00, the IETF datatracker mirrors it as draft-ryan-httpauth-payment-01."
+    },
+    {
+      "id": "ucp",
+      "repo": "universal-commerce-protocol/ucp",
+      "paths": ["docs/specification", "source/schemas"],
+      "readAt": "417aea4fea969e2e3dd66186f9604adb66fb6e4b",
+      "readOn": "2026-08-11",
+      "status": "drifted",
+      "citedBy": ["discovery", "placement-ucp"],
+      "note": "Moved 2026-08-12 in 3b9a8dfe7c, which reserves the `ucp` member as a protocol namespace and adds map_order. Read on the day: it constrains where EXTENSION data may sit and forbids defining a domain field named `ucp`. This tree's carrier is a policies[] entry and its reader consumes UCP's own ucp.capabilities, so no claim here is affected — but the full re-read against overview.md and ucp.json is owed before the pin advances."
+    },
+    {
+      "id": "ap2",
+      "repo": "google-agentic-commerce/AP2",
+      "paths": ["code/sdk/schemas", "docs/ap2"],
+      "readAt": "b4587ac1d055888a73b4b21750973cffba961793",
+      "readOn": "2026-08-11",
+      "status": "current",
+      "citedBy": ["placement-ap2"],
+      "note": "open_checkout_mandate.json: five members, constraints a closed two-member anyOf, contains line_items. Its constraint type ids carry no `mandate.` prefix, so AP2 and Verifiable Intent do NOT share a vocabulary."
+    },
+    {
+      "id": "a2a",
+      "repo": "a2aproject/A2A",
+      "paths": ["specification/a2a.proto"],
+      "readAt": "cfc9d34bc4",
+      "readOn": "2026-07-30",
+      "status": "current",
+      "citedBy": ["placement-a2a", "discovery"],
+      "note": "AgentExtension has four fields — uri, description, required, params — which v1.38 §C.8 now states too."
+    },
+    {
+      "id": "ack",
+      "repo": "agentcommercekit/ack",
+      "paths": ["packages"],
+      "readAt": "0b8fdaa9e6a54a9d94e02dbdf583f358bde6614d",
+      "readOn": "2026-07-30",
+      "status": "current",
+      "citedBy": ["placement-ack"]
+    },
+    {
+      "id": "verifiable-intent",
+      "repo": "agent-intent/verifiable-intent",
+      "paths": ["spec"],
+      "readAt": "ba1e409e98",
+      "readOn": "2026-07-30",
+      "status": "current",
+      "citedBy": ["placement-mastercard-vi"],
+      "note": "Eight registered constraint types, all underscored. Open mandates MUST reject unknown constraint types regardless of strictness mode — the reason this placement is declaration-only."
+    },
+    {
+      "id": "acp",
+      "repo": "agentic-commerce-protocol/agentic-commerce-protocol",
+      "paths": ["spec"],
+      "readAt": "7fdd78df67",
+      "readOn": "2026-07-28",
+      "status": "current",
+      "citedBy": ["placement-acp"],
+      "note": "CheckoutSessionBase is additionalProperties:false and CheckoutSession a bare allOf over it, which is why v1.38 §C.2 withdrew the top-level carrier."
+    },
+    {
+      "id": "commerce-payments",
+      "repo": "base/commerce-payments",
+      "paths": ["src"],
+      "readAt": "98b592b83870b8b7facca54f76356f4d1f518522",
+      "readOn": "2026-07-30",
+      "status": "current",
+      "tracksUpstream": false,
+      "citedBy": ["binding-evm-escrow"],
+      "note": "DELIBERATELY NOT TRACKING HEAD, which is why the drift job skips it. This is the DEPLOYED revision — v1.0.0 plus eleven commits — and it is the gitlink of lib/commerce-payments. Upstream moving is expected and irrelevant; what would matter is the deployed contract diverging from these transcriptions, and drift-guard.yml reads the live chain weekly to check exactly that. This entry pins the source a human reads; that job pins the bytecode a payment meets."
+    },
+    {
+      "id": "tip20",
+      "url": "https://tempo.xyz/developers/docs/protocol/tip20/spec",
+      "pinnable": false,
+      "readOn": "2026-07-30",
+      "citedBy": ["binding-tempo-mpp"],
+      "reason": "A rendered documentation page, not a repository. There is no revision to pin, and a content hash over a page that carries its own navigation chrome would report drift on every site redeploy. Re-read on the schedule below by hand; the constants it settled are pinned instead by binding-tempo-mpp's own tests against Tempo mainnet."
+    },
+    {
+      "id": "visa-tap",
+      "url": "https://developer.visa.com/capabilities/trusted-agent-protocol",
+      "pinnable": false,
+      "readOn": "2026-07-30",
+      "citedBy": ["placement-visa-tap"],
+      "reason": "Published behind Visa Developer rather than in a public repository. Same treatment as TIP-20: re-read by hand, and the load-bearing claim — that Signature-Input covers exactly \"@authority\" \"@path\" — is quoted verbatim in the package so a reader can check it against whatever Visa publishes today."
+    }
+  ]
+}
