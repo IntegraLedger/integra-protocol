@@ -49,7 +49,7 @@ id-reuse       protocol-extension   http-advisory
 shipped rails, and `nativeField` names that field. Two rails have no such slot, so a reference can only ride
 a deployed contract there (`overlay-contract`), and stating that is not a formality: an overlay binding
 inherits that contract's trust assumptions where a native-field binding inherits only the chain's, and a
-verifier has to be able to tell which it is looking at. The twelfth is `id-reuse` — no free slot at all, so
+verifier has to be able to tell which it is looking at. The thirteenth is `id-reuse` — no free slot at all, so
 the reference is supplied as an input the host protocol already requires and the host's own derivation
 carries it.
 
@@ -124,7 +124,7 @@ Four of those values are where a new rail is most often dishonest, so state them
   declaration is never enforced.
 - **`successGate`** is the sibling axis, and it is the one that bites hardest. `assetBinding` declares
   whether recovery observes *what* moved; this declares whether it observes *that anything* moved. Two
-  values, six shipped rails each. **`raw-field`** means the rail records failed transactions along with
+  values, split six `raw-field` and seven `structural`. **`raw-field`** means the rail records failed transactions along with
   their weld payload, so the reader supplies the chain's own outcome field and the pure recovery gates on
   it — fail-closed, because an absent outcome is not evidence of success. **`structural`** means the rail
   cannot produce a failed transaction that still carries a weld, so no field is read and none is needed: a
@@ -430,7 +430,8 @@ trusting a string.
 Then the repository's own gates, which a new package has to pass like every other:
 
 ```bash
-pnpm verify          # check:versions → audit → build → lint → depcruise → typecheck → docs → test
+pnpm verify          # check:versions → check:docblocks → corpus-seal → audit → build → check:dist
+                     #   → lint → depcruise → typecheck → check:docs → test
 pnpm mutation <pkg>  # the package's mutation ratchet, which only ever moves up
 ```
 

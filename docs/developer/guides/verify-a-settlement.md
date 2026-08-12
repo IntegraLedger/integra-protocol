@@ -362,7 +362,7 @@ table in [concepts/welds.md](../concepts/welds.md).
 | Rail | What `recover` gives you |
 |---|---|
 | `evm:x402`, `evm:escrow` | the 32-byte hash, through `binding-core`'s `WeldAdapter` port |
-| `tempo:mpp`, `solana`, `cardano`, `xrpl`, `hedera`, `sui`, `aptos`, `canton` | the 32-byte hash, through a rail-native surface with the same verbs |
+| `tempo:mpp`, `solana`, `cardano`, `xrpl`, `hedera`, `sui`, `aptos`, `canton`, `canton:x402` | the 32-byte hash, through a rail-native surface with the same verbs |
 | `evm:mpp` | **nothing, ever.** `recover()` takes no arguments and always refuses |
 | `stellar` | **8 bytes**, explicitly marked partial — `atrHash[:8]`, not a hash |
 

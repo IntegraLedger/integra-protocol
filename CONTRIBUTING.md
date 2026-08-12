@@ -52,6 +52,11 @@ Three rules follow, and they are not negotiable:
    derivation in the changeset. Copying what the implementation now emits proves nothing.
 3. **Record the superseded pin.** A changed vector should say what it used to be and why it moved, so the
    change is auditable years later by someone who was not in the room.
+4. **Re-seal.** `vectors/` is sealed — per-file digests and per-area case counts in
+   `vectors/conformance/corpus-seal.json`, under one root digest. Run `pnpm corpus:seal` after any vector
+   change and commit the result. `pnpm verify` runs `corpus-seal --check` as its third stage, so skipping
+   this does not produce a subtle problem later; it produces a red build immediately, with no obvious
+   connection to the vector you edited unless you know the seal exists.
 
 Every area in the corpus manifest carries a phase, and `lcp-conformance` runs at the wired floor by
 default. Do not narrow the phase to produce a green — a run that skips areas prints the skips loudly for
@@ -60,7 +65,8 @@ exactly this reason.
 ## The gates
 
 ```bash
-pnpm verify          # check:versions → audit → build → lint → depcruise → typecheck → test
+pnpm verify          # check:versions → check:docblocks → corpus-seal → audit → build → check:dist
+                     #   → lint → depcruise → typecheck → check:docs → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 pnpm exec lcp-conformance   # the whole corpus, no --phase
 ```

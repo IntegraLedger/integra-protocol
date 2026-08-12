@@ -349,7 +349,7 @@ npx @integraledger/lcp-conformance
 ```
 
 ```text
-conformance: 823 passed, 1 failed, 0 skipped (none)
+conformance: 812 passed, 1 failed, 0 skipped (none)
 FAIL placement.a2a / extract reads the camelCase-Ref spelling some agents emit: expected {"ok":true,"value":{"type":"sha256","value":"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"}} got {"refused":true,"haltClass":"verification-failure","code":"a2a/reference-absent"}
 ```
 
@@ -368,7 +368,8 @@ than trusting a string.
 Then the repository's own gates, which a new package passes like every other:
 
 ```bash
-pnpm verify          # check:versions → audit → build → lint → depcruise → typecheck → docs → test
+pnpm verify          # check:versions → check:docblocks → corpus-seal → audit → build → check:dist
+                     #   → lint → depcruise → typecheck → check:docs → test
 pnpm mutation <pkg>  # the package's mutation ratchet, which only ever moves up
 ```
 

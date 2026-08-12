@@ -85,16 +85,25 @@ Import [`placements`](../../../packages/placements/README.md) rather than a `pla
 It is the one place a protocol id maps to its adapter, which makes adding a protocol a data edit in one
 package instead of a change at every call site.
 
-`placementFor` is total over the closed `ProtocolId` set. Nine ids answer with an adapter; `mcp` answers
-`undefined`, and that is a fact rather than a hole waiting for a `placement-mcp`. The specification puts
+`placementFor` is total over the closed `ProtocolId` set, and "total" is doing precise work: every id gets
+an answer, but the answers come in three shapes. **Eight ids return an adapter directly.**
+**`mastercard-vi` returns one only when given a deployment** — its carrier sits under the deployment's own
+reverse-domain namespace, which has no default, so `placementFor("mastercard-vi")` with no
+`{ reverseDomain }` **throws** rather than silently answering `undefined`; an absence would be
+indistinguishable from `mcp`'s, which means something else entirely. **`mcp` answers `undefined`**, and that
+is a fact rather than a hole waiting for a `placement-mcp`. The specification puts
 MCP's surface in the delivery layer — tools, resources, prompts and a capability negotiation map — and
 names no document field for a reference to ride in. A delivery surface is not a placement, so `mcp`'s
 absence from the registry is its correct terminal state.
 
 Eight of the nine are **Tier A**: they work against stock, unmodified implementations of the host protocol
 today. One — `mastercard-vi` — is **Tier B**, meaning it needs a coordinated change upstream before a stock
-verifier would accept it. It ships declared and constructible, and `placementsByTier("A")` simply never
-returns it. Stating the tier is what keeps a Tier-B carrier from being read as available-today.
+verifier would accept it, and it is **declaration-only**: the manifest records where the reference would sit
+if the constraint type were registered, `extract` reads one a counterparty wrote, and `place` refuses
+`mastercard-vi/tier-b-not-writable` on every document. That refusal is in the package's own code, not in the
+kit — `tier` is a label the kit never reads, so a Tier-B placement that merely declared its tier would still
+have shipped a writer. `placementsByTier("A")` never returns it either. Stating the tier is what keeps a
+Tier-B carrier from being read as available-today; refusing the write is what stops it being one.
 
 ## Placing a reference, and reading it back
 

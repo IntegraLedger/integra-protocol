@@ -127,7 +127,8 @@ because the payer signs the calldata carrying the memo, while `transferFromWithM
 there the spender, not the owner, chooses the memo — which is why the grade is a property of the *call*
 and a recovered memo alone does not establish it.
 
-`binding-evm-mpp` is the one row that is neither. Nothing of ours occupies a field there: MPP fixes its
+`binding-evm-mpp` is the one row whose **pattern** is neither `native-field` nor `overlay-contract` — its
+grade is ordinary, `weldGrades.authorization: "signature"`. Nothing of ours occupies a field there: MPP fixes its
 EIP-3009 nonce to a derivation and fixes its Permit2 witness type string, so there is no free slot. What
 remains is to supply an input the host already requires — the challenge id — and let the host's own
 derivation carry it. Note that `binding-evm-x402` binds the *same* nonce field under a different pattern,
@@ -144,7 +145,7 @@ assuming it:
 |---|---|---|---|
 | `evm:x402` | `filtered` | yes | yes |
 | `evm:mpp` | `filtered` | **no** | no |
-| `evm:escrow` | `carried` | yes | yes |
+| `evm:escrow` | `carried` | yes | no |
 | `tempo:mpp` | `filtered` | yes | yes |
 | `cardano` | `none` | yes | yes |
 | `solana` | `none` | yes | no |
@@ -153,24 +154,29 @@ assuming it:
 | `sui` | `proposal-only` | yes | no |
 | `aptos` | `proposal-only` | yes | no |
 | `stellar` | `none` | **no** | no |
-| `canton` | `none` | yes | no |
+| `canton` | `none` | **no** | no |
+| `canton:x402` | `carried` | **no** | no |
 
-All twelve declare `recovery.onChain: true`; the two columns above are the ones that vary.
+All thirteen declare `recovery.onChain: true`; the two columns above are the ones that vary.
 
 **Zero-party recoverable** asks whether a party holding only the settlement can obtain the ATR hash from
-it. Two rails answer no, for opposite reasons. Stellar's `mux_id` is 64 bits, so only the first 8 bytes of
-the hash ride on-chain — enough to *confirm* a hash you already hold, never enough to reconstruct one you
-do not, and the API says so by returning raw 8 bytes rather than something that reads like a full hash.
-`evm:mpp` is non-recoverable by construction: keccak-256 has no inverse, so its `recover` refuses
-unconditionally and `verifyCandidate` — a confirmation, not a lookup — is the whole surface.
+it. Four rails answer no, for three different reasons. Stellar's `mux_id` is 64 bits, so only the first 8
+bytes of the hash ride on-chain — enough to *confirm* a hash you already hold, never enough to reconstruct
+one you do not, and the API says so by returning raw 8 bytes rather than something that reads like a full
+hash. `evm:mpp` is non-recoverable by construction: keccak-256 has no inverse, so its `recover` refuses
+unconditionally and `verifyCandidate` — a confirmation, not a lookup — is the whole surface. The two Canton
+rails answer no because recovery there needs the participant node's own view: `canton` reads an `LcpAnchor`
+contract and `canton:x402` the transfer's metadata, and neither is visible to a party without ledger
+access.
 
 **Forward-indexable** asks whether, given an ATR hash, every settlement bound to it can be found without
-knowing the transaction in advance. Four rails declare `true`, and even among those the index is not the
+knowing the transaction in advance. Three rails declare `true`, and even among those the index is not the
 same index: `tempo:mpp` and `evm:x402` are indexed **by the reference itself**, so one query returns every
 settlement bound to one hash; `cardano` indexes by metadata *label*, so a query returns every LCP-labelled
-settlement; `evm:escrow` carries its `salt` in event *data*, so the forward path is a scan-and-decode. The
-other eight declare `false` and offer a history scan — an honest `false` rather than a scan presented as an
-index.
+settlement rather than one reference's. The other ten declare `false` and offer a history scan — an honest
+`false` rather than a scan presented as an index. `evm:escrow` is the instructive one: it carries its `salt`
+in event *data* rather than in a topic, so the forward path is a scan-and-decode, and a scan is not an
+index however convenient it is to call one.
 
 ### The asset-binding axis
 
