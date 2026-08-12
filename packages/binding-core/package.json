@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-core",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "The LCP carrier codec, and the port every rail binding implements.",
   "keywords": [
     "lcp",

@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-authority",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Delegated authority for LCP: grant chains, attenuation, and acceptance signatures.",
   "keywords": [
     "lcp",

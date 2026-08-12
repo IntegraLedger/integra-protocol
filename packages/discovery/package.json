@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-discovery",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Both sides of the LCP bilateral handshake, including the /.well-known/legal-context.json document.",
   "keywords": [
     "lcp",

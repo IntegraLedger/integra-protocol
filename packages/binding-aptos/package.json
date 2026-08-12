@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-aptos",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Welds an ATR hash into an Aptos settlement.",
   "keywords": [
     "lcp",

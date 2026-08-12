@@ -181,7 +181,8 @@ jobs:
           set -o pipefail
           shopt -s nullglob
           staged=0
-          skipped=0
+          published=0
+          already=0
           for tarball in "$GITHUB_WORKSPACE"/dist-tarballs/*.tgz; do
             # `console.log`, not `process.stdout.write`: `read` returns non-zero when it reaches EOF without
             # a trailing newline, and under `bash -e` that non-zero kills the step on the first package.
@@ -193,25 +194,35 @@ jobs:
             # after it went live (AGENTS.md records the bootstrap this cost). Deciding here is what makes a
             # no-op push a green no-op, rather than leaving that decision to a parse of npm's English.
             if curl -sf -o /dev/null "https://registry.npmjs.org/$name/$version"; then
-              echo "$version is already on the registry — skipping"
-              skipped=$((skipped+1))
+              echo "$version is LIVE on the registry — skipping"
+              published=$((published+1))
             elif npm stage publish "$tarball" 2>&1 | tee /tmp/stage.log; then
               staged=$((staged+1))
-            elif grep -qiE "cannot publish over|previously published|already exists" /tmp/stage.log; then
-              # Lost a race between the check above and this attempt. Rare, and not a failure.
-              echo "$version appeared on the registry mid-run — skipping"
-              skipped=$((skipped+1))
+            elif grep -qiE "previously published|already staged|cannot publish over|already exists" /tmp/stage.log; then
+              # ALREADY STAGED, awaiting approval — which is NOT published, and the distinction is the
+              # whole point of this workflow. npm answers a second `stage publish` with 409 "Cannot stage
+              # previously published version", wording that reads as though the version went live. The curl
+              # above is what tells them apart: it 404s for a staged version and 200s for a live one, so
+              # reaching this branch means staged.
+              #
+              # This is what makes a re-run a safe no-op, and it used to LIE about it. On 2026-08-12 a
+              # re-run of an already-staged release printed "appeared on the registry mid-run" thirty-one
+              # times and summarised "skipped 31 already on the registry" — while every one of those
+              # versions was 404 and nothing was installable. A maintainer reading that log would have
+              # concluded the release had shipped.
+              echo "$version is ALREADY STAGED and awaiting approval — skipping"
+              already=$((already+1))
             else
               echo "::error::staging failed for $name@$version"; exit 1
             fi
             echo "::endgroup::"
           done
-          echo "staged $staged package(s); skipped $skipped already on the registry"
-          if [ "$staged" -eq 0 ]; then
-            echo "nothing new to release — no version in this tree is absent from the registry"
+          echo "staged $staged; already staged (awaiting approval) $already; live on the registry $published"
+          if [ "$((staged + already))" -gt 0 ]; then
+            echo "NONE of the $((staged + already)) staged version(s) are installable until approved with 2FA"
+            echo "approve with: pnpm release:approve — it tags exactly what the registry confirms live"
           else
-            echo "NONE are installable until approved with 2FA"
-            echo "approve with: npm stage list --json  then  npm stage approve <id> --otp <code>"
+            echo "nothing to release — every version in this tree is already live"
           fi
         env:
           NPM_CONFIG_PROVENANCE: "true"
