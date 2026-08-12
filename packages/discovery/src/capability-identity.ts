@@ -65,8 +65,9 @@ export const LCP_CAPABILITY_VERSION = "2026-07-30";
  *  URL answers **HTTP 200 with the site's SPA index** (`text/html`, ~2.2 kB), as does the schema URL below.
  *  A UCP counterparty validating the binding checks the origin and is unaffected; one that also FETCHES
  *  gets a success and a document that is not the one advertised, which no absence check detects. §C.3
- *  records that platforms "MUST validate this binding", so publish the documents — do not rely on a 404
- *  reading as "not yet". */
+ *  records that platforms "MUST validate that binding" — and the binding is on the SCHEMA url, so a
+ *  `spec` that 200s with the wrong document is not a conformance failure, it is a deployment lying to a
+ *  reader who followed it. Publish the documents; do not rely on a 404 reading as "not yet". */
 export const LCP_CAPABILITY_SPEC_URL =
   "https://integraledger.com/lcp/ucp/2026-07-30/legal-context";
 
