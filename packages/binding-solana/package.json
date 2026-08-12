@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-solana",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Welds an ATR hash into a Solana SPL token settlement.",
   "keywords": [
     "lcp",

@@ -1,5 +1,17 @@
 # @integraledger/lcp-placements
 
+## 0.10.0
+
+Released as part of a flat `0.10.0` across the whole suite, so this package carries the suite version even
+though its own change is dependency-level: two placements it re-exports renamed an export, and the registry
+itself is unchanged.
+
+### Patch Changes
+
+- Updated dependencies [3f2d2e3]
+  - @integraledger/lcp-placement-mastercard-vi@0.10.0
+  - @integraledger/lcp-placement-visa-tap@0.10.0
+
 ## 0.9.0
 
 First public release.

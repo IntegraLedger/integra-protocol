@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placements",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "The LCP placement registry — the one place a protocol is registered.",
   "keywords": [
     "lcp",

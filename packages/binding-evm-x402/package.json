@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-evm-x402",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Welds an ATR hash into an x402 instant settlement on any EVM chain.",
   "keywords": [
     "lcp",
