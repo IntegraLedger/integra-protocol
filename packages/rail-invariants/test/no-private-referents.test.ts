@@ -47,9 +47,10 @@
  * different; what it may not do is send the reader to a document that is not in the tarball. "An earlier
  * plan draft assigned that token and it was wrong" passes. "See gate finding 4" does not.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { type Prose, packageProse, vectorProse } from "./shipped-prose.js";
 
 const PACKAGES = new URL("../../", import.meta.url).pathname;
 
@@ -86,7 +87,21 @@ const PLAN_TOKEN = /\b[A-Z]\d{1,2}\b/g;
  * value of `--phase` on the shipped CLI, and the runner enumerates them. `T6` — a Tempo network upgrade,
  * named by the host's own published specification.
  */
-const PUBLIC_PLAN_TOKENS = new Set(["P1", "P3", "P4", "P5", "P6", "P8", "T6"]);
+const PUBLIC_PLAN_TOKENS = new Set([
+  "P1",
+  "P3",
+  "P4",
+  "P5",
+  "P6",
+  "P8",
+  "T6",
+  // Verifiable Intent's own credential layers. `L1` (Identity), `L2` (Intent) and `L3` (Action) are the
+  // host's vocabulary, defined in the specification `placement-mastercard-vi` is cut against, so they
+  // resolve for anyone holding it.
+  "L1",
+  "L2",
+  "L3",
+]);
 
 /**
  * Referents no pattern over IDs can reach: an internal document named in prose.
@@ -105,27 +120,15 @@ const PRIVATE_PHRASES: readonly RegExp[] = [
   /\bgate finding \d+/gi,
 ];
 
-/** Every file npm packs whose PROSE is ours: `src/**\/*.ts` plus each package's own README. */
-function shippedSourceFiles(): string[] {
-  const out: string[] = [];
-  const walk = (dir: string, rel: string): void => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p, `${rel}/${name}`);
-      else if (name.endsWith(".ts")) out.push(`${rel}/${name}`);
-    }
-  };
-  for (const pkg of readdirSync(PACKAGES)) {
-    const src = join(PACKAGES, pkg, "src");
-    try {
-      if (statSync(src).isDirectory()) walk(src, `${pkg}/src`);
-    } catch {
-      // A package without src/ is not a defect here.
-    }
-    if (existsSync(join(PACKAGES, pkg, "README.md")))
-      out.push(`${pkg}/README.md`);
-  }
-  return out;
+/**
+ * Every surface npm packs whose PROSE is ours — package `src/` and READMEs, AND the vector tree, which
+ * ships inside `lcp-conformance` and was outside this gate until 2026-08-12. See `shipped-prose.ts`.
+ */
+function shippedProse(): Prose[] {
+  return [
+    ...packageProse(PACKAGES),
+    ...vectorProse(join(PACKAGES, "..", "vectors")),
+  ];
 }
 
 /** Strip fenced code blocks — a fence quotes a host protocol, not this repository's prose. */
@@ -159,19 +162,20 @@ function privateReferents(rel: string, text: string): string[] {
 }
 
 describe("shipped source carries no private referents", () => {
-  const files = shippedSourceFiles();
+  const prose = shippedProse();
 
-  it("walks a plausible number of shipped source files", () => {
-    // The blind-gate canary. A walker that stops finding files reports clean forever.
-    expect(files.length).toBeGreaterThan(110);
+  it("walks a plausible amount of shipped prose", () => {
+    // The blind-gate canary. A walker that stops finding surfaces reports clean forever — and it must see
+    // BOTH halves, so the vector tree is counted separately: it was invisible here until 2026-08-12.
+    expect(prose.length).toBeGreaterThan(110);
+    expect(
+      prose.filter((p) => p.where.startsWith("vectors/")).length,
+    ).toBeGreaterThan(300);
   });
 
   it("cites no audit finding id, plan section or session token", () => {
-    const offenders = files.flatMap((f) =>
-      privateReferents(
-        f,
-        outsideFences(readFileSync(join(PACKAGES, f), "utf8")),
-      ),
+    const offenders = prose.flatMap((p) =>
+      privateReferents(p.where, outsideFences(p.text)),
     );
     // If this fails: the sentence is probably right and the CITATION is the problem. Say what the finding
     // said, inline, so a reader holding only the tarball can follow it — that is what replacing `H-1` with
@@ -243,9 +247,11 @@ describe("shipped source carries no private referents", () => {
     const FAMILIES =
       /\b(ASP|ATA|CMP|DSC|FRC|IDN|OFR|OPS|ORC|PAY|PRS|RCS|TRM|WLD)-\d+\b/;
     const missing = readdirSync(PACKAGES).filter((pkg) => {
-      const cites = shippedSourceFiles()
-        .filter((f) => f.startsWith(`${pkg}/src/`))
-        .some((f) => FAMILIES.test(readFileSync(join(PACKAGES, f), "utf8")));
+      // Package `src/` only — a requirement id in a VECTOR's prose is decoded by the corpus's own
+      // documentation, not by a package README the vector does not ship beside.
+      const cites = prose
+        .filter((x) => x.where.startsWith(`${pkg}/src/`))
+        .some((x) => FAMILIES.test(x.text));
       if (!cites) return false;
       const readme = join(PACKAGES, pkg, "README.md");
       return (

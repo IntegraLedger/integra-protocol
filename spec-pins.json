@@ -55,11 +55,11 @@
       "id": "ucp",
       "repo": "universal-commerce-protocol/ucp",
       "paths": ["docs/specification", "source/schemas"],
-      "readAt": "417aea4fea969e2e3dd66186f9604adb66fb6e4b",
-      "readOn": "2026-08-11",
-      "status": "drifted",
+      "readAt": "3b9a8dfe7c",
+      "readOn": "2026-08-12",
+      "status": "current",
       "citedBy": ["discovery", "placement-ucp"],
-      "note": "Moved 2026-08-12 in 3b9a8dfe7c, which reserves the `ucp` member as a protocol namespace and adds map_order. Read on the day: it constrains where EXTENSION data may sit and forbids defining a domain field named `ucp`. This tree's carrier is a policies[] entry and its reader consumes UCP's own ucp.capabilities, so no claim here is affected — but the full re-read against overview.md and ucp.json is owed before the pin advances."
+      "note": "Re-read in full at 3b9a8dfe7c, the commit that reserves the `ucp` member as a protocol namespace and adds map_order. Every claim this tree makes was re-checked verbatim and all hold: the schema-URL authority binding and its derivation, the spec URL being explicitly NOT authority-bound, the vendor reverse-domain rule, the platform obligation to validate before fetching, policy.json still `required: [type, description]` with an open reverse-DNS `type`, ucp.json's entity base still `required: [version]` with capability.json requiring `schema` of a business capability and `spec` as well only of a platform one, and checkout.json still eighteen properties with no `extensions` map. The new rule constrains where EXTENSION data may sit and forbids defining a domain field named `ucp`; this tree writes a policies[] entry and reads UCP's own ucp.capabilities, so it is untouched by both."
     },
     {
       "id": "ap2",

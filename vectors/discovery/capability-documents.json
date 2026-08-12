@@ -21,7 +21,7 @@
       }
     },
     {
-      "name": "emit-a2a carries description — the fourth proto field LCP v1.37 §C.8 omits",
+      "name": "emit-a2a carries description — the fourth proto field LCP v1.37 §C.8 omits (Re-read against v1.38 on 2026-08-12: v1.38 §C.8 states `AgentExtension`’s four fields.)",
       "input": {
         "op": "emit-a2a",
         "declaration": {

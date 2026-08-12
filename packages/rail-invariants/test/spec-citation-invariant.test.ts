@@ -25,10 +25,10 @@
  * reader is never left holding a lone stale stamp — and so the next bump produces a list of exactly the
  * files that have to be re-read, rather than a tree-wide grep whose results all look alike.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { LCP_SPEC_VERSION } from "@integraledger/lcp-kernel";
 import { describe, expect, it } from "vitest";
+import { type Prose, packageProse, vectorProse } from "./shipped-prose.js";
 
 const PACKAGES = new URL("../../", import.meta.url).pathname;
 
@@ -54,44 +54,36 @@ const CURRENT = ((): readonly string[] => {
  */
 const ANY_REVISION = /v(?:0\.)?1\.\d{2}\b/g;
 
-/** Every file npm packs whose prose is ours — the same surface `no-private-referents` governs. */
-function shippedFiles(): string[] {
-  const out: string[] = [];
-  const walk = (dir: string, rel: string): void => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p, `${rel}/${name}`);
-      else if (name.endsWith(".ts")) out.push(`${rel}/${name}`);
-    }
-  };
-  for (const pkg of readdirSync(PACKAGES)) {
-    const src = join(PACKAGES, pkg, "src");
-    if (existsSync(src) && statSync(src).isDirectory()) walk(src, `${pkg}/src`);
-    const readme = join(PACKAGES, pkg, "README.md");
-    if (existsSync(readme)) out.push(`${pkg}/README.md`);
-  }
-  return out;
+/**
+ * Every surface npm packs whose prose is ours — packages AND the vector tree. `vectors/` ships inside
+ * `lcp-conformance` and carried fifteen superseded citations while this gate reported clean.
+ */
+function shippedProse(): Prose[] {
+  return [
+    ...packageProse(PACKAGES),
+    ...vectorProse(join(PACKAGES, "..", "vectors")),
+  ];
 }
 
 describe("shipped prose cites the current spec, or contrasts with it", () => {
-  const files = shippedFiles();
+  const prose = shippedProse();
 
   it("walks a plausible surface, and knows what current is", () => {
     // The blind-gate canary. A walker that finds nothing, or a CURRENT that derives to nonsense, reports
     // clean forever.
-    expect(files.length).toBeGreaterThan(110);
+    expect(prose.length).toBeGreaterThan(110);
+    expect(
+      prose.filter((p) => p.where.startsWith("vectors/")).length,
+    ).toBeGreaterThan(300);
     expect(CURRENT[0]).toMatch(/^v\d+\.\d+$/);
     expect(
-      files.filter((f) =>
-        readFileSync(join(PACKAGES, f), "utf8").match(ANY_REVISION),
-      ).length,
+      prose.filter((p) => p.text.match(ANY_REVISION)).length,
     ).toBeGreaterThan(10);
   });
 
   it("no file cites a superseded revision without also citing the current one", () => {
     const offenders: string[] = [];
-    for (const file of files) {
-      const text = readFileSync(join(PACKAGES, file), "utf8");
+    for (const { where: file, text } of prose) {
       const cited = new Set(
         [...text.matchAll(ANY_REVISION)].map((m) => m[0] as string),
       );

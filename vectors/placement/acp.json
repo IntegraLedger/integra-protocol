@@ -441,7 +441,7 @@
     },
     {
       "name": "the alias path accepts the object reference form",
-      "$comment": "LCP v1.37 §C.2 illustrates ACP with a §8.1 {type,value} OBJECT at metadata.legalContext, while our canonical field holds an lcp: STRING at metadata.legal_context. Appendix C is informative and does not move our canonical field — but an implementer who followed it literally holds a real reference, so extract reads it. This is the alias's OWN encoding at work: same reference, two shapes.",
+      "$comment": "LCP v1.37 §C.2 illustrates ACP with a §8.1 {type,value} OBJECT at metadata.legalContext, while our canonical field holds an lcp: STRING at metadata.legal_context. Appendix C is informative and does not move our canonical field — but an implementer who followed it literally holds a real reference, so extract reads it. This is the alias's OWN encoding at work: same reference, two shapes. (Re-read against v1.38 on 2026-08-12: v1.38 §C.2 withdrew the top-level carrier and states the substitution rule as a description rather than a prohibition.)",
       "input": {
         "protocol": "acp",
         "op": "extract",
@@ -552,7 +552,7 @@
     },
     {
       "name": "extract reads the DECLARED-EXTENSION carrier at top-level legal_context",
-      "$comment": "LCP v1.37 §C.2 confirms a second Tier A option requiring nothing from OpenAI or Stripe: a third-party extension under a reverse-domain identifier, admitted by ACP's extensions framework without upstream coordination. Its `extends: [\"$.CheckoutSession.legal_context\"]` places the reference at a TOP-LEVEL legal_context field, not inside metadata. Note the reverse-domain string is the EXTENSION'S NAME and never appears in the field path, which is why reading this carrier needs no namespace decision. A counterparty that adopted the framework holds a real reference there and extract reads it (the declared-extension carrier).",
+      "$comment": "LCP v1.37 §C.2 confirms a second Tier A option requiring nothing from OpenAI or Stripe: a third-party extension under a reverse-domain identifier, admitted by ACP's extensions framework without upstream coordination. Its `extends: [\"$.CheckoutSession.legal_context\"]` places the reference at a TOP-LEVEL legal_context field, not inside metadata. Note the reverse-domain string is the EXTENSION'S NAME and never appears in the field path, which is why reading this carrier needs no namespace decision. A counterparty that adopted the framework holds a real reference there and extract reads it (the declared-extension carrier). (Re-read against v1.38 on 2026-08-12: v1.38 §C.2 withdrew the top-level carrier and states the substitution rule as a description rather than a prohibition.)",
       "input": {
         "protocol": "acp",
         "op": "extract",

@@ -92,7 +92,7 @@
     },
     {
       "name": "settlement-response role — the unsigned HTTP-layer settlement artifact",
-      "$comment": "x402 v2's SettlementResponse rides PAYMENT-RESPONSE unsigned (v1.37 §C.4: the extensions map is not covered by the offer or receipt signature). The role names that artifact honestly — neither an attestation (it is unsigned) nor a second timestamp (the receipt echo already holds that role).",
+      "$comment": "x402 v2's SettlementResponse rides PAYMENT-RESPONSE unsigned (v1.37 §C.4: the extensions map is not covered by the offer or receipt signature). The role names that artifact honestly — neither an attestation (it is unsigned) nor a second timestamp (the receipt echo already holds that role). (Re-read against v1.38 on 2026-08-12: v1.38 §C.4 adds §6.1’s reserved keys and the `paymentFlow` axis.)",
       "input": {
         "entries": [
           {

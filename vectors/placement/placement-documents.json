@@ -201,7 +201,7 @@
       "expected": true
     },
     {
-      "name": "a UCP vendor capability is tier A — no central registry, no maintainer approval (v1.37 §C.3)",
+      "name": "a UCP vendor capability is tier A — no central registry, no maintainer approval (v1.37 §C.3) (Re-read against v1.38 on 2026-08-12: v1.38 §C.3 records `policies[]` as a Tier A carrier in the negotiated baseline.)",
       "input": {
         "protocol": "ucp",
         "pattern": "http-advisory",
@@ -599,7 +599,7 @@
     },
     {
       "name": "an alias may declare its OWN container — UCP's two carriers are different SHAPES",
-      "$comment": "v1.37 §C.3: the canonical capability is an object-path at extensions.<reverse-domain>.legal-context while the discovery carrier is a tagged-array at links[type=terms_of_service].url. Without a per-alias container one manifest cannot declare both, and the write flag — built for exactly this advice — would be unusable by the one protocol that asks for it.",
+      "$comment": "v1.37 §C.3: the canonical capability is an object-path at extensions.<reverse-domain>.legal-context while the discovery carrier is a tagged-array at links[type=terms_of_service].url. Without a per-alias container one manifest cannot declare both, and the write flag — built for exactly this advice — would be unusable by the one protocol that asks for it. (Re-read against v1.38 on 2026-08-12: v1.38 §C.3 records `policies[]` as a Tier A carrier in the negotiated baseline.)",
       "input": {
         "protocol": "ucp",
         "pattern": "http-advisory",
@@ -750,7 +750,7 @@
     },
     {
       "name": "a manifest-level writeCondition validates — the gate ACP's closed session schema forces",
-      "$comment": "The declared-extension placement, where the top-level field IS the reference field. v1.37 §C.2 and ACP's own extensions documentation (agenticcommerce.dev/docs/concepts/extensions, read 2026-07-30): a checkout session RESPONSE reports the extensions active for that session at capabilities.extensions[], as objects carrying name / extends / schema / spec, and the declaration whose `extends` names `$.CheckoutSession.legal_context` is what authorizes that field. `CheckoutSessionBase` is additionalProperties:false, so writing it into a session that declares nothing has stock ACP reject the whole session. Because the field IS the placement, an unmet gate leaves nothing placed and `place` refuses. The gate rides a tagged array while the reference is an object-path — a DIFFERENT container kind — which is why writeCondition.container is required rather than inherited. WHY NOT MASTERCARD VI: its constraints specification (verifiableintent.dev/spec/constraints/, read 2026-07-30) says 'Constraints appear ONLY in Autonomous mode credentials', puts the constraints array solely in Autonomous L2 open mandates, and states 'Constraints do NOT appear in Immediate mode credentials (vct: \"mandate.checkout.1\" and vct: \"mandate.payment.1\")' — the only two non-open values — while in the open ones 'Regardless of strictness mode, verifiers MUST reject open mandates containing unknown constraint types'. No value of vct admits a custom LCP constraint, so VI is not a consumer of this axis and v1.37 §C.7's Tier A is drift owed back to the spec — the host wins.",
+      "$comment": "The declared-extension placement, where the top-level field IS the reference field. v1.37 §C.2 and ACP's own extensions documentation (agenticcommerce.dev/docs/concepts/extensions, read 2026-07-30): a checkout session RESPONSE reports the extensions active for that session at capabilities.extensions[], as objects carrying name / extends / schema / spec, and the declaration whose `extends` names `$.CheckoutSession.legal_context` is what authorizes that field. `CheckoutSessionBase` is additionalProperties:false, so writing it into a session that declares nothing has stock ACP reject the whole session. Because the field IS the placement, an unmet gate leaves nothing placed and `place` refuses. The gate rides a tagged array while the reference is an object-path — a DIFFERENT container kind — which is why writeCondition.container is required rather than inherited. WHY NOT MASTERCARD VI: its constraints specification (verifiableintent.dev/spec/constraints/, read 2026-07-30) says 'Constraints appear ONLY in Autonomous mode credentials', puts the constraints array solely in Autonomous L2 open mandates, and states 'Constraints do NOT appear in Immediate mode credentials (vct: \"mandate.checkout.1\" and vct: \"mandate.payment.1\")' — the only two non-open values — while in the open ones 'Regardless of strictness mode, verifiers MUST reject open mandates containing unknown constraint types'. No value of vct admits a custom LCP constraint, so VI is not a consumer of this axis and v1.37 §C.7's Tier A is drift owed back to the spec — the host wins. (Re-read against v1.38 on 2026-08-12: v1.38 §C.2 withdrew the top-level carrier and states the substitution rule as a description rather than a prohibition. v1.38 §C.7 adopted the drift items and now reads “Tier B — there is no Tier A carrier”.)",
       "input": {
         "protocol": "acp",
         "pattern": "http-advisory",
