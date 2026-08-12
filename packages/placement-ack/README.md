@@ -85,11 +85,11 @@ against a version string. Four things were confirmed:
    issuer signs" below: this is the finding that turns §C.10's proof-coverage claim into an enforced
    precondition rather than an assumed one.
 
-**One plan correction.** The completion plan describes ACK as "the only protocol in the set with no LCP
-Appendix C section". That was true of v1.36 and is **false of v1.37**, which added **§C.10**. §C.10 agrees
-with the code on every point that matters here, including the camelCase `legalContext` spelling this package
-makes canonical, so nothing in the build changed — but the plan's premise did, and the host's own
-code decides either way.
+**One premise corrected.** This package was designed on the understanding that ACK is the only protocol in
+the set with no LCP Appendix C section. That was true of v1.36 and is **false of v1.37**, which added
+**§C.10**. §C.10 agrees with the code on every point that matters here, including the camelCase
+`legalContext` spelling this package makes canonical, so nothing in the build changed — but the premise did,
+and the host's own code decides either way.
 
 ## `http-advisory`, and why not `sidecar-attestation`
 
@@ -207,7 +207,8 @@ By contrast the ordering rule above stands on ACK's own published procedure, whi
   identity path rather than
   minting a second one.
 - **`termsUrlField`.** ACK's receipt models no terms-URL field. Declaring a locator the host has no room for
-  would repeat the defect S7 fixed for `field`, and a parser told to demand one could never round-trip.
+  would repeat the defect the `field` rule exists to prevent — a declared property that is not the declared
+  thing — and a parser told to demand one could never round-trip.
 - **A Tier B manifest.** There is no upstream body to register with. Standardization would be the ACK
   maintainers documenting a conventional `legalContext` key — a documentation act, not a specification
   change — and a manifest for a key whose meaning nobody has published would assert exactly the shape a

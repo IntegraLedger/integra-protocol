@@ -758,11 +758,11 @@ export function encodeForField(
  * session, and arrays are objects to `typeof` so `{...['a','b']}` would emit `{0:'a',1:'b'}`. A placement is
  * structural and is NOT a host-protocol validator — it declines to corrupt, it does not adjudicate.
  *
- * Note this contradicts the S7 plan text, which says a container is "never repaired when malformed". That
- * phrasing would have made the kit reject the two ACP cases above, and S7's own Step 6 names those vectors as
- * the arbiter — "its vectors must stay byte-identical … ACP is the regression test for the kit". The vectors
- * are the ratified record of designed behaviour; a prose description of intended behaviour is not.
- * So the vectors win.
+ * Note this contradicts the design note this kit was built from, which said a container is "never repaired
+ * when malformed". That phrasing would have made the kit reject the two ACP cases above — and the same note
+ * named those vectors as the arbiter, since ACP is the kit's regression test and its vectors must stay
+ * byte-identical. The vectors are the ratified record of designed behaviour; a prose description of intended
+ * behaviour is not. So the vectors win.
  *
  * The second half is NOT evidenced by ACP — whose path has exactly one segment above the field — and is the
  * conservative reading. Replacing an intermediate would discard everything beneath it, which is a

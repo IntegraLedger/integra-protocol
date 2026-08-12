@@ -69,7 +69,8 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  *
  * **`termsUrlField` is deliberately OMITTED.** The terms URL rides `links[type=terms_of_service].url` — a
  * tagged-array locator that a dotted-path parser cannot resolve. Declaring it as `termsUrlField` would
- * repeat the defect S7 fixed for `field`: a declared property that is not the declared thing. The discovery
+ * repeat the defect the `field` rule exists to prevent: a declared property that is not the declared thing.
+ * The discovery
  * alias states the same fact WITH its machine-readable container, and the `PlacementManifest` contract says
  * an absent `termsUrlField` means a parser must not demand one.
  *

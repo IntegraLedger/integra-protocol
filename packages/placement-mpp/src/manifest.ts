@@ -30,7 +30,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * honour a credential whose `request` differs from the one it bound. Stronger than a bare advisory field;
  * NOT a buyer-verifiable seller commitment, and this package will not describe it as one.
  *
- * **Still not a settlement binding.** `binding-evm-mpp` (B1) and `binding-tempo-mpp` (B2) own that, and the
+ * **Still not a settlement binding.** `binding-evm-mpp` and `binding-tempo-mpp` own that, and the
  * two differ enormously in strength on the same wire format: Tempo's `methodDetails.memo` is a documented
  * `bytes32` field whose presence obliges the client to call `transferWithMemo` and obliges the server to
  * verify the emitted memo (`draft-tempo-charge-00` §4.2, §7 step 5), which is a Native Field weld; MPP-EVM

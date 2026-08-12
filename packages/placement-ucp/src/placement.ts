@@ -18,7 +18,8 @@ const base = makePlacement(UCP_PLACEMENT);
  * be HTTPS.** An `http:` URL is rewritable in transit, so accepting one would put an unauthenticated document
  * behind a reference the record cites.
  *
- * This is the composition S7 anticipates — generic mechanics, protocol-specific semantics layered on top —
+ * This is the composition the kit is shaped for — generic mechanics, protocol-specific semantics layered on
+ * top —
  * and it wraps `extract`, not `place`: `place` never writes the links alias (the terms URL is the
  * DEPLOYMENT's datum, not the reference — see the manifest), so the write side has no URL to police.
  *

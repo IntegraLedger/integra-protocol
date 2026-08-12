@@ -31,7 +31,7 @@ function refuse(code: string, detail: string): Outcome<never> {
  * a generic enum — the abstraction leaking — so the write half is overridden here, in this package, where it
  * is reviewed like any other code. `extract` is the kit's unchanged: reading `extensions.legalContext.info` is
  * an ordinary object-path read, and the bare-hash alias at `accepts.0.extra.atrHash` is handled by its own
- * declared encoding (S2/S6). One overridden member is composition; a second would mean this package had
+ * declared encoding. One overridden member is composition; a second would mean this package had
  * stopped using the kit, and the test suite says so.
  */
 export const x402Placement: ReferencePlacementAdapter = {

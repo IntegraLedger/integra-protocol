@@ -5,7 +5,8 @@ import {
 import { VISA_TAP_PLACEMENT } from "./manifest.js";
 
 /**
- * The Visa TAP reference placement. The manifest IS the adapter (S7) — there is nothing else here, and that
+ * The Visa TAP reference placement. The manifest IS the adapter — `binding-core`'s kit needs nothing else
+ * here, and that
  * is a claim about the protocol, not brevity for its own sake.
  *
  * `header-map` supplies every mechanic this placement needs: the RFC 9110 case fold on read, the

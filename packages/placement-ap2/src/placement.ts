@@ -5,7 +5,7 @@ import {
 import { AP2_PLACEMENT } from "./manifest.js";
 
 /**
- * The AP2 reference placement — the S7 kit and nothing else.
+ * The AP2 reference placement — `binding-core`'s placement kit and nothing else.
  *
  * `object-path` writes ONLY `metadata.legalContext`, so the mandate is carried through by reference and
  * cannot be touched: the tier-B shape is unreachable from this package by construction, not by discipline.

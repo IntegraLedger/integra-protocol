@@ -47,9 +47,9 @@ Both members are total: a refusal is a returned value, never a thrown exception.
 
 Read against the live spec at ucp.dev, version `2026-04-08` (`overview#capabilities`,
 `overview#namespace-governance`, `overview#intersection-algorithm`, and the checkout capability page), the
-gate falsified the completion plan's P1 twice:
+gate falsified the design this package was specced from, twice:
 
-1. **Vendor capabilities are Tier A.** The plan specced a links-only placement on the premise that UCP's
+1. **Vendor capabilities are Tier A.** It specced a links-only placement on the premise that UCP's
    strict schema rejects unregistered keys, making the integrity path Tier B. The live spec says the
    opposite: "Vendors MUST use their own reverse-domain namespace for custom capabilities" — no central
    registry, no maintainer approval. What replaces registration is **authority binding**: "the origin of

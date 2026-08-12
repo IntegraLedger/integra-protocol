@@ -97,7 +97,7 @@ HTTP-Layer Advisory, which is exactly what an uncovered header is.
 
 `visaTapPlacement` is `makePlacement(VISA_TAP_PLACEMENT)` — `makePlacement` comes from
 [`@integraledger/lcp-binding-core`](../binding-core#readme) — and nothing else — the manifest *is* the
-adapter (S7). Both members are total: a refusal is a returned value, never a thrown exception.
+adapter. Both members are total: a refusal is a returned value, never a thrown exception.
 
 **There is no helper here that builds an unsigned sibling body object, and a test pins the export set so
 there never is.** That helper is the single worst thing this package could ship: a body sibling carrying the

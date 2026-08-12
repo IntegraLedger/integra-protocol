@@ -66,7 +66,8 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * meaning nobody has published would assert a shape its owner has not defined.
  *
  * **`termsUrlField` is OMITTED.** ACK's receipt models no terms-URL field at all. Declaring a locator the
- * host has no room for would repeat the defect S7 fixed for `field` — a parser reads the manifest, and a
+ * host has no room for would repeat the defect the `field` rule exists to prevent: a declared property that
+ * is not the declared thing. A parser reads the manifest, and a
  * parser that DEMANDED a URL here could never round-trip. `carrierTypes` permits `sha256` and `url` and
  * excludes `ipfs`/`ar`: the map is unconstrained so the restriction is not a type-system one, it is that
  * these are the two forms the LCP ecosystem's readers already handle in a `reference-object` slot. Widening

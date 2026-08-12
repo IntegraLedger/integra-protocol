@@ -28,15 +28,24 @@
  * seam already reads. The 23 sites now carry the meaning inline rather than a token to look up. Without
  * this gate, id 24 arrives next month.
  *
- * ★ THE PATTERN, and why it is narrow. Only ONE- and TWO-letter prefixes are treated as private ids. That
- * is not arbitrary: measured across shipped source, every three-letter id is either a public standard
- * (`EIP-3009`, `TIP-20`, `CAP-67`, `ERC-1271`, `CIP-20`, `SHA-256`) or a requirement id from Integra's
- * functional specification (`RCS-5`, `PAY-3`, `ATA-3`, `WLD-3`, `IDN-1`, `TRM-6`). Requirement ids are a
- * SEPARATE problem — they resolve to a register no consumer holds — and the answer there is the gloss
- * block, not deletion, so they are deliberately out of scope here.
+ * ★ THREE RULES, EACH DELIBERATELY NARROW. A referent can be private in three different shapes, and one
+ * pattern cannot express all three without flagging most of the tree:
  *
- * `TC-*` is the one two-letter exception and it is allowed: LCP's transaction-class ladder is defined in
- * the published specification, so `TC-4` resolves for anyone holding the spec this package implements.
+ *  1. {@link ID_SHAPED} — a hyphenated id, `H-1`. Only ONE- and TWO-letter prefixes, which is not arbitrary:
+ *     measured across shipped source, every three-letter id is either a public standard (`EIP-3009`,
+ *     `TIP-20`, `CAP-67`, `ERC-1271`, `CIP-20`, `SHA-256`) or a requirement id from Integra's functional
+ *     specification (`RCS-5`, `PAY-3`, `ATA-3`, `WLD-3`, `IDN-1`, `TRM-6`). Requirement ids are a SEPARATE
+ *     problem — they resolve to a register no consumer holds — and the answer there is the gloss block, not
+ *     deletion, so they are out of scope here. `TC-*` is the one allowed two-letter prefix: the
+ *     transaction-class ladder is in the published specification.
+ *  2. {@link PLAN_TOKEN} — the same id without its hyphen, `S7`. Added 2026-08 after nine sites leaked
+ *     through the gap for months while this file reported clean.
+ *  3. {@link PRIVATE_PHRASES} — the referent written out in words, "the completion plan". Nine more sites,
+ *     and no pattern over ids could ever have seen them.
+ *
+ * ★ WHAT THE STANDARD IS NOT. It is not "no history". A comment may say that something used to be
+ * different; what it may not do is send the reader to a document that is not in the tarball. "An earlier
+ * plan draft assigned that token and it was wrong" passes. "See gate finding 4" does not.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -44,7 +53,7 @@ import { describe, expect, it } from "vitest";
 
 const PACKAGES = new URL("../../", import.meta.url).pathname;
 
-/** An id-shaped token with a one- or two-letter prefix: `H-1`, `D-5`, `B-12`, `Q-7`, `RUL-3`… */
+/** An id-shaped token with a one- or two-letter prefix: `H-1`, `D-5`, `B-12`, `Q-7`… */
 const ID_SHAPED = /\b[A-Z]{1,2}-\d+\b/g;
 
 /**
@@ -53,6 +62,48 @@ const ID_SHAPED = /\b[A-Z]{1,2}-\d+\b/g;
  * `TC` — the transaction-class ladder (TC-0 … TC-4), defined in the spec this package implements.
  */
 const PUBLIC_PREFIXES = new Set(["TC"]);
+
+/**
+ * A HYPHEN-LESS plan token — `S7`, `B1`, `S2`. The second half of the same defect, and invisible to
+ * {@link ID_SHAPED}, which requires the hyphen.
+ *
+ * ★ WHY IT IS SEPARATE RATHER THAN A WIDER `ID_SHAPED`. The obvious repair — allow three-letter prefixes and
+ * make the hyphen optional — was measured before being rejected: over shipped prose it flags 70 of the 86
+ * id-shaped tokens present, including every one the discriminator test below asserts must pass
+ * (`EIP-3009`, `TIP-20`, `CAP-67`, `SHA-256`, `RCS-5`, `PAY-3`, `IDN-1`, `WLD-3`). One pattern cannot
+ * express both rules. Two narrow patterns can.
+ *
+ * Nine sites leaked through this hole and were inlined in 2026-08: seven in `src/`, two in READMEs, all
+ * citing `S7` — the design note this repository's placement kit was built from. The kit is a real thing a
+ * reader can look at; the note is not.
+ */
+const PLAN_TOKEN = /\b[A-Z]\d{1,2}\b/g;
+
+/**
+ * Hyphen-less tokens that resolve for a stranger.
+ *
+ * `P1`–`P8` — the conformance corpus's activation ladder. These are not internal ids at all: they are the
+ * value of `--phase` on the shipped CLI, and the runner enumerates them. `T6` — a Tempo network upgrade,
+ * named by the host's own published specification.
+ */
+const PUBLIC_PLAN_TOKENS = new Set(["P1", "P3", "P4", "P5", "P6", "P8", "T6"]);
+
+/**
+ * Referents no pattern over IDs can reach: an internal document named in prose.
+ *
+ * `S7` was findable because it looked like a token. "the completion plan" and "see gate finding 4" are the
+ * same defect written out in words, and they outnumbered the tokens — nine sites across six packages,
+ * every one of them asking a reader to consult something no tarball contains.
+ *
+ * ★ WHAT IS DELIBERATELY NOT HERE. "An earlier plan draft assigned that pattern token and it was wrong"
+ * stays. It demands no lookup: the claim is complete in the sentence, and a reader who cannot identify the
+ * draft has lost nothing. The standard is resolvability, not the absence of history — a comment may say
+ * that something used to be different, it may not say "go and read why".
+ */
+const PRIVATE_PHRASES: readonly RegExp[] = [
+  /\bthe completion plan\b/gi,
+  /\bgate finding \d+/gi,
+];
 
 /** Every file npm packs whose PROSE is ours: `src/**\/*.ts` plus each package's own README. */
 function shippedSourceFiles(): string[] {
@@ -92,14 +143,19 @@ function outsideFences(text: string): string {
     .join("\n");
 }
 
-/** Private-referent hits in one file, as `path:line: token` strings. */
+/** Private-referent hits in one file, as `path:line: token` strings. All three rules, one pass. */
 function privateReferents(rel: string, text: string): string[] {
-  return text.split("\n").flatMap((line, i) =>
-    [...line.matchAll(ID_SHAPED)]
-      .map((m) => m[0])
-      .filter((tok) => !PUBLIC_PREFIXES.has(tok.split("-")[0] ?? ""))
-      .map((tok) => `${rel}:${i + 1}: ${tok}`),
-  );
+  return text.split("\n").flatMap((line, i) => {
+    const hits: string[] = [];
+    for (const m of line.matchAll(ID_SHAPED))
+      if (!PUBLIC_PREFIXES.has((m[0] as string).split("-")[0] ?? ""))
+        hits.push(m[0] as string);
+    for (const m of line.matchAll(PLAN_TOKEN))
+      if (!PUBLIC_PLAN_TOKENS.has(m[0] as string)) hits.push(m[0] as string);
+    for (const phrase of PRIVATE_PHRASES)
+      for (const m of line.matchAll(phrase)) hits.push(`"${m[0]}"`);
+    return hits.map((hit) => `${rel}:${i + 1}: ${hit}`);
+  });
 }
 
 describe("shipped source carries no private referents", () => {
@@ -130,6 +186,23 @@ describe("shipped source carries no private referents", () => {
     const flagged = (s: string): string[] => privateReferents("f.ts", s);
     for (const bad of ["H-1", "D-5", "B-12", "Q-7", "A-3", "C-4", "R-2"])
       expect(flagged(`// see ${bad} for why`), bad).not.toEqual([]);
+    // The hyphen-less half, which the original pattern could not see. These are the exact tokens that
+    // leaked: `S7` the design note, `B1`/`B2` its binding sections, `S2`/`S6` its placement sections.
+    for (const bad of ["S7", "B1", "B2", "S2", "S6", "D7", "W9"])
+      expect(flagged(`// as ${bad} anticipates`), bad).not.toEqual([]);
+    for (const ok of ["P1", "P3", "P4", "P5", "P6", "P8", "T6"])
+      expect(flagged(`// runs at ${ok}`), ok).toEqual([]);
+    // And the half written out in words, which no pattern over ids reaches.
+    for (const bad of [
+      "the completion plan",
+      "The Completion Plan",
+      "see gate finding 4",
+    ])
+      expect(flagged(`// ${bad} says so`), bad).not.toEqual([]);
+    // History is allowed; a lookup is not. This sentence resolves without any document.
+    expect(
+      flagged("// an earlier plan draft assigned it and was wrong"),
+    ).toEqual([]);
     for (const ok of [
       "TC-4",
       "EIP-3009",

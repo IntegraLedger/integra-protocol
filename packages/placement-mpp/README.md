@@ -39,7 +39,7 @@ Both members are total: a refusal is a returned value, never a thrown exception.
 ## Specification provenance — verified against the live host, 2026-07-30 — per method, because MPP is a family
 
 Read against the live specification family published at paymentauth.org and the IETF Datatracker on
-2026-07-30. Three findings correct the completion plan and LCP v1.37 §C.1.
+2026-07-30. Three findings correct both the design this package was specced from and LCP v1.37 §C.1.
 
 ### 1. The core scheme moved one revision, one day after v1.37 was checked
 
@@ -119,7 +119,7 @@ ever will" is not a property to rely on.
 A custom parameter on the outer `WWW-Authenticate: Payment` challenge is permitted today — §9.3:
 "Implementations MAY define additional parameters in challenges ... Unknown parameters MUST be ignored by
 clients." The same section requires lowercase parameter names, so it would have to spell **`legalcontext`**,
-not `legalContext` as both the completion plan and v1.37 §C.1 write it. Either way an outer parameter is
+not `legalContext` as v1.37 §C.1 writes it. Either way an outer parameter is
 outside the seven slots and therefore **unbound**, and bringing it under the binding means extending the
 canonicalization input — a coordinated change to the core draft. No Tier B manifest is declared for it:
 declaring a shape the host protocol has not defined is exactly the assertion this repository does not make.

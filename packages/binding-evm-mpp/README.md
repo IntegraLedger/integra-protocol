@@ -83,7 +83,7 @@ Read against the host protocol's own live specifications, not LCP's Appendix C.
 
 **Two drifts found, recorded rather than smoothed over.**
 
-- **The core draft's identifier.** LCP v1.37 §C.1 and the completion plan both cite
+- **The core draft's identifier.** LCP v1.37 §C.1 cites
   `draft-ryan-httpauth-payment-01` (the IETF individual submission). paymentauth.org's own document index
   publishes the core scheme as **`draft-httpauth-payment-00.html`**. Both were read for this gate; they agree
   on §5.1.1 and on the seven slots. Treat the paymentauth.org copy as the live one — it is the family's own

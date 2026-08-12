@@ -96,7 +96,7 @@ signature-grade.
 ## Specification provenance — verified against the live host, 2026-07-30
 
 Read against the host specifications and the host reference implementation, never against LCP's Appendix C
-(which is informative) or the completion plan.
+(which is informative) or any internal design note.
 
 **Sources consulted, all on 2026-07-30.**
 
@@ -138,7 +138,8 @@ no upstream coordination needed.
    establishes whose settlement a log is, and the `0x20c0…` range cannot substitute for it. Hence the
    required `{ token }` at construction, above.
 
-**One amendment to the plan.** §6.2 B2 sketched `weldGrades: { "tip20-memo": "tx" }`. The gate changed it to
+**One amendment to the design as drafted.** It sketched a single `weldGrades: { "tip20-memo": "tx" }`.
+Reading the host changed it to
 two keys: `transferWithMemo` is **signature**-grade (the observed Tempo transaction type `0x76` carries the
 transfer in a `calls[]` array under the payer's own `secp256k1` signature, with the sponsor's
 `feePayerSignature` beside it — the same reasoning that makes x402's EIP-3009 nonce and Solana's SPL memo
@@ -181,7 +182,8 @@ matches the manifest's rail.
   package yet — it is unbuilt — so nothing here depends on one.
 - **Not a payment verifier.** It reports what the memo bound. Whether the amount, currency and recipient were
   right is MPP's server-side verification, and whether the funds reached the named recipient is a separate
-  fact (see gate finding 4).
+  fact — a `TransferWithMemo` proves a memo rode a transfer of the scoped token, not that the transfer
+  discharged the obligation the record describes.
 - **Not a settlement operator.** No writer port, no driving verb, no funds ever held. We record and verify.
 
 ## Requirement ids
