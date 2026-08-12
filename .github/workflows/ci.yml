@@ -3,14 +3,21 @@ on:
   # Work lands directly on main. A fork's PR therefore gets no CI — stated in CONTRIBUTING so a contributor
   # knows they cannot demonstrate green here, rather than discovering it.
   #
-  # TAGS ARE EXCLUDED, and that is not tidiness. `scripts/approve-staged.mjs` pushes one tag per approved
-  # package with a single `git push --tags`, so a release fires this workflow once per tag — a 31-package
-  # release means 62 matrix jobs on one commit, none of which can cancel the others because `concurrency`
-  # keys on `github.ref` and every tag is a different ref. Narrowing to `branches: [main]` instead would be
-  # worse: Dependabot's branches would lose CI, and `dependabot.yml` relies on a red build to hold the 24h
-  # quarantine.
+  # Why tags are excluded at all: `scripts/approve-staged.mjs` pushes one tag per approved package with a
+  # single `git push --tags`, so a release would fire this workflow once per tag — a 31-package release
+  # means 62 matrix jobs on one commit, none able to cancel the others because `concurrency` keys on
+  # `github.ref` and every tag is a different ref.
+  #
+  # TAGS ARE EXCLUDED VIA `branches`, NOT `tags-ignore`, AND THE DIFFERENCE IS NOT COSMETIC. A `push` block
+  # carrying only `tags-ignore` means "tags, minus these" — after ignoring `**` that is NOTHING, and the
+  # workflow stops running on branch pushes entirely. Measured the hard way on 2026-08-12: commit 3b9b7e6
+  # landed on main and ci, codeql and mutation all silently did not run. Branch and tag filters are
+  # independent, so `branches: ["**"]` is the form that means "every branch, no tags".
+  #
+  # `**` and not `*`: Dependabot's branches contain slashes (`dependabot/npm_and_yarn/...`), which `*` does
+  # not match. They must keep CI — dependabot.yml relies on a red build to hold the 24h quarantine.
   push:
-    tags-ignore: ["**"]
+    branches: ["**"]
 
 # Least privilege, declared rather than inherited: without this block a job gets the repository default,
 # which is org-configurable and historically read/write. This workflow only reads the tree.
