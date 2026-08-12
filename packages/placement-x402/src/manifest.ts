@@ -14,10 +14,9 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * `erc20ApprovalGasSponsoring`, `auth-hints`, `offer-receipt`, `http-message-signatures`,
  * `payment-identifier`, `sign-in-with-x`, read at `x402-foundation/x402` HEAD 2026-08-11. Note that two of
  * the nine are camelCase, so this package's `legalContext` key follows an established minority spelling
- * rather than diverging from a unanimous one. LCP v1.38 §C.4
- * says to do one or the other: "Because `schema` is a REQUIRED member, publish a resolvable schema or
- * inline it." Inlining also removes a hosting dependency the deployment does not currently meet — the same
- * dependency the UCP capability still owes.
+ * rather than diverging from a unanimous one. LCP v1.38 §C.4 says to do one or the other: "Because
+ * `schema` is a REQUIRED member, publish a resolvable schema or inline it." Inlining also removes a hosting
+ * dependency the deployment does not currently meet — the same dependency the UCP capability still owes.
  *
  * **One of the nine makes it a rule, which settles the question.** The Bazaar extension requires a
  * `schema`'s `$ref`/`$id` values to be "same-document JSON Pointer fragments (starting with `#`); external
