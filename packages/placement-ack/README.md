@@ -217,7 +217,8 @@ By contrast the ordering rule above stands on ACK's own published procedure, whi
 ## Provenance
 
 Cut against the ACK reference implementation at `main`, read **2026-07-30** (repo pushed 2026-07-29), and
-reconciled against LCP v1.37 §C.10 the same day. The carrier-strength rules — per-alias `carrierClass` and
+reconciled against LCP v1.37 §C.10 the same day, and re-read against **v1.38 §C.10** on 2026-08-12 — which
+still spells the carrier `legalContext`, as this package does. The carrier-strength rules — per-alias `carrierClass` and
 `write`, and `org.legalcontextprotocol.*` reserved for a TSC-ratified capability — neither apply to a
 manifest whose only alias is an integrity spelling and which advertises no namespaced capability.
 

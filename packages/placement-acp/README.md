@@ -119,8 +119,10 @@ in ACP's core set that this package does not have.
 ## Provenance
 
 Cut against ACP's stable `2026-04-17` JSON Schema, re-read 2026-07-28, and reconciled against LCP v1.37
-§C.2 the same day. v1.37 is a corrections release: §8.3's pattern definitions are unchanged from v1.36, so
-the `http-advisory` determination rests on the same text it always did.
+§C.2 the same day; re-read against **v1.38 §C.2** on 2026-08-12. The `http-advisory` determination is
+unchanged — §8.3's pattern definitions are byte-identical across v1.36, v1.37 and v1.38 — but §C.2 itself is
+not: v1.38 withdrew the top-level carrier this package used to write, which is the change described at the
+top of this file.
 
 The conditional write was cut against the same release's `schema.extension.json`, re-read 2026-07-30.
 `ExtensionDeclaration` requires only `name`; `Capabilities.extensions` is a `oneOf` whose request arm is

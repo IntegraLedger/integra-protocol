@@ -61,12 +61,14 @@ and the PaymentRequirements table), four facts were confirmed and each one decid
 Extension identifiers are implementation-defined strings — no registry, no reverse-domain rule — so the
 `legalContext` key is available today and this placement is Tier A on the wire.
 
-### Drift from LCP v1.37 §C.4, recorded rather than absorbed
+### Drift from LCP v1.37 §C.4 — recorded then adopted by v1.38
 
 The host governs: its live specification is binding and LCP's Appendix C is an illustration.
 Two differences, neither of which changes the design:
 
-- v1.37 renders the echo rule in RFC-2119 capitals ("MAY append to but **MUST NOT** delete or overwrite")
+- v1.37 rendered the echo rule in RFC-2119 capitals ("MAY append to but **MUST NOT** delete or overwrite")
+  where the host states it in lower case and about the data rather than the map. **v1.38 §C.4 now says
+  exactly that**, so this item is discharged; it is kept because it is why the package reads the way it does
   and states it about the extensions map. The live spec states it in lower case and about the `info` payload.
   Same rule, weaker modality, one level lower.
 - The live spec also carries `extra` on `PaymentPayload.accepted`, which §C.4 does not mention.
@@ -192,7 +194,8 @@ the same defect as a carrier nobody can find.
 ## Provenance
 
 Cut against x402 v2 (`x402-foundation/x402@1fec3aa04e41`, `specs/x402-specification-v2.md`, read 2026-07-30) and reconciled
-against LCP v1.37 §C.4 the same day. The **paths and shapes** are matched field-for-field against the
+against LCP v1.37 §C.4 the same day, and re-read against **v1.38 §C.4** on 2026-08-12 — which adopted the
+drift items below and added §6.1's reserved keys. The **paths and shapes** are matched field-for-field against the
 shipped seller carrier and the buyer parsers that read it; the **resolution semantics diverge from a strict
 buyer gate in three recorded ways**, and *Drift from a strict buyer-side reader*
 above states each one and who closes it. Both drift sections are the disclosure, not a to-do list — a

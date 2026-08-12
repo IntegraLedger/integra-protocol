@@ -26,7 +26,8 @@ export const LCP_METADATA_LABEL = 8847;
  * WRITTEN ON-CHAIN. Re-exported from `kernel` rather than declared here: it was a fourth independent copy
  * of one fact and drifted to `0.1.36` while the rest of the tree reconciled to v1.37. The export is kept
  * because `v` is this binding's own wire concern and callers reach for it here — but the value now has one
- * definition, and `kernel/src/spec-version.ts` documents what it means and when it moves.
+ * definition, and `kernel/src/spec-version.ts` documents what it means and when it moves. It stamps
+ * `0.1.38` today — LCP v1.38.
  *
  * `propose` takes it as a DEFAULT, not a constant, so a deployment stamping a different version is a
  * supported act rather than a fork.

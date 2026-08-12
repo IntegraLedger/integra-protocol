@@ -158,7 +158,8 @@ reach and it reads with an honest `not-attempted` at settlement-enumeration.
 ## Provenance
 
 Cut against `specification/a2a.proto` at `a2aproject/A2A@0ef1b02` (`main`, 2026-07-23 — after the `v1.0.1`
-release, not at it), gate discharged 2026-07-30, and reconciled against LCP v1.37 §C.8 the same day. The kit is `makePlacement` from
+release, not at it), gate discharged 2026-07-30, and reconciled against LCP v1.37 §C.8 the same day; re-read
+against **v1.38 §C.8** on 2026-08-12, which now states `AgentExtension`'s four fields. The kit is `makePlacement` from
 [`@integraledger/lcp-binding-core`](../binding-core#readme); this package composes nothing on top of it,
 because A2A asks for no rule the kit does not already hold.
 

@@ -112,10 +112,15 @@ claims were put to the spec. **Two hold; the third fails, and the failure is wha
 The gate has done its job: there is **no Tier A path** here. That is a finding, not a defect, and it is why
 this package declares `tier: "B"` rather than shipping a Tier A claim the host would refuse.
 
-## Drift against LCP v1.37 §C.7 — three items, owed back to the appendix
+## Drift against LCP v1.37 §C.7 — three items, since adopted by v1.38
 
-The host governs: its live specification is binding and Appendix C is an illustration. §C.7 was
-checked against the Verifiable Intent draft dated 2026-02-18 and has since drifted.
+The host governs: its live specification is binding and Appendix C is an illustration. v1.37 §C.7 was
+checked against the Verifiable Intent draft dated 2026-02-18 and had drifted from it by the time this
+package was cut. **All three items below are now in the appendix**: v1.38 §C.7 states that the
+specification has no `stage` field, that mode and kind ride `vct` rather than a `layer` member, and that the
+registered types share only `type` — with `mandate.payment.amount_range` spelled `{ type, currency, min,
+max }` and carrying no `value`. Its heading is now "Tier B — there is no Tier A carrier". The debt is paid;
+the record below is kept because it is why the package was built this way.
 
 1. **§C.7's Tier A rests on a mandate stage that does not exist.** Its example carries `"stage": "closed"`,
    and its determination is "Tier A — Available today, in closed mandates only", on the reading that a closed
@@ -131,8 +136,9 @@ checked against the Verifiable Intent draft dated 2026-02-18 and has since drift
 
 What §C.7 gets right and this package keeps: the mechanism is a custom Layer-2 constraint that inherits the
 Layer-2 signature, and the Tier B forward work is registering LCP-aware constraint types — which, in the
-appendix's own words, "converts legal context from optionally-skipped to mandatory-to-evaluate, and makes it
-safe in open mandates and under strict verification."
+appendix's own words, "converts legal context from unusable to mandatory-to-evaluate, and makes it
+safe in open mandates and under strict verification." (v1.37 wrote "optionally-skipped" where v1.38 writes
+"unusable" — the quotation follows the current text.)
 
 ## Why `opaque-challenge`, and why not the other three tokens
 
@@ -200,7 +206,9 @@ arrived.
 ## Provenance
 
 Cut against the live Verifiable Intent specification, gate discharged **2026-07-30**, and reconciled against
-LCP v1.37 §C.7 the same day — with the three drift items above recorded rather than followed.
+LCP v1.37 §C.7 the same day — with the three drift items above recorded rather than followed. Re-read
+against **v1.38 §C.7** on 2026-08-12: the appendix has adopted all three, and the package's determinations
+are unchanged by that.
 
 ---
 

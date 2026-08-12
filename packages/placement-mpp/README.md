@@ -45,7 +45,8 @@ Read against the live specification family published at paymentauth.org and the 
 
 The core scheme is now **`draft-httpauth-payment-00`, 29 July 2026, expires 30 January 2027**. It re-issues
 `draft-ryan-httpauth-payment-01` (18 March 2026, expires 19 September 2026) without the personal-submission
-prefix, which restarts the revision counter at `-00`. LCP v1.37 §C.1 cites the `-ryan-` revision and was
+prefix, which restarts the revision counter at `-00`. **v1.38 §C.1 records both identities**, so this is
+discharged. LCP v1.37 §C.1 cited the `-ryan-` revision and was
 checked 2026-07-28 — one day before the successor landed, so its citation and its "published March 18, 2026
 and expiring September 19, 2026" sentence are now stale by one revision.
 
@@ -143,13 +144,16 @@ The slot is `bare-value`, which fixes the carrier type from the field's own cont
 `carrierTypes` at exactly one. A url-typed `readAlso` would need a second permitted type, so the cap forbids
 one — and that is the correct answer rather than a limitation to work around. The terms URL is declared as
 `termsUrlField`, labelled as the different datum it is, and a reference read can never silently descend to it:
-LCP v1.37 §C.2 forbids substituting a located document for an attested one. `place` writes the hash only; the
+LCP §C.2 rules out substituting a located document for an attested one — v1.37 as a MUST NOT, v1.38 as a
+statement of fact. `place` writes the hash only; the
 URL is the deployment's datum, and a body that already carries one is left untouched.
 
 ## Provenance
 
 Cut against the live MPP specification family (paymentauth.org, core `draft-httpauth-payment-00` of 29 July
-2026), gate discharged per method **2026-07-30**, and reconciled against LCP v1.37 §C.1 the same day; the family was re-enumerated and §C.1 re-read on
+2026), gate discharged per method **2026-07-30**, and reconciled against LCP v1.37 §C.1 the same day; re-read
+against **v1.38 §C.1** on 2026-08-12, which now reads all ten charge methods and records the core draft's
+dual identity. The family was re-enumerated and §C.1 re-read on
 2026-08-08. The
 per-method table above is that record.
 

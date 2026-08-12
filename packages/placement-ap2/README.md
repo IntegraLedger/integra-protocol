@@ -89,7 +89,10 @@ it again. Not this package's concern, but it is the same reading.
    reaches the permitted-types check: the kit's decoder returns `undefined` and `extract` refuses
    `ap2/reference-malformed`. `ap2/carrier-type-not-permitted` means a *known* carrier type this field may
    not hold, so that case is pinned with `ipfs`/`ar`. Same determination `placement-acp` already pinned.
-3. **LCP v1.37 §C.5 overstates how easy Tier B is.** It reads as an extension to the mandate schema. v0.2
+3. **LCP v1.37 §C.5 overstated how easy Tier B is** — and v1.38 §C.5 no longer does: it now names the
+   Mandate Constraints extension point and says the path is a registration advanced through the FIDO
+   Alliance working groups, not an added field. Recorded because it is the reasoning below. v1.37 read as
+   an extension to the mandate schema. v0.2
    makes it a new credential type: `vct` "MUST match the exact `vct` string, including the version suffix",
    so an added claim is not a tolerated extra field, and the key-binding signature at presentation means
    nothing can be inserted afterwards. v0.2's real forward path is its **Mandate Constraints** extension
@@ -141,7 +144,8 @@ financial constraints to legal ones.
 ## Provenance
 
 Cut against AP2 `v0.2` (`google-agentic-commerce/AP2` `@ main`, release `0.2.0` dated 2026-04-28), gate
-discharged 2026-07-30, and reconciled against LCP v1.37 §C.5 the same day. Stewardship is moving to the FIDO
+discharged 2026-07-30, and reconciled against LCP v1.37 §C.5 the same day; re-read against **v1.38 §C.5** on
+2026-08-12, which adopted item 3 above. Stewardship is moving to the FIDO
 Alliance Payments Technical Working Group, which also holds Mastercard Verifiable Intent (§C.7).
 
 ---

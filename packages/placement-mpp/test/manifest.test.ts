@@ -59,7 +59,8 @@ describe("MPP placement — the manifest guards its own claims", () => {
   it("declares NO discovery alias — the cap forbids one, and that is the correct answer", () => {
     // A url-typed `readAlso` would need a second permitted carrier type and the cap refuses it. So the terms
     // URL is declared as `termsUrlField` — labelled as the different datum it is — and never as a fallback
-    // the reference read could silently descend to. LCP v1.37 §C.2 forbids exactly that substitution.
+    // the reference read could silently descend to. LCP §C.2 rules out exactly that substitution — v1.37
+    // as a MUST NOT, v1.38 as a statement of fact ("is not a substitute for one").
     expect(MPP_PLACEMENT.readAlso).toBeUndefined();
     expect(MPP_PLACEMENT.termsUrlField).toBe("methodDetails.legalContextUrl");
     expect(MPP_PLACEMENT.termsUrlField).not.toBe(MPP_PLACEMENT.field);

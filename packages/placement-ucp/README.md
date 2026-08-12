@@ -116,7 +116,9 @@ present, the `url` carrier type itself signalling discovery-not-integrity.
 
 ## Provenance
 
-Cut against UCP `2026-04-08` (ucp.dev) and reconciled against LCP v1.37 §C.3. A deployment advertises under
+Cut against UCP `2026-04-08` (ucp.dev) and reconciled against LCP v1.37 §C.3; re-read against **v1.38 §C.3**
+on 2026-08-12, which now records `policies[]` as a Tier A carrier in the negotiated baseline — the carrier
+this package moved to. A deployment advertises under
 its own reverse-domain namespace; `org.legalcontextprotocol.*` is reserved for a TSC-ratified capability.
 
 ---

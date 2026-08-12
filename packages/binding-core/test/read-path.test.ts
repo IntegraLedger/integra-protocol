@@ -232,7 +232,10 @@ describe("readDeclaredPaths", () => {
       carrierClass: "discovery",
       bareType: "url",
     });
-    // The downgrade LCP v1.37 §C.2 forbids: a located document standing in for an attested one.
+    // The downgrade LCP §C.2 rules out: a located document standing in for an attested one. v1.37 put it
+    // normatively — a policy page "MUST NOT be substituted for one" — and v1.38 states it as fact rather
+    // than obligation: it "is not a substitute for one". The kit's behaviour predates both and is unchanged
+    // by the modality; `binding-core/src/placement.ts` records why the distinction is worth keeping.
     expect(requireIntegrity(hit)).toBeUndefined();
   });
 

@@ -526,7 +526,8 @@ describe("object-path segments — a key containing literal dots", () => {
 });
 
 describe("a MIXED-container manifest — UCP's actual shape", () => {
-  // v1.37 §C.3. The canonical capability is an object-path; the discovery carrier the spec advises publishing
+  // v1.37 §C.3, and a shape UCP turned out not to have — kept as a KIT fixture, not as UCP's. The canonical
+  // capability was read as an object-path; the discovery carrier the spec advises publishing
   // alongside it is a tagged-array. One placement, two container kinds, and `write: true` on the alias so
   // both land — which is what the write flag was built for and could not express until the alias could
   // declare its own container.
@@ -813,10 +814,15 @@ describe("makePlacement — the write flag, which is what UCP §C.3 needs", () =
 // THE GATE IS READ FROM THE HOST SPEC, NOT FROM LCP'S APPENDIX. ACP negotiates extensions per checkout
 // session: the agent's request carries `capabilities.extensions` as an array of identifier STRINGS, and the
 // session response carries an array of declaration OBJECTS (name / extends / schema / spec) for those active
-// in the session (agenticcommerce.dev/docs/concepts/extensions, read 2026-07-30; v1.37 §C.2). Because
-// `CheckoutSessionBase` is additionalProperties:false, the declaration whose `extends` names
-// `$.CheckoutSession.legal_context` IS what authorizes that field — so the gate reads the authorization for
-// the field it is about to write, and a session without it rejects entirely.
+// in the session (agenticcommerce.dev/docs/concepts/extensions, read 2026-07-30; v1.37 §C.2). The reading
+// was that because `CheckoutSessionBase` is additionalProperties:false, the declaration whose `extends`
+// names `$.CheckoutSession.legal_context` IS what authorizes that field — so the gate read the
+// authorization for the field it was about to write, and a session without it rejected entirely.
+//
+// v1.38 §C.2 WITHDREW THAT PATH: "That declaration does not make a new top-level field valid." The
+// released schema was measured INVALID for such a session, `placement-acp` retired the write, and no
+// shipped manifest declares a writeCondition today. The gate is certified here because the KIT still
+// implements the axis — see the note above — not because ACP still exercises it.
 //
 // MASTERCARD VI IS THE SECOND CONSUMER, and its gate is certified in `placement-mastercard-vi` and the
 // `placement.mastercard-vi` corpus area rather than here — an axis consumer that ships as a package proves the
@@ -827,8 +833,9 @@ describe("makePlacement — the write flag, which is what UCP §C.3 needs", () =
 // open ones and needs the SET that ACP's degenerate single-value gate does not. What that gate does not carry
 // is the tier: in the open mandates "Regardless of strictness mode, verifiers MUST reject open mandates
 // containing unknown constraint types", so a custom LCP type has no home against a stock verifier, which the
-// package declares as `tier: "B"`. v1.37 §C.7's Tier A — resting on closed mandates carrying constraints, and
-// on a `stage` field the live spec does not have — is drift owed back to the spec.
+// package declares as `tier: "B"`. v1.37 §C.7's Tier A rested on closed mandates carrying constraints and on
+// a `stage` field the live spec does not have; v1.38 §C.7 retired it — "Tier B — there is no Tier A
+// carrier" — so this is the appendix's reading now, not drift from it.
 
 // ACP's session gate. A tagged array whose valueField IS its tagField: the entry that identifies itself, so
 // the reader can only ever return the tag, and `permits` must list it (assertManifestHygiene holds that).
