@@ -51,7 +51,7 @@ import { decodeSplMemo, encodeSplMemo } from "@integraledger/lcp-binding-solana"
 declare const atrHash: string;
 
 const memoData = encodeSplMemo(atrHash); // "hex" is canonical; "raw" is the 32 bytes
-decodeSplMemo(memoData); // "0x…" | null — you must TELL it which encoding to read
+decodeSplMemo(memoData); // "0x…" | null — encoding defaults to "hex"; pass "raw" for the 32 bytes
 ```
 
 Because the memo instruction and the transfer instruction are in the same transaction, the payer's

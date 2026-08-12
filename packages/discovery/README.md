@@ -12,7 +12,7 @@ it is the one place in the open layer that validates with Zod rather than relyin
 npm install @integraledger/lcp-discovery
 ```
 
-Depends only on [`@integraledger/lcp-kernel`](../kernel#readme) — the atrHash it recomputes a served terms document against.
+Depends on [`@integraledger/lcp-kernel`](../kernel#readme) — the atrHash it recomputes a served terms document against — and on **zod**, which validates the trust boundary described above.
 
 ## Parse and emit
 

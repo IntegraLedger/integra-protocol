@@ -62,7 +62,7 @@ The three EVM rail bindings implement this interface — bind an ATR hash into a
 recover it from a settled one, observe lifecycle transitions. Consumers depend on the port, not on any
 chain SDK.
 
-**It is not a universal port, and the nine non-EVM rails deliberately do not implement it.** Its shape is
+**It is not a universal port, and the ten non-EVM rails deliberately do not implement it.** Its shape is
 EVM's: `SettlementRef.txHash` is a `0x`-hex value and `ChainReader` speaks `eth_getLogs`. A Sui
 transaction digest, a Daml `contractId` or an XRPL memo cannot pass through that without lying about the
 rail, so each of those bindings exposes a rail-native surface and says so in its first docblock. Unifying

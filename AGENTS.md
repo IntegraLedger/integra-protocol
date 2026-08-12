@@ -21,7 +21,7 @@ Build comes before typecheck deliberately: workspace packages consume each other
 |---|---|
 | `pnpm verify` | Must exit 0 before anything is claimed done |
 | `pnpm mutation <pkg>` | Per package — `STRYKER_PKG` is required and the config throws without it |
-| `pnpm check:docs` | Typechecks every TS fence in `docs/`, the root README and all 31 package READMEs |
+| `pnpm check:docs` | Typechecks every TS fence in `docs/`, the root README and every package README — the count is derived, never written down |
 | `pnpm check:docblocks` | Refuses a top-level export with no docblock — 100% floor, adjacency strict |
 | `pnpm check:dist` | Refuses a `dist/` output whose `src/` file was deleted or renamed |
 

@@ -116,7 +116,8 @@ export const INTEGRITY_CARRIER_TYPES: readonly LegalContextRef["type"][] = [
  *
  * A CLOSED set of three, derived from the ten protocols rather than imagined: `object-path` covers every
  * protocol whose slot is addressable directly; `tagged-array` covers the two whose reference lives in an
- * entry of a typed array (UCP's `links`, Mastercard VI's Layer-2 `constraints`); `header-map` covers the one
+ * entry of a typed array — UCP contributes two of the three, its `policies[]` carrier and its `links` alias,
+ * and Mastercard VI's Layer-2 `constraints` is the third; `header-map` covers the one
  * whose keys compare case-insensitively per RFC 9110.
  *
  * That UCP and Mastercard VI — two protocols with nothing else in common — reduce to the SAME rule with

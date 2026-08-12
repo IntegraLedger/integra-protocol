@@ -41,7 +41,8 @@ const all = readdirSync(`${root}/packages`).filter((p) => {
 
 const args = process.argv.slice(2);
 // `--list` prints the package set as JSON so CI can fan out over it as a matrix instead of running
-// eighteen packages back-to-back in one job. Keeps the list in ONE place: this script.
+// every publishable package back-to-back in one job. Keeps the list in ONE place: this script, which
+// derives it from `private` rather than from a name pattern or a number written here.
 if (args[0] === "--list") {
   console.log(JSON.stringify(all));
   process.exit(0);

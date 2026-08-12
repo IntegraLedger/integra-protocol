@@ -1,0 +1,14 @@
+# Issue routing. `SECURITY.md` asks people not to open a public issue for a vulnerability, and this is what
+# makes that ask actionable instead of hopeful: the security link sits above the blank-issue button, where
+# someone about to paste a finding will see it.
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/IntegraLedger/integra-protocol/security/advisories/new
+    about: >-
+      Private disclosure through GitHub Security Advisories. Do NOT open a public issue — see SECURITY.md.
+  - name: Propose a protocol change
+    url: https://github.com/IntegraLedger/integra-protocol/blob/main/CONTRIBUTING.md
+    about: >-
+      A new binding or placement, or a change to the conformance corpus, is a decision about the Legal
+      Context Protocol rather than about this tree. It reaches the maintainers through the co-stewards.

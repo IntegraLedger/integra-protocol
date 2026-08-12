@@ -46,4 +46,4 @@ jobs:
         # built `dist/` — so the build is required, not incidental.
       - run: pnpm -r build
       - name: Read the deployed escrow and compare against the pinned derivations
-        run: pnpm --filter @integraledger/lcp-binding-evm-escrow drift
+        run: pnpm drift   # package.json's `drift` script — one definition, per the note above

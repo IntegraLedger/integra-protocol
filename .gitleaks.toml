@@ -1,4 +1,12 @@
-# gitleaks configuration — the publication secrets gate.
+# gitleaks configuration — for a LOCAL run, and deliberately NOT a CI gate.
+#
+# Nothing in `.github/` invokes gitleaks, and that is the decision rather than an omission. The live
+# control is GitHub's own: `secret_scanning` and `secret_scanning_push_protection` are enabled on this
+# repository (measured 2026-08-11), so a secret is rejected at the push rather than reported after it.
+# Running gitleaks in CI as well would be a second, weaker copy of a control that already blocks.
+#
+# This file exists so `gitleaks detect` on a developer's machine produces the same verdict CI's absence
+# implies — clean — instead of drowning a first-time runner in known-public constants.
 #
 # The gate this serves is "clean, or stop and fix before anything is pushed", so a scan that reports
 # known-public constants as leaks does not make the tree safer; it trains the reader to wave findings

@@ -1,6 +1,16 @@
 name: ci
-on: [push]        # work lands directly on main. A fork's PR therefore gets no CI — stated in CONTRIBUTING
-                  # so a contributor knows they cannot demonstrate green here, rather than discovering it.
+on:
+  # Work lands directly on main. A fork's PR therefore gets no CI — stated in CONTRIBUTING so a contributor
+  # knows they cannot demonstrate green here, rather than discovering it.
+  #
+  # TAGS ARE EXCLUDED, and that is not tidiness. `scripts/approve-staged.mjs` pushes one tag per approved
+  # package with a single `git push --tags`, so a release fires this workflow once per tag — a 31-package
+  # release means 62 matrix jobs on one commit, none of which can cancel the others because `concurrency`
+  # keys on `github.ref` and every tag is a different ref. Narrowing to `branches: [main]` instead would be
+  # worse: Dependabot's branches would lose CI, and `dependabot.yml` relies on a red build to hold the 24h
+  # quarantine.
+  push:
+    tags-ignore: ["**"]
 
 # Least privilege, declared rather than inherited: without this block a job gets the repository default,
 # which is org-configurable and historically read/write. This workflow only reads the tree.

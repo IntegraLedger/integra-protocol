@@ -7,7 +7,8 @@
  * `0x` optional, required to decode to exactly 32 bytes. It rides inside the `request` body, which is
  * **slot 3** of the core scheme's seven-slot HMAC canonicalization, so the seller's own MAC commits them to
  * the value before payment. (Slot 3, not 4: the core draft's table is 0-based, and
- * `draft-ryan-httpauth-payment-01` on the IETF datatracker — the revision cited below — carries the
+ * `draft-ryan-httpauth-payment-01` on the IETF datatracker — the mirror of the core scheme that
+ * paymentauth.org publishes as `draft-httpauth-payment-00`, both recorded by LCP v1.38 §C.1 — carries the
  * identical 0-based table. `placement-mpp` has always said 3.) When it is present the server verifies
  * "`Transfer` **and/or** `TransferWithMemo`" logs, so the advertised value must equal the on-chain memo or
  * the payment does not verify. The and/or matters and is not a quibble: a memo transfer emits BOTH events,

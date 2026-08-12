@@ -9,7 +9,7 @@
  * implementers.
  *
  * These assertions are deliberately about EQUALITY WITH THE CONSTANT rather than about the string
- * `"0.1.37"`. Pinning the literal would make every one of these a second place to edit on the next bump —
+ * a literal. Pinning one would make every assertion here a second place to edit on the next bump —
  * which is the failure being closed, reintroduced in the gate meant to close it.
  */
 import { readFileSync } from "node:fs";

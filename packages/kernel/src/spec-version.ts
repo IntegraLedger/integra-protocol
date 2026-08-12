@@ -1,9 +1,11 @@
 /**
  * THE LCP SPECIFICATION VERSION THIS IMPLEMENTATION TARGETS — one literal, for every surface that stamps it.
  *
- * FOUR surfaces stamp it and none of them may hold its own copy: `binding-cardano` (written
- * on-chain as the metadatum `v`), `discovery`'s schema `$id` and its description string, and the shipped
- * `vectors/legal-context/schema.json`. Nothing tied them together, so they drifted — all four sat at
+ * FIVE surfaces stamp it and none of them may hold its own copy: `binding-cardano` (written on-chain as
+ * the metadatum `v`), `discovery`'s schema `$id` and its description string — both DERIVED from this
+ * constant rather than copied — and the two data files, `vectors/legal-context/schema.json` and
+ * `vectors/binding/cardano-metadatum.json`, which carry it literally because JSON cannot import.
+ * Nothing tied them together, so they drifted — all of them sat at
  * `0.1.36` after every other package had reconciled to v1.37, and no surface said whether that was a
  * deliberate pin or an oversight. Four copies of one fact is the defect; bumping four copies would only
  * have reset the clock on it.

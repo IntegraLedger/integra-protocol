@@ -4,13 +4,14 @@ packages:
 # prebuilt @swc/core-<platform> optional dependency (verified — parseSync works with the script ignored),
 # and dependency-cruiser's swc parser needs only that binding. Keeping arbitrary postinstall execution
 # off is the supply-chain posture; the ignoredBuiltDependencies list documents the deliberate skip.
-allowBuilds:
-  # bufferutil / utf-8-validate are OPTIONAL native accelerators of `ws` (a @solana/web3.js transitive dep);
-  # both have pure-JS fallbacks and binding-solana uses only HTTP RPC (no websocket subscriptions), so their
-  # native builds are deliberately skipped — same no-arbitrary-postinstall posture as @swc/core.
-  '@swc/core': false
-  bufferutil: false
-  utf-8-validate: false
+# ONE list, not two. This file previously also carried an `allowBuilds:` map naming the same three
+# packages with `false` values. `allowBuilds` is not a key `pnpm install --help` documents in 11.20, and
+# every entry said what the list below says, so the two could only ever agree or confuse — measured
+# 2026-08-12 and consolidated here.
+#
+# bufferutil / utf-8-validate are OPTIONAL native accelerators of `ws` (a @solana/web3.js transitive dep);
+# both have pure-JS fallbacks and binding-solana uses only HTTP RPC (no websocket subscriptions), so their
+# native builds are deliberately skipped — same no-arbitrary-postinstall posture as @swc/core.
 ignoredBuiltDependencies:
   - "@swc/core"
   - "bufferutil"

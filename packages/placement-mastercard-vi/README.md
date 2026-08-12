@@ -151,7 +151,7 @@ this carrier exactly: covered by the consumer's Layer-2 signature, never on a le
   draft assigned this token and it was wrong.
 - **Not `protocol-extension` (§8.3.6), even at Tier B.** §8.3.6 means the host's own verification procedure is
   `atrHash`-aware. No VI verifier is. (An earlier release added that the type "has a name only the FIDO
-  Alliance Payments TWG can assign" — **that is false**, see *Naming is not the obstacle* below.)
+  Alliance Payments TWG can assign" — **that is false**, see *Naming is not the obstacle* above.)
 - **Not `http-advisory` (§8.3.7).** That is the no-binding baseline, and it would understate a value the
   consumer's device key signs.
 

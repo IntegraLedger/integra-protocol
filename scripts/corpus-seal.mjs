@@ -3,7 +3,7 @@
  *
  * The runner used to have no way to know whether it had been handed the whole corpus. `report.skipped`
  * derives from the same manifest a truncation would edit, so a shrunken corpus reported fewer passes, zero
- * skips, and exit 0 — a certifier silently certifying against a subset. The only real pin, 826 in
+ * skips, and exit 0 — a certifier silently certifying against a subset. The only real pin, `CORPUS_SIZE` in
  * `test/runner.test.ts`, ships to nobody.
  *
  * The seal closes that in two layers, and the split is the whole point:

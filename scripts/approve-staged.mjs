@@ -6,8 +6,9 @@
  * compromised workflow. This script is the ergonomics of that approval, not the authority for it: every
  * approval below is still an `npm stage approve` that npm accepts or refuses on its own terms.
  *
- * It exists because a 30-package release is 30 approvals — `npm stage approve` takes one stage id, and
- * batch approval is undocumented. Thirty hand-typed commands is how a step gets skipped.
+ * It exists because a coordinated release is one approval per package — `npm stage approve` takes one
+ * stage id, and
+ * batch approval is undocumented. Thirty-odd hand-typed commands is how a step gets skipped.
  *
  * It also OWNS TAGGING, and that placement is the point. `changeset publish` used to tag in the runner at
  * publish time; staging is not publishing, so a tag written then could point at a version later rejected.

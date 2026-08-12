@@ -54,8 +54,11 @@ on:
 # npm FAILS a publish it cannot attest rather than degrading to an unattested one, so if this repository is
 # ever made private again this workflow starts failing — that is the intended behaviour, not a regression.
 permissions:
-  # `contents: write` so the per-package tags can be pushed (see the final step).
-  contents: write
+  # READ only. No step here pushes anything: this workflow checks out, builds, packs, uploads an artifact
+  # and stages. Tagging moved to `scripts/approve-staged.mjs`, which runs on a maintainer's machine at the
+  # moment of approval — see the closing note. Write scope on the one workflow that also holds
+  # `id-token: write` is worth not granting for a step that no longer exists.
+  contents: read
   # OIDC. This is the whole of the publishing credential — there is no token to leak.
   id-token: write
   # For the dispatch gate below, which reads this commit's `ci` conclusion from the runs API. Declaring
@@ -111,6 +114,22 @@ jobs:
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version-file: ".nvmrc", cache: "pnpm", registry-url: "https://registry.npmjs.org" }
+      # `npm stage` needs npm >= 11.15.0, and .nvmrc pins a Node MAJOR — so the npm that arrives is
+      # whatever that line currently bundles. Today Node 24 ships 11.16.0 and the command exists; a runner
+      # that resolved an older 24.x would fail mid-loop with "Unknown command: stage", after packing and
+      # uploading, which reads as a registry problem rather than a toolchain one. `approve-staged.mjs`
+      # states the same floor for the approval half; this states it for the staging half, before any
+      # package is touched.
+      - name: Require an npm that has `stage`
+        run: |
+          need=11.15.0
+          have=$(npm --version)
+          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -1)" != "$need" ]; then
+            echo "::error::npm $have cannot stage; need >= $need. Bump .nvmrc or install npm@latest."
+            exit 1
+          fi
+          echo "npm $have >= $need"
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
 
@@ -204,5 +223,6 @@ jobs:
       # rather than before.
       #
       # Tagging moves to the moment of approval, where a version actually becomes installable:
-      # `scripts/approve-staged.mjs` tags exactly what it approved and pushes those refs. `contents: write`
-      # remains granted above because that path runs against this repository.
+      # `scripts/approve-staged.mjs` tags exactly what it approved and pushes those refs. It runs on a
+      # maintainer's machine under their own credentials, so this workflow needs no write scope — and the
+      # permissions block above grants none.

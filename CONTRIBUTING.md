@@ -68,7 +68,7 @@ exactly this reason.
 pnpm verify          # check:versions → check:docblocks → corpus-seal → audit → build → check:dist
                      #   → lint → depcruise → typecheck → check:docs → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
-pnpm exec lcp-conformance   # the whole corpus, no --phase
+pnpm conformance            # the whole corpus, no --phase
 ```
 
 `pnpm verify` must exit 0. It builds first because workspace packages consume each other through built

@@ -8,13 +8,18 @@ name: mutation
 #
 # Its own workflow rather than a step in `verify` — it re-runs the suite once per surviving mutant and
 # has no business in the inner loop.
-on: [push]
+on:
+  # Tags excluded: a release pushes one per approved package, and this workflow fans out one runner per
+  # publishable package — so an un-excluded tag push is a whole fan-out per tag. See ci.yml.
+  push:
+    tags-ignore: ["**"]
 
 permissions:
   contents: read
 
 concurrency:
-  # The fan-out is the most expensive thing in CI; a superseded push should not keep eighteen runners busy.
+  # The fan-out is the most expensive thing in CI; a superseded push should not keep one runner per
+  # publishable package busy.
   group: mutation-${{ github.ref }}
   cancel-in-progress: true
 

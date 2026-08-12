@@ -1,0 +1,17 @@
+# Ownership of the co-stewarded commons.
+#
+# There is no pull-request surface here — CI runs `on: push` and work lands directly on `main` — so this
+# file does not gate a review today. It exists so that a fork's PR, and any future PR flow, requests the
+# right people rather than nobody, and so the ownership of the load-bearing surfaces is written down.
+
+# Everything, by default.
+*                             @IntegraLedger/lcp-maintainers
+
+# The conformance corpus is the artefact an independent implementation is measured against. A change here
+# changes what "conformant" means for everyone, not just for this tree.
+/vectors/                     @IntegraLedger/lcp-maintainers
+
+# The gates. A change that weakens one is invisible in the green it produces.
+/scripts/                     @IntegraLedger/lcp-maintainers
+/packages/rail-invariants/    @IntegraLedger/lcp-maintainers
+/.github/                     @IntegraLedger/lcp-maintainers

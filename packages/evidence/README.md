@@ -26,7 +26,8 @@ const bundle = await buildBundle([
   { role: "signed acceptance", bytes: acceptanceBytes },
 ]);
 
-bundle.root;                        // "bafkreieup3nyv2mzsihypun2jbrzmrc4jx4kmdnaphzqnrjgaaojgnjmza"
+bundle.root;                        // "bafkrei…" — a raw CIDv1 over THESE bytes; declared inputs above,
+                                    //   so the digest is whatever you actually bundled
 const result = await verifyBundle(bundle.car);
 result.ok;                          // true
 ```

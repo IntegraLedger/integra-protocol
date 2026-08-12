@@ -16,7 +16,7 @@ npm install @integraledger/lcp-binding-tempo-mpp
 | **Surface** | `createTempoMppAdapter` returning a rail-native adapter over a `TempoReader` port — **not** `binding-core`'s `WeldAdapter`, whose shape is EVM's |
 | **Recovery** | on-chain, zero-party-recoverable, **forward-indexable** |
 | **Weld** | `signature` on `transferWithMemo`, `tx` on `transferFromWithMemo` |
-| **Spec** | TIP-20 spec + `draft-ryan-httpauth-payment-01` + `mpp-rs`, gate discharged **2026-07-30** |
+| **Spec** | TIP-20 spec + MPP core `draft-httpauth-payment-00` + `mpp-rs`, gate discharged **2026-07-30** |
 | **Depends on** | [`@integraledger/lcp-binding-core`](../binding-core#readme) for the manifest and the MPP attribution tag, [`@integraledger/lcp-kernel`](../kernel#readme) for the atrHash |
 
 ## Why this rail is the strong one
@@ -31,11 +31,12 @@ truncated. Three consequences:
 - **Forward-indexable.** `eth_getLogs({topics: [sig, null, null, atrHash]})` returns *every* settlement ever
   bound to one reference, in one query.
 
-Measured against the rest of the tree rather than asserted: **four** shipped profiles declare the full triple
-— this one, `evm:x402`, `cardano` and `evm:escrow` — and only two index by the reference itself. `evm:x402` is
-the other, over EIP-3009's indexed `nonce` topic; `cardano` indexes by metadata *label*, so a query returns
-every LCP-labelled settlement rather than one reference's; `evm:escrow` carries its `salt` in event *data*, so
-the forward path is a scan-and-decode. Solana, XRPL, Hedera, Sui and Stellar declare
+Measured against the rest of the tree rather than asserted: **three** shipped profiles declare the full
+triple — this one, `evm:x402` and `cardano` — and only two index by the reference itself. `evm:x402` is the
+other, over EIP-3009's indexed `nonce` topic; `cardano` indexes by metadata *label*, so a query returns every
+LCP-labelled settlement rather than one reference's. `evm:escrow` is the near miss: it carries its `salt` in
+event *data* rather than a topic, so its forward path is a scan-and-decode and its manifest says
+`forwardIndexable: false`. Solana, XRPL, Hedera, Sui and Stellar declare
 `forwardIndexable: false` and offer a history scan instead. What is distinctive here is the **carrier**: a
 free-form 32 bytes with no other job — x402's nonce is replay protection the weld consumes — indexed on the
 settlement transfer's own event.
@@ -103,7 +104,7 @@ Read against the host specifications and the host reference implementation, neve
 | Source | What it settled |
 |---|---|
 | `https://tempo.xyz/developers/docs/protocol/tip20/spec` (live; `docs.tempo.xyz` now 308-redirects here) | `transferWithMemo(address to, uint256 amount, bytes32 memo)`; `event TransferWithMemo(address indexed from, address indexed to, uint256 amount, bytes32 indexed memo)`; the memo "is always a fixed 32-byte field"; `transferFromWithMemo` / `mintWithMemo` / `burnWithMemo` emit the same event; TIP-403 policies; virtual-address resolution; the T6 `ReceivePolicyGuard` |
-| `draft-ryan-httpauth-payment-01` (IETF, 18 Mar 2026, expires 19 Sep 2026) | the seven-slot HMAC canonicalization, with `request` (JCS + base64url) as **slot 3** — the table is 0-based — so `methodDetails` is MAC-protected |
+| `draft-ryan-httpauth-payment-01` (IETF datatracker, 18 Mar 2026) — the IETF mirror of the core scheme, which paymentauth.org publishes as `draft-httpauth-payment-00` and which LCP v1.38 §C.1 records under both identities | the seven-slot HMAC canonicalization, with `request` (JCS + base64url) as **slot 3** — the table is 0-based — so `methodDetails` is MAC-protected |
 | `https://mpp.dev` — `/intents/charge`, `/payment-methods/tempo/*`, `/sdk/typescript/server/Method.tempo.charge` | the charge request schema; `memo` as a Tempo-charge parameter; split memos constrained to a "32-byte hex hash"; mainnet `4217` / testnet `42431`; push/pull/proof modes |
 | `tempoxyz/mpp-rs` @ `main` (updated 2026-07-29) — `src/protocol/methods/tempo/{types,charge,method}.rs`, `src/tempo/attribution.rs` | `TempoMethodDetails = { chainId?, feePayer?, memo?, splits? }` as the Rust type stood on that date; the memo "must be a 32-byte hex string (with or without 0x prefix)"; "when present, the server verifies `TransferWithMemo` logs instead of `Transfer`"; the attribution memo layout |
 | `draft-tempo-charge-00`, Method Details (re-read 2026-08-11) | the NORMATIVE member list, which is five and not four: `chainId`, `feePayer`, `memo`, `splits`, `supportedModes` — all OPTIONAL. `supportedModes` advertises the non-zero submission modes (`"pull"` and/or `"push"`) a server accepts. This package sets `memo` and reads nothing else, so the extra member changes no behaviour here; the four-field list above is a snapshot of one implementation, not the definition |

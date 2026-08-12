@@ -27,8 +27,9 @@
  * `pnpm verify` catches these either way; only the score is fooled.
  *
  * THRESHOLDS ARE RATCHETS. `break` sits just under each package's measured score. Raise it when the score
- * rises; never lower it to make a build pass. A package absent from the table has not been measured yet —
- * it runs at break 0 and prints its baseline.
+ * rises; never lower it to make a build pass. A package absent from the table THROWS — see the guard
+ * below. It used to run at break 0 and print a baseline, which is a threshold under which every score
+ * passes rather than an absence of opinion, so the run went green against nothing.
  */
 
 /**

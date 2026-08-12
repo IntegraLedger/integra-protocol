@@ -6,7 +6,8 @@
  * private package — which has no such surface, and typically no `exports` and no `dist` at all — fails them
  * BY DESIGN. CI used to encode that as a name-pattern filter, which was correct only while one particular
  * package happened to be the only private one in the workspace. It stopped being correct the moment
- * a second private package existed: `rail-invariants` (test-only, holds the cross-rail invariants that need
+ * a second private package existed. The first was a short-lived release-tooling spike, since deleted; the
+ * one that remains is `rail-invariants` (test-only, holds the cross-rail invariants that need
  * every binding imported at once) turned CI red on a `💀 Resolution failed` the day it was added, and the
  * failure said nothing about the actual rule it had tripped.
  *

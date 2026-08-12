@@ -33,8 +33,10 @@
 # "Dependabot cannot do this", never as "this cannot be done", and check it by hand.
 #
 # This repo's run showed NO other error — no registry 401, since its own `@integraledger` packages are
-# `workspace:*`. The commerce repo additionally 401s on GitHub Packages for that scope, and still produced
-# the identical verdict here without it, which is how we know the transitive limitation stands alone.
+# `workspace:*`. (That was originally corroborated against the commerce repo, which 401'd on GitHub
+# Packages for the scope and still produced the identical verdict. It resolves everything from npmjs now,
+# so the corroboration is gone even though the conclusion stands: the transitive limitation is the whole
+# cause.)
 #
 # Until that is addressed, npm SECURITY updates here are advisory-only. The github-actions ecosystem below
 # is unaffected — it has been succeeding throughout.
@@ -70,6 +72,12 @@ updates:
           - "vitest"
         update-types: ["minor", "patch"]
     ignore:
+      # ⚠️ INERT TODAY, and kept as intent rather than as enforcement. `@types/node` and `vitest` are
+      # `"catalog:"` in every manifest; their real versions live in `pnpm-workspace.yaml`, which Dependabot
+      # does not edit. So neither this ignore nor the `vitest` entry in the group above can fire until
+      # catalog coverage lands (see the ⚠️ note at the top of this file). The floor below is still the
+      # rule — it is enforced by review and by `engines`, not by this line.
+      #
       # @types/node is FLOOR-pinned to `engines.node` on purpose: the types must never describe APIs the
       # oldest supported runtime lacks, or code typechecks against something that is not there at runtime.
       # A major bump here is a deliberate decision that follows raising the engines floor — never automatic.

@@ -8,8 +8,11 @@ name: codeql
 # behind an SSRF guard, and `verify` walks an authority chain a counterparty authored.
 #
 # TWO REPOSITORY PREREQUISITES, both of which read as entitlement problems when they are absent and are
-# not: `security_and_analysis.code_security` must be enabled on the repository, and the job needs
-# `actions: read` (see permissions) on a private one.
+# not. On a PRIVATE repository: `security_and_analysis.code_security` must be enabled, and the job needs
+# `actions: read` (see permissions). This repository is PUBLIC, where code scanning is available without
+# that setting — measured 2026-08-11, `code_security` does not appear in its `security_and_analysis` at
+# all — so neither prerequisite binds today. Both are recorded because they bind again the moment the
+# repository goes private, which is the same trap `release.yml` documents for its own `actions: read`.
 #
 # RESULTS GO TO THE SECURITY TAB, and are ALSO gated in-job. The tab is a place to go and look; the gate
 # fails the run. Where work lands directly on main, a finding that only appears somewhere you have to visit
@@ -19,7 +22,9 @@ name: codeql
 # in the inner loop. Runs on push plus a weekly sweep, because the QUERIES improve even when the code does
 # not, and a finding that only exists after a query update would otherwise never surface.
 on:
+  # Tags excluded for the reason ci.yml gives: a release pushes up to one tag per package at once.
   push:
+    tags-ignore: ["**"]
   workflow_dispatch: # re-run on demand — e.g. after a repo security setting changes
   schedule:
     - cron: "0 4 * * 1" # Mondays 04:00 UTC
@@ -29,7 +34,9 @@ permissions:
   security-events: write # upload the SARIF to the Security tab
   # `actions: read` is REQUIRED for a private repository: the analyze step reads its own workflow-run
   # metadata, and without it the whole step 403s with "Resource not accessible by integration" — an error
-  # that names the workflow-runs API and looks nothing like a permissions problem.
+  # that names the workflow-runs API and looks nothing like a permissions problem. It reads as optional on
+  # a public repository, which is what this one is; it is declared anyway so going private does not break
+  # the scan silently.
   actions: read
 
 concurrency:

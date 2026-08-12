@@ -7,9 +7,9 @@
   },
   "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "audit": "pnpm audit --audit-level moderate",
     "build": "pnpm -r build",
     "clean": "node scripts/check-dist-orphans.mjs --clean",
+    "conformance": "node packages/conformance/dist/cli.js",
     "check:dist": "node scripts/check-dist-orphans.mjs",
     "check:docblocks": "node scripts/check-docblocks.mjs",
     "check:docs": "node scripts/check-doc-snippets.mjs",
@@ -19,7 +19,6 @@
     "drift": "pnpm --filter @integraledger/lcp-binding-evm-escrow drift",
     "lint": "biome check .",
     "mutation": "node scripts/mutation.mjs",
-    "mutation:all": "node scripts/mutation.mjs",
     "release:approve": "node scripts/approve-staged.mjs",
     "test": "pnpm -r --workspace-concurrency=3 test",
     "typecheck": "pnpm -r typecheck",
