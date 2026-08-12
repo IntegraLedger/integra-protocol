@@ -19,7 +19,7 @@ import {
 } from "../src/adapter.js";
 import { MEMO_PROGRAM_ID, TOKEN_PROGRAM_ID } from "../src/constants.js";
 import { SOLANA_MANIFEST } from "../src/manifest.js";
-import { decodeAtrMemo, encodeAtrMemo } from "../src/memo.js";
+import { decodeSplMemo, encodeSplMemo } from "../src/memo.js";
 
 const ATR =
   "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
@@ -60,7 +60,7 @@ describe("buildAtrMemoInstruction", () => {
     const ix = buildAtrMemoInstruction(ATR, "hex");
     expect(ix.programId.toBase58()).toBe(MEMO_PROGRAM_ID);
     expect(ix.keys).toEqual([]);
-    expect(decodeAtrMemo(Uint8Array.from(ix.data), "hex")).toBe(ATR);
+    expect(decodeSplMemo(Uint8Array.from(ix.data), "hex")).toBe(ATR);
   });
 });
 
@@ -111,12 +111,12 @@ describe("recoverAtrHashFromMemoViews", () => {
     // be recoverable; dropping the second attempt would false-refuse every raw-encoded weld.
     expect(
       recoverAtrHashFromMemoViews([
-        { programId: MEMO_PROGRAM_ID, data: encodeAtrMemo(ATR, "raw") },
+        { programId: MEMO_PROGRAM_ID, data: encodeSplMemo(ATR, "raw") },
       ]),
     ).toBe(ATR);
     expect(
       recoverAtrHashFromMemoViews([
-        { programId: MEMO_PROGRAM_ID, data: encodeAtrMemo(ATR, "hex") },
+        { programId: MEMO_PROGRAM_ID, data: encodeSplMemo(ATR, "hex") },
       ]),
     ).toBe(ATR);
   });
@@ -200,7 +200,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
   it("recovers a memo the RPC returned partially-decoded (base58 data, no `parsed`)", () => {
     // Some RPCs return the Memo instruction unparsed — its data is base58. The mapping must keep the
     // raw bytes so recover still finds the atrHash (the zeroPartyRecoverable claim, across providers).
-    const memoBytes = encodeAtrMemo(ATR, "hex");
+    const memoBytes = encodeSplMemo(ATR, "hex");
     const tx = {
       transaction: {
         message: {

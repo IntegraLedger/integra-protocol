@@ -35,7 +35,7 @@ export const MPP_ATTRIBUTION_VERSION = 1;
  * True iff a CANONICAL 32-byte value is one of MPP's attribution memos rather than a terms reference.
  *
  * Takes the canonical `0x`-prefixed lowercase form, because that is the one shape both rails already have
- * by the time they ask: Tempo's `decodeAtrMemo` normalizes a bare or prefixed memo to it, and Hedera's
+ * by the time they ask: Tempo's `decodeTip20Memo` normalizes a bare or prefixed memo to it, and Hedera's
  * codec validates with `isAtrHash` first. Sharing the predicate rather than only the constants is what
  * keeps the two rails from drifting on the version comparison — the tag is a string and the version is a
  * number, and reading the second as hex is the easy half to get wrong twice.

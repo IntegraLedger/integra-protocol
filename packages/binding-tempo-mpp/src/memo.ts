@@ -8,7 +8,7 @@
  * contrast Stellar, where only `atrHash[:8]` fits the CAP-67 mux id and the full hash is unrecoverable
  * on-chain.
  *
- * `encodeAtrMemo` fails LOUD on a malformed atrHash; `decodeAtrMemo` returns `null` for anything that is
+ * `encodeTip20Memo` fails LOUD on a malformed atrHash; `decodeTip20Memo` returns `null` for anything that is
  * not a well-formed 32-byte memo, so a settlement scan skips foreign memos without treating them as
  * errors. The decode side accepts a BARE (unprefixed) memo because that is the host's own grammar: MPP's
  * `parse_memo_bytes_in_context` strips an optional `0x` before requiring exactly 32 bytes. Accepting both
@@ -18,19 +18,19 @@ import { atrHashEquals, canonicalAtrHash } from "@integraledger/lcp-kernel";
 import { isHexBytes, stripHexPrefix } from "./hex.js";
 
 /** The atrHash as the 32-byte memo the buyer's `transferWithMemo` carries. Throws if malformed. */
-export function encodeAtrMemo(atrHash: string): `0x${string}` {
-  return canonicalAtrHash(atrHash, "encodeAtrMemo");
+export function encodeTip20Memo(atrHash: string): `0x${string}` {
+  return canonicalAtrHash(atrHash, "encodeTip20Memo");
 }
 
 /** A 32-byte memo (prefixed or bare) as a lower-case `0x` value, or `null` if it is not one. */
-export function decodeAtrMemo(memo: string): `0x${string}` | null {
+export function decodeTip20Memo(memo: string): `0x${string}` | null {
   if (!isHexBytes(memo, 32)) return null;
   return `0x${stripHexPrefix(memo).toLowerCase()}`;
 }
 
 /** A 32-byte memo, normalized — throws naming `context` when it is not one. For the write paths. */
 export function requireMemo(memo: string, context: string): `0x${string}` {
-  const decoded = decodeAtrMemo(memo);
+  const decoded = decodeTip20Memo(memo);
   if (decoded === null)
     throw new Error(
       `${context}: expected a 32-byte hex memo (with or without 0x), got "${memo}"`,
@@ -42,14 +42,14 @@ export function requireMemo(memo: string, context: string): `0x${string}` {
  * True iff a settlement's memo carries exactly `atrHash` (the seller's verification-time check).
  *
  * Both sides are validated by `atrHashEquals`, which is why no separate `isAtrHash` guard appears here.
- * The decoded side cannot fail it — `decodeAtrMemo` only ever yields `0x` + 64 lower-case hex — but the
+ * The decoded side cannot fail it — `decodeTip20Memo` only ever yields `0x` + 64 lower-case hex — but the
  * CALLER'S side can, and comparing decoded bytes (LCP §2.5) means a malformed caller value answers `false`
  * rather than being silently case-folded into a string comparison.
  */
-export function verifyAtrMemo(inputs: {
+export function verifyTip20Memo(inputs: {
   memo: string;
   atrHash: string;
 }): boolean {
-  const decoded = decodeAtrMemo(inputs.memo);
+  const decoded = decodeTip20Memo(inputs.memo);
   return decoded !== null && atrHashEquals(decoded, inputs.atrHash);
 }

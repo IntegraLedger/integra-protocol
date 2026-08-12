@@ -46,12 +46,12 @@ The ATR hash rides the SPL Memo program's instruction data — an existing Solan
 bytes. No Anchor program, no overlay contract.
 
 ```ts
-import { decodeAtrMemo, encodeAtrMemo } from "@integraledger/lcp-binding-solana";
+import { decodeSplMemo, encodeSplMemo } from "@integraledger/lcp-binding-solana";
 
 declare const atrHash: string;
 
-const memoData = encodeAtrMemo(atrHash); // "hex" is canonical; "raw" is the 32 bytes
-decodeAtrMemo(memoData); // "0x…" | null — you must TELL it which encoding to read
+const memoData = encodeSplMemo(atrHash); // "hex" is canonical; "raw" is the 32 bytes
+decodeSplMemo(memoData); // "0x…" | null — you must TELL it which encoding to read
 ```
 
 Because the memo instruction and the transfer instruction are in the same transaction, the payer's

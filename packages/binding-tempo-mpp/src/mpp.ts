@@ -33,7 +33,7 @@
  * refused rather than silently mis-read, which is the correct direction for the error to fall.
  */
 import { isMppAttributionValue } from "@integraledger/lcp-binding-core";
-import { decodeAtrMemo, encodeAtrMemo } from "./memo.js";
+import { decodeTip20Memo, encodeTip20Memo } from "./memo.js";
 
 export {
   MPP_ATTRIBUTION_TAG,
@@ -49,7 +49,7 @@ export {
  * `0x`-prefixed memo because that is its host's grammar, and the shared predicate takes the canonical form.
  */
 export function isMppAttributionMemo(memo: string): boolean {
-  const decoded = decodeAtrMemo(memo);
+  const decoded = decodeTip20Memo(memo);
   return decoded !== null && isMppAttributionValue(decoded);
 }
 
@@ -57,5 +57,5 @@ export function isMppAttributionMemo(memo: string): boolean {
 export function mppMethodDetailsMemo(atrHash: string): {
   readonly memo: `0x${string}`;
 } {
-  return { memo: encodeAtrMemo(atrHash) };
+  return { memo: encodeTip20Memo(atrHash) };
 }

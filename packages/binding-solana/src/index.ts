@@ -24,8 +24,8 @@ export {
 } from "./constants.js";
 export { SOLANA_MANIFEST } from "./manifest.js";
 export {
-  decodeAtrMemo,
-  encodeAtrMemo,
+  decodeSplMemo,
+  encodeSplMemo,
   type MemoEncoding,
-  verifyAtrMemo,
+  verifySplMemo,
 } from "./memo.js";

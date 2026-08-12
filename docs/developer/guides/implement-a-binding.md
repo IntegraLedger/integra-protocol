@@ -312,8 +312,8 @@ one job, and everything a vector can pin is pure.
 
 ```ts
 import {
-  decodeAtrMemo,
-  encodeAtrMemo,
+  decodeSplMemo,
+  encodeSplMemo,
   MEMO_PROGRAM_ID,
   recoverAtrHashFromTxView,
   SOLANA_MANIFEST,
@@ -323,17 +323,17 @@ const atrHash =
   "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356";
 
 // THE CODEC — no SDK, no network, and therefore pinnable by a vector.
-const memo = encodeAtrMemo(atrHash, "hex");
+const memo = encodeSplMemo(atrHash, "hex");
 console.log(new TextDecoder().decode(memo));
-console.log(decodeAtrMemo(memo, "hex"));
+console.log(decodeSplMemo(memo, "hex"));
 
 // A memo that is not ours decodes to `null`, so a scan can skip it rather than treat it as an error.
-console.log(decodeAtrMemo(new TextEncoder().encode("thanks for lunch"), "hex"));
+console.log(decodeSplMemo(new TextEncoder().encode("thanks for lunch"), "hex"));
 
 // A malformed atrHash on the WRITE path is a wiring defect in our own caller, so it THROWS. Refusals are
 // for what the wire hands you; a programming error is not a policy outcome.
 try {
-  encodeAtrMemo("0xdead");
+  encodeSplMemo("0xdead");
 } catch (e) {
   console.log((e as Error).message);
 }
@@ -361,7 +361,7 @@ console.log(JSON.stringify(SOLANA_MANIFEST.weldGrades));
 0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
 0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
 null
-encodeAtrMemo: atrHash must be a 0x-prefixed 32-byte value, got "0xdead"
+encodeSplMemo: atrHash must be a 0x-prefixed 32-byte value, got "0xdead"
 0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
 null
 {"spl-memo":"signature"}

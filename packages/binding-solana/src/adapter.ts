@@ -21,7 +21,7 @@ import {
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import { MEMO_PROGRAM_ID } from "./constants.js";
-import { decodeAtrMemo, encodeAtrMemo, type MemoEncoding } from "./memo.js";
+import { decodeSplMemo, encodeSplMemo, type MemoEncoding } from "./memo.js";
 
 /** A Solana settlement reference — a transaction signature (base58). */
 export interface SolanaSettlementRef {
@@ -45,7 +45,7 @@ export function buildAtrMemoInstruction(
   return new TransactionInstruction({
     keys: [],
     programId: new PublicKey(MEMO_PROGRAM_ID),
-    data: Buffer.from(encodeAtrMemo(atrHash, encoding)),
+    data: Buffer.from(encodeSplMemo(atrHash, encoding)),
   });
 }
 
@@ -70,7 +70,7 @@ export function recoverAtrHashFromMemoViews(
     const bytes =
       v.memoUtf8 !== undefined ? new TextEncoder().encode(v.memoUtf8) : v.data;
     if (bytes === undefined) continue;
-    const atr = decodeAtrMemo(bytes, "hex") ?? decodeAtrMemo(bytes, "raw");
+    const atr = decodeSplMemo(bytes, "hex") ?? decodeSplMemo(bytes, "raw");
     if (atr !== null) return atr;
   }
   return null;
@@ -281,7 +281,7 @@ export function createSolanaAdapter(manifest: BindingManifest): SolanaAdapter {
       limit?: number,
     ): Promise<SolanaSettlementRef[]> {
       // Fail-fast, like propose: a malformed atrHash can never match a decoded memo, and the silent []
-      // it would produce is indistinguishable from "no settlements" (mirrors encodeAtrMemo's loud refusal).
+      // it would produce is indistinguishable from "no settlements" (mirrors encodeSplMemo's loud refusal).
       if (!isAtrHash(atrHash))
         throw new Error(
           `enumerate: atrHash must be a 0x-prefixed 32-byte value, got "${atrHash}"`,

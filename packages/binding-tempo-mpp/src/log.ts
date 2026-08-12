@@ -24,7 +24,7 @@
  */
 import { requireTip20Token, TRANSFER_WITH_MEMO_TOPIC0 } from "./constants.js";
 import { addressFromTopic, quantityToNumber, uint256FromData } from "./hex.js";
-import { decodeAtrMemo, requireMemo } from "./memo.js";
+import { decodeTip20Memo, requireMemo } from "./memo.js";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -102,7 +102,7 @@ export function parseTransferWithMemoLog(
     return null;
   const from = addressFromTopic(fromTopic);
   const to = addressFromTopic(toTopic);
-  const memo = decodeAtrMemo(memoTopic);
+  const memo = decodeTip20Memo(memoTopic);
   const amount = uint256FromData(log.data);
   if (from === null || to === null || memo === null || amount === null)
     return null;

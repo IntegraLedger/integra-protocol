@@ -46,7 +46,7 @@ import {
   type TempoSettlementRef,
   type TransferWithMemoEvent,
 } from "./log.js";
-import { encodeAtrMemo, requireMemo } from "./memo.js";
+import { encodeTip20Memo, requireMemo } from "./memo.js";
 import { isMppAttributionMemo, mppMethodDetailsMemo } from "./mpp.js";
 
 /**
@@ -223,7 +223,7 @@ export function createTempoMppAdapter(
     manifest,
 
     propose(atrHash: string, ctx: TempoProposalContext): TempoMemoProposal {
-      const memo = encodeAtrMemo(atrHash);
+      const memo = encodeTip20Memo(atrHash);
       return {
         methodDetails: mppMethodDetailsMemo(atrHash),
         call: {

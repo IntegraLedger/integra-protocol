@@ -41,10 +41,10 @@ export {
 } from "./log.js";
 export { TEMPO_MPP_MANIFEST } from "./manifest.js";
 export {
-  decodeAtrMemo,
-  encodeAtrMemo,
+  decodeTip20Memo,
+  encodeTip20Memo,
   requireMemo,
-  verifyAtrMemo,
+  verifyTip20Memo,
 } from "./memo.js";
 export {
   isMppAttributionMemo,
