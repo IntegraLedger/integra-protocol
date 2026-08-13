@@ -71,16 +71,17 @@ overrides:
   # published package reaches it. Added AHEAD of the audit gate — npm's advisory DB had not yet picked this
   # up when it was added, so `pnpm audit` was still green on a version GitHub already flagged.
   postcss: ">=8.5.23"
-  # nanoid <3.3.17 (high, published 2026-08-07): predictable output. Dev-only and NOT a consumer path —
-  # the sole route is @stryker-mutator/vitest-runner > vitest > vite > postcss, so nothing published
-  # reaches it. postcss@8.5.25 already declares `nanoid: ^3.3.16`, which PERMITS 3.3.17; nothing upstream
-  # forbids the patch, pnpm simply will not re-resolve a transitive dependency the lockfile already
-  # satisfies. Caught by the audit stage of `pnpm verify` against an unchanged tree. Bounded to the 3.x
-  # line ON PURPOSE: postcss declares `^3.3.16`, and an unbounded `>=3.3.17` resolves to 6.x, which is
-  # ESM-only with a changed API — that would satisfy the auditor by breaking the dependency. The floor is
-  # the PATCH, not the newest 3.x: 3.3.18 exists but is inside `minimumReleaseAge`'s 24h quarantine, and
-  # demanding it fails the install outright. It is taken automatically once it ages past the threshold.
-  nanoid: ">=3.3.17 <4"
+  # nanoid <3.3.18 — TWO advisories, one entry. GHSA-2v37-7h3g-55p8 (high, published 2026-08-12): a custom
+  # generator loops indefinitely when size is zero, fixed in 3.3.18. It supersedes the advisory that first
+  # put this entry here (high, published 2026-08-07): predictable output, fixed in 3.3.17. Dev-only and NOT
+  # a consumer path — the sole route is @stryker-mutator/vitest-runner > vitest > vite > postcss, so nothing
+  # published reaches it. postcss@8.5.25 already declares `nanoid: ^3.3.16`, which PERMITS the patch;
+  # nothing upstream forbids it, pnpm simply will not re-resolve a transitive dependency the lockfile
+  # already satisfies. Both were caught by the audit stage of `pnpm verify` against an unchanged tree.
+  # Bounded to the 3.x line ON PURPOSE: postcss declares `^3.3.16`, and an unbounded `>=3.3.18` resolves to
+  # 6.x, which is ESM-only with a changed API — that would satisfy the auditor by breaking the dependency.
+  # 3.3.18 is the newest 3.x and is now well past `minimumReleaseAge`'s 24h quarantine.
+  nanoid: ">=3.3.18 <4"
   # GHSA-7p8r-x3mc-p8w7 (high, published 2026-08-03): host confusion via a backslash authority introducer.
   # Dev-only and NOT a consumer path — the sole route is @stryker-mutator/core > ajv, so nothing published
   # reaches it. Caught by the audit stage of `pnpm verify` mid-session, against an unchanged tree.
