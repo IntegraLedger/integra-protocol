@@ -10,8 +10,8 @@ pnpm workspace, Node >= 24, TypeScript with `isolatedDeclarations`. Apache-2.0.
 `pnpm verify` is the one that counts. It runs, in order:
 
 ```
-check:versions → check:docblocks → corpus-seal --check → audit → build → check:dist → lint → depcruise
-  → typecheck → check:docs → test
+check:versions → check:docblocks → check:live-rails → corpus-seal --check → audit → build → check:dist
+  → lint → depcruise → typecheck → check:docs → test
 ```
 
 Build comes before typecheck deliberately: workspace packages consume each other through built `dist/`, so
@@ -24,6 +24,7 @@ Build comes before typecheck deliberately: workspace packages consume each other
 | `pnpm check:docs` | Typechecks every TS fence in `docs/`, the root README and every package README — the count is derived, never written down |
 | `pnpm check:docblocks` | Refuses a top-level export with no docblock — 100% floor, adjacency strict |
 | `pnpm check:dist` | Refuses a `dist/` output whose `src/` file was deleted or renamed |
+| `pnpm check:live-rails` | The live-rail inventory — derives which packages carry an env-gated on-chain suite, refuses a set that disagrees with its named floor, and refuses a `live-proofs.yml` that fails to map a credential a harness reads |
 
 `pnpm verify` is **not hermetic**: one stage is `pnpm audit`, so a newly published advisory turns it red
 against an unchanged tree. If only that stage fails, record the advisory, run the remaining stages, and
@@ -77,6 +78,13 @@ well-known documents · `conformance` the corpus runner · `binding-*` thirteen 
   from a name pattern; a name-pattern filter has broken twice.
 - Refusals are returned values, not exceptions. Narrow an `Outcome` with `"refused" in result` — `Refusal`
   carries no `ok`, so the union cannot discriminate on one.
+- **The live-rail harnesses skip SILENTLY, and Vitest exits 0 over an all-skipped run.** They print no
+  banner, so there is nothing to grep and a green exit code certifies nothing. `live-proofs.yml` therefore
+  adjudicates on the JSON reporter's counts — passed > 0, skipped == 0 — via `scripts/live-proof-gate.mjs`,
+  and never on the exit code. Anything that runs these suites owes the same check.
+- **Enumerate the live harnesses by property, never by filename.** Nine are `integration.onchain.test.ts`
+  and two are `integration.canton.test.ts`; a glob for the first silently omits Canton at both layers.
+  `scripts/live-rails.mjs` is the inventory, and it refuses rather than returning a short set.
 
 ## Publishing
 

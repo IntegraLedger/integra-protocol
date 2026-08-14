@@ -1,0 +1,205 @@
+name: live-proofs
+# The on-chain rail harnesses, run as a STANDING GATE rather than by hand.
+#
+# Eleven binding packages carry an opt-in live suite that welds a real atrHash onto a real transaction (or
+# recovers one from a settled transaction) against a live node. Every one is env-gated and, until this
+# workflow existed, none had ever run: the repo had no scheduled live workflow at all, so "the rails are
+# proven" rested on suites that had never executed once.
+#
+# NOT on every push, deliberately. These spend testnet funds and depend on third-party RPC availability, so
+# putting them in the inner loop would make an upstream outage look like a code failure and train everyone
+# to ignore a red build. Weekly plus on-demand is the honest cadence.
+#
+# ⛔ A RAIL THAT CANNOT RUN IS RED, NOT SKIPPED. Build plan §5.4's standard is green PER RAIL, so a run that
+# reported success while three rails sat uncredentialed would be the exact lie this gate exists to prevent.
+# `fail-fast: false` keeps every rail reporting independently, so the board reads as a readiness measurement
+# rather than a single opaque failure.
+on:
+  workflow_dispatch:
+    inputs:
+      rail:
+        description: "Single rail to run (package dir, e.g. binding-sui). Empty = all."
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC — an hour after the commerce proofs, so a shared-RPC outage reads as one incident rather than two.
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never run two at once: these settle real transactions from funded wallets, and concurrent runs would
+  # race on a rail's nonce. Never cancel in progress — a half-run that settled but never recovered leaves a
+  # transaction nobody reconciles.
+  group: live-proofs
+  cancel-in-progress: false
+
+jobs:
+  # The matrix is DERIVED from the tree, not written here. A hand-listed matrix is what produced the
+  # incident this workflow was built after: the rail set was taken from the filename
+  # `integration.onchain.test.ts`, and both Canton harnesses — which use `integration.canton.test.ts` —
+  # were silently omitted. `live-rails.mjs` derives from the property (a suite gated on `process.env`) and
+  # additionally refuses a set that disagrees with its own named floor in either direction.
+  inventory:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.rails.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: ".nvmrc" }
+      - id: rails
+        run: |
+          node scripts/live-rails.mjs           # human-readable, and REFUSES on floor/name disagreement
+          echo "matrix=$(node scripts/live-rails.mjs --matrix)" >> "$GITHUB_OUTPUT"
+
+  rail:
+    needs: inventory
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.inventory.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10    # no version input — package.json's packageManager is the single source of truth
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      # `WANT` and `RAIL` reach the shell through `env:`, never interpolated into the script body. A
+      # `workflow_dispatch` input is attacker-controlled text as far as the shell is concerned, and
+      # `want='${{ inputs.rail }}'` would let a dispatcher close the quote and append commands.
+      - name: Skip rails not selected by a targeted dispatch
+        id: select
+        env:
+          WANT: ${{ inputs.rail }}
+          RAIL: ${{ matrix.rail }}
+        run: |
+          if [ -n "$WANT" ] && [ "$WANT" != "$RAIL" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "not selected (dispatch targeted this run at another rail)"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Named ONE BY ONE because GitHub cannot enumerate secrets into an environment. That makes this block
+      # the one hand-kept list in the workflow — so the preflight below does not trust it: it derives the
+      # REQUIRED set from the harness sources and checks each name against the environment this block
+      # produced. A var required by a harness and absent here shows up as missing and turns the rail red,
+      # which is how the hand-kept half is prevented from drifting silently.
+      - name: Preflight — every credential this rail's harness reads must be present
+        if: steps.select.outputs.run == 'true'
+        env:
+          APTOS_TESTNET_SECRET_KEY: ${{ secrets.APTOS_TESTNET_SECRET_KEY }}
+          APTOS_TESTNET_SELLER: ${{ secrets.APTOS_TESTNET_SELLER }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
+          CANTON_BUYER_JWT: ${{ secrets.CANTON_BUYER_JWT }}
+          CANTON_BUYER_PARTY: ${{ secrets.CANTON_BUYER_PARTY }}
+          CANTON_EXPECTED_ATR: ${{ secrets.CANTON_EXPECTED_ATR }}
+          CANTON_JSON_API_URL: ${{ secrets.CANTON_JSON_API_URL }}
+          CANTON_LCP_ANCHOR_PACKAGE_ID: ${{ secrets.CANTON_LCP_ANCHOR_PACKAGE_ID }}
+          CANTON_READER_JWT: ${{ secrets.CANTON_READER_JWT }}
+          CANTON_SELLER_PARTY: ${{ secrets.CANTON_SELLER_PARTY }}
+          CANTON_UPDATE_ID: ${{ secrets.CANTON_UPDATE_ID }}
+          CARDANO_LCP_ATR_HASH: ${{ secrets.CARDANO_LCP_ATR_HASH }}
+          CARDANO_LCP_TX_HASH: ${{ secrets.CARDANO_LCP_TX_HASH }}
+          CARDANO_NETWORK: ${{ secrets.CARDANO_NETWORK }}
+          HEDERA_TESTNET_ATR_HASH: ${{ secrets.HEDERA_TESTNET_ATR_HASH }}
+          HEDERA_TESTNET_TX_ID: ${{ secrets.HEDERA_TESTNET_TX_ID }}
+          MPP_EVM_ASSET: ${{ secrets.MPP_EVM_ASSET }}
+          MPP_EVM_ATR_HASH: ${{ secrets.MPP_EVM_ATR_HASH }}
+          MPP_EVM_CHAIN_ID: ${{ secrets.MPP_EVM_CHAIN_ID }}
+          MPP_EVM_REALM: ${{ secrets.MPP_EVM_REALM }}
+          MPP_EVM_SETTLEMENT_TX: ${{ secrets.MPP_EVM_SETTLEMENT_TX }}
+          SOLANA_DEVNET_RPC_URL: ${{ secrets.SOLANA_DEVNET_RPC_URL }}
+          SOLANA_DEVNET_SECRET_KEY: ${{ secrets.SOLANA_DEVNET_SECRET_KEY }}
+          STELLAR_TESTNET_SECRET: ${{ secrets.STELLAR_TESTNET_SECRET }}
+          SUI_PAY402_PACKAGE_ID: ${{ secrets.SUI_PAY402_PACKAGE_ID }}
+          SUI_TESTNET_RPC_URL: ${{ secrets.SUI_TESTNET_RPC_URL }}
+          SUI_TESTNET_SECRET_KEY: ${{ secrets.SUI_TESTNET_SECRET_KEY }}
+          SUI_USDC_COIN_ID: ${{ secrets.SUI_USDC_COIN_ID }}
+          SUI_USDC_COIN_TYPE: ${{ secrets.SUI_USDC_COIN_TYPE }}
+          TEMPO_MAINNET_RPC_URL: ${{ secrets.TEMPO_MAINNET_RPC_URL }}
+          XRPL_TESTNET_RPC_URL: ${{ secrets.XRPL_TESTNET_RPC_URL }}
+          XRPL_TESTNET_SEED: ${{ secrets.XRPL_TESTNET_SEED }}
+          RAIL: ${{ matrix.rail }}
+        run: node scripts/live-rails.mjs --check-env "$RAIL"
+
+      - run: pnpm install --frozen-lockfile
+        if: steps.select.outputs.run == 'true'
+      # Workspace packages consume each other through built `dist/`, so the tree must be built before any
+      # harness can import a sibling binding.
+      - run: pnpm -r build
+        if: steps.select.outputs.run == 'true'
+
+      # ONE invocation, structured output. The suites settle REAL transactions, so a second run to inspect
+      # their behaviour would spend testnet funds twice and put a second settlement on-chain for one proof.
+      #
+      # `--reporter=json` rather than a log grep: these harnesses skip SILENTLY (no banner exists to match),
+      # and a banner would be a string someone can reword while the guard keeps reporting green. Counts
+      # cannot be reworded. `|| true` hands adjudication to the gate — Vitest's exit code is exactly the
+      # signal that cannot be trusted here, because it is 0 over an all-skipped run.
+      - name: Run the live harness
+        if: steps.select.outputs.run == 'true'
+        env:
+          APTOS_TESTNET_SECRET_KEY: ${{ secrets.APTOS_TESTNET_SECRET_KEY }}
+          APTOS_TESTNET_SELLER: ${{ secrets.APTOS_TESTNET_SELLER }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
+          CANTON_BUYER_JWT: ${{ secrets.CANTON_BUYER_JWT }}
+          CANTON_BUYER_PARTY: ${{ secrets.CANTON_BUYER_PARTY }}
+          CANTON_EXPECTED_ATR: ${{ secrets.CANTON_EXPECTED_ATR }}
+          CANTON_JSON_API_URL: ${{ secrets.CANTON_JSON_API_URL }}
+          CANTON_LCP_ANCHOR_PACKAGE_ID: ${{ secrets.CANTON_LCP_ANCHOR_PACKAGE_ID }}
+          CANTON_READER_JWT: ${{ secrets.CANTON_READER_JWT }}
+          CANTON_SELLER_PARTY: ${{ secrets.CANTON_SELLER_PARTY }}
+          CANTON_UPDATE_ID: ${{ secrets.CANTON_UPDATE_ID }}
+          CARDANO_LCP_ATR_HASH: ${{ secrets.CARDANO_LCP_ATR_HASH }}
+          CARDANO_LCP_TX_HASH: ${{ secrets.CARDANO_LCP_TX_HASH }}
+          CARDANO_NETWORK: ${{ secrets.CARDANO_NETWORK }}
+          HEDERA_TESTNET_ATR_HASH: ${{ secrets.HEDERA_TESTNET_ATR_HASH }}
+          HEDERA_TESTNET_TX_ID: ${{ secrets.HEDERA_TESTNET_TX_ID }}
+          MPP_EVM_ASSET: ${{ secrets.MPP_EVM_ASSET }}
+          MPP_EVM_ATR_HASH: ${{ secrets.MPP_EVM_ATR_HASH }}
+          MPP_EVM_CHAIN_ID: ${{ secrets.MPP_EVM_CHAIN_ID }}
+          MPP_EVM_REALM: ${{ secrets.MPP_EVM_REALM }}
+          MPP_EVM_SETTLEMENT_TX: ${{ secrets.MPP_EVM_SETTLEMENT_TX }}
+          SOLANA_DEVNET_RPC_URL: ${{ secrets.SOLANA_DEVNET_RPC_URL }}
+          SOLANA_DEVNET_SECRET_KEY: ${{ secrets.SOLANA_DEVNET_SECRET_KEY }}
+          STELLAR_TESTNET_SECRET: ${{ secrets.STELLAR_TESTNET_SECRET }}
+          SUI_PAY402_PACKAGE_ID: ${{ secrets.SUI_PAY402_PACKAGE_ID }}
+          SUI_TESTNET_RPC_URL: ${{ secrets.SUI_TESTNET_RPC_URL }}
+          SUI_TESTNET_SECRET_KEY: ${{ secrets.SUI_TESTNET_SECRET_KEY }}
+          SUI_USDC_COIN_ID: ${{ secrets.SUI_USDC_COIN_ID }}
+          SUI_USDC_COIN_TYPE: ${{ secrets.SUI_USDC_COIN_TYPE }}
+          TEMPO_MAINNET_RPC_URL: ${{ secrets.TEMPO_MAINNET_RPC_URL }}
+          XRPL_TESTNET_RPC_URL: ${{ secrets.XRPL_TESTNET_RPC_URL }}
+          XRPL_TESTNET_SEED: ${{ secrets.XRPL_TESTNET_SEED }}
+          # Matrix values reach the shell through env for the same reason the dispatch input does: they are
+          # derived from directory and package names, which are repository content rather than a constant.
+          RAIL: ${{ matrix.rail }}
+          PKG: ${{ matrix.pkg }}
+          HARNESS: ${{ matrix.file }}
+        run: |
+          set -o pipefail
+          pnpm --filter "$PKG" exec vitest run "$(basename "$HARNESS")" \
+            --reporter=json --outputFile="$GITHUB_WORKSPACE/live-report.json" \
+            2>&1 | tee "live-$RAIL.log" || true
+
+      - name: Gate — refuse a run that proved nothing
+        if: steps.select.outputs.run == 'true'
+        env:
+          RAIL: ${{ matrix.rail }}
+        run: node scripts/live-proof-gate.mjs "$GITHUB_WORKSPACE/live-report.json" "$RAIL"
+
+      # Retained so a settled proof can be traced to its on-chain transactions after the fact.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && steps.select.outputs.run == 'true'
+        with:
+          name: live-proof-${{ matrix.rail }}
+          path: |
+            live-${{ matrix.rail }}.log
+            live-report.json
+          retention-days: 90
