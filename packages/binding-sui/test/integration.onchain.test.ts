@@ -43,10 +43,22 @@ suite(
       const keypair = Ed25519Keypair.fromSecretKey(SECRET as string);
       const buyer = keypair.getPublicKey().toSuiAddress();
 
-      await requestSuiFromFaucetV2({
-        host: getFaucetHost("testnet"),
-        recipient: buyer,
-      });
+      // Faucet ONLY when the buyer cannot pay for gas. The faucet is a per-CLIENT quota, and calling it
+      // unconditionally on every run is what turned this suite red the first time it ever executed:
+      // "Too many requests from this client have been sent to the faucet." A pre-funded account is the
+      // supported way to run this repeatedly, so the faucet is a fallback for a drained account rather
+      // than a step. A faucet refusal is only fatal if the balance is ALSO insufficient — otherwise the
+      // rail is fundable and the run proceeds.
+      const gasBudget = 50_000_000n; // 0.05 SUI — comfortably above the settle_payment call's cost.
+      const balance = BigInt(
+        (await client.getBalance({ owner: buyer })).totalBalance,
+      );
+      if (balance < gasBudget) {
+        await requestSuiFromFaucetV2({
+          host: getFaucetHost("testnet"),
+          recipient: buyer,
+        });
+      }
 
       const atrHash = await hashAtr(
         new TextEncoder().encode("# Terms\nid: 0xsui-testnet\n"),

@@ -122,6 +122,7 @@ jobs:
           SUI_USDC_COIN_ID: ${{ secrets.SUI_USDC_COIN_ID }}
           SUI_USDC_COIN_TYPE: ${{ secrets.SUI_USDC_COIN_TYPE }}
           TEMPO_MAINNET_RPC_URL: ${{ secrets.TEMPO_MAINNET_RPC_URL }}
+          XRPL_TESTNET_DESTINATION: ${{ secrets.XRPL_TESTNET_DESTINATION }}
           XRPL_TESTNET_RPC_URL: ${{ secrets.XRPL_TESTNET_RPC_URL }}
           XRPL_TESTNET_SEED: ${{ secrets.XRPL_TESTNET_SEED }}
           RAIL: ${{ matrix.rail }}
@@ -175,6 +176,7 @@ jobs:
           SUI_USDC_COIN_ID: ${{ secrets.SUI_USDC_COIN_ID }}
           SUI_USDC_COIN_TYPE: ${{ secrets.SUI_USDC_COIN_TYPE }}
           TEMPO_MAINNET_RPC_URL: ${{ secrets.TEMPO_MAINNET_RPC_URL }}
+          XRPL_TESTNET_DESTINATION: ${{ secrets.XRPL_TESTNET_DESTINATION }}
           XRPL_TESTNET_RPC_URL: ${{ secrets.XRPL_TESTNET_RPC_URL }}
           XRPL_TESTNET_SEED: ${{ secrets.XRPL_TESTNET_SEED }}
           # Matrix values reach the shell through env for the same reason the dispatch input does: they are
@@ -184,7 +186,12 @@ jobs:
           HARNESS: ${{ matrix.file }}
         run: |
           set -o pipefail
+          # BOTH reporters. `json` alone is what the gate reads, but it replaces the console output, so a
+          # failing rail printed nothing a human could act on — the first run of this workflow produced
+          # three red rails whose assertions were only recoverable by downloading an artifact. `default`
+          # puts the assertion back in the log; `json` still writes the counts the gate adjudicates on.
           pnpm --filter "$PKG" exec vitest run "$(basename "$HARNESS")" \
+            --reporter=default \
             --reporter=json --outputFile="$GITHUB_WORKSPACE/live-report.json" \
             2>&1 | tee "live-$RAIL.log" || true
 
