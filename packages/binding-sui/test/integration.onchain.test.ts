@@ -80,7 +80,10 @@ suite(
       const result = await client.signAndExecuteTransaction({
         transaction: tx,
         signer: keypair,
-        options: { showEvents: true },
+        // `showEffects` is REQUIRED for the assertion below: Sui returns only the response sections a
+        // caller opts into, so requesting events alone left `effects` undefined and the status assertion
+        // compared undefined to "success". The suite had never run, so the omission never surfaced.
+        options: { showEffects: true, showEvents: true },
       });
       expect(result.effects?.status.status).toBe("success");
 
