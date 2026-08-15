@@ -1,0 +1,119 @@
+# Legal Context — A2A extension specification, v1
+
+Extension URI: `https://integraledger.com/lcp/a2a/legal-context/v1`.
+Served at that URI, which is also its identifier.
+
+This document describes a technology harness. It asserts nothing about whether any agreement is lawful,
+sound or enforceable, and nothing in it is a legal judgment.
+
+## What the extension means
+
+An A2A agent that declares this extension is stating what it requires of an agreement's **Agreed Terms
+Record (ATR)** before it will do the work.
+
+An ATR is a terms document, identified by the SHA-256 hash of its bytes. The Legal Context Protocol (LCP)
+defines the record, the trust levels referred to below, and the verification walk. This extension is the
+discovery half: it lets an agent and its client establish, during negotiation, that they agree about which
+terms govern the task.
+
+**Declaring the extension obliges no client, and reading a declaration obliges no agent.** A declaration is
+a statement about the declaring party's own requirements. It creates no relationship between the parties and
+is not an offer.
+
+## Declaration
+
+The declaration is one entry in an Agent Card's `capabilities.extensions[]`:
+
+```json
+{
+  "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+  "description": "Requires an Agreed Terms Record at LCP level 2 or above.",
+  "required": true,
+  "params": { "minimumLevel": 2, "acceptedDisputeMethods": ["aaa-icdr"] }
+}
+```
+
+`params` carries the same three fields the UCP capability carries in its `config`, with the same meanings
+and the same strictness: `minimumLevel` is required and names the lowest LCP §3 trust level the agent will
+accept; `acceptedJurisdictions` and `acceptedDisputeMethods` are optional and, when present, are non-empty
+arrays of non-blank strings. Omit a field to constrain nothing — an empty array read literally accepts
+nothing. Unknown properties are rejected rather than ignored: an unknown field is a requirement placed on
+the reader, and complying with a requirement you cannot parse is not possible.
+
+The shape is described by
+[`legal-context.schema.json`](https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json), which
+is the same document the UCP capability's `schema` URL resolves to. One vocabulary, one document, so that a
+client reading an Agent Card and a platform reading a UCP profile are demonstrably looking at the same
+deployment's claim.
+
+## Activation is a separate act from declaration
+
+**A2A extensions default to being inactive.** A card that declares this extension has not activated it, and
+an agent that has declared it does not thereby apply it.
+
+A client activates by naming this URI in the `A2A-Extensions` request header, and the agent echoes back the
+set it actually activated. Until that happens, the declaration is discovery information only.
+
+> The header was spelled `X-A2A-Extensions` through A2A v0.3.0 and is `A2A-Extensions` from v1.0. Only the
+> v1.0 spelling is recognised. An agent speaking v0.3.0 is speaking a superseded protocol version, and
+> quietly honouring both spellings would hide that from a deployment that needs to know.
+
+## `required` is A2A's field, with A2A's meaning
+
+`required` is defined by A2A, not by LCP or by this extension. Setting it `true` means the agent will
+**reject a request that has not activated this extension** — the client is told, rather than silently
+served under terms it never acknowledged.
+
+That is a hard dependency on every client, and A2A says so. It is the right setting for a deployment that
+must not do the work before the terms layer is acknowledged, and the wrong setting for one that merely
+wishes to advertise. This specification does not tell a deployment which to choose and supplies no default.
+
+Within UCP the same declaration is advisory, because UCP has no equivalent flag and prunes rather than
+refuses. The host decides what a declaration can compel; the declaration itself is identical.
+
+## Versioning
+
+The version is in the URI, because A2A requires it: a **new URI MUST be used** when a breaking change is
+introduced to an extension's logic, data structures or required parameters.
+
+**Match this URI whole.** A client requesting a version an agent does not support is not offered a
+different one — A2A states the agent MUST NOT fall back to another version. An implementation that compares
+only the path prefix `/lcp/a2a/legal-context/`, dropping the version segment, therefore violates the rule it
+looks like it is honouring, and will silently treat a future `/v2` as this document.
+
+**This path is immutable.** The document at `/v1` will not be edited after publication. A breaking change is
+published at a new URI and both continue to be served.
+
+## Attribution, where the carrier permits it
+
+Where a per-task reference to the ATR is carried, A2A directs extensions to write into the shared,
+unnamespaced `metadata` map. A key in that map says nothing about who wrote it; what does is the carrying
+object's own `extensions` list. So a reference should be attributed, and an attribution should have a
+reference behind it — naming an extension on an object that carries nothing claims a contribution never
+made.
+
+Only three A2A types declare an `extensions` field: `Message`, `Artifact`, and `AgentCapabilities` (the
+card). `Task`, `TaskStatusUpdateEvent` and `TaskArtifactUpdateEvent` carry `metadata` and no `extensions`,
+so on those a reference cannot be attributed at all. That is a property of the protocol and is reported as
+unavailable rather than papered over.
+
+A2A defines no per-transaction signature — its only cryptographic construct is the JWS over the Agent Card,
+which covers discovery and not any individual task. A reference carried in `metadata` is therefore advisory
+over HTTP: it is not covered by a counterparty signature, and this specification does not claim otherwise.
+
+## Relationship to the official A2A namespace
+
+This extension is published under `integraledger.com`, not under `https://a2a-protocol.org/extensions/`.
+That prefix is the A2A organization's canonical namespace for extensions it governs, and nothing here is
+declared under it.
+
+A2A encourages authors to use a permanent identifier service such as `w3id.org`. That is declined
+deliberately: the sibling UCP capability is required by its own host to be served from the namespace
+authority, and routing this identifier through a third-party redirector would give one capability two
+custodians. Neither choice is an obligation — for the official namespace A2A notes that extension URIs "are
+identifiers, HTTP access is not expected" — so no reader's use of a declaration depends on this document
+resolving. It resolves anyway, because A2A says an extension specification should be hosted at its URI.
+
+## Licence
+
+Copyright Integra Ledger. Licensed under the Apache License, Version 2.0.

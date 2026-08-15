@@ -1,0 +1,111 @@
+# `com.integraledger.legal_context` — UCP capability specification
+
+Version `2026-07-30`. Served at
+`https://integraledger.com/lcp/ucp/2026-07-30/legal-context`.
+
+Configuration schema:
+[`legal-context.schema.json`](https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json).
+
+This document describes a technology harness. It asserts nothing about whether any agreement is lawful,
+sound or enforceable, and nothing in it is a legal judgment.
+
+## What the capability means
+
+A Universal Commerce Protocol party that declares `com.integraledger.legal_context` is stating what it
+requires of an agreement's **Agreed Terms Record (ATR)** before it will transact.
+
+An ATR is a terms document. Its identity is the SHA-256 hash of that document's bytes, and a settlement is
+*welded* to it by carrying that hash in a field the payment rail already has — so that the record and the
+payment cannot later be separated, and either one can be produced from the other by a party that holds only
+public data. The Legal Context Protocol (LCP) defines the record, the trust levels referred to below, and
+the verification walk. This capability is the discovery half: it lets two parties find out whether their
+requirements are compatible *before* a payment is attempted.
+
+## Reading a declaration obliges nobody
+
+**Emitting this capability commits no counterparty, and reading one commits nobody to anything.** It is a
+pre-filter and nothing more. A declaration is a statement about the emitting party's own requirements; it
+places no obligation on the reader, creates no relationship between the parties, and is not an offer.
+
+Two consequences follow, and both are deliberate:
+
+- A party that cannot meet a declared requirement learns so at negotiation time, at the cost of one fetch,
+  rather than after a payment has moved.
+- A party that ignores the declaration entirely is not in violation of anything. UCP prunes capabilities
+  that are not in the negotiated intersection; it does not refuse over them.
+
+## How a counterparty pre-filters on it
+
+The declaration is carried in a UCP profile's `capabilities` map, keyed by the capability name, with the
+value an array of one entry per supported version:
+
+```json
+{
+  "com.integraledger.legal_context": [
+    {
+      "version": "2026-07-30",
+      "spec": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context",
+      "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+      "config": { "minimumLevel": 2, "acceptedDisputeMethods": ["aaa-icdr"] }
+    }
+  ]
+}
+```
+
+The `config` payload is exactly what the schema describes: `minimumLevel` is required and names the lowest
+LCP §3 trust level this party will accept; `acceptedJurisdictions` and `acceptedDisputeMethods` are
+optional, and each is a non-empty array of non-blank strings when present. To constrain nothing, omit the
+field — an empty array read literally accepts nothing, and would refuse every counterparty on earth.
+
+A reader pre-filters by comparing the declaration against what it can produce: whether it can supply an ATR
+at or above `minimumLevel`, and — where the declaration names them — whether the terms it would present fall
+within the accepted jurisdictions and name an accepted dispute method. If they are incompatible, the parties
+do not transact under this capability. That is the whole of the mechanism.
+
+This capability declares no `extends`. It states a requirement rather than augmenting a vertical, so it is a
+root capability: an extension of a parent capability is removed from the negotiated set whenever its parent
+is absent, which would silently delete this requirement in exactly the cases where it still applies.
+
+UCP has no `required` flag and none is invented here. Within UCP a declaration is advisory: a capability the
+counterparty does not declare is pruned from the intersection, never loudly refused.
+
+## Authority binding
+
+UCP requires a capability to declare a `schema` URL whose origin matches the namespace authority in the
+capability's name, and requires a platform to validate that binding before fetching. The name
+`com.integraledger.legal_context` reverses to the authority `com.integraledger`; the schema is served from
+`integraledger.com`, whose reversed labels are `com.integraledger` — a label-aligned prefix of the name. The
+binding therefore holds.
+
+That binding establishes **provenance, not trust**: it proves only that the party publishing this capability
+controls `integraledger.com`. Whether to negotiate, trust or implement the capability is always the reader's
+decision.
+
+The `spec` URL — this document — is documentation and is not authority-bound by UCP. It is served from the
+same origin by choice, so that one capability has one custodian.
+
+## Versioning and immutability
+
+`2026-07-30` is the date **this capability was defined**. It is not the date of any UCP specification
+release, and it does not track one.
+
+**Dated paths are immutable.** The documents at this version's paths will not be edited after publication.
+A change to what the capability means, to the shape of its `config`, or to what a declaration obliges, is
+published at a **new dated path**, and both paths continue to be served. A reader that has fetched and
+cached this document may rely on it continuing to say what it says.
+
+## What this vocabulary deliberately does not carry
+
+The `config` payload is closed: unknown properties are rejected rather than ignored. An unknown field here
+would be a requirement placed on the reader, and complying with a requirement you cannot parse is not
+possible. The cost of that strictness is accepted on purpose — a future primitive is a new version at a new
+path, not a tolerated extra key.
+
+Several of LCP §4.2's policy primitives are **absent by design and will not be added in any version**. A
+primitive whose value tells a counterparty the threshold at which this party stops reviewing is an
+invitation to sit just underneath it; LCP §12.7 exists because of that, and publishing such a value on a
+discovery surface would hand it to every reader at once.
+
+## Licence
+
+Copyright Integra Ledger. Licensed under the Apache License, Version 2.0.

@@ -1,4 +1,11 @@
 export {
+  AUTHORITY_DOCUMENTS,
+  AUTHORITY_PATH_PREFIX,
+  type AuthorityDocument,
+  PROSE_MEDIA_TYPE,
+  SCHEMA_MEDIA_TYPE,
+} from "./authority.js";
+export {
   type A2aCapabilityRequirement,
   type AgentCardExtension,
   type AgentCardExtensionOptions,
