@@ -17,17 +17,45 @@ import type { BindingManifest } from "@integraledger/lcp-binding-core";
  * `forwardIndexable: false` (no native index over mux prefixes; `enumerate` is a best-effort account scan,
  * `indexing: "account-scan:mux-prefix8"`). The prefix-8 truncation is stated in `finality.note` too.
  *
- * **NO `protocol`, and here is precisely what it is neutral OF.** This binding welds into the destination
- * of a CLASSIC Stellar payment. x402's `exact` scheme for Stellar (read 2026-08-08) is a different flow
- * entirely: "This spec covers SEP-41-compliant Soroban tokens **only**. Classic Stellar assets are not
- * supported", and the payment is an `invokeHostFunction` calling `transfer(from, to, amount)` where
- * "Argument 1 (to): MUST equal `requirements.payTo` exactly".
+ * **NO `protocol`, and the reason is that the carrier genuinely works on both sides — CORRECTED
+ * 2026-08-15.** An earlier revision of this paragraph said the opposite: that the binding welds into a
+ * CLASSIC Stellar payment, that x402's `exact` scheme for Stellar was "a different flow entirely", and
+ * that "a deployment settling through an x402-Stellar facilitator does not get this carrier". Every step of
+ * that was wrong, and it contradicted this same file — `finality.note` below says "Soroban SAC transfer",
+ * the paragraph above says the buyer signs the Soroban SAC `transfer`, and `adapter.ts` types the field it
+ * reads as "the `to` destination of the SAC transfer". There was never a classic payment here to mux.
  *
- * A muxed destination cannot appear in that call — there is no classic payment to mux, and an `M…` address
- * would not equal `payTo` exactly. So a deployment settling through an x402-Stellar facilitator does not
- * get this carrier. That is a scoping fact, not a defect: the binding has never declared `protocol`, and
- * the mux weld is correct on the rail it targets. Stated here so the absence is a measured claim rather
- * than an unexamined default.
+ * Re-read against the live sources on 2026-08-15:
+ *
+ * - **x402's `exact` scheme for Stellar** (`x402-foundation/x402` HEAD `167a828e8319`) is Soroban SEP-41
+ *   token transfers — an `invokeHostFunction` calling `transfer(from, to, amount)`. That is the SAME
+ *   operation this binding welds into, not a different flow.
+ * - Its only rule on the destination is "**Argument 1 (to)**: MUST equal `requirements.payTo` exactly". The
+ *   scheme places **no format constraint on `payTo` anywhere**; its example happens to show a `G…` address,
+ *   and an example is not a constraint. A seller advertising their `M…` address as `payTo` satisfies the
+ *   rule by construction.
+ * - **CAP-67** (`stellar/stellar-protocol`, `core/cap-0067.md`) exists precisely to permit this: "Add memo
+ *   support to Soroban by adding a `SC_ADDRESS_TYPE_MUXED_ACCOUNT` and allow the SAC to take in this type
+ *   in the `transfer` function call."
+ *
+ * ⛔ **What IS limited, and it is narrower and different: CAP-67 extended the SAC, not Soroban generally.**
+ * The same CAP: "`MuxedAddressObject` … is not implicitly compatible with `AddressObject`. Thus the
+ * contracts that expect the regular `AddressObject` as an input argument **will fail** if
+ * `ScAddress::SC_ADDRESS_TYPE_MUXED_ACCOUNT` is passed to them." So the carrier depends on which contract
+ * the payment invokes:
+ *
+ * - the **SAC** — the built-in contract for a classic asset — accepts a muxed `to`, and the weld rides;
+ * - a **custom SEP-41 token contract** rejects it, and the invocation FAILS rather than degrading.
+ *
+ * A deployment therefore gets this carrier through x402 when, and only when, the scheme's `asset` is the
+ * SAC. `protocol` stays absent because that is a genuine statement of neutrality — the carrier serves bare
+ * Soroban and x402 alike — rather than, as the earlier text had it, because x402 could not reach it.
+ *
+ * ⚠️ **Two things deliberately NOT claimed here, because they were not verified.** Whether a given x402
+ * facilitator independently rejects an `M…` `payTo` (the scheme does not require it to), and CAP-67's
+ * activation status on any particular network. Both are deployment-time facts a seller must establish for
+ * themselves; asserting either from this file would be the kind of unmeasured claim the correction above
+ * exists to remove.
  */
 export const STELLAR_MANIFEST: BindingManifest = {
   rail: "stellar",
