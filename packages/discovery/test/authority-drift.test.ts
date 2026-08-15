@@ -6,12 +6,15 @@
  * A 404 at least tells a reader nothing is there. A schema that accepts what we would refuse, or refuses
  * what we emit, tells them something false and they have no way to notice.
  *
- * So this asserts three things the authored documents must never stop being true of:
+ * So this asserts four things the authored documents must never stop being true of:
  *
- * 1. Every declaration `normalizeCapabilityDeclaration` ACCEPTS, the schema validates.
- * 2. Every declaration it REJECTS, the schema rejects — unknown key, level outside 1–4, empty array,
+ * 1. Every advertised URL HAS a document, and every document is advertised — the set derived three
+ *    independent ways. Added after the first version of this file was green while two of the four
+ *    advertised URLs had nothing behind them at all.
+ * 2. Every declaration `normalizeCapabilityDeclaration` ACCEPTS, the schema validates.
+ * 3. Every declaration it REJECTS, the schema rejects — unknown key, level outside 1–4, empty array,
  *    blank entry. This direction is the one that rots quietly: a permissive schema still resolves.
- * 3. The `$id`s and paths equal the constants that advertise them, so the document a counterparty fetches
+ * 4. The `$id`s and paths equal the constants that advertise them, so the document a counterparty fetches
  *    is addressed the way the wire says it is.
  *
  * ⛔ Per finding 1.6 it must also refuse to pass over an EMPTY case set: a table-driven guard whose table
