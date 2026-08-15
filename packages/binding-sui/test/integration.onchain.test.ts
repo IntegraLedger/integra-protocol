@@ -87,6 +87,15 @@ suite(
       });
       expect(result.effects?.status.status).toBe("success");
 
+      // Executed is not the same as READABLE. `signAndExecuteTransaction` returns once the transaction is
+      // executed, but reading it back can 404 with "Could not find the referenced transaction" until the
+      // fullnode has indexed it — and a provider endpoint may answer the read from a different node than
+      // the one that took the write. This suite passed on its first live run and failed on the next with
+      // exactly that error; the difference was timing, not code, which is the signature of a race rather
+      // than a flake to retry away. `waitForTransaction` is the SDK's own answer and makes the read
+      // deterministic.
+      await client.waitForTransaction({ digest: result.digest });
+
       const adapter = createSuiAdapter(SUI_MANIFEST);
       const recovered = await adapter.recover(
         { digest: result.digest, packageId: PKG as string },
