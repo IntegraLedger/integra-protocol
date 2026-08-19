@@ -428,12 +428,14 @@ export type PlacementManifest = {
    * `policies[]` entry, not at any fixed path — and the two members are read and reconciled together, so a
    * protocol declares whichever one its host's shape puts the URL in and never both.
    *
-   * ⚠ THE STANDARD DEFINES NO CARRIER FOR THIS, and the spelling below is therefore a convention this
-   * reference implementation is setting rather than one it is following. LCP v1.38's own changelog says so:
-   * "the integration interface defines no carrier for the per-transaction terms URL that Section 6.1
-   * depends on", deferred as normative work. The slots named here are grounded on what each HOST declares
-   * (§C.1 and §C.4 illustrate host-side slots, and integra-protocol#8 measured what buyers refuse without
-   * one), never on §8 — which is why no site cites §8 as this member's authority.
+   * §8.1 DEFINES THIS CARRIER — `legalContextUrl` beside the reference, required wherever the reference is
+   * a digest — and it defines it because this implementation shipped it first: the standard recorded the
+   * gap as deferred normative work, the slots below were built on what each HOST declares (§C.1 and §C.4
+   * illustrate host-side slots, and integra-protocol#8 measured what buyers refuse without one), and §8.1
+   * then ratified the shape that had been battle-tested rather than inventing a second one. The order
+   * matters for anyone reading a divergence later: where a host's own naming convention governs the
+   * surrounding object it wins over the spelling — ACP's `legal_context_url` is snake-case for that reason,
+   * and UCP's locator sits on the host's own entry — and §8.1 says so explicitly.
    *
    * A placement carrying only the reference says so by omitting this, and {@link makePlacement} then
    * REFUSES an advertisement that supplies a URL — silently dropping a datum the seller meant to publish
