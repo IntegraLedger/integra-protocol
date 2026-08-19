@@ -1,5 +1,14 @@
 # @integraledger/lcp-binding-canton-x402
 
+## 0.10.2
+
+### Patch Changes
+
+- Updated dependencies [b2ffecc]
+- Updated dependencies [822190a]
+  - @integraledger/lcp-binding-core@0.11.0
+  - @integraledger/lcp-kernel@0.11.0
+
 ## 0.10.1
 
 **0.10.0 was staged and withdrawn before approval; this is that release, re-cut.** The conformance corpus

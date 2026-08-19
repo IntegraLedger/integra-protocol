@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-visa-tap",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Places an LCP reference into a Visa TAP request. The header sits outside TAP's signature.",
   "keywords": [
     "lcp",

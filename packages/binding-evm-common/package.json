@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-evm-common",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Shared EVM machinery for LCP rail bindings: typed-data construction and signature verification.",
   "keywords": [
     "lcp",

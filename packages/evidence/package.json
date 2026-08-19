@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-evidence",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Content-addressed LCP evidence bundles, and a hardened resolver for the artifacts they reference.",
   "keywords": [
     "lcp",

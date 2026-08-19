@@ -1,5 +1,7 @@
 # @integraledger/lcp-kernel
 
+## 0.11.0
+
 ## 0.10.1
 
 **0.10.0 was staged and withdrawn before approval; this is that release, re-cut.** The conformance corpus
