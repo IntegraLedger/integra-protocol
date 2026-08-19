@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-ucp",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Places an LCP reference into a UCP (Universal Commerce Protocol) checkout, and reads it back.",
   "keywords": [
     "lcp",

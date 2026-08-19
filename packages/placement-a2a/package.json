@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-a2a",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Places an LCP reference into an A2A (Agent-to-Agent Protocol) task, and reads it back.",
   "keywords": [
     "lcp",

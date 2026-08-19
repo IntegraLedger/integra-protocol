@@ -1,5 +1,27 @@
 # @integraledger/lcp-kernel
 
+## 0.12.0
+
+### Minor Changes
+
+- Release the protocol as ONE line: every publishable package now versions in lockstep.
+
+  `fixed` covered `kernel`, `binding-core` and `verify` and left the other twenty-eight to bump per
+  changeset. The first release under that arrangement cut two lines at once — `0.11.0` for the packages a
+  changeset touched, `0.10.2` for the rest — and the two are not independently meaningful. These packages ship
+  from one commit, are certified as a set by one conformance corpus, and are only ever installed together; a
+  consumer cannot pair `verify@0.11.0` with `binding-xrpl@0.10.1`, because that combination was never built or
+  tested. Per-package numbers therefore conveyed no independence a consumer could use, and did convey a
+  choice they should never make.
+
+  They also broke the downstream check that exists to stop exactly this class of defect. The product repo
+  refuses a tree declaring more than one protocol line — a gate written after both halves of the product
+  shipped green and did not interoperate — and a mixed release makes that gate unsatisfiable by any correct
+  pin set.
+
+  So the group is now every `@integraledger/lcp-*` package, and one version identifies the line. The private
+  `lcp-rail-invariants` is unaffected: changesets does not version private packages.
+
 ## 0.11.0
 
 ## 0.10.1

@@ -1,5 +1,13 @@
 # @integraledger/lcp-authority
 
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @integraledger/lcp-kernel@0.12.0
+  - @integraledger/lcp-binding-core@0.12.0
+
 ## 0.10.2
 
 ### Patch Changes

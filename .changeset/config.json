@@ -4,5 +4,9 @@
   "commit": false,
   "access": "public",
   "baseBranch": "main",
-  "fixed": [["@integraledger/lcp-kernel", "@integraledger/lcp-binding-core", "@integraledger/lcp-verify"]]
+  "fixed": [
+    [
+      "@integraledger/lcp-*"
+    ]
+  ]
 }
