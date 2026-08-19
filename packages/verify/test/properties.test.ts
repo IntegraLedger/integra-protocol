@@ -20,7 +20,7 @@ import {
 } from "../src/index.js";
 import { type AuthorityLink, authorityStep } from "../src/steps.js";
 
-/** The closed taxonomy, in ladder order — index comparison IS the "never raises" relation. */
+/** The closed taxonomy, in ladder order. */
 const LADDER: readonly TransactionClass[] = [
   "TC-0",
   "TC-1",
@@ -76,24 +76,31 @@ describe("verify — totality: a malformed record is REPORTED, never thrown on",
     );
   });
 
-  it("never RAISES the claimed class — the walk confirms or impeaches, it does not promote", async () => {
+  it("the CLAIM cannot move the finding — supportedClass is identical at every claimed class", async () => {
+    // The property the previous one asserted — `supportedClass <= claimedClass` — is FALSE by design now,
+    // and it passed only because this generator never produced the record that disproves it (one whose
+    // proved rungs reach past a low claim; `verify.test.ts` pins that case by hand). A property test that
+    // holds because the generator is too weak to falsify it is worse than none: it reads as a guarantee.
+    //
+    // This is the invariant the walk actually has, and it is the one the defect violated. `supportedClass`
+    // is computed from the steps, so running the SAME record against every claim in the ladder must yield
+    // one answer. The old implementation returned the claim itself, and would fail this on the first pair.
     await fc.assert(
-      fc.asyncProperty(
-        arbInput,
-        fc.constantFrom(...LADDER),
-        async (input, claimed) => {
-          const report = await verify({
-            ...(input as unknown as VerifyInput),
-            claimedClass: claimed,
-          });
-          // supportedClass is either the claim (confirmed) or strictly below it (impeached to TC-0).
-          // A report that ever outranked its own claim would be the walk flattering the record.
-          expect(
-            LADDER.indexOf(report.supportedClass as TransactionClass),
-          ).toBeLessThanOrEqual(LADDER.indexOf(claimed));
-        },
-      ),
-      { numRuns: 300 },
+      fc.asyncProperty(arbInput, async (input) => {
+        const answers = await Promise.all(
+          LADDER.map(async (claimed) => {
+            const report = await verify({
+              ...(input as unknown as VerifyInput),
+              claimedClass: claimed,
+            });
+            // And the claim is reported back verbatim, so nothing is lost by not encoding it in the finding.
+            expect(report.claimedClass).toBe(claimed);
+            return report.supportedClass;
+          }),
+        );
+        expect(new Set(answers).size).toBe(1);
+      }),
+      { numRuns: 200 },
     );
   });
 
