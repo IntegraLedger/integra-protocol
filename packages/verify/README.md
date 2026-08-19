@@ -32,7 +32,7 @@ const report = await verify({
 ```
 
 ```
-verified: false | supportedClass: TC-2
+verified: false | claimedClass: TC-2 | supportedClass: TC-0
    atr-fingerprint          proved
    settlement-enumeration   proved
    buyer-acceptance         not-attempted   no-acceptance
@@ -62,16 +62,22 @@ contradiction.
 An acceptance presented without a signature verifier is `not-attempted("no-signature-verifier")`, because
 a signature nobody checked is not evidence of a signature.
 
-## `verified` and `supportedClass` are readouts, not targets
+## `verified` is a verdict about a claim; `supportedClass` is a finding
 
 At the default `depth: "structural"`, `verified` is **always** `false`. A structural walk is a
 presence-and-absence readout; it cannot raise a verdict. Passing `depth: "mechanical"` — where the caller
 has supplied live ports — lets `verified` become an honest function of the walk: true only when every
 class-required step is `proved` and none `failed`.
 
-`supportedClass` works the same way. The record is *shaped for* a claimed class, and the structural walk
-can only confirm or impeach that shape: any failed step downgrades it to `TC-0`, and the walk never
-raises it.
+`supportedClass` is different in kind: it is a FINDING, computed from the steps alone as the highest class
+every one of whose required rungs is `proved`, and `TC-0` the moment any step fails. The claim neither caps
+it nor lifts it — a record proving nothing reads `TC-0` however high the caller aimed, and one whose rungs
+reach past the claim reads what they reach. `claimedClass` is echoed beside it so `verified`, which answers
+"did the record reach the class it claimed?", can be read at all.
+
+Step outcomes are depth-agnostic, so `depth` governs `verified` and never the class. A rung that is
+`not-attempted` says something about this walk's inputs, not about the record — which is why the reason
+rides each step and why `steps` is the thing to read before either summary.
 
 A forged input cannot produce a `proved`. Signature verification that throws deep in curve math over
 corrupted bytes is reported as a failure, not propagated as a crash — a verifier that dies on a forgery

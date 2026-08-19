@@ -6,11 +6,14 @@
  *
  * At STRUCTURAL depth `verified` is always `false` (a presence/absence readout → class, not a verdict).
  * At MECHANICAL depth `verified` is an honest function of the walk via `computeVerified` — raised `true`
- * iff every class-required step is `proved` and no step `failed`.
+ * iff every step required by the CLAIMED class is `proved` and no step `failed`.
  *
- * `supportedClass` is an HONEST READOUT, never a target: the record is *shaped for* `claimedClass`, and
- * the structural walk can only CONFIRM-OR-IMPEACH that shape — any `failed` step downgrades it to `TC-0`;
- * the walk never raises it (raising requires the mechanical verification `computeVerified` supplies).
+ * The report separates what was asked from what was found. `claimedClass` is the caller's input, echoed
+ * verbatim. `supportedClass` is the walk's own finding via `computeSupportedClass` — the highest class
+ * whose every required step is `proved`, `TC-0` on any failure. The claim neither caps nor lifts it, so a
+ * record that proves nothing reads `TC-0` however high the caller aimed, and one whose rungs reach past the
+ * claim reads what it reached. Step outcomes are depth-agnostic (see `steps.ts`), so this holds at both
+ * depths: `depth` governs `verified`, never the class.
  */
 import type {
   Bounds,
@@ -33,6 +36,7 @@ import type {
   VerifyDepth,
 } from "./report.js";
 import {
+  computeSupportedClass,
   computeVerified,
   type StepName,
   type TransactionClass,
@@ -205,7 +209,8 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
 
   // Append the TC-4 composition steps ONLY when a composition slot is supplied — the slot is additive:
   // a TC-0..TC-3 report that supplies none is byte-identical to one produced without the slot existing.
-  // The appended steps flow through the same `anyFailed`/`computeVerified` machinery as every other.
+  // The appended steps flow through the same `computeSupportedClass`/`computeVerified` machinery as every
+  // other, and are the only rungs by which a walk can reach TC-4 at all.
   if (input.composition !== undefined) {
     steps.push(
       { name: "offer-bound", outcome: offerBoundStep(input.composition) },
@@ -228,9 +233,10 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
   // Append the reference-placement step ONLY when a placement slot is supplied — its own `if`, because a
   // placement is independent of a composition and a record may carry either, both, or neither. Absent ⇒
   // nothing is appended and existing reports stay byte-identical, which is what makes the slot additive.
-  // Supplied ⇒ it flows through the same `anyFailed`/`computeVerified` machinery as every other step, so
-  // a placement that CONTRADICTS the record impeaches `supportedClass` to TC-0 — the one power the step
-  // grants it. Without this block the step would appear in no report and impeach nothing.
+  // Supplied ⇒ it flows through the same `computeSupportedClass`/`computeVerified` machinery as every
+  // other step, so a placement that CONTRADICTS the record impeaches `supportedClass` to TC-0 — the one
+  // power the step grants it, since no class requires it and it can therefore only pull the answer down.
+  // Without this block the step would appear in no report and impeach nothing.
   if (input.placement !== undefined) {
     steps.push({
       name: "reference-placement",
@@ -238,7 +244,6 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
     });
   }
 
-  const anyFailed = steps.some((s) => s.outcome.status === "failed");
   const found = input.settlements ?? [];
   const depth = input.depth ?? "structural";
   const claimed = input.claimedClass ?? "TC-2";
@@ -261,7 +266,8 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
     // the SAME token `resolvePartyStep` emits for this condition (steps.ts), so absence has one spelling
     // across the step and the report instead of contradicting itself inside a single run.
     assurance: input.identity?.buyer?.assurance ?? "no-assurance-stated",
-    supportedClass: anyFailed ? "TC-0" : claimed,
+    claimedClass: claimed,
+    supportedClass: computeSupportedClass(stepsForVerified),
     asOf: input.asOf,
     steps,
     coverage: input.coverage,

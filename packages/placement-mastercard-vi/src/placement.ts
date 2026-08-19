@@ -9,7 +9,7 @@ import { mastercardViManifest } from "./manifest.js";
  *
  * **DECLARATION ONLY — `place` refuses, and that is the ruling, not a gap.** The manifest is the
  * machine-readable statement of where an LCP reference WOULD sit in a VI mandate, and it is exact. What is
- * withdrawn is emitting one. LCP v1.38 §C.7 (:1699):
+ * withdrawn is emitting one. LCP v1.38 §C.7, closing "Tier B — there is no Tier A carrier":
  *
  * > A deployment **MUST NOT** write an unregistered legal-context constraint into a VI mandate and expect
  * > it to travel.

@@ -47,6 +47,7 @@ export {
   readDeclaredPaths,
   readFromContainer,
   requireIntegrity,
+  requireWritten,
   type WriteCondition,
   type WriteConditionTerm,
   writeConditionMet,

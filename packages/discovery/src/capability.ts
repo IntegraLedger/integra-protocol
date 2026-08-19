@@ -467,27 +467,24 @@ function originOf(value: string): string | null {
 }
 
 /**
- * UCP's authority binding, enforced. Verbatim at HEAD 2026-08-11: "a declared `schema` URL's origin MUST
- * match the namespace authority in its name", and a platform "MUST validate each business-declared `schema`
- * URL before fetching it". `com.integraledger.*` is documented at `integraledger.com`, so anything else
- * under our capability name is a claim on our namespace by a party that does not hold it.
+ * UCP's `spec` rule, which is a SCHEME rule on the VALUE and not an authority binding — and not a demand
+ * that the member be present at all. The host's MUST governs what a declared URL looks like: "it MUST be
+ * `https` but MAY be served from any host". Declaring one is a MAY: "Each entity MAY also declare a `spec`
+ * URL (human-readable documentation)", and `capability.json` carries the same split — `business_schema` is
+ * allOf [base, {required: ["schema"]}] while `platform_schema` is allOf [base, {required: ["spec",
+ * "schema"]}].
  *
- * The binding is on `schema` ONLY — see {@link LCP_CAPABILITY_AUTHORITY_ORIGIN} for the host's own sentence
- * putting the `spec` URL outside the trust path, and for the invented quotation that once said otherwise.
+ * So this helper answers only the question it is given a value for. **A reader of a PLATFORM declaration
+ * owes its own presence check**: absence is conformant in the business document that
+ * {@link readUcpProfile} reads, and refusing it here would refuse a conformant counterparty.
  *
- * The scheme is part of an origin, so a plain-`http` URL at the right host fails too — a spec document
- * fetched over http is rewritable in transit, which is the same reasoning `placement-ucp` applies to the
- * `links[]` terms URL.
+ * `undefined` is the member's absence; every other value, `null` included, is a declared URL held to the
+ * scheme. Enforced because a spec document fetched over http is rewritable in transit — the same reasoning
+ * `placement-ucp` applies to the `links[]` terms URL. NOT enforced as an origin match, because the host
+ * says the opposite in the same paragraph.
  */
-/**
- * UCP's `spec` requirement, which is a SCHEME rule and not an authority binding: the URL "MUST be a valid
- * `https` URL" while its origin "MAY be served from any host".
- *
- * Enforced because the host states it as a MUST, and because a spec document fetched over http is
- * rewritable in transit — the same reasoning `placement-ucp` applies to the `links[]` terms URL. NOT
- * enforced as an origin match, because the host says the opposite in the same paragraph.
- */
-function requireHttps(value: unknown, field: string): void {
+function requireHttpsIfDeclared(value: unknown, field: string): void {
+  if (value === undefined) return;
   const origin = typeof value === "string" ? originOf(value) : null;
   if (origin === null || !origin.startsWith("https://"))
     throw new CapabilityError(
@@ -496,6 +493,20 @@ function requireHttps(value: unknown, field: string): void {
     );
 }
 
+/**
+ * UCP's authority binding, enforced. Verbatim at HEAD 2026-08-11: "a declared `schema` URL's origin MUST
+ * match the namespace authority in its name", and a platform "MUST validate each business-declared `schema`
+ * URL before fetching it". `com.integraledger.*` is documented at `integraledger.com`, so anything else
+ * under our capability name is a claim on our namespace by a party that does not hold it.
+ *
+ * The binding is on `schema` ONLY — see {@link LCP_CAPABILITY_AUTHORITY_ORIGIN} for the host's own sentence
+ * putting the `spec` URL outside the trust path, and for the invented quotation that once said otherwise.
+ *
+ * The scheme is part of an origin, so a plain-`http` URL at the right host fails too — a schema document
+ * fetched over http is rewritable in transit, which is the same reasoning `placement-ucp` applies to the
+ * `links[]` terms URL. The host requires `schema` of a business declaration, so an absent one is refused
+ * here rather than passed through.
+ */
 function requireAuthorityOrigin(value: unknown, field: string): void {
   const origin = typeof value === "string" ? originOf(value) : null;
   if (origin !== LCP_CAPABILITY_AUTHORITY_ORIGIN)
@@ -572,12 +583,9 @@ export function readUcpProfile(
       "capability/version-unsupported",
       `${LCP_CAPABILITY_NAME} is declared, but at no version this build reads (${LCP_CAPABILITY_VERSION})`,
     );
-  // UCP binds authority to the `schema` URL ALONE. Verified verbatim at UCP HEAD 2026-08-08: "The `spec`
-  // URL is documentation, not part of the machine trust path, so its origin is NOT authority-bound: it
-  // MUST be `https` but MAY be served from any host (e.g. a docs subdomain or third-party docs host).
-  // Only the `schema` URL carries the authority binding." Binding BOTH would refuse a conformant
-  // counterparty documenting its capability on a docs subdomain — the host's own example — was refused.
-  requireHttps(get(found, "spec"), "spec");
+  // Two URLs, two different host rules, and the difference is the host's — see each helper. This is the
+  // BUSINESS document, so `schema` is the member the host requires of it and `spec` is a MAY.
+  requireHttpsIfDeclared(get(found, "spec"), "spec");
   requireAuthorityOrigin(get(found, "schema"), "schema");
   const config = get(found, "config");
   if (config === undefined)

@@ -25,7 +25,7 @@ export const X402_MANIFEST: BindingManifest = {
   indexing: "nonce-topic:AuthorizationUsed",
   finality: {
     reversible: false,
-    note: "instant, final settlement (EIP-3009) — no on-rail reversal; recourse is the record's elected forum, and finality is never represented as dispute resolution (PAY-3/RCS-5) The atrHash welded as the EIP-3009 nonce MUST be per-transaction: an EIP-3009 nonce is one-time use, so one payer paying twice under the same ATR reproduces the same authorization and the token rejects the second with no LCP-level diagnostic. LCP §6.1 wants a per-transaction ATR anyway.",
+    note: "instant, final settlement (EIP-3009) — no on-rail reversal; recourse is the record's elected forum, and finality is never represented as dispute resolution (PAY-3/RCS-5). The atrHash welded as the EIP-3009 nonce MUST be per-transaction: an EIP-3009 nonce is one-time use, so one payer paying twice under the same ATR reproduces the same authorization and the token rejects the second with no LCP-level diagnostic. LCP §6.1 wants a per-transaction ATR anyway.",
   },
   // The payer's EIP-3009 signature commits to the nonce (= atrHash): signature-grade weld.
   weldGrades: { ERC3009: "signature" },

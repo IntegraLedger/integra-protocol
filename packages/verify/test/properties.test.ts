@@ -97,21 +97,19 @@ describe("verify — totality: a malformed record is REPORTED, never thrown on",
     );
   });
 
-  it("PINS the pass-through: an out-of-taxonomy claimedClass is echoed, not clamped", async () => {
-    // Documented behaviour, recorded here so it is a decision rather than an accident. `VerifyInput`
-    // states the taxonomy is closed and that callers validate at the trust boundary, so the walk does not
-    // re-check it — and a nonsense class flows into `supportedClass`, producing a report that its own
-    // the report schema would reject. Clamping to TC-0 instead would be defensible and is a cross-party semantic
-    // change, so it is raised for ratification rather than made here. Note the report declares
-    // `supportedClass: string`, not `TransactionClass` — which is why nothing catches this at compile
-    // time either; tightening that field is part of the same decision.
+  it("an out-of-taxonomy claimedClass is echoed as the claim and reaches no finding", async () => {
+    // `VerifyInput` states the taxonomy is closed and that callers validate at the trust boundary, so the
+    // walk does not re-check it. What matters is where an unchecked value can land: `claimedClass` is the
+    // caller's own input and carries it verbatim, while `supportedClass` is computed from the steps and so
+    // can only ever hold a real class. A nonsense claim can no longer produce a nonsense finding.
     const report = await verify({
       asOf: "2026-07-16T00:00:00Z",
       coverage: { ports: [], bindings: [] },
       claimedClass: "NOT-A-CLASS" as unknown as TransactionClass,
     });
-    expect(report.supportedClass).toBe("NOT-A-CLASS");
-    // The impeachment path still floors it correctly — a failing step wins over the bogus claim.
+    expect(report.claimedClass).toBe("NOT-A-CLASS");
+    expect(report.supportedClass).toBe("TC-0");
+    // And the impeachment path still floors it — a failing step wins over anything the caller said.
     const impeached = await verify({
       asOf: "2026-07-16T00:00:00Z",
       coverage: { ports: [], bindings: [] },

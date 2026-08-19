@@ -95,7 +95,7 @@ const report = await verify({
 ```
 
 ```
-verified: false | supportedClass: TC-2
+verified: false | claimedClass: TC-2 | supportedClass: TC-0
    atr-fingerprint          proved
    settlement-enumeration   proved
    buyer-acceptance         not-attempted   no-acceptance
@@ -112,8 +112,11 @@ an absent input never becomes a pass. Raising `verified` requires `depth: "mecha
 has live ports and the value becomes an honest function of what they returned.
 
 `supportedClass` is a readout of how much of the record is actually evidenced, on a ladder from `TC-0`
-(nothing established) up to `TC-4`. It reports what the supplied inputs can support — the walk can
-confirm or impeach the class a record is shaped for, and never raises it.
+(nothing established) up to `TC-4`. It is computed from the steps alone: the highest class every one of
+whose required rungs is `proved`, and `TC-0` the moment any step fails. Here it is `TC-0` because
+`resolve-party` never proved, and identity is a `TC-1` rung — two proved rungs do not make a class if they
+are not the class's own. `claimedClass` sits beside it carrying what the caller said the record was shaped
+for, and the walk cannot change that; where the two differ, the record did not reach its own shape.
 
 A report is serialized with [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical JSON, so two
 independent verifiers holding the same inputs emit byte-identical bytes.

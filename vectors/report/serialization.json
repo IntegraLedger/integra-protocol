@@ -107,7 +107,8 @@
       "input": {
         "verified": false,
         "assurance": "wallet-signature-only",
-        "supportedClass": "TC-2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-0",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
           {
@@ -145,37 +146,77 @@
           "multiplySettled": false
         }
       },
-      "expected": "{\"asOf\":\"2026-07-16T00:00:00Z\",\"assurance\":\"wallet-signature-only\",\"coverage\":{\"bindings\":[\"evm:x402\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0x11\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"depth\":\"no-buyer-port\",\"status\":\"not-attempted\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"haltClass\":\"verification-failure\",\"status\":\"failed\"}}],\"supportedClass\":\"TC-2\",\"verified\":false}"
+      "expected": "{\"asOf\":\"2026-07-16T00:00:00Z\",\"assurance\":\"wallet-signature-only\",\"claimedClass\":\"TC-2\",\"coverage\":{\"bindings\":[\"evm:x402\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0x11\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"depth\":\"no-buyer-port\",\"status\":\"not-attempted\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"haltClass\":\"verification-failure\",\"status\":\"failed\"}}],\"supportedClass\":\"TC-0\",\"verified\":false}",
+      "$comment": "A report whose authority-attenuation step FAILED. supportedClass is TC-0 — any failed step impeaches, whatever else proved — while claimedClass keeps the TC-2 the record was shaped for, so the divergence between the two is legible. Expected re-derived from the RFC 8785 sort by an independent implementation, not copied from the emitter. SUPERSEDES the pin taken when supportedClass echoed the claim and read TC-2 over a failed step: {\"asOf\":\"2026-07-16T00:00:00Z\",\"assurance\":\"wallet-signature-only\",\"coverage\":{\"bindings\":[\"evm:x402\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0x11\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"depth\":\"no-buyer-port\",\"status\":\"not-attempted\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"haltClass\":\"verification-failure\",\"status\":\"failed\"}}],\"supportedClass\":\"TC-2\",\"verified\":false}"
     },
     {
       "name": "a thin-TC-3 VerificationReport (P4 — acceptance proved, authority chain walked to minimal depth, honest readout)",
-      "$comment": "The canonical JCS of the P4 thin-TC-3 report authority-producer-ref's slice produces: supportedClass TC-3 as an honest readout, every walk step proved, verified still false (structural). Expected authored from the RFC 8785 sort and cross-checked byte-for-byte against an independent recursive-key-sort oracle (not the verify package) before landing.",
+      "$comment": "The canonical JCS of the P4 thin-TC-3 report. Every TC-3 rung is proved — including recourse-elections, whose absence previously left the illustration depicting a class its own steps did not reach — so supportedClass computes to TC-3 and matches the claim. verified stays false: the depth is structural. Expected authored from the RFC 8785 sort and cross-checked byte-for-byte against an independent recursive-key-sorting implementation. SUPERSEDES: {\"asOf\":\"2026-07-01T12:00:00Z\",\"assurance\":\"attested\",\"coverage\":{\"bindings\":[\"evm:escrow\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0xabc\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"settlement-enumeration\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"commitment-vs-leaf\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"resolve-party\",\"outcome\":{\"status\":\"proved\"}}],\"supportedClass\":\"TC-3\",\"verified\":false}",
       "input": {
         "verified": false,
         "assurance": "attested",
+        "claimedClass": "TC-3",
         "supportedClass": "TC-3",
         "asOf": "2026-07-01T12:00:00Z",
         "steps": [
-          { "name": "atr-fingerprint", "outcome": { "status": "proved" } },
+          {
+            "name": "atr-fingerprint",
+            "outcome": {
+              "status": "proved"
+            }
+          },
           {
             "name": "settlement-enumeration",
-            "outcome": { "status": "proved" }
+            "outcome": {
+              "status": "proved"
+            }
           },
-          { "name": "buyer-acceptance", "outcome": { "status": "proved" } },
+          {
+            "name": "buyer-acceptance",
+            "outcome": {
+              "status": "proved"
+            }
+          },
           {
             "name": "authority-attenuation",
-            "outcome": { "status": "proved" }
+            "outcome": {
+              "status": "proved"
+            }
           },
-          { "name": "commitment-vs-leaf", "outcome": { "status": "proved" } },
-          { "name": "resolve-party", "outcome": { "status": "proved" } }
+          {
+            "name": "commitment-vs-leaf",
+            "outcome": {
+              "status": "proved"
+            }
+          },
+          {
+            "name": "recourse-elections",
+            "outcome": {
+              "status": "proved"
+            }
+          },
+          {
+            "name": "resolve-party",
+            "outcome": {
+              "status": "proved"
+            }
+          }
         ],
-        "coverage": { "ports": ["evm"], "bindings": ["evm:escrow"] },
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:escrow"]
+        },
         "settlements": {
-          "found": [{ "chainId": 84532, "txHash": "0xabc" }],
+          "found": [
+            {
+              "chainId": 84532,
+              "txHash": "0xabc"
+            }
+          ],
           "multiplySettled": false
         }
       },
-      "expected": "{\"asOf\":\"2026-07-01T12:00:00Z\",\"assurance\":\"attested\",\"coverage\":{\"bindings\":[\"evm:escrow\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0xabc\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"settlement-enumeration\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"commitment-vs-leaf\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"resolve-party\",\"outcome\":{\"status\":\"proved\"}}],\"supportedClass\":\"TC-3\",\"verified\":false}"
+      "expected": "{\"asOf\":\"2026-07-01T12:00:00Z\",\"assurance\":\"attested\",\"claimedClass\":\"TC-3\",\"coverage\":{\"bindings\":[\"evm:escrow\"],\"ports\":[\"evm\"]},\"settlements\":{\"found\":[{\"chainId\":84532,\"txHash\":\"0xabc\"}],\"multiplySettled\":false},\"steps\":[{\"name\":\"atr-fingerprint\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"settlement-enumeration\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"buyer-acceptance\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"authority-attenuation\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"commitment-vs-leaf\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"recourse-elections\",\"outcome\":{\"status\":\"proved\"}},{\"name\":\"resolve-party\",\"outcome\":{\"status\":\"proved\"}}],\"supportedClass\":\"TC-3\",\"verified\":false}"
     }
   ]
 }

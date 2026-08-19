@@ -9,6 +9,16 @@ import type { BindingManifest } from "@integraledger/lcp-binding-core";
  * in `PaymentAuthorized`/`PaymentCharged` event data, so `recover`/`enumerate` decode the event and read
  * `salt` (proven on-chain).
  *
+ * **NO `offCanonical`, and that silence is examined rather than default.** §8.3.1 admits the marker only
+ * where the field is "specified as client-chosen or as a deterministic derivation that excludes
+ * `atrHash`", and `salt` meets NEITHER disjunct: `charge`/`authorize` are
+ * `onlySender(paymentInfo.operator)`, so the SERVICE constructs the whole struct and the payer signs only
+ * a hash of it, and the welded value IS `uint256(atrHash)` — a derivation that includes it. Nothing
+ * on-chain constrains the field's value, which is §8.3.1's Tier A condition. The x402 sibling declares
+ * `offCanonical` over the EIP-3009 nonce because THAT field is payer-chosen and its weld therefore needs
+ * a cooperating client stack; this one needs none, so mirroring the sibling would publish a
+ * controlled-client caveat that does not apply here.
+ *
  * **recovery.forwardIndexable = false** — the criterion is enumeration bound to a GIVEN atrHash, and this
  * rail cannot do it. `paymentInfoHash` is the only indexed topic, and it is a hash of the whole
  * `PaymentInfo` struct: a caller holding the complete struct could topic-filter, but a caller holding only
@@ -63,7 +73,7 @@ export const ESCROW_MANIFEST: BindingManifest = {
   indexing: "event-data-scan:paymentInfoHash",
   finality: {
     reversible: true,
-    note: 'on-rail void/refund within refundExpiry — not dispute resolution (RCS-5); capture is not reversed, refund is a fresh on-rail remedy The atrHash welded into PaymentInfo.salt MUST be per-transaction: salt is specified as the struct\'s entropy source ("a source of entropy to ensure unique hashes across different payments") and an atrHash carries none, so a repeat purchase under one ATR with the same payer, caps and expiries produces a PaymentInfo the escrow has already seen and reverts.',
+    note: 'on-rail void/refund within refundExpiry — not dispute resolution (RCS-5); capture is not reversed, refund is a fresh on-rail remedy. The atrHash welded into PaymentInfo.salt MUST be per-transaction: salt is specified as the struct\'s entropy source ("a source of entropy to ensure unique hashes across different payments") and an atrHash carries none, so a repeat purchase under one ATR with the same payer, caps and expiries produces a PaymentInfo the escrow has already seen and reverts.',
   },
   weldGrades: {
     ERC3009: "signature",

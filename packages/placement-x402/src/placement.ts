@@ -4,6 +4,7 @@ import {
   type Outcome,
   type ReferencePlacementAdapter,
   readAtPath,
+  requireWritten,
   writeToContainer,
 } from "@integraledger/lcp-binding-core";
 import { LEGAL_CONTEXT_SCHEMA, X402_PLACEMENT } from "./manifest.js";
@@ -45,17 +46,23 @@ export const x402Placement: ReferencePlacementAdapter = {
     // The kit's write just created this path on its own output; reading it back — rather than re-encoding
     // the reference a second time — keeps one codepath responsible for what `info` contains.
     const info = readAtPath(placed.value, X402_PLACEMENT.field);
-    // TOTAL by the kit's own postconditions, so no undefined-branch exists to handle: `place` succeeded,
-    // so `placed.value` is a record; the write's parent path is the one-segment `extensions`, and a
-    // direct holder that is present-but-unmergeable is REPLACED under the ratified container rule, never
-    // refused — `writeToContainer` cannot return `undefined` for this (document, path) pair. A defensive
-    // branch here was dead code the mutation gate flagged as untestable, which is what dead code is.
-    const wrapped = writeToContainer(
-      placed.value,
-      X402_PLACEMENT.container,
-      "extensions.legalContext",
-      { info, schema: LEGAL_CONTEXT_SCHEMA },
-    ) as Record<string, unknown>;
+    // TOTAL by the kit's own postconditions: `place` succeeded, so `placed.value` is a record; the write's
+    // parent path is the one-segment `extensions`, and a direct holder that is present-but-unmergeable is
+    // REPLACED under the ratified container rule, never refused. `requireWritten` states that rather than
+    // asserting it with a cast — if the postcondition ever breaks, this throws instead of returning a
+    // success carrying no document.
+    const wrapped = requireWritten(
+      writeToContainer(
+        placed.value,
+        X402_PLACEMENT.container,
+        "extensions.legalContext",
+        {
+          info,
+          schema: LEGAL_CONTEXT_SCHEMA,
+        },
+      ),
+      "x402Placement.place",
+    );
     return { ok: true, value: wrapped };
   },
 };

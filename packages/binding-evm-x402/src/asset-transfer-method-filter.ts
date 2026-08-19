@@ -4,7 +4,7 @@
  * 1. **Asset-transfer-method filter.** The atrHash-as-nonce weld rides ONLY on EIP-3009
  *    `transferWithAuthorization`, whose `nonce` is a payer-controlled 32-byte field committed on-chain in
  *    `AuthorizationUsed`. x402's `exact` scheme on EVM defines **three** methods, verified at
- *    `x402-foundation/x402@1fec3aa04e41`:
+ *    `x402-foundation/x402@db5da2e65952`, `specs/schemes/exact/scheme_exact_evm.md` (read 2026-08-11):
  *
  *      1. `eip3009`  — tokens with native `transferWithAuthorization` (the default when `extra` omits it)
  *      2. `permit2`  — tokens without it, via a proxy and the canonical Permit2 contract

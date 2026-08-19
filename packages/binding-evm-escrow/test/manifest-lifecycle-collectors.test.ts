@@ -40,6 +40,15 @@ describe("ESCROW_MANIFEST ↔ published escrow profile", () => {
       forwardIndexable: false,
     });
   });
+
+  it("carries NO offCanonical profile — neither §8.3.1 disjunct is met", () => {
+    // §8.3.1 admits the marker only where the field is "specified as client-chosen or as a deterministic
+    // derivation that excludes atrHash". `salt` is neither: charge/authorize are
+    // onlySender(paymentInfo.operator), so the service constructs the struct and no cooperating client is
+    // required, and the welded value IS uint256(atrHash). The x402 sibling declares it over the
+    // payer-chosen EIP-3009 nonce; declaring it here would publish a caveat this rail does not carry.
+    expect(ESCROW_MANIFEST.offCanonical).toBeUndefined();
+  });
 });
 
 describe("lifecycle", () => {

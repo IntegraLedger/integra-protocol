@@ -439,7 +439,9 @@ describe("verify — the walk reaches the report, refusals and all", () => {
       status: "not-attempted",
       depth: "unproven-link",
     });
-    expect(report.supportedClass).toBe("TC-2");
+    // A gap is not an impeachment, and the class says so by resting where the proved rungs reach rather
+    // than by being floored: nothing here proves, so there is no rung to rest on.
+    expect(report.supportedClass).toBe("TC-0");
   });
 
   it("a WALKED chain proves, and agrees with the hand-flattened path on the same links", async () => {

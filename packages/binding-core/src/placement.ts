@@ -175,6 +175,23 @@ export type PlacementContainer =
        * Spread BEFORE the tag and value fields so neither can be shadowed by a constant.
        */
       readonly constants?: Readonly<Record<string, unknown>>;
+      /**
+       * OPTIONAL — the entry property carrying the human-readable terms URL (`url`), where the host puts
+       * the locator on the SAME entry as the reference.
+       *
+       * Container-relative because a document path cannot reach it. The entry's index is decided by the
+       * writer at write time — replace-by-tag when one matches, append when none does — so no dotted path
+       * names it in advance, and {@link PlacementManifest.termsUrlFields} is object-path only by
+       * construction. UCP is the consumer: `policies[]` is `additionalProperties: true` with `url` declared
+       * on the policy object itself ("Optional link to the full policy document", `format: uri`, verified at
+       * UCP HEAD `source/schemas/shopping/types/policy.json`), and LCP v1.38 §C.3's own illustration carries
+       * `url` and `atrHash` side by side in one entry.
+       *
+       * Written on the entry this container OWNS — the one carrying our tag — so unlike `constants` it
+       * applies on merge as well as on create: the URL is half of our own advertisement, not a host field
+       * we would be editing. Spread before the tag and value fields, for the same reason constants are.
+       */
+      readonly termsUrlField?: string;
     }
   | { readonly kind: "header-map" };
 
@@ -319,8 +336,8 @@ export type PlacementAlias = {
    * could only ever be another spelling in the manifest's own container.
    *
    * That shape difference is what this field answers, and it stands independently of `write`: UCP declares
-   * its `links` alias READ-ONLY on the reasoning in `placement-ucp/src/manifest.ts:40–51` (the links entry
-   * carries the terms URL, a different datum than the atrHash). The shipped `write: true` consumer is ACP.
+   * its `links` alias READ-ONLY because that entry carries a URL where the alias would write an atrHash,
+   * which is a different datum — see the manifest's own account of it in `placement-ucp`.
    *
    * An alias already declares its own `encoding`; declaring where it SITS is the same kind of fact one level
    * further out.
@@ -335,11 +352,12 @@ export type PlacementAlias = {
    * carrier survived. "Write one and hope" is not available to it. Setting this makes the manifest state what
    * actually lands on the wire rather than leaving the second write to a convention in some adapter's body.
    *
-   * The shipped consumer is ACP, not UCP — `placement-acp/src/manifest.ts:195–199` sets it on the
-   * `legal_context` alias under a {@link WriteCondition} that requires the agent to have declared the
-   * extension. UCP §C.3 describes the same pruning hazard and was the motivating case for this flag, but the
-   * UCP manifest deliberately declines the write: its second carrier holds the terms URL rather than the
-   * atrHash, and `place` carries one reference, not two data.
+   * The one shipped consumer is x402, which sets it on the `accepts.0.extra.atrHash` mirror — the §C.4
+   * illustration's bare-hash spelling, written unconditionally because `accepts[].extra` is an open map the
+   * host's own schema requires on any payable challenge, so nothing has to be negotiated first. UCP §C.3
+   * describes the pruning hazard this flag was built for, but the UCP manifest declines the write: its
+   * second carrier holds the terms URL rather than the atrHash, and `place` carries one reference, not two
+   * data.
    */
   readonly write?: boolean;
   /**
@@ -403,9 +421,19 @@ export type PlacementManifest = {
    * this member is the same solution for the terms URL, with one difference — every slot is written,
    * because a URL is plain data with no per-slot encoding to vary.
    *
-   * Object-path slots only. UCP's terms URL rides `links[type=terms_of_service].url`, a tagged array the
-   * CAPABILITY emits and owns — that manifest declares nothing here, deliberately, and a parser reads the
-   * absence as "this placement carries no terms URL", never as a gap.
+   * OBJECT-PATH SLOTS ONLY, and that is a property of dotted paths rather than a judgement about which
+   * hosts have a slot. Where the locator rides the same entry the reference is written into, the entry's
+   * index is chosen at write time and no path names it in advance; the container declares that slot
+   * instead, as {@link PlacementContainer} `termsUrlField`. UCP is the case — its `url` sits on the
+   * `policies[]` entry, not at any fixed path — and the two members are read and reconciled together, so a
+   * protocol declares whichever one its host's shape puts the URL in and never both.
+   *
+   * ⚠ THE STANDARD DEFINES NO CARRIER FOR THIS, and the spelling below is therefore a convention this
+   * reference implementation is setting rather than one it is following. LCP v1.38's own changelog says so:
+   * "the integration interface defines no carrier for the per-transaction terms URL that Section 6.1
+   * depends on", deferred as normative work. The slots named here are grounded on what each HOST declares
+   * (§C.1 and §C.4 illustrate host-side slots, and integra-protocol#8 measured what buyers refuse without
+   * one), never on §8 — which is why no site cites §8 as this member's authority.
    *
    * A placement carrying only the reference says so by omitting this, and {@link makePlacement} then
    * REFUSES an advertisement that supplies a URL — silently dropping a datum the seller meant to publish
@@ -826,19 +854,86 @@ type TermsUrlReading =
       readonly raw: unknown;
     };
 
+/** The entry a `tagged-array` container owns — the FIRST whose tag matches, by the same own-property and
+ *  first-match rules {@link readFromContainer} reads the reference under, so the reference and the terms
+ *  URL beside it can never be read off two different entries. */
+function taggedEntry(
+  doc: unknown,
+  container: Extract<PlacementContainer, { kind: "tagged-array" }>,
+): Record<string, unknown> | undefined {
+  const arr = readAtPath(doc, container.at);
+  if (!Array.isArray(arr)) return undefined;
+  for (const entry of arr) {
+    const rec = asRecord(entry);
+    if (rec === undefined) continue;
+    if (!Object.hasOwn(rec, container.tagField)) continue;
+    if (rec[container.tagField] === container.tag) return rec;
+  }
+  return undefined;
+}
+
+/** Every terms-URL slot this manifest declares, as human-readable locators — the document paths, plus the
+ *  container-relative entry field written in the `at[tagField=tag].field` notation §C.3 itself uses.
+ *  `undefined` where the manifest declares NO slot, which is the one condition that distinguishes "this
+ *  protocol has nowhere to put a URL" from "it has somewhere and the document left it empty". */
+function entryTermsUrlSlot(container: PlacementContainer):
+  | {
+      readonly container: Extract<PlacementContainer, { kind: "tagged-array" }>;
+      readonly field: string;
+      readonly label: string;
+    }
+  | undefined {
+  if (
+    container.kind !== "tagged-array" ||
+    container.termsUrlField === undefined
+  )
+    return undefined;
+  // The narrowed container travels WITH the slot so no caller re-tests the kind. A second check would be
+  // true whenever this returned a value, which makes it both redundant and unfalsifiable.
+  return {
+    container,
+    field: container.termsUrlField,
+    label: `${container.at}[${container.tagField}=${container.tag}].${container.termsUrlField}`,
+  };
+}
+
+function declaredTermsUrlSlots(
+  manifest: Pick<PlacementManifest, "termsUrlFields" | "container">,
+): readonly string[] | undefined {
+  const entry = entryTermsUrlSlot(manifest.container);
+  if (manifest.termsUrlFields === undefined && entry === undefined)
+    return undefined;
+  return [
+    ...(manifest.termsUrlFields ?? []),
+    ...(entry === undefined ? [] : [entry.label]),
+  ];
+}
+
 /** Read every declared terms-URL slot and reconcile. One value present answers; two agreeing answer; two
  *  disagreeing are a mismatch, because a document advertising different terms locations to different
  *  readers lets its author disown whichever reading lost. A non-string or non-https value at any declared
  *  slot is malformed even when another slot reads cleanly — a half-corrupt advertisement is not resolved
- *  by preferring the clean half. */
+ *  by preferring the clean half. Document paths and the container's own entry field are read the same way
+ *  and reconciled against each other: which member a protocol declares is a fact about its host's shape,
+ *  never about how strictly its document is checked. */
 function readTermsUrls(
   doc: unknown,
-  fields: readonly string[] | undefined,
+  manifest: Pick<PlacementManifest, "termsUrlFields" | "container">,
 ): TermsUrlReading {
-  if (fields === undefined) return { kind: "no-field-declared" };
+  const slots = declaredTermsUrlSlots(manifest);
+  if (slots === undefined) return { kind: "no-field-declared" };
+  const entry = entryTermsUrlSlot(manifest.container);
+  const readings: { path: string; raw: unknown }[] = (
+    manifest.termsUrlFields ?? []
+  ).map((path) => ({ path, raw: readAtPath(doc, path) }));
+  if (entry !== undefined)
+    readings.push({
+      path: entry.label,
+      raw: taggedEntry(doc, entry.container)?.[entry.field],
+    });
+
   let hit: { path: string; url: string } | undefined;
-  for (const path of fields) {
-    const raw = readAtPath(doc, path);
+  for (const { path, raw } of readings) {
     if (raw === undefined) continue;
     if (typeof raw !== "string" || !raw.startsWith(TERMS_URL_SCHEME))
       return { kind: "malformed", path, raw };
@@ -850,7 +945,7 @@ function readTermsUrls(
       return { kind: "mismatch", first: hit, second: { path, url: raw } };
   }
   return hit === undefined
-    ? { kind: "declared-fields-empty", fields }
+    ? { kind: "declared-fields-empty", fields: slots }
     : { kind: "read", url: hit.url };
 }
 
@@ -1031,12 +1126,19 @@ function writeSegments(
  * `header-map` writes the locator's own casing on a fresh key, but REUSES the existing key's casing when one
  * matches case-insensitively. Writing `x-lcp-hash` beside an existing `X-LCP-Hash` would produce two headers
  * RFC 9110 considers the same one.
+ *
+ * `entryFields` sets further properties on the SAME `tagged-array` entry, in the one write that creates or
+ * merges it. It exists because the entry's index is not knowable in advance — replace-by-tag or append is
+ * decided here — so a second, path-addressed write could not name the entry this one just landed. Applied
+ * on merge as well as on create, unlike `constants`: these are our own fields on our own tagged entry, not
+ * host siblings we would be overwriting. Ignored by the other two container kinds, which have no entry.
  */
 export function writeToContainer(
   doc: unknown,
   container: PlacementContainer,
   path: string,
   value: unknown,
+  entryFields?: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> | undefined {
   switch (container.kind) {
     case "object-path":
@@ -1061,13 +1163,16 @@ export function writeToContainer(
           entry[container.tagField] === container.tag;
         if (found || !claims) return e;
         found = true;
-        return { ...entry, [container.valueField]: value };
+        return { ...entry, ...entryFields, [container.valueField]: value };
       });
       if (!found)
         next.push({
           // Constants first: a host-required sibling can never shadow the tag or the value, whichever
-          // order a manifest happens to declare them in.
+          // order a manifest happens to declare them in. `entryFields` follows them and precedes the tag
+          // and value for the same reason — every one of the three is ours, and none may displace the two
+          // that make the entry findable and meaningful.
           ...(container.constants ?? {}),
+          ...entryFields,
           [container.tagField]: container.tag,
           [container.valueField]: value,
         });
@@ -1091,6 +1196,33 @@ export function writeToContainer(
       return at === "" ? next : writeAtPath(doc, at, next);
     }
   }
+}
+
+/**
+ * Narrow a {@link writeToContainer} result an override has already proven cannot be `undefined`.
+ *
+ * The overrides that compose on top of `makePlacement` write into a path the kit's own write just created,
+ * so the refusal branch is unreachable BY CONSTRUCTION rather than merely unlikely. Casting the result
+ * would be the cheap way to say that, and it is the wrong one: a cast that turns out to be false yields
+ * `{ ok: true, value: undefined }` — a success carrying no document, which is the silent failure this
+ * codebase refuses everywhere else. This throws instead, so the impossible state is loud where it lands.
+ *
+ * It also keeps the mutation gate honest. A guard written inline at each call site is dead code there —
+ * unkillable, which is exactly what the gate flags — while here the branch is reachable from this
+ * function's own tests and is killed once, at its own door, for every override that uses it.
+ *
+ * NOT a refusal. Refusals are returned values describing a document; this describes a broken invariant in
+ * our own composition, which no caller can act on and none should have to pattern-match.
+ */
+export function requireWritten(
+  out: Record<string, unknown> | undefined,
+  where: string,
+): Record<string, unknown> {
+  if (out === undefined)
+    throw new Error(
+      `${where}: the container write returned no document on a path the preceding write had already created — a placement override's postcondition is broken, not the caller's document`,
+    );
+  return out;
 }
 
 /**
@@ -1144,19 +1276,20 @@ export function makePlacement(
       // counterparty can resolve is unverifiable by construction — the defect integra-protocol#8
       // measured); and a supplied URL must be https on the write side for the same reason the read side
       // refuses it — minting a challenge every shipped buyer refuses is not a success path.
-      if (manifest.termsUrlFields === undefined && termsUrl !== undefined)
+      const termsUrlSlots = declaredTermsUrlSlots(manifest);
+      if (termsUrlSlots === undefined && termsUrl !== undefined)
         return refuse(
           "terms-url-unplaceable",
-          `${manifest.protocol} declares no terms-URL slot — dropping the supplied URL silently would advertise less than the seller stated`,
+          `this ${manifest.protocol} placement declares no terms-URL slot — dropping the supplied URL silently would advertise less than the seller stated`,
         );
       if (
-        manifest.termsUrlFields !== undefined &&
+        termsUrlSlots !== undefined &&
         termsUrl === undefined &&
         INTEGRITY_CARRIER_TYPES.includes(ref.type)
       )
         return refuse(
           "terms-url-missing",
-          `${manifest.protocol} declares ${manifest.termsUrlFields.join(" and ")} and the ${ref.type} reference is integrity-bearing — a hash with no locator cannot be verified by a counterparty that does not already hold the terms`,
+          `${manifest.protocol} declares ${termsUrlSlots.join(" and ")} and the ${ref.type} reference is integrity-bearing — a hash with no locator cannot be verified by a counterparty that does not already hold the terms`,
         );
       if (termsUrl !== undefined && !termsUrl.startsWith(TERMS_URL_SCHEME))
         return refuse(
@@ -1200,11 +1333,17 @@ export function makePlacement(
           "document-malformed",
           `${path} has no writable holder on this document — an intermediate container is present and not a map, or an index names an element the host never created: ${describe(readAtPath(doc, path.split(".").slice(0, -1).join(".")) ?? doc)}`,
         );
+      // The reference and any entry-relative terms URL land in ONE write, because the entry the container
+      // owns is created or merged here and no later write could name it: its index is decided by this call.
+      const entrySlot = entryTermsUrlSlot(manifest.container);
       let out = writeToContainer(
         doc,
         manifest.container,
         manifest.field,
         rendered,
+        entrySlot !== undefined && termsUrl !== undefined
+          ? { [entrySlot.field]: termsUrl }
+          : undefined,
       );
       if (out === undefined) return unwritable(manifest.field);
 
@@ -1296,7 +1435,7 @@ export function makePlacement(
       // nothing to advertise a locator FOR — `reference-absent` already answered it. The two document
       // defects refuse; both absences are values (see AdvertisedTermsUrl for why the gate, not the
       // reader, decides what an absence means).
-      const terms = readTermsUrls(doc, manifest.termsUrlFields);
+      const terms = readTermsUrls(doc, manifest);
       if (terms.kind === "mismatch")
         return refuse(
           "terms-url-mismatch",
@@ -1468,11 +1607,26 @@ function assertTaggedArrayConstants(
   container: PlacementContainer | undefined,
   field: string,
 ): void {
-  if (container?.kind !== "tagged-array" || container.constants === undefined)
-    return;
-  for (const key of [container.tagField, container.valueField])
+  if (container?.kind !== "tagged-array") return;
+  // The terms-URL slot is written onto the same entry and is subject to the same rule for the same reason:
+  // it is spread ahead of the tag and value, so a collision would be silently lost rather than corrupting
+  // them — and a manifest that declares one is still stating something it does not mean.
+  if (
+    container.termsUrlField !== undefined &&
+    (container.termsUrlField === container.tagField ||
+      container.termsUrlField === container.valueField)
+  )
+    throw new Error(
+      `${where}: tagged-array termsUrlField on ${field} is "${container.termsUrlField}", which is the entry's own ${container.termsUrlField === container.tagField ? "tagField" : "valueField"} — the terms URL and the ${container.termsUrlField === container.tagField ? "tag" : "reference"} are different objects`,
+    );
+  if (container.constants === undefined) return;
+  for (const key of [
+    container.tagField,
+    container.valueField,
+    ...(container.termsUrlField === undefined ? [] : [container.termsUrlField]),
+  ])
     if (Object.hasOwn(container.constants, key))
       throw new Error(
-        `${where}: tagged-array constants on ${field} declare "${key}", which is the entry's own ${key === container.tagField ? "tagField" : "valueField"} — a constant cannot also be the tag or the value`,
+        `${where}: tagged-array constants on ${field} declare "${key}", which is the entry's own ${key === container.tagField ? "tagField" : key === container.valueField ? "valueField" : "termsUrlField"} — a constant cannot also be the tag, the value or the terms URL`,
       );
 }

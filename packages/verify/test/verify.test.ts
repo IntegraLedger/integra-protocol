@@ -11,6 +11,7 @@ type Case = {
   };
   expected: {
     verified: boolean;
+    claimedClass: string;
     supportedClass: string;
     assurance: string;
     multiplySettled: boolean;
@@ -49,6 +50,7 @@ describe("verify — structural walk (honest class readout)", () => {
   it.each(V.cases)("$name", async (c) => {
     const report = await verify(toInput(c));
     expect(report.verified).toBe(c.expected.verified);
+    expect(report.claimedClass).toBe(c.expected.claimedClass);
     expect(report.supportedClass).toBe(c.expected.supportedClass);
     expect(report.assurance).toBe(c.expected.assurance);
     expect(report.settlements.multiplySettled).toBe(c.expected.multiplySettled);
@@ -58,8 +60,7 @@ describe("verify — structural walk (honest class readout)", () => {
     expect(statuses).toEqual(c.expected.statuses);
   });
 
-  it("the walk never RAISES the claimed class — only confirms or impeaches", async () => {
-    // A forged-widening link with claimedClass TC-3 still impeaches to TC-0.
+  it("a contradicted rung impeaches to TC-0 whatever the caller claimed", async () => {
     const report = await verify({
       asOf: "2026-07-16T00:00:00Z",
       coverage: { ports: [], bindings: [] },
@@ -75,15 +76,49 @@ describe("verify — structural walk (honest class readout)", () => {
       ],
     });
     expect(report.supportedClass).toBe("TC-0");
+    expect(report.claimedClass).toBe("TC-3");
   });
 
-  it("honors a custom claimedClass when nothing fails", async () => {
+  it("a claim cannot lift the class — a record that proves nothing supports TC-0", async () => {
+    // The defect this pins: `supportedClass` once echoed `claimedClass` unless a step FAILED, so this
+    // walk — no settlement, no identity, no acceptance, nothing proved — reported TC-1 on the caller's
+    // say-so. The claim is reported, and it is reported as the claim.
     const report = await verify({
       asOf: "2026-07-16T00:00:00Z",
       coverage: { ports: [], bindings: [] },
       claimedClass: "TC-1",
     });
-    expect(report.supportedClass).toBe("TC-1");
+    expect(report.supportedClass).toBe("TC-0");
+    expect(report.claimedClass).toBe("TC-1");
+    expect(report.steps.some((s) => s.outcome.status === "proved")).toBe(false);
+  });
+
+  it("a claim cannot cap the class either — proved rungs reach past what was claimed", async () => {
+    // The mirror of the case above, and the reason the claim is not a ceiling: White paper #4 §5 defines
+    // the class as "the highest class whose criteria it fully meets", which a caller aiming low cannot lower.
+    const atrBytes = new TextEncoder().encode('{"lcp":"0.3","terms":"x"}');
+    const report = await verify({
+      asOf: "2026-07-16T00:00:00Z",
+      coverage: { ports: ["evm"], bindings: ["evm:x402"] },
+      claimedClass: "TC-1",
+      atrBytes,
+      settledAtrHash: await hashAtr(atrBytes),
+      settlements: [{ chainId: 84532, txHash: "0x1" }],
+      identity: {
+        seller: {
+          subject: "did:web:seller.example",
+          assurance: "legal-party",
+          chain: [{ via: "legal-party" }],
+        },
+        buyer: {
+          subject: "0xb15d",
+          assurance: "wallet-signature-only",
+          chain: [{ via: "key" }],
+        },
+      },
+    });
+    expect(report.claimedClass).toBe("TC-1");
+    expect(report.supportedClass).toBe("TC-2");
   });
 
   it("a HALF-SHAPED identity reads out, it does not crash the walk", async () => {
@@ -162,6 +197,7 @@ type CompCase = {
     acceptanceVerifier?: "accepts" | "rejects";
   };
   verified: boolean;
+  claimedClass: string;
   supportedClass: string;
   stepCount?: number;
 };
@@ -188,6 +224,7 @@ describe("verify — TC-4 composition readout (wired walk)", () => {
     };
     const report = await verify(input);
     expect(report.verified).toBe(c.verified);
+    expect(report.claimedClass).toBe(c.claimedClass);
     expect(report.supportedClass).toBe(c.supportedClass);
     if (c.stepCount !== undefined) {
       expect(report.steps.length).toBe(c.stepCount);

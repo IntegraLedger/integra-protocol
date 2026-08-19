@@ -1019,6 +1019,32 @@
       }
     },
     {
+      "name": "read-ucp accepts a business profile that omits `spec` — the host requires its presence only of a platform declaration",
+      "$comment": "Verified verbatim at universal-commerce-protocol/ucp HEAD 2026-08-19. source/schemas/capability.json declares `business_schema` as allOf [{$ref base}, {\"required\": [\"schema\"]}] and `platform_schema` as allOf [{$ref base}, {\"required\": [\"spec\", \"schema\"]}]; docs/specification/overview.md §Namespace Governance says \"Each entity **MAY** also declare a `spec` URL (human-readable documentation)\" and puts the MUST on the value — \"it **MUST** be `https` but **MAY** be served from any host\". `readUcpProfile` reads `/.well-known/ucp`, the business document, so an absent `spec` is a conformant counterparty and only a present one is held to the scheme.",
+      "input": {
+        "op": "read-ucp",
+        "doc": {
+          "ucp": {
+            "version": "2026-04-08",
+            "capabilities": {
+              "com.integraledger.legal_context": [
+                {
+                  "version": "2026-07-30",
+                  "schema": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
+                  "config": {
+                    "minimumLevel": 2
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "minimumLevel": 2
+      }
+    },
+    {
       "name": "read-ucp refuses a schema URL whose origin is not the namespace authority",
       "input": {
         "op": "read-ucp",

@@ -22,6 +22,7 @@ describe("RFC 8785 (JCS) report serialization — the net-new byte vector", () =
     const report: VerificationReport = {
       verified: false,
       assurance: "wallet-signature-only",
+      claimedClass: "TC-2",
       supportedClass: "TC-2",
       asOf: "2026-07-16T00:00:00Z",
       steps: [{ name: "atr-fingerprint", outcome: { status: "proved" } }],

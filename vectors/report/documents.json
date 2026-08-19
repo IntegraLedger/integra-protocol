@@ -5,18 +5,35 @@
       "input": {
         "verified": true,
         "assurance": "L2",
+        "claimedClass": "TC-2",
         "supportedClass": "TC-2",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
-          { "name": "atr-hash", "outcome": { "status": "proved" } },
+          {
+            "name": "atr-hash",
+            "outcome": {
+              "status": "proved"
+            }
+          },
           {
             "name": "buyer-acceptance",
-            "outcome": { "status": "not-attempted", "depth": "no-buyer-port" }
+            "outcome": {
+              "status": "not-attempted",
+              "depth": "no-buyer-port"
+            }
           }
         ],
-        "coverage": { "ports": ["evm"], "bindings": ["escrow"] },
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["escrow"]
+        },
         "settlements": {
-          "found": [{ "chain": "base-sepolia", "tx": "0xabc" }],
+          "found": [
+            {
+              "chain": "base-sepolia",
+              "tx": "0xabc"
+            }
+          ],
           "multiplySettled": false
         }
       },
@@ -27,6 +44,7 @@
       "input": {
         "verified": false,
         "assurance": "L2",
+        "claimedClass": "TC-2",
         "supportedClass": "TC-1",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
@@ -38,8 +56,14 @@
             }
           }
         ],
-        "coverage": { "ports": ["evm"], "bindings": ["escrow"] },
-        "settlements": { "found": [], "multiplySettled": false }
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["escrow"]
+        },
+        "settlements": {
+          "found": [],
+          "multiplySettled": false
+        }
       },
       "expected": true
     },
@@ -48,19 +72,31 @@
       "input": {
         "verified": true,
         "assurance": "L2",
+        "claimedClass": "TC-2",
         "supportedClass": "TC-2",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
           {
             "name": "settlement-enum",
-            "outcome": { "status": "indeterminate" }
+            "outcome": {
+              "status": "indeterminate"
+            }
           }
         ],
-        "coverage": { "ports": ["evm"], "bindings": ["escrow", "x402"] },
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["escrow", "x402"]
+        },
         "settlements": {
           "found": [
-            { "chain": "base", "tx": "0x1" },
-            { "chain": "base", "tx": "0x2" }
+            {
+              "chain": "base",
+              "tx": "0x1"
+            },
+            {
+              "chain": "base",
+              "tx": "0x2"
+            }
           ],
           "multiplySettled": true
         }
@@ -71,11 +107,38 @@
       "name": "missing verified",
       "input": {
         "assurance": "L2",
+        "claimedClass": "TC-2",
         "supportedClass": "TC-2",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [],
-        "coverage": { "ports": [], "bindings": [] },
-        "settlements": { "found": [], "multiplySettled": false }
+        "coverage": {
+          "ports": [],
+          "bindings": []
+        },
+        "settlements": {
+          "found": [],
+          "multiplySettled": false
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "missing claimedClass",
+      "$comment": "A report that states a finding but not what the finding was measured against: `verified` is then uninterpretable, since it answers whether the record reached the class the caller named.",
+      "input": {
+        "assurance": "L2",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [],
+        "coverage": {
+          "ports": [],
+          "bindings": []
+        },
+        "settlements": {
+          "found": [],
+          "multiplySettled": false
+        },
+        "verified": true
       },
       "expected": false
     },
@@ -84,13 +147,25 @@
       "input": {
         "verified": false,
         "assurance": "L2",
+        "claimedClass": "TC-1",
         "supportedClass": "TC-1",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
-          { "name": "acceptance-sig", "outcome": { "status": "failed" } }
+          {
+            "name": "acceptance-sig",
+            "outcome": {
+              "status": "failed"
+            }
+          }
         ],
-        "coverage": { "ports": ["evm"], "bindings": ["escrow"] },
-        "settlements": { "found": [], "multiplySettled": false }
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["escrow"]
+        },
+        "settlements": {
+          "found": [],
+          "multiplySettled": false
+        }
       },
       "expected": false
     },
@@ -99,38 +174,81 @@
       "input": {
         "verified": true,
         "assurance": "L2",
+        "claimedClass": "TC-2",
         "supportedClass": "TC-2",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [],
-        "coverage": { "ports": [], "bindings": [] }
+        "coverage": {
+          "ports": [],
+          "bindings": []
+        }
       },
       "expected": false
     },
     {
       "name": "P4 honest thin-TC-3 report — acceptance proved, authority chain walked, evidence self-contained (authority-producer-ref)",
-      "$comment": "The report verify emits for the P4 thin-TC-3 slice: the minimal grant + signed timestamped acceptance walk to supportedClass TC-3 as an HONEST readout (every rung — signed acceptance, four-dimension grant checked as-of settlement, forum/law elections, self-contained evidence — is present). verified stays false (verify is confirm-or-impeach, structural). Schema-validated here; its canonical JCS serialization lands in report/serialization.json.",
+      "$comment": "The report verify emits for the P4 thin-TC-3 slice: the minimal grant + signed timestamped acceptance reach supportedClass TC-3 because every TC-3 rung is PROVED — signed acceptance, four-dimension grant checked as-of settlement, forum/law elections, self-contained evidence — and the walk computes the class from those steps alone. verified stays false because the depth is structural, which is a statement about this walk and not about the record. Schema-validated here; its canonical JCS serialization lands in report/serialization.json.",
       "input": {
         "verified": false,
         "assurance": "attested",
+        "claimedClass": "TC-3",
         "supportedClass": "TC-3",
         "asOf": "2026-07-01T12:00:00Z",
         "steps": [
-          { "name": "atr-fingerprint", "outcome": { "status": "proved" } },
+          {
+            "name": "atr-fingerprint",
+            "outcome": {
+              "status": "proved"
+            }
+          },
           {
             "name": "settlement-enumeration",
-            "outcome": { "status": "proved" }
+            "outcome": {
+              "status": "proved"
+            }
           },
-          { "name": "buyer-acceptance", "outcome": { "status": "proved" } },
+          {
+            "name": "buyer-acceptance",
+            "outcome": {
+              "status": "proved"
+            }
+          },
           {
             "name": "authority-attenuation",
-            "outcome": { "status": "proved" }
+            "outcome": {
+              "status": "proved"
+            }
           },
-          { "name": "commitment-vs-leaf", "outcome": { "status": "proved" } },
-          { "name": "resolve-party", "outcome": { "status": "proved" } }
+          {
+            "name": "commitment-vs-leaf",
+            "outcome": {
+              "status": "proved"
+            }
+          },
+          {
+            "name": "recourse-elections",
+            "outcome": {
+              "status": "proved"
+            }
+          },
+          {
+            "name": "resolve-party",
+            "outcome": {
+              "status": "proved"
+            }
+          }
         ],
-        "coverage": { "ports": ["evm"], "bindings": ["evm:escrow"] },
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["evm:escrow"]
+        },
         "settlements": {
-          "found": [{ "chainId": 84532, "txHash": "0xabc" }],
+          "found": [
+            {
+              "chainId": 84532,
+              "txHash": "0xabc"
+            }
+          ],
           "multiplySettled": false
         }
       },

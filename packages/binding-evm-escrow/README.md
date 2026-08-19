@@ -48,6 +48,14 @@ atrHashFromSalt(0n); // the inverse, for a salt you already hold
 The ATR hash rides `PaymentInfo.salt` — an existing field the service already controls. No derivation,
 no overlay contract.
 
+**The ATR hash must be per-transaction.** `salt` is the struct's entropy source — *"a source of entropy to
+ensure unique hashes across different payments"* — and an ATR hash carries none: it is deterministic and
+identical for every payment made under one terms document. The escrow keys its state on the hash of the
+whole `PaymentInfo` and refuses one it has already collected, so a repeat purchase under the same ATR with
+the same payer, caps and expiries reverts on chain with `PaymentAlreadyCollected`. Nothing in this package
+can detect that — the collision is between two transactions it never sees together. Mint a fresh ATR per
+transaction, which LCP §6.1 wants anyway.
+
 ```ts
 import { EVENT_TO_STATE } from "@integraledger/lcp-binding-evm-escrow";
 

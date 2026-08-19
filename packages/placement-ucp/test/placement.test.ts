@@ -115,7 +115,13 @@ describe("UCP placement — the https refusal stays legible", () => {
       ok: true,
       value: {
         ref: { type: "url", value: "https://seller.example/terms" },
-        termsUrl: { kind: "no-field-declared" },
+        // Declared-and-empty, not no-field-declared: this document carries only the standing links[]
+        // page, and the per-transaction policies entry that would hold a locator is absent. The two
+        // absences are different facts and the reader reports which one it found.
+        termsUrl: {
+          kind: "declared-fields-empty",
+          fields: ["policies[type=com.integraledger.policy.legal_context].url"],
+        },
       },
     });
   });

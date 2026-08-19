@@ -35,9 +35,11 @@ export interface VerificationStep {
  *
  *  Read `steps` before `verified`. `verified` is a summary that is FALSE at structural depth by
  *  construction, so a `false` may mean "impeached" or merely "not attempted mechanically", and only the
- *  step list distinguishes them. `supportedClass` is what the record honestly supports, not what the
- *  caller asked for. Several fields are `string` rather than a union on purpose: this type has to be able
- *  to hold another implementation's answer, including a wrong one. */
+ *  step list distinguishes them. `claimedClass` and `supportedClass` are the report's two halves and must
+ *  never be read as one: the first is the caller's input, echoed so the walk can be interpreted; the second
+ *  is the walk's own finding. Where they differ, the record did not reach what it was shaped for. Several
+ *  fields are `string` rather than a union on purpose: this type has to be able to hold another
+ *  implementation's answer, including a wrong one. */
 export interface VerificationReport {
   /** Honest function of depth: `false` at structural (presence/absence → class); at mechanical, raised by
    *  `computeVerified` iff every class-required step is `proved` and none `failed`. */
@@ -48,7 +50,14 @@ export interface VerificationReport {
    *  reason `supportedClass` is: a foreign implementation's report must be representable before it can be
    *  compared, and a type that refuses to hold a wrong value cannot report one. */
   assurance: string;
-  /** The transaction class the record honestly supports — an honest readout, never a target. */
+  /** The class the record was shaped for, as the caller stated it — the walk's INPUT, echoed so `verified`
+   *  can be read at all (it answers "did the record reach THIS class?"). A caller that states none is
+   *  verified against `TC-2`, and that effective value is what appears here. Never a finding: nothing in
+   *  the walk can change it. */
+  claimedClass: string;
+  /** The class the walk reached — the highest one whose every required step is `proved`, `TC-0` if any step
+   *  failed. A FINDING, computed from the steps alone: it is not capped by `claimedClass` and not lifted by
+   *  it. Compare the two to learn whether the record met its own shape. */
   supportedClass: string;
   /** The settlement's chain-anchored time every validity check is evaluated against. */
   asOf: string;

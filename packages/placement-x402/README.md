@@ -19,10 +19,10 @@ npm install @integraledger/lcp-placement-x402
 | **Chain** | none here — settlement is `binding-evm-x402`'s, on whichever EVM rail the scheme selects |
 | **Pattern** | `http-advisory` (LCP §8.3.7, Tier A) |
 | **Field** | `extensions.legalContext.info` — the top-level extensions map, the carrier x402 protects |
-| **Read also** | `accepts.0.extra.atrHash` — a **bare** hash, its own encoding (integrity) |
-| **Terms URL** | `extensions.legalContext.info.legalContextUrl` — declared, never written by `place` |
-| **Carrier types** | `sha256`, `url` |
-| **Spec** | x402 v2 (`x402-foundation/x402@1fec3aa04e41`, `specs/x402-specification-v2.md`), gate discharged **2026-07-30** |
+| **Read also** | `accepts.0.extra.atrHash` — a **bare** hash, its own encoding (integrity), **written** by `place` |
+| **Terms URL** | `extensions.legalContext.info.legalContextUrl` and `accepts.0.extra.legalContextUrl` — both written by `place` |
+| **Carrier types** | `sha256` |
+| **Spec** | x402 v2 (`x402-foundation/x402@db5da2e65952`, `specs/x402-specification-v2.md`, read **2026-08-11**), gate discharged **2026-07-30** |
 
 ## Use
 
@@ -57,8 +57,9 @@ and the PaymentRequirements table), four facts were confirmed and each one decid
    cannot delete or overwrite existing info." This is the carrier the **protocol itself protects**, which is
    why it is canonical here rather than the per-requirement object.
 4. **`extra` is "Scheme-specific additional information"** on a `PaymentRequirements` entry — the payment
-   scheme's object, whose contents that scheme defines. So `place` **never writes there**; the alias is
-   read-only, and that is a decision about whose namespace it is, not an omission.
+   scheme's object, whose contents that scheme defines. `place` writes the §C.4 mirror and the terms URL
+   there because §6.1 reserves those names for exactly this use, and writing only the extensions map left
+   a challenge the published buyer parsers refuse (integra-protocol#8).
 
 Extension identifiers are implementation-defined strings — no registry, no reverse-domain rule — so the
 `legalContext` key is available today and this placement is Tier A on the wire.
@@ -187,12 +188,13 @@ needs a content-addressed value says so — it checks the decoded type as well a
 
 ## Provenance
 
-Cut against x402 v2 (`x402-foundation/x402@1fec3aa04e41`, `specs/x402-specification-v2.md`, read 2026-07-30) and reconciled
-against LCP v1.37 §C.4 the same day, and re-read against **v1.38 §C.4** on 2026-08-12 — which adopted the
-drift items below and added §6.1's reserved keys. The **paths and shapes** are matched field-for-field against the
-shipped seller carrier and the buyer parsers that read it; the **resolution semantics diverge from a strict
-buyer gate in three recorded ways**, and *Drift from a strict buyer-side reader*
-above states each one and who closes it. Both drift sections are the disclosure, not a to-do list — a
+Cut against x402 v2 and reconciled against LCP v1.37 §C.4 on 2026-07-30, and re-read against **v1.38 §C.4**
+on 2026-08-12 — which adopted the drift items below and added §6.1's reserved keys. The host revision is
+`x402-foundation/x402@db5da2e65952` (`specs/x402-specification-v2.md`), which is what `spec-pins.json`
+records this tree read on 2026-08-11 and what `pnpm spec-drift` watches. The **paths and shapes** are
+matched field-for-field against the shipped seller carrier and the buyer parsers that read it; the
+**resolution semantics diverge from a strict buyer gate in three recorded ways**, and *Drift from a strict
+buyer-side reader* above states each one and who closes it. Both drift sections are the disclosure, not a to-do list — a
 divergence written down is governed; the same divergence unwritten is the undisclosed-drift defect wearing
 a new name.
 

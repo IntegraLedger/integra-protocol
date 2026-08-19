@@ -30,7 +30,7 @@ Every run prints the identity of the corpus it certified against, so you never h
 separately:
 
 ```text
-corpus: 44/44 areas, 844/844 cases, root e484413a822d2a9a… (authentic)
+corpus: 44/44 areas, 847/847 cases, root ec4ad1b02a81538b… (authentic)
 ```
 
 **Record that root digest beside any conformance claim you make** — it is what makes "we conform" a
@@ -54,12 +54,12 @@ is what the rest of this guide uses. Once it is on `PATH` after a global install
 own is fine.
 
 ```text
-conformance: 844 passed, 0 failed, 0 skipped (none)
+conformance: 847 passed, 0 failed, 0 skipped (none)
 ```
 
 That is one line, and every part of it is load-bearing.
 
-- **`844 passed`** — the size of the corpus that actually ran. Quote this number, not the exit code. A green
+- **`847 passed`** — the size of the corpus that actually ran. Quote this number, not the exit code. A green
   run over a shrunken corpus is a regression wearing a disguise, and `0 failed` cannot tell the two apart.
 - **`0 failed`** — no case disagreed. The process exits `0`; a single failure exits `1`, so this is usable
   as a CI gate directly.
@@ -178,7 +178,7 @@ const vectors = new URL(
   "file:///srv/my-lcp/node_modules/@integraledger/lcp-conformance/vectors/",
 );
 
-// State the phase. `runCorpus` defaults to "P1" — 95 of the 844 cases — where the CLI defaults to
+// State the phase. `runCorpus` defaults to "P1" — 95 of the 847 cases — where the CLI defaults to
 // the wired floor. Omitting it here is the quiet way to certify an eighth of the corpus. "P8" is
 // the top of the ladder today; check `report.skipped` is empty rather than trusting this string.
 const report = await runCorpus(new CliSubject("python3", ["subject.py"]), {
@@ -195,7 +195,7 @@ console.log(report.failed[0]);
 ```
 
 ```text
-conformance: 13 passed, 831 failed, 0 skipped
+conformance: 13 passed, 834 failed, 0 skipped
 failing areas: 43 of 44
 {
   area: 'atrhash.compute',
@@ -277,7 +277,7 @@ And a real failure, from a corpus with one expected value altered — the summar
 per failing case naming the area, the case, and both values:
 
 ```text
-conformance: 843 passed, 1 failed, 0 skipped (none)
+conformance: 846 passed, 1 failed, 0 skipped (none)
 FAIL atrhash.compute / empty-terms: expected "0x0000000000000000000000000000000000000000000000000000000000000000" got "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 ```
 

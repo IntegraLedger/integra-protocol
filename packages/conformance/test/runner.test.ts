@@ -80,7 +80,8 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // `description` when our reference is merged in. Verified at UCP HEAD: checkout.json has eighteen properties
 // and `extensions` is not among them, while `additionalProperties: true` meant the old write landed and was
 // never read. Silent, which is worse than rejected.
-// 827 → 810 on 2026-08-08: placement-mastercard-vi became DECLARATION-ONLY. LCP v1.38 §C.7 (:1699) —
+// 827 → 810 on 2026-08-08: placement-mastercard-vi became DECLARATION-ONLY. LCP v1.38 §C.7, closing
+// "Tier B — there is no Tier A carrier" —
 // "A deployment MUST NOT write an unregistered legal-context constraint into a VI mandate and expect it to
 // travel" — and the host leaves no carrier: only OPEN mandates carry a constraints array, and there
 // "verifiers MUST reject open mandates containing unknown constraint types", while the Immediate-mode
@@ -101,7 +102,11 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // refusals (terms-url-missing, terms-url-malformed, mismatch), every slot-less manifest gains
 // terms-url-unplaceable, and every protocol gains a ROUNDTRIP case: place then extract in one op, the
 // composition certification whose absence let two separately-conformant halves ship jointly broken.
-const CORPUS_SIZE = 844;
+// 844 → 847 on 2026-08-19, from the audit remediation: `discovery` certifies that a UCP business profile
+// omitting the OPTIONAL `spec` is read rather than refused; `report.schema` gains a report missing
+// `claimedClass`, now a required member; and `placement.ucp` gains the terms-url-missing refusal, which
+// UCP could not state while its manifest declared no slot for a locator its host has always had.
+const CORPUS_SIZE = 847;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

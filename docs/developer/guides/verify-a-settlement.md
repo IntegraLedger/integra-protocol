@@ -260,7 +260,7 @@ const report = await verify({
 });
 
 console.log(
-  `verified: ${report.verified} | supportedClass: ${report.supportedClass}`,
+  `verified: ${report.verified} | claimed: ${report.claimedClass} | supported: ${report.supportedClass}`,
 );
 for (const step of report.steps) {
   const why =
@@ -274,7 +274,7 @@ for (const step of report.steps) {
 ```
 
 ```text
-verified: false | supportedClass: TC-2
+verified: false | claimed: TC-2 | supported: TC-0
    atr-fingerprint          proved
    settlement-enumeration   proved
    buyer-acceptance         not-attempted no-acceptance
@@ -286,7 +286,8 @@ verified: false | supportedClass: TC-2
 
 `verified: false` is the correct answer at the default `depth: "structural"`, where the walk is a
 presence-and-absence readout and cannot raise a verdict at all. Five steps read `not-attempted` with the
-reason each could not run — **an absent input never becomes a pass.** All of that is
+reason each could not run — **an absent input never becomes a pass** — and `supported: TC-0` follows from
+exactly that: `resolve-party` is a `TC-1` rung and it never proved, so no class holds. All of that is
 [concepts/verification-walk.md](../concepts/verification-walk.md); what this guide adds is the one input
 the walk cannot obtain for itself.
 
@@ -320,10 +321,11 @@ is the true statement.
 
 Recovery succeeded and the value disagrees with the recomputation. That is a **contradiction**, not a gap,
 and it is the one thing this whole procedure exists to detect. `atr-fingerprint` fails, and a single failed
-step drops `supportedClass` to `TC-0`:
+step drops `supportedClass` to `TC-0` **even where every other rung proved** — which is what separates an
+impeachment from a gap:
 
 ```text
-verified: false | supportedClass: TC-0
+verified: false | claimed: TC-2 | supported: TC-0
 {"name":"atr-fingerprint","outcome":{"status":"failed","haltClass":"verification-failure"}}
 ```
 
@@ -338,7 +340,7 @@ not, and a link that widens its parent's bounds is a forgery whether or not ever
 verifies. Supplying `authorityChain` to the same walk:
 
 ```text
-verified: false | supportedClass: TC-0
+verified: false | claimed: TC-2 | supported: TC-0
    atr-fingerprint          proved
    settlement-enumeration   proved
    buyer-acceptance         not-attempted no-acceptance

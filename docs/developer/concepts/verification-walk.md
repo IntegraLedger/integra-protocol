@@ -120,7 +120,7 @@ the retained evidence package, so the artifact is kept and referenced even thoug
 re-checked here. Closing it properly needs a rail decoder, and until one exists the honest thing is to say
 which rung is standing on a retention check.
 
-## `verified` and `supportedClass` are readouts, not targets
+## `verified` is a verdict about a claim; `supportedClass` is a finding
 
 `depth` decides what the walk is entitled to say.
 
@@ -130,9 +130,21 @@ Passing `depth: "mechanical"` — where the caller has gathered the inputs over 
 become an honest function of the walk: `true` only when every class-required step is `proved` and no step
 `failed`.
 
-`supportedClass` works the same way. The walk can **confirm or impeach** the shape the record claims, and
-nothing else: any `failed` step drops it to `TC-0`, and the walk never raises it above `claimedClass`.
-A report is a statement about what its producer could see, not a score to optimize.
+`supportedClass` is not the same kind of thing. It is a **finding**, computed from the steps alone: the
+highest class every one of whose required rungs is `proved`, dropping to `TC-0` the moment any step fails.
+White paper #4 §5 defines a transaction's class as "the highest class whose criteria it fully meets", so
+the caller's claim neither caps the answer nor lifts it — a record that proves nothing reads `TC-0` however
+high the caller aimed, and one whose rungs reach past the claim reads what they reach.
+
+The claim is still reported, as `claimedClass`, because `verified` answers *"did the record reach the class
+it claimed?"* and cannot be read without it. Comparing the two is the useful act: where they agree the
+record met its own shape, and where they differ it did not.
+
+Note what `depth` does and does not touch. Step outcomes are depth-agnostic — they depend on the inputs
+supplied, not on the depth — so `depth` governs `verified` alone. That is also why a `not-attempted` rung
+never lowers the class *dishonestly*: it lowers it because nothing proved, and the step's own reason says
+whether that was the record's gap or this walk's. A report is a statement about what its producer could
+see, not a score to optimize.
 
 ## Authority chain custody
 
@@ -285,7 +297,10 @@ verified: false | anyStepFailed: true
 ```
 
 Read the difference between line 1 and lines 3–7. One record contradicted its settlement; five rungs were
-never reached for. Only the first drove `supportedClass` to `TC-0`.
+never reached for. Both leave `supportedClass` at `TC-0` here, and they are not the same fact: the failure
+**impeaches** — it would force `TC-0` even if every other rung had proved — while the gaps merely fail to
+lift the class, and would lift it the moment their inputs were supplied. `steps` is where that difference
+is legible; the summary cannot carry it.
 
 `recourse-elections` is worth a second look: its reason is `no-evidence-package`, not `no-elections-recorded`.
 This record *did* elect a forum and a governing law, so the step got past those gates and stopped at the

@@ -15,7 +15,8 @@
         "description": {
           "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
         }
-      }
+      },
+      "termsUrlField": "url"
     },
     "field": "policies[type=com.integraledger.policy.legal_context]",
     "readAlso": [
@@ -48,7 +49,8 @@
         },
         "doc": {
           "id": "checkout_1"
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -59,6 +61,7 @@
               "description": {
                 "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
               },
+              "url": "https://seller.example/.well-known/legal-context.json",
               "type": "com.integraledger.policy.legal_context",
               "com.integraledger.legal_context": {
                 "type": "sha256",
@@ -88,7 +91,8 @@
               }
             }
           ]
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -104,6 +108,7 @@
               "description": {
                 "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
               },
+              "url": "https://seller.example/.well-known/legal-context.json",
               "type": "com.integraledger.policy.legal_context",
               "com.integraledger.legal_context": {
                 "type": "sha256",
@@ -139,7 +144,8 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": null
+        "doc": null,
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -156,7 +162,8 @@
           "type": "ipfs",
           "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
         },
-        "doc": {}
+        "doc": {},
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -192,7 +199,10 @@
             "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
           },
           "termsUrl": {
-            "kind": "no-field-declared"
+            "kind": "declared-fields-empty",
+            "fields": [
+              "policies[type=com.integraledger.policy.legal_context].url"
+            ]
           }
         }
       }
@@ -229,7 +239,10 @@
             "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
           },
           "termsUrl": {
-            "kind": "no-field-declared"
+            "kind": "declared-fields-empty",
+            "fields": [
+              "policies[type=com.integraledger.policy.legal_context].url"
+            ]
           }
         }
       }
@@ -261,7 +274,10 @@
             "value": "https://seller.example/terms/abc"
           },
           "termsUrl": {
-            "kind": "no-field-declared"
+            "kind": "declared-fields-empty",
+            "fields": [
+              "policies[type=com.integraledger.policy.legal_context].url"
+            ]
           }
         }
       }
@@ -301,7 +317,10 @@
             "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
           },
           "termsUrl": {
-            "kind": "no-field-declared"
+            "kind": "declared-fields-empty",
+            "fields": [
+              "policies[type=com.integraledger.policy.legal_context].url"
+            ]
           }
         }
       }
@@ -411,7 +430,8 @@
               }
             }
           ]
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -422,6 +442,7 @@
               "description": {
                 "plain": "Our own wording, thanks."
               },
+              "url": "https://seller.example/.well-known/legal-context.json",
               "com.integraledger.legal_context": {
                 "type": "sha256",
                 "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
@@ -432,8 +453,8 @@
       }
     },
     {
-      "name": "place REFUSES a terms URL this manifest has no slot for — dropping it silently would under-advertise",
-      "$comment": "The manifest declaring NO termsUrlFields is a statement of protocol fact — this wire has no room for a locator — and the kit holds the seller to it: an advertisement supplying one is answered with a refusal, never with a document that silently carries less than the seller stated.",
+      "name": "place WRITES the terms URL onto the very policies entry the reference lands in",
+      "$comment": "UCP's policy object declares `url` — \"Optional link to the full policy document\", format uri, at UCP HEAD source/schemas/shopping/types/policy.json — and §C.3's illustration carries `url` and `atrHash` side by side in one entry. The locator therefore rides the per-transaction record, not `links[]`, which §C.3 separates as \"a standing page, not a per-transaction record\". SUPERSEDES the case pinned here before 2026-08-19, which expected `ucp/terms-url-unplaceable` on the reasoning that this wire had no room for a locator — measured against the wrong carrier, and the reason UCP was the one shipped protocol that refused its own advertisement (integra-protocol#8).",
       "input": {
         "protocol": "ucp",
         "op": "place",
@@ -447,9 +468,43 @@
         }
       },
       "expected": {
+        "ok": true,
+        "value": {
+          "id": "checkout_1",
+          "policies": [
+            {
+              "description": {
+                "plain": "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms."
+              },
+              "url": "https://seller.example/.well-known/legal-context.json",
+              "type": "com.integraledger.policy.legal_context",
+              "com.integraledger.legal_context": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "place REFUSES an integrity-bearing reference with no terms URL",
+      "$comment": "The #8 rule, now reachable on UCP: a slot is declared, so a sha256 advertisement without a locator is refused rather than written. A counterparty that does not already hold the terms cannot resolve a bare hash, which is what every shipped buyer parser enforces by refusing the challenge.",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "id": "checkout_1"
+        }
+      },
+      "expected": {
         "refused": true,
         "haltClass": "verification-failure",
-        "code": "ucp/terms-url-unplaceable"
+        "code": "ucp/terms-url-missing"
       }
     },
     {
@@ -464,7 +519,8 @@
         },
         "doc": {
           "id": "checkout_1"
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -474,7 +530,8 @@
             "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
           },
           "termsUrl": {
-            "kind": "no-field-declared"
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }

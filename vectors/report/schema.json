@@ -7,6 +7,7 @@
   "required": [
     "verified",
     "assurance",
+    "claimedClass",
     "supportedClass",
     "steps",
     "asOf",
@@ -19,9 +20,13 @@
       "type": "string",
       "description": "the stated assurance level the report attests"
     },
+    "claimedClass": {
+      "type": "string",
+      "description": "the class the record was shaped for, as the caller stated it (TC-0..TC-4) — the walk's input, echoed so `verified` can be interpreted at all; required because a report carrying only the finding cannot say what the finding was measured against"
+    },
     "supportedClass": {
       "type": "string",
-      "description": "the transaction class the record honestly supports (TC-0..TC-4) — an honest readout, never a target"
+      "description": "the class the walk reached (TC-0..TC-4) — the highest whose every required step is proved, TC-0 if any step failed; a finding computed from the steps alone, neither capped nor lifted by `claimedClass`"
     },
     "asOf": {
       "type": "string",

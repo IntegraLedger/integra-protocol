@@ -146,7 +146,7 @@ walker states for attacker-influenced input. A document whose fields are all inh
 | **Slot** | `capabilities.extensions[]` entry | `ucp.capabilities["com.integraledger.legal_context"]`, an array |
 | **Requirements ride** | `params` | `config` |
 | **Can demand support?** | yes — `required` | **no such notion**; a capability the counterparty does not declare is silently pruned |
-| **Authority binding** | none — a URI is only an identifier | **enforced**: `spec` and `schema` origins MUST match the namespace authority |
+| **Authority binding** | none — a URI is only an identifier | **enforced**: a declared `schema` URL's origin MUST match the namespace authority; `spec` is outside the binding and MUST only be `https` |
 | **Versioning** | a new URI per breaking change | `version`, `YYYY-MM-DD`, one array entry per version |
 
 The asymmetry is the host protocols', not ours — we describe what each specifies, we do not level them. UCP's authority binding is the stronger property — the
@@ -201,8 +201,10 @@ governance and the capability definition; profile shape cross-read against a pub
    host". The `spec` URL is explicitly outside it — "its origin is **not** authority-bound: it **MUST** be
    `https` but **MAY** be served from any host". A platform "MUST validate each business-declared `schema`
    URL before fetching it" and MUST reject the entity on a mismatch. No central registry, no maintainer
-   approval. `readUcpProfile` implements the platform side: it binds the origin of `schema` alone and holds
-   `spec` to `https` only, which is what the host actually says.
+   approval. `readUcpProfile` implements the platform side against a business document: it binds the origin
+   of `schema` alone and holds a **declared** `spec` to `https` only, which is what the host actually says.
+   An omitted `spec` is conformant there — the MUST is on the value's scheme, and only a platform-declared
+   capability must carry the member — so requiring its presence would refuse a conformant counterparty.
 
    *Every quotation in this section was re-verified verbatim against `universal-commerce-protocol/ucp` at
    HEAD on 2026-08-11.*

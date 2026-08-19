@@ -19,7 +19,15 @@
     "typo fix in a host's README is not drift in its specification. `status` is the claim this file makes:",
     "`current` means the tree agrees with that revision, `drifted` means the host has moved and the re-read",
     "is owed. A `drifted` entry is a recorded debt, not a broken gate, which is why the weekly job fails only",
-    "on a `current` entry that moved. An entry that is permanently red is an entry everyone learns to ignore."
+    "on a `current` entry that moved. An entry that is permanently red is an entry everyone learns to ignore.",
+    "",
+    "THIS FILE IS THE CLOSED SET. Every `owner/repo@sha` written anywhere in source must resolve to a revision",
+    "recorded here, and `rail-invariants/test/spec-pins-invariant.test.ts` sweeps the tree and refuses one that",
+    "does not. `readAt` is the ordinary answer. `alsoCited` is the other one: a revision of the same paths that",
+    "source deliberately cites INSTEAD, because a quotation carrying line numbers is pinned to the tree it was",
+    "numbered against — line numbers move where bytes do not. Each `alsoCited` entry carries its revision and",
+    "the reason that revision rather than `readAt`. One host repository may hold two entries when two of its",
+    "path sets move independently; a specification and the SDK beside it are not one pin."
   ],
   "hosts": [
     {
@@ -40,6 +48,16 @@
         "placement-x402"
       ],
       "note": "The §6.1 reserved keys and paymentFlow axis landed in this very commit. Nine published extensions, all inlining a complete JSON Schema; Bazaar forbids an external $ref."
+    },
+    {
+      "id": "x402-go",
+      "repo": "x402-foundation/x402",
+      "paths": ["go/mechanisms/evm/constants.go"],
+      "readAt": "db9dabd0c6745ac1a96621a4e671d18eb53e0346",
+      "readOn": "2026-08-08",
+      "status": "drifted",
+      "citedBy": ["binding-evm-x402"],
+      "note": "x402's Go REFERENCE IMPLEMENTATION, not its specification, and a separate entry because the two path sets move independently: `specs/` changes rarely and `go/` constantly, so folding this path into the `x402` entry would fire that pin on every SDK push and teach a reader to close it unread. Cited for one claim only — the Monad EIP-712 domain mismatch transcribed in `binding-evm-x402/src/constants.ts`, reported upstream as issue 3102. DRIFTED, and the debt is precise: commit 76bda78ef420 (2026-08-10, PR 3105) changed that entry's domain name to \"USDC\", which is what the chain reports and what this tree's row already carries. The re-read owes the AN UPSTREAM MISMATCH block in constants.ts — a present-tense disagreement that upstream has closed. Nothing in the binding changes: the token contract computes the separator, so the chain was and remains the authority."
     },
     {
       "id": "mpp",
@@ -78,6 +96,13 @@
       "readAt": "cfc9d34bc4",
       "readOn": "2026-07-30",
       "status": "current",
+      "alsoCited": [
+        {
+          "revision": "0ef1b02547e959d770ebf3460d058f5c3421641c",
+          "readOn": "2026-07-30",
+          "reason": "A TREE pin, and deliberate. That commit is `main` at 2026-07-23 — after the v1.0.1 tag — and it does not touch the proto: the blob is byte-identical to `readAt`'s, so every claim `placement-a2a` makes holds at both. It is cited anyway because every proto LINE NUMBER quoted there is numbered against that tree, and a line number is a property of the tree rather than of the file."
+        }
+      ],
       "citedBy": ["placement-a2a", "discovery"],
       "note": "AgentExtension has four fields — uri, description, required, params — which v1.38 §C.8 now states too."
     },

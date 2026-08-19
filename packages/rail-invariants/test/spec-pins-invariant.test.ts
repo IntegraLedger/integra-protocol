@@ -17,12 +17,30 @@
  * Coverage, so adding a placement for a new protocol without pinning its host fails here rather than
  * going unnoticed. And that every `drifted` entry carries a note — a recorded debt is only a debt if it
  * says what is owed; without that it is indistinguishable from an entry nobody has looked at.
+ *
+ * ★ AND THAT THE PIN FILE IS THE CLOSED SET. The assertions above make `spec-pins.json` well-formed; they
+ * say nothing about whether shipped source cites the revisions it records. Measured 2026-08-19, eight sites
+ * across three packages and the corpus cited an x402 revision that touches neither file they name — its
+ * PARENT is what moved the specification — while pairing it with a read date months before the section
+ * being quoted existed. The bytes were right and every checkable part of the citation was wrong, which is
+ * the failure mode a pin file exists to end. So the sweep below reads every `owner/repo@sha` in source and
+ * refuses one this file does not record, under `readAt` or under `alsoCited`.
+ *
+ * ★ WHAT THE SWEEP DOES NOT CATCH, said plainly. It matches on REPOSITORY, not on path: a host whose pin
+ * file holds two entries for two path sets will accept either revision at either citation. Tying a sha to a
+ * path would require every citation to name one, and several legitimately do not. What it guarantees is
+ * that no revision is cited which nobody recorded — the state that let all eight sites survive every
+ * previous gate.
  */
 import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { KNOWN_PROTOCOL_IDS } from "@integraledger/lcp-binding-core";
 import { describe, expect, it } from "vitest";
 
 const ROOT = new URL("../../../", import.meta.url).pathname;
+
+/** A revision of a host's pinned paths that source cites INSTEAD of `readAt`, and why it does. */
+type AlsoCited = { revision: string; readOn: string; reason: string };
 
 type Host = {
   id: string;
@@ -32,15 +50,95 @@ type Host = {
   readAt?: string;
   readOn: string;
   status?: "current" | "drifted";
+  tracksUpstream?: false;
   pinnable?: false;
   reason?: string;
   note?: string;
+  alsoCited?: AlsoCited[];
   citedBy: string[];
 };
 
 const PINS = JSON.parse(readFileSync(`${ROOT}spec-pins.json`, "utf8")) as {
   hosts: Host[];
 };
+
+/**
+ * Directories the sweep does not enter, each for a reason no pattern can carry.
+ *
+ * `node_modules` is other people's code and `dist` is `src` compiled — and a stale `dist` sorts before
+ * `src`, so a walker that reads it reports a citation nobody can edit. `lib` is a vendored upstream
+ * submodule whose citations are its owner's claims, not this tree's. `.github` pins ACTIONS by digest:
+ * `owner/repo@sha` shaped, but a supply-chain pin annotated with the tag it resolves to and advanced by
+ * Dependabot, which is a different discipline from a claim about a host specification.
+ */
+const NOT_SOURCE = new Set([
+  ".git",
+  ".github",
+  ".stryker-tmp",
+  "dist",
+  "lib",
+  "node_modules",
+  "reports",
+]);
+
+/** `packages/conformance/vectors` is a gitignored build copy; the root `vectors/` is the corpus. */
+const NOT_SOURCE_PATHS = new Set(["packages/conformance/vectors"]);
+
+/** The extensions that carry prose or manifests. Lockfiles and binaries carry neither. */
+const TEXT = /\.(?:ts|mts|cts|js|mjs|cjs|json|md)$/;
+
+/** `owner/repo@<sha>` in any of the spellings source uses — backticked, bare, or inside a JSON string. */
+const CITATION =
+  /\b([A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9._-]+)@([0-9a-f]{7,40})\b/g;
+
+/** Every source file the sweep reads, repository-relative. */
+function sourceFiles(): string[] {
+  const out: string[] = [];
+  const walk = (rel: string): void => {
+    for (const e of readdirSync(join(ROOT, rel), { withFileTypes: true })) {
+      const next = rel === "" ? e.name : `${rel}/${e.name}`;
+      if (e.isDirectory()) {
+        if (NOT_SOURCE.has(e.name) || NOT_SOURCE_PATHS.has(next)) continue;
+        walk(next);
+      } else if (TEXT.test(e.name)) out.push(next);
+    }
+  };
+  walk("");
+  return out;
+}
+
+/** One host-revision citation found in source: where it is, and what it names. */
+type Citation = { file: string; line: number; repo: string; sha: string };
+
+const CITATIONS: Citation[] = sourceFiles().flatMap((file) =>
+  readFileSync(join(ROOT, file), "utf8")
+    .split("\n")
+    .flatMap((text, i) =>
+      [...text.matchAll(CITATION)].map((m) => ({
+        file,
+        line: i + 1,
+        repo: m[1] as string,
+        sha: m[2] as string,
+      })),
+    ),
+);
+
+/** Every revision this file records, by repository — `readAt` and `alsoCited` alike. */
+const RECORDED = new Map<string, string[]>();
+for (const h of PINS.hosts) {
+  if (h.repo === undefined) continue;
+  const known = RECORDED.get(h.repo) ?? [];
+  if (h.readAt !== undefined) known.push(h.readAt);
+  for (const a of h.alsoCited ?? []) known.push(a.revision);
+  RECORDED.set(h.repo, known);
+}
+
+/** A pin may be abbreviated and so may a citation; agree on whichever prefix is shorter. */
+function isRecorded(repo: string, sha: string): boolean {
+  return (RECORDED.get(repo) ?? []).some(
+    (rev) => rev.startsWith(sha) || sha.startsWith(rev),
+  );
+}
 
 describe("spec-pins.json is a file worth running a drift job against", () => {
   it("parses, and pins a plausible number of hosts", () => {
@@ -89,6 +187,46 @@ describe("spec-pins.json is a file worth running a drift job against", () => {
           true,
         );
     }
+  });
+
+  it("every alsoCited revision is a git object id and says why it is cited instead of readAt", () => {
+    for (const h of PINS.hosts)
+      for (const a of h.alsoCited ?? []) {
+        expect(a.revision, h.id).toMatch(/^[0-9a-f]{10,40}$/);
+        expect(a.readOn, h.id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        // A tree pin with no reason is a stray sha with a home. The reason is the whole difference: it says
+        // what the citation is tied to that `readAt` cannot give it, so the next reader can check the claim
+        // rather than assume the pin was a typo and "fix" it.
+        expect(a.reason.length, `${h.id} @ ${a.revision}`).toBeGreaterThan(80);
+      }
+  });
+
+  it("the sweep walks source and finds the citations that are there", () => {
+    // The blind-gate canary, and it is not decoration: a walker that skips `vectors/` or stops at the first
+    // package reports clean over a tree full of stray shas. These two are the citations that exist today —
+    // a corpus vector and a placement — so a sweep that misses either has stopped reading something.
+    expect(CITATIONS.length).toBeGreaterThan(8);
+    expect(
+      CITATIONS.some((c) => c.file === "vectors/placement/a2a.json"),
+      "sweep never reached the corpus",
+    ).toBe(true);
+    expect(
+      CITATIONS.some((c) => c.file.startsWith("packages/placement-x402/")),
+      "sweep never reached the placements",
+    ).toBe(true);
+  });
+
+  it("every revision cited in source is one this file records", () => {
+    const stray = CITATIONS.filter((c) => !isRecorded(c.repo, c.sha)).map(
+      (c) => `${c.file}:${c.line} cites ${c.repo}@${c.sha}`,
+    );
+    expect(
+      stray.sort(),
+      "A citation must resolve to a revision spec-pins.json records for that repository. Repoint it to " +
+        "that host's `readAt` — the last commit touching the pinned paths, which is NOT the commit that " +
+        "happened to be at the tip when someone read them — or, when the tree pin is deliberate, record it " +
+        "under that host's `alsoCited` with the reason it is tied to that tree.",
+    ).toEqual([]);
   });
 
   it("every protocol this tree places into has a pinned host", () => {

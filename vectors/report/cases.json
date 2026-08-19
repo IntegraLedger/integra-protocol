@@ -1,8 +1,8 @@
 {
-  "$comment": "Walk scenarios (verify package fixture, not a conformance corpus area — the cross-party format is the JCS serialization). `input` is a verify() input: `atrBytes` uses the {encoding,data} byte convention, and `acceptanceVerifier` names a deterministic port the harness supplies ('accepts' | 'rejects') because a signature-verifier port is a function, not serializable JSON. `expected` pins verified, supportedClass (the honest readout — TC-0 on any failure, never raised), assurance (the BUYER's stated level), and each step's status. AMENDED 2026-07-24: the walk gained `recourse-elections` (RCS-1/2/4), the acceptance rung became signature-gated, and the thin TC-3 case landed. Note what the last four cases pin: a gap (no verifier, unreadable prose elections, an incomplete package, an empty chain) leaves verified false WITHOUT impeaching supportedClass, while a contradiction (a bad signature, a widened link, a mismatched fingerprint) impeaches to TC-0. SUPERSEDED PINS (2026-08-07): dispute-resolution examples generalized -- illustrative examples name no provider; atrHash 0x6de976ec4ab4ed507b467975a34c9a147a928aa570bf9f9145e7f5e18c4ae631 -> 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 (JSON terms doc) and 0xf7975153e43b4e63bcb3ce565c584deb335a919edb840384799844178e96742a -> 0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98 (markdown terms doc), each re-derived independently with python3 hashlib over the exact data bytes.",
+  "$comment": "Walk scenarios (verify package fixture, not a conformance corpus area — the cross-party format is the JCS serialization). `input` is a verify() input: `atrBytes` uses the {encoding,data} byte convention, and `acceptanceVerifier` names a deterministic port the harness supplies ('accepts' | 'rejects') because a signature-verifier port is a function, not serializable JSON. `expected` pins verified, claimedClass (the caller's input, echoed), supportedClass (the FINDING — the highest class whose every required step is proved, TC-0 on any failure), assurance (the BUYER's stated level), and each step's status. What the cases pin about the class: it is computed from the steps alone, so it is neither capped by the claim (case 1 claims TC-2 and reaches TC-3) nor held up by it (a gap lowers the class to whatever the proved rungs reach, and an unproved TC-1 rung leaves TC-0), while a contradiction — a bad signature, a widened link, a mismatched fingerprint — impeaches to TC-0 outright. AMENDED 2026-07-24: the walk gained `recourse-elections` (RCS-1/2/4), the acceptance rung became signature-gated, and the thin TC-3 case landed. SUPERSEDED PINS (2026-08-19): supportedClass previously echoed `claimedClass` unless a step FAILED, so a record proving nothing reported the class the caller named; nine cases carried that value and now carry the class their steps reach. SUPERSEDED PINS (2026-08-07): dispute-resolution examples generalized -- illustrative examples name no provider; atrHash 0x6de976ec4ab4ed507b467975a34c9a147a928aa570bf9f9145e7f5e18c4ae631 -> 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 (JSON terms doc) and 0xf7975153e43b4e63bcb3ce565c584deb335a919edb840384799844178e96742a -> 0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98 (markdown terms doc), each re-derived independently with python3 hashlib over the exact data bytes.",
   "cases": [
     {
-      "name": "fully-supplied structural walk — every rung proved, class shaped for TC-2, unverified",
+      "name": "fully-supplied structural walk — every TC-3 rung proved, so the class REACHES TC-3 though the caller claimed only TC-2",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -106,7 +106,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-3",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -227,6 +228,7 @@
       },
       "expected": {
         "verified": true,
+        "claimedClass": "TC-3",
         "supportedClass": "TC-3",
         "assurance": "attested",
         "multiplySettled": false,
@@ -242,7 +244,7 @@
       }
     },
     {
-      "name": "TC-3 with no signature verifier — the acceptance cannot prove, verified false, class NOT impeached",
+      "name": "TC-3 with no signature verifier — the acceptance never proves, so the class rests at the TC-2 its rungs reach",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -347,7 +349,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-3",
+        "claimedClass": "TC-3",
+        "supportedClass": "TC-2",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -468,6 +471,7 @@
       },
       "expected": {
         "verified": false,
+        "claimedClass": "TC-3",
         "supportedClass": "TC-0",
         "assurance": "attested",
         "multiplySettled": false,
@@ -483,7 +487,7 @@
       }
     },
     {
-      "name": "TC-3 over a prose ATR — the elections are unreadable to a machine, verified false, class NOT impeached",
+      "name": "TC-3 over a prose ATR — the elections are unreadable to a machine, so the class rests at TC-2",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -589,7 +593,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-3",
+        "claimedClass": "TC-3",
+        "supportedClass": "TC-2",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -604,7 +609,7 @@
       }
     },
     {
-      "name": "TC-3 whose evidence package omits the spend artifact — RCS-4 incomplete, verified false",
+      "name": "TC-3 whose evidence package omits the spend artifact — RCS-4 incomplete, so the class rests at TC-2",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -709,7 +714,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-3",
+        "claimedClass": "TC-3",
+        "supportedClass": "TC-2",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -724,7 +730,7 @@
       }
     },
     {
-      "name": "an EMPTY authority chain proves nothing — the ATA rung is not-attempted, never proved",
+      "name": "an EMPTY authority chain proves nothing — the ATA rung never proves, so the class rests at TC-2",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -814,7 +820,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-3",
+        "claimedClass": "TC-3",
+        "supportedClass": "TC-2",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -865,6 +872,7 @@
       },
       "expected": {
         "verified": false,
+        "claimedClass": "TC-2",
         "supportedClass": "TC-0",
         "assurance": "no-assurance-stated",
         "multiplySettled": false,
@@ -916,6 +924,7 @@
       },
       "expected": {
         "verified": false,
+        "claimedClass": "TC-2",
         "supportedClass": "TC-0",
         "assurance": "no-assurance-stated",
         "multiplySettled": false,
@@ -969,6 +978,7 @@
       },
       "expected": {
         "verified": false,
+        "claimedClass": "TC-2",
         "supportedClass": "TC-0",
         "assurance": "no-assurance-stated",
         "multiplySettled": false,
@@ -1021,6 +1031,7 @@
       },
       "expected": {
         "verified": false,
+        "claimedClass": "TC-2",
         "supportedClass": "TC-0",
         "assurance": "no-assurance-stated",
         "multiplySettled": false,
@@ -1036,7 +1047,7 @@
       }
     },
     {
-      "name": "unretrievable ATR — fingerprint indeterminate (not a failure), class not impeached",
+      "name": "unretrievable ATR — fingerprint indeterminate (not a failure), and with no rung proved the class is TC-0",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -1046,7 +1057,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-0",
         "assurance": "no-assurance-stated",
         "multiplySettled": false,
         "statuses": {
@@ -1086,6 +1098,7 @@
       },
       "expected": {
         "verified": false,
+        "claimedClass": "TC-2",
         "supportedClass": "TC-0",
         "assurance": "no-assurance-stated",
         "multiplySettled": true,
@@ -1101,7 +1114,7 @@
       }
     },
     {
-      "name": "resolve-party is NOT proved by a chain entry stating a blank method (IDN-3)",
+      "name": "resolve-party is NOT proved by a chain entry stating a blank method (IDN-3) — a TC-1 rung, so the class is TC-0",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -1201,7 +1214,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-0",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -1217,7 +1231,7 @@
       "$comment": "A resolution chain records HOW a party was resolved. An entry whose `via` is empty records nothing, so the chain is present in shape only. Proving attribution from it would let a record claim both parties were resolved while naming no method for either."
     },
     {
-      "name": "resolve-party is NOT proved by an EMPTY chain entry (IDN-1)",
+      "name": "resolve-party is NOT proved by an EMPTY chain entry (IDN-1) — a TC-1 rung, so the class is TC-0",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -1313,7 +1327,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-0",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {
@@ -1329,7 +1344,7 @@
       "$comment": "`chain: [{}]` is a non-empty array of nothing. Length alone is not evidence: the step must read what the entries say, or an array of blanks passes the same gate a real resolution does."
     },
     {
-      "name": "resolve-party is NOT proved for a party with no subject (IDN-1)",
+      "name": "resolve-party is NOT proved for a party with no subject (IDN-1) — a TC-1 rung, so the class is TC-0",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -1433,7 +1448,8 @@
       },
       "expected": {
         "verified": false,
-        "supportedClass": "TC-2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-0",
         "assurance": "attested",
         "multiplySettled": false,
         "statuses": {

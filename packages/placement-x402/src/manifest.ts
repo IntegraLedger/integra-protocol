@@ -68,7 +68,8 @@ export const LEGAL_CONTEXT_SCHEMA: Readonly<Record<string, unknown>> =
 
 /**
  * x402 reference placement — the HTTP-layer carrier, cut against the live x402 v2 specification
- * (`x402-foundation/x402@1fec3aa04e41`, `specs/x402-specification-v2.md`; gate discharged in the README).
+ * (`x402-foundation/x402@db5da2e65952`, `specs/x402-specification-v2.md`, read 2026-08-11; gate discharged
+ * in the README).
  *
  * **THE CANONICAL REPOSITORY IS THE FOUNDATION'S, and the citation moved on 2026-08-08.** Every
  * reference here named `coinbase/x402`, which the GitHub API reports as `"fork": true`;
@@ -174,5 +175,5 @@ export const X402_PLACEMENT: PlacementManifest = {
   ],
   carrierTypes: ["sha256"],
   specRef:
-    "x402 v2 (x402-foundation/x402@1fec3aa04e41 specs/x402-specification-v2.md, read 2026-07-30) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra carries the §C.4 mirror (reserved names per §6.1 untouched; gate discharged: see README)",
+    "x402 v2 (x402-foundation/x402@db5da2e65952 specs/x402-specification-v2.md, read 2026-08-11) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra carries the §C.4 mirror (reserved names per §6.1 untouched; gate discharged: see README)",
 };

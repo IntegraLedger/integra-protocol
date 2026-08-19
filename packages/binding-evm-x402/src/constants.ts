@@ -17,9 +17,11 @@
  *   cast call <asset> "version()(string)"     --rpc-url <rpc>
  *   cast call <asset> "DOMAIN_SEPARATOR()(bytes32)" --rpc-url <rpc>
  *
- * **AN UPSTREAM MISMATCH, RECORDED HERE BECAUSE IT IS THE KIND THAT FAILS SILENTLY.** x402's own Go
- * implementation disagrees with the chain about Monad. Verified 2026-08-08 at
- * `x402-foundation/x402@1fec3aa04e41`, `go/mechanisms/evm/constants.go`: the `"eip155:143"` entry names
+ * **AN UPSTREAM MISMATCH, SINCE FIXED — recorded because it is the kind that fails silently.** x402's own
+ * Go implementation disagreed with the chain about Monad. Verified 2026-08-08 at
+ * `x402-foundation/x402@db9dabd0c674` — the last commit touching `go/mechanisms/evm/constants.go`, which is
+ * pinned as `x402-go` in `spec-pins.json` and is NOT the specification pin: the SDK and the specification
+ * are separate path sets that move on separate schedules. At that revision the `"eip155:143"` entry names
  * the SAME asset address as the `monad` entry below — `0x754704Bc059F8C67012fEd69BC8A327a5aafb603` — and
  * gives it EIP-712 domain `Name: "USD Coin"`. The deployed contract's `name()` returns `"USDC"`, which is
  * what the entry below carries and what the pinned `DOMAIN_SEPARATOR()` assertion in this repository holds
@@ -29,11 +31,14 @@
  * "USD Coin" against a contract reporting "USDC" produces an authorization that simply does not recover to
  * the payer. That is the silent failure this whole file exists to prevent, and here it is upstream.
  *
- * **REPORTED UPSTREAM 2026-08-08:** x402-foundation/x402#3102, with the `cast call` reproduction and the
- * observation that USDC deployments are not uniform on this — Base Sepolia and Monad report "USDC" while
- * Base mainnet and Avalanche report "USD Coin", so a value copied between chains yields a wrong domain
- * separator rather than an obvious error. Our entry stays as measured whatever upstream does: the token
- * contract computes the separator, so the chain is the authority.
+ * **REPORTED UPSTREAM 2026-08-08 and FIXED 2026-08-10:** x402-foundation/x402#3102, with the `cast call`
+ * reproduction and the observation that USDC deployments are not uniform on this — Base Sepolia and Monad
+ * report "USDC" while Base mainnet and Avalanche report "USD Coin", so a value copied between chains yields
+ * a wrong domain separator rather than an obvious error. `76bda78ef420` (PR #3105) changed the Go entry to
+ * `"USDC"`, matching the chain and matching the row below. The account is kept because the failure mode is
+ * the reason this file exists at all, and because the pin above is what a reader would otherwise re-derive.
+ * Our entry never depended on the outcome: the token contract computes the separator, so the chain was and
+ * remains the authority.
  *
  * **What this file is not.** It is not an endorsement of a rail, an allowlist, or a supported-chain list.
  * `createX402Adapter` takes any `X402AdapterConfig`, and a deployment absent here is not thereby refused —

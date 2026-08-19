@@ -60,7 +60,8 @@ const REVERSE_DNS = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
  * `atrHash`-aware, which no VI verifier is.
  *
  * **NAMING IS NOT THE OBSTACLE, and an earlier docblock said it was.** It claimed the registered type "has
- * a name only the FIDO Alliance Payments TWG can assign". That is false. LCP v1.38 §C.7 (:1701-1707): the
+ * a name only the FIDO Alliance Payments TWG can assign". That is false. LCP v1.38 §C.7, in the paragraph
+ * opening "Custom naming is available and is not the obstacle": the
  * `mandate.checkout.*` and `mandate.payment.*` namespaces are "open for extension by implementers", with
  * registration a SHOULD for interoperability, and collision-resistant URI naming (a URN such as
  * `urn:example:loyalty-points`) is available for types outside them. What blocks the carrier is RECOGNITION,

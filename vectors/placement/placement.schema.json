@@ -55,6 +55,11 @@
               "type": "object",
               "minProperties": 1,
               "description": "OPTIONAL — sibling fields written onto a NEWLY CREATED entry because the HOST's schema requires them, never applied when merging into an entry that already exists (a counterparty's own prose is theirs). UCP is the consumer: policies[] entries are required:[type,description], so an entry carrying only a tag and a value is an invalid document, and a writer emitting one would assert a shape the host rejects. A constant may not name the entry's own tagField or valueField — assertManifestHygiene refuses that, because a manifest declaring a constant the writer would drop is stating something it does not mean."
+            },
+            "termsUrlField": {
+              "type": "string",
+              "minLength": 1,
+              "description": "OPTIONAL — the entry property carrying the human-readable terms URL, where the host declares the locator on the SAME entry as the reference. Container-relative because the entry's index is chosen at write time (replace-by-tag, else append), so no dotted path in termsUrlFields can name it. UCP is the consumer: its policy object is additionalProperties:true and declares `url` (\"Optional link to the full policy document\", format uri), and LCP v1.38 §C.3's illustration carries url and atrHash side by side in one entry. Written on create AND on merge, unlike constants — the URL is half of our own advertisement on our own tagged entry, not a host sibling. May not name the entry's own tagField or valueField."
             }
           },
           "description": "An array of entries; find the entry whose tagField equals tag; the reference lives in valueField. UCP (links / type=terms_of_service / url) and Mastercard VI (constraints / type=<ns>.lcp_terms_hash / value) reduce to the SAME rule with different data — two protocols with nothing else in common sharing one rule is the evidence the abstraction is discovered rather than invented."

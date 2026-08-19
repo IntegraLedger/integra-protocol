@@ -2,8 +2,9 @@ import type { VerifyDepth } from "./report.js";
 
 export type { VerifyDepth };
 /** The transaction-class ladder. Higher classes require strictly more steps, so a record supporting TC-3
- *  supports every class below it. A class is a CLAIM about what a record can support — it is never a
- *  quality score, and nothing in this package tries to reach a higher one. */
+ *  supports every class below it. A class is never a quality score: it names which rungs a record carries,
+ *  and a record reaches the class its proved rungs reach — no more, and no less because a caller named
+ *  something else. */
 export type TransactionClass = "TC-0" | "TC-1" | "TC-2" | "TC-3" | "TC-4";
 /** Every step the walk can append, in one closed union. Closed because `REQUIRED_STEPS` is keyed by these
  *  names and a typo would silently make a required step unfindable — which `computeVerified` would read as
@@ -80,6 +81,45 @@ export const REQUIRED_STEPS: Record<TransactionClass, readonly StepName[]> = {
     "proportionality-declared",
   ],
 };
+
+/** The ladder from the top down. `TC-0` is deliberately absent: it requires nothing, so it is the floor
+ *  {@link computeSupportedClass} falls to rather than a rung anything has to clear. */
+const LADDER_DESCENDING = [
+  "TC-4",
+  "TC-3",
+  "TC-2",
+  "TC-1",
+] as const satisfies readonly TransactionClass[];
+
+/**
+ * The class the walk actually reached: the highest one every required step of which is `proved`.
+ *
+ * This is the report's `supportedClass`, and it is a FINDING — computed from the steps alone, never from
+ * what the caller said the record was shaped for. White paper #4 §5 defines the class of a transaction as
+ * "the highest class whose criteria it fully meets", so the answer is neither capped by the claim (a record
+ * whose rungs reach TC-3 supports TC-3 even where the caller claimed TC-2) nor floored by it (a record that
+ * proves nothing supports TC-0 however high the caller aimed).
+ *
+ * Any `failed` step ⇒ `TC-0`, whatever else proved. A contradicted rung impeaches the record rather than
+ * merely failing to lift it, which is the one power the impeachment-only steps (`frc-non-gating`,
+ * `reference-placement`) hold: they are required by no class, so they can only ever pull the answer down.
+ *
+ * Only `proved` counts. `not-attempted` and `indeterminate` never lift a class — but they also say nothing
+ * about the record, only about what this walk was given, and the reason rides in each step's own
+ * `depth` token. Read `steps` to tell "the record lacks this rung" from "this verifier was handed no port".
+ */
+export function computeSupportedClass(
+  steps: readonly { name: StepName; outcome: { status: string } }[],
+): TransactionClass {
+  if (steps.some((s) => s.outcome.status === "failed")) return "TC-0";
+  const proved = new Set(
+    steps.filter((s) => s.outcome.status === "proved").map((s) => s.name),
+  );
+  for (const cls of LADDER_DESCENDING) {
+    if (REQUIRED_STEPS[cls].every((name) => proved.has(name))) return cls;
+  }
+  return "TC-0";
+}
 
 /** Whether a walk affirms the claimed class. Three rules, in order: **structural depth is always `false`**
  *  (a presence/absence readout never affirms liveness), any `failed` step impeaches the whole walk, and

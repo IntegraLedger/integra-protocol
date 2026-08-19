@@ -123,7 +123,9 @@ const report = await verify({
   ],
 });
 
-console.log(`verified: ${report.verified} | supportedClass: ${report.supportedClass}`);
+console.log(
+  `verified: ${report.verified} | claimed: ${report.claimedClass} | supported: ${report.supportedClass}`,
+);
 for (const step of report.steps) {
   const why = step.outcome.status === "not-attempted" ? step.outcome.depth : "";
   console.log(`   ${step.name.padEnd(24)} ${step.outcome.status} ${why}`);
@@ -131,7 +133,7 @@ for (const step of report.steps) {
 ```
 
 ```text
-verified: false | supportedClass: TC-2
+verified: false | claimed: TC-2 | supported: TC-0
    atr-fingerprint          proved
    settlement-enumeration   proved
    buyer-acceptance         not-attempted no-acceptance
@@ -161,9 +163,15 @@ identity slot. **An absent input never becomes a pass.** A verifier that reporte
 five would be telling you the record is wrong; what it actually says is that five rungs were never
 reached for.
 
-`supportedClass` reads `TC-2` — the class this record is shaped for, which `claimedClass` defaults to when
-a caller states none, reported back unimpeached because no step failed. It is a readout and never a
-target: any failed step downgrades it to `TC-0`, and the walk never raises it.
+The two class fields say different things, and the gap between them here is the lesson. `claimedClass`
+reads `TC-2` — what this record is shaped for, which is what `claimedClass` defaults to when a caller
+states none. `supportedClass` reads `TC-0`, because it is computed from the steps: it is the highest class
+every one of whose required rungs is `proved`, and `TC-1` already requires `resolve-party`, which was never
+attempted. Two proved rungs do not make a class if they are not that class's own.
+
+That is not the walk being harsh. Supply an identity and this record reads `TC-2`; supply nothing and it
+reads what it can support, which is nothing. The claim cannot lift the finding, and — for the same reason —
+cannot cap it either: a record whose rungs reach `TC-3` reads `TC-3` even where the caller claimed less.
 
 ## Where next
 

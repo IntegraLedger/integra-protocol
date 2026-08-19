@@ -67,12 +67,18 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * `links[].type` is an OPEN set ("Businesses MAY define custom types"); the well-known `terms_of_service`
  * tag is used because it is the spelling counterparties already read, not because it is the only one legal.
  *
- * **`termsUrlFields` is deliberately OMITTED.** The terms URL rides `links[type=terms_of_service].url` — a
- * tagged-array locator that a dotted-path parser cannot resolve. Declaring it as a `termsUrlFields` slot would
- * repeat the defect the `field` rule exists to prevent: a declared property that is not the declared thing.
- * The discovery
- * alias states the same fact WITH its machine-readable container, and the `PlacementManifest` contract says
- * an absent `termsUrlFields` means a parser must not demand one — and the kit refuses an advertisement that supplies a URL this manifest has nowhere to put.
+ * **The terms URL rides the policies entry, declared as the container's `termsUrlField`.** UCP's policy
+ * object is `additionalProperties: true` and declares `url` outright — "Optional link to the full policy
+ * document", `format: uri` (re-verified at UCP HEAD, `source/schemas/shopping/types/policy.json`) — and
+ * §C.3's own illustration carries `url` and `atrHash` side by side in ONE entry. So the per-transaction
+ * locator belongs on the per-transaction record, which is the entry this placement writes.
+ *
+ * It is declared container-relative rather than in `termsUrlFields` because the entry's index is chosen at
+ * write time (replace-by-tag, else append), so no dotted path names it — not because the host lacks a slot.
+ * `links[]` is NOT that slot and never was: §C.3 separates the two explicitly, `links[]` being "a standing
+ * page, not a per-transaction record". A predecessor of this manifest gave the links entry as the reason
+ * this placement could advertise no terms URL at all, which read the wrong carrier and left UCP the one
+ * shipped protocol that refused an advertisement carrying its locator (integra-protocol#8).
  *
  * **`carrierTypes` permits `sha256` and `url`, and `url` is load-bearing.** extract checks every decoded
  * reference against this list, so the discovery alias's url-typed hits would refuse
@@ -107,6 +113,10 @@ export const UCP_PLACEMENT: PlacementManifest = {
           "Terms of sale for this order, identified by a Legal Context Protocol reference. The reference identifies the exact terms document; it is not itself the terms.",
       },
     },
+    // `url` is declared on this very object by the host — "Optional link to the full policy document",
+    // format uri — and §C.3's illustration carries it beside `atrHash` in one entry. Verified at UCP HEAD
+    // (source/schemas/shopping/types/policy.json).
+    termsUrlField: "url",
   },
   field: "policies[type=com.integraledger.policy.legal_context]",
   readAlso: [

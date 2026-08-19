@@ -6,6 +6,7 @@ import {
   readDeclaredPaths,
   readFromContainer,
   requireIntegrity,
+  requireWritten,
   type WriteCondition,
   type WriteConditionTerm,
   writeConditionMet,
@@ -1968,5 +1969,238 @@ describe("requireIntegrity — the value half, independent of the slot label", (
       wide,
     );
     expect(requireIntegrity(hash)).toBe(hash);
+  });
+});
+
+// ─── requireWritten — the impossible branch, killed once at its own door ─────────────────────────────────
+describe("requireWritten — an override's broken postcondition is loud, never a silent success", () => {
+  it("passes a written document straight through", () => {
+    const doc = { extensions: { legalContext: { info: {} } } };
+    expect(requireWritten(doc, "site")).toBe(doc);
+  });
+
+  it("THROWS on undefined, naming the site — the branch every override would otherwise carry as dead code", () => {
+    // This is the whole reason the helper exists. Inline at a call site the guard is unreachable and the
+    // mutation gate flags it as untestable; here the branch is reachable, so it is killed once for every
+    // override instead of being replaced by a cast that would return `{ ok: true, value: undefined }`.
+    expect(() => requireWritten(undefined, "x402Placement.place")).toThrow(
+      /x402Placement\.place/,
+    );
+  });
+});
+
+// ─── the entry-relative terms-URL slot (tagged-array `termsUrlField`) ────────────────────────────────────
+// UCP's locator rides the SAME entry as the reference, whose index is chosen at write time, so no
+// `termsUrlFields` path can name it. These pin the container-relative slot end to end: what declares one,
+// what a declaration does to the two advertisement rules, and that the reference and the URL cannot be
+// read off two different entries.
+describe("tagged-array termsUrlField — the slot a document path cannot address", () => {
+  const URL_ = "https://seller.example/terms.json";
+  const OTHER_URL = "https://seller.example/other-terms.json";
+  const entrySlot: PlacementManifest = {
+    ...taggedArray,
+    container: { ...taggedArray.container, termsUrlField: "url" } as never,
+  };
+  const withSlot = makePlacement(entrySlot);
+  const withoutSlot = makePlacement(taggedArray);
+
+  it("writes the URL onto the entry the reference lands in, in ONE entry", () => {
+    const out = withSlot.place({ ref: REF, termsUrl: URL_ }, {});
+    expect(out).toMatchObject({ ok: true });
+    const entries = (
+      out as { value: { constraints: Record<string, unknown>[] } }
+    ).value.constraints;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      type: "urn:example:lcp-terms-hash",
+      value: HASH,
+      url: URL_,
+    });
+  });
+
+  it("updates the URL when MERGING into an entry that already carries our tag", () => {
+    // Unlike `constants`, this field is ours on our own entry, so a merge must not leave a stale locator
+    // beside a fresh reference.
+    const out = withSlot.place(
+      { ref: REF, termsUrl: URL_ },
+      {
+        constraints: [
+          {
+            type: "urn:example:lcp-terms-hash",
+            value: OTHER,
+            url: OTHER_URL,
+            hostField: "kept",
+          },
+        ],
+      },
+    );
+    const entries = (
+      out as { value: { constraints: Record<string, unknown>[] } }
+    ).value.constraints;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      value: HASH,
+      url: URL_,
+      hostField: "kept",
+    });
+  });
+
+  it("extract reads the URL off the SAME entry the reference came from", () => {
+    const placed = withSlot.place({ ref: REF, termsUrl: URL_ }, {});
+    const got = withSlot.extract((placed as { value: unknown }).value);
+    expect(got).toMatchObject({
+      ok: true,
+      value: { ref: REF, termsUrl: { kind: "read", url: URL_ } },
+    });
+  });
+
+  it("a declared slot makes the URL REQUIRED of an integrity-bearing reference", () => {
+    // The #8 rule, reachable only once a slot exists. Its absence is what let UCP ship a bare hash.
+    expect(withSlot.place({ ref: REF }, {})).toMatchObject({
+      code: "mastercard-vi/terms-url-missing",
+    });
+  });
+
+  it("and the SAME manifest without the slot refuses the URL instead", () => {
+    // The pair is the point: one member decides which of the two rules the seller meets, so neither
+    // outcome can be reached by a manifest that declares nothing.
+    expect(withoutSlot.place({ ref: REF, termsUrl: URL_ }, {})).toMatchObject({
+      code: "mastercard-vi/terms-url-unplaceable",
+    });
+    expect(withoutSlot.place({ ref: REF }, {})).toMatchObject({ ok: true });
+  });
+
+  it("reports the entry slot in the §C.3 locator notation when it is declared and empty", () => {
+    const got = withSlot.extract({
+      constraints: [{ type: "urn:example:lcp-terms-hash", value: HASH }],
+    });
+    expect(got).toMatchObject({
+      ok: true,
+      value: {
+        termsUrl: {
+          kind: "declared-fields-empty",
+          fields: ["constraints[type=urn:example:lcp-terms-hash].url"],
+        },
+      },
+    });
+  });
+
+  it("an entry-slot URL that is not https is MALFORMED, exactly as a document-path one is", () => {
+    expect(
+      withSlot.extract({
+        constraints: [
+          {
+            type: "urn:example:lcp-terms-hash",
+            value: HASH,
+            url: "http://seller.example/terms.json",
+          },
+        ],
+      }),
+    ).toMatchObject({ code: "mastercard-vi/terms-url-malformed" });
+  });
+
+  it("an entry slot and a document slot that DISAGREE are a mismatch, not a preference", () => {
+    // Both members declared at once: the reconciliation has to span the two kinds of slot, or a document
+    // could advertise one locator to a path reader and another to an entry reader.
+    const both = makePlacement({
+      ...entrySlot,
+      termsUrlFields: ["meta.termsUrl"],
+    });
+    expect(
+      both.extract({
+        meta: { termsUrl: OTHER_URL },
+        constraints: [
+          { type: "urn:example:lcp-terms-hash", value: HASH, url: URL_ },
+        ],
+      }),
+    ).toMatchObject({ code: "mastercard-vi/terms-url-mismatch" });
+  });
+
+  it("hygiene REFUSES a termsUrlField that is the entry's own tag or value, naming which", () => {
+    // The message is pinned, not just the throw: a hygiene error that names neither the site nor which of
+    // the two members collided sends the author back to read the manifest they just wrote.
+    expect(() =>
+      assertManifestHygiene({
+        ...entrySlot,
+        container: { ...taggedArray.container, termsUrlField: "type" } as never,
+      }),
+    ).toThrow(
+      'the manifest: tagged-array termsUrlField on constraints[type=urn:example:lcp-terms-hash].value is "type", which is the entry\'s own tagField — the terms URL and the tag are different objects',
+    );
+    expect(() =>
+      assertManifestHygiene({
+        ...entrySlot,
+        container: {
+          ...taggedArray.container,
+          termsUrlField: "value",
+        } as never,
+      }),
+    ).toThrow(
+      'the manifest: tagged-array termsUrlField on constraints[type=urn:example:lcp-terms-hash].value is "value", which is the entry\'s own valueField — the terms URL and the reference are different objects',
+    );
+  });
+
+  it("hygiene REFUSES a constant that is the terms-URL field, naming it as such", () => {
+    expect(() =>
+      assertManifestHygiene({
+        ...entrySlot,
+        container: {
+          ...taggedArray.container,
+          termsUrlField: "url",
+          constants: { url: "https://seller.example/pinned.json" },
+        } as never,
+      }),
+    ).toThrow(
+      'the manifest: tagged-array constants on constraints[type=urn:example:lcp-terms-hash].value declare "url", which is the entry\'s own termsUrlField — a constant cannot also be the tag, the value or the terms URL',
+    );
+  });
+
+  it("a declared slot with NO URL supplied writes no key at all", () => {
+    // The write is conditional on the URL, not merely on the slot: `{ url: undefined }` spread onto the
+    // entry would put an explicit undefined on the wire, which JSON drops silently and a host schema with
+    // `additionalProperties: false` would not.
+    const urlRef = makePlacement({
+      ...entrySlot,
+      carrierTypes: ["sha256", "url"],
+    });
+    const out = urlRef.place(
+      { ref: { type: "url", value: "https://seller.example/terms" } },
+      {},
+    );
+    const entries = (
+      out as { value: { constraints: Record<string, unknown>[] } }
+    ).value.constraints;
+    expect(Object.hasOwn(entries[0] as object, "url")).toBe(false);
+  });
+
+  it("reads the entry by TAG, never by position — a foreign entry ahead of ours is skipped", () => {
+    // Each guard in the entry reader gets a document that would defeat it: a non-record element, an entry
+    // whose tag is a different value, and one carrying the tag only on its prototype.
+    const foreign = Object.create({
+      type: "urn:example:lcp-terms-hash",
+    }) as Record<string, unknown>;
+    foreign["url"] = "https://attacker.example/terms";
+    expect(
+      withSlot.extract({
+        constraints: [
+          "not-an-entry",
+          foreign,
+          { type: "urn:example:other", url: OTHER_URL },
+          { type: "urn:example:lcp-terms-hash", value: HASH, url: URL_ },
+        ],
+      }),
+    ).toMatchObject({
+      ok: true,
+      value: { ref: REF, termsUrl: { kind: "read", url: URL_ } },
+    });
+  });
+
+  it("a container that is present but NOT an array reads the slot as empty, never as a hit", () => {
+    expect(
+      withSlot.extract({
+        meta: { ref: `lcp:sha256:${HASH}` },
+        constraints: "junk",
+      }),
+    ).toMatchObject({ code: "mastercard-vi/reference-absent" });
   });
 });

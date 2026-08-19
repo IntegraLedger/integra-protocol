@@ -1,5 +1,5 @@
 {
-  "$comment": "The TC-4 composition readout (P6) over the re-derived class ladder. `atrBytes_utf8` is hashed by the harness to produce `settledAtrHash`, so the fingerprint proves by construction and the cases isolate the composition logic; `acceptanceVerifier` names a deterministic port the harness supplies. AMENDED 2026-07-24: the TC-4 cases previously carried placeholder TC-3 rungs — an empty-bounds authority chain that proved trivially, no acceptance, no elections — and still read verified:true. They now supply the inherited rungs for real, and two net-new cases pin the inheritance directly (drop the acceptance, drop the forum → TC-4 no longer verifies). Composition steps are still appended ONLY when a composition slot is supplied, so the base walk is unchanged in shape. SUPERSEDED PIN (2026-08-07): dispute-resolution examples generalized -- no provider names in illustrative examples; atrHash 0xa5215e6a2f6af04c310e1298ead8b5733ce7221e0691836edb1aabb7437cd225 -> 0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413, re-derived independently with python3 hashlib over the exact atrBytes_utf8.",
+  "$comment": "The TC-4 composition readout (P6) over the re-derived class ladder. `atrBytes_utf8` is hashed by the harness to produce `settledAtrHash`, so the fingerprint proves by construction and the cases isolate the composition logic; `acceptanceVerifier` names a deterministic port the harness supplies. AMENDED 2026-07-24: the TC-4 cases previously carried placeholder TC-3 rungs — an empty-bounds authority chain that proved trivially, no acceptance, no elections — and still read verified:true. They now supply the inherited rungs for real, and two net-new cases pin the inheritance directly (drop the acceptance, drop the forum → TC-4 no longer verifies). Composition steps are still appended ONLY when a composition slot is supplied, so the base walk is unchanged in shape. SUPERSEDED PIN (2026-08-07): dispute-resolution examples generalized -- no provider names in illustrative examples; atrHash 0xa5215e6a2f6af04c310e1298ead8b5733ce7221e0691836edb1aabb7437cd225 -> 0x03c975b03f5742b2eb7e5c7cf22a3af16082a04241c975e3e47c2d5b8b012413, re-derived independently with python3 hashlib over the exact atrBytes_utf8. AMENDED 2026-08-19: supportedClass is now computed from the steps (the highest class whose every required step is proved) instead of echoing the claim, so the three cases whose named gap blocks a rung report the class their proved rungs reach — TC-3, TC-2, TC-2 — where all three previously read TC-4. `verified` is unchanged: it still answers whether the walk affirms the CLAIMED class.",
   "cases": [
     {
       "name": "TC-4 verified when every TC-3 rung + composition slot proved",
@@ -103,7 +103,8 @@
         }
       },
       "verified": true,
-      "supportedClass": "TC-4"
+      "supportedClass": "TC-4",
+      "claimedClass": "TC-4"
     },
     {
       "name": "TC-4 NOT verified when a composition slot (operations) is absent",
@@ -203,7 +204,9 @@
         }
       },
       "verified": false,
-      "supportedClass": "TC-4"
+      "supportedClass": "TC-3",
+      "claimedClass": "TC-4",
+      "$comment": "the operations slot is absent, so TC-4's rung never proves and the class rests at the TC-3 its rungs reach"
     },
     {
       "name": "TC-4 NOT verified when the inherited TC-3 acceptance is absent — the ladder is cumulative",
@@ -298,7 +301,9 @@
         }
       },
       "verified": false,
-      "supportedClass": "TC-4"
+      "supportedClass": "TC-2",
+      "claimedClass": "TC-4",
+      "$comment": "the inherited TC-3 acceptance is absent, so the class rests at TC-2"
     },
     {
       "name": "TC-4 NOT verified when the record elects no forum — RCS-1 is a TC-3 rung TC-4 inherits",
@@ -402,7 +407,9 @@
         }
       },
       "verified": false,
-      "supportedClass": "TC-4"
+      "supportedClass": "TC-2",
+      "claimedClass": "TC-4",
+      "$comment": "no forum is elected, so RCS-1 never proves and the class rests at TC-2"
     },
     {
       "name": "a GATED FRC signal impeaches TC-4 to TC-0 (the stack gated)",
@@ -512,7 +519,8 @@
         }
       },
       "verified": false,
-      "supportedClass": "TC-0"
+      "supportedClass": "TC-0",
+      "claimedClass": "TC-4"
     },
     {
       "name": "a TC-2 verify WITHOUT composition appends no composition steps — the base walk is seven",
@@ -607,8 +615,10 @@
         "claimedClass": "TC-2"
       },
       "verified": true,
-      "supportedClass": "TC-2",
-      "stepCount": 7
+      "supportedClass": "TC-3",
+      "stepCount": 7,
+      "claimedClass": "TC-2",
+      "$comment": "Pins the step COUNT: with no composition slot the walk appends nothing and stays at seven steps. Every one of those seven is proved, so the class reaches TC-3 while the caller claimed TC-2 — the claim is not a ceiling. `verified` is true because the walk affirms the CLAIMED class at mechanical depth."
     }
   ]
 }
