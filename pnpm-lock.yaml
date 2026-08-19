@@ -13,8 +13,8 @@ catalogs:
       specifier: 4.1.1
       version: 4.1.1
     '@mysten/sui':
-      specifier: 2.23.2
-      version: 2.23.2
+      specifier: 2.24.0
+      version: 2.24.0
     '@solana/web3.js':
       specifier: 1.98.4
       version: 1.98.4
@@ -449,7 +449,7 @@ importers:
         version: link:../kernel
       '@mysten/sui':
         specifier: 'catalog:'
-        version: 2.23.2(typescript@7.0.2)
+        version: 2.24.0(typescript@7.0.2)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1376,8 +1376,8 @@ packages:
   '@mysten/bcs@2.1.0':
     resolution: {integrity: sha512-rIR/cDAqDfBDxmYEZXppN/on8gmh1OW0dYi/Bk2kMBZcYMTaBaEtEX1VR6g7HicVxuMbFAIP0/SQkdH7J9Y5dQ==}
 
-  '@mysten/sui@2.23.2':
-    resolution: {integrity: sha512-cUnE4v/0NSKsdihU09qmSS82pqlRPb6XjPO+iU5KAqSn5rRsEcbJZ/lTsW1INfnmWeHs6/Xobv+vEedDlQ1CZw==}
+  '@mysten/sui@2.24.0':
+    resolution: {integrity: sha512-VmIkgnMulRVeA0mnBgHiTFTci5XKJH5/UB8Kr2M9+1nZnKC1RKsNGRXWBtox+2HYtwHNdUjHxYchfWnfZ9yHkQ==}
     engines: {node: '>=22'}
 
   '@mysten/utils@0.4.0':
@@ -4167,7 +4167,7 @@ snapshots:
       '@mysten/utils': 0.4.0
       '@scure/base': 2.2.0
 
-  '@mysten/sui@2.23.2(typescript@7.0.2)':
+  '@mysten/sui@2.24.0(typescript@7.0.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.14.2)
       '@mysten/bcs': 2.1.0
