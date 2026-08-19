@@ -1764,3 +1764,209 @@ describe("termsUrlFields — the advertisement is one act, and half of one refus
     ).toThrow(/names alias path/);
   });
 });
+
+// ─── The writer's INDEX rules, at the writer's own door ──────────────────────────────────────────────────
+//
+// The array-descent relaxation is the narrowest write rule in the kit and the one whose failure modes are
+// quietest: a wrong branch does not throw, it mints structure — an object that reads as a list, an element
+// the host never created — and the corrupted document is only found by whichever counterparty parses it.
+// Every case here pins a distinct way the descent must refuse or preserve, called directly so the mutation
+// gate can see each branch die on its own.
+describe("writeToContainer — the array-descent rules, each branch pinned", () => {
+  const op = { kind: "object-path" } as const;
+
+  it("an INDEX leaf is never written into a record it would have to create", () => {
+    // `a.0` on {}: writing key "0" into a fresh object mints a thing every index-aware reader calls a list.
+    expect(writeToContainer({}, op, "a.0", HASH)).toBeUndefined();
+  });
+
+  it("an INDEX segment is never entered through an absent child", () => {
+    // `x.0.y` on {}: `x` does not exist, so there is no list to enter — creating `{x:{"0":…}}` is the mint.
+    expect(writeToContainer({}, op, "x.0.y", HASH)).toBeUndefined();
+  });
+
+  it("a NON-CANONICAL index never enters an array — and never mints beside it", () => {
+    // "01" spells element 1 a second way; a locator that accepted two spellings of one element would let
+    // two manifests claim the same carrier. The write must refuse, not resolve the spelling.
+    expect(
+      writeToContainer(
+        { arr: [{ keep: 1 }, { keep: 2 }] },
+        op,
+        "arr.01.x",
+        HASH,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("an INDEX leaf into an array holder is refused — replacing the host's element wholesale", () => {
+    expect(
+      writeToContainer({ arr: [{ a: 1 }] }, op, "arr.0", HASH),
+    ).toBeUndefined();
+  });
+
+  it("a sparse hole is not an element — descent requires the host to have PUT one there", () => {
+    const doc: { arr: unknown[] } = { arr: [] };
+    doc.arr.length = 2;
+    doc.arr[1] = {};
+    expect(writeToContainer(doc, op, "arr.0.x", HASH)).toBeUndefined();
+  });
+
+  it("descent through an existing element rebuilds the ARRAY as an array, siblings untouched in order", () => {
+    const out = writeToContainer(
+      { arr: [{ k: 1 }, { z: 9 }], keep: true },
+      op,
+      "arr.0.x",
+      HASH,
+    );
+    expect(out).toBeDefined();
+    const arr = (out as { arr: unknown }).arr;
+    // The rebuild must put the element back into a LIST — spreading the array into `{0:…,1:…}` would emit
+    // a document whose `arr` satisfies an object reader and no array reader, the quietest corruption here.
+    expect(Array.isArray(arr)).toBe(true);
+    expect(arr).toEqual([{ k: 1, x: HASH }, { z: 9 }]);
+  });
+});
+
+// ─── The advertisement rules' REFUSAL PAYLOADS — content, not just codes ─────────────────────────────────
+//
+// The corpus pins codes and deliberately not prose, so nothing outside this repo constrains what a refusal
+// SAYS. These pin that each terms-URL refusal names the datum an operator needs — the slot, the value, the
+// disagreement — because "terms-url-malformed" with no value is a debugger session where one string would
+// have answered.
+describe("the terms-URL refusals carry their evidence", () => {
+  const URL_ = "https://seller.example/.well-known/legal-context.json";
+  const slotted = makePlacement({
+    ...objectPath,
+    protocol: "mpp",
+    field: "methodDetails.atrHash",
+    encoding: "bare-value",
+    termsUrlFields: ["methodDetails.legalContextUrl"],
+  });
+  const detail = (o: unknown): string =>
+    (o as { detail?: string }).detail ?? "";
+
+  it("terms-url-missing names every declared slot and the reference type", () => {
+    const out = slotted.place({ ref: REF }, {});
+    expect(out).toMatchObject({ code: "mpp/terms-url-missing" });
+    expect(detail(out)).toContain("methodDetails.legalContextUrl");
+    expect(detail(out)).toContain("sha256");
+  });
+
+  it("terms-url-unplaceable names the protocol whose manifest has no slot", () => {
+    const none = makePlacement(objectPath);
+    const out = none.place({ ref: REF, termsUrl: URL_ }, {});
+    expect(out).toMatchObject({ code: "acp/terms-url-unplaceable" });
+    expect(detail(out)).toContain("acp");
+  });
+
+  it("a malformed write-side URL is quoted back verbatim", () => {
+    const out = slotted.place(
+      { ref: REF, termsUrl: "http://cleartext.example/t" },
+      {},
+    );
+    expect(out).toMatchObject({ code: "mpp/terms-url-malformed" });
+    expect(detail(out)).toContain("http://cleartext.example/t");
+  });
+
+  it("an unwritable slot names the path that had no holder", () => {
+    const nested = makePlacement({
+      ...objectPath,
+      protocol: "x402",
+      termsUrlFields: ["accepts.0.extra.legalContextUrl"],
+    });
+    const out = nested.place({ ref: REF, termsUrl: URL_ }, {});
+    expect(out).toMatchObject({ code: "x402/terms-url-slot-unwritable" });
+    expect(detail(out)).toContain("accepts.0.extra.legalContextUrl");
+  });
+
+  it("a mismatch names both slots and both values", () => {
+    const two = makePlacement({
+      ...objectPath,
+      protocol: "x402",
+      field: "extensions.info",
+      encoding: "reference-object",
+      termsUrlFields: [
+        "extensions.info.legalContextUrl",
+        "top.legalContextUrl",
+      ],
+    });
+    const out = two.extract({
+      extensions: {
+        info: { type: "sha256", value: HASH, legalContextUrl: URL_ },
+      },
+      top: { legalContextUrl: "https://other.example/t" },
+    });
+    expect(out).toMatchObject({ code: "x402/terms-url-mismatch" });
+    for (const needle of [
+      "extensions.info.legalContextUrl",
+      "top.legalContextUrl",
+      URL_,
+      "https://other.example/t",
+    ])
+      expect(detail(out)).toContain(needle);
+  });
+
+  it("a malformed read-side slot quotes the value — JSON for a non-string, verbatim for a string", () => {
+    const one = makePlacement({
+      ...objectPath,
+      termsUrlFields: ["metadata.legal_context_url"],
+    });
+    const num = one.extract({
+      metadata: { legal_context: `lcp:sha256:${HASH}`, legal_context_url: 7 },
+    });
+    expect(num).toMatchObject({ code: "acp/terms-url-malformed" });
+    expect(detail(num)).toContain("7");
+    const str = one.extract({
+      metadata: {
+        legal_context: `lcp:sha256:${HASH}`,
+        legal_context_url: "ftp://x.example/t",
+      },
+    });
+    expect(str).toMatchObject({ code: "acp/terms-url-malformed" });
+    expect(detail(str)).toContain("ftp://x.example/t");
+  });
+
+  it("a url-type reference with no URL emits NO slot key at all — never an undefined-valued one", () => {
+    const wide = makePlacement({
+      ...objectPath,
+      carrierTypes: ["sha256", "url"],
+      termsUrlFields: ["metadata.legal_context_url"],
+    });
+    const placed = wide.place(
+      { ref: { type: "url", value: "https://x.test/t" } },
+      {},
+    );
+    if ("refused" in placed)
+      throw new Error(`expected a placement: ${placed.code}`);
+    const metadata = (placed.value as { metadata: Record<string, unknown> })
+      .metadata;
+    // `hasOwn`, not equality-with-undefined: a key holding `undefined` still serializes under some
+    // encoders and still answers `in` — the emitted document must simply not have it.
+    expect(Object.hasOwn(metadata, "legal_context_url")).toBe(false);
+  });
+});
+
+// ─── requireIntegrity's VALUE half, at the kit's own door ────────────────────────────────────────────────
+describe("requireIntegrity — the value half, independent of the slot label", () => {
+  it("refuses a url VALUE in an integrity-labelled canonical slot", () => {
+    // The §C.2 substitution arriving through the one field nobody was checking: the canonical slot is
+    // labelled integrity because the MANIFEST permits a content-addressed type — which says nothing about
+    // what this document put there. Both halves must hold, and this is the half a slot-only check misses.
+    const wide: PlacementManifest = {
+      ...objectPath,
+      carrierTypes: ["sha256", "url"],
+    };
+    const hit = readDeclaredPaths(
+      { metadata: { legal_context: "lcp:url:https://x.test/t" } },
+      wide,
+    );
+    expect(hit?.carrierClass).toBe("integrity");
+    expect(requireIntegrity(hit)).toBeUndefined();
+    // And the companion positive, so the guard cannot be satisfied by refusing everything.
+    const hash = readDeclaredPaths(
+      { metadata: { legal_context: `lcp:sha256:${HASH}` } },
+      wide,
+    );
+    expect(requireIntegrity(hash)).toBe(hash);
+  });
+});

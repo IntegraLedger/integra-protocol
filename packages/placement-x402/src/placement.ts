@@ -45,23 +45,17 @@ export const x402Placement: ReferencePlacementAdapter = {
     // The kit's write just created this path on its own output; reading it back — rather than re-encoding
     // the reference a second time — keeps one codepath responsible for what `info` contains.
     const info = readAtPath(placed.value, X402_PLACEMENT.field);
+    // TOTAL by the kit's own postconditions, so no undefined-branch exists to handle: `place` succeeded,
+    // so `placed.value` is a record; the write's parent path is the one-segment `extensions`, and a
+    // direct holder that is present-but-unmergeable is REPLACED under the ratified container rule, never
+    // refused — `writeToContainer` cannot return `undefined` for this (document, path) pair. A defensive
+    // branch here was dead code the mutation gate flagged as untestable, which is what dead code is.
     const wrapped = writeToContainer(
       placed.value,
       X402_PLACEMENT.container,
       "extensions.legalContext",
       { info, schema: LEGAL_CONTEXT_SCHEMA },
-    );
-    if (wrapped === undefined)
-      // Unreachable by construction — `placed.value` holds the record the kit wrote through — but a
-      // wrapper that silently returned the unwrapped document on the impossible branch would ship a
-      // challenge with no `schema`, so the branch refuses like every other malformed container.
-      return {
-        refused: true,
-        haltClass: "verification-failure",
-        code: "x402/document-malformed",
-        detail:
-          "the placed document lost its extensions map between two writes",
-      };
+    ) as Record<string, unknown>;
     return { ok: true, value: wrapped };
   },
 };

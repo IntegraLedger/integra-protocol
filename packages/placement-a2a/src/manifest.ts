@@ -80,8 +80,8 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * runtime narrowing, as any non-TypeScript subject must), and a vector pins the arm there rather than leaving
  * it asserted-unreachable or manufacturing it by a narrowing the host does not ask for.
  *
- * `termsUrlField` is omitted: A2A models no terms-URL field, and the manifest contract says an absent
- * `termsUrlField` means a parser must not demand one.
+ * `termsUrlFields` is omitted: A2A models no terms-URL field, and the manifest contract says an absent
+ * `termsUrlFields` means a parser must not demand one.
  */
 export const A2A_PLACEMENT: PlacementManifest = {
   protocol: "a2a",

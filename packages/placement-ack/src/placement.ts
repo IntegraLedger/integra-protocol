@@ -71,7 +71,7 @@ const base = makePlacement(ACK_PLACEMENT);
  * **No HTTPS wrap on the URL carrier — and the honest reason is not that the seam covers it.** UCP ships one
  * (`ucp/insecure-terms-url`: an `http:` reference is rewritable in transit) and that rule rests on LCP's own
  * reasoning rather than any host grant, so the same reasoning reaches an `http:` value here. ACK declares no
- * `discovery` alias and no `termsUrlField`, so the canonical slot is the only place a `url` can sit, and
+ * `discovery` alias and no `termsUrlFields`, so the canonical slot is the only place a `url` can sit, and
  * `readDeclaredPaths` reports that slot `integrity` — the label is the SLOT's declared strength, which is
  * what it has always meant.
  *
@@ -93,7 +93,7 @@ const base = makePlacement(ACK_PLACEMENT);
  * That is the contrast with the ordering rule above, which stands on ACK's own published procedure.
  *
  * The protocol-specific reasoning — why `credentialSubject.metadata`, why `http-advisory` rather than
- * `sidecar-attestation` despite the issuer's proof, why ACK-ID is a different seam, why no `termsUrlField` —
+ * `sidecar-attestation` despite the issuer's proof, why ACK-ID is a different seam, why no `termsUrlFields` —
  * lives in `manifest.ts`, where it belongs.
  */
 export const ackPlacement: ReferencePlacementAdapter = {

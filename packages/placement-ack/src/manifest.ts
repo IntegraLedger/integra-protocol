@@ -65,7 +65,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * README; no code ships for it, and no second manifest is declared, because a manifest for a key whose
  * meaning nobody has published would assert a shape its owner has not defined.
  *
- * **`termsUrlField` is OMITTED.** ACK's receipt models no terms-URL field at all. Declaring a locator the
+ * **`termsUrlFields` is OMITTED.** ACK's receipt models no terms-URL field at all. Declaring a locator the
  * host has no room for would repeat the defect the `field` rule exists to prevent: a declared property that
  * is not the declared thing. A parser reads the manifest, and a
  * parser that DEMANDED a URL here could never round-trip. `carrierTypes` permits `sha256` and `url` and

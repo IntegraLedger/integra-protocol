@@ -72,7 +72,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * shape MPP integrators recognize. Bare-value fixes the type from the field's own contract, so `carrierTypes`
  * is capped at exactly one — which is also why **no discovery alias can be declared here.** A url-typed
  * `readAlso` would need a second permitted carrier type, and the cap forbids it. That is the right answer
- * rather than a limitation: `termsUrlField` declares where the terms URL lives, labelled as the different
+ * rather than a limitation: `termsUrlFields` declares where the terms URL lives, labelled as the different
  * datum it is, and a located document cannot stand in for an attested one (LCP v1.38 §C.2).
  *
  * `termsUrlFields` (plural, one entry): MPP's wire carries exactly one terms-URL slot, unlike x402's two.

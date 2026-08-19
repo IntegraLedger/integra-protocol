@@ -67,12 +67,12 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * `links[].type` is an OPEN set ("Businesses MAY define custom types"); the well-known `terms_of_service`
  * tag is used because it is the spelling counterparties already read, not because it is the only one legal.
  *
- * **`termsUrlField` is deliberately OMITTED.** The terms URL rides `links[type=terms_of_service].url` — a
- * tagged-array locator that a dotted-path parser cannot resolve. Declaring it as `termsUrlField` would
+ * **`termsUrlFields` is deliberately OMITTED.** The terms URL rides `links[type=terms_of_service].url` — a
+ * tagged-array locator that a dotted-path parser cannot resolve. Declaring it as a `termsUrlFields` slot would
  * repeat the defect the `field` rule exists to prevent: a declared property that is not the declared thing.
  * The discovery
  * alias states the same fact WITH its machine-readable container, and the `PlacementManifest` contract says
- * an absent `termsUrlField` means a parser must not demand one.
+ * an absent `termsUrlFields` means a parser must not demand one — and the kit refuses an advertisement that supplies a URL this manifest has nowhere to put.
  *
  * **`carrierTypes` permits `sha256` and `url`, and `url` is load-bearing.** extract checks every decoded
  * reference against this list, so the discovery alias's url-typed hits would refuse

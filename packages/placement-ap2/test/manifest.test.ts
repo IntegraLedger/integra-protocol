@@ -54,7 +54,7 @@ describe("AP2 placement — manifest matches the tree", () => {
     expect(AP2_PLACEMENT.readAlso?.[0]?.write).toBeUndefined();
   });
 
-  it("declares no termsUrlField — AP2 has no room for one on the transport envelope", () => {
+  it("declares no termsUrlFields — AP2 has no room for one on the transport envelope", () => {
     // Absent means a parser MUST NOT demand one. The envelope's metadata map holds the reference; there is
     // no protocol-native slot for a human-readable terms URL beside it, and a url-typed reference is how a
     // deployment that only has a link says so.

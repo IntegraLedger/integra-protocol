@@ -105,7 +105,7 @@
     },
     {
       "name": "a url ref is refused — methodDetails.atrHash is a bare hash slot",
-      "$comment": "`bare-value` encoding fixes the type from the field's own contract, so the slot permits exactly one carrier type. A url written here would be indistinguishable from a hash to every reader, and v1.37 §C.2 forbids substituting a located document for an attested one. The terms URL has its own field — see termsUrlField. (Re-read against v1.38 on 2026-08-12: v1.38 §C.2 withdrew the top-level carrier and states the substitution rule as a description rather than a prohibition.)",
+      "$comment": "`bare-value` encoding fixes the type from the field's own contract, so the slot permits exactly one carrier type. A url written here would be indistinguishable from a hash to every reader, and v1.37 §C.2 forbids substituting a located document for an attested one. The terms URL has its own field — see termsUrlFields. (Re-read against v1.38 on 2026-08-12: v1.38 §C.2 withdrew the top-level carrier and states the substitution rule as a description rather than a prohibition.)",
       "input": {
         "protocol": "mpp",
         "op": "place",
@@ -196,7 +196,7 @@
     },
     {
       "name": "place leaves an existing legalContextUrl alone — it writes the hash, never the URL",
-      "$comment": "termsUrlField is DECLARED so a parser knows the URL's home, but place(ref, doc) holds one reference, not two data. The URL is the deployment's datum and publishing it is the deployment's act; this call adds the hash beside it.",
+      "$comment": "termsUrlFields is DECLARED, and since the write-path fix (integra-protocol#8) `place` writes the URL into it beside the hash — the advertisement is one act. This case pins the emitted slot; the refusal cases beside it pin that an integrity-bearing advertisement without a URL never ships.",
       "input": {
         "protocol": "mpp",
         "op": "place",
@@ -414,7 +414,7 @@
     },
     {
       "name": "a legalContextUrl ALONE is not a reference — no discovery carrier is declared here",
-      "$comment": "The load-bearing negative. MPP's slot is bare-value, which caps carrierTypes at one, so a url-typed discovery alias cannot be declared on this manifest at all — and that is the right answer, not a limitation to work around. The reason is the carrier's own: a located document commits to nothing about its content, so it cannot stand in for an attested one. LCP v1.38 §C.2 puts it descriptively — 'A terms-of-use policy page is not a per-transaction terms record and is not a substitute for one' — where v1.37 wrote 'MUST NOT be substituted for one'; this comment quoted the prohibition until 2026-08-08. A reader that wants the terms page reads termsUrlField knowing what it is.",
+      "$comment": "The load-bearing negative. MPP's slot is bare-value, which caps carrierTypes at one, so a url-typed discovery alias cannot be declared on this manifest at all — and that is the right answer, not a limitation to work around. The reason is the carrier's own: a located document commits to nothing about its content, so it cannot stand in for an attested one. LCP v1.38 §C.2 puts it descriptively — 'A terms-of-use policy page is not a per-transaction terms record and is not a substitute for one' — where v1.37 wrote 'MUST NOT be substituted for one'; this comment quoted the prohibition until 2026-08-08. A reader that wants the terms page reads the termsUrlFields slot knowing what it is.",
       "input": {
         "protocol": "mpp",
         "op": "extract",
