@@ -197,10 +197,13 @@ describe("the placement registry", () => {
       value:
         "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
     };
-    const placed = adapter.place(ref, { id: "task-1" });
+    const placed = adapter.place({ ref }, { id: "task-1" });
     expect("ok" in placed).toBe(true);
     if (!("ok" in placed)) return;
-    expect(adapter.extract(placed.value)).toEqual({ ok: true, value: ref });
+    expect(adapter.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref, termsUrl: { kind: "no-field-declared" } },
+    });
   });
 
   it("holds one entry per protocol — a second registration of the same id is unrepresentable", () => {

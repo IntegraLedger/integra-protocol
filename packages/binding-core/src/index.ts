@@ -26,12 +26,15 @@ export {
   MPP_ATTRIBUTION_VERSION,
 } from "./mpp-attribution.js";
 export {
+  type AdvertisedTermsUrl,
   assertManifestHygiene,
   type CarrierClass,
   type DeclaredRead,
   decodeDeclaredRead,
+  type ExtractedAdvertisement,
   encodeForField,
   INTEGRITY_CARRIER_TYPES,
+  type LegalContextAdvertisement,
   makePlacement,
   type PlacementAlias,
   type PlacementContainer,

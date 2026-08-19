@@ -292,10 +292,11 @@ export class InProcessSubject implements Subject {
           // settles. The PROTOCOL id rides the case input, like the verify step name: the runner passes
           // only `c.input`, so an area cannot parameterize its class, and a new placement registers an
           // area by landing in `@integraledger/lcp-placements` rather than by touching this dispatch arm.
-          const { protocol, op, ref, doc } = req.input as {
+          const { protocol, op, ref, termsUrl, doc } = req.input as {
             protocol?: string;
             op?: string;
             ref?: LegalContextRef;
+            termsUrl?: string;
             doc?: unknown;
           };
           // The wire token is checked against the CLOSED protocol set before the registry sees it, so an
@@ -310,15 +311,31 @@ export class InProcessSubject implements Subject {
           if (op === "extract")
             return { output: normalizeRefusal(adapter.extract(doc)) };
           if (ref === undefined) return { error: "placement/missing-ref" };
+          // The vector states the advertisement flat (`ref` + optional `termsUrl`) so a foreign subject
+          // reads two JSON members rather than one nested object; the adapter contract takes them as one.
+          const ad =
+            termsUrl === undefined ? { ref } : ({ ref, termsUrl } as const);
           if (op === "place")
-            return { output: normalizeRefusal(adapter.place(ref, doc)) };
+            return { output: normalizeRefusal(adapter.place(ad, doc)) };
           if (op === "place-purity") {
             // Purity is a property of the CALL, not of its result, so it cannot be expressed as an
             // expected output the way every other case is. The subject re-serializes the document either
             // side of `place` and answers the question the vector actually asks: did the input survive?
             const before = JSON.stringify(doc);
-            adapter.place(ref, doc);
+            adapter.place(ad, doc);
             return { output: JSON.stringify(doc) === before };
+          }
+          if (op === "roundtrip") {
+            // The composition certification the corpus lacked, and the shape of the defect that proved it
+            // was missing: every place case certified the write, every extract case the read, and no case
+            // fed one to the other — so a writer and a reader could each pass while the written document
+            // was unreadable (integra-protocol#8). place then extract, ONE outcome out: a refusal from
+            // either half is the answer, because a challenge that cannot be written has nothing to read
+            // and a written challenge that cannot be read is precisely the defect.
+            const placed = adapter.place(ad, doc);
+            if ("refused" in placed)
+              return { output: normalizeRefusal(placed) };
+            return { output: normalizeRefusal(adapter.extract(placed.value)) };
           }
           return { error: `unknown-placement-op:${String(op)}` };
         }

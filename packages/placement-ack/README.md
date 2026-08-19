@@ -42,7 +42,7 @@ declare const resolver: unknown;
 // `place` takes the credential createPaymentReceipt returned, BEFORE signCredential — see
 // "Before the issuer signs". Passing it an already-signed receipt is a refusal, not a silent rewrite.
 const draft = createPaymentReceipt({ paymentRequestToken, paymentOptionId, issuer, payerDid });
-const placed = ackPlacement.place({ type: "sha256", value: "0x…" }, draft);
+const placed = ackPlacement.place({ ref: { type: "sha256", value: "0x…" } }, draft);
 
 // `extract` takes the credential the verification chain returned — proof and all.
 const ref = ackPlacement.extract(await parseJwtCredential(receiptJwt, resolver));
@@ -182,7 +182,7 @@ wrap (`ucp/insecure-terms-url` — an `http:` reference is rewritable in transit
 reason is **not** that the seam already models the difference. It does not, for this manifest:
 
 `carrierClass` is declared **per slot**, not derived from the value. ACK declares no `discovery` alias and no
-`termsUrlField`, so the canonical slot is the only place a `url` can sit — and `readDeclaredPaths` reports that
+`termsUrlFields`, so the canonical slot is the only place a `url` can sit — and `readDeclaredPaths` reports that
 slot `integrity`. Measured: `{ "type": "url", "value": "http://…" }` at
 `credentialSubject.metadata.legalContext` extracts successfully, reads back `carrierClass: "integrity"`, and
 **passes `requireIntegrity`**. A caller that needs an attested document and checks only the class does not learn
@@ -206,9 +206,11 @@ By contrast the ordering rule above stands on ACK's own published procedure, whi
   `authority-attenuation`, they are settled in the identity workstream, and they must reuse the existing
   identity path rather than
   minting a second one.
-- **`termsUrlField`.** ACK's receipt models no terms-URL field. Declaring a locator the host has no room for
-  would repeat the defect the `field` rule exists to prevent — a declared property that is not the declared
-  thing — and a parser told to demand one could never round-trip.
+- **`termsUrlFields`.** ACK's receipt models no terms-URL field. Declaring a locator the host has no room
+  for would repeat the defect the `field` rule exists to prevent — a declared property that is not the
+  declared thing — and a parser told to demand one could never round-trip. The kit holds the seller to the
+  omission too: `place` REFUSES an advertisement that supplies a URL (`ack/terms-url-unplaceable`), because
+  dropping it silently would advertise less than the seller stated.
 - **A Tier B manifest.** There is no upstream body to register with. Standardization would be the ACK
   maintainers documenting a conventional `legalContext` key — a documentation act, not a specification
   change — and a manifest for a key whose meaning nobody has published would assert exactly the shape a

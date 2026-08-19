@@ -30,10 +30,13 @@ import { ACP_PLACEMENT, acpPlacement } from "@integraledger/lcp-placement-acp";
 declare const checkoutSession: unknown; // an ACP checkout session, as received
 
 const placed = acpPlacement.place(
-  { type: "sha256", value: "0x…" },
+  {
+    ref: { type: "sha256", value: "0x…" },
+    termsUrl: "https://seller.example/.well-known/legal-context.json",
+  },
   checkoutSession,
 );
-const ref = acpPlacement.extract(checkoutSession);
+const advertised = acpPlacement.extract(checkoutSession);
 ```
 
 Both members are total: a refusal is a returned value, never a thrown exception.

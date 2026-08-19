@@ -34,12 +34,13 @@ export const ucpPlacement: ReferencePlacementAdapter = {
   extract(doc: unknown) {
     const out = base.extract(doc);
     if ("refused" in out) return out;
-    if (out.value.type === "url" && !out.value.value.startsWith("https://"))
+    const { ref } = out.value;
+    if (ref.type === "url" && !ref.value.startsWith("https://"))
       return {
         refused: true,
         haltClass: "verification-failure",
         code: "ucp/insecure-terms-url",
-        detail: `a terms link must be HTTPS — an http: reference is rewritable in transit: ${out.value.value}`,
+        detail: `a terms link must be HTTPS — an http: reference is rewritable in transit: ${ref.value}`,
       };
     return out;
   },

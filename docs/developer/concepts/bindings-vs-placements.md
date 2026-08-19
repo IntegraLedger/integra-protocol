@@ -127,7 +127,7 @@ const ref: LegalContextRef = {
 };
 const task = { id: "task-1", metadata: { traceId: "abc" } };
 
-const placed = a2a.place(ref, task);
+const placed = a2a.place({ ref }, task);
 if (!("ok" in placed)) throw new Error(placed.code);
 console.log(JSON.stringify(placed.value));
 
@@ -144,7 +144,7 @@ console.log(placementFor("mcp"));
 ```text
 A reference-object metadata.legalContext
 {"id":"task-1","metadata":{"traceId":"abc","legalContext":{"type":"sha256","value":"0x437a46db8485b1b3552533d415ba6290a4e7d1ff4cb01e4e6eb7ef63d10748a5"}}}
-{"ok":true,"value":{"type":"sha256","value":"0x437a46db8485b1b3552533d415ba6290a4e7d1ff4cb01e4e6eb7ef63d10748a5"}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0x437a46db8485b1b3552533d415ba6290a4e7d1ff4cb01e4e6eb7ef63d10748a5"},"termsUrl":{"kind":"no-field-declared"}}}
 {"refused":true,"haltClass":"verification-failure","code":"a2a/reference-absent","detail":"no metadata.legalContext on this document"}
 undefined
 ```

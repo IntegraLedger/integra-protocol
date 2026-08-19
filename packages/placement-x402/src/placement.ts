@@ -1,116 +1,67 @@
 import {
-  CarrierError,
-  encodeForField,
-  type LegalContextRef,
+  type LegalContextAdvertisement,
   makePlacement,
   type Outcome,
   type ReferencePlacementAdapter,
+  readAtPath,
+  writeToContainer,
 } from "@integraledger/lcp-binding-core";
 import { LEGAL_CONTEXT_SCHEMA, X402_PLACEMENT } from "./manifest.js";
 
 const base = makePlacement(X402_PLACEMENT);
 
-/** Refusals namespaced from the protocol id, exactly as the kit does — so `x402/document-malformed` means the
- *  same thing whether it came from the override or from the generic read path. */
-function refuse(code: string, detail: string): Outcome<never> {
-  return {
-    refused: true,
-    haltClass: "verification-failure",
-    code: `x402/${code}`,
-    detail,
-  };
-}
-
 /**
- * The x402 reference placement — the kit's `extract`, and the ONE `place` in the set that the kit cannot
- * supply.
+ * The x402 reference placement — the kit, plus the ONE wrapper the kit cannot know.
  *
- * x402's slot does not hold the reference directly: it holds `{ info, schema }`, where `info` is the §8.1
- * reference object and `schema` is a `$ref` pointing at the carrier schema. That is a WRAPPER, and no
- * container kind models it. Inventing an `x402-extension` container kind would put one protocol's name inside
- * a generic enum — the abstraction leaking — so the write half is overridden here, in this package, where it
- * is reviewed like any other code. `extract` is the kit's unchanged: reading `extensions.legalContext.info` is
- * an ordinary object-path read, and the bare-hash alias at `accepts.0.extra.atrHash` is handled by its own
- * declared encoding. One overridden member is composition; a second would mean this package had
- * stopped using the kit, and the test suite says so.
+ * x402's slot does not hold the reference directly: it holds `{ info, schema }`, where `info` is the
+ * carrier payload and `schema` is the inlined JSON Schema describing it (a REQUIRED member per x402
+ * §5.1.2). That wrapper is a protocol fact no container kind models, so `place` is overridden — but as
+ * COMPOSITION over `base.place`, not as a reimplementation beside it. The kit performs the entire
+ * placement first: the advertisement rules (terms URL demanded of an integrity-bearing reference,
+ * refused where malformed), the canonical write into `extensions.legalContext.info`, the bare-hash
+ * mirror into `accepts[0].extra.atrHash`, the terms-URL writes into BOTH declared slots, every
+ * malformed-container refusal, and purity. The override then does exactly one thing: rebuilds our entry
+ * as `{ info, schema }` so the wrapper's second member lands beside the payload the kit just wrote.
+ *
+ * The predecessor override reimplemented the write wholesale — sibling preservation, own-property
+ * walks, the malformed-`extensions` refusal, all restated beside the kit's copies — which is how it
+ * could drift: it froze a schema and never wrote a terms URL while the kit's manifest declared one
+ * (integra-protocol#8). A one-member rebuild has no room to disagree with the manifest, because
+ * everything the manifest declares is discharged before it runs.
+ *
+ * Rebuilding the ENTRY wholesale (rather than merging `schema` into whatever sits there) is the
+ * predecessor's ratified behaviour, kept: our entry is the direct holder and is REPLACED, so junk a
+ * counterparty parked inside `extensions.legalContext` does not ride our wire; sibling entries in
+ * `extensions` survive untouched, per the host's own echo rule. `extract` is the kit's, unchanged —
+ * reading `info` is an ordinary object-path read, the alias and both terms-URL slots are declared data,
+ * and reconciliation lives where every protocol shares it.
  */
 export const x402Placement: ReferencePlacementAdapter = {
   ...base,
 
-  place(ref: LegalContextRef, doc: unknown): Outcome<unknown> {
-    if (!X402_PLACEMENT.carrierTypes.includes(ref.type))
-      return refuse(
-        "carrier-type-not-permitted",
-        `${X402_PLACEMENT.field} permits ${X402_PLACEMENT.carrierTypes.join("/")}, got ${ref.type}`,
-      );
-    if (typeof doc !== "object" || doc === null || Array.isArray(doc))
-      return refuse(
-        "document-malformed",
-        "an x402 challenge is a non-null object",
-      );
-
-    // Rendered through the codec, never by interpolation — a value that does not meet its type's rule refuses
-    // here instead of putting an extension on the wire that a buyer's parser would reject.
-    let encoded: unknown;
-    try {
-      encoded = encodeForField(ref, X402_PLACEMENT.encoding);
-    } catch (e) {
-      if (!(e instanceof CarrierError)) throw e; // never swallow a non-carrier bug
-      return refuse(
-        "reference-malformed",
-        `not a valid carrier value for its type: ${ref.value}`,
-      );
-    }
-
-    // OWN PROPERTY ONLY. `place`'s document is exactly as attacker-influenced as `extract`'s, so a challenge
-    // with ZERO own properties must not walk into its prototype's `extensions` and put those entries on the
-    // wire — `extract` reports that document as `reference-absent`, and the two halves have to agree about
-    // what is present. binding-core's own writer states the rule and proves it for the generic path; the
-    // override is the one write path that has to restate it. The DECLARED view rather than a
-    // `Record<string, unknown>` is deliberate: reading `extensions` off an index signature is TS4111, and the
-    // bracket form biome would then ask for is the fix it classes as unsafe. The document is still spread
-    // wholesale below, so nothing is narrowed away.
-    const ext = Object.hasOwn(doc, "extensions")
-      ? (doc as { readonly extensions?: unknown }).extensions
-      : undefined;
-
-    // Sibling extensions are PRESERVED: the live x402 v2 spec states a client "must include at least the info
-    // received; it may append additional info but cannot delete or overwrite existing info". That is the host
-    // protocol's rule about its own map, and a placement that pruned a sibling would make the client
-    // using it non-conformant.
-    //
-    // An `extensions` that is PRESENT but cannot be merged into REFUSES, and that is binding-core's ratified
-    // malformed-container rule read against the manifest this package PUBLISHES rather than against the
-    // granularity the override happens to write at: `field` is `extensions.legalContext.info`, so `legalContext`
-    // is the field's direct holder and `extensions` sits one level ABOVE it — replaced at the holder, refused
-    // above it, because replacing an intermediate discards everything beneath it. A stranger holding only the
-    // manifest and the kit computes that refusal for the same document, and an override that emitted a
-    // challenge instead would make the manifest a description rather than an artifact. ABSENT is still
-    // created; our own entry, being the direct holder, is still replaced.
-    const siblings =
-      ext === undefined
-        ? {}
-        : typeof ext === "object" && ext !== null && !Array.isArray(ext)
-          ? (ext as Record<string, unknown>)
-          : undefined;
-    if (siblings === undefined)
-      return refuse(
-        "document-malformed",
-        `extensions is present and is not a map, so ${X402_PLACEMENT.field} has no holder to write into: ${JSON.stringify(ext)}`,
-      );
-
-    return {
-      ok: true,
-      value: {
-        ...(doc as object),
-        extensions: {
-          ...siblings,
-          legalContext: {
-            info: encoded,
-            schema: LEGAL_CONTEXT_SCHEMA,
-          },
-        },
-      },
-    };
+  place(ad: LegalContextAdvertisement, doc: unknown): Outcome<unknown> {
+    const placed = base.place(ad, doc);
+    if ("refused" in placed) return placed;
+    // The kit's write just created this path on its own output; reading it back — rather than re-encoding
+    // the reference a second time — keeps one codepath responsible for what `info` contains.
+    const info = readAtPath(placed.value, X402_PLACEMENT.field);
+    const wrapped = writeToContainer(
+      placed.value,
+      X402_PLACEMENT.container,
+      "extensions.legalContext",
+      { info, schema: LEGAL_CONTEXT_SCHEMA },
+    );
+    if (wrapped === undefined)
+      // Unreachable by construction — `placed.value` holds the record the kit wrote through — but a
+      // wrapper that silently returned the unwrapped document on the impossible branch would ship a
+      // challenge with no `schema`, so the branch refuses like every other malformed container.
+      return {
+        refused: true,
+        haltClass: "verification-failure",
+        code: "x402/document-malformed",
+        detail:
+          "the placed document lost its extensions map between two writes",
+      };
+    return { ok: true, value: wrapped };
   },
 };

@@ -35,8 +35,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -59,8 +64,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -86,8 +96,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -302,6 +317,28 @@
           "vct": "mandate.checkout.open.1",
           "constraints": []
         }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mastercard-vi/tier-b-not-writable"
+      }
+    },
+    {
+      "name": "place REFUSES with a terms URL exactly as without one — declaration-only outranks the advertisement rules",
+      "$comment": "The manifest declares no termsUrlFields, and place refuses every mandate regardless; pinning the code here keeps the precedence deliberate rather than incidental.",
+      "input": {
+        "protocol": "mastercard-vi",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xabababababababababababababababababababababababababababababababab"
+        },
+        "doc": {
+          "vct": "mandate.checkout.open.1",
+          "constraints": []
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,

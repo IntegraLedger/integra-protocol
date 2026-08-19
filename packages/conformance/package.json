@@ -57,6 +57,7 @@
     "@integraledger/lcp-discovery": "workspace:*",
     "@integraledger/lcp-evidence": "workspace:*",
     "@integraledger/lcp-kernel": "workspace:*",
+    "@integraledger/lcp-placement-x402": "workspace:*",
     "@integraledger/lcp-placements": "workspace:*",
     "@integraledger/lcp-verify": "workspace:*"
   },

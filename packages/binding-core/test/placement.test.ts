@@ -37,7 +37,8 @@ const MANIFEST: PlacementManifest = {
 // the CONTRACT (both members total, refusals as values, place pure); the real ACP placement is Phase B.
 const adapter: ReferencePlacementAdapter = {
   manifest: MANIFEST,
-  place(ref, doc) {
+  place(ad, doc) {
+    const { ref } = ad;
     if (typeof doc !== "object" || doc === null)
       return {
         refused: true,
@@ -62,7 +63,11 @@ const adapter: ReferencePlacementAdapter = {
       };
     return {
       ok: true,
-      value: { type: "sha256", value: v.slice("lcp:sha256:".length) },
+      value: {
+        ref: { type: "sha256", value: v.slice("lcp:sha256:".length) },
+        // The double's manifest declares no slot, and the read side must say which absence this is.
+        termsUrl: { kind: "no-field-declared" },
+      },
     };
   },
 };
@@ -71,9 +76,11 @@ describe("ReferencePlacementAdapter", () => {
   it("place → extract round-trips the reference", () => {
     const placed = adapter.place(
       {
-        type: "sha256",
-        value:
-          "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+        ref: {
+          type: "sha256",
+          value:
+            "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+        },
       },
       {},
     );
@@ -83,9 +90,12 @@ describe("ReferencePlacementAdapter", () => {
     expect(adapter.extract(placed.value)).toEqual({
       ok: true,
       value: {
-        type: "sha256",
-        value:
-          "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+        ref: {
+          type: "sha256",
+          value:
+            "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+        },
+        termsUrl: { kind: "no-field-declared" },
       },
     });
   });
@@ -102,7 +112,7 @@ describe("ReferencePlacementAdapter", () => {
     expect(() => adapter.extract(null)).not.toThrow();
     expect(adapter.extract(null)).toMatchObject({ refused: true });
     expect(
-      adapter.place({ type: "sha256", value: "0x00" }, null),
+      adapter.place({ ref: { type: "sha256", value: "0x00" } }, null),
     ).toMatchObject({
       refused: true,
     });
@@ -312,7 +322,10 @@ describe("tagged-array constants — host-required siblings on a created entry",
   it("writes the constants onto a NEWLY created entry", () => {
     // UCP's policy schema is required:[type,description], so an entry without one is an invalid document
     // — and a placement that emits an invalid document is asserting a shape the host rejects.
-    const out = makePlacement(withConstants(DESC)).place(REF, { policies: [] });
+    const out = makePlacement(withConstants(DESC)).place(
+      { ref: REF },
+      { policies: [] },
+    );
     expect(out).toEqual({
       ok: true,
       value: {
@@ -328,7 +341,10 @@ describe("tagged-array constants — host-required siblings on a created entry",
   });
 
   it("creates the array when it is absent entirely", () => {
-    const out = makePlacement(withConstants(DESC)).place(REF, { id: "c1" });
+    const out = makePlacement(withConstants(DESC)).place(
+      { ref: REF },
+      { id: "c1" },
+    );
     expect(out).toMatchObject({
       ok: true,
       value: { policies: [expect.objectContaining(DESC)] },
@@ -338,14 +354,17 @@ describe("tagged-array constants — host-required siblings on a created entry",
   it("does NOT apply them when merging into an entry that already exists", () => {
     // A counterparty's own prose is theirs. Overwriting it in order to place our reference would be an
     // edit to their document nobody asked for.
-    const out = makePlacement(withConstants(DESC)).place(REF, {
-      policies: [
-        {
-          type: "com.example.policy.terms",
-          description: { plain: "Our own wording, thanks." },
-        },
-      ],
-    });
+    const out = makePlacement(withConstants(DESC)).place(
+      { ref: REF },
+      {
+        policies: [
+          {
+            type: "com.example.policy.terms",
+            description: { plain: "Our own wording, thanks." },
+          },
+        ],
+      },
+    );
     expect(out).toEqual({
       ok: true,
       value: {
@@ -378,7 +397,9 @@ describe("tagged-array constants — host-required siblings on a created entry",
       field: "policies[type=com.example.policy.terms]",
       carrierTypes: ["sha256"],
     };
-    expect(makePlacement(noConstants).place(REF, { policies: [] })).toEqual({
+    expect(
+      makePlacement(noConstants).place({ ref: REF }, { policies: [] }),
+    ).toEqual({
       ok: true,
       value: {
         policies: [
@@ -482,7 +503,7 @@ describe("a malformed reference refuses on the ALIAS write path too", () => {
 
   it("refuses rather than throwing, and quotes the offending value", () => {
     const out = makePlacement(m).place(
-      { type: "sha256", value: "not-a-hash" },
+      { ref: { type: "sha256", value: "not-a-hash" } },
       { metadata: {} },
     );
     expect(out).toMatchObject({
@@ -495,7 +516,7 @@ describe("a malformed reference refuses on the ALIAS write path too", () => {
   it("a well-formed reference still lands in both the field and the alias", () => {
     // The companion positive: without it, the guard above could be satisfied by refusing everything.
     const ref = { type: "sha256" as const, value: `0x${"ab".repeat(32)}` };
-    expect(makePlacement(m).place(ref, { metadata: {} })).toMatchObject({
+    expect(makePlacement(m).place({ ref }, { metadata: {} })).toMatchObject({
       ok: true,
       value: {
         constraints: [{ type: "com.example.lcp-terms-hash", value: ref }],

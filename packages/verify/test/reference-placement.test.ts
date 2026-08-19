@@ -87,9 +87,12 @@ describe("reference-placement is wired into verify()'s walk", () => {
       ...BASE,
       placement: {
         extracted: {
-          type: "sha256",
-          value:
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
+          ref: {
+            type: "sha256",
+            value:
+              "0x0000000000000000000000000000000000000000000000000000000000000000",
+          },
+          termsUrl: { kind: "no-field-declared" },
         },
       },
     });
@@ -105,7 +108,12 @@ describe("reference-placement is wired into verify()'s walk", () => {
   it("a matching placement reports the step as proved and does NOT inflate the class", async () => {
     const report = await verify({
       ...BASE,
-      placement: { extracted: { type: "sha256", value: ATR } },
+      placement: {
+        extracted: {
+          ref: { type: "sha256", value: ATR },
+          termsUrl: { kind: "no-field-declared" },
+        },
+      },
     });
     expect(
       report.steps.find((s) => s.name === "reference-placement")?.outcome,

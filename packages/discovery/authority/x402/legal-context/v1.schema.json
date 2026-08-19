@@ -2,10 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://integraledger.com/lcp/x402/legal-context/v1.schema.json",
   "title": "legalContext — x402 extension info",
-  "description": "The `info` payload of the `legalContext` x402 extension, in both places it appears. The ROOT describes the CHALLENGE-time block on a 402 response; `$defs/receipt` describes the SETTLEMENT-time block on a SettlementResponse. They are deliberately two definitions in one document: x402 §5.1.2 makes `schema` required and says it is the 'JSON Schema defining the expected structure of `info`', and the receipt-time `info` is not the challenge-time `info` — it carries three more fields. One pointer cannot define both shapes, so whichever block shared it would ship a `schema` that misdescribes its own `info`. A buyer still resolves ONE agreement's schema, which is why they stay in one document. This document describes a technology harness. It asserts nothing about whether any agreement is lawful, sound or enforceable.",
+  "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "value", "legalContextUrl"],
+  "required": [
+    "type",
+    "value",
+    "legalContextUrl"
+  ],
   "properties": {
     "type": {
       "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
@@ -14,7 +18,8 @@
     },
     "value": {
       "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
-      "$ref": "#/$defs/atrHash"
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
     },
     "legalContextUrl": {
       "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
@@ -23,12 +28,9 @@
     }
   },
   "$defs": {
-    "atrHash": {
-      "type": "string",
-      "pattern": "^0x[0-9a-f]{64}$"
-    },
     "receipt": {
       "title": "legalContext — settlement-time info",
+      "$comment": "WHY TWO DEFINITIONS IN ONE DOCUMENT: x402 §5.1.2 makes `schema` required and says it is the 'JSON Schema defining the expected structure of `info`', and the receipt-time `info` is not the challenge-time `info` — it carries three more fields. One pointer cannot define both shapes, so whichever block shared it would ship a `schema` that misdescribes its own `info`. A buyer still resolves ONE agreement's schema, which is why they stay in one document. WHY THE ROOT CARRIES NO $ref INDIRECTION: the root doubles as the INLINED wire schema — x402's Bazaar extension forbids external $ref/$id in an untrusted `schema` and the published placement inlines the root verbatim (minus $id and $defs), an equality the conformance suite gates — so the atrHash pattern is stated inline in both definitions rather than shared through a $defs pointer the wire copy would have to rewrite.",
       "description": "The same reference the 402 challenge carried, restated on the settlement response so the buyer holds an execution-time record of the terms actually in force when the payment landed — not only the ones proposed. The three extra fields exist to stop it being mistaken for a binding artifact, and they say the uncomfortable part out loud rather than omitting it.",
       "type": "object",
       "additionalProperties": false,
@@ -41,9 +43,18 @@
         "weldCarrier"
       ],
       "properties": {
-        "type": { "type": "string", "const": "sha256" },
-        "value": { "$ref": "#/$defs/atrHash" },
-        "legalContextUrl": { "type": "string", "format": "uri" },
+        "type": {
+          "type": "string",
+          "const": "sha256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+          "type": "string",
+          "format": "uri"
+        },
         "phase": {
           "description": "WHEN this reference was recorded: at settlement, i.e. the terms in force at execution time.",
           "type": "string",

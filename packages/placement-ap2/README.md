@@ -28,7 +28,7 @@ import { AP2_PLACEMENT, ap2Placement } from "@integraledger/lcp-placement-ap2";
 
 declare const envelope: unknown; // an AP2 mandate envelope, as received
 
-const placed = ap2Placement.place({ type: "sha256", value: "0x…" }, envelope);
+const placed = ap2Placement.place({ ref: { type: "sha256", value: "0x…" } }, envelope);
 const ref = ap2Placement.extract(envelope);
 ```
 

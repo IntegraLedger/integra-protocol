@@ -95,7 +95,13 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // reference into a different document. The same holds for the other content-addressed types (base58btc
 // CIDs are mixed-case, Arweave ids are base64url), so the normalization is scoped to sha256 alone. Read
 // side untouched: visa-tap pins that `extract` returns a received value verbatim.
-const CORPUS_SIZE = 812;
+// 812 → 844 on 2026-08-19: the terms-URL half of the placement seam gains its write path and its
+// certification (integra-protocol#8). Every extract expectation becomes the ExtractedAdvertisement —
+// reference plus a typed terms-URL reading — every slot-declaring manifest gains the advertisement
+// refusals (terms-url-missing, terms-url-malformed, mismatch), every slot-less manifest gains
+// terms-url-unplaceable, and every protocol gains a ROUNDTRIP case: place then extract in one op, the
+// composition certification whose absence let two separately-conformant halves ship jointly broken.
+const CORPUS_SIZE = 844;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

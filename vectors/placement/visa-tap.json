@@ -5,7 +5,9 @@
     "pattern": "http-advisory",
     "tier": "A",
     "encoding": "bare-value",
-    "container": { "kind": "header-map" },
+    "container": {
+      "kind": "header-map"
+    },
     "field": "headers.x-lcp-hash",
     "carrierTypes": ["sha256"],
     "specRef": "Visa TAP — custom HTTP header outside the Signature-Input covered set (@authority, @path); RFC 9421 §1.1/§2.5 (gate discharged 2026-07-30: see README)"
@@ -20,7 +22,11 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "headers": { "content-type": "application/json" } }
+        "doc": {
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
       },
       "expected": {
         "ok": true,
@@ -41,7 +47,10 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "method": "POST", "path": "/checkout" }
+        "doc": {
+          "method": "POST",
+          "path": "/checkout"
+        }
       },
       "expected": {
         "ok": true,
@@ -89,7 +98,10 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "headers": "x-lcp-hash: 0xstale", "method": "POST" }
+        "doc": {
+          "headers": "x-lcp-hash: 0xstale",
+          "method": "POST"
+        }
       },
       "expected": {
         "ok": true,
@@ -115,8 +127,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -134,8 +151,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -154,8 +176,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -164,8 +191,13 @@
       "input": {
         "protocol": "visa-tap",
         "op": "place",
-        "ref": { "type": "url", "value": "https://seller.example/terms.md" },
-        "doc": { "headers": {} }
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/terms.md"
+        },
+        "doc": {
+          "headers": {}
+        }
       },
       "expected": {
         "refused": true,
@@ -183,7 +215,9 @@
           "type": "ipfs",
           "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
         },
-        "doc": { "headers": {} }
+        "doc": {
+          "headers": {}
+        }
       },
       "expected": {
         "refused": true,
@@ -214,8 +248,13 @@
       "input": {
         "protocol": "visa-tap",
         "op": "place",
-        "ref": { "type": "sha256", "value": "0xdeadbeef" },
-        "doc": { "headers": {} }
+        "ref": {
+          "type": "sha256",
+          "value": "0xdeadbeef"
+        },
+        "doc": {
+          "headers": {}
+        }
       },
       "expected": {
         "refused": true,
@@ -228,7 +267,11 @@
       "input": {
         "protocol": "visa-tap",
         "op": "extract",
-        "doc": { "headers": { "x-lcp-hash": "not-a-hash" } }
+        "doc": {
+          "headers": {
+            "x-lcp-hash": "not-a-hash"
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -242,7 +285,11 @@
       "input": {
         "protocol": "visa-tap",
         "op": "extract",
-        "doc": { "headers": { "x-lcp-hash": "" } }
+        "doc": {
+          "headers": {
+            "x-lcp-hash": ""
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -255,7 +302,11 @@
       "input": {
         "protocol": "visa-tap",
         "op": "extract",
-        "doc": { "headers": { "x-lcp-hash": 42 } }
+        "doc": {
+          "headers": {
+            "x-lcp-hash": 42
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -268,7 +319,11 @@
       "input": {
         "protocol": "visa-tap",
         "op": "extract",
-        "doc": { "headers": { "content-type": "application/json" } }
+        "doc": {
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -300,7 +355,9 @@
       "input": {
         "protocol": "visa-tap",
         "op": "extract",
-        "doc": { "body": {} }
+        "doc": {
+          "body": {}
+        }
       },
       "expected": {
         "refused": true,
@@ -313,7 +370,9 @@
       "input": {
         "protocol": "visa-tap",
         "op": "extract",
-        "doc": { "headers": "x-lcp-hash: 0xstale" }
+        "doc": {
+          "headers": "x-lcp-hash: 0xstale"
+        }
       },
       "expected": {
         "refused": true,
@@ -323,7 +382,11 @@
     },
     {
       "name": "a non-object document IS malformed — this is what the code is reserved for",
-      "input": { "protocol": "visa-tap", "op": "extract", "doc": null },
+      "input": {
+        "protocol": "visa-tap",
+        "op": "extract",
+        "doc": null
+      },
       "expected": {
         "refused": true,
         "haltClass": "verification-failure",
@@ -339,9 +402,65 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "headers": { "content-type": "application/json" } }
+        "doc": {
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
       },
       "expected": true
+    },
+    {
+      "name": "place REFUSES a terms URL this manifest has no slot for — dropping it silently would under-advertise",
+      "$comment": "The manifest declaring NO termsUrlFields is a statement of protocol fact — this wire has no room for a locator — and the kit holds the seller to it: an advertisement supplying one is answered with a refusal, never with a document that silently carries less than the seller stated.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json",
+        "doc": {
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "visa-tap/terms-url-unplaceable"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — what place writes, extract reads back as one agreement",
+      "$comment": "The composition certification the predecessor corpus lacked: every place case certified the write and every extract case the read, and none fed one to the other — which is how two separately conformant halves shipped jointly broken (integra-protocol#8). The subject runs place then extract and pins the recovered advertisement.",
+      "input": {
+        "protocol": "visa-tap",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        }
+      }
     }
   ]
 }

@@ -21,6 +21,10 @@ const HASH =
 const OTHER =
   "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed";
 const REF = { type: "sha256", value: HASH } as const;
+// Every manifest in this file declares no terms-URL slot, so every extract answers this absence — the
+// protocol-level fact, distinct from a seller leaving a declared slot empty. The slot machinery has its
+// own describe block below.
+const NO_URL = { kind: "no-field-declared" } as const;
 
 const objectPath: PlacementManifest = {
   protocol: "acp",
@@ -72,18 +76,21 @@ describe.each(KINDS)(
     const a = makePlacement(manifest);
 
     it("place → extract round-trips, and BOTH arms pin the discriminant", () => {
-      const placed = a.place(REF, empty);
+      const placed = a.place({ ref: REF }, empty);
       if ("refused" in placed)
         throw new Error(`expected a placement: ${placed.code}`);
       // `ok: true` is pinned explicitly, not inferred from `"refused" in placed` being false. A success arm
       // that returned `ok: false` alongside a correct value would satisfy every narrowing check here and
       // break every caller that discriminates on it — the same reason the ACP vectors pin the whole Outcome.
       expect(placed.ok).toBe(true);
-      expect(a.extract(placed.value)).toEqual({ ok: true, value: REF });
+      expect(a.extract(placed.value)).toEqual({
+        ok: true,
+        value: { ref: REF, termsUrl: NO_URL },
+      });
     });
 
     it("creates the container when absent", () => {
-      const placed = a.place(REF, {});
+      const placed = a.place({ ref: REF }, {});
       expect("refused" in placed).toBe(false);
     });
 
@@ -95,34 +102,43 @@ describe.each(KINDS)(
         headers: {},
       };
       const before = JSON.stringify(doc);
-      a.place(REF, doc);
+      a.place({ ref: REF }, doc);
       expect(JSON.stringify(doc)).toBe(before);
     });
 
     it("preserves the host's own sibling keys", () => {
-      const placed = a.place(REF, {
-        id: "doc-1",
-        merchant_ref: "SO-4417",
-        metadata: { campaign: "spring" },
-        constraints: [{ type: "mandate.payment.budget", value: "100" }],
-        headers: { "content-type": "application/json" },
-      });
+      const placed = a.place(
+        { ref: REF },
+        {
+          id: "doc-1",
+          merchant_ref: "SO-4417",
+          metadata: { campaign: "spring" },
+          constraints: [{ type: "mandate.payment.budget", value: "100" }],
+          headers: { "content-type": "application/json" },
+        },
+      );
       if ("refused" in placed) throw new Error("expected a placement");
       const v = placed.value as Record<string, unknown>;
       expect(v["id"]).toBe("doc-1");
       expect(v["merchant_ref"]).toBe("SO-4417");
       // And the reference is still findable afterwards.
-      expect(a.extract(placed.value)).toEqual({ ok: true, value: REF });
+      expect(a.extract(placed.value)).toEqual({
+        ok: true,
+        value: { ref: REF, termsUrl: NO_URL },
+      });
     });
 
     it("REPLACES rather than duplicating when placed twice", () => {
-      const once = a.place(REF, {});
+      const once = a.place({ ref: REF }, {});
       if ("refused" in once) throw new Error("expected a placement");
-      const twice = a.place({ type: "sha256", value: OTHER }, once.value);
+      const twice = a.place(
+        { ref: { type: "sha256", value: OTHER } },
+        once.value,
+      );
       if ("refused" in twice) throw new Error("expected a placement");
       expect(a.extract(twice.value)).toEqual({
         ok: true,
-        value: { type: "sha256", value: OTHER },
+        value: { ref: { type: "sha256", value: OTHER }, termsUrl: NO_URL },
       });
       // Nothing accumulated: the serialized form must not contain the superseded value anywhere.
       expect(JSON.stringify(twice.value)).not.toContain(HASH);
@@ -132,7 +148,7 @@ describe.each(KINDS)(
       for (const doc of [null, "s", 3, [], true]) {
         // haltClass is pinned, not just refused/code: it is part of the refusal CONTRACT that callers switch
         // on, unlike `detail`, which is prose the corpus deliberately omits.
-        expect(a.place(REF, doc)).toMatchObject({
+        expect(a.place({ ref: REF }, doc)).toMatchObject({
           refused: true,
           haltClass: "verification-failure",
           code: `${manifest.protocol}/document-malformed`,
@@ -155,11 +171,14 @@ describe.each(KINDS)(
           : manifest.field.split(".")[0]
       ) as string;
       for (const junk of ["not-a-container", 7, true, ["a", "b"]]) {
-        const placed = a.place(REF, { id: "keep", [at]: junk });
+        const placed = a.place({ ref: REF }, { id: "keep", [at]: junk });
         if ("refused" in placed)
           throw new Error(`expected a placement, got ${placed.code}`);
         expect((placed.value as Record<string, unknown>)["id"]).toBe("keep");
-        expect(a.extract(placed.value)).toEqual({ ok: true, value: REF });
+        expect(a.extract(placed.value)).toEqual({
+          ok: true,
+          value: { ref: REF, termsUrl: NO_URL },
+        });
         // Nothing from the unmergeable value leaked in as numeric keys.
         expect(JSON.stringify(placed.value)).not.toContain('"0"');
       }
@@ -174,7 +193,7 @@ describe.each(KINDS)(
 
     it("REFUSES a carrier type the manifest does not permit, on both members", () => {
       expect(
-        a.place({ type: "url", value: "https://x.test/t" }, {}),
+        a.place({ ref: { type: "url", value: "https://x.test/t" } }, {}),
       ).toMatchObject({
         refused: true,
         code: `${manifest.protocol}/carrier-type-not-permitted`,
@@ -183,7 +202,7 @@ describe.each(KINDS)(
 
     it("REFUSES a corrupt carrier value rather than minting one", () => {
       expect(
-        a.place({ type: "sha256", value: HASH.slice(2) }, {}),
+        a.place({ ref: { type: "sha256", value: HASH.slice(2) } }, {}),
       ).toMatchObject({
         refused: true,
         code: `${manifest.protocol}/reference-malformed`,
@@ -218,7 +237,10 @@ describe.each(KINDS)(
         ...manifest,
         carrierTypes: ["sha256", "url"],
       });
-      const placed = wide.place({ type: "url", value: "https://x.test/t" }, {});
+      const placed = wide.place(
+        { ref: { type: "url", value: "https://x.test/t" } },
+        {},
+      );
       if ("refused" in placed) throw new Error("expected a placement");
       expect(a.extract(placed.value)).toMatchObject({
         refused: true,
@@ -237,7 +259,7 @@ describe.each(KINDS)(
     it("both members are TOTAL — a hostile document is a refusal, never a throw", () => {
       for (const doc of [null, undefined, 3, "s", [], true, { metadata: 7 }]) {
         expect(() => a.extract(doc)).not.toThrow();
-        expect(() => a.place(REF, doc)).not.toThrow();
+        expect(() => a.place({ ref: REF }, doc)).not.toThrow();
       }
     });
   },
@@ -251,11 +273,14 @@ describe("tagged-array — the rules that only an array can have", () => {
   >;
 
   it("keeps a matching entry's OWN sibling keys when replacing its value", () => {
-    const placed = a.place(REF, {
-      constraints: [
-        { type: c.tag, value: OTHER, note: "set by the host", extra: 1 },
-      ],
-    });
+    const placed = a.place(
+      { ref: REF },
+      {
+        constraints: [
+          { type: c.tag, value: OTHER, note: "set by the host", extra: 1 },
+        ],
+      },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     const arr = (placed.value as { constraints: Record<string, unknown>[] })
       .constraints;
@@ -269,9 +294,12 @@ describe("tagged-array — the rules that only an array can have", () => {
   });
 
   it("APPENDS when no entry carries the tag, leaving the host's entries alone", () => {
-    const placed = a.place(REF, {
-      constraints: [{ type: "mandate.payment.budget", value: "100" }],
-    });
+    const placed = a.place(
+      { ref: REF },
+      {
+        constraints: [{ type: "mandate.payment.budget", value: "100" }],
+      },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     const arr = (placed.value as { constraints: unknown[] }).constraints;
     expect(arr).toHaveLength(2);
@@ -280,7 +308,7 @@ describe("tagged-array — the rules that only an array can have", () => {
   });
 
   it("creates an array holding EXACTLY the one entry when the container is absent", () => {
-    const placed = a.place(REF, {});
+    const placed = a.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       constraints: [{ type: c.tag, value: HASH }],
@@ -291,12 +319,15 @@ describe("tagged-array — the rules that only an array can have", () => {
     // The read rule is first-wins, so the write rule must be too. Rewriting both would make the document
     // self-consistent by force and hide the host's duplicate; rewriting the second would change which record
     // the reader answers with.
-    const placed = a.place(REF, {
-      constraints: [
-        { type: c.tag, value: OTHER, n: 1 },
-        { type: c.tag, value: OTHER, n: 2 },
-      ],
-    });
+    const placed = a.place(
+      { ref: REF },
+      {
+        constraints: [
+          { type: c.tag, value: OTHER, n: 1 },
+          { type: c.tag, value: OTHER, n: 2 },
+        ],
+      },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     expect((placed.value as { constraints: unknown[] }).constraints).toEqual([
       { type: c.tag, value: HASH, n: 1 },
@@ -355,7 +386,10 @@ describe("the malformed-container rule — replace the direct holder, refuse abo
   });
 
   it("REPLACES an unmergeable DIRECT HOLDER", () => {
-    const placed = deep.place(REF, { outer: { inner: "junk", keep: 1 } });
+    const placed = deep.place(
+      { ref: REF },
+      { outer: { inner: "junk", keep: 1 } },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       outer: {
@@ -366,14 +400,14 @@ describe("the malformed-container rule — replace the direct holder, refuse abo
   });
 
   it("REFUSES an unmergeable INTERMEDIATE — replacing it would discard everything beneath", () => {
-    expect(deep.place(REF, { outer: "junk" })).toMatchObject({
+    expect(deep.place({ ref: REF }, { outer: "junk" })).toMatchObject({
       refused: true,
       code: "acp/document-malformed",
     });
   });
 
   it("creates every absent level on the way down", () => {
-    const placed = deep.place(REF, {});
+    const placed = deep.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       outer: { inner: { legal_context: `lcp:sha256:${HASH}` } },
@@ -386,10 +420,13 @@ describe("the malformed-container rule — replace the direct holder, refuse abo
     // whole set of sibling keys — the receipt's payer id and payment claims, or ACK's own policyRef /
     // mandateRef / executionRef / settlementReference — while every other test in this file still passed.
     // That silence is why the case belongs to the kit and not only to the package that happens to use it.
-    const placed = deep.place(REF, {
-      top: "kept",
-      outer: { mid: "kept", inner: { deepSibling: "kept" } },
-    });
+    const placed = deep.place(
+      { ref: REF },
+      {
+        top: "kept",
+        outer: { mid: "kept", inner: { deepSibling: "kept" } },
+      },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       top: "kept",
@@ -425,12 +462,12 @@ describe("header-map — RFC 9110 case-insensitivity", () => {
   it("extract finds a differently-cased header end to end", () => {
     expect(a.extract({ headers: { "X-LCP-HASH": HASH } })).toEqual({
       ok: true,
-      value: REF,
+      value: { ref: REF, termsUrl: NO_URL },
     });
   });
 
   it("REUSES the existing key's casing rather than adding a second same-named header", () => {
-    const placed = a.place(REF, { headers: { "X-LCP-Hash": OTHER } });
+    const placed = a.place({ ref: REF }, { headers: { "X-LCP-Hash": OTHER } });
     if ("refused" in placed) throw new Error("expected a placement");
     const h = (placed.value as { headers: Record<string, unknown> }).headers;
     expect(Object.keys(h)).toEqual(["X-LCP-Hash"]);
@@ -448,7 +485,10 @@ describe("header-map — RFC 9110 case-insensitivity", () => {
     // Visa TAP's request headers ARE the document — there is no wrapper object to nest under. A locator with
     // no dot is the only thing that exercises that branch, and every other fixture here has one.
     const bare = makePlacement({ ...headerMap, field: "x-lcp-hash" });
-    const placed = bare.place(REF, { "content-type": "application/json" });
+    const placed = bare.place(
+      { ref: REF },
+      { "content-type": "application/json" },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       "content-type": "application/json",
@@ -456,12 +496,12 @@ describe("header-map — RFC 9110 case-insensitivity", () => {
     });
     expect(bare.extract({ "X-LCP-Hash": HASH })).toEqual({
       ok: true,
-      value: REF,
+      value: { ref: REF, termsUrl: NO_URL },
     });
   });
 
   it("REPLACES an unmergeable header map at a nested locator", () => {
-    const placed = a.place(REF, { headers: "junk", keep: 1 });
+    const placed = a.place({ ref: REF }, { headers: "junk", keep: 1 });
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({ keep: 1, headers: { "x-lcp-hash": HASH } });
   });
@@ -485,14 +525,17 @@ describe("object-path segments — a key containing literal dots", () => {
   });
 
   it("round-trips through the dotted key as ONE key", () => {
-    const placed = dotted.place(REF, {});
+    const placed = dotted.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       extensions: {
         "com.integraledger.legal-context": { type: "sha256", value: HASH },
       },
     });
-    expect(dotted.extract(placed.value)).toEqual({ ok: true, value: REF });
+    expect(dotted.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref: REF, termsUrl: NO_URL },
+    });
   });
 
   it("does NOT read a nested spelling a dot-split would have found", () => {
@@ -512,9 +555,12 @@ describe("object-path segments — a key containing literal dots", () => {
   });
 
   it("preserves sibling capabilities under extensions", () => {
-    const placed = dotted.place(REF, {
-      extensions: { "dev.ucp.checkout": { version: "1" } },
-    });
+    const placed = dotted.place(
+      { ref: REF },
+      {
+        extensions: { "dev.ucp.checkout": { version: "1" } },
+      },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       extensions: {
@@ -558,7 +604,7 @@ describe("a MIXED-container manifest — UCP's actual shape", () => {
   });
 
   it("writes BOTH carriers, each through its own container kind", () => {
-    const placed = ucp.place(REF, {});
+    const placed = ucp.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       extensions: {
@@ -569,15 +615,21 @@ describe("a MIXED-container manifest — UCP's actual shape", () => {
   });
 
   it("reads back the CAPABILITY, not the links entry, when both are present", () => {
-    const placed = ucp.place(REF, {});
+    const placed = ucp.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
-    expect(ucp.extract(placed.value)).toEqual({ ok: true, value: REF });
+    expect(ucp.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref: REF, termsUrl: NO_URL },
+    });
   });
 
   it("appends to a links array the host already populated, preserving its entries", () => {
-    const placed = ucp.place(REF, {
-      links: [{ type: "privacy_policy", url: "https://x.test/privacy" }],
-    });
+    const placed = ucp.place(
+      { ref: REF },
+      {
+        links: [{ type: "privacy_policy", url: "https://x.test/privacy" }],
+      },
+    );
     if ("refused" in placed) throw new Error("expected a placement");
     expect((placed.value as { links: unknown[] }).links).toEqual([
       { type: "privacy_policy", url: "https://x.test/privacy" },
@@ -596,7 +648,10 @@ describe("a MIXED-container manifest — UCP's actual shape", () => {
     expect(requireIntegrity(hit)).toBeUndefined();
     expect(ucp.extract(doc)).toEqual({
       ok: true,
-      value: { type: "url", value: "https://x.test/t" },
+      value: {
+        ref: { type: "url", value: "https://x.test/t" },
+        termsUrl: NO_URL,
+      },
     });
   });
 
@@ -614,7 +669,7 @@ describe("the own-property invariant holds on BOTH halves, not just on read", ()
   it("place does not merge an INHERITED container into the document it emits", () => {
     const doc = Object.create({ metadata: { attacker: "controlled" } });
     expect(Object.keys(doc)).toEqual([]); // zero own properties
-    const placed = a.place(REF, doc);
+    const placed = a.place({ ref: REF }, doc);
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       metadata: { legal_context: `lcp:sha256:${HASH}` },
@@ -628,9 +683,12 @@ describe("the own-property invariant holds on BOTH halves, not just on read", ()
     });
     // extract sees nothing, so place must not see a container either.
     expect(a.extract(doc)).toMatchObject({ code: "acp/reference-absent" });
-    const placed = a.place(REF, doc);
+    const placed = a.place({ ref: REF }, doc);
     if ("refused" in placed) throw new Error("expected a placement");
-    expect(a.extract(placed.value)).toEqual({ ok: true, value: REF });
+    expect(a.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref: REF, termsUrl: NO_URL },
+    });
   });
 
   it("a tagged-array entry that only INHERITS the tag is not selected, on read or write", () => {
@@ -644,12 +702,15 @@ describe("the own-property invariant holds on BOTH halves, not just on read", ()
       readFromContainer({ constraints: [inherited] }, c, taggedArray.field),
     ).toBeUndefined();
     // And the writer appends its own entry rather than rewriting one that never claimed the tag.
-    const placed = t.place(REF, { constraints: [inherited] });
+    const placed = t.place({ ref: REF }, { constraints: [inherited] });
     if ("refused" in placed) throw new Error("expected a placement");
     expect(
       (placed.value as { constraints: unknown[] }).constraints,
     ).toHaveLength(2);
-    expect(t.extract(placed.value)).toEqual({ ok: true, value: REF });
+    expect(t.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref: REF, termsUrl: NO_URL },
+    });
   });
 });
 
@@ -694,7 +755,7 @@ describe("makePlacement — a write-alias onto a malformed path refuses the whol
     // `outer` is an unmergeable INTERMEDIATE for the alias, so the alias write fails. The canonical write
     // already succeeded, and returning that partial document would put a reference on the wire while
     // silently dropping a carrier the manifest promises to populate.
-    expect(m.place(REF, { outer: "junk" })).toMatchObject({
+    expect(m.place({ ref: REF }, { outer: "junk" })).toMatchObject({
       refused: true,
       haltClass: "verification-failure",
       code: "acp/document-malformed",
@@ -702,7 +763,7 @@ describe("makePlacement — a write-alias onto a malformed path refuses the whol
   });
 
   it("writes both carriers when the alias path is clean", () => {
-    const placed = m.place(REF, {});
+    const placed = m.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       metadata: { legal_context: `lcp:sha256:${HASH}` },
@@ -729,7 +790,7 @@ describe("makePlacement — aliases", () => {
   it("reads an alias in its OWN encoding, not the manifest's", () => {
     expect(
       withAlias.extract({ legal_context: { type: "sha256", value: HASH } }),
-    ).toEqual({ ok: true, value: REF });
+    ).toEqual({ ok: true, value: { ref: REF, termsUrl: NO_URL } });
   });
 
   it("prefers the canonical field over every alias", () => {
@@ -738,7 +799,7 @@ describe("makePlacement — aliases", () => {
         metadata: { legal_context: `lcp:sha256:${HASH}` },
         legal_context: { type: "sha256", value: OTHER },
       }),
-    ).toEqual({ ok: true, value: REF });
+    ).toEqual({ ok: true, value: { ref: REF, termsUrl: NO_URL } });
   });
 
   it("takes aliases in DECLARED order when several are present", () => {
@@ -747,11 +808,11 @@ describe("makePlacement — aliases", () => {
         legal_context: { type: "sha256", value: HASH },
         terms: { url: "https://x.test/t" },
       }),
-    ).toEqual({ ok: true, value: REF });
+    ).toEqual({ ok: true, value: { ref: REF, termsUrl: NO_URL } });
   });
 
   it("does NOT write an alias that lacks the write flag", () => {
-    const placed = withAlias.place(REF, {});
+    const placed = withAlias.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       metadata: { legal_context: `lcp:sha256:${HASH}` },
@@ -778,7 +839,7 @@ describe("makePlacement — the write flag, which is what UCP §C.3 needs", () =
   });
 
   it("writes BOTH carriers, each in its own encoding", () => {
-    const placed = writeBoth.place(REF, {});
+    const placed = writeBoth.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
     expect(placed.value).toEqual({
       extensions: { "legal-context": { type: "sha256", value: HASH } },
@@ -787,16 +848,19 @@ describe("makePlacement — the write flag, which is what UCP §C.3 needs", () =
   });
 
   it("still prefers the canonical carrier on the way back out", () => {
-    const placed = writeBoth.place(REF, {});
+    const placed = writeBoth.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error("expected a placement");
-    expect(writeBoth.extract(placed.value)).toEqual({ ok: true, value: REF });
+    expect(writeBoth.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref: REF, termsUrl: NO_URL },
+    });
   });
 
   it("reads the written fallback when the canonical carrier was pruned", () => {
     // Exactly the §C.3 scenario: the capability never survived negotiation, and only the fallback remains.
     expect(writeBoth.extract({ fallback: { terms_hash: HASH } })).toEqual({
       ok: true,
-      value: REF,
+      value: { ref: REF, termsUrl: NO_URL },
     });
   });
 });
@@ -878,7 +942,7 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
   });
 
   it("places into a session that declares the extension active", () => {
-    const placed = declared.place(REF, negotiated);
+    const placed = declared.place({ ref: REF }, negotiated);
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       capabilities: {
@@ -894,7 +958,7 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
   });
 
   it("REFUSES a stock session — the field is unauthorized, so nothing was placed", () => {
-    expect(declared.place(REF, { id: "checkout_1" })).toMatchObject({
+    expect(declared.place({ ref: REF }, { id: "checkout_1" })).toMatchObject({
       refused: true,
       haltClass: "verification-failure",
       code: "acp/write-condition-unmet",
@@ -903,9 +967,12 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
 
   it("REFUSES a session that negotiated SOMEONE ELSE's extension", () => {
     expect(
-      declared.place(REF, {
-        capabilities: { extensions: [{ name: "discount" }] },
-      }),
+      declared.place(
+        { ref: REF },
+        {
+          capabilities: { extensions: [{ name: "discount" }] },
+        },
+      ),
     ).toMatchObject({ refused: true, code: "acp/write-condition-unmet" });
   });
 
@@ -915,19 +982,24 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
     // the strength of what an agent said it understands, before the seller declared anything, is the
     // rejection the gate exists to prevent.
     expect(
-      declared.place(REF, {
-        capabilities: { extensions: ["com.integraledger.legal-context"] },
-      }),
+      declared.place(
+        { ref: REF },
+        {
+          capabilities: { extensions: ["com.integraledger.legal-context"] },
+        },
+      ),
     ).toMatchObject({ refused: true, code: "acp/write-condition-unmet" });
   });
 
   it("refuses rather than emitting a document — a refusal carries no partial value", () => {
-    expect("value" in declared.place(REF, { id: "checkout_1" })).toBe(false);
+    expect("value" in declared.place({ ref: REF }, { id: "checkout_1" })).toBe(
+      false,
+    );
   });
 
   it("REFUSES when the gate path is wholly ABSENT — fail-closed, never write-and-hope", () => {
     // Treating absence as permission is exactly the fail-open the allow-list exists to prevent.
-    expect(declared.place(REF, {})).toMatchObject({
+    expect(declared.place({ ref: REF }, {})).toMatchObject({
       refused: true,
       code: "acp/write-condition-unmet",
     });
@@ -935,7 +1007,10 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
 
   it("REFUSES a non-string value where the declaration's name belongs", () => {
     expect(
-      declared.place(REF, { capabilities: { extensions: [{ name: 1 }] } }),
+      declared.place(
+        { ref: REF },
+        { capabilities: { extensions: [{ name: 1 }] } },
+      ),
     ).toMatchObject({ refused: true, code: "acp/write-condition-unmet" });
   });
 
@@ -944,13 +1019,13 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
     // carries it; refusing to read one because the session declared nothing discards evidence that exists.
     expect(
       declared.extract({ legal_context: { type: "sha256", value: HASH } }),
-    ).toEqual({ ok: true, value: REF });
+    ).toEqual({ ok: true, value: { ref: REF, termsUrl: NO_URL } });
   });
 
   it("a MALFORMED document refuses document-malformed, not write-condition-unmet", () => {
     // Ordering, pinned: there is no gate to read out of a non-object, and answering with the gate's code
     // would misreport a broken document as a permitted-but-declined write.
-    expect(declared.place(REF, null)).toMatchObject({
+    expect(declared.place({ ref: REF }, null)).toMatchObject({
       refused: true,
       code: "acp/document-malformed",
     });
@@ -958,7 +1033,7 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
 
   it("an unpermitted CARRIER TYPE outranks the gate — that check is about the ref alone", () => {
     expect(
-      declared.place({ type: "url", value: "https://x.test/t" }, {}),
+      declared.place({ ref: { type: "url", value: "https://x.test/t" } }, {}),
     ).toMatchObject({
       refused: true,
       code: "acp/carrier-type-not-permitted",
@@ -969,7 +1044,7 @@ describe("writeCondition on the MANIFEST — the reference field itself is gated
     // Otherwise a seller fixing the reported error would fix the value and hit the gate second, having been
     // told the document was acceptable when it was not.
     expect(
-      declared.place({ type: "sha256", value: "not-a-hash" }, {}),
+      declared.place({ ref: { type: "sha256", value: "not-a-hash" } }, {}),
     ).toMatchObject({
       refused: true,
       code: "acp/write-condition-unmet",
@@ -998,7 +1073,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
   });
 
   it("writes BOTH carriers when the extension is active in the session", () => {
-    const placed = acp.place(REF, negotiated);
+    const placed = acp.place({ ref: REF }, negotiated);
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       capabilities: {
@@ -1018,7 +1093,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
     // The whole reason the condition sits on the alias. Refusing here would mean no legal context could be
     // recorded against any counterparty that has not adopted the extensions framework — most of them today —
     // and writing it anyway would have stock ACP reject the session.
-    const placed = acp.place(REF, { id: "checkout_1" });
+    const placed = acp.place({ ref: REF }, { id: "checkout_1" });
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       id: "checkout_1",
@@ -1027,9 +1102,12 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
   });
 
   it("declines the gated carrier when the session negotiated SOMEONE ELSE's extension", () => {
-    const placed = acp.place(REF, {
-      capabilities: { extensions: [{ name: "discount" }] },
-    });
+    const placed = acp.place(
+      { ref: REF },
+      {
+        capabilities: { extensions: [{ name: "discount" }] },
+      },
+    );
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       capabilities: { extensions: [{ name: "discount" }] },
@@ -1038,7 +1116,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
   });
 
   it("mints nothing on the way past a declined carrier — no empty containers", () => {
-    const placed = acp.place(REF, {});
+    const placed = acp.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       metadata: { legal_context: `lcp:sha256:${HASH}` },
@@ -1052,7 +1130,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
       acp.extract({ legal_context: { type: "sha256", value: HASH } }),
     ).toEqual({
       ok: true,
-      value: REF,
+      value: { ref: REF, termsUrl: NO_URL },
     });
   });
 
@@ -1073,7 +1151,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
         },
       ],
     });
-    const placed = selfGated.place(REF, {});
+    const placed = selfGated.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       metadata: { legal_context: `lcp:sha256:${HASH}` },
@@ -1085,7 +1163,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
       ...objectPath,
       readAlso: [{ path: "mirror.copy", write: true }],
     });
-    const placed = plain.place(REF, {});
+    const placed = plain.place({ ref: REF }, {});
     if ("refused" in placed) throw new Error(`refused: ${placed.code}`);
     expect(placed.value).toEqual({
       metadata: { legal_context: `lcp:sha256:${HASH}` },
@@ -1111,7 +1189,7 @@ describe("writeCondition on an ALIAS — one carrier is gated, the placement sta
         },
       ],
     });
-    expect(both.place(REF, { mode: "permissive" })).toMatchObject({
+    expect(both.place({ ref: REF }, { mode: "permissive" })).toMatchObject({
       refused: true,
       code: "acp/write-condition-unmet",
     });
@@ -1231,13 +1309,13 @@ describe("writeCondition `and` — every term holds, or the write declines", () 
         },
       ],
     });
-    const declined = acp.place(REF, negotiated);
+    const declined = acp.place({ ref: REF }, negotiated);
     if ("refused" in declined) throw new Error(`refused: ${declined.code}`);
     expect(declined.value).toEqual({
       ...negotiated,
       metadata: { legal_context: `lcp:sha256:${HASH}` },
     });
-    const written = acp.place(REF, sessionResponse);
+    const written = acp.place({ ref: REF }, sessionResponse);
     if ("refused" in written) throw new Error(`refused: ${written.code}`);
     expect(written.value).toEqual({
       ...sessionResponse,
@@ -1255,7 +1333,7 @@ describe("writeCondition `and` — every term holds, or the write declines", () 
       encoding: "reference-object",
       writeCondition: gatedBoth,
     });
-    const refused = declared.place(REF, negotiated);
+    const refused = declared.place({ ref: REF }, negotiated);
     if (!("refused" in refused)) throw new Error("expected a refusal");
     expect(refused.code).toBe("acp/write-condition-unmet");
     expect(refused.detail).toContain("status is one of");
@@ -1448,5 +1526,241 @@ describe("assertManifestHygiene — a condition NO document could satisfy", () =
         ],
       }),
     ).toThrow(/alias legal_context/);
+  });
+});
+
+// ─── The terms-URL slots — the write path integra-protocol#8 measured as absent ──────────────────────────
+//
+// The manifest below is x402's SHAPE without x402's wrapper: a reference-object canonical field, a written
+// bare-hash alias inside an existing array element, and two terms-URL slots — one nested inside the
+// canonical carrier, one beside the alias. Every rule the member declares is pinned here once, so the
+// placement packages test their manifests and never these mechanics.
+describe("termsUrlFields — the advertisement is one act, and half of one refuses", () => {
+  const URL_ = "https://seller.example/.well-known/legal-context.json";
+  const twoSlots: PlacementManifest = {
+    protocol: "x402",
+    pattern: "http-advisory",
+    tier: "A",
+    encoding: "reference-object",
+    container: { kind: "object-path" },
+    field: "extensions.legalContext.info",
+    readAlso: [
+      {
+        path: "accepts.0.extra.atrHash",
+        encoding: "bare-value",
+        bareType: "sha256",
+        write: true,
+      },
+    ],
+    termsUrlFields: [
+      "extensions.legalContext.info.legalContextUrl",
+      "accepts.0.extra.legalContextUrl",
+    ],
+    carrierTypes: ["sha256"],
+  };
+  const a = makePlacement(twoSlots);
+  // Variants built by OMISSION — `exactOptionalPropertyTypes` rightly refuses `readAlso: undefined`.
+  const { readAlso: _dropAlias, ...slotsNoAlias } = twoSlots;
+  const { termsUrlFields: _dropSlots, ...noSlotsBase } = slotsNoAlias;
+  // The host structure the array-descend rule requires: the element must already exist.
+  const challenge = () => ({ accepts: [{ scheme: "exact" }] });
+
+  it("writes the URL at EVERY declared slot, and extract reads it back as one agreement", () => {
+    const placed = a.place({ ref: REF, termsUrl: URL_ }, challenge());
+    if ("refused" in placed)
+      throw new Error(`expected a placement: ${placed.code}`);
+    const doc = placed.value as {
+      extensions: { legalContext: { info: Record<string, unknown> } };
+      accepts: { scheme: string; extra: Record<string, unknown> }[];
+    };
+    expect(doc.extensions.legalContext.info["legalContextUrl"]).toBe(URL_);
+    expect(doc.accepts[0]?.extra["legalContextUrl"]).toBe(URL_);
+    expect(doc.accepts[0]?.extra["atrHash"]).toBe(HASH);
+    expect(doc.accepts[0]?.scheme).toBe("exact"); // sibling keys inside the descended element survive
+    expect(a.extract(placed.value)).toEqual({
+      ok: true,
+      value: { ref: REF, termsUrl: { kind: "read", url: URL_ } },
+    });
+  });
+
+  it("REFUSES an integrity-bearing advertisement with no URL — a hash nobody can resolve is unverifiable", () => {
+    expect(a.place({ ref: REF }, challenge())).toMatchObject({
+      refused: true,
+      code: "x402/terms-url-missing",
+    });
+  });
+
+  it("REFUSES a URL the manifest has no slot for — dropping it silently would under-advertise", () => {
+    const none = makePlacement(noSlotsBase);
+    expect(none.place({ ref: REF, termsUrl: URL_ }, challenge())).toMatchObject(
+      {
+        refused: true,
+        code: "x402/terms-url-unplaceable",
+      },
+    );
+  });
+
+  it("REFUSES a cleartext URL on the write side — minting a challenge every buyer refuses is not success", () => {
+    expect(
+      a.place(
+        { ref: REF, termsUrl: "http://seller.example/terms" },
+        challenge(),
+      ),
+    ).toMatchObject({ refused: true, code: "x402/terms-url-malformed" });
+  });
+
+  it("REFUSES when a slot's host structure is absent — the manifest declared what a complete advertisement is", () => {
+    // No accepts[0] to descend into: the nested slot lands but the mirror cannot, and half an
+    // advertisement must not ship as a whole one. The alias is dropped from the manifest so the
+    // terms-URL write is the one that fails — with it, the alias's own write refuses first as
+    // document-malformed, which the next case pins.
+    const noAlias = makePlacement(slotsNoAlias);
+    expect(noAlias.place({ ref: REF, termsUrl: URL_ }, {})).toMatchObject({
+      refused: true,
+      code: "x402/terms-url-slot-unwritable",
+    });
+  });
+
+  it("a written ALIAS whose host structure is absent refuses as document-malformed — the ratified container rule", () => {
+    expect(a.place({ ref: REF, termsUrl: URL_ }, {})).toMatchObject({
+      refused: true,
+      code: "x402/document-malformed",
+    });
+  });
+
+  it("a url-type reference is its own locator — the mandate applies to attestation, not location", () => {
+    const wide = makePlacement({
+      ...slotsNoAlias,
+      carrierTypes: ["sha256", "url"],
+    });
+    const placed = wide.place(
+      { ref: { type: "url", value: "https://x.test/t" } },
+      challenge(),
+    );
+    expect("refused" in placed).toBe(false);
+  });
+
+  it("extract REFUSES two slots that disagree — a seller must not advertise different terms to different readers", () => {
+    const placed = a.place({ ref: REF, termsUrl: URL_ }, challenge());
+    if ("refused" in placed) throw new Error("expected a placement");
+    const doc = JSON.parse(JSON.stringify(placed.value)) as {
+      accepts: { extra: Record<string, unknown> }[];
+    };
+    (doc.accepts[0] as { extra: Record<string, unknown> }).extra[
+      "legalContextUrl"
+    ] = "https://other.example/terms";
+    expect(a.extract(doc)).toMatchObject({
+      refused: true,
+      code: "x402/terms-url-mismatch",
+    });
+  });
+
+  it("extract REFUSES a malformed slot even when the other slot reads cleanly", () => {
+    const placed = a.place({ ref: REF, termsUrl: URL_ }, challenge());
+    if ("refused" in placed) throw new Error("expected a placement");
+    const doc = JSON.parse(JSON.stringify(placed.value)) as {
+      accepts: { extra: Record<string, unknown> }[];
+    };
+    (doc.accepts[0] as { extra: Record<string, unknown> }).extra[
+      "legalContextUrl"
+    ] = 7;
+    expect(a.extract(doc)).toMatchObject({
+      refused: true,
+      code: "x402/terms-url-malformed",
+    });
+  });
+
+  it("a document with empty declared slots is a VALUE, never a refusal — the gate decides, not the reader", () => {
+    // A counterparty's pre-fix emission: reference present, no URL anywhere. Still evidence.
+    expect(
+      a.extract({
+        extensions: { legalContext: { info: { type: "sha256", value: HASH } } },
+      }),
+    ).toEqual({
+      ok: true,
+      value: {
+        ref: REF,
+        termsUrl: {
+          kind: "declared-fields-empty",
+          fields: twoSlots.termsUrlFields,
+        },
+      },
+    });
+  });
+
+  it("place is PURE with the URL writes exactly as without them", () => {
+    const doc = challenge();
+    const before = JSON.stringify(doc);
+    a.place({ ref: REF, termsUrl: URL_ }, doc);
+    expect(JSON.stringify(doc)).toBe(before);
+  });
+
+  it("the array descent NEVER mints an element — a second requirement is the host's to add, not ours", () => {
+    // accepts exists but is empty: index 0 names an element the host never put there. The written alias
+    // is the first to hit it and refuses under the container rule; the no-alias variant pins the
+    // terms-URL write refusing the same document under its own code.
+    expect(
+      a.place({ ref: REF, termsUrl: URL_ }, { accepts: [] }),
+    ).toMatchObject({
+      refused: true,
+      code: "x402/document-malformed",
+    });
+    const noAlias2 = makePlacement(slotsNoAlias);
+    expect(
+      noAlias2.place({ ref: REF, termsUrl: URL_ }, { accepts: [] }),
+    ).toMatchObject({ refused: true, code: "x402/terms-url-slot-unwritable" });
+  });
+
+  it("the array descent preserves SIBLING elements untouched, in order", () => {
+    const placed = a.place(
+      { ref: REF, termsUrl: URL_ },
+      { accepts: [{ scheme: "exact" }, { scheme: "upto", keep: 1 }] },
+    );
+    if ("refused" in placed) throw new Error("expected a placement");
+    const doc = placed.value as { accepts: Record<string, unknown>[] };
+    expect(doc.accepts[1]).toEqual({ scheme: "upto", keep: 1 });
+  });
+
+  it("a polluted Array.prototype element is NOT a place to write", () => {
+    // The write-side twin of the read rule: an inherited "0" must not stand in for an element.
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: prototype pollution requires the cast
+      (Array.prototype as any)[0] = { extra: {} };
+      expect(
+        a.place({ ref: REF, termsUrl: URL_ }, { accepts: [] }),
+      ).toMatchObject({
+        refused: true,
+      });
+    } finally {
+      // biome-ignore lint/suspicious/noExplicitAny: prototype pollution requires the cast
+      delete (Array.prototype as any)[0];
+    }
+  });
+
+  it("hygiene: an EMPTY termsUrlFields is a claim with nothing behind it", () => {
+    expect(() =>
+      assertManifestHygiene({ ...twoSlots, termsUrlFields: [] }),
+    ).toThrow(/declared and empty/);
+  });
+
+  it("hygiene: a repeated slot is one slot declared as two", () => {
+    expect(() =>
+      assertManifestHygiene({
+        ...twoSlots,
+        termsUrlFields: ["a.b", "a.b"],
+      }),
+    ).toThrow(/repeats a path/);
+  });
+
+  it("hygiene: a slot may not BE the reference field or any alias", () => {
+    expect(() =>
+      assertManifestHygiene({ ...twoSlots, termsUrlFields: [twoSlots.field] }),
+    ).toThrow(/names field/);
+    expect(() =>
+      assertManifestHygiene({
+        ...twoSlots,
+        termsUrlFields: ["accepts.0.extra.atrHash"],
+      }),
+    ).toThrow(/names alias path/);
   });
 });

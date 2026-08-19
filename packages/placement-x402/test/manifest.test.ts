@@ -39,29 +39,34 @@ describe("x402 placement — manifest matches the tree", () => {
     expect(X402_PLACEMENT.readAlso?.[0]?.bareType).toBe("sha256");
   });
 
-  it("no alias declares `write` — the override writes ONE carrier and would ignore a second", () => {
-    // Load-bearing, not decorative: `place` here is hand-written and does not loop `readAlso`, so an alias
-    // that declared `write` would be silently dropped. Whoever adds one must change the override too, and
-    // this is the assertion that tells them.
-    expect(X402_PLACEMENT.readAlso?.every((a) => a.write === undefined)).toBe(
-      true,
-    );
+  it("the bare-hash alias IS WRITTEN — §C.4's illustration is a reader some counterparty built", () => {
+    // The reversal the manifest docblock records: `extra` stopped being wholly scheme-private when §6.1
+    // reserved names inside it, LCP v1.38 §C.4's Tier A illustration carries the pair there, and the
+    // shipped buyer parser reconciles both carriers so a mirror cannot drift silently. An unwritten alias
+    // beside two written terms-URL slots would emit a challenge whose `extra` carries the URL and not the
+    // hash — half of §C.4's shape, which is the worst of both.
+    expect(X402_PLACEMENT.readAlso?.[0]?.write).toBe(true);
   });
 
-  it("declares the terms-URL half, distinct from the reference field", () => {
-    // x402 is the protocol whose wire carries both halves — binding-core's own contract says so — so the
-    // URL path is declared rather than left as a second private convention inside seller-x402 (G-C).
-    expect(X402_PLACEMENT.termsUrlField).toBe(
+  it("declares BOTH terms-URL slots the wire carries, distinct from the reference paths", () => {
+    // Singular `termsUrlField` was the defect integra-protocol#8 grew from: one slot declared, neither
+    // written. Both slots the published buyer reconciles are declared, so the kit writes both and a
+    // stranger holding only the manifest knows the whole wire shape.
+    expect(X402_PLACEMENT.termsUrlFields).toEqual([
       "extensions.legalContext.info.legalContextUrl",
-    );
-    expect(X402_PLACEMENT.termsUrlField).not.toBe(X402_PLACEMENT.field);
+      "accepts.0.extra.legalContextUrl",
+    ]);
+    for (const slot of X402_PLACEMENT.termsUrlFields ?? []) {
+      expect(slot).not.toBe(X402_PLACEMENT.field);
+      expect(slot).not.toBe(X402_PLACEMENT.readAlso?.[0]?.path);
+    }
   });
 
   it("the exported schema is the one the vectors pin — the seller cannot drift from it", () => {
-    // `schema` is a REQUIRED x402 member, so this literal is on the wire of every challenge. It was a
-    // `$ref` at a URL that returned 404 until 2026-08-08; inlining removes a hosting dependency the
-    // deployment does not meet, and matches all nine extensions published in the x402 repository — one of
-    // which, Bazaar, forbids an external `$ref` outright. See the manifest docblock.
+    // `schema` is a REQUIRED x402 member, so this literal is on the wire of every challenge. Inlined
+    // rather than referenced because Bazaar forbids an external `$ref` outright; see the manifest
+    // docblock. The vector case named here is the canonical write, so the wire copy and the export are
+    // the same bytes.
     const vec = read("../../../vectors/placement/x402.json") as {
       cases: { expected?: unknown }[];
     };
@@ -76,23 +81,42 @@ describe("x402 placement — manifest matches the tree", () => {
   });
 
   it("the inlined schema is a self-contained JSON Schema, not a pointer", () => {
-    // The whole point of the change: a counterparty can validate `info` from what the challenge carries.
+    // The whole point of inlining: a counterparty can validate `info` from what the challenge carries.
     expect(LEGAL_CONTEXT_SCHEMA["$ref"]).toBeUndefined();
+    expect(LEGAL_CONTEXT_SCHEMA["$id"]).toBeUndefined();
+    expect(LEGAL_CONTEXT_SCHEMA["$defs"]).toBeUndefined();
     expect(LEGAL_CONTEXT_SCHEMA["$schema"]).toBe(
       "https://json-schema.org/draft/2020-12/schema",
     );
-    expect(LEGAL_CONTEXT_SCHEMA["required"]).toEqual(["type", "value"]);
   });
 
-  it("it describes the §8.1 reference object this placement actually writes", () => {
+  it("REQUIRES the locator beside the reference — the rule every shipped reader already enforced", () => {
+    // `required` carrying only ["type","value"] while the authority document required three members was
+    // the two-definitions defect (integra-protocol#8). The conformance suite holds the full
+    // schema-equality gate against the authority file; this pins the half that was wrong, so a regression
+    // here fails in this package's own run and not only in the cross-package one.
+    expect(LEGAL_CONTEXT_SCHEMA["required"]).toEqual([
+      "type",
+      "value",
+      "legalContextUrl",
+    ]);
+    expect(LEGAL_CONTEXT_SCHEMA["additionalProperties"]).toBe(false);
+  });
+
+  it("it describes exactly what this placement writes — const sha256, no wider", () => {
     // A schema that did not match the emitted `info` would be worse than no schema — it would invite a
-    // counterparty to reject a conformant challenge.
-    const props = LEGAL_CONTEXT_SCHEMA["properties"] as Record<string, unknown>;
-    expect(Object.keys(props).sort()).toEqual(["type", "value"]);
-    expect((props["type"] as { enum: string[] }).enum).toEqual(
-      X402_PLACEMENT.carrierTypes.length > 0
-        ? ["sha256", "url", "ipfs", "ar"]
-        : [],
-    );
+    // counterparty to reject a conformant challenge. The manifest permits sha256 alone (the url admission
+    // is withdrawn; see the docblock), and the schema's const says the same thing on the wire.
+    const props = LEGAL_CONTEXT_SCHEMA["properties"] as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(Object.keys(props).sort()).toEqual([
+      "legalContextUrl",
+      "type",
+      "value",
+    ]);
+    expect(props["type"]?.["const"]).toBe("sha256");
+    expect(X402_PLACEMENT.carrierTypes).toEqual(["sha256"]);
   });
 });

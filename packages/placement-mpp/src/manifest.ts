@@ -74,6 +74,13 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * `readAlso` would need a second permitted carrier type, and the cap forbids it. That is the right answer
  * rather than a limitation: `termsUrlField` declares where the terms URL lives, labelled as the different
  * datum it is, and a located document cannot stand in for an attested one (LCP v1.38 §C.2).
+ *
+ * `termsUrlFields` (plural, one entry): MPP's wire carries exactly one terms-URL slot, unlike x402's two.
+ * The kit writes it beside the hash and REQUIRES it of every advertisement here — `carrierTypes` is
+ * sha256 alone, so every reference this manifest admits is integrity-bearing, and a bare hash no
+ * counterparty can resolve is unverifiable by construction. The buyer-side MPP parser has always thrown
+ * on the missing URL; the write side finally refusing first is integra-protocol#8's fix applied to the
+ * protocol that had the same hole with one slot instead of two.
  */
 export const MPP_PLACEMENT: PlacementManifest = {
   protocol: "mpp",
@@ -82,7 +89,7 @@ export const MPP_PLACEMENT: PlacementManifest = {
   encoding: "bare-value",
   container: { kind: "object-path" },
   field: "methodDetails.atrHash",
-  termsUrlField: "methodDetails.legalContextUrl",
+  termsUrlFields: ["methodDetails.legalContextUrl"],
   carrierTypes: ["sha256"],
   specRef:
     "MPP core draft-httpauth-payment-00 §5.1.1/§5.1.2.1.1 — the challenge-bound `request` body; draft-payment-intent-charge-00 §5.1.2/§5.3 — methodDetails (gate discharged per method 2026-07-30: see README)",

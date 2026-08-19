@@ -5,9 +5,15 @@
     "pattern": "http-advisory",
     "tier": "A",
     "encoding": "reference-object",
-    "container": { "kind": "object-path" },
+    "container": {
+      "kind": "object-path"
+    },
     "field": "metadata.legalContext",
-    "readAlso": [{ "path": "metadata.legal_context" }],
+    "readAlso": [
+      {
+        "path": "metadata.legal_context"
+      }
+    ],
     "carrierTypes": ["sha256", "url"],
     "specRef": "AP2 v0.2 (2026-04-28) §Mandates — the Commerce Protocol carrying the mandate is outside AP2's scope; in the v0.2 reference samples that transport is A2A, whose Message.metadata is a free-form key/value object AP2 never writes to (gate discharged 2026-07-30: see README)"
   },
@@ -33,9 +39,16 @@
                 "ap2.mandates.CheckoutMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImNoZWNrb3V0X2p3dCIsIjxtZXJjaGFudC1zaWduZWQtY2hlY2tvdXQtand0PiJd~"
               }
             },
-            { "kind": "data", "data": { "risk_data": "" } }
+            {
+              "kind": "data",
+              "data": {
+                "risk_data": ""
+              }
+            }
           ],
-          "metadata": { "traceId": "t-1" }
+          "metadata": {
+            "traceId": "t-1"
+          }
         }
       },
       "expected": {
@@ -51,7 +64,12 @@
                 "ap2.mandates.CheckoutMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImNoZWNrb3V0X2p3dCIsIjxtZXJjaGFudC1zaWduZWQtY2hlY2tvdXQtand0PiJd~"
               }
             },
-            { "kind": "data", "data": { "risk_data": "" } }
+            {
+              "kind": "data",
+              "data": {
+                "risk_data": ""
+              }
+            }
           ],
           "metadata": {
             "traceId": "t-1",
@@ -119,7 +137,11 @@
           "type": "url",
           "value": "https://seller.example/terms/abc?v=2"
         },
-        "doc": { "kind": "message", "role": "agent", "parts": [] }
+        "doc": {
+          "kind": "message",
+          "role": "agent",
+          "parts": []
+        }
       },
       "expected": {
         "ok": true,
@@ -205,7 +227,11 @@
           "type": "ipfs",
           "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
         },
-        "doc": { "kind": "message", "role": "agent", "parts": [] }
+        "doc": {
+          "kind": "message",
+          "role": "agent",
+          "parts": []
+        }
       },
       "expected": {
         "refused": true,
@@ -223,7 +249,11 @@
           "type": "sha256",
           "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "kind": "message", "role": "agent", "parts": [] }
+        "doc": {
+          "kind": "message",
+          "role": "agent",
+          "parts": []
+        }
       },
       "expected": {
         "refused": true,
@@ -240,7 +270,11 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "metadata": { "traceId": "t-1" } }
+        "doc": {
+          "metadata": {
+            "traceId": "t-1"
+          }
+        }
       },
       "expected": true
     },
@@ -261,8 +295,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -284,8 +323,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -311,8 +355,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "url",
-          "value": "https://canonical.example/terms.md"
+          "ref": {
+            "type": "url",
+            "value": "https://canonical.example/terms.md"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -396,7 +445,12 @@
         "protocol": "ap2",
         "op": "extract",
         "doc": {
-          "metadata": { "legalContext": { "type": "sha512", "value": "0xab" } }
+          "metadata": {
+            "legalContext": {
+              "type": "sha512",
+              "value": "0xab"
+            }
+          }
         }
       },
       "expected": {
@@ -448,7 +502,13 @@
     {
       "name": "a metadata value that is not a map reads as ABSENT — the kit's read-side convention",
       "$comment": "The read half of case 4. An unreadable container yields no reference; `document-malformed` is reserved for a non-object DOCUMENT (case 19).",
-      "input": { "protocol": "ap2", "op": "extract", "doc": { "metadata": 7 } },
+      "input": {
+        "protocol": "ap2",
+        "op": "extract",
+        "doc": {
+          "metadata": 7
+        }
+      },
       "expected": {
         "refused": true,
         "haltClass": "verification-failure",
@@ -466,6 +526,92 @@
         "refused": true,
         "haltClass": "verification-failure",
         "code": "ap2/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a terms URL this manifest has no slot for — dropping it silently would under-advertise",
+      "$comment": "The manifest declaring NO termsUrlFields is a statement of protocol fact — this wire has no room for a locator — and the kit holds the seller to it: an advertisement supplying one is answered with a refusal, never with a document that silently carries less than the seller stated.",
+      "input": {
+        "protocol": "ap2",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json",
+        "doc": {
+          "kind": "message",
+          "messageId": "0f2a1c9e4b7d4a3f8c1e5b6a7d8f9012",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImNoZWNrb3V0X2p3dCIsIjxtZXJjaGFudC1zaWduZWQtY2hlY2tvdXQtand0PiJd~"
+              }
+            },
+            {
+              "kind": "data",
+              "data": {
+                "risk_data": ""
+              }
+            }
+          ],
+          "metadata": {
+            "traceId": "t-1"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ap2/terms-url-unplaceable"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — what place writes, extract reads back as one agreement",
+      "$comment": "The composition certification the predecessor corpus lacked: every place case certified the write and every extract case the read, and none fed one to the other — which is how two separately conformant halves shipped jointly broken (integra-protocol#8). The subject runs place then extract and pins the recovered advertisement.",
+      "input": {
+        "protocol": "ap2",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "kind": "message",
+          "messageId": "0f2a1c9e4b7d4a3f8c1e5b6a7d8f9012",
+          "role": "agent",
+          "parts": [
+            {
+              "kind": "data",
+              "data": {
+                "ap2.mandates.CheckoutMandateSdJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEifQ.<signature>~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImNoZWNrb3V0X2p3dCIsIjxtZXJjaGFudC1zaWduZWQtY2hlY2tvdXQtand0PiJd~"
+              }
+            },
+            {
+              "kind": "data",
+              "data": {
+                "risk_data": ""
+              }
+            }
+          ],
+          "metadata": {
+            "traceId": "t-1"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        }
       }
     }
   ]

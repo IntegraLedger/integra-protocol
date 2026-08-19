@@ -31,7 +31,9 @@ import { X402_PLACEMENT, x402Placement } from "@integraledger/lcp-placement-x402
 
 declare const challenge: unknown; // the x402 402 challenge document, as received
 
-const placed = x402Placement.place({ type: "sha256", value: "0x…" }, challenge);
+const placed = x402Placement.place(
+  { ref: { type: "sha256", value: "0x…" }, termsUrl: "https://seller.example/.well-known/legal-context.json" },
+  challenge);
 const ref = x402Placement.extract(challenge); // reads either carrier, canonical first
 ```
 
@@ -150,46 +152,38 @@ canonical non-negative integer segment only, so `length` and every other array p
 That relaxation lives in the kit rather than in a private loop here, because a read rule nobody can find is
 the same defect as a carrier nobody can find.
 
-## Known limitations
+## Limitations, and the three this version resolved
 
-- **`place` writes the hash, never the terms URL.** `place(ref, doc)` holds one reference; the terms URL is a
-  second datum. `termsUrlField` is declared so a parser can find the URL our seller does emit, the same
-  division `placement-acp` draws with `metadata.legal_context_url`.
-- **The shipped carrier repeats the URL at `accepts[0].extra.legalContextUrl`.** A single `termsUrlField`
-  cannot express two spellings, so that one is recorded here rather than half-declared in the manifest.
-- **A `url` carrier is placeable here and no shipped x402 reader accepts one.** `carrierTypes` permits
-  `sha256` and `url` — the §8.1 integrity form and the §8.1 discovery form, the same pair `placement-acp` and
-  `placement-ucp` permit — while a strict buyer gate refuses any `info.type` but `sha256`. The permission is not
-  narrowed away here because narrowing the reference field to one type is a statement about what the slot may
-  hold across the whole set, not a fact about x402. **Related and not ours to fix in this package:**
-  `readDeclaredPaths` labels a canonical-field hit `carrierClass: "integrity"` unconditionally, so a `url`
-  read from `extensions.legalContext.info` is labelled `integrity` and passes `requireIntegrity()` (from
-  [`@integraledger/lcp-binding-core`](../binding-core#readme), like `makePlacement`). That is
-  `binding-core` behaviour that `placement-acp` and `placement-ucp` already share on `main`; this manifest
-  only adds a third reference field with the same property, and `requireIntegrity` has no production caller
-  yet.
-- **Our own `legalContext` entry is replaced whole, not merged — and the key that loses is `legalContextUrl`,
-  the one `termsUrlField` points at.** `place` writes `{info, schema}`, so nothing previously inside our entry
-  survives, and on the document sellers actually emit that is concretely the terms-URL half: measured on
-  the vector case for the long-standing shipped carrier, `termsUrlField` reads
-  `https://seller.example/.well-known/legal-context.json` before `place` and `undefined` after. This is the
-  kit's leaf-write semantics, not an override defect — `makePlacement(X402_PLACEMENT).place` drops it
-  identically — and it is why the previous bullet says `place` holds one reference: a caller that needs both
-  halves on the wire writes the URL itself.
-  **Consequence for a buyer.** Do not build a `PaymentPayload` echo with `place`. x402's rule is that the
-  client "cannot delete or overwrite existing `info`", and re-placing over a server-sent entry deletes the
-  URL the server put there. Echo the received entry verbatim and place only where no entry exists yet; the
-  reconciled read/echo path belongs to a universal buyer parser, not this package.
-  x402 defines only `info` and `schema` for an entry and the `legalContext` key is ours, so owning the entry is
-  the point for the *seller* direction; entries *beside* ours in the `extensions` map are preserved
-  unconditionally.
-- **`LEGAL_CONTEXT_SCHEMA` is INLINED, not a reference.** It was a `$ref` at
-  `https://legalcontextprotocol.org/schemas/lcp-extension.json`, which returns 404 — re-measured
-  2026-08-11 — and x402 makes `schema` a REQUIRED member of every extension entry, so that shipped a
-  required member no counterparty could resolve. All nine extensions published in the x402 repository inline
-  a complete JSON Schema, and one of them, Bazaar, forbids an external `$ref` outright. The exported value is
-  now a frozen literal that is byte-identical to what the placement emits. Changing it is a **wire change**:
-  it appears in every challenge.
+The predecessor recorded four limitations here. Three were one defect wearing different clothes —
+integra-protocol#8, a seller built on this package emitting a challenge the published buyer refuses — and
+are resolved rather than recorded:
+
+- **`place` now writes the whole advertisement.** `place({ ref, termsUrl }, doc)` puts the reference and
+  the terms URL on the wire together, at every slot `termsUrlFields` declares — the `info` member the
+  authority schema requires and the `accepts[0].extra` mirror §C.4's illustration carries — and REFUSES an
+  integrity-bearing advertisement with no URL, because a hash no counterparty can resolve is unverifiable
+  by construction. The predecessor's "place writes the hash, never the terms URL" division put the URL in
+  no published writer at all while every published reader demanded it.
+- **Both URL spellings are declared, and both are written.** `termsUrlFields` is plural; the singular
+  member could not express the second spelling and the shipped carrier's `extra`-side URL lived only in
+  this README.
+- **Our own entry is still replaced whole — and no longer costs the URL.** `place` rebuilds
+  `{info, schema}` wholesale (junk a counterparty parked inside our entry does not ride our wire), and the
+  URL survives because the rebuild happens after the kit has written it into `info`. The predecessor
+  measured the opposite: the leaf-write dropped `legalContextUrl` on the very document sellers emit.
+
+One limitation is withdrawn rather than resolved: **the `url` carrier admission is gone.**
+`carrierTypes` is `sha256` alone. A `url` here was well-formed against the manifest and refused by every
+shipped reader — a permission no reader accepts is a claim about the ecosystem, not a description of it —
+and the schema this package itself puts on the wire (the authority document's shape, drift-gated in
+`@integraledger/lcp-conformance`) is `const: "sha256"`, so a `url` reference would emit a challenge that
+violates its own adjacent schema.
+
+What remains, and is a fact rather than a defect: **`readDeclaredPaths` labels a canonical-field hit
+`carrierClass: "integrity"` unconditionally.** That is `binding-core` behaviour shared by every placement,
+and `requireIntegrity()` (from
+[`@integraledger/lcp-binding-core`](../binding-core#readme), like `makePlacement`) is where a caller that
+needs a content-addressed value says so — it checks the decoded type as well as the slot's label.
 
 ## Provenance
 

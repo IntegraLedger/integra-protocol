@@ -77,9 +77,10 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * parsers standardized handling without bilateral negotiation. That SEP must find a founding-maintainer
  * sponsor to proceed and may be closed as dormant if it does not. Neither path ships code here.
  *
- * **`termsUrlField` is not ACP's `links[type=terms_of_use]`, and must not be read from it.** ACP carries a
+ * **`termsUrlFields` names one slot, and it is not ACP's `links[type=terms_of_use]` — it must never be
+ * read from there.** ACP carries a
  * required `links[]` whose item `type` is a closed enum including `terms_of_use`. That link is the merchant's
- * **standing policy page**; `termsUrlField` names the **ATR terms document for this transaction**. They are
+ * **standing policy page**; `termsUrlFields` names the **ATR terms document for this transaction**. They are
  * different objects, and `Link` is `additionalProperties: false` with a closed eight-value enum, so a
  * per-transaction reference could not ride there even if the two were conflated. Falling back to `links`
  * when `metadata.legal_context_url` is absent would silently substitute a policy page for a terms record —
@@ -158,13 +159,18 @@ export const ACP_PLACEMENT: PlacementManifest = {
   // Each alias declares its OWN encoding: both hold a §8.1 OBJECT while our canonical field holds an `lcp:`
   // STRING. Same reference, three shapes — which is exactly why an alias is an object and not a bare path.
   // All are `integrity` (the default): these are spelling and strength differences, never a guarantee
-  // difference, and nothing here may fall back to ACP's `links` — see the termsUrlField note below.
+  // difference, and nothing here may fall back to ACP's `links` — see the termsUrlFields note below.
   //
   readAlso: [
     { path: "legal_context", encoding: "reference-object" },
     { path: "metadata.legalContext", encoding: "reference-object" },
   ],
-  termsUrlField: "metadata.legal_context_url",
+  // ONE slot (unlike x402's two): ACP's wire carries the URL nowhere else. Declared, so the kit writes it
+  // beside the reference and REQUIRES it of a sha256 advertisement — a hash no counterparty can resolve
+  // is unverifiable by construction (integra-protocol#8's rule; the buyer-side ACP parser has always
+  // required `metadata.legal_context_url`, and the write side now refuses first instead of emitting a
+  // session that parser rejects). A url-typed reference is its own locator and carries no mandate.
+  termsUrlFields: ["metadata.legal_context_url"],
   carrierTypes: ["sha256", "url"],
   specRef:
     "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)",

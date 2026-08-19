@@ -30,7 +30,9 @@ import { MPP_PLACEMENT, mppPlacement } from "@integraledger/lcp-placement-mpp";
 
 declare const requestBody: unknown; // the MPP challenge body, as received
 
-const placed = mppPlacement.place({ type: "sha256", value: "0x…" }, requestBody);
+const placed = mppPlacement.place(
+  { ref: { type: "sha256", value: "0x…" }, termsUrl: "https://seller.example/.well-known/legal-context.json" },
+  requestBody);
 const ref = mppPlacement.extract(requestBody);
 ```
 
@@ -143,10 +145,12 @@ verify the emitted memo. That is a settlement weld and it does not ride this man
 The slot is `bare-value`, which fixes the carrier type from the field's own contract and therefore caps
 `carrierTypes` at exactly one. A url-typed `readAlso` would need a second permitted type, so the cap forbids
 one — and that is the correct answer rather than a limitation to work around. The terms URL is declared as
-`termsUrlField`, labelled as the different datum it is, and a reference read can never silently descend to it:
+`termsUrlFields`, labelled as the different datum it is, and a reference read can never silently descend to it:
 LCP §C.2 rules out substituting a located document for an attested one — v1.37 as a MUST NOT, v1.38 as a
-statement of fact. `place` writes the hash only; the
-URL is the deployment's datum, and a body that already carries one is left untouched.
+statement of fact. `place` writes the URL into the declared slot beside the hash — and REFUSES an
+advertisement without one, because every reference this manifest admits is integrity-bearing and a hash no
+counterparty can resolve is unverifiable (integra-protocol#8's rule; the buyer-side MPP parser has always
+demanded the URL, and the write side now refuses first instead of emitting a body that parser rejects).
 
 ## Provenance
 

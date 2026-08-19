@@ -14,8 +14,9 @@ const vec = JSON.parse(
   cases: {
     name: string;
     input: {
-      op: "place" | "place-purity" | "extract";
+      op: "place" | "place-purity" | "extract" | "roundtrip";
       ref?: { type: string; value: string };
+      termsUrl?: string;
       doc: unknown;
     };
     expected?: unknown;
@@ -25,15 +26,29 @@ const vec = JSON.parse(
 describe("Visa TAP placement — cases", () => {
   for (const c of vec.cases) {
     it(c.name, () => {
-      const { op, doc } = c.input;
+      const { op, doc, termsUrl } = c.input;
       const ref = c.input.ref as {
         type: "sha256" | "ipfs" | "ar" | "url";
         value: string;
       };
 
+      if (op === "roundtrip") {
+        const placed = visaTapPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
+        if ("refused" in placed)
+          throw new Error(`roundtrip could not place: ${placed.code}`);
+        expect(visaTapPlacement.extract(placed.value)).toEqual(c.expected);
+        return;
+      }
+
       if (op === "place-purity") {
         const before = JSON.stringify(doc);
-        visaTapPlacement.place(ref, doc);
+        visaTapPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
         expect(JSON.stringify(doc)).toBe(before);
         return;
       }
@@ -46,7 +61,10 @@ describe("Visa TAP placement — cases", () => {
       const out =
         op === "extract"
           ? visaTapPlacement.extract(doc)
-          : visaTapPlacement.place(ref, doc);
+          : visaTapPlacement.place(
+              { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+              doc,
+            );
       if ("refused" in out) expect(out).toMatchObject(c.expected as object);
       else expect(out).toEqual(c.expected);
     });
@@ -63,7 +81,13 @@ describe("Visa TAP placement — the header-map rules the corpus cannot pin", ()
     const out = visaTapPlacement.extract({
       headers: { "X-LCP-Hash": HASH, "x-lcp-hash": `0x${"ab".repeat(32)}` },
     });
-    expect(out).toEqual({ ok: true, value: { type: "sha256", value: HASH } });
+    expect(out).toEqual({
+      ok: true,
+      value: {
+        ref: { type: "sha256", value: HASH },
+        termsUrl: { kind: "no-field-declared" },
+      },
+    });
   });
 
   it("does NOT repair a document that already carries two spellings — the write half, pinned not endorsed", () => {
@@ -79,17 +103,23 @@ describe("Visa TAP placement — the header-map rules the corpus cannot pin", ()
     const stale = `0x${"ab".repeat(32)}`;
     const ref = { type: "sha256", value: HASH } as const;
 
-    const upperFirst = visaTapPlacement.place(ref, {
-      headers: { "X-LCP-Hash": stale, "x-lcp-hash": stale },
-    });
+    const upperFirst = visaTapPlacement.place(
+      { ref },
+      {
+        headers: { "X-LCP-Hash": stale, "x-lcp-hash": stale },
+      },
+    );
     if ("refused" in upperFirst) throw new Error("place refused");
     expect(upperFirst.value).toEqual({
       headers: { "X-LCP-Hash": HASH, "x-lcp-hash": stale },
     });
 
-    const lowerFirst = visaTapPlacement.place(ref, {
-      headers: { "x-lcp-hash": stale, "X-LCP-Hash": stale },
-    });
+    const lowerFirst = visaTapPlacement.place(
+      { ref },
+      {
+        headers: { "x-lcp-hash": stale, "X-LCP-Hash": stale },
+      },
+    );
     if ("refused" in lowerFirst) throw new Error("place refused");
     expect(lowerFirst.value).toEqual({
       headers: { "x-lcp-hash": HASH, "X-LCP-Hash": stale },
@@ -99,7 +129,10 @@ describe("Visa TAP placement — the header-map rules the corpus cannot pin", ()
     // exactly why neither half surfaces the duplicate.
     expect(visaTapPlacement.extract(upperFirst.value)).toEqual({
       ok: true,
-      value: { type: "sha256", value: HASH },
+      value: {
+        ref: { type: "sha256", value: HASH },
+        termsUrl: { kind: "no-field-declared" },
+      },
     });
   });
 
@@ -107,13 +140,16 @@ describe("Visa TAP placement — the header-map rules the corpus cannot pin", ()
     // The write half preserves `X-LCP-Hash` and the read half folds to find it: two rules that must agree,
     // or a placement would emit a document it cannot read back.
     const placed = visaTapPlacement.place(
-      { type: "sha256", value: HASH },
+      { ref: { type: "sha256", value: HASH } },
       { headers: { "X-LCP-Hash": `0x${"ab".repeat(32)}` } },
     );
     if ("refused" in placed) throw new Error("place refused");
     expect(visaTapPlacement.extract(placed.value)).toEqual({
       ok: true,
-      value: { type: "sha256", value: HASH },
+      value: {
+        ref: { type: "sha256", value: HASH },
+        termsUrl: { kind: "no-field-declared" },
+      },
     });
   });
 

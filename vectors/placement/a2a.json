@@ -5,9 +5,15 @@
     "pattern": "http-advisory",
     "tier": "A",
     "encoding": "reference-object",
-    "container": { "kind": "object-path" },
+    "container": {
+      "kind": "object-path"
+    },
     "field": "metadata.legalContext",
-    "readAlso": [{ "path": "metadata.legal_context" }],
+    "readAlso": [
+      {
+        "path": "metadata.legal_context"
+      }
+    ],
     "carrierTypes": ["sha256", "url", "ipfs", "ar"],
     "specRef": "A2A Task.metadata, a free-form google.protobuf.Struct with no reserved keys (specification/a2a.proto at a2aproject/A2A@0ef1b02 — main 2026-07-23, after the v1.0.1 release; gate discharged 2026-07-30: see README)"
   },
@@ -21,7 +27,12 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "id": "task_1", "metadata": { "traceId": "t-9" } }
+        "doc": {
+          "id": "task_1",
+          "metadata": {
+            "traceId": "t-9"
+          }
+        }
       },
       "expected": {
         "ok": true,
@@ -43,8 +54,13 @@
       "input": {
         "protocol": "a2a",
         "op": "place",
-        "ref": { "type": "url", "value": "https://seller.example/terms.md" },
-        "doc": { "id": "task_2" }
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/terms.md"
+        },
+        "doc": {
+          "id": "task_2"
+        }
       },
       "expected": {
         "ok": true,
@@ -72,7 +88,11 @@
         "doc": {
           "messageId": "msg_1",
           "role": "ROLE_USER",
-          "parts": [{ "text": "ship it" }]
+          "parts": [
+            {
+              "text": "ship it"
+            }
+          ]
         }
       },
       "expected": {
@@ -80,7 +100,11 @@
         "value": {
           "messageId": "msg_1",
           "role": "ROLE_USER",
-          "parts": [{ "text": "ship it" }],
+          "parts": [
+            {
+              "text": "ship it"
+            }
+          ],
           "metadata": {
             "legalContext": {
               "type": "sha256",
@@ -99,7 +123,11 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "metadata": { "traceId": "t-9" } }
+        "doc": {
+          "metadata": {
+            "traceId": "t-9"
+          }
+        }
       },
       "expected": true
     },
@@ -147,7 +175,9 @@
           "type": "ipfs",
           "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
         },
-        "doc": { "id": "task_3" }
+        "doc": {
+          "id": "task_3"
+        }
       },
       "expected": {
         "ok": true,
@@ -172,7 +202,9 @@
           "type": "sha256",
           "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": { "id": "task_4" }
+        "doc": {
+          "id": "task_4"
+        }
       },
       "expected": {
         "refused": true,
@@ -186,8 +218,14 @@
       "input": {
         "protocol": "a2a",
         "op": "place",
-        "ref": { "type": "sha512", "value": "0xab" },
-        "doc": { "id": "task_7", "metadata": {} }
+        "ref": {
+          "type": "sha512",
+          "value": "0xab"
+        },
+        "doc": {
+          "id": "task_7",
+          "metadata": {}
+        }
       },
       "expected": {
         "refused": true,
@@ -249,8 +287,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -271,8 +314,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "ar",
-          "value": "_DAuMpd7NHB84hlqVOwcl9z7Onc8v-k9sx1oBmFPWFc"
+          "ref": {
+            "type": "ar",
+            "value": "_DAuMpd7NHB84hlqVOwcl9z7Onc8v-k9sx1oBmFPWFc"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -294,8 +342,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -319,7 +372,15 @@
       },
       "expected": {
         "ok": true,
-        "value": { "type": "url", "value": "https://canonical.example/t.md" }
+        "value": {
+          "ref": {
+            "type": "url",
+            "value": "https://canonical.example/t.md"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        }
       }
     },
     {
@@ -371,7 +432,10 @@
         "op": "extract",
         "doc": {
           "metadata": {
-            "legalContext": { "type": "sha512", "value": "0xab" }
+            "legalContext": {
+              "type": "sha512",
+              "value": "0xab"
+            }
           }
         }
       },
@@ -387,7 +451,13 @@
       "input": {
         "protocol": "a2a",
         "op": "extract",
-        "doc": { "metadata": [{ "legalContext": {} }] }
+        "doc": {
+          "metadata": [
+            {
+              "legalContext": {}
+            }
+          ]
+        }
       },
       "expected": {
         "refused": true,
@@ -401,7 +471,10 @@
       "input": {
         "protocol": "a2a",
         "op": "extract",
-        "doc": { "id": "task_6", "contextId": "ctx_1" }
+        "doc": {
+          "id": "task_6",
+          "contextId": "ctx_1"
+        }
       },
       "expected": {
         "refused": true,
@@ -420,6 +493,60 @@
         "refused": true,
         "haltClass": "verification-failure",
         "code": "a2a/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a terms URL this manifest has no slot for — dropping it silently would under-advertise",
+      "$comment": "The manifest declaring NO termsUrlFields is a statement of protocol fact — this wire has no room for a locator — and the kit holds the seller to it: an advertisement supplying one is answered with a refusal, never with a document that silently carries less than the seller stated.",
+      "input": {
+        "protocol": "a2a",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json",
+        "doc": {
+          "id": "task_1",
+          "metadata": {
+            "traceId": "t-9"
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "a2a/terms-url-unplaceable"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — what place writes, extract reads back as one agreement",
+      "$comment": "The composition certification the predecessor corpus lacked: every place case certified the write and every extract case the read, and none fed one to the other — which is how two separately conformant halves shipped jointly broken (integra-protocol#8). The subject runs place then extract and pins the recovered advertisement.",
+      "input": {
+        "protocol": "a2a",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "id": "task_1",
+          "metadata": {
+            "traceId": "t-9"
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        }
       }
     }
   ]

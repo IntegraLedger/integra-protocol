@@ -126,7 +126,7 @@ describe("Mastercard VI placement — manifest matches the tree", () => {
     // VI offers one carrier for legal context and inventing a second would be a claim about the host. The
     // registered types carry the consumer's authorization bounds, not the merchant's terms.
     expect(mastercardViManifest(OURS).readAlso).toBeUndefined();
-    expect(mastercardViManifest(OURS).termsUrlField).toBeUndefined();
+    expect(mastercardViManifest(OURS).termsUrlFields).toBeUndefined();
   });
 
   it("exports a factory and nothing that could carry a default namespace", () => {

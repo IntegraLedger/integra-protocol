@@ -1,58 +1,67 @@
 import type { PlacementManifest } from "@integraledger/lcp-binding-core";
 
 /**
- * The carrier's JSON Schema, INLINED rather than referenced.
+ * The carrier's JSON Schema, INLINED rather than referenced — and equal, member for member, to the
+ * AUTHORITY document at `https://integraledger.com/lcp/x402/legal-context/v1.schema.json` minus its `$id`
+ * and `$defs`. That equality is load-bearing and drift-gated (the conformance suite compares this literal
+ * to `@integraledger/lcp-discovery`'s shipped copy of the authority file), because its absence was a
+ * published defect: from 0.10.1's release until this version, this schema said `required: ["type",
+ * "value"]` while the authority document said `required: ["type", "value", "legalContextUrl"]` — two
+ * definitions of the same `info` in the published ecosystem, self-consistent halves, no document valid
+ * against both (integra-protocol#8). Both being conformant to the schema each carried is exactly why no
+ * package's own tests could catch it; only comparing the two could, and now something does.
  *
- * x402 makes `schema` a REQUIRED member of an extension entry — "JSON Schema defining the expected
- * structure of info" — so whatever goes here is on the wire of every challenge. A `$ref` to a URL nobody
- * serves would be a required member no counterparty can resolve, and "x402 never fetches it" is a reason
- * that does not break, not a reason to ship it. (`https://legalcontextprotocol.org/schemas/lcp-extension.json`
- * returns **404**, measured 2026-08-08 — the schema is inlined instead.)
+ * WHY INLINE AT ALL: x402 makes `schema` a REQUIRED member of an extension entry — "JSON Schema defining
+ * the expected structure of info" — so whatever goes here is on the wire of every challenge. **All nine
+ * extensions published in the x402 repository inline a complete JSON Schema** rather than referencing an
+ * external document (`x402-foundation/x402` HEAD, read 2026-08-11), and one of the nine makes it a rule:
+ * the Bazaar extension requires a `schema`'s `$ref`/`$id` values to be "same-document JSON Pointer
+ * fragments (starting with `#`); external references … are not allowed", and says a facilitator "must not
+ * resolve external `$ref`/`$id` values … when validating an untrusted `schema`". So an external `$ref`
+ * here would not merely be unresolvable to a counterparty that declines to fetch — wherever Bazaar
+ * governs, it is rejected outright. LCP v1.38 §C.4 draws the same conclusion ("publish a resolvable
+ * schema or inline it — and inlining is the safer of the two"). Dropping `$id` and `$defs` from the
+ * inlined form is that rule applied: the authority document's `$id` is an absolute URL, and its `$defs`
+ * carries the RECEIPT-time definition, which is not this challenge-time `info` and would bloat every 402.
  *
- * **All nine extensions published in the x402 repository inline a complete JSON Schema** rather than
- * referencing an external document — `bazaar`, `builder-code`, `eip2612GasSponsoring`,
- * `erc20ApprovalGasSponsoring`, `auth-hints`, `offer-receipt`, `http-message-signatures`,
- * `payment-identifier`, `sign-in-with-x`, read at `x402-foundation/x402` HEAD 2026-08-11. Note that two of
- * the nine are camelCase, so this package's `legalContext` key follows an established minority spelling
- * rather than diverging from a unanimous one. LCP v1.38 §C.4 says to do one or the other — "Because
- * `schema` is a REQUIRED member, publish a resolvable schema or inline it" — and adds that inlining is the
- * safer of the two. Inlining also removes a hosting
- * dependency the deployment does not currently meet — the same dependency the UCP capability still owes.
- *
- * **One of the nine makes it a rule, which settles the question.** The Bazaar extension requires a
- * `schema`'s `$ref`/`$id` values to be "same-document JSON Pointer fragments (starting with `#`); external
- * references (`http(s)://`, `file://`, or any other absolute/relative URI) are not allowed", and says a
- * facilitator "must not resolve external `$ref`/`$id` values … when validating an untrusted `schema`". So a
- * `$ref` here would not merely be unresolvable to a counterparty — it would be rejected outright by any
- * facilitator cataloguing this extension.
- *
- * The shape is the §8.1 reference object this placement writes into `info`, and nothing more: it describes
- * the carrier, not the terms behind it.
+ * The shape is the §8.1 reference object PLUS the locator the reference is verified through:
+ * `legalContextUrl` is REQUIRED here because `value` is a digest — a buyer verifies the terms by fetching
+ * the document and hashing it, so a challenge advertising the hash without the locator advertises
+ * something no counterparty who lacks the document can check. Every shipped buyer parser already refuses
+ * such a challenge; the schema now says on the wire what the readers always demanded. It describes the
+ * carrier, not the terms behind it, and asserts nothing about any agreement's lawfulness — the
+ * description says so in as many words because the schema travels alone.
  *
  * Changing this is a WIRE change — it appears in every challenge — so it is a frozen literal rather than a
- * value assembled at call time.
+ * value assembled at call time, and the drift gate is what keeps the frozen copy honest.
  */
 export const LEGAL_CONTEXT_SCHEMA: Readonly<Record<string, unknown>> =
   Object.freeze({
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    title: "LCP legal-context reference",
+    title: "legalContext — x402 extension info",
     description:
-      "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+      "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
     type: "object",
-    required: ["type", "value"],
     additionalProperties: false,
+    required: ["type", "value", "legalContextUrl"],
     properties: {
       type: {
-        type: "string",
-        enum: ["sha256", "url", "ipfs", "ar"],
         description:
-          "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document.",
+          "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
+        type: "string",
+        const: "sha256",
       },
       value: {
-        type: "string",
-        minLength: 1,
         description:
-          "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file.",
+          "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
+        type: "string",
+        pattern: "^0x[0-9a-f]{64}$",
+      },
+      legalContextUrl: {
+        description:
+          "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+        type: "string",
+        format: "uri",
       },
     },
   });
@@ -102,39 +111,47 @@ export const LEGAL_CONTEXT_SCHEMA: Readonly<Record<string, unknown>> =
  * would emit something no x402 counterparty parses. This is the reason an alias declares its own `encoding`
  * at all.
  *
- * **The alias declares no `write`, and the live spec is the reason.** `extra` is "Scheme-specific additional
- * information" — the payment scheme's object, whose contents that scheme defines. An `atrHash` is READ there
- * because sellers put one there; writing into another party's namespace is not the same act. The
- * `extensions` map is the protocol's own declared extension point and is where `place` writes.
+ * **The alias IS WRITTEN, and this reverses a recorded stance — deliberately, on three grounds.** The
+ * predecessor declared no `write` on the reasoning that `extra` is "Scheme-specific additional information"
+ * and writing into another party's namespace is not our act. That reasoning has been overtaken. First, the
+ * host itself no longer treats `extra` as wholly scheme-private: §6.1 reserves `assetTransferMethod` and
+ * `paymentFlow` inside it as protocol-governed names, so `extra` is a host-managed extension surface with
+ * scheme-specific residue, not a foreign namespace. Second, LCP v1.38 §C.4's own Tier A illustration puts
+ * `atrHash` AND `legalContextUrl` in `accepts[].extra` — a third-party reader built from the spec's example
+ * reads `extra` first, and a challenge that leaves it empty is invisible to that reader. Third, the shipped
+ * buyer parser reads BOTH carriers and reconciles, refusing disagreement — so the mirror cannot drift
+ * silently: two slots either agree or the document refuses at the counterparty. The write lands only in
+ * `accepts[0]`, the requirement buyer parsers read (see the index-0 rule below), and never touches the
+ * reserved names.
  *
  * **The alias is index 0 only.** A locator names one path. `accepts[0]` is what buyer parsers read, and the
  * reason is substantive: the reference must bind to the requirement actually being paid, and searching every
  * requirement would let a seller park a second set of terms on an alternative it never expects to be chosen.
  *
- * **`termsUrlField` is DECLARED — this is the protocol whose wire carries both halves.** `binding-core`'s own
- * contract cites x402 for exactly that: a buyer-side parser may demand the URL because x402 carries it, and
- * emitters put `legalContextUrl` inside `info` beside `type`/`value`. Declaring the path
- * makes that half machine-readable instead of a second private convention; `place` never writes it, because
- * `place(ref, doc)` holds one reference and the terms URL is a different datum (the same division ACP draws
- * with `metadata.legal_context_url`). The shipped carrier repeats the URL at `accepts[0].extra.legalContextUrl`
- * too, which a single `termsUrlField` cannot express — recorded in the README as a known limitation rather
- * than half-declared here.
+ * **`termsUrlFields` declares BOTH slots the wire carries, and both are written.** The predecessor member
+ * (`termsUrlField`, singular) named only the `extensions` slot, and it was read-only in every published
+ * package — the write path did not exist anywhere, so a seller assembling from published parts emitted a
+ * challenge advertising a hash with no locator, which the published buyer refuses
+ * (integra-protocol#8). Declaring both slots makes the manifest state what actually lands on the wire:
+ * `place` writes the URL beside the reference in `info` (where the authority schema requires it) and
+ * mirrors it at `accepts[0].extra.legalContextUrl` (where §C.4's illustration carries it), and `extract`
+ * reconciles the two, refusing disagreement. The kit REQUIRES the URL of any integrity-bearing
+ * advertisement on this manifest — a hash no counterparty can resolve is unverifiable by construction,
+ * which is the defect the readers always guarded against and the emitters never did.
  *
- * **`carrierTypes` permits `sha256` and `url`, and the two are admitted on DIFFERENT grounds** — one reason
- * cannot cover both. `sha256` is the integrity carrier: §C.4's illustration carries one, emitters carry one,
- * and the bare alias is fixed to it. `url` is the §8.1 discovery form, admitted because the canonical
- * slot is a general reference-object slot and the kit puts the integrity-versus-discovery decision at the
- * READER — `carrierClass` plus `requireIntegrity` — not in the permission list; ACP and UCP permit it for the
- * same reason. `ipfs`/`ar` are excluded on a ground that does NOT apply to `url`: they are ALTERNATIVE
- * integrity carriers, so admitting one adds no capability `sha256` does not already discharge while
- * advertising a content-addressed transport no x402 counterparty resolves — a claim about the ecosystem
- * rather than a description of it.
- *
- * The `url` permission is nonetheless WIDER than any shipped x402 reader: a buyer parser that requires an
- * integrity carrier refuses `info.type !== "sha256"` outright, so a `url` placed in this slot is well-formed
- * against this manifest and would still be rejected at read time. Recorded in the README as a limitation
- * rather than narrowed away here, because narrowing the reference field to one type is a change to what the
- * SLOT may hold across the set, not a fact about x402.
+ * **`carrierTypes` is `sha256` alone, and the `url` admission is WITHDRAWN — a defect resolved, not a
+ * preference.** The predecessor admitted `url` as the §8.1 discovery form and recorded, in the same
+ * docblock, that the permission was "WIDER than any shipped x402 reader": a buyer parser that requires an
+ * integrity carrier refuses `info.type !== "sha256"` outright, so a `url` placed in this slot was
+ * well-formed against the manifest and rejected at read time — a permission no reader accepts, which is a
+ * claim about the ecosystem rather than a description of it. The withdrawal ground is now structural: the
+ * `schema` member this package puts on the wire is the AUTHORITY document's shape, whose `type` is
+ * `const: "sha256"`, so a `url` reference would emit a challenge that violates its own adjacent schema.
+ * The predecessor declined to narrow because "narrowing the reference field to one type is a change to
+ * what the SLOT may hold across the set" — that set-wide decision has since been made, by the authority
+ * document. `ipfs`/`ar` remain excluded on the original ground: alternative integrity carriers add no
+ * capability `sha256` does not already discharge while advertising a content-addressed transport no x402
+ * counterparty resolves.
  */
 export const X402_PLACEMENT: PlacementManifest = {
   protocol: "x402",
@@ -148,10 +165,14 @@ export const X402_PLACEMENT: PlacementManifest = {
       path: "accepts.0.extra.atrHash",
       encoding: "bare-value",
       bareType: "sha256",
+      write: true,
     },
   ],
-  termsUrlField: "extensions.legalContext.info.legalContextUrl",
-  carrierTypes: ["sha256", "url"],
+  termsUrlFields: [
+    "extensions.legalContext.info.legalContextUrl",
+    "accepts.0.extra.legalContextUrl",
+  ],
+  carrierTypes: ["sha256"],
   specRef:
-    "x402 v2 (x402-foundation/x402@1fec3aa04e41 specs/x402-specification-v2.md, read 2026-07-30) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra is scheme-specific (gate discharged: see README)",
+    "x402 v2 (x402-foundation/x402@1fec3aa04e41 specs/x402-specification-v2.md, read 2026-07-30) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra carries the §C.4 mirror (reserved names per §6.1 untouched; gate discharged: see README)",
 };

@@ -58,6 +58,6 @@ describe("AP2 placement — manifest matches the tree", () => {
     // Absent means a parser MUST NOT demand one. The envelope's metadata map holds the reference; there is
     // no protocol-native slot for a human-readable terms URL beside it, and a url-typed reference is how a
     // deployment that only has a link says so.
-    expect(AP2_PLACEMENT.termsUrlField).toBeUndefined();
+    expect(AP2_PLACEMENT.termsUrlFields).toBeUndefined();
   });
 });

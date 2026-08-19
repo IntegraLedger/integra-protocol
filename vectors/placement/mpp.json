@@ -5,11 +5,13 @@
     "pattern": "http-advisory",
     "tier": "A",
     "encoding": "bare-value",
-    "container": { "kind": "object-path" },
+    "container": {
+      "kind": "object-path"
+    },
     "field": "methodDetails.atrHash",
-    "termsUrlField": "methodDetails.legalContextUrl",
     "carrierTypes": ["sha256"],
-    "specRef": "MPP core draft-httpauth-payment-00 §5.1.1/§5.1.2.1.1 — the challenge-bound `request` body; draft-payment-intent-charge-00 §5.1.2/§5.3 — methodDetails (gate discharged per method 2026-07-30: see README)"
+    "specRef": "MPP core draft-httpauth-payment-00 §5.1.1/§5.1.2.1.1 — the challenge-bound `request` body; draft-payment-intent-charge-00 §5.1.2/§5.3 — methodDetails (gate discharged per method 2026-07-30: see README)",
+    "termsUrlFields": ["methodDetails.legalContextUrl"]
   },
   "cases": [
     {
@@ -31,7 +33,8 @@
             "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
             "paymentMethodTypes": ["card", "link"]
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -43,7 +46,8 @@
           "methodDetails": {
             "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
             "paymentMethodTypes": ["card", "link"],
-            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29",
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -58,7 +62,11 @@
           "type": "sha256",
           "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
         },
-        "doc": { "amount": "1500", "currency": "usd" }
+        "doc": {
+          "amount": "1500",
+          "currency": "usd"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -66,7 +74,8 @@
           "amount": "1500",
           "currency": "usd",
           "methodDetails": {
-            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29",
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -85,8 +94,12 @@
           "amount": "10000000",
           "currency": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4W",
           "recipient": "GBHEGW3KWOY2OFH767EDALFGCUTBOEVBDQMCKU",
-          "methodDetails": { "network": "stellar:testnet", "feePayer": true }
-        }
+          "methodDetails": {
+            "network": "stellar:testnet",
+            "feePayer": true
+          }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": true
     },
@@ -100,7 +113,11 @@
           "type": "url",
           "value": "https://seller.example/.well-known/legal-context.json"
         },
-        "doc": { "amount": "1500", "currency": "usd", "methodDetails": {} }
+        "doc": {
+          "amount": "1500",
+          "currency": "usd",
+          "methodDetails": {}
+        }
       },
       "expected": {
         "refused": true,
@@ -117,7 +134,8 @@
           "type": "sha256",
           "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
         },
-        "doc": null
+        "doc": null,
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -139,7 +157,8 @@
           "amount": "1500",
           "currency": "usd",
           "methodDetails": "stripe"
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -147,7 +166,8 @@
           "amount": "1500",
           "currency": "usd",
           "methodDetails": {
-            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29",
+            "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -162,7 +182,11 @@
           "type": "sha256",
           "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f2"
         },
-        "doc": { "amount": "1500", "currency": "usd" }
+        "doc": {
+          "amount": "1500",
+          "currency": "usd"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -189,7 +213,8 @@
             "feePayer": true,
             "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -226,8 +251,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+          "ref": {
+            "type": "sha256",
+            "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
+          }
         }
       }
     },
@@ -248,8 +279,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0xB4FFDCE59F4119D178E2D9B57A604CF0822C494D12C9AE0858C9B37BD968BD74"
+          "ref": {
+            "type": "sha256",
+            "value": "0xB4FFDCE59F4119D178E2D9B57A604CF0822C494D12C9AE0858C9B37BD968BD74"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["methodDetails.legalContextUrl"]
+          }
         }
       }
     },
@@ -258,7 +295,11 @@
       "input": {
         "protocol": "mpp",
         "op": "extract",
-        "doc": { "methodDetails": { "atrHash": "nope" } }
+        "doc": {
+          "methodDetails": {
+            "atrHash": "nope"
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -272,7 +313,12 @@
       "input": {
         "protocol": "mpp",
         "op": "extract",
-        "doc": { "amount": "1500", "methodDetails": { "atrHash": "" } }
+        "doc": {
+          "amount": "1500",
+          "methodDetails": {
+            "atrHash": ""
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -309,7 +355,9 @@
         "doc": {
           "amount": "1500",
           "currency": "usd",
-          "methodDetails": { "network": "stellar:testnet" }
+          "methodDetails": {
+            "network": "stellar:testnet"
+          }
         }
       },
       "expected": {
@@ -323,7 +371,10 @@
       "input": {
         "protocol": "mpp",
         "op": "extract",
-        "doc": { "amount": "1500", "currency": "usd" }
+        "doc": {
+          "amount": "1500",
+          "currency": "usd"
+        }
       },
       "expected": {
         "refused": true,
@@ -337,7 +388,10 @@
       "input": {
         "protocol": "mpp",
         "op": "extract",
-        "doc": { "amount": "1500", "methodDetails": "stripe" }
+        "doc": {
+          "amount": "1500",
+          "methodDetails": "stripe"
+        }
       },
       "expected": {
         "refused": true,
@@ -347,7 +401,11 @@
     },
     {
       "name": "an ARRAY document is malformed — typeof says object, a charge body is not a list",
-      "input": { "protocol": "mpp", "op": "extract", "doc": [] },
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": []
+      },
       "expected": {
         "refused": true,
         "haltClass": "verification-failure",
@@ -372,6 +430,121 @@
         "refused": true,
         "haltClass": "verification-failure",
         "code": "mpp/reference-absent"
+      }
+    },
+    {
+      "name": "place REFUSES an integrity-bearing advertisement with NO terms URL — a hash nobody can resolve is unverifiable",
+      "$comment": "integra-protocol#8's rule, applied to every manifest that declares a slot: the buyer-side parser has always demanded the locator, and the write side now refuses first instead of emitting a document that parser rejects.",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "doc": {
+          "amount": "5000",
+          "currency": "usd",
+          "description": "Premium API access for 1 month",
+          "externalId": "order_12345",
+          "methodDetails": {
+            "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+            "paymentMethodTypes": ["card", "link"]
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/terms-url-missing"
+      }
+    },
+    {
+      "name": "place REFUSES a cleartext terms URL — https is the only scheme either side of the seam accepts",
+      "input": {
+        "protocol": "mpp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "termsUrl": "http://seller.example/terms",
+        "doc": {
+          "amount": "5000",
+          "currency": "usd",
+          "description": "Premium API access for 1 month",
+          "externalId": "order_12345",
+          "methodDetails": {
+            "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+            "paymentMethodTypes": ["card", "link"]
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/terms-url-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a non-string value in the declared terms-URL slot",
+      "$comment": "A half-corrupt advertisement is refused, never silently narrowed to the readable half.",
+      "input": {
+        "protocol": "mpp",
+        "op": "extract",
+        "doc": {
+          "amount": "5000",
+          "currency": "usd",
+          "description": "Premium API access for 1 month",
+          "externalId": "order_12345",
+          "methodDetails": {
+            "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+            "paymentMethodTypes": ["card", "link"],
+            "atrHash": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29",
+            "legalContextUrl": 7
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "mpp/terms-url-malformed"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — what place writes, extract reads back as one agreement",
+      "$comment": "The composition certification the predecessor corpus lacked: every place case certified the write and every extract case the read, and none fed one to the other — which is how two separately conformant halves shipped jointly broken (integra-protocol#8). The subject runs place then extract and pins the recovered advertisement.",
+      "input": {
+        "protocol": "mpp",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+        },
+        "doc": {
+          "amount": "5000",
+          "currency": "usd",
+          "description": "Premium API access for 1 month",
+          "externalId": "order_12345",
+          "methodDetails": {
+            "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+            "paymentMethodTypes": ["card", "link"]
+          }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x215ef24007206ff4c02c23aa49e0af8dcfb01ff87b37bcd3918bf45c1ccb1f29"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
       }
     }
   ]

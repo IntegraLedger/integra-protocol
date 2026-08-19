@@ -62,8 +62,10 @@ describe("MPP placement — the manifest guards its own claims", () => {
     // the reference read could silently descend to. LCP §C.2 rules out exactly that substitution — v1.37
     // as a MUST NOT, v1.38 as a statement of fact ("is not a substitute for one").
     expect(MPP_PLACEMENT.readAlso).toBeUndefined();
-    expect(MPP_PLACEMENT.termsUrlField).toBe("methodDetails.legalContextUrl");
-    expect(MPP_PLACEMENT.termsUrlField).not.toBe(MPP_PLACEMENT.field);
+    expect(MPP_PLACEMENT.termsUrlFields).toEqual([
+      "methodDetails.legalContextUrl",
+    ]);
+    expect(MPP_PLACEMENT.termsUrlFields).not.toContain(MPP_PLACEMENT.field);
   });
 
   it("both declared locators sit INSIDE methodDetails — the challenge-bound part of the body", () => {
@@ -71,7 +73,10 @@ describe("MPP placement — the manifest guards its own claims", () => {
     // 3 of the challenge binding; a locator that drifted to the outer challenge would be unbound (Tier B)
     // while still reading as Tier A on this manifest.
     expect(MPP_PLACEMENT.field).toBe("methodDetails.atrHash");
-    for (const locator of [MPP_PLACEMENT.field, MPP_PLACEMENT.termsUrlField])
+    for (const locator of [
+      MPP_PLACEMENT.field,
+      ...(MPP_PLACEMENT.termsUrlFields ?? []),
+    ])
       expect(locator).toMatch(/^methodDetails\./);
   });
 });

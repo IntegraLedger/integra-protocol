@@ -37,7 +37,7 @@ import { UCP_PLACEMENT, ucpPlacement } from "@integraledger/lcp-placement-ucp";
 
 declare const checkout: unknown; // the UCP checkout response, as received
 
-const placed = ucpPlacement.place({ type: "sha256", value: "0x…" }, checkout);
+const placed = ucpPlacement.place({ ref: { type: "sha256", value: "0x…" } }, checkout);
 const ref = ucpPlacement.extract(checkout);
 ```
 
@@ -108,7 +108,7 @@ alone. Both arms are pinned as vectors.
 
 ## Why the links alias has no `write` flag
 
-The links entry carries the terms **URL** — a different datum than the atrHash — and `place(ref, doc)`
+The links entry carries the terms **URL** — a different datum than the atrHash — and `place(ad, doc)`
 holds one reference, not two data: writing `ref.value` into `links[].url` would put a bare hash where every
 UCP client expects a URL. Publishing the links entry is the deployment's act (UCP already makes `links[]`
 required on checkout responses), and this placement **reads** it: `extract` falls to the alias when no policy entry is

@@ -39,6 +39,6 @@ describe("ACK placement — manifest matches the tree", () => {
     expect(ACK_PLACEMENT.readAlso?.[0]?.carrierClass).toBeUndefined();
     expect(ACK_PLACEMENT.readAlso?.[0]?.write).toBeUndefined();
     // ACK's receipt models no terms URL, so a parser must not be told to demand one.
-    expect(ACK_PLACEMENT.termsUrlField).toBeUndefined();
+    expect(ACK_PLACEMENT.termsUrlFields).toBeUndefined();
   });
 });

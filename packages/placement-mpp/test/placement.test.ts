@@ -11,8 +11,9 @@ const vec = JSON.parse(
   cases: {
     name: string;
     input: {
-      op: "place" | "place-purity" | "extract";
+      op: "place" | "place-purity" | "extract" | "roundtrip";
       ref?: { type: string; value: string };
+      termsUrl?: string;
       doc: unknown;
     };
     expected?: unknown;
@@ -22,15 +23,29 @@ const vec = JSON.parse(
 describe("MPP placement — cases", () => {
   for (const c of vec.cases) {
     it(c.name, () => {
-      const { op, doc } = c.input;
+      const { op, doc, termsUrl } = c.input;
       const ref = c.input.ref as {
         type: "sha256" | "ipfs" | "ar" | "url";
         value: string;
       };
 
+      if (op === "roundtrip") {
+        const placed = mppPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
+        if ("refused" in placed)
+          throw new Error(`roundtrip could not place: ${placed.code}`);
+        expect(mppPlacement.extract(placed.value)).toEqual(c.expected);
+        return;
+      }
+
       if (op === "place-purity") {
         const before = JSON.stringify(doc);
-        mppPlacement.place(ref, doc);
+        mppPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
         expect(JSON.stringify(doc)).toBe(before);
         return;
       }
@@ -44,7 +59,10 @@ describe("MPP placement — cases", () => {
       const out =
         op === "extract"
           ? mppPlacement.extract(doc)
-          : mppPlacement.place(ref, doc);
+          : mppPlacement.place(
+              { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+              doc,
+            );
       if ("refused" in out) expect(out).toMatchObject(c.expected as object);
       else expect(out).toEqual(c.expected);
     });
@@ -80,7 +98,7 @@ describe("MPP placement — the bare-slot refusals stay legible", () => {
 
   it("names the FIELD that permits only sha256 when a url ref is offered", () => {
     const out = mppPlacement.place(
-      { type: "url", value: "https://seller.example/terms.json" },
+      { ref: { type: "url", value: "https://seller.example/terms.json" } },
       { amount: "1500" },
     );
     expect(out).toMatchObject({ code: "mpp/carrier-type-not-permitted" });

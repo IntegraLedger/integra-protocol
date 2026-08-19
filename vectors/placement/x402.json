@@ -1,5 +1,5 @@
 {
-  "$comment": "x402 reference placement — the HTTP-LAYER CARRIER, cut against the live x402 v2 specification (x402-foundation/x402@1fec3aa04e41, specs/x402-specification-v2.md, read 2026-07-30) and reconciled with LCP v1.37 §C.4 the same day. THIS IS NOT THE x402 WELD: @integraledger/lcp-binding-evm-x402 binds atrHash into the EIP-3009 nonce and answers 'what did the money commit to?'. This area answers a different question — 'where does the reference ride on the wire?' — and both are true at once. GATE (§7): the live spec confirms (a) `extensions` is carried on PaymentRequired, PaymentPayload AND SettlementResponse, (b) each entry carries `info` ('Extension-specific data provided by the server') and `schema` ('JSON Schema defining the expected structure of info'), (c) the echo rule — 'The client must include at least the info received; it may append additional info but cannot delete or overwrite existing info' — and (d) `extra` is 'Scheme-specific additional information' on a PaymentRequirements entry. (c) is why the top-level map is CANONICAL here: it is the carrier the protocol itself protects. (d) is why `place` never writes into `extra`: that object belongs to the payment scheme, and the atrHash there is READ because shipped sellers emit it, not written because we chose the spelling. DRIFT from v1.37 §C.4, recorded rather than silently absorbed: v1.37 renders the echo rule in RFC-2119 caps ('MAY append to but MUST NOT delete or overwrite') and states it about the extensions map; the live spec states it in lower case and about the `info` payload, and it additionally carries `extra` on PaymentPayload.accepted, which §C.4 does not mention. Same rule, weaker modality — the host spec wins and the drift is reported. THE ALIAS HAS A DIFFERENT ENCODING FROM THE CANONICAL FIELD, and x402 is the only protocol in the set where that is true: the canonical slot holds a §8.1 {type,value} object, `accepts[0].extra.atrHash` holds a BARE hash. Writing an `lcp:` string there would emit a field neither our own seller nor any x402 counterparty parses. The alias is index 0 ONLY, matching what buyer parsers read (accepts[0]); a wildcard segment would add a path language to the locator that nothing else in the set needs. The extension KEY is `legalContext`, not a reverse-domain name: x402 imposes no namespace rule (keys are implementation-defined strings) and `legalContext` is what sellers emit, what buyer parsers read, and what §C.4's own illustration shows. The ruled com.integraledger.* namespace governs hosts that REQUIRE a reverse-domain namespace (UCP), not this one. Case inputs are shaped {protocol, op, ref?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit `detail`; success arms pin the WHOLE Outcome, in the exact key order the adapter emits, because the runner's deepEqual is JSON.stringify equality. (Re-read against v1.38 on 2026-08-12: v1.38 §C.4 adds §6.1’s reserved keys and the `paymentFlow` axis.)",
+  "$comment": "x402 reference placement — the HTTP-LAYER CARRIER, cut against the live x402 v2 specification (x402-foundation/x402@1fec3aa04e41, specs/x402-specification-v2.md, read 2026-07-30). THIS IS NOT THE x402 WELD: @integraledger/lcp-binding-evm-x402 binds atrHash into the EIP-3009 nonce and answers 'what did the money commit to?'. This area answers a different question — 'where does the reference ride on the wire?' — and both are true at once. GATE (§7): the live spec confirms (a) `extensions` is carried on PaymentRequired, PaymentPayload AND SettlementResponse, (b) each entry carries `info` ('Extension-specific data provided by the server') and `schema` ('JSON Schema defining the expected structure of info'), (c) the echo rule — 'The client must include at least the info received; it may append additional info but cannot delete or overwrite existing info' — and (d) §6.1 reserves `assetTransferMethod` and `paymentFlow` inside PaymentRequirements.extra as protocol-governed names. (c) is why the top-level map is CANONICAL here: it is the carrier the protocol itself protects. (d) is half of why `place` now WRITES the extra mirror — the predecessor corpus pinned 'place never touches extra' on the ground that extra was wholly scheme-private, and §6.1 withdrew that ground; LCP v1.38 §C.4's own Tier A illustration carrying atrHash AND legalContextUrl there is the other half, because a reader built from the spec's example reads extra first. The written mirror merges around the scheme's own keys and never touches the reserved names. THE ADVERTISEMENT IS ONE ACT: the manifest declares two terms-URL slots (info-side, extra-side), place writes both and REQUIRES the URL of an integrity-bearing reference — a hash no counterparty can resolve is unverifiable by construction, which is the defect integra-protocol#8 measured: every published reader demanded the locator and no published writer placed it. extract reconciles the two slots, refusing disagreement, and reports absence as a typed value because pre-fix emissions are still evidence. THE ALIAS HAS A DIFFERENT ENCODING FROM THE CANONICAL FIELD, and x402 is the only protocol in the set where that is true: the canonical slot holds a §8.1-derived object, `accepts[0].extra.atrHash` holds a BARE hash. The alias is index 0 ONLY, matching what buyer parsers read. The extension KEY is `legalContext`, not a reverse-domain name: x402 imposes no namespace rule and `legalContext` is what sellers emit, what buyer parsers read, and what §C.4's own illustration shows. carrierTypes is sha256 ALONE — the url admission is WITHDRAWN, because the schema member this placement itself puts on the wire (the authority document's shape, drift-gated in conformance) is const sha256, so a url reference would emit a challenge violating its own adjacent schema. Case inputs are shaped {protocol, op, ref?, termsUrl?, doc} under `input` (the runner passes only c.input); refusal expecteds pin {refused, haltClass, code} and omit `detail`; success arms pin the WHOLE Outcome, in the exact key order the adapter emits, because the runner's deepEqual is JSON.stringify equality. The `roundtrip` op runs place then extract inside the subject and pins the recovered advertisement — the composition certification the predecessor corpus lacked.",
   "manifest": {
     "protocol": "x402",
     "pattern": "http-advisory",
@@ -13,17 +13,21 @@
       {
         "path": "accepts.0.extra.atrHash",
         "encoding": "bare-value",
-        "bareType": "sha256"
+        "bareType": "sha256",
+        "write": true
       }
     ],
-    "termsUrlField": "extensions.legalContext.info.legalContextUrl",
-    "carrierTypes": ["sha256", "url"],
-    "specRef": "x402 v2 (x402-foundation/x402@1fec3aa04e41 specs/x402-specification-v2.md, read 2026-07-30) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra is scheme-specific (gate discharged: see README)"
+    "termsUrlFields": [
+      "extensions.legalContext.info.legalContextUrl",
+      "accepts.0.extra.legalContextUrl"
+    ],
+    "carrierTypes": ["sha256"],
+    "specRef": "x402 v2 (x402-foundation/x402@1fec3aa04e41 specs/x402-specification-v2.md, read 2026-07-30) — top-level extensions map carried on PaymentRequired/PaymentPayload/SettlementResponse, each entry {info, schema}; accepts[].extra carries the §C.4 mirror (reserved names per §6.1 untouched; gate discharged: see README)"
   },
   "cases": [
     {
-      "name": "place writes the extensions.legalContext entry with info and schema",
-      "$comment": "The slot does not hold the reference directly — it holds {info, schema}, where `schema` is a $ref pointing at the carrier schema and is never fetched. That wrapper is why this is the one placement in the plan that overrides the kit's `place`.",
+      "name": "place writes the whole advertisement — wrapper, both terms-URL slots, and the §C.4 extra mirror",
+      "$comment": "The slot does not hold the reference directly — it holds {info, schema}, where `schema` is the INLINED carrier schema (equal to the authority document minus $id/$defs; the conformance drift gate holds that equality). `info` carries the locator beside the reference because the schema REQUIRES it, and the same pair lands in accepts[0].extra because LCP v1.38 §C.4's Tier A illustration is a reader some counterparty built. This one case pins the complete wire shape a third-party seller assembles — the composition integra-protocol#8 measured as impossible.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -39,7 +43,8 @@
               "network": "base-sepolia"
             }
           ]
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -48,32 +53,42 @@
           "accepts": [
             {
               "scheme": "exact",
-              "network": "base-sepolia"
+              "network": "base-sepolia",
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
             }
           ],
           "extensions": {
             "legalContext": {
               "info": {
                 "type": "sha256",
-                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               },
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -94,19 +109,32 @@
         },
         "doc": {
           "x402Version": 2,
-          "accepts": [],
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": {
             "someOther": {
               "info": {}
             }
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
         "value": {
           "x402Version": 2,
-          "accepts": [],
+          "accepts": [
+            {
+              "scheme": "exact",
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          ],
           "extensions": {
             "someOther": {
               "info": {}
@@ -114,25 +142,31 @@
             "legalContext": {
               "info": {
                 "type": "sha256",
-                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               },
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -143,7 +177,7 @@
     },
     {
       "name": "our OWN entry is replaced in place, keeping its position among the siblings",
-      "$comment": "Two rules at once: re-placing a reference overwrites rather than duplicating, and the sibling merge is `{...siblings, legalContext}` — the reverse order would let a stale legalContext win over the one being placed.",
+      "$comment": "Two rules at once: re-placing a reference overwrites rather than duplicating, and the entry is rebuilt as {info, schema} wholesale — a stale schema or junk a counterparty parked inside OUR entry does not ride the wire, while the sibling and the entry's position both survive.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -152,6 +186,11 @@
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
         "doc": {
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": {
             "legalContext": {
               "info": {
@@ -165,34 +204,50 @@
               }
             }
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
         "value": {
+          "accepts": [
+            {
+              "scheme": "exact",
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          ],
           "extensions": {
             "legalContext": {
               "info": {
                 "type": "sha256",
-                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               },
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -207,8 +262,8 @@
       }
     },
     {
-      "name": "place never touches the per-requirement extra — that object is the SCHEME's",
-      "$comment": "The live spec defines `extra` as 'Scheme-specific additional information', and its example content is token metadata (name/version). We READ an atrHash there because sellers emit one; writing into a scheme's own object is not ours to do, which is why the alias declares no `write`.",
+      "name": "the extra mirror MERGES into the scheme's own object — sibling keys are the scheme's and survive",
+      "$comment": "REVERSED from the predecessor corpus, which pinned 'place never touches the per-requirement extra'. Three grounds, recorded in the manifest docblock: §6.1 reserves names inside `extra`, so it is host-managed rather than wholly scheme-private; §C.4's Tier A illustration carries atrHash AND legalContextUrl there, so a reader built from the spec's example reads extra first; and the shipped buyer parser reconciles both carriers, refusing disagreement, so the mirror cannot drift silently. The scheme's own keys (name/version here — the live spec's example content) are merged around, never replaced, and the reserved names are untouched.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -228,7 +283,8 @@
               }
             }
           ]
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -240,7 +296,9 @@
               "network": "base-sepolia",
               "extra": {
                 "name": "USDC",
-                "version": "2"
+                "version": "2",
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               }
             }
           ],
@@ -248,25 +306,31 @@
             "legalContext": {
               "info": {
                 "type": "sha256",
-                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               },
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -276,7 +340,8 @@
       }
     },
     {
-      "name": "place accepts a url carrier — the OTHER type this field permits",
+      "name": "place REFUSES a url carrier — the admission is WITHDRAWN, and the schema on the wire is why",
+      "$comment": "The predecessor permitted url and recorded in the same docblock that the permission was wider than any shipped reader — well-formed against the manifest, refused at every read. The withdrawal ground is structural: the `schema` member this placement puts on the wire is the authority document's shape, whose `type` is const sha256, so a url reference would emit a challenge that violates its own adjacent schema.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -287,42 +352,14 @@
         "doc": {}
       },
       "expected": {
-        "ok": true,
-        "value": {
-          "extensions": {
-            "legalContext": {
-              "info": {
-                "type": "url",
-                "value": "https://seller.example/terms/abc.md"
-              },
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
-                "type": "object",
-                "required": ["type", "value"],
-                "additionalProperties": false,
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
-                  },
-                  "value": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
-                  }
-                }
-              }
-            }
-          }
-        }
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/carrier-type-not-permitted"
       }
     },
     {
       "name": "place REFUSES a challenge whose extensions is a STRING — that map is ABOVE the field's direct holder",
-      "$comment": "THE MALFORMED-CONTAINER RULE, re-derived from the declared manifest rather than from the granularity this override happens to write at. `field` is `extensions.legalContext.info`, so the field's DIRECT HOLDER is `legalContext` and `extensions` sits one level ABOVE it — and binding-core's ratified rule is: a present-but-unmergeable container is replaced when it IS the direct holder and REFUSED when it is anywhere above, because replacing an intermediate discards everything beneath it. A stranger holding only the published manifest and the kit computes `x402/document-malformed` for this document; the override must compute the same answer, or the manifest is not the artifact it claims to be.",
+      "$comment": "The malformed-container rule, ratified in binding-core: `extensions` sits one level above `legalContext`, and replacing an intermediate discards everything beneath it.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -332,8 +369,14 @@
         },
         "doc": {
           "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": "legalContext"
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -342,8 +385,7 @@
       }
     },
     {
-      "name": "place REFUSES an ARRAY extensions map — the case where replacing it would DESTROY host data",
-      "$comment": "The string case alone cannot prove the rule: dropping `\"legalContext\"` loses a scalar, and a reader could believe replacement is harmless. Here the host's own entries are in the array, and an override that replaced `extensions` would emit a challenge with them silently gone. This is the exact harm the ratified rule names — 'Replacing an intermediate would discard everything beneath it'.",
+      "name": "place REFUSES an ARRAY extensions map — the case where replacing it would DESTROY sibling entries",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -353,16 +395,20 @@
         },
         "doc": {
           "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": [
             {
               "someOther": {
-                "info": {
-                  "a": 1
-                }
+                "info": {}
               }
             }
           ]
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -371,8 +417,7 @@
       }
     },
     {
-      "name": "place REFUSES a NUMERIC extensions map — the branch a string and an array both leave untested",
-      "$comment": "`typeof 7` is not 'object' and `Array.isArray(7)` is false, so a guard written as one of those two checks alone would let this through. Spreading a number yields `{}`, which is the quietest corruption of the three: the host's declared map becomes an empty one and nothing reports it.",
+      "name": "place REFUSES a NUMERIC extensions map — the branch a string and an array both leave open",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -382,8 +427,14 @@
         },
         "doc": {
           "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": 7
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -393,7 +444,6 @@
     },
     {
       "name": "place REFUSES a NULL extensions map — present-holding-null is not absent",
-      "$comment": "Absent is created (that is the extension point working); present-but-unmergeable above the direct holder refuses. A JSON null is PRESENT, and the kit reads it that way too: `Object.hasOwn` is true, so it never reaches the create branch. Treating null as absent here would be the one input on which this override and the kit still disagreed.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -403,8 +453,14 @@
         },
         "doc": {
           "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": null
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -414,7 +470,7 @@
     },
     {
       "name": "an unmergeable OWN entry IS replaced — the other half of the same rule, at the direct holder",
-      "$comment": "The distinction the four refusals above would otherwise leave as an assertion. `extensions.legalContext` is the direct holder of `.info`, so a present-but-unmergeable value THERE is replaced — and it costs the host nothing, because `legalContext` is our own extension key and the only thing dropped is a value that was never a conformant entry. The sibling `someOther` proves the replacement is scoped to our entry and not to the map.",
+      "$comment": "`extensions.legalContext` is the direct holder of `.info`, so a present-but-unmergeable value THERE is replaced — and it costs the host nothing, because `legalContext` is our own extension key and the only thing dropped was never a conformant entry. The sibling `someOther` proves the replacement is scoped to our entry and not to the map.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -423,40 +479,61 @@
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
         "doc": {
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ],
           "extensions": {
             "legalContext": "junk",
             "someOther": {
               "info": 1
             }
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
         "value": {
+          "accepts": [
+            {
+              "scheme": "exact",
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          ],
           "extensions": {
             "legalContext": {
               "info": {
                 "type": "sha256",
-                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               },
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -469,7 +546,8 @@
       }
     },
     {
-      "name": "place REFUSES a null document — minting the challenge is not the extension point working",
+      "name": "a malformed extra on the paid requirement is REPLACED — it is the direct holder of both mirror slots",
+      "$comment": "The same direct-holder rule the entry above pins, at the alias's holder: `accepts[0].extra` directly holds `atrHash` and `legalContextUrl`, so a present-but-unmergeable value there is replaced rather than spread — `{...\"junk\"}` would mint {0:'j',1:'u',…} into the scheme's object.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -477,7 +555,78 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": null
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "extra": "junk"
+            }
+          ]
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          ],
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
+                "properties": {
+                  "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
+                    "type": "string",
+                    "const": "sha256"
+                  },
+                  "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
+                    "type": "string",
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES a null document — minting the challenge is not the extension point's job",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": null,
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -494,7 +643,8 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": []
+        "doc": [],
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -504,7 +654,6 @@
     },
     {
       "name": "place REFUSES a NON-OBJECT document — a string is not a challenge with room in it",
-      "$comment": "The case that distinguishes the guard from its absence. Without the typeof half, `{...\"challenge\"}` spreads the string into {0:'c',1:'h',…} and the placement emits a corrupted document instead of refusing — null and [] both pass the other two halves of the same guard, so neither of them proves it.",
       "input": {
         "protocol": "x402",
         "op": "place",
@@ -512,7 +661,30 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
-        "doc": "challenge"
+        "doc": "402",
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "place REFUSES a challenge with NO payable requirement — the mirror slots live inside accepts[0]",
+      "$comment": "The writer only ever ENTERS an existing element — the host builds its own list, and index 0 on an empty accepts names an element the host never put there. A challenge nothing can pay is not a challenge this placement can advertise in, and refusing beats minting {\"0\":…} structure that reads as a list to every index-aware parser.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": []
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -530,7 +702,11 @@
           "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
         },
         "doc": {
-          "x402Version": 2
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ]
         }
       },
       "expected": {
@@ -541,17 +717,21 @@
     },
     {
       "name": "place REFUSES a permitted type whose VALUE is not valid for it",
-      "$comment": "Bare digits are not a sha256 carrier. The override renders through the codec, so a corrupt value refuses instead of landing on the wire as an extension a buyer's parser would reject.",
       "input": {
         "protocol": "x402",
         "op": "place",
         "ref": {
           "type": "sha256",
-          "value": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "value": "not-a-hash"
         },
         "doc": {
-          "x402Version": 2
-        }
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ]
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -560,7 +740,58 @@
       }
     },
     {
+      "name": "place REFUSES a sha256 advertisement with NO terms URL — the composition defect, closed at the source",
+      "$comment": "integra-protocol#8's shape: the published buyer demands the locator (a hash no counterparty can resolve is unverifiable by construction), so an emitter that omits it mints a challenge nothing accepts. The refusal lands at the seller, where the missing datum is — not at the counterparty, where it surfaced.",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/terms-url-missing"
+      }
+    },
+    {
+      "name": "place REFUSES a cleartext terms URL — minting a challenge every buyer refuses is not a success path",
+      "input": {
+        "protocol": "x402",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact"
+            }
+          ]
+        },
+        "termsUrl": "http://seller.example/terms"
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/terms-url-malformed"
+      }
+    },
+    {
       "name": "place is pure — the input challenge is not mutated",
+      "$comment": "Purity is a property of the CALL, not of its result, and the URL writes descend through the host's own accepts element — the walk that would be easiest to get wrong in place.",
       "input": {
         "protocol": "x402",
         "op": "place-purity",
@@ -568,18 +799,28 @@
           "type": "sha256",
           "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json",
         "doc": {
           "x402Version": 2,
-          "accepts": [],
+          "accepts": [
+            {
+              "scheme": "exact",
+              "extra": {
+                "name": "USDC"
+              }
+            }
+          ],
           "extensions": {
-            "someOther": {}
+            "someOther": {
+              "info": {}
+            }
           }
         }
       },
       "expected": true
     },
     {
-      "name": "extract reads the canonical extensions slot",
+      "name": "extract reads the canonical extensions slot, terms URL beside the reference",
       "input": {
         "protocol": "x402",
         "op": "extract",
@@ -588,7 +829,8 @@
             "legalContext": {
               "info": {
                 "type": "sha256",
-                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
               }
             }
           }
@@ -597,14 +839,20 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
+          }
         }
       }
     },
     {
       "name": "extract reads the long-standing shipped carrier, verbatim",
-      "$comment": "This case closes the undisclosed-drift gap: the document is exactly what buildLegalContextCarrier emits — `info` carrying a legalContextUrl beside type/value, `schema` beside `info`, and the same pair repeated in accepts[0].extra. The sibling key inside `info` is tolerated for the same reason §C.3's disputeResolution siblings are: the entry payload is ours and a reader that rejected our own shipped shape would be the defect.",
+      "$comment": "The document is exactly what a conformant seller emits — the pair in both carriers, `schema` beside `info` — and the reader answers it as ONE agreement: reference reconciled by strength order, URL reconciled across both declared slots. A reader that rejected our own shipped shape would be the defect.",
       "input": {
         "protocol": "x402",
         "op": "extract",
@@ -632,21 +880,26 @@
               },
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -657,8 +910,48 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
+      }
+    },
+    {
+      "name": "extract reads a pre-fix emission — reference present, no URL anywhere — as EVIDENCE, not a refusal",
+      "$comment": "Documents emitted before the write path existed are still on wires. The reference is evidence; whether to transact against a locator-less advertisement is the GATE's decision, made where the buyer's policy lives — the reader only says which absence this is (the seller left declared slots empty, as opposed to a protocol with no slot).",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": [
+              "extensions.legalContext.info.legalContextUrl",
+              "accepts.0.extra.legalContextUrl"
+            ]
+          }
         }
       }
     },
@@ -680,8 +973,48 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": [
+              "extensions.legalContext.info.legalContextUrl",
+              "accepts.0.extra.legalContextUrl"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "a URL present in only ONE slot answers — one-present wins, agreement is only demanded of two",
+      "$comment": "§C.4's illustration carries the pair in extra alone, and a reader that demanded both slots would refuse the spec's own example.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "accepts": [
+            {
+              "extra": {
+                "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
+          }
         }
       }
     },
@@ -704,14 +1037,23 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7F83B1657FF1FC53B92DC18148A1D65DFC2D4B1FA3D677284ADDD200126D9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": [
+              "extensions.legalContext.info.legalContextUrl",
+              "accepts.0.extra.legalContextUrl"
+            ]
+          }
         }
       }
     },
     {
-      "name": "the canonical extensions slot wins when both carriers are present",
-      "$comment": "Strength order as data: the canonical field answers first even when the alias carries a different datum. A reader that took the alias would let whichever carrier a middlebox rewrote decide what the record cites. DISCLOSED DIVERGENCE from a strict buyer gate: such a reader may prefer accepts[].extra (the per-requirement carrier) and REFUSES outright when the two carriers disagree, where this area answers with the canonical slot and says nothing. A placement is structural and does not adjudicate the host's document; a buyer parser may. Both behaviours are designed, the divergence is recorded in the README rather than left for a universal buyer parser to discover, and that parser is where the two readers reconcile.",
+      "name": "the canonical extensions slot wins when both reference carriers are present",
+      "$comment": "Strength order as data: the canonical field answers first even when the alias carries a different datum. A reader that took the alias would let whichever carrier a middlebox rewrote decide what the record cites. DISCLOSED DIVERGENCE from a strict buyer gate: such a reader may prefer accepts[].extra (the per-requirement carrier) and REFUSES outright when the two carriers disagree, where this area answers with the canonical slot and says nothing. A placement is structural and does not adjudicate the host's document; a buyer parser may. Both behaviours are designed, the divergence is recorded in the README, and that parser is where the two readers reconcile. (The TERMS-URL slots reconcile here — mismatch refuses — because both slots are this manifest's own declarations, not the host's carriers.)",
       "input": {
         "protocol": "x402",
         "op": "extract",
@@ -719,8 +1061,8 @@
           "extensions": {
             "legalContext": {
               "info": {
-                "type": "url",
-                "value": "https://canonical.example/t.md"
+                "type": "sha256",
+                "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
               }
             }
           },
@@ -736,9 +1078,80 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "url",
-          "value": "https://canonical.example/t.md"
+          "ref": {
+            "type": "sha256",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": [
+              "extensions.legalContext.info.legalContextUrl",
+              "accepts.0.extra.legalContextUrl"
+            ]
+          }
         }
+      }
+    },
+    {
+      "name": "extract REFUSES two terms-URL slots that DISAGREE — a seller must not advertise different terms to different readers",
+      "$comment": "The write side puts one URL in both slots; a document carrying two different ones lets the seller disown whichever reading lost. Refused at the read, not resolved by preference.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          },
+          "accepts": [
+            {
+              "extra": {
+                "legalContextUrl": "https://other.example/terms"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/terms-url-mismatch"
+      }
+    },
+    {
+      "name": "extract REFUSES a malformed terms-URL slot even when the other slot reads cleanly",
+      "$comment": "A half-corrupt advertisement is not resolved by preferring the clean half — https is the only scheme either side of the seam accepts.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "sha256",
+                "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                "legalContextUrl": "https://seller.example/.well-known/legal-context.json"
+              }
+            }
+          },
+          "accepts": [
+            {
+              "extra": {
+                "legalContextUrl": "ftp://seller.example/terms"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/terms-url-malformed"
       }
     },
     {
@@ -794,6 +1207,29 @@
       }
     },
     {
+      "name": "extract REFUSES a url reference in the canonical slot — the withdrawn admission, read side",
+      "$comment": "The predecessor corpus ANSWERED this document with the url reference. Withdrawing the admission changes the read too, deliberately: a permission no shipped reader accepted was an ecosystem claim, and the schema this placement itself puts on the wire is const sha256.",
+      "input": {
+        "protocol": "x402",
+        "op": "extract",
+        "doc": {
+          "extensions": {
+            "legalContext": {
+              "info": {
+                "type": "url",
+                "value": "https://canonical.example/t.md"
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "x402/carrier-type-not-permitted"
+      }
+    },
+    {
       "name": "extract REFUSES a corrupt bare hash in the alias",
       "input": {
         "protocol": "x402",
@@ -802,7 +1238,7 @@
           "accepts": [
             {
               "extra": {
-                "atrHash": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+                "atrHash": "0xnot-hex"
               }
             }
           ]
@@ -845,21 +1281,26 @@
             "legalContext": {
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "LCP legal-context reference",
-                "description": "A Legal Context Protocol reference to the terms governing this transaction. The reference identifies the exact terms document; it is not the terms.",
+                "title": "legalContext — x402 extension info",
+                "description": "The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.",
                 "type": "object",
-                "required": ["type", "value"],
                 "additionalProperties": false,
+                "required": ["type", "value", "legalContextUrl"],
                 "properties": {
                   "type": {
+                    "description": "The digest algorithm over the terms document. `sha256` is the only value this version defines.",
                     "type": "string",
-                    "enum": ["sha256", "url", "ipfs", "ar"],
-                    "description": "Carrier type. sha256, ipfs and ar are content-addressed and bear integrity; url only locates a document."
+                    "const": "sha256"
                   },
                   "value": {
+                    "description": "The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.",
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The reference itself — for sha256, a 0x-prefixed lowercase 32-byte hex digest of the complete ATR file."
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  },
+                  "legalContextUrl": {
+                    "description": "Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.",
+                    "type": "string",
+                    "format": "uri"
                   }
                 }
               }
@@ -929,6 +1370,49 @@
         "refused": true,
         "haltClass": "verification-failure",
         "code": "x402/document-malformed"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — a third party's whole path: assemble from the manifest, read with the kit, one agreement out",
+      "$comment": "The gap that let integra-protocol#8 ship: every place case certified the write and every extract case certified the read, and no case ever fed one to the other — the two halves were separately conformant and jointly broken. This op runs place then extract inside the subject and pins the recovered advertisement, so the corpus itself now fails if the written document stops being readable.",
+      "input": {
+        "protocol": "x402",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json",
+        "doc": {
+          "x402Version": 2,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "base-sepolia",
+              "extra": {
+                "name": "USDC"
+              }
+            }
+          ],
+          "extensions": {
+            "someOther": {
+              "info": {}
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
       }
     }
   ]

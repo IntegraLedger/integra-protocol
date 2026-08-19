@@ -1,5 +1,5 @@
 import {
-  type LegalContextRef,
+  type LegalContextAdvertisement,
   makePlacement,
   type ReferencePlacementAdapter,
   readAtPath,
@@ -98,7 +98,7 @@ const base = makePlacement(ACK_PLACEMENT);
  */
 export const ackPlacement: ReferencePlacementAdapter = {
   ...base,
-  place(ref: LegalContextRef, doc: unknown) {
+  place(ad: LegalContextAdvertisement, doc: unknown) {
     const proof = readAtPath(doc, "proof");
     if (proof !== undefined && proof !== null)
       return {
@@ -108,6 +108,6 @@ export const ackPlacement: ReferencePlacementAdapter = {
         detail:
           "this credential already carries a proof — place the reference before the issuer signs it, or the reference lands outside what the proof covers",
       };
-    return base.place(ref, doc);
+    return base.place(ad, doc);
   },
 };

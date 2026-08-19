@@ -61,6 +61,6 @@ describe("A2A placement — manifest matches the tree", () => {
   });
 
   it("models no terms URL — A2A has no field for one, so a parser must not demand it", () => {
-    expect(A2A_PLACEMENT.termsUrlField).toBeUndefined();
+    expect(A2A_PLACEMENT.termsUrlFields).toBeUndefined();
   });
 });

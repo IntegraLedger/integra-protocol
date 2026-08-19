@@ -28,7 +28,7 @@ import { VISA_TAP_PLACEMENT, visaTapPlacement } from "@integraledger/lcp-placeme
 
 declare const request: { headers: Record<string, string> }; // the TAP request, as received
 
-const placed = visaTapPlacement.place({ type: "sha256", value: "0x…" }, { headers: {} });
+const placed = visaTapPlacement.place({ ref: { type: "sha256", value: "0x…" } }, { headers: {} });
 const ref = visaTapPlacement.extract(request);
 ```
 

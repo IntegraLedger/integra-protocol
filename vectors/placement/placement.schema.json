@@ -279,10 +279,15 @@
       "description": "OPTIONAL — additional field paths `extract` also accepts, declared as DATA so no accepted shape is a silent convention. Each entry may carry its OWN `encoding`, defaulting to the manifest's: an alias frequently differs in shape from the canonical slot — ACP's canonical field holds an `lcp:` string while its Appendix-C alias holds a §8.1 object, and x402's canonical `extensions` slot holds an object while its `extra.atrHash` alias holds a bare hash. `bareType` fixes the type for a `bare-value` alias, since a bare value carries no type tag. `carrierClass` defaults to `integrity`; `discovery` marks a carrier that only LOCATES the terms document and commits to nothing about its content, and a discovery hit is reported as such so it can never be mistaken for an integrity read. `write` defaults to false — strict write — and `true` means `place` populates this carrier as well as `field`, which is what UCP §C.3 advises for a capability that may be silently pruned from the negotiated intersection.",
       "$comment": "An entry is an OBJECT, not a bare string. A string[] would silently assume every alias has the canonical field's shape, and neither of the two protocols we can check against actually does — it would force each adapter to hard-code its alias decoding, putting the shape back into code, which is what declaring it as data was for. The rule 'readAlso may not repeat field' is NOT expressible in draft 2020-12 without $data — it compares two properties of the same object — so it is enforced by assertManifestHygiene in binding-core, which every placement package's manifest test calls. Do not assume the schema catches it."
     },
-    "termsUrlField": {
-      "type": "string",
-      "minLength": 1,
-      "description": "OPTIONAL — the dotted path of the field carrying the human-readable terms URL, where the protocol has room for one. Declared rather than left to convention because a buyer-side parser that REQUIRES the URL against a placement that never places it cannot round-trip. Absent means this protocol carries no terms URL and a parser must not demand one."
+    "termsUrlFields": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "OPTIONAL — the dotted paths of EVERY field carrying the human-readable terms URL, where the protocol has room for one. All slots are written by `place` and all are read and reconciled by `extract`, which refuses disagreement. A LIST because the predecessor member was singular and that was a measured defect twice over: x402's wire carries the URL in two places (accepts[].extra per §C.4's illustration, extensions…info per the authority schema), so a singular declaration could only name one — and no write path existed at all, so a seller assembling from published parts emitted a challenge the published buyer refuses (integra-protocol#8). Absent means this protocol carries no terms URL and a parser must not demand one; declared, the kit REQUIRES the URL of any integrity-bearing advertisement. Entries must be distinct from `field` and from every readAlso path — binding-core's assertManifestHygiene holds those cross-member rules, which JSON Schema cannot express without $data."
     },
     "carrierTypes": {
       "type": "array",

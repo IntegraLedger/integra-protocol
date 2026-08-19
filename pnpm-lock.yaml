@@ -516,6 +516,9 @@ importers:
       '@integraledger/lcp-kernel':
         specifier: workspace:*
         version: link:../kernel
+      '@integraledger/lcp-placement-x402':
+        specifier: workspace:*
+        version: link:../placement-x402
       '@integraledger/lcp-placements':
         specifier: workspace:*
         version: link:../placements

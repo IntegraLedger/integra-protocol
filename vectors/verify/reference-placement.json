@@ -9,8 +9,13 @@
       "input": {
         "step": "reference-placement",
         "extracted": {
-          "type": "sha256",
-          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          "ref": {
+            "type": "sha256",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         },
         "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
       },
@@ -23,8 +28,13 @@
       "input": {
         "step": "reference-placement",
         "extracted": {
-          "type": "sha256",
-          "value": "0x3F786850E387550FDAB836ED7E6DC881DE23001B3F786850E387550FDAB836ED"
+          "ref": {
+            "type": "sha256",
+            "value": "0x3F786850E387550FDAB836ED7E6DC881DE23001B3F786850E387550FDAB836ED"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         },
         "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
       },
@@ -37,8 +47,13 @@
       "input": {
         "step": "reference-placement",
         "extracted": {
-          "type": "sha256",
-          "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+          "ref": {
+            "type": "sha256",
+            "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         },
         "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
       },
@@ -87,8 +102,13 @@
       "input": {
         "step": "reference-placement",
         "extracted": {
-          "type": "sha256",
-          "value": 42
+          "ref": {
+            "type": "sha256",
+            "value": 42
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         },
         "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
       },
@@ -102,8 +122,13 @@
       "input": {
         "step": "reference-placement",
         "extracted": {
-          "type": "sha256",
-          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          "ref": {
+            "type": "sha256",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       },
       "expected": {
@@ -117,8 +142,13 @@
       "input": {
         "step": "reference-placement",
         "extracted": {
-          "type": "sha256",
-          "value": "3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          "ref": {
+            "type": "sha256",
+            "value": "3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         },
         "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
       },

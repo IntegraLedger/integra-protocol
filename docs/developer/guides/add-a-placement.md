@@ -82,7 +82,7 @@ Seven required fields and four optional ones:
 | `carrierTypes` | yes | which carrier types the field may legally hold |
 | `readAlso` | no | additional shapes `extract` also accepts, and — where an entry sets `write` — also writes |
 | `writeCondition` | no | the condition under which writing `field` is valid at all |
-| `termsUrlField` | no | the path of the human-readable terms URL, where the protocol has room for one |
+| `termsUrlFields` | no | every path carrying the human-readable terms URL, where the protocol has room for one — all written by `place`, all reconciled by `extract` |
 | `specRef` | no | the citation for the host spec section that owns this field |
 
 Four points about those fields are worth dwelling on, because each exists to stop a specific dishonesty.
@@ -168,7 +168,7 @@ const ref: LegalContextRef = {
 
 // `place` is PURE — it returns a new document and never mutates the one it was handed. Sibling fields
 // are preserved, because a placement writes one declared field and changes nothing else.
-const placed = a2a.place(ref, { id: "task-1", metadata: { traceId: "abc" } });
+const placed = a2a.place({ ref }, { id: "task-1", metadata: { traceId: "abc" } });
 if (!("ok" in placed)) throw new Error(placed.code);
 console.log(JSON.stringify(placed.value));
 console.log(JSON.stringify(a2a.extract(placed.value)));
@@ -194,7 +194,7 @@ attempt("alias-repeats-field", {
 
 ```text
 {"id":"task-1","metadata":{"traceId":"abc","legalContext":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"}}}
-{"ok":true,"value":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"},"termsUrl":{"kind":"no-field-declared"}}}
 url-only: the reference field metadata.legalContext permits no integrity-bearing carrier type (sha256/ipfs/ar) — that is discovery, not a placement
 extension-tier-A: protocol-extension is Tier B by definition (LCP §8.3.6) — a Tier A claim is incoherent
 alias-repeats-field: readAlso repeats the canonical field metadata.legalContext — that is a duplicate, not an alias
@@ -235,7 +235,7 @@ const m = x402.manifest;
 console.log(`${m.protocol} ${m.pattern} tier-${m.tier}`);
 console.log(`${m.encoding} in a ${m.container.kind} at ${m.field}`);
 console.log(`readAlso: ${m.readAlso?.[0]?.path} as ${m.readAlso?.[0]?.encoding}`);
-console.log(`termsUrlField: ${m.termsUrlField}`);
+console.log(`termsUrlFields: ${m.termsUrlFields?.join(", ")}`);
 console.log(`carrierTypes: ${m.carrierTypes.join(", ")}`);
 
 const ref: LegalContextRef = {
@@ -250,7 +250,10 @@ const challenge = {
   ],
 };
 
-const placed = x402.place(ref, challenge);
+const placed = x402.place(
+  { ref, termsUrl: "https://seller.example/.well-known/legal-context.json" },
+  challenge,
+);
 if (!("ok" in placed)) throw new Error(`${placed.code}: ${placed.detail}`);
 console.log(JSON.stringify(placed.value));
 console.log(JSON.stringify(x402.extract(placed.value)));
@@ -285,12 +288,12 @@ console.log(JSON.stringify(x402.extract({ x402Version: 2, accepts: [] })));
 x402 http-advisory tier-A
 reference-object in a object-path at extensions.legalContext.info
 readAlso: accepts.0.extra.atrHash as bare-value
-termsUrlField: extensions.legalContext.info.legalContextUrl
-carrierTypes: sha256, url
-{"x402Version":2,"accepts":[{"scheme":"exact","network":"base-sepolia","maxAmountRequired":"25000000"}],"extensions":{"legalContext":{"info":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"},"schema":{"$ref":"https://legalcontextprotocol.org/schemas/lcp-extension.json"}}}}
-{"ok":true,"value":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"}}
-{"ok":true,"value":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"}}
-{"ok":true,"value":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"}}
+termsUrlFields: extensions.legalContext.info.legalContextUrl, accepts.0.extra.legalContextUrl
+carrierTypes: sha256
+{"x402Version":2,"accepts":[{"scheme":"exact","network":"base-sepolia","maxAmountRequired":"25000000","extra":{"atrHash":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356","legalContextUrl":"https://seller.example/.well-known/legal-context.json"}}],"extensions":{"legalContext":{"info":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356","legalContextUrl":"https://seller.example/.well-known/legal-context.json"},"schema":{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"legalContext — x402 extension info","description":"The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.","type":"object","additionalProperties":false,"required":["type","value","legalContextUrl"],"properties":{"type":{"description":"The digest algorithm over the terms document. `sha256` is the only value this version defines.","type":"string","const":"sha256"},"value":{"description":"The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.","type":"string","pattern":"^0x[0-9a-f]{64}$"},"legalContextUrl":{"description":"Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.","type":"string","format":"uri"}}}}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"},"termsUrl":{"kind":"read","url":"https://seller.example/.well-known/legal-context.json"}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"},"termsUrl":{"kind":"declared-fields-empty","fields":["extensions.legalContext.info.legalContextUrl","accepts.0.extra.legalContextUrl"]}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356"},"termsUrl":{"kind":"declared-fields-empty","fields":["extensions.legalContext.info.legalContextUrl","accepts.0.extra.legalContextUrl"]}}}
 {"refused":true,"haltClass":"verification-failure","code":"x402/reference-absent","detail":"no extensions.legalContext.info on this document"}
 ```
 
@@ -349,8 +352,8 @@ npx @integraledger/lcp-conformance
 ```
 
 ```text
-conformance: 812 passed, 1 failed, 0 skipped (none)
-FAIL placement.a2a / extract reads the camelCase-Ref spelling some agents emit: expected {"ok":true,"value":{"type":"sha256","value":"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"}} got {"refused":true,"haltClass":"verification-failure","code":"a2a/reference-absent"}
+conformance: 844 passed, 1 failed, 0 skipped (none)
+FAIL placement.a2a / extract reads the camelCase-Ref spelling some agents emit: expected {"ok":true,"value":{"ref":{"type":"sha256","value":"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"},"termsUrl":{"kind":"no-field-declared"}}} got {"refused":true,"haltClass":"verification-failure","code":"a2a/reference-absent"}
 ```
 
 That is the right failure for the right reason — the manifest declares no such path, so the read reports the

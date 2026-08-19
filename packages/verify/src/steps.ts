@@ -440,7 +440,10 @@ export function resolvePartyStep(
 }
 
 /** The placement slot: what a commerce protocol's own document yielded, and nothing else. `extracted` is
- *  the `LegalContextRef` a `ReferencePlacementAdapter.extract` returned. Absent ⇒ the step is a gap. */
+ *  the `ExtractedAdvertisement` a `ReferencePlacementAdapter.extract` returned — the reference under
+ *  `ref`, the terms-URL reading beside it. This step compares the REFERENCE against the record
+ *  fingerprint and deliberately ignores `termsUrl`: where the terms live is the gate's fetch concern,
+ *  not a fact the record can contradict. Absent ⇒ the step is a gap. */
 export interface PlacementInput {
   readonly extracted?: unknown;
 }
@@ -467,10 +470,14 @@ export function referencePlacementStep(
   const extracted: unknown = placement.extracted;
   if (extracted === undefined)
     return { status: "not-attempted", depth: "no-reference-extracted" };
+  const ref: unknown =
+    typeof extracted === "object" && extracted !== null
+      ? (extracted as { ref?: unknown }).ref
+      : undefined;
   if (
-    typeof extracted !== "object" ||
-    extracted === null ||
-    typeof (extracted as { value?: unknown }).value !== "string"
+    typeof ref !== "object" ||
+    ref === null ||
+    typeof (ref as { value?: unknown }).value !== "string"
   )
     return { status: "not-attempted", depth: "malformed-extracted-reference" };
   if (typeof settledAtrHash !== "string")
@@ -485,10 +492,7 @@ export function referencePlacementStep(
     const lower = h.toLowerCase();
     return lower.startsWith("0x") ? lower : `0x${lower}`;
   };
-  if (
-    canonical((extracted as { value: string }).value) !==
-    canonical(settledAtrHash)
-  )
+  if (canonical((ref as { value: string }).value) !== canonical(settledAtrHash))
     return { status: "failed", haltClass: "verification-failure" };
   return { status: "proved" };
 }

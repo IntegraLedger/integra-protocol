@@ -11,8 +11,9 @@ const vec = JSON.parse(
   cases: {
     name: string;
     input: {
-      op: "place" | "place-purity" | "extract";
+      op: "place" | "place-purity" | "extract" | "roundtrip";
       ref?: { type: string; value: string };
+      termsUrl?: string;
       doc: unknown;
     };
     expected?: unknown;
@@ -24,15 +25,29 @@ const H = "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
 describe("AP2 placement — cases", () => {
   for (const c of vec.cases) {
     it(c.name, () => {
-      const { op, doc } = c.input;
+      const { op, doc, termsUrl } = c.input;
       const ref = c.input.ref as {
         type: "sha256" | "ipfs" | "ar" | "url";
         value: string;
       };
 
+      if (op === "roundtrip") {
+        const placed = ap2Placement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
+        if ("refused" in placed)
+          throw new Error(`roundtrip could not place: ${placed.code}`);
+        expect(ap2Placement.extract(placed.value)).toEqual(c.expected);
+        return;
+      }
+
       if (op === "place-purity") {
         const before = JSON.stringify(doc);
-        ap2Placement.place(ref, doc);
+        ap2Placement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
         expect(JSON.stringify(doc)).toBe(before);
         return;
       }
@@ -45,7 +60,10 @@ describe("AP2 placement — cases", () => {
       const out =
         op === "extract"
           ? ap2Placement.extract(doc)
-          : ap2Placement.place(ref, doc);
+          : ap2Placement.place(
+              { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+              doc,
+            );
       if ("refused" in out) expect(out).toMatchObject(c.expected as object);
       else expect(out).toEqual(c.expected);
     });
@@ -63,7 +81,10 @@ describe("AP2 placement — the mandate boundary", () => {
     const parts = [
       { kind: "data", data: { "ap2.mandates.CheckoutMandateSdJwt": mandate } },
     ];
-    const placed = ap2Placement.place({ type: "sha256", value: H }, { parts });
+    const placed = ap2Placement.place(
+      { ref: { type: "sha256", value: H } },
+      { parts },
+    );
     if (!("ok" in placed)) throw new Error("place refused");
     expect((placed.value as { parts: unknown }).parts).toEqual(parts);
   });
@@ -94,7 +115,10 @@ describe("AP2 placement — the mandate boundary", () => {
         { kind: "data", data: { risk_data: "" } },
       ],
     };
-    const placed = ap2Placement.place({ type: "sha256", value: H }, doc);
+    const placed = ap2Placement.place(
+      { ref: { type: "sha256", value: H } },
+      doc,
+    );
     if (!("ok" in placed)) throw new Error("place refused");
     const value = placed.value as Record<string, unknown>;
     expect(Object.keys(value)).toEqual([...Object.keys(doc), "metadata"]);

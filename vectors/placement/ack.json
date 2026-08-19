@@ -82,7 +82,9 @@
           "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
         },
         "doc": {
-          "credentialSubject": { "id": "did:web:buyer.example" }
+          "credentialSubject": {
+            "id": "did:web:buyer.example"
+          }
         }
       },
       "expected": {
@@ -109,7 +111,9 @@
           "type": "sha256",
           "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
         },
-        "doc": { "type": ["VerifiableCredential"] }
+        "doc": {
+          "type": ["VerifiableCredential"]
+        }
       },
       "expected": {
         "ok": true,
@@ -137,7 +141,9 @@
         },
         "doc": {
           "credentialSubject": {
-            "metadata": { "policyRef": "policy://merchant-spend-v3" }
+            "metadata": {
+              "policyRef": "policy://merchant-spend-v3"
+            }
           }
         }
       },
@@ -249,7 +255,9 @@
           "type": "sha256",
           "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
         },
-        "doc": { "credentialSubject": "did:web:buyer.example" }
+        "doc": {
+          "credentialSubject": "did:web:buyer.example"
+        }
       },
       "expected": {
         "refused": true,
@@ -297,7 +305,10 @@
       "input": {
         "protocol": "ack",
         "op": "place",
-        "ref": { "type": "sha256", "value": "0xdeadbeef" },
+        "ref": {
+          "type": "sha256",
+          "value": "0xdeadbeef"
+        },
         "doc": {}
       },
       "expected": {
@@ -319,7 +330,9 @@
         "doc": {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
           "type": ["VerifiableCredential", "PaymentReceiptCredential"],
-          "issuer": { "id": "did:web:receipts.example" },
+          "issuer": {
+            "id": "did:web:receipts.example"
+          },
           "issuanceDate": "2026-07-30T00:00:00.000Z",
           "credentialSubject": {
             "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
@@ -351,7 +364,9 @@
         "doc": {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
           "type": ["VerifiableCredential", "PaymentReceiptCredential"],
-          "issuer": { "id": "did:web:receipts.example" },
+          "issuer": {
+            "id": "did:web:receipts.example"
+          },
           "issuanceDate": "2026-07-30T00:00:00.000Z",
           "credentialSubject": {
             "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
@@ -365,7 +380,9 @@
         "value": {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
           "type": ["VerifiableCredential", "PaymentReceiptCredential"],
-          "issuer": { "id": "did:web:receipts.example" },
+          "issuer": {
+            "id": "did:web:receipts.example"
+          },
           "issuanceDate": "2026-07-30T00:00:00.000Z",
           "credentialSubject": {
             "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
@@ -383,7 +400,7 @@
     },
     {
       "name": "place ACCEPTS a document whose proof is NULL — the host's own predicate, not ours",
-      "$comment": "ACK's isDecodedCredential (parse-jwt-credential.ts) tests `'proof' in value && value.proof != null`, so a null proof is not an issued credential BY ACK'S OWN RULE and this document is unsigned. Mirroring the host's predicate rather than inventing a presence-only one is the difference between honouring ACK's model and asserting a rule over it. The mirror diverges in exactly ONE direction and it is the permissive one: our walker is own-property where ACK's is `in`, so a prototype-borne proof reads as issued to ACK and places here. Acceptable rather than stricter \u2014 JSON.parse never sets a prototype, so no receipt off the wire takes that path, and the kit's write spreads own keys only, so the emitted document does not carry the inherited proof at all.",
+      "$comment": "ACK's isDecodedCredential (parse-jwt-credential.ts) tests `'proof' in value && value.proof != null`, so a null proof is not an issued credential BY ACK'S OWN RULE and this document is unsigned. Mirroring the host's predicate rather than inventing a presence-only one is the difference between honouring ACK's model and asserting a rule over it. The mirror diverges in exactly ONE direction and it is the permissive one: our walker is own-property where ACK's is `in`, so a prototype-borne proof reads as issued to ACK and places here. Acceptable rather than stricter — JSON.parse never sets a prototype, so no receipt off the wire takes that path, and the kit's write spreads own keys only, so the emitted document does not carry the inherited proof at all.",
       "input": {
         "protocol": "ack",
         "op": "place",
@@ -391,7 +408,12 @@
           "type": "sha256",
           "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
         },
-        "doc": { "proof": null, "credentialSubject": { "id": "did:web:x" } }
+        "doc": {
+          "proof": null,
+          "credentialSubject": {
+            "id": "did:web:x"
+          }
+        }
       },
       "expected": {
         "ok": true,
@@ -417,7 +439,9 @@
         "op": "extract",
         "doc": {
           "type": ["VerifiableCredential", "PaymentReceiptCredential"],
-          "issuer": { "id": "did:web:receipts.example" },
+          "issuer": {
+            "id": "did:web:receipts.example"
+          },
           "credentialSubject": {
             "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
             "paymentOptionId": "opt-usdc-base",
@@ -437,8 +461,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          "ref": {
+            "type": "sha256",
+            "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -461,8 +490,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          "ref": {
+            "type": "sha256",
+            "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -489,8 +523,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          "ref": {
+            "type": "sha256",
+            "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -514,8 +553,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          "ref": {
+            "type": "sha256",
+            "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -543,8 +587,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          "ref": {
+            "type": "sha256",
+            "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -567,8 +616,13 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "url",
-          "value": "https://seller.example/atr/checkout-123.md?v=1"
+          "ref": {
+            "type": "url",
+            "value": "https://seller.example/atr/checkout-123.md?v=1"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
         }
       }
     },
@@ -577,7 +631,11 @@
       "input": {
         "protocol": "ack",
         "op": "extract",
-        "doc": { "credentialSubject": { "id": "did:web:x" } }
+        "doc": {
+          "credentialSubject": {
+            "id": "did:web:x"
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -590,7 +648,9 @@
       "input": {
         "protocol": "ack",
         "op": "extract",
-        "doc": { "type": ["VerifiableCredential", "PaymentReceiptCredential"] }
+        "doc": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"]
+        }
       },
       "expected": {
         "refused": true,
@@ -604,7 +664,11 @@
       "input": {
         "protocol": "ack",
         "op": "extract",
-        "doc": { "credentialSubject": { "metadata": "not-a-map" } }
+        "doc": {
+          "credentialSubject": {
+            "metadata": "not-a-map"
+          }
+        }
       },
       "expected": {
         "refused": true,
@@ -614,7 +678,11 @@
     },
     {
       "name": "extract REFUSES a null document",
-      "input": { "protocol": "ack", "op": "extract", "doc": null },
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": null
+      },
       "expected": {
         "refused": true,
         "haltClass": "verification-failure",
@@ -636,7 +704,11 @@
     },
     {
       "name": "extract REFUSES an ARRAY document — a credential is not a list of them",
-      "input": { "protocol": "ack", "op": "extract", "doc": [] },
+      "input": {
+        "protocol": "ack",
+        "op": "extract",
+        "doc": []
+      },
       "expected": {
         "refused": true,
         "haltClass": "verification-failure",
@@ -708,6 +780,82 @@
         "refused": true,
         "haltClass": "verification-failure",
         "code": "ack/carrier-type-not-permitted"
+      }
+    },
+    {
+      "name": "place REFUSES a terms URL this manifest has no slot for — dropping it silently would under-advertise",
+      "$comment": "The manifest declaring NO termsUrlFields is a statement of protocol fact — this wire has no room for a locator — and the kit holds the seller to it: an advertisement supplying one is answered with a refusal, never with a document that silently carries less than the seller stated.",
+      "input": {
+        "protocol": "ack",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json",
+        "doc": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "policyRef": "policy://merchant-spend-v3",
+              "policySnapshotHash": "sha256:8a0f",
+              "mandateRef": "ap2:mandate:checkout-123",
+              "executionRef": "urn:ack:execution:checkout-123",
+              "executionReceiptHash": "sha256:5b1d",
+              "settlementNetwork": "eip155:8453",
+              "settlementReference": "0xabc123"
+            }
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ack/terms-url-unplaceable"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — what place writes, extract reads back as one agreement",
+      "$comment": "The composition certification the predecessor corpus lacked: every place case certified the write and every extract case the read, and none fed one to the other — which is how two separately conformant halves shipped jointly broken (integra-protocol#8). The subject runs place then extract and pins the recovered advertisement.",
+      "input": {
+        "protocol": "ack",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+        },
+        "doc": {
+          "type": ["VerifiableCredential", "PaymentReceiptCredential"],
+          "credentialSubject": {
+            "id": "did:pkh:eip155:8453:0x1234567890abcdef1234567890abcdef12345678",
+            "paymentRequestToken": "eyJhbGciOiJFUzI1NksifQ.e30.sig",
+            "paymentOptionId": "opt-usdc-base",
+            "metadata": {
+              "policyRef": "policy://merchant-spend-v3",
+              "policySnapshotHash": "sha256:8a0f",
+              "mandateRef": "ap2:mandate:checkout-123",
+              "executionRef": "urn:ack:execution:checkout-123",
+              "executionReceiptHash": "sha256:5b1d",
+              "settlementNetwork": "eip155:8453",
+              "settlementReference": "0xabc123"
+            }
+          }
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        }
       }
     }
   ]

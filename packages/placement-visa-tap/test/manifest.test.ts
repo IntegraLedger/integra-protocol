@@ -48,7 +48,7 @@ describe("Visa TAP placement — manifest matches the tree", () => {
     // Six of the ten Appendix C protocols carry two Tier A carriers; TAP is not one of them. §C.6's other
     // integration points all require coordination, so there is nothing to read besides the header.
     expect(VISA_TAP_PLACEMENT.readAlso).toBeUndefined();
-    expect(VISA_TAP_PLACEMENT.termsUrlField).toBeUndefined();
+    expect(VISA_TAP_PLACEMENT.termsUrlFields).toBeUndefined();
   });
 
   it("exports NO helper that builds an unsigned sibling body object", () => {

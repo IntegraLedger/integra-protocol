@@ -507,9 +507,9 @@ describe("assertManifestHygiene", () => {
     ).toThrow(/duplicate, not an alias/);
   });
 
-  it("rejects a termsUrlField equal to the reference field", () => {
+  it("rejects a termsUrlFields entry equal to the reference field", () => {
     expect(() =>
-      assertManifestHygiene({ ...base, termsUrlField: base.field }),
+      assertManifestHygiene({ ...base, termsUrlFields: [base.field] }),
     ).toThrow(/different objects/);
   });
 
@@ -565,13 +565,14 @@ describe("assertManifestHygiene", () => {
     ).not.toThrow();
   });
 
-  it("accepts a distinct termsUrlField — declaring one is not itself the fault", () => {
-    // The fault is termsUrlField EQUAL to field. A guard that threw on any declared terms URL would make
-    // the shipped ACP manifest unbuildable, so the passing case is as load-bearing as the failing one.
+  it("accepts a distinct termsUrlFields list — declaring slots is not itself the fault", () => {
+    // The fault is a slot EQUAL to the field or an alias. A guard that threw on any declared terms URL
+    // would make the shipped ACP manifest unbuildable, so the passing case is as load-bearing as the
+    // failing ones (which live with the rest of the slot machinery in kit.test.ts).
     expect(() =>
       assertManifestHygiene({
         ...base,
-        termsUrlField: "metadata.legal_context_url",
+        termsUrlFields: ["metadata.legal_context_url"],
       }),
     ).not.toThrow();
   });

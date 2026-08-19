@@ -37,7 +37,7 @@ const found = placement.extract(mandate);
 
 // WRITE always refuses. Not conditionally — on every document, by design; see below.
 const placed = placement.place(
-  { type: "sha256", value: "0x…" },
+  { ref: { type: "sha256", value: "0x…" } },
   { vct: "mandate.checkout.open.1", constraints: [] },
 );
 // => { refused: true, code: "mastercard-vi/tier-b-not-writable", … }

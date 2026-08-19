@@ -14,8 +14,9 @@ const vec = JSON.parse(
   cases: {
     name: string;
     input: {
-      op: "place" | "place-purity" | "extract";
+      op: "place" | "place-purity" | "extract" | "roundtrip";
       ref?: { type: string; value: string };
+      termsUrl?: string;
       doc: unknown;
     };
     expected?: unknown;
@@ -56,15 +57,29 @@ describe("ACP placement — manifest matches the tree", () => {
 describe("ACP placement — cases", () => {
   for (const c of vec.cases) {
     it(c.name, () => {
-      const { op, doc } = c.input;
+      const { op, doc, termsUrl } = c.input;
       const ref = c.input.ref as {
         type: "sha256" | "ipfs" | "ar" | "url";
         value: string;
       };
 
+      if (op === "roundtrip") {
+        const placed = acpPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
+        if ("refused" in placed)
+          throw new Error(`roundtrip could not place: ${placed.code}`);
+        expect(acpPlacement.extract(placed.value)).toEqual(c.expected);
+        return;
+      }
+
       if (op === "place-purity") {
         const before = JSON.stringify(doc);
-        acpPlacement.place(ref, doc);
+        acpPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
         expect(JSON.stringify(doc)).toBe(before);
         return;
       }
@@ -77,7 +92,10 @@ describe("ACP placement — cases", () => {
       const out =
         op === "extract"
           ? acpPlacement.extract(doc)
-          : acpPlacement.place(ref, doc);
+          : acpPlacement.place(
+              { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+              doc,
+            );
       if ("refused" in out) expect(out).toMatchObject(c.expected as object);
       else expect(out).toEqual(c.expected);
     });

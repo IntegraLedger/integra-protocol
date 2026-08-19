@@ -19,9 +19,9 @@
         "encoding": "reference-object"
       }
     ],
-    "termsUrlField": "metadata.legal_context_url",
     "carrierTypes": ["sha256", "url"],
-    "specRef": "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)"
+    "specRef": "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)",
+    "termsUrlFields": ["metadata.legal_context_url"]
   },
   "cases": [
     {
@@ -37,7 +37,8 @@
           "id": "checkout_session_1",
           "status": "ready_for_payment",
           "metadata": {}
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -45,7 +46,8 @@
           "id": "checkout_session_1",
           "status": "ready_for_payment",
           "metadata": {
-            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -62,7 +64,8 @@
         "doc": {
           "id": "checkout_session_1",
           "metadata": {}
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": true
     },
@@ -78,7 +81,8 @@
         "doc": {
           "id": "checkout_session_2",
           "status": "ready_for_payment"
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -86,7 +90,8 @@
           "id": "checkout_session_2",
           "status": "ready_for_payment",
           "metadata": {
-            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -107,7 +112,8 @@
             "merchant_order_ref": "SO-4417",
             "campaign": "spring"
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -116,7 +122,8 @@
           "metadata": {
             "merchant_order_ref": "SO-4417",
             "campaign": "spring",
-            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -130,7 +137,8 @@
           "type": "sha256",
           "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
         },
-        "doc": null
+        "doc": null,
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -147,7 +155,8 @@
           "type": "sha256",
           "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
         },
-        "doc": "not-a-session"
+        "doc": "not-a-session",
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -170,8 +179,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          "ref": {
+            "type": "sha256",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -257,7 +272,8 @@
         "doc": {
           "id": "checkout_session_6",
           "metadata": {}
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -278,7 +294,8 @@
         "doc": {
           "id": "checkout_session_9",
           "metadata": {}
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "refused": true,
@@ -299,14 +316,16 @@
         "doc": {
           "id": "checkout_session_10",
           "metadata": "not-a-map"
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
         "value": {
           "id": "checkout_session_10",
           "metadata": {
-            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -324,14 +343,16 @@
         "doc": {
           "id": "checkout_session_11",
           "metadata": ["a", "b"]
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
         "value": {
           "id": "checkout_session_11",
           "metadata": {
-            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -434,8 +455,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "url",
-          "value": "https://seller.example/terms/abc?v=2"
+          "ref": {
+            "type": "url",
+            "value": "https://seller.example/terms/abc?v=2"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -457,8 +484,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -481,8 +514,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -539,13 +578,15 @@
         },
         "doc": {
           "metadata": {}
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
         "value": {
           "metadata": {
-            "legal_context": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+            "legal_context": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }
@@ -567,8 +608,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -594,8 +641,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -618,8 +671,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -643,8 +702,14 @@
       "expected": {
         "ok": true,
         "value": {
-          "type": "sha256",
-          "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          "ref": {
+            "type": "sha256",
+            "value": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": ["metadata.legal_context_url"]
+          }
         }
       }
     },
@@ -668,7 +733,8 @@
               }
             ]
           }
-        }
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
       },
       "expected": {
         "ok": true,
@@ -683,7 +749,104 @@
             ]
           },
           "metadata": {
-            "legal_context": "lcp:sha256:0xabababababababababababababababababababababababababababababababab"
+            "legal_context": "lcp:sha256:0xabababababababababababababababababababababababababababababababab",
+            "legal_context_url": "https://seller.example/.well-known/legal-context.json"
+          }
+        }
+      }
+    },
+    {
+      "name": "place REFUSES an integrity-bearing advertisement with NO terms URL — a hash nobody can resolve is unverifiable",
+      "$comment": "integra-protocol#8's rule, applied to every manifest that declares a slot: the buyer-side parser has always demanded the locator, and the write side now refuses first instead of emitting a document that parser rejects.",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_1",
+          "status": "ready_for_payment",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/terms-url-missing"
+      }
+    },
+    {
+      "name": "place REFUSES a cleartext terms URL — https is the only scheme either side of the seam accepts",
+      "input": {
+        "protocol": "acp",
+        "op": "place",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "termsUrl": "http://seller.example/terms",
+        "doc": {
+          "id": "checkout_session_1",
+          "status": "ready_for_payment",
+          "metadata": {}
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/terms-url-malformed"
+      }
+    },
+    {
+      "name": "extract REFUSES a non-string value in the declared terms-URL slot",
+      "$comment": "A half-corrupt advertisement is refused, never silently narrowed to the readable half.",
+      "input": {
+        "protocol": "acp",
+        "op": "extract",
+        "doc": {
+          "id": "checkout_session_1",
+          "status": "ready_for_payment",
+          "metadata": {
+            "legal_context": "lcp:sha256:0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed",
+            "legal_context_url": 7
+          }
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "acp/terms-url-malformed"
+      }
+    },
+    {
+      "name": "ROUNDTRIP — what place writes, extract reads back as one agreement",
+      "$comment": "The composition certification the predecessor corpus lacked: every place case certified the write and every extract case the read, and none fed one to the other — which is how two separately conformant halves shipped jointly broken (integra-protocol#8). The subject runs place then extract and pins the recovered advertisement.",
+      "input": {
+        "protocol": "acp",
+        "op": "roundtrip",
+        "ref": {
+          "type": "sha256",
+          "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+        },
+        "doc": {
+          "id": "checkout_session_1",
+          "status": "ready_for_payment",
+          "metadata": {}
+        },
+        "termsUrl": "https://seller.example/.well-known/legal-context.json"
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "sha256",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "read",
+            "url": "https://seller.example/.well-known/legal-context.json"
           }
         }
       }

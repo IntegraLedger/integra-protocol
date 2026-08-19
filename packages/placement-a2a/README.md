@@ -29,7 +29,7 @@ import { A2A_PLACEMENT, a2aPlacement } from "@integraledger/lcp-placement-a2a";
 
 declare const task: unknown; // an A2A Task/Message, as received
 
-const placed = a2aPlacement.place({ type: "sha256", value: "0x…" }, task);
+const placed = a2aPlacement.place({ ref: { type: "sha256", value: "0x…" } }, task);
 const ref = a2aPlacement.extract(task);
 ```
 

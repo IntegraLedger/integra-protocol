@@ -387,13 +387,34 @@ export type PlacementManifest = {
    */
   readAlso?: readonly PlacementAlias[];
   /**
-   * OPTIONAL — dotted path of the field carrying the human-readable terms URL, where the protocol has room
-   * for one. Declared rather than left to convention because a buyer-side parser that REQUIRES the URL
-   * against a placement that never places it cannot round-trip: the x402 wire carries both halves, which is
-   * why its parser can demand both. A placement carrying only the reference says so by omitting this, and a
-   * parser reads the manifest rather than assuming.
+   * OPTIONAL — the dotted paths of every field carrying the human-readable terms URL, where the protocol has
+   * room for one. All slots are WRITTEN by `place` and all are READ by `extract`, which reconciles them and
+   * refuses disagreement — two values on one document would let a seller advertise different terms to
+   * different readers and later disown whichever reading lost.
+   *
+   * A LIST, not a single path, because the predecessor member was singular and that was a measured defect
+   * twice over. x402's wire carries the URL in BOTH `accepts[].extra` and `extensions.legalContext.info` —
+   * LCP v1.38 §C.4's own illustration uses the first — so a singular declaration could only name one, and
+   * the buyer-side parser that generalized over it had to report the other slot as unanswerable
+   * (`undeclared-at-answering-carrier`) rather than read it. Worse, no write path existed AT ALL: the member
+   * was declared, hygiene-checked, read by parsers that demand the URL — and never placed, so a seller
+   * assembling from published parts emitted a challenge the published buyer refuses
+   * (integra-protocol#8). The reference field already solved this shape with `field` + `readAlso`;
+   * this member is the same solution for the terms URL, with one difference — every slot is written,
+   * because a URL is plain data with no per-slot encoding to vary.
+   *
+   * Object-path slots only. UCP's terms URL rides `links[type=terms_of_service].url`, a tagged array the
+   * CAPABILITY emits and owns — that manifest declares nothing here, deliberately, and a parser reads the
+   * absence as "this placement carries no terms URL", never as a gap.
+   *
+   * A placement carrying only the reference says so by omitting this, and {@link makePlacement} then
+   * REFUSES an advertisement that supplies a URL — silently dropping a datum the seller meant to publish
+   * is fail-open. Declared, it is REQUIRED of any integrity-bearing advertisement: a bare hash with no
+   * locator cannot be verified by a counterparty that does not already hold the document, which is what
+   * every shipped buyer parser enforces by refusing the challenge. A `url`-type reference is its own
+   * locator, so the mandate applies only where the reference attests rather than locates.
    */
-  termsUrlField?: string;
+  termsUrlFields?: readonly string[];
   /** Which carrier types this field can legally hold (a tight length budget may permit only the shortest). */
   carrierTypes: readonly LegalContextRef["type"][];
   /** Citation for the protocol's own spec section that owns this field. */
@@ -401,7 +422,68 @@ export type PlacementManifest = {
 };
 
 /**
- * Place an LCP reference into a protocol document, and recover it from one.
+ * What a seller advertises about the terms governing a transaction: the reference, and — where the
+ * protocol has room for one — the URL where the terms document those bytes hash to can be fetched.
+ *
+ * ONE input to `place`, not two parameters, because the two are one act. The predecessor signature took
+ * only the reference, on the reasoning that "the terms URL is a different datum" — which is true and was
+ * still a defect: the different datum had no write path anywhere in the published set, so the challenge a
+ * third party assembled from published parts advertised a hash the published buyer could not verify and
+ * refused (integra-protocol#8). A seller does not place a hash and separately, optionally, somewhere
+ * else, place its locator; it advertises terms. The type says so.
+ *
+ * `termsUrl` is optional at the TYPE level because the manifest decides: {@link makePlacement} refuses a
+ * URL the manifest declares no slot for, and demands one where the manifest declares slots and the
+ * reference is integrity-bearing. See {@link PlacementManifest.termsUrlFields} for both rules' grounds.
+ */
+export type LegalContextAdvertisement = {
+  /** The §8.1 reference — what the terms ARE, by content address or location. */
+  readonly ref: LegalContextRef;
+  /** Where the terms document can be fetched. `https://` only — a locator a buyer must not follow is worse than none. */
+  readonly termsUrl?: string;
+};
+
+/**
+ * What a document says about where its terms live — read, or one of two distinguishable absences.
+ *
+ * A UNION rather than `string | undefined`, because the two absences license different conclusions and a
+ * reader flattening them answers questions it was never asked. `no-field-declared` is a fact about the
+ * PROTOCOL: this manifest models no terms-URL slot, so absence says nothing about the seller.
+ * `declared-fields-empty` is a fact about the DOCUMENT: the protocol has the room and this seller left it
+ * empty — which a gate that must fetch the terms treats as fatal, and a renderer merely reports.
+ *
+ * Absence is a VALUE here, never a refusal, on purpose: `extract` reads counterparty documents, including
+ * ones emitted before this member had a write path, and a reference without a locator is still evidence.
+ * Whether to transact against it is the gate's decision, made where the buyer's policy lives.
+ * (Promoted from the buyer-side parser that first drew this taxonomy; the third case it needed —
+ * `undeclared-at-answering-carrier` — existed only because the manifest member was singular, and
+ * collapses now that every slot is declared. See {@link PlacementManifest.termsUrlFields}.)
+ */
+export type AdvertisedTermsUrl =
+  | { readonly kind: "read"; readonly url: string }
+  | { readonly kind: "no-field-declared" }
+  | {
+      readonly kind: "declared-fields-empty";
+      readonly fields: readonly string[];
+    };
+
+/**
+ * What `extract` recovers: the reference, plus what the document says about where its terms live.
+ *
+ * NOT {@link LegalContextAdvertisement}, deliberately — the write side takes a URL or nothing because the
+ * seller either has one or does not, while the read side must distinguish "this protocol has no slot"
+ * from "this seller left the slot empty". Collapsing the two types would lose exactly the distinction
+ * {@link AdvertisedTermsUrl} exists to carry.
+ */
+export type ExtractedAdvertisement = {
+  /** The recovered §8.1 reference, decoded and type-checked against the manifest's permitted set. */
+  readonly ref: LegalContextRef;
+  /** The terms-URL reading, reconciled across every declared slot. */
+  readonly termsUrl: AdvertisedTermsUrl;
+};
+
+/**
+ * Place an LCP advertisement into a protocol document, and recover one from it.
  *
  * The sibling of `WeldAdapter` for protocols that never settle. Two members, no ports, no chain: there is
  * no `observe` (no lifecycle without a settlement), no `recover(ref, ports)` (no `SettlementRef` exists)
@@ -413,10 +495,10 @@ export type PlacementManifest = {
  */
 export interface ReferencePlacementAdapter {
   manifest: PlacementManifest;
-  /** Return the document with the reference placed at `manifest.field`. Pure — never mutates its input. */
-  place(ref: LegalContextRef, doc: unknown): Outcome<unknown>;
-  /** Read the reference back out of a protocol document. */
-  extract(doc: unknown): Outcome<LegalContextRef>;
+  /** Return the document with the advertisement placed at every declared slot. Pure — never mutates its input. */
+  place(ad: LegalContextAdvertisement, doc: unknown): Outcome<unknown>;
+  /** Read the advertisement back out of a protocol document. */
+  extract(doc: unknown): Outcome<ExtractedAdvertisement>;
 }
 
 /** A canonical array index and nothing else. `"01"`, `"1.0"`, `"-1"`, `"1e0"` and `"length"` are NOT indices:
@@ -721,6 +803,57 @@ export function decodeDeclaredRead(
   }
 }
 
+/** The one scheme a terms URL may carry, write side and read side alike. A locator a buyer must not
+ *  follow — cleartext, or a scheme its fetcher refuses — is worse than none, and the shipped buyer
+ *  parsers already refuse it, so an emitter that wrote one would mint a challenge no counterparty
+ *  accepts. Both halves of the seam hold the same line so the refusal lands at the party whose datum
+ *  is wrong. */
+const TERMS_URL_SCHEME = "https://";
+
+/** How one terms-URL reading over every declared slot came out — {@link AdvertisedTermsUrl} plus the two
+ *  document defects `extract` must refuse. Module-internal: the defects become refusal codes at the
+ *  adapter boundary, where every other refusal is minted. */
+type TermsUrlReading =
+  | AdvertisedTermsUrl
+  | {
+      readonly kind: "mismatch";
+      readonly first: { readonly path: string; readonly url: string };
+      readonly second: { readonly path: string; readonly url: string };
+    }
+  | {
+      readonly kind: "malformed";
+      readonly path: string;
+      readonly raw: unknown;
+    };
+
+/** Read every declared terms-URL slot and reconcile. One value present answers; two agreeing answer; two
+ *  disagreeing are a mismatch, because a document advertising different terms locations to different
+ *  readers lets its author disown whichever reading lost. A non-string or non-https value at any declared
+ *  slot is malformed even when another slot reads cleanly — a half-corrupt advertisement is not resolved
+ *  by preferring the clean half. */
+function readTermsUrls(
+  doc: unknown,
+  fields: readonly string[] | undefined,
+): TermsUrlReading {
+  if (fields === undefined) return { kind: "no-field-declared" };
+  let hit: { path: string; url: string } | undefined;
+  for (const path of fields) {
+    const raw = readAtPath(doc, path);
+    if (raw === undefined) continue;
+    if (typeof raw !== "string" || !raw.startsWith(TERMS_URL_SCHEME))
+      return { kind: "malformed", path, raw };
+    if (hit === undefined) {
+      hit = { path, url: raw };
+      continue;
+    }
+    if (hit.url !== raw)
+      return { kind: "mismatch", first: hit, second: { path, url: raw } };
+  }
+  return hit === undefined
+    ? { kind: "declared-fields-empty", fields }
+    : { kind: "read", url: hit.url };
+}
+
 /**
  * Render a reference in a given encoding, ready to write into a field.
  *
@@ -781,10 +914,16 @@ function writeAtPath(
 /** The segment-based writer `writeAtPath` delegates to — the mirror of `readSegments`, and separate for the
  *  same reason: a segment may CONTAIN a dot, so splitting and walking cannot be one operation.
  *
- *  It does NOT index arrays, and the asymmetry with `readSegments` is deliberate: writing element 2 of a
- *  one-element array would mint holes in the host's own list, and the only array WRITE anyone declared is
- *  `tagged-array`, which appends or replaces by tag instead of by position. Reading an element the host put
- *  there is a different act from choosing where an element goes. */
+ *  It descends into an array ONLY through an element that already exists, and the asymmetry with
+ *  `readSegments` — which reads any canonical index — is deliberate and narrower than the old rule
+ *  ("does not index arrays at all"). Writing element 2 of a one-element array would mint holes in the
+ *  host's own list, so an element is NEVER created or extended here: the walk enters `accepts.0` when the
+ *  host put a first requirement there, and refuses the whole write when it did not. That keeps the
+ *  invariant the old rule protected — this writer decides where a value goes inside objects, never where
+ *  an element goes inside the host's list — while admitting the case x402 actually has: the terms-URL and
+ *  bare-hash mirrors live inside `accepts[0].extra`, an object the host's own schema requires to exist on
+ *  any challenge that can be paid. (`tagged-array` remains the only writer that changes an array's
+ *  membership, by tag rather than by position.) */
 function writeSegments(
   doc: unknown,
   allSegs: readonly string[],
@@ -796,38 +935,88 @@ function writeSegments(
   const root = asRecord(doc);
   if (root === undefined) return undefined;
 
-  // Walk down to the field's direct holder, structurally copying nothing yet — `chain[i]` is the record the
-  // i-th segment is read from, so the rebuild below can copy each level exactly once.
-  const chain: Record<string, unknown>[] = [root];
+  // Walk down to the field's direct holder, structurally copying nothing yet — `chain[i]` is the container
+  // the i-th segment is read from, so the rebuild below can copy each level exactly once. An array level
+  // records the index it was entered through, because the rebuild must put the rebuilt element back at
+  // that position rather than spread the array into an object.
+  const chain: (Record<string, unknown> | readonly unknown[])[] = [root];
   for (const [i, seg] of segs.entries()) {
-    const parent = chain[i] as Record<string, unknown>;
-    // OWN-PROPERTY ONLY, for the same reason `readAtPath` checks it: `place`'s document is exactly as
-    // attacker-influenced as `extract`'s. Without this, `Object.create({metadata:{attacker:"x"}})` — a
-    // document with ZERO own properties — walks into the prototype's `metadata`, `asRecord` accepts it as a
-    // mergeable container, and its keys are spread into the document we emit. `extract` on the same input
-    // correctly reports the field absent, so the read and write halves disagreed about what is present.
-    const child = Object.hasOwn(parent, seg) ? parent[seg] : undefined;
+    const parent = chain[i] as Record<string, unknown> | readonly unknown[];
+    let child: unknown;
+    if (Array.isArray(parent)) {
+      // Existing elements only, own-property checked like every other level: a canonical index into a
+      // sparse hole or past the end is a write that would mint list structure, and a polluted
+      // `Array.prototype["0"]` must not stand in for an element the host never put there.
+      if (!INDEX.test(seg) || !Object.hasOwn(parent, seg)) return undefined;
+      child = (parent as readonly unknown[])[Number(seg)];
+    } else {
+      // OWN-PROPERTY ONLY, for the same reason `readAtPath` checks it: `place`'s document is exactly as
+      // attacker-influenced as `extract`'s. Without this, `Object.create({metadata:{attacker:"x"}})` — a
+      // document with ZERO own properties — walks into the prototype's `metadata`, `asRecord` accepts it as
+      // a mergeable container, and its keys are spread into the document we emit. `extract` on the same
+      // input correctly reports the field absent, so the read and write halves disagreed about what is
+      // present.
+      child = Object.hasOwn(parent, seg)
+        ? (parent as Record<string, unknown>)[seg]
+        : undefined;
+    }
+    if (Array.isArray(child)) {
+      // An array is a mergeable container for DESCENT only. As the field's direct holder it is
+      // unmergeable — an object key written into an array would be list corruption — so it falls through
+      // to the replace-or-refuse rule below like any other unmergeable value.
+      const nextSeg = segs[i + 1] ?? leaf;
+      if (INDEX.test(nextSeg)) {
+        chain.push(child as readonly unknown[]);
+        continue;
+      }
+    }
+    // An INDEX segment names a position inside a list the HOST built, so it can only ever be entered —
+    // never created. Creating `{ accepts: { "0": … } }` on a document with no `accepts` would mint an
+    // object that reads back as a list to every index-aware reader, which is exactly the kind of
+    // half-plausible structure a counterparty's parser chokes on. The refusal covers both directions: an
+    // absent child about to be keyed by an index, and an absent child at an index key of a record parent
+    // (a record that really keys "0" is entered through the own-property read above, untouched by this).
+    if (
+      child === undefined &&
+      (INDEX.test(seg) || INDEX.test(segs[i + 1] ?? leaf))
+    )
+      return undefined;
     const rec = child === undefined ? {} : asRecord(child);
     if (rec !== undefined) {
       chain.push(rec);
       continue;
     }
-    // Unmergeable. Replace it only if this segment IS the direct holder; otherwise refuse.
-    if (i !== segs.length - 1) return undefined;
+    // Unmergeable. Replace it only if this segment IS the direct holder; otherwise refuse. An ARRAY parent
+    // never replaces: the unmergeable value is one of the host's own elements, and overwriting it with a
+    // fresh object would rewrite list content this writer has no mandate over.
+    if (i !== segs.length - 1 || Array.isArray(parent)) return undefined;
     chain.push({});
   }
 
-  // Rebuild upward. Pure — one structural copy per level, input untouched.
-  let acc: Record<string, unknown> = {
-    ...(chain[segs.length] as Record<string, unknown>),
+  // The leaf's direct holder must be an object — a leaf written into an array by index would replace one
+  // of the host's own elements wholesale, which is the act the descent rule above exists to prevent.
+  const holder = chain[segs.length];
+  if (Array.isArray(holder)) return undefined;
+
+  // Rebuild upward. Pure — one structural copy per level, input untouched. An array level is copied as an
+  // array with the one rebuilt element replaced in place, so sibling elements and their order survive.
+  let acc: unknown = {
+    ...(holder as Record<string, unknown>),
     [leaf]: value,
   };
-  for (let i = segs.length - 1; i >= 0; i--)
-    acc = {
-      ...(chain[i] as Record<string, unknown>),
-      [segs[i] as string]: acc,
-    };
-  return acc;
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const level = chain[i] as Record<string, unknown> | readonly unknown[];
+    const seg = segs[i] as string;
+    if (Array.isArray(level)) {
+      const copy = [...(level as readonly unknown[])];
+      copy[Number(seg)] = acc;
+      acc = copy;
+    } else {
+      acc = { ...(level as Record<string, unknown>), [seg]: acc };
+    }
+  }
+  // The root is a record by the guard at the top; an array root never reaches here.
+  return acc as Record<string, unknown>;
 }
 
 /**
@@ -941,11 +1130,38 @@ export function makePlacement(
   return {
     manifest,
 
-    place(ref: LegalContextRef, doc: unknown): Outcome<unknown> {
+    place(ad: LegalContextAdvertisement, doc: unknown): Outcome<unknown> {
+      const { ref, termsUrl } = ad;
       if (!permitted.includes(ref.type))
         return refuse(
           "carrier-type-not-permitted",
           `${manifest.field} permits ${permitted.join("/")}, got ${ref.type}`,
+        );
+      // The advertisement's own coherence, before the document is examined: these are statements about
+      // what the SELLER is trying to publish, and a malformed document must not mask them. Order within
+      // the three matters — an unplaceable URL is answered first because fixing the document cannot fix
+      // it; a manifest with slots then demands the URL of any integrity-bearing reference (a bare hash no
+      // counterparty can resolve is unverifiable by construction — the defect integra-protocol#8
+      // measured); and a supplied URL must be https on the write side for the same reason the read side
+      // refuses it — minting a challenge every shipped buyer refuses is not a success path.
+      if (manifest.termsUrlFields === undefined && termsUrl !== undefined)
+        return refuse(
+          "terms-url-unplaceable",
+          `${manifest.protocol} declares no terms-URL slot — dropping the supplied URL silently would advertise less than the seller stated`,
+        );
+      if (
+        manifest.termsUrlFields !== undefined &&
+        termsUrl === undefined &&
+        INTEGRITY_CARRIER_TYPES.includes(ref.type)
+      )
+        return refuse(
+          "terms-url-missing",
+          `${manifest.protocol} declares ${manifest.termsUrlFields.join(" and ")} and the ${ref.type} reference is integrity-bearing — a hash with no locator cannot be verified by a counterparty that does not already hold the terms`,
+        );
+      if (termsUrl !== undefined && !termsUrl.startsWith(TERMS_URL_SCHEME))
+        return refuse(
+          "terms-url-malformed",
+          `terms URL must be ${TERMS_URL_SCHEME}…, got ${termsUrl}`,
         );
       if (asRecord(doc) === undefined) return malformedDocument();
 
@@ -975,13 +1191,22 @@ export function makePlacement(
         );
       }
 
+      // Container failures name the path that could not be written, because `document-malformed` alone
+      // cannot tell an operator whether the document was not an object or a specific container inside a
+      // well-formed object was unmergeable — and the value found there, because "extensions is not a map"
+      // without the offending value sends them back with a debugger for what one string would have said.
+      const unwritable = (path: string): Outcome<never> =>
+        refuse(
+          "document-malformed",
+          `${path} has no writable holder on this document — an intermediate container is present and not a map, or an index names an element the host never created: ${describe(readAtPath(doc, path.split(".").slice(0, -1).join(".")) ?? doc)}`,
+        );
       let out = writeToContainer(
         doc,
         manifest.container,
         manifest.field,
         rendered,
       );
-      if (out === undefined) return malformedDocument();
+      if (out === undefined) return unwritable(manifest.field);
 
       // Aliases that declare `write` are populated too, each in its OWN encoding — the write-both shape
       // honoured from the manifest rather than from a second adapter body. ACP is the shipped consumer;
@@ -1014,13 +1239,30 @@ export function makePlacement(
           alias.path,
           aliasValue,
         );
-        if (next === undefined) return malformedDocument();
+        if (next === undefined) return unwritable(alias.path);
         out = next;
       }
+
+      // The terms URL lands at EVERY declared slot, after the reference and its aliases so a slot nested
+      // inside the canonical carrier (x402's `info.legalContextUrl`) writes into the object the reference
+      // write just created. A slot the document cannot hold — the walk fails because the host structure
+      // it descends is absent or unmergeable — refuses the whole placement: the manifest declared what a
+      // complete advertisement is, and a document that can carry half of one is a document this protocol
+      // cannot advertise in.
+      if (termsUrl !== undefined && manifest.termsUrlFields !== undefined)
+        for (const path of manifest.termsUrlFields) {
+          const next = writeAtPath(out, path, termsUrl);
+          if (next === undefined)
+            return refuse(
+              "terms-url-slot-unwritable",
+              `${path} cannot be written on this document — the host structure it lives in is absent or malformed`,
+            );
+          out = next;
+        }
       return { ok: true, value: out };
     },
 
-    extract(doc: unknown): Outcome<LegalContextRef> {
+    extract(doc: unknown): Outcome<ExtractedAdvertisement> {
       if (asRecord(doc) === undefined) return malformedDocument();
       const hit = readDeclaredPaths(doc, manifest);
       if (hit === undefined)
@@ -1049,7 +1291,23 @@ export function makePlacement(
           "carrier-type-not-permitted",
           `${manifest.field} permits ${permitted.join("/")}, got ${decoded.type}`,
         );
-      return { ok: true, value: decoded };
+
+      // The terms URL is read AFTER the reference resolves, because a document with no reference has
+      // nothing to advertise a locator FOR — `reference-absent` already answered it. The two document
+      // defects refuse; both absences are values (see AdvertisedTermsUrl for why the gate, not the
+      // reader, decides what an absence means).
+      const terms = readTermsUrls(doc, manifest.termsUrlFields);
+      if (terms.kind === "mismatch")
+        return refuse(
+          "terms-url-mismatch",
+          `two declared slots disagree — ${terms.first.path} advertises ${terms.first.url}, ${terms.second.path} advertises ${terms.second.url}`,
+        );
+      if (terms.kind === "malformed")
+        return refuse(
+          "terms-url-malformed",
+          `${terms.path} must be an ${TERMS_URL_SCHEME}… string, got ${describe(terms.raw)}`,
+        );
+      return { ok: true, value: { ref: decoded, termsUrl: terms } };
     },
   };
 }
@@ -1137,10 +1395,26 @@ export function assertManifestHygiene(m: PlacementManifest): void {
     throw new Error(
       `readAlso repeats the canonical field ${m.field} — that is a duplicate, not an alias`,
     );
-  if (m.termsUrlField !== undefined && m.termsUrlField === m.field)
-    throw new Error(
-      `termsUrlField equals field (${m.field}) — the reference and its terms URL are different objects`,
-    );
+  if (m.termsUrlFields !== undefined) {
+    if (m.termsUrlFields.length === 0)
+      throw new Error(
+        "termsUrlFields is declared and empty — a protocol with no terms-URL slot says so by omitting the member, and an empty list reads as a slot while placing nothing",
+      );
+    if (new Set(m.termsUrlFields).size !== m.termsUrlFields.length)
+      throw new Error(
+        `termsUrlFields repeats a path (${m.termsUrlFields.join(", ")}) — one slot written twice is one slot, declared as two`,
+      );
+    for (const path of m.termsUrlFields) {
+      if (path === m.field)
+        throw new Error(
+          `termsUrlFields names field (${m.field}) — the reference and its terms URL are different objects`,
+        );
+      if (m.readAlso?.some((a) => a.path === path))
+        throw new Error(
+          `termsUrlFields names alias path ${path} — a slot cannot hold the reference and its locator at once`,
+        );
+    }
+  }
   if (m.pattern === "protocol-extension" && m.tier !== "B")
     throw new Error(
       "protocol-extension is Tier B by definition (LCP §8.3.6) — a Tier A claim is incoherent",

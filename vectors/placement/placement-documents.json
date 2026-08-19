@@ -16,7 +16,7 @@
       "expected": true
     },
     {
-      "name": "the full ACP manifest validates — optional termsUrlField and specRef",
+      "name": "the full ACP manifest validates — optional termsUrlFields and specRef",
       "input": {
         "protocol": "acp",
         "pattern": "http-advisory",
@@ -26,9 +26,9 @@
           "kind": "object-path"
         },
         "field": "metadata.legal_context",
-        "termsUrlField": "metadata.legal_context_url",
         "carrierTypes": ["sha256", "url"],
-        "specRef": "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)"
+        "specRef": "ACP agentic checkout — CheckoutSessionBase.metadata (stable 2026-04-17)",
+        "termsUrlFields": ["metadata.legal_context_url"]
       },
       "expected": true
     },
@@ -1306,6 +1306,58 @@
           }
         ],
         "carrierTypes": ["sha256"]
+      },
+      "expected": false
+    },
+    {
+      "name": "an EMPTY termsUrlFields is refused — a slot list that places nothing reads as a slot",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"],
+        "termsUrlFields": []
+      },
+      "expected": false
+    },
+    {
+      "name": "a termsUrlFields with a repeated path is refused — one slot declared as two",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"],
+        "termsUrlFields": [
+          "metadata.legal_context_url",
+          "metadata.legal_context_url"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "the singular termsUrlField is GONE — the member that declared one slot and placed none",
+      "$comment": "integra-protocol#8's manifest half: `termsUrlField` was declared, hygiene-checked and read by parsers that demand the URL, and no write path existed. The plural member replaced it; a manifest still carrying the old spelling is refused rather than silently ignored, because additionalProperties: false is what makes a stale manifest loud.",
+      "input": {
+        "protocol": "acp",
+        "pattern": "protocol-extension",
+        "tier": "B",
+        "encoding": "lcp-string",
+        "container": {
+          "kind": "object-path"
+        },
+        "field": "metadata.legal_context",
+        "carrierTypes": ["sha256"],
+        "termsUrlField": "metadata.legal_context_url"
       },
       "expected": false
     }

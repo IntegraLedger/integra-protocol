@@ -11,8 +11,9 @@ const vec = JSON.parse(
   cases: {
     name: string;
     input: {
-      op: "place" | "place-purity" | "extract";
+      op: "place" | "place-purity" | "extract" | "roundtrip";
       ref?: { type: string; value: string };
+      termsUrl?: string;
       doc: unknown;
     };
     expected?: unknown;
@@ -24,15 +25,29 @@ const H = "0xb055edca81f6fe156fb63791e2883434236bcc605e694800d442b4d5db929294";
 describe("ACK placement — cases", () => {
   for (const c of vec.cases) {
     it(c.name, () => {
-      const { op, doc } = c.input;
+      const { op, doc, termsUrl } = c.input;
       const ref = c.input.ref as {
         type: "sha256" | "ipfs" | "ar" | "url";
         value: string;
       };
 
+      if (op === "roundtrip") {
+        const placed = ackPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
+        if ("refused" in placed)
+          throw new Error(`roundtrip could not place: ${placed.code}`);
+        expect(ackPlacement.extract(placed.value)).toEqual(c.expected);
+        return;
+      }
+
       if (op === "place-purity") {
         const before = JSON.stringify(doc);
-        ackPlacement.place(ref, doc);
+        ackPlacement.place(
+          { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+          doc,
+        );
         expect(JSON.stringify(doc)).toBe(before);
         return;
       }
@@ -45,7 +60,10 @@ describe("ACK placement — cases", () => {
       const out =
         op === "extract"
           ? ackPlacement.extract(doc)
-          : ackPlacement.place(ref, doc);
+          : ackPlacement.place(
+              { ref, ...(termsUrl === undefined ? {} : { termsUrl }) },
+              doc,
+            );
       if ("refused" in out) expect(out).toMatchObject(c.expected as object);
       else expect(out).toEqual(c.expected);
     });
@@ -60,7 +78,7 @@ describe("ACK placement — cases", () => {
 describe("ACK placement — the ordering refusal names the remedy", () => {
   it("tells the caller to place before the issuer signs", () => {
     const out = ackPlacement.place(
-      { type: "sha256", value: H },
+      { ref: { type: "sha256", value: H } },
       { proof: { type: "JwtProof2020", jwt: "eyJ0eXAiOiJKV1QifQ.e30.sig" } },
     );
     expect(out).toMatchObject({ code: "ack/receipt-already-issued" });
@@ -85,7 +103,10 @@ describe("ACK placement — the receipt's own refs survive", () => {
         },
       },
     };
-    const placed = ackPlacement.place({ type: "sha256", value: H }, doc);
+    const placed = ackPlacement.place(
+      { ref: { type: "sha256", value: H } },
+      doc,
+    );
     if (!("ok" in placed)) throw new Error("place refused");
     const md = (
       placed.value as {
@@ -104,7 +125,7 @@ describe("ACK placement — the receipt's own refs survive", () => {
     // losing either would void the credential while leaving our reference intact — the worst possible
     // outcome and the one this asserts cannot happen.
     const placed = ackPlacement.place(
-      { type: "sha256", value: H },
+      { ref: { type: "sha256", value: H } },
       {
         credentialSubject: {
           id: "did:web:buyer.example",
