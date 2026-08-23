@@ -73,6 +73,35 @@ describe("verify composition steps (TC-4 readout)", () => {
  * gated one signal out of several would read `proved` — FRC-1 inverted, silently, in the one step whose
  * entire job is to catch a gating stack.
  */
+/**
+ * ⛔⛔ WHAT `offerBoundStep` REPORTS, PINNED — BECAUSE A PUBLISHED PROFILE ONCE SAID IT REPORTED MORE.
+ *
+ * `binding-evm-mpp`'s finality note read *"The tree checks it as OFR — `offerBoundStep`"* about the §8.3.5
+ * discharge, which rests on the ATR STATING the transaction parameters (LCP §C.1). This step does not
+ * establish that and cannot: it never sees the ATR. It reads one boolean off the composition slot and says
+ * whether an offer binding is present.
+ *
+ * ⇒ The step's contract is pinned HERE, beside the step, so a reader checking a claim about it finds the
+ * answer in one place — and so a future change that made it a real parameter check would fail this test and
+ * force the profiles that describe it to be revisited.
+ */
+describe("⛔ `offerBoundStep` is a PRESENCE report, not a parameter check", () => {
+  it("proves on the flag alone — it is handed no ATR and no transaction parameters", () => {
+    // Every field of the charge is absent, and the step still proves. That is correct for what it measures
+    // and is exactly why it cannot discharge a claim about what the hashed document states.
+    expect(offerBoundStep({ offerBound: true })).toEqual({ status: "proved" });
+  });
+
+  it("an unbound offer is INCOMPLETENESS, never a failure", () => {
+    // `not-attempted` and not `failed`: a record that binds no offer has not been impeached, it has not
+    // been examined. A profile reading this as a check that can refuse would be reading a gate into a gap.
+    expect(offerBoundStep({ offerBound: false })).toEqual({
+      status: "not-attempted",
+      depth: "no-offer",
+    });
+  });
+});
+
 describe("composition slots — absent inputs and the FRC-1 gating edge", () => {
   it("every step reads out not-attempted on an ABSENT composition slot, never proved", () => {
     // TC-0..TC-3 records carry no composition at all; these steps must be honest about that rather than
