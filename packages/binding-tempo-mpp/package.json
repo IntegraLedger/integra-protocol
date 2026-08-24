@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-tempo-mpp",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Welds an ATR hash into a Tempo TIP-20 settlement under MPP.",
   "keywords": [
     "lcp",

@@ -1,5 +1,11 @@
 # @integraledger/lcp-discovery
 
+## 0.12.1
+
+### Patch Changes
+
+- @integraledger/lcp-kernel@0.12.1
+
 ## 0.12.0
 
 ### Patch Changes
