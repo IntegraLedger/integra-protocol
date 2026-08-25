@@ -7,7 +7,13 @@
  * The x402-client scheme class is deliberately NOT here; it lives in binding-evm-x402. This module is
  * protocol-agnostic typed-data construction, viem-only.
  */
-import { type Address, getAddress, type Hex, type TypedDataDomain } from "viem";
+import {
+  type Address,
+  getAddress,
+  type Hex,
+  recoverTypedDataAddress,
+  type TypedDataDomain,
+} from "viem";
 
 /** EIP-3009 TransferWithAuthorization typed-data field layout (USDC FiatTokenV2). */
 export const TRANSFER_WITH_AUTHORIZATION_TYPE = {
@@ -139,4 +145,47 @@ export interface LcpEvmSigner {
     primaryType: string;
     message: Record<string, unknown>;
   }): Promise<Hex>;
+}
+
+/**
+ * Whether an EIP-3009 authorization was signed by the account it says it is from.
+ *
+ * ⭐ **`ecrecover`, because that is what the TOKEN does.** `FiatTokenV2.transferWithAuthorization` recovers
+ * the signer from the EIP-712 digest and compares it to `from`, so this recovers and compares the same way.
+ * It deliberately does NOT fall back to ERC-1271: a contract wallet cannot sign an EIP-3009 authorization
+ * at all — the token has no `isValidSignature` call in that path — so accepting one here would accept a
+ * payment the chain will reject, which is the failure this check exists to prevent rather than to cause.
+ *
+ * ⛔ **Answers `false` rather than throwing, for the reason `atrHashEquals` states about itself:** a
+ * predicate that throws is a worse contract than one that answers. A malformed signature, a signature of
+ * the wrong length, and an `expectedSigner` that is not an address are all "no, this is not signed by
+ * them" — and a caller holding an untrusted credential needs a value it can put on the wire, not an
+ * exception it has to remember to catch.
+ *
+ * ⚠️ The domain is the caller's to get right, and it is where this goes wrong in practice: `tokenName` and
+ * `tokenVersion` are the token's OWN EIP-712 domain and differ between USDC deployments, so a signature
+ * verified against a domain copied from another chain fails here exactly as it would on-chain.
+ * {@link buildEip3009TypedData} is what assembles it.
+ */
+export async function verifyEip3009Signature(
+  typedData: Eip3009TypedData,
+  signature: string,
+  expectedSigner: string,
+): Promise<boolean> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(expectedSigner)) return false;
+  let recovered: Address;
+  try {
+    recovered = await recoverTypedDataAddress({
+      domain: typedData.domain,
+      types: typedData.types,
+      primaryType: typedData.primaryType,
+      message: typedData.message,
+      signature: signature as Hex,
+    });
+  } catch {
+    return false;
+  }
+  // Compared as decoded 20-byte values, not as strings: `getAddress` checksums both sides, so a payer
+  // spelling their own address in lowercase is the same payer.
+  return getAddress(recovered) === getAddress(expectedSigner);
 }

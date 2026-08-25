@@ -17,6 +17,7 @@ export {
   eip155ChainId,
   type LcpEvmSigner,
   TRANSFER_WITH_AUTHORIZATION_TYPE,
+  verifyEip3009Signature,
 } from "./eip3009.js";
 export { assetWasTransferred, ERC20_TRANSFER_TOPIC0 } from "./erc20.js";
 export {
