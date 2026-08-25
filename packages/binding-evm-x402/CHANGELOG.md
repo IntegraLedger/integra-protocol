@@ -1,5 +1,13 @@
 # @integraledger/lcp-binding-evm-x402
 
+## 0.12.2
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.12.2
+- @integraledger/lcp-binding-evm-common@0.12.2
+- @integraledger/lcp-kernel@0.12.2
+
 ## 0.12.1
 
 ### Patch Changes
