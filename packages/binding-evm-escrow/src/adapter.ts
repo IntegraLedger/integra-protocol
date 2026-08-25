@@ -86,6 +86,21 @@ export interface EscrowAdapterConfig {
  */
 export interface DecodedEscrowLog {
   name: EscrowEventName;
+  /**
+   * ⭐⭐ **THE JOIN KEY — the indexed topic on ALL SIX events, and the only thing tying a salt-less one to
+   * the payment it belongs to.**
+   *
+   * Four of the six events carry no cleartext `PaymentInfo`, so {@link WeldAdapter.recover} can never
+   * answer for them: a `PaymentCaptured` cannot re-prove its own atrHash. What it carries is this hash,
+   * indexed, and `conditional-weld`'s durable log is keyed by exactly it — *"the atrHash has to be
+   * recoverable from the authorization artifact AND the capture artifact, joining on the rail's own key
+   * (`paymentInfoHash` on Base)"*. A consumer that cannot read this key off the chain has to take a
+   * caller's word for which payment a transition belongs to, which is not a join.
+   *
+   * ⚠️ It was decoded and then not read: `decodeEventLog` returns it as an indexed parameter, and the
+   * `args` cast below picked out `paymentInfo` and `amount` only.
+   */
+  paymentInfoHash: `0x${string}`;
   /** The atrHash weld, as the raw `PaymentInfo.salt` uint256. Absent on events carrying no `PaymentInfo`. */
   salt?: bigint;
   amount: bigint;
@@ -121,6 +136,8 @@ export function decodeEscrowLogs(
         topics: log.topics,
       });
       const args = decoded.args as unknown as {
+        /** Indexed on every one of the six events — see {@link DecodedEscrowLog.paymentInfoHash}. */
+        paymentInfoHash: `0x${string}`;
         paymentInfo?: {
           salt: bigint;
           token: `0x${string}`;
@@ -131,6 +148,7 @@ export function decodeEscrowLogs(
       };
       out.push({
         name: decoded.eventName as unknown as EscrowEventName,
+        paymentInfoHash: args.paymentInfoHash,
         ...(args.paymentInfo !== undefined
           ? {
               salt: args.paymentInfo.salt,

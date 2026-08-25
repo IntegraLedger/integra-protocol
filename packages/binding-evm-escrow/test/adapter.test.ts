@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   atrHashFromSalt,
   createEscrowAdapter,
+  decodeEscrowLogs,
   ESCROW_EVENTS_ABI,
   type EscrowProposal,
   type PaymentInfo,
@@ -366,5 +367,72 @@ describe("only the escrow's own logs count (a look-alike event is not a weld)", 
     const out = await custom.recover(SETTLEMENT, portsWith(chain));
     expect("refused" in out).toBe(false);
     if (!("refused" in out)) expect(out.value).toBe(ATR);
+  });
+});
+
+/**
+ * ⛔⛔ **THE JOIN KEY, SURFACED — the field a two-phase observer cannot do without (C-31).**
+ *
+ * `paymentInfoHash` is the indexed topic on every one of the six escrow events, and it is the key the
+ * whole two-phase flow joins on: `conditional-weld`'s durable log is keyed by it, and its `ports.ts` states
+ * the claim the package exists to prove — *"the atrHash has to be recoverable from the authorization
+ * artifact AND the capture artifact, joining on the rail's own key (`paymentInfoHash` on Base)."*
+ *
+ * ⚠️ **IT WAS DECODED AND THEN NOT READ.** `decodeEventLog` returns it — it is an indexed parameter — but
+ * the `args` cast picked out `paymentInfo` and `amount` and nothing else, so it never reached
+ * {@link DecodedEscrowLog}. A consumer that needed the key had no way to get it from the chain and could
+ * only take the caller's word for it, which is not a join at all.
+ *
+ * ⭐ Surfaced HERE rather than on `LifecycleTransition`, because `binding-core` fixes that shape for
+ * fifteen bindings and this is one rail's own key. `decodeEscrowLogs`' own docblock already names this as
+ * the sanctioned route: *"the only way a consumer reaches the asset behind the weld… a caller checking
+ * that a settlement moved the asset its record names calls this directly."*
+ */
+describe("decodeEscrowLogs surfaces the indexed paymentInfoHash", () => {
+  const KEY = `0x${"cc".repeat(32)}` as const;
+
+  it("⭐ carries it on a salt-BEARING event", () => {
+    const [decoded] = decodeEscrowLogs(
+      [authorizedLog(PI, SETTLEMENT.txHash as Hex, 0)],
+      AUTH_CAPTURE_ESCROW,
+    );
+    expect(decoded?.paymentInfoHash).toBe(KEY);
+    // The salt is still there — this adds a field, it does not move one.
+    expect(decoded?.salt).toBe(saltFromAtrHash(ATR));
+  });
+
+  it("⛔⛔ carries it on a SALT-LESS event — the case the whole item turns on", () => {
+    // `PaymentCaptured` has no cleartext `PaymentInfo`, so `recover` can never answer for it and the
+    // capture leg cannot re-prove the atrHash by itself. Its indexed key is the ONLY thing tying it to the
+    // authorization, and until now that key was unreachable.
+    const [decoded] = decodeEscrowLogs(
+      [capturedLog(SETTLEMENT.txHash as Hex, 1)],
+      AUTH_CAPTURE_ESCROW,
+    );
+    expect(decoded?.name).toBe("PaymentCaptured");
+    expect(decoded?.salt).toBeUndefined();
+    expect(decoded?.paymentInfoHash).toBe(KEY);
+  });
+
+  it("⛔ the key is READ FROM THE TOPIC, not defaulted — a different payment decodes differently", () => {
+    // ⭐ The assertion a constant would satisfy. If `paymentInfoHash` were hard-coded, or taken from the
+    // caller, both logs would report the same key and a capture from ANOTHER payment would join to this
+    // one's log. Vary the one input that is not shared and watch the output move with it.
+    const other = `0x${"dd".repeat(32)}` as const;
+    const topics = encodeEventTopics({
+      abi: ESCROW_EVENTS_ABI,
+      eventName: "PaymentCaptured",
+      args: { paymentInfoHash: other },
+    });
+    const log = {
+      ...(capturedLog(SETTLEMENT.txHash as Hex, 2) as unknown as Record<
+        string,
+        unknown
+      >),
+      topics,
+    } as unknown as Log;
+    const [decoded] = decodeEscrowLogs([log], AUTH_CAPTURE_ESCROW);
+    expect(decoded?.paymentInfoHash).toBe(other);
+    expect(decoded?.paymentInfoHash).not.toBe(KEY);
   });
 });
