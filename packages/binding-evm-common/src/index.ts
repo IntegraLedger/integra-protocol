@@ -15,6 +15,7 @@ export {
   type Eip3009Authorization,
   type Eip3009TypedData,
   eip155ChainId,
+  isCanonicalSignature,
   type LcpEvmSigner,
   TRANSFER_WITH_AUTHORIZATION_TYPE,
   verifyEip3009Signature,

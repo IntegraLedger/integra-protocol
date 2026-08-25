@@ -148,24 +148,65 @@ export interface LcpEvmSigner {
 }
 
 /**
- * Whether an EIP-3009 authorization was signed by the account it says it is from.
+ * secp256k1's order halved — the low-s boundary `FiatTokenV2`'s own `ECRecover.sol` enforces.
  *
- * ⭐ **`ecrecover`, because that is what the TOKEN does.** `FiatTokenV2.transferWithAuthorization` recovers
- * the signer from the EIP-712 digest and compares it to `from`, so this recovers and compares the same way.
- * It deliberately does NOT fall back to ERC-1271: a contract wallet cannot sign an EIP-3009 authorization
- * at all — the token has no `isValidSignature` call in that path — so accepting one here would accept a
- * payment the chain will reject, which is the failure this check exists to prevent rather than to cause.
+ * ⛔⛔ **A SIGNATURE HAS TWO VALID ENCODINGS AND THE TOKEN ACCEPTS ONE.** For any `(r, s, v)` the pair
+ * `(r, n − s, v ^ 1)` recovers the same address, so `ecrecover` alone says `true` to both. Circle's token
+ * reverts on the high-s form before `ecrecover` is reached — *"ECRecover: invalid signature 's' value"* —
+ * and on any `v` outside `{27, 28}`. A pre-flight check without these gates answers `true` for a
+ * credential the chain refuses, and the seller has already served the resource by then.
+ */
+const SECP256K1_HALF_N =
+  0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0n;
+
+/**
+ * Whether the 65-byte signature is one `FiatTokenV2` will accept at all, before asking who signed it.
  *
- * ⛔ **Answers `false` rather than throwing, for the reason `atrHashEquals` states about itself:** a
- * predicate that throws is a worse contract than one that answers. A malformed signature, a signature of
- * the wrong length, and an `expectedSigner` that is not an address are all "no, this is not signed by
- * them" — and a caller holding an untrusted credential needs a value it can put on the wire, not an
- * exception it has to remember to catch.
+ * Not a style check. Both rules come straight out of the token's `ECRecover.sol`, and skipping either one
+ * turns {@link verifyEip3009Signature} from *"the chain will accept this"* into *"some chain might"*.
  *
- * ⚠️ The domain is the caller's to get right, and it is where this goes wrong in practice: `tokenName` and
- * `tokenVersion` are the token's OWN EIP-712 domain and differ between USDC deployments, so a signature
- * verified against a domain copied from another chain fails here exactly as it would on-chain.
- * {@link buildEip3009TypedData} is what assembles it.
+ * ⭐ Exported so the boundary is reachable by a test. `s === n/2` is ACCEPTED (the token's guard is
+ * `s > n/2`), and no signing run will ever produce that value — so an off-by-one there is invisible from
+ * the public predicate, where such a signature simply fails to recover and answers `false` either way.
+ */
+export function isCanonicalSignature(signature: string): boolean {
+  // ⛔ Captured, not sliced at fixed offsets. With `.slice(66, 130)` the components were read from
+  // positions that only line up when the anchors hold — so dropping `^` shifted every offset and the
+  // malformed input failed the `v` gate by accident, which left the anchor's mutant alive. Reading r/s/v
+  // out of the match makes the shape check and the component read the same statement.
+  const parts = /^0x([0-9a-fA-F]{64})([0-9a-fA-F]{64})([0-9a-fA-F]{2})$/.exec(
+    signature,
+  );
+  if (parts === null) return false;
+  if (BigInt(`0x${parts[2] as string}`) > SECP256K1_HALF_N) return false;
+  const v = Number.parseInt(parts[3] as string, 16);
+  return v === 27 || v === 28;
+}
+
+/**
+ * Whether an EIP-3009 authorization was signed, canonically, by the account it says it is from.
+ *
+ * ⭐ **The token's OWN acceptance test, not merely `ecrecover`.** `FiatTokenV2.transferWithAuthorization`
+ * routes an EOA signature through `ECRecover.sol`, which refuses a high-s signature and any `v` outside
+ * `{27, 28}` before recovering. A check that only recovered would answer `true` to the malleated form of an
+ * honest payer's own signature — measured — and the seller would serve the resource against a transfer that
+ * reverts. {@link isCanonicalSignature} is those two gates.
+ *
+ * ⛔⛔ **EOA ONLY, AND ON `FiatTokenV2_2` THAT IS NARROWER THAN THE TOKEN.** An earlier draft of this
+ * docblock said a contract wallet *"cannot sign an EIP-3009 authorization at all"*. That is false for
+ * `FiatTokenV2_2` — the 2023 implementation deployed as USDC on Base, Arbitrum and Polygon among others —
+ * which routes `transferWithAuthorization` through `SignatureChecker.isValidSignatureNow` and therefore
+ * DOES dispatch to ERC-1271 for a contract account. Deciding that needs a chain read, and this function
+ * takes no ports: **a `false` here means "not signed by that EOA", never "the chain will reject it"**. A
+ * caller that must accept smart-account payers has to make the ERC-1271 call itself, and one that refuses
+ * on this answer alone is choosing to accept EOA payers only. Say which, at the call site.
+ *
+ * ⛔ **Answers `false` rather than throwing for the two UNTRUSTED inputs,** for the reason `atrHashEquals`
+ * states about itself: a predicate that throws is a worse contract than one that answers. A malformed
+ * `signature` and an `expectedSigner` that is not an address are facts about the credential in hand.
+ * ⚠️ A `typedData` that cannot be encoded is NOT — that is this deployment's own domain being wrong, and
+ * returning `false` for it would tell an operator with a mis-copied `tokenName` that every honest payer is
+ * a forger. It throws.
  */
 export async function verifyEip3009Signature(
   typedData: Eip3009TypedData,
@@ -173,18 +214,17 @@ export async function verifyEip3009Signature(
   expectedSigner: string,
 ): Promise<boolean> {
   if (!/^0x[0-9a-fA-F]{40}$/.test(expectedSigner)) return false;
-  let recovered: Address;
-  try {
-    recovered = await recoverTypedDataAddress({
-      domain: typedData.domain,
-      types: typedData.types,
-      primaryType: typedData.primaryType,
-      message: typedData.message,
-      signature: signature as Hex,
-    });
-  } catch {
-    return false;
-  }
+  if (!isCanonicalSignature(signature)) return false;
+  // ⛔ NOT wrapped in a try. `isCanonicalSignature` has already established that the signature parses, so
+  // the only way this throws now is an unencodable `typedData` — a wiring error, and one a `false` would
+  // report as the counterparty's fault. See the head note.
+  const recovered: Address = await recoverTypedDataAddress({
+    domain: typedData.domain,
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
+    signature: signature as Hex,
+  });
   // Compared as decoded 20-byte values, not as strings: `getAddress` checksums both sides, so a payer
   // spelling their own address in lowercase is the same payer.
   return getAddress(recovered) === getAddress(expectedSigner);
