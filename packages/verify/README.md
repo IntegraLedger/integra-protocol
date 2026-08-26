@@ -11,8 +11,11 @@ deterministic and testable against fixed vectors.
 npm install @integraledger/lcp-verify
 ```
 
-Built on [`@integraledger/lcp-kernel`](../kernel#readme), [`@integraledger/lcp-binding-core`](../binding-core#readme) and [`@integraledger/lcp-authority`](../authority#readme). No chain SDK: the ports are yours to
-supply, and [`@integraledger/lcp-binding-evm-common`](../binding-evm-common#readme) is the EVM implementation of the signature-verifier one.
+Built on [`@integraledger/lcp-kernel`](../kernel#readme),
+[`@integraledger/lcp-binding-core`](../binding-core#readme) and
+[`@integraledger/lcp-authority`](../authority#readme). No chain SDK: the ports are yours to supply, and
+[`@integraledger/lcp-binding-evm-common`](../binding-evm-common#readme) is the EVM implementation of the
+signature-verifier one.
 
 ## Use
 

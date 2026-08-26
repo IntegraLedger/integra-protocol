@@ -82,7 +82,6 @@ adapter.propose({ atrHash, usesX402InvoiceBinding: true });     // throws — th
 
 Proposal time is the only moment that information exists; it can never be recovered from the ledger.
 
-
 ## The legacy memo codec
 
 `buildLcpMemo` / `decodeLcpMemo` / `readLcpMemoAtrHash` still ship, and `recover` still consults them —

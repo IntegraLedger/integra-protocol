@@ -13,7 +13,6 @@ npm install @integraledger/lcp-binding-evm-x402
 | **Carrier** | the EIP-3009 `nonce` |
 | **Surface** | `createX402Adapter` returning [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdapter` over a `ChainReader` |
 
-
 Built on [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdapter` and
 [`@integraledger/lcp-binding-evm-common`](../binding-evm-common#readme)'s typed-data and event machinery.
 Installing this package installs **viem**.

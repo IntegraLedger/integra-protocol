@@ -13,7 +13,6 @@ npm install @integraledger/lcp-binding-canton
 | **Carrier** | the `LcpAnchor` Daml contract |
 | **Surface** | `createCantonAdapter` returning a rail-native adapter over a `CantonParticipantReader` port — **not** [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdapter`, whose shape is EVM's |
 
-
 Pure TypeScript — the participant is reached over the Daml JSON Ledger API with `fetch` and **no Daml
 SDK**. You do need the DAR deployed; the template ships in this tarball (below).
 

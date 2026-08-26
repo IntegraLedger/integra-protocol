@@ -12,7 +12,8 @@ it is the one place in the open layer that validates with Zod rather than relyin
 npm install @integraledger/lcp-discovery
 ```
 
-Depends on [`@integraledger/lcp-kernel`](../kernel#readme) — the atrHash it recomputes a served terms document against — and on **zod**, which validates the trust boundary described above.
+Depends on [`@integraledger/lcp-kernel`](../kernel#readme) — the atrHash it recomputes a served terms document
+against — and on **zod**, which validates the trust boundary described above.
 
 ## Parse and emit
 
@@ -149,10 +150,11 @@ walker states for attacker-influenced input. A document whose fields are all inh
 | **Authority binding** | none — a URI is only an identifier | **enforced**: a declared `schema` URL's origin MUST match the namespace authority; `spec` is outside the binding and MUST only be `https` |
 | **Versioning** | a new URI per breaking change | `version`, `YYYY-MM-DD`, one array entry per version |
 
-The asymmetry is the host protocols', not ours — we describe what each specifies, we do not level them. UCP's authority binding is the stronger property — the
-party asserting legal context is provably the party controlling the domain that documents it — and
-`readUcpProfile` performs the platform-side check the host makes mandatory. A2A gives a reader no equivalent:
-matching our extension URI proves only that the card's author typed it.
+The asymmetry is the host protocols', not ours — we describe what each specifies, we do not level them. UCP's
+authority binding is the stronger property — the party asserting legal context is provably the party
+controlling the domain that documents it — and `readUcpProfile` performs the platform-side check the host
+makes mandatory. A2A gives a reader no equivalent: matching our extension URI proves only that the card's
+author typed it.
 
 `org.legalcontextprotocol.*` is **reserved** for a capability the LCP TSC has ratified and is never emitted.
 Nothing here can be configured to emit it, and a package test holds that shut.

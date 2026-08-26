@@ -13,7 +13,6 @@ npm install @integraledger/lcp-binding-evm-escrow
 | **Carrier** | `PaymentInfo.salt` |
 | **Surface** | `createEscrowAdapter` returning [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdapter` over a `ChainReader` |
 
-
 Built on [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdapter` and
 [`@integraledger/lcp-binding-evm-common`](../binding-evm-common#readme). Installing this package installs
 **viem**.

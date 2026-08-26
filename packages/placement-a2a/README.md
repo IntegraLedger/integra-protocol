@@ -74,10 +74,10 @@ every later line by one. **Every proto line number below is `0ef1b02`'s.**
 
 ### One drift from LCP §C.8 — recorded in prose, not encoded
 
-The appendix is informative and the host specification governs. The drift is the discovery package's input, not this package's —
-it changes no line here. **Consumed 2026-07-30:** `@integraledger/lcp-discovery`'s capability declaration accepts,
-emits and returns the fourth field and exports only the renamed activation header; see that package's README
-for the discharge and for the SHOULD-level publication guidance below.
+The appendix is informative and the host specification governs. The drift is the discovery package's input,
+not this package's — it changes no line here. **Consumed 2026-07-30:** `@integraledger/lcp-discovery`'s
+capability declaration accepts, emits and returns the fourth field and exports only the renamed activation
+header; see that package's README for the discharge and for the SHOULD-level publication guidance below.
 
 - **§C.8 lists `AgentExtension` as `uri`, `required`, `params`.** The proto declares a fourth field,
   `description` — "A human-readable description of how this agent uses the extension", field 2 of four
@@ -102,9 +102,9 @@ needs the scoped version rather than either half:
   their extension URIs to prevent broken links".
 
 So an LCP Agent Card extension published under an Integra-controlled URI **should** serve its specification
-there and is **encouraged** toward a permanent identifier — a recommendation the discovery package may satisfy or decline with a
-reason, never an obligation, and never a precondition for a counterparty reading the declaration. Nothing
-here makes a hosted document owed at whatever URI an extension claims.
+there and is **encouraged** toward a permanent identifier — a recommendation the discovery package may satisfy
+or decline with a reason, never an obligation, and never a precondition for a counterparty reading the
+declaration. Nothing here makes a hosted document owed at whatever URI an extension claims.
 
 One more spelling fact for the discovery package: activation used the header `X-A2A-Extensions` through v0.3.0
 (`docs/topics/extensions.md` line 110 at the `v0.3.0` tag) and is `A2A-Extensions` in the released v1.0

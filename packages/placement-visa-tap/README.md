@@ -62,17 +62,17 @@ claims were put to the spec, and all three hold:
    silently replaceable while *looking* bound to a reader, which is strictly worse than an honestly
    advertised header.
 
-**Drift against LCP §C.6: none material, and v1.38 closed the one wording gap.** v1.37 §C.6 did not name
-TAP's RFC 9421 signature parameters; v1.38 does — `created`, `expires`, `keyid`, `alg`, `nonce`, `tag`,
-noting `keyid` rather than `kid` and what `tag` distinguishes — which is the distinction this package draws
-below. The appendix is an illustration; the host spec is binding
-— the host's live specification is what binds. §C.6's description of the covered components, the body-object quartet and the nonce-match rule all
-survive the live read. Two notes for the record: the covered-component limitation is stated for the agent
-recognition signature in the specification and repeated for the reference implementation, so it is the
-protocol's shape and not one demo's shortcut; and no TAP extension registry or change-management process
-surfaced anywhere in the specification index, matching §C.6's own finding. TAP's only extensibility language
-is that "an Agent or a Payment Scheme may optionally define additional fields that could be part of the
-signature" — a coordinated arrangement, not a filing.
+**Drift against LCP §C.6: none material, and v1.38 closed the one wording gap.** v1.37 §C.6 did not name TAP's
+RFC 9421 signature parameters; v1.38 does — `created`, `expires`, `keyid`, `alg`, `nonce`, `tag`, noting
+`keyid` rather than `kid` and what `tag` distinguishes — which is the distinction this package draws below.
+The appendix is an illustration; the host's live specification is what binds.
+§C.6's description of the covered components, the body-object quartet and the nonce-match rule all survive the
+live read. Two notes for the record: the covered-component limitation is stated for the agent recognition
+signature in the specification and repeated for the reference implementation, so it is the protocol's shape
+and not one demo's shortcut; and no TAP extension registry or change-management process surfaced anywhere in
+the specification index, matching §C.6's own finding. TAP's only extensibility language is that "an Agent or a
+Payment Scheme may optionally define additional fields that could be part of the signature" — a coordinated
+arrangement, not a filing.
 
 ## What is Tier B here, and why no manifest declares it
 

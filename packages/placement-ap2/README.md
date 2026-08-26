@@ -104,18 +104,19 @@ it again. Not this package's concern, but it is the same reading.
 
 A working AP2 integration was observed placing `atrHash` inside `CartMandateSubject.paymentMethod` and
 `legalContextUrl` on `credentialSubject`. It works, and it is **not** what a shipped package may do. That
-integration controls both ends, so it could define its own mandate shape — and it is cut against v0.1,
-whose `CartMandate` no longer exists. A shipped package can do neither: writing our own mandate fields requires
-every AP2 counterparty to accept them, which is exactly the assertion a placement must not make. The vectors pin the demo's
-shape as **not read**, so the boundary is a cross-implementation contract rather than a convention.
+integration controls both ends, so it could define its own mandate shape — and it is cut against v0.1, whose
+`CartMandate` no longer exists. A shipped package can do neither: writing our own mandate fields requires
+every AP2 counterparty to accept them, which is exactly the assertion a placement must not make. The vectors
+pin the demo's shape as **not read**, so the boundary is a cross-implementation contract rather than a
+convention.
 
 ## A considered rejection: the sibling DataPart
 
 A DataPart of our own, beside the mandate's — `{ "lcp.legalContext": { … } }` — looks plausible, because the
-samples do exactly that with `risk_data`. It is rejected for two independent reasons. AP2 defines no such
-key, so declaring one asserts a shape counterparties must accept, which AP2 has not asked them to. And reading it would need a fourth
-container kind in the placement kit, matching on *the first part whose `data` object owns key K* — a shape
-none of the ten protocols asks for. A2A's free-form `Message.metadata` needs neither.
+samples do exactly that with `risk_data`. It is rejected for two independent reasons. AP2 defines no such key,
+so declaring one asserts a shape counterparties must accept, which AP2 has not asked them to. And reading it
+would need a fourth container kind in the placement kit, matching on *the first part whose `data` object owns
+key K* — a shape none of the nine protocols asks for. A2A's free-form `Message.metadata` needs neither.
 
 ## A placement, not a binding
 
@@ -127,10 +128,11 @@ settlement-enumeration.
 
 ## Why there is no protocol rule layered on the kit
 
-`makePlacement(AP2_PLACEMENT)` — `makePlacement` comes from [`@integraledger/lcp-binding-core`](../binding-core#readme) — is the whole adapter. UCP needed one wrap because its discovery carrier holds
-a *link*, which had to be forced to HTTPS; AP2's carrier holds the reference itself, and every rule about a
-reference is already binding-core's codec. A second override here would mean a container kind is missing, not
-that this package is special.
+`makePlacement(AP2_PLACEMENT)` — `makePlacement` comes from
+[`@integraledger/lcp-binding-core`](../binding-core#readme) — is the whole adapter. UCP needed one wrap
+because its discovery carrier holds a *link*, which had to be forced to HTTPS; AP2's carrier holds the
+reference itself, and every rule about a reference is already binding-core's codec. A second override here
+would mean a container kind is missing, not that this package is special.
 
 ## Conceptual relationship
 

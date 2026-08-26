@@ -10,8 +10,9 @@ matter of trust.
 npm install @integraledger/lcp-evidence
 ```
 
-Built on [`@integraledger/lcp-kernel`](../kernel#readme) and [`@integraledger/lcp-binding-core`](../binding-core#readme) — the `ArtifactResolver` implemented here is the port
-`binding-core` declares.
+Built on [`@integraledger/lcp-kernel`](../kernel#readme) and
+[`@integraledger/lcp-binding-core`](../binding-core#readme) — the `ArtifactResolver` implemented here is the
+port `binding-core` declares.
 
 ## Bundles
 

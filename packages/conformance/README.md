@@ -9,9 +9,12 @@ this one — not by reading the specification and hoping, but by running the sam
 npm install @integraledger/lcp-conformance
 ```
 
-The in-process subject reaches [`@integraledger/lcp-kernel`](../kernel#readme), [`@integraledger/lcp-binding-core`](../binding-core#readme), [`@integraledger/lcp-authority`](../authority#readme), [`@integraledger/lcp-verify`](../verify#readme),
-[`@integraledger/lcp-evidence`](../evidence#readme), [`@integraledger/lcp-discovery`](../discovery#readme) and [`@integraledger/lcp-placements`](../placements#readme) — this package is the only one that depends on
-nearly all of them, because certifying the corpus means driving every surface it covers.
+The in-process subject reaches [`@integraledger/lcp-kernel`](../kernel#readme),
+[`@integraledger/lcp-binding-core`](../binding-core#readme),
+[`@integraledger/lcp-authority`](../authority#readme), [`@integraledger/lcp-verify`](../verify#readme),
+[`@integraledger/lcp-evidence`](../evidence#readme), [`@integraledger/lcp-discovery`](../discovery#readme) and
+[`@integraledger/lcp-placements`](../placements#readme) — this package is the only one that depends on nearly
+all of them, because certifying the corpus means driving every surface it covers.
 
 ## Run it
 

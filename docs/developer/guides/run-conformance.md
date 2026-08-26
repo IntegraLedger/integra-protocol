@@ -206,9 +206,9 @@ failing areas: 43 of 44
 ```
 
 That is what day one looks like, and it is the right shape: the thirteen `byteInput` cases pass because that
-one operation class is implemented, and the other forty-three areas are open. The failure list is a work queue with the areas already
-grouped. The command runs from the parent process's working directory, so `["subject.py"]` resolves relative
-to wherever you start the script.
+one operation class is implemented, and the other forty-three areas are open. The failure list is a work queue
+with the areas already grouped. The command runs from the parent process's working directory, so
+`["subject.py"]` resolves relative to wherever you start the script.
 
 Note the report is a plain value — `{ passed, skipped, failed }`, with each failure carrying `area`, `case`,
 `expected` and `got`. Nothing is printed for you and nothing throws on a red run; formatting and exit codes

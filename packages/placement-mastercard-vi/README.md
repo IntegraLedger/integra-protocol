@@ -77,7 +77,6 @@ What blocks the carrier is **recognition, not spelling** — the rejection rule 
 recognizes the type, not on how it is spelled"*. The `x-` private prefix exists but MUST NOT appear in
 production credentials crossing organizational boundaries, so it is unavailable to LCP.
 
-
 ## Specification provenance — verified against the live host, 2026-07-30
 
 Read against the live Verifiable Intent specification at `verifiableintent.dev/spec/` (§9.1 Constraint Type

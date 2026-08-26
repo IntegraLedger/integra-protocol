@@ -78,11 +78,11 @@ Two differences, neither of which changes the design:
 
 ### Drift from a strict buyer-side reader, recorded for the same reason
 
-Buyer gates that parse this wire document already exist. The **paths and shapes** match field for field — `accepts[0].extra.atrHash`, `accepts[0].extra.legalContextUrl`,
+Buyer gates that parse this wire document already exist. The **paths and shapes** match field for field —
+`accepts[0].extra.atrHash`, `accepts[0].extra.legalContextUrl`,
 `extensions.legalContext.info.{type,value,legalContextUrl}`. The **resolution semantics do not**, and three
-differences are real. Recording them is the whole point of declaring the carrier: an undisclosed
-divergence between two readers of one document is the drift this package exists to end, not a smaller version
-of it.
+differences are real. Recording them is the whole point of declaring the carrier: an undisclosed divergence
+between two readers of one document is the drift this package exists to end, not a smaller version of it.
 
 1. **Carrier precedence is inverted.** This placement answers with the **canonical `extensions` slot** when
    both carriers are present — the manifest's declared field wins, which is `binding-core`'s rule for every

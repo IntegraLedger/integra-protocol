@@ -122,14 +122,14 @@ Four of those values are where a new rail is most often dishonest, so state them
   is the majority answer and it is not a defect: a memo or a metadata label is an envelope-level carrier,
   and its indifference to the payload is the same property that makes such rails asset-independent. The
   declaration is never enforced.
-- **`successGate`** is the sibling axis, and it is the one that bites hardest. `assetBinding` declares
-  whether recovery observes *what* moved; this declares whether it observes *that anything* moved. Two
-  values, split six `raw-field` and seven `structural`. **`raw-field`** means the rail records failed transactions along with
-  their weld payload, so the reader supplies the chain's own outcome field and the pure recovery gates on
+- **`successGate`** is the sibling axis, and it is the one that bites hardest. `assetBinding` declares whether
+  recovery observes *what* moved; this declares whether it observes *that anything* moved. Two values, split
+  six `raw-field` and seven `structural`. **`raw-field`** means the rail records failed transactions along
+  with their weld payload, so the reader supplies the chain's own outcome field and the pure recovery gates on
   it — fail-closed, because an absent outcome is not evidence of success. **`structural`** means the rail
   cannot produce a failed transaction that still carries a weld, so no field is read and none is needed: a
-  reverted EVM transaction emits no logs, an aborted Sui programmable transaction discards its events, a
-  Daml command that did not commit leaves no contract.
+  reverted EVM transaction emits no logs, an aborted Sui programmable transaction discards its events, a Daml
+  command that did not commit leaves no contract.
 
 There is deliberately **no third value**. "Recovery cannot tell" is not a posture a profile may publish —
 a rail that cannot distinguish a failed transaction from a settled one will mint a settlement record out of
