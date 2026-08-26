@@ -36,7 +36,7 @@ catalog:
   "@solana/web3.js": "1.98.4" # Solana SPL-Memo native-field binding — isolated to binding-solana
   bs58: "6.0.0" # base58 decode for a memo instruction the RPC returns partially-decoded (binding-solana)
   "@mysten/sui": "2.26.2" # Sui Pay402 payment_id native-field binding — isolated to binding-sui
-  "@stellar/stellar-sdk": "17.0.0"
+  "@stellar/stellar-sdk": "17.0.0" # Stellar CAP-67 muxed-address native-field binding — StrKey/MuxedAccount; isolated to binding-stellar
   "@types/json-schema": "7.0.15" # canonical types for the `json-schema` module @stellar/stellar-sdk's contract/spec.d.ts imports (skipLibCheck:false workspace-wide) — dev-only, binding-stellar
   "@aptos-labs/ts-sdk": "7.3.0" # Aptos lcp_payment Move-module overlay-contract binding — isolated to binding-aptos
   ripple-binary-codec: "2.10.0" # XRPL memo hex codec — dev-only, the opt-in integration test signs with it (binding-xrpl)
