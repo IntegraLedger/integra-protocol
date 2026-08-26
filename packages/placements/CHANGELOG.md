@@ -1,5 +1,20 @@
 # @integraledger/lcp-placements
 
+## 0.13.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.13.0
+- @integraledger/lcp-placement-a2a@0.13.0
+- @integraledger/lcp-placement-ack@0.13.0
+- @integraledger/lcp-placement-acp@0.13.0
+- @integraledger/lcp-placement-ap2@0.13.0
+- @integraledger/lcp-placement-mastercard-vi@0.13.0
+- @integraledger/lcp-placement-mpp@0.13.0
+- @integraledger/lcp-placement-ucp@0.13.0
+- @integraledger/lcp-placement-visa-tap@0.13.0
+- @integraledger/lcp-placement-x402@0.13.0
+
 ## 0.12.3
 
 ### Patch Changes

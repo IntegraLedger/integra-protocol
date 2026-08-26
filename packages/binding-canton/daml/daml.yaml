@@ -11,7 +11,7 @@
 # a package id the deployment has to read off its own upload.
 sdk-version: 2.10.4
 name: lcp-anchor
-version: 0.12.3
+version: 0.13.0
 source: .
 dependencies:
   - daml-prim

@@ -1,5 +1,19 @@
 # @integraledger/lcp-conformance
 
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @integraledger/lcp-discovery@0.13.0
+  - @integraledger/lcp-authority@0.13.0
+  - @integraledger/lcp-binding-core@0.13.0
+  - @integraledger/lcp-evidence@0.13.0
+  - @integraledger/lcp-kernel@0.13.0
+  - @integraledger/lcp-placement-x402@0.13.0
+  - @integraledger/lcp-placements@0.13.0
+  - @integraledger/lcp-verify@0.13.0
+
 ## 0.12.3
 
 ### Patch Changes

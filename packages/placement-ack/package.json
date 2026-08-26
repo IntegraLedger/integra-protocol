@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-ack",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Places an LCP reference into an Agent Commerce Kit (ACK) payment receipt, and reads it back.",
   "keywords": [
     "lcp",

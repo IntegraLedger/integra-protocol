@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-canton",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Welds an ATR hash into a Canton settlement via the LcpAnchor overlay contract.",
   "keywords": [
     "lcp",

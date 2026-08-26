@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-verify",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "The LCP verification walk, and the canonical report it emits.",
   "keywords": [
     "lcp",

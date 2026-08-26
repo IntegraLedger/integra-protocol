@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-evm-mpp",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Welds an LCP record into an MPP settlement on EVM by Id-Reuse (LCP §8.3.5).",
   "keywords": [
     "lcp",

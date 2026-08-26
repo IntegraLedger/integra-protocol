@@ -1,5 +1,11 @@
 # @integraledger/lcp-placement-ap2
 
+## 0.13.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.13.0
+
 ## 0.12.3
 
 ### Patch Changes

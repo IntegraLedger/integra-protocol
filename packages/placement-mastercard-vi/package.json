@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-mastercard-vi",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Tier B placement of an LCP reference into Mastercard Verifiable Intent.",
   "keywords": [
     "lcp",

@@ -1,5 +1,44 @@
 # @integraledger/lcp-discovery
 
+## 0.13.0
+
+### Minor Changes
+
+- 0.13.0 — `LCP_MCP_EXTENSION_ID` is new API, and 0.12.3 shipped it as a patch.
+
+  ⛔⛔ **The patch bump was wrong, and it was wrong against a rule another repository's gate depends on.**
+  Adding a public export is added functionality, so it is a MINOR. Shipping it at `0.12.3` broke the
+  invariant that every patch inside a `0.12.x` line is API-equivalent — and the buyer-side repo's
+  `check:wire` is built directly on that invariant. Its runtime-dependency rule hard-requires the caret at
+  the minor's ZERO patch (`^0.12.0`) and refuses a raised floor, with its own reason recorded in the gate:
+  _"a raised floor strands consumers on earlier patches of the same line."_ That reasoning is correct
+  exactly as long as patches add nothing.
+
+  **Measured, not argued.** With `0.12.2` resolved — a version squarely inside `^0.12.0`, which a consumer
+  with an existing lockfile or a dedupe against another dependency can legitimately get:
+
+  ```
+  LCP_MCP_EXTENSION_ID = undefined
+  used as a capability key -> {"extensions":{"undefined":{}}}
+  ```
+
+  A silently wrong wire identity on the MCP capability surface, which is the precise failure class this
+  codebase refuses everywhere else. There is no version range that expresses "0.12.3 or later within
+  0.12.x" and no shim worth writing; the honest fix is for the export to live on a line whose floor can be
+  stated.
+
+  ⭐ **What this changes for a consumer:** a package that needs `LCP_MCP_EXTENSION_ID` depends on
+  `^0.13.0` and gets a floor that means what it says. Nothing is removed and nothing is renamed —
+  `0.12.3` remains live and correct for every consumer that does not reach for this export.
+
+  ⚠️ The constant is unchanged in spelling and semantics; only the line it is reachable from moves. Anything
+  already pinning the `0.12` line keeps working, and any repository tracking this line — including the
+  seller-side one — takes an ordinary minor re-pin rather than a migration.
+
+### Patch Changes
+
+- @integraledger/lcp-kernel@0.13.0
+
 ## 0.12.3
 
 ### Patch Changes

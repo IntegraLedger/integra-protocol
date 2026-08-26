@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-conformance",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "The LCP conformance corpus, its runner, and the adapters that drive an implementation under test.",
   "keywords": [
     "lcp",

@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-kernel",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "ATR assembly and hashing — the smallest thing every other LCP package agrees on.",
   "keywords": [
     "lcp",
