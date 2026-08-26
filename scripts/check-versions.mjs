@@ -76,6 +76,68 @@ if (provenanceGaps.length > 0) {
   process.exit(1);
 }
 
+/* ---------- Sidecar manifests that carry their own copy of the version ----------
+ *
+ * `changeset version` rewrites `package.json` and nothing else. `binding-canton` ships Daml SOURCE, and
+ * `daml.yaml` states the package version a second time — so every bump left it a patch behind, and the
+ * failure surfaced several stages later as a DAR build against a version that no longer matched, far from
+ * the edit that caused it. Nothing read this file, so nothing could go red for the right reason.
+ *
+ * THE SUBJECT SET IS DISCOVERED, NOT NAMED. Hardcoding `binding-canton` would make this gate correct
+ * exactly until the second package ships a sidecar, and the whole reason the miss survived repeated bumps
+ * is that it lived where no list was looking. The walk finds them; the rule stays a fixed comparison
+ * against the package's own manifest, so the tree supplies the subjects and never the expectation. */
+const sidecars = [];
+const walk = (dir) => {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.isDirectory()) {
+      if (e.name === "node_modules" || e.name === "dist" || e.name === ".daml")
+        continue;
+      walk(`${dir}/${e.name}`);
+    } else if (e.name === "daml.yaml") sidecars.push(`${dir}/${e.name}`);
+  }
+};
+for (const dir of readdirSync(`${root}/packages`)) {
+  const pkgDir = `${root}/packages/${dir}`;
+  if (!statSync(pkgDir).isDirectory()) continue;
+  if (!existsSync(`${pkgDir}/package.json`)) continue;
+  walk(pkgDir);
+}
+
+const sidecarDrift = [];
+for (const file of sidecars) {
+  const owner = file.slice(`${root}/packages/`.length).split("/")[0];
+  const pkg = JSON.parse(
+    readFileSync(`${root}/packages/${owner}/package.json`, "utf8"),
+  );
+  // Anchored: `sdk-version:` is the Daml toolchain and is NOT this package's version.
+  const declared = /^version:[ \t]*(\S+)[ \t]*$/m.exec(
+    readFileSync(file, "utf8"),
+  )?.[1];
+  if (declared === undefined)
+    sidecarDrift.push([
+      file,
+      `states no \`version:\` (owner is ${pkg.version})`,
+    ]);
+  else if (declared !== pkg.version)
+    sidecarDrift.push([
+      file,
+      `says ${declared}, its package says ${pkg.version}`,
+    ]);
+}
+
+if (sidecarDrift.length > 0) {
+  const lines = sidecarDrift.map(
+    ([f, why]) => `  - ${f.slice(root.length)} ${why}`,
+  );
+  console.error(
+    `\nRefusing to verify: ${sidecarDrift.length} sidecar manifest(s) disagree with their package's version.\n\n${lines.join("\n")}\n\n` +
+      `\`changeset version\` rewrites package.json and nothing else, so a sidecar carrying its own copy of\n` +
+      `the version is stranded on every bump. Edit it to match; do not edit package.json to match IT.\n`,
+  );
+  process.exit(1);
+}
+
 console.log(
-  `check:versions — no publishable package is at the changesets sentinel; all carry repository, bugs and homepage.`,
+  `check:versions — no publishable package is at the changesets sentinel; all carry repository, bugs and homepage; ${sidecars.length} sidecar manifest(s) track their package's version.`,
 );

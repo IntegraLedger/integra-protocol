@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-cardano",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "description": "Welds an ATR hash into a Cardano transaction.",
   "keywords": [
     "lcp",

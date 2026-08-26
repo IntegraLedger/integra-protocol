@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-x402",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "description": "Places an LCP reference into an x402 v2 payment challenge, and reads it back.",
   "keywords": [
     "lcp",

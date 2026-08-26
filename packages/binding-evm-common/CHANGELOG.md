@@ -1,5 +1,77 @@
 # @integraledger/lcp-binding-evm-common
 
+## 0.12.3
+
+### Patch Changes
+
+- 82444ad: `verifyEip3009Signature` does the token's whole acceptance test, and says what it does not do.
+
+  ⛔⛔ **IT ANSWERED `true` FOR SIGNATURES `FiatTokenV2` REVERTS ON.** For any `(r, s, v)` the pair
+  `(r, n − s, v ^ 1)` recovers the same address, so `recoverTypedDataAddress` alone accepts both encodings —
+  **measured: the malleated form of an honest payer's own signature verified.** Circle's token routes EOA
+  signatures through `ECRecover.sol`, which reverts before recovery on a high-s value and on any `v` outside
+  `{27, 28}`. A payer could present the malleated form, be served the resource, and the transfer would revert
+  — free goods, which is the exact failure the function exists to prevent. `isCanonicalSignature` is those two
+  gates, exported so its boundary is reachable: `s === n/2` is ACCEPTED, because the token's guard is
+  `s > n/2`, and no signing run will ever produce that value.
+
+  ⛔ **The components are read out of the regex MATCH, not sliced at fixed offsets.** With `.slice(66, 130)`,
+  dropping the leading anchor shifted every offset and the malformed input failed the `v` gate by accident —
+  so the anchor's own mutant survived. The shape check and the component read are now one statement. (Fourth
+  instance of an anchor mutant surviving in one day; the other three were killed by adding a `junk0x…` case.)
+
+  ⛔⛔ **AND THE ERC-1271 CLAIM WAS FALSE.** The first version of this docblock said a contract wallet _"cannot
+  sign an EIP-3009 authorization at all — the token has no `isValidSignature` call in that path"_. That is
+  wrong for **`FiatTokenV2_2`**, the 2023 implementation deployed as USDC on Base, Arbitrum and Polygon among
+  others, which routes `transferWithAuthorization` through `SignatureChecker.isValidSignatureNow` and
+  therefore **does** dispatch to ERC-1271 for a contract account. Deciding that needs a chain read and this
+  function takes no ports, so its contract is stated narrowly instead: **a `false` means "not signed by that
+  EOA", never "the chain will reject it".** A caller that must accept smart-account payers has to make the
+  ERC-1271 call itself; one that refuses on this answer alone is choosing to accept EOA payers only, and
+  should say so at the call site.
+
+  ⚠️ **The `try` came off.** It caught every failure and answered `false`, including a `typedData` this
+  deployment could not encode — so an operator with a mis-copied `tokenName` would have been told that every
+  honest payer is a forger, which is the live mistake the docblock itself names. The two untrusted inputs
+  still answer `false`; a wiring error throws.
+
+  Mutation: `binding-evm-common` 98.56, floor 98. The two remaining `eip3009.ts` survivors are pre-existing,
+  in `eip155ChainId`.
+
+- 48d1346: `verifyEip3009Signature` — the check the token makes, available before the money moves.
+
+  `buildEip3009TypedData` has been here since the canonical EVM binding shipped, and nothing beside it could
+  answer whether a given authorization was actually signed by the account it names. So a seller surface
+  holding a payer's credential had three bad options: take the signature on trust until settlement, grow a
+  viem dependency of its own, or reimplement recovery. `seller-mpp` needs exactly this for the 2026-08-24
+  audit's C-28, and `seller-x402` already reaches here for `makeEvmAcceptanceVerifier` — the commons owns EVM
+  crypto, and this is the piece that was missing.
+
+  ⭐ **`ecrecover`, because that is what the TOKEN does.** `FiatTokenV2.transferWithAuthorization` recovers the
+  signer from the EIP-712 digest and compares it to `from`; this recovers and compares the same way.
+
+  ⛔ **It deliberately does NOT fall back to ERC-1271.** A contract wallet cannot sign an EIP-3009
+  authorization at all — the token has no `isValidSignature` call on that path — so accepting one here would
+  accept a payment the chain rejects, which is the failure this check exists to prevent rather than to cause.
+
+  ⛔ **Answers `false` rather than throwing,** for the reason `atrHashEquals` states about itself: a predicate
+  that throws is a worse contract than one that answers. A malformed signature, a signature of the wrong
+  length and an `expectedSigner` that is not an address are all _"no, this is not signed by them"_ — and the
+  caller is holding an untrusted credential and needs a value it can put on the wire. Addresses compare as
+  decoded 20-byte values, so a payer's own lowercase spelling is the same payer.
+
+  ⚠️ The domain stays the caller's to get right, and it is where this goes wrong in practice: `tokenName` and
+  `tokenVersion` are the token's own EIP-712 domain and differ between USDC deployments, so a signature
+  verified against a domain copied from another chain fails here exactly as it would on-chain.
+
+  Mutation: `binding-evm-common` 98.40, floor 98 holds. ⛔ Both regex anchors needed their own case —
+  `junk0x…` and `0x…ff` — because every other malformed input was refused by both mutants and the anchors
+  could otherwise be deleted with the suite green.
+
+  - @integraledger/lcp-authority@0.12.3
+  - @integraledger/lcp-binding-core@0.12.3
+  - @integraledger/lcp-kernel@0.12.3
+
 ## 0.12.2
 
 ### Patch Changes
