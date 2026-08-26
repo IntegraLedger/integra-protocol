@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
-    "@biomejs/biome": "2.5.7",
+    "@biomejs/biome": "2.5.10",
     "@changesets/cli": "2.31.1",
     "@integraledger/lcp-authority": "workspace:*",
     "@integraledger/lcp-binding-aptos": "workspace:*",
@@ -63,10 +63,10 @@
     "@integraledger/lcp-verify": "workspace:*",
     "@stryker-mutator/core": "9.6.1",
     "@stryker-mutator/vitest-runner": "9.6.1",
-    "@swc/core": "1.15.47",
+    "@swc/core": "1.16.1",
     "@types/node": "catalog:",
-    "dependency-cruiser": "18.1.1",
-    "publint": "0.3.23",
+    "dependency-cruiser": "18.2.0",
+    "publint": "0.3.24",
     "typescript": "7.0.2",
     "vitest": "catalog:"
   },
