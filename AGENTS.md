@@ -33,10 +33,12 @@ Two rules, both enforced by `commit-policy.yml` on the range a push adds, and bo
 write a commit rather than after:
 
 - **Every commit carries a DCO `Signed-off-by:` matching its author.** CONTRIBUTING.md has always said so;
-  until 2026-08-26 nothing checked, and 64 commits carried none. The trailer is the only per-commit
-  provenance record LCP has, it is what lets battle-tested work move toward the standard later, and
-  CONTRIBUTING is right that it "cannot be reconstructed after the fact". `pnpm install` installs a
-  `prepare-commit-msg` hook that adds it, so the flag is a backstop rather than a habit.
+  until 2026-08-26 nothing checked. The trailer is the only per-commit provenance record LCP has, it is what
+  lets battle-tested work move toward the standard later, and CONTRIBUTING is right that it "cannot be
+  reconstructed after the fact". `pnpm install` installs a `prepare-commit-msg` hook that adds it, so the
+  flag is a backstop rather than a habit. **65 commits on `main` carry none** — the 64 predating the gate,
+  plus the first commit of the gate's own work, which landed while the hook was still being written. They
+  stand rather than being rewritten, and the number is frozen because a 66th cannot be pushed.
 - **No agent-authorship trailers** — no `Co-Authored-By:` naming an assistant, no `claude.ai/code` session
   URL, no "Generated with" line. This history is world-readable and permanent. The DCO trailer already
   records who is responsible.

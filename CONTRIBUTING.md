@@ -142,8 +142,17 @@ missing trailer.
 trailer when it is absent. Hooks live in your clone rather than in the tree, so a second machine needs the
 install too; `git config core.hooksPath .githooks` does it directly.
 
+**Enforced since 2026-08-26, and the history before that date does not carry it.** The requirement was
+stated here long before anything checked it, so the first **65** commits on `main` have no trailer — the 64
+that predate the work, plus the first commit of the work itself, which landed while the hook was still
+being written. They are not being rewritten: this repository is public and its release tags are published,
+so rewriting that history would break every clone and orphan the tags — a larger harm than the gap it would
+close. That number is now frozen: the gate makes a 66th impossible.
+
 **The `commit-policy` workflow is what actually holds the line.** It reads the commits a push adds and
-refuses one that carries no `Signed-off-by:` matching its author. Run it over your own work before pushing:
+refuses one that carries no `Signed-off-by:` matching its author. `[bot]` authors are exempt — DCO is a
+human attestation and Dependabot signs with a service address — and each run reports how many it waived.
+Run it over your own work before pushing:
 
 ```bash
 pnpm check:commit-trailers            # your unpushed commits
