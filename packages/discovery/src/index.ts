@@ -28,6 +28,7 @@ export {
   LCP_CAPABILITY_SCHEMA_URL,
   LCP_CAPABILITY_SPEC_URL,
   LCP_CAPABILITY_VERSION,
+  LCP_MCP_EXTENSION_ID,
 } from "./capability-identity.js";
 export { emit } from "./emit.js";
 export {

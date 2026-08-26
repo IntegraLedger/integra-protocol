@@ -12,6 +12,7 @@ import {
   LCP_CAPABILITY_SCHEMA_URL,
   LCP_CAPABILITY_SPEC_URL,
   LCP_CAPABILITY_VERSION,
+  LCP_MCP_EXTENSION_ID,
   type LcpCapabilityDeclaration,
   readAgentCard,
   readUcpProfile,
@@ -96,19 +97,54 @@ describe("the capability vector tree, run against source", () => {
 });
 
 describe("capability identity — the namespace ruling, held shut in code", () => {
-  it("publishes under com.integraledger and never the reserved LCP namespace", () => {
+  it("publishes under com.integraledger and never the reserved LCP namespace", async () => {
     // Ruled 2026-07-29: `org.legalcontextprotocol.*` is reserved for a TSC-ratified capability and is
     // never emitted. Every string that goes on the wire is checked, so a future edit cannot slip it in
     // through one constant while the others still read correctly.
-    for (const value of [
-      LCP_CAPABILITY_NAME,
-      LCP_CAPABILITY_AUTHORITY_ORIGIN,
-      LCP_CAPABILITY_SPEC_URL,
-      LCP_CAPABILITY_SCHEMA_URL,
-      A2A_LCP_EXTENSION_URI,
-    ])
-      expect(value).not.toContain("legalcontextprotocol");
+    //
+    // THE SUBJECT SET IS DERIVED, NOT LISTED. It was a hand-written array of five, which is a set that
+    // stays exhaustive only until someone adds a sixth constant — and adding one is exactly the edit this
+    // test exists to police. `LCP_MCP_EXTENSION_ID` was that sixth. Deriving it from the module's own
+    // string exports means a new wire identity is covered on the day it is written, by nobody's
+    // remembering. Safe to derive here because the EXPECTATION is a fixed literal: the tree supplies the
+    // subjects, never the rule they are judged against.
+    const identity = await import("../src/capability-identity.js");
+    // NARROWED, not cast: every export here is a string literal type, so a `[string, string]` predicate
+    // is not assignable to the entry it claims to narrow. `flatMap` keeps the literal types intact.
+    const wireStrings = Object.entries(identity).flatMap(([name, value]) =>
+      typeof value === "string" ? [[name, value] as const] : [],
+    );
+    expect(wireStrings.length).toBeGreaterThanOrEqual(6);
+    for (const [name, value] of wireStrings)
+      expect(`${name}=${value}`).not.toContain("legalcontextprotocol");
     expect(LCP_CAPABILITY_NAME.startsWith("com.integraledger.")).toBe(true);
+  });
+
+  it("spells the MCP extension id in MCP's vocabulary, not UCP's", () => {
+    // MCP fixes the shape as `{vendor-prefix}/{extension-name}` with the prefix MANDATORY, and spells its
+    // own name halves with hyphens (`io.modelcontextprotocol/oauth-client-credentials`). Follow the
+    // vocabulary you are writing into — the same rule that gave LCP_CAPABILITY_NAME its underscore.
+    expect(LCP_MCP_EXTENSION_ID).toBe("com.integraledger/legal-context");
+    const [prefix, ...rest] = LCP_MCP_EXTENSION_ID.split("/");
+    expect(rest).toHaveLength(1); // exactly one slash: a prefix and a name
+    expect(prefix).toBe("com.integraledger");
+    expect(rest[0]).not.toContain("_"); // MCP hyphenates; UCP underscores
+
+    // MCP reserves a prefix whose SECOND label is `modelcontextprotocol` or `mcp`. Ours is `integraledger`,
+    // so the prefix is available on the host's own terms.
+    expect(prefix?.split(".")[1]).not.toMatch(/^(modelcontextprotocol|mcp)$/);
+
+    // It is NOT the UCP name, and the difference is load-bearing rather than cosmetic.
+    expect(LCP_MCP_EXTENSION_ID).not.toBe(LCP_CAPABILITY_NAME);
+  });
+
+  it("carries no version segment in the MCP id, because MCP versions by renaming", () => {
+    // A2A requires a NEW URI on a breaking change, so its identifier is versioned in the path from the
+    // first release. MCP requires a new IDENTIFIER instead — a `-v2` suffix on the name half — and prefers
+    // settings-object flags over a rename. A `/v1` or `-v1` here would invent a spelling the host does not
+    // use, and would make every non-breaking revision look like it owed an explanation.
+    expect(LCP_MCP_EXTENSION_ID).not.toMatch(/[-/]v\d+$/);
+    expect(A2A_LCP_EXTENSION_URI).toMatch(/\/v\d+$/); // the contrast is the point
   });
 
   it("binds both UCP document URLs to the namespace authority's origin", () => {

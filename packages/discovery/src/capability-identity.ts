@@ -108,3 +108,40 @@ export const A2A_LCP_EXTENSION_URI =
  * honouring both would hide that from a deployment that needs to know.
  */
 export const A2A_EXTENSION_ACTIVATION_HEADER = "A2A-Extensions";
+
+/**
+ * The MCP extension identifier, declared under `capabilities.extensions` (MCP revision 2026-07-28,
+ * "Extension Negotiation"). A fourth surface, spelled from the same vocabulary as the three above.
+ *
+ * **SLASH AND HYPHEN, BECAUSE THAT IS THE VOCABULARY WE ARE WRITING INTO** — the same rule that gave
+ * {@link LCP_CAPABILITY_NAME} its underscore, applied to a different host. MCP fixes the shape as
+ * `{vendor-prefix}/{extension-name}` with the prefix MANDATORY, and its own extensions spell the name half
+ * with hyphens: `io.modelcontextprotocol/ui`, `io.modelcontextprotocol/tasks`,
+ * `io.modelcontextprotocol/oauth-client-credentials`. So this is neither UCP's `legal_context` nor a dotted
+ * fourth component; it is `com.integraledger` + `/` + `legal-context`.
+ *
+ * ⚠️ **One character from {@link LCP_CAPABILITY_NAME}, and a different protocol.**
+ * `com.integraledger.legal_context` is UCP's profile-level capability name; this is MCP's extension
+ * identifier. Same deployment, same claim, two hosts, two spellings — which is the one-vocabulary property
+ * working, not a collision. Do not substitute one for the other.
+ *
+ * **RESERVED-NAMESPACE CHECK IS NOT THE SAME TEST HERE.** MCP reserves any prefix whose SECOND label is
+ * `modelcontextprotocol` or `mcp` — so `io.modelcontextprotocol/`, `dev.mcp/` and `com.mcp.tools/` are all
+ * closed, while `com.example.mcp/` is NOT, because its second label is `example`. Ours is `integraledger`,
+ * so the prefix is available on the host's own terms rather than by our forbearance. The separate house
+ * rule against `org.legalcontextprotocol.*` still applies and is held shut by the same test as everything
+ * else in this file.
+ *
+ * **NO VERSION SEGMENT, DELIBERATELY, AND THE CONTRAST WITH A2A IS THE REASON.**
+ * {@link A2A_LCP_EXTENSION_URI} carries `/v1` because A2A versions a breaking change by requiring a NEW
+ * URI and forbids falling back. MCP versions the same event by requiring a new IDENTIFIER — its documented
+ * form is a `-v2` SUFFIX on the name half — and explicitly prefers capability flags or fields inside the
+ * settings object over a rename. Retrofitting `-v1` here would therefore invent a spelling the host does
+ * not use and force every future non-breaking revision to explain itself.
+ *
+ * **No authority-bound document URLs accompany this one.** UCP authority-binds a `schema` URL and so
+ * {@link LCP_CAPABILITY_NAME} has URL siblings; MCP binds nothing to an origin and asks only that an
+ * extension document its settings schema in its own specification. This constant therefore has no URL
+ * family, which is also why it does not inherit the outstanding-document problem recorded above.
+ */
+export const LCP_MCP_EXTENSION_ID = "com.integraledger/legal-context";
