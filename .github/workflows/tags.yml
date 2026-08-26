@@ -1,0 +1,58 @@
+name: tags
+
+# Reconcile git tags against what is actually published, on a schedule and on demand.
+#
+# ⛔⛔ WHY THIS IS A WORKFLOW AND NOT A STEP IN THE RELEASE, AND THIS IS THE REPOSITORY IT COST.
+# Tagging happens inside `approve-staged.mjs`, so it happens only when a maintainer approves by running
+# that script. Approving in the npm web UI is the same 2FA proof-of-presence and is entirely legitimate —
+# and it never reaches the script, so the repository goes untagged with nothing reporting it. FIVE
+# CONSECUTIVE RELEASES went out that way here: 0.12.0 through 0.13.0, 155 tags, reconstructed by hand
+# from provenance on 2026-08-26. It looked like a bug in the tagging code for a long time and was not.
+#
+# ⭐ A step that runs on only one of several legitimate paths is not a step, it is a coincidence. This
+# asks the registry and each version's own provenance instead, so it is correct after a script approval,
+# a web approval, or a publish nobody remembers making.
+#
+# The reconciler needs NO npm auth — provenance and the packument are public reads.
+
+on:
+  schedule:
+    # Daily, offset off the hour. A release can be approved at any time and from anywhere, so the gap
+    # between "published" and "tagged" should be hours rather than until someone notices.
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+  # Also after a release is staged. `release` here is itself `workflow_run`-triggered off `ci`, so this
+  # is a chain — which GitHub allows, and which only matters for latency: the daily cron is the guarantee,
+  # this is the fast path that gets tags written the same day they are earned.
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+
+# ⚠️ LEAST PRIVILEGE IS PER-JOB. A top-level block would grant `contents: write` to every job added
+# later; this one job needs it to push tags and nothing else does.
+permissions: {}
+
+concurrency:
+  group: tags
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push tags — the only write this workflow performs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.1
+        with:
+          # Tags are written against the commit each version's provenance names, which is usually NOT the
+          # tip. A shallow clone would not contain it and the reconciler would refuse rather than guess.
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Reconcile tags against the registry
+        shell: bash # `run:` defaults to `bash -e` WITHOUT pipefail; naming the shell is the house rule
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/reconcile-tags.mjs --write
