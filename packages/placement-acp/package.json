@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-acp",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Places an LCP reference into an ACP (Agentic Commerce Protocol) message, and reads it back.",
   "keywords": [
     "lcp",
