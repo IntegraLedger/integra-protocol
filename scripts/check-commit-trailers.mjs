@@ -168,7 +168,30 @@ if (shas.length === 0) {
   process.exit(1);
 }
 
+/**
+ * A GitHub bot account, by the `[bot]` suffix that platform reserves for them.
+ *
+ * ⛔⛔ BOTS ARE EXEMPT FROM DCO, AND LEAVING THEM IN WOULD HAVE BROKEN A DIFFERENT GATE. Dependabot pushes
+ * to `dependabot/**`, which this workflow watches, and it DOES sign off — as
+ * `dependabot[bot] <support@github.com>`, GitHub's service address, which is not its author address. A
+ * strict author match therefore fails all eleven of its commits and every future one, making
+ * `commit-policy` permanently red on those branches.
+ *
+ * That is worse than a false red, because `dependabot.yml` relies on a red build to hold the 24h
+ * quarantine: a check that is ALWAYS red there carries no information, and a real failure would arrive in
+ * the same colour. This organisation has already paid for that lesson once, with a cross-repo job that sat
+ * red for twelve runs.
+ *
+ * DCO is a human attestation of the right to submit, and a bot cannot make one — every major DCO project
+ * exempts them. ⚠️ This is a POLICY exemption, not an authentication boundary: DCO is honour-system, and
+ * anyone willing to set their author name to `x[bot]` could already have written the trailer by hand.
+ */
+const isBot = (name, email) =>
+  /\[bot\]$/.test(name.trim()) ||
+  /\[bot\]@users\.noreply\.github\.com$/i.test(email.trim());
+
 const failures = [];
+let exempt = 0;
 for (const sha of shas) {
   const [name, email] = git("show", "-s", "--format=%an%n%ae", sha).split("\n");
   const body = git("show", "-s", "--format=%B", sha);
@@ -180,7 +203,10 @@ for (const sha of shas) {
     name: m[1],
     email: m[2],
   }));
-  if (signoffs.length === 0)
+  // The forbidden-marker rules below still apply to a bot: they cost nothing and a bot emitting one would
+  // be worth knowing about. Only the DCO requirement is waived.
+  if (isBot(name, email)) exempt++;
+  else if (signoffs.length === 0)
     failures.push(
       `${short}\n      no Signed-off-by trailer. Expected: Signed-off-by: ${name} <${email}>`,
     );
@@ -217,6 +243,10 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+// The exemption is REPORTED, never silent. A run whose commits were all bot commits has verified no human
+// attestation at all, and "N commit(s) checked" alone would read as though it had.
+const human = shas.length - exempt;
 console.log(
-  `check:commit-trailers — ${shas.length} commit(s) checked: all signed off by their author, none carrying agent-authorship trailers.`,
+  `check:commit-trailers — ${shas.length} commit(s) checked: ${human} signed off by their author` +
+    `${exempt > 0 ? `, ${exempt} bot commit(s) exempt from DCO` : ""}, none carrying agent-authorship trailers.`,
 );

@@ -45,6 +45,13 @@ write a commit rather than after:
 history breaks every clone and orphans the release tags, so the gate can only stop the next one — which is
 why the hook exists. Check before you push, not after.
 
+⚠️ **`[bot]` authors are exempt from DCO, and the run says how many it waived.** Dependabot signs off as
+`dependabot[bot] <support@github.com>` — GitHub's service address, not its author address — so a strict
+author match would fail every one of its pushes and leave `commit-policy` permanently red on
+`dependabot/**`. That is worse than a false red: `dependabot.yml` relies on a red build to hold the 24h
+quarantine, and a check that is always red there carries no information. DCO is a human attestation and a
+bot cannot make one. The forbidden-marker rules still apply to bots.
+
 `pnpm verify` is **not hermetic**: one stage is `pnpm audit`, so a newly published advisory turns it red
 against an unchanged tree. If only that stage fails, record the advisory, run the remaining stages, and
 triage it separately. Never weaken the threshold to get past it.
