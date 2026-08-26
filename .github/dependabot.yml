@@ -10,10 +10,18 @@
 # time — so even if Dependabot opens a PR for a release minutes old, `pnpm install` refuses it and the PR
 # fails CI until the release is 24h old. The supply-chain posture cannot be short-circuited from here.
 #
-# ⚠️ CATALOG COVERAGE is unconfirmed: most runtime dependencies live in pnpm-workspace.yaml's `catalog:`
-# rather than in a package.json. If Dependabot's npm ecosystem does not surface catalog entries, those need
-# a periodic `pnpm outdated -r` sweep — check a batch of PRs and record the answer here rather than
-# assuming they are covered.
+# ✅ CATALOG COVERAGE: CONFIRMED WORKING, measured 2026-08-26 — this note previously said "unconfirmed"
+# and asked for a batch of PRs to be checked and the answer recorded here. The answer is yes. PRs #2, #3,
+# #9 and #11 each edited `pnpm-workspace.yaml`'s `catalog:` directly — `@aptos-labs/ts-sdk`,
+# `ripple-binary-codec`, `viem` and `@mysten/sui` — and all four passed the full suite. No `pnpm outdated`
+# sweep is needed for catalog entries.
+#
+# ⛔⛔ BUT THE LOCKFILE IS WHERE IT GOES WRONG. PR #12 bumped root devDependencies and, regenerating the
+# lockfile, rewrote `vitest`'s `catalog:` indirection into a concrete `4.1.11` against a catalog pinned at
+# `4.1.10`. Every job died at `pnpm install --frozen-lockfile` with
+# `vitest (lockfile: 4.1.11, manifest: catalog:)`. The bumps it wanted were applied by hand instead and the
+# PR closed. ⇒ **A Dependabot PR that touches BOTH a manifest and the catalog is the shape to distrust**;
+# one that touches the catalog alone has been reliable.
 #
 # ⛔ MEASURED 2026-08-03 — SECURITY UPDATES FOR TRANSITIVE DEPS DO NOT WORK HERE. Recording it as the note
 # above asks, because the failure mode is a FALSE NEGATIVE and therefore invisible: Dependabot does not
@@ -72,11 +80,11 @@ updates:
           - "vitest"
         update-types: ["minor", "patch"]
     ignore:
-      # ⚠️ INERT TODAY, and kept as intent rather than as enforcement. `@types/node` and `vitest` are
-      # `"catalog:"` in every manifest; their real versions live in `pnpm-workspace.yaml`, which Dependabot
-      # does not edit. So neither this ignore nor the `vitest` entry in the group above can fire until
-      # catalog coverage lands (see the ⚠️ note at the top of this file). The floor below is still the
-      # rule — it is enforced by review and by `engines`, not by this line.
+      # ✅ LIVE AS OF 2026-08-26, and this comment used to say the opposite. It read "INERT TODAY, kept as
+      # intent rather than as enforcement… Dependabot does not edit [pnpm-workspace.yaml]". It does —
+      # measured, four catalog-only PRs landed cleanly (see the ✅ note at the top of this file). So this
+      # ignore and the `vitest` entry in the group above are now ENFORCEMENT rather than intent, and the
+      # `@types/node` major-ignore below is the thing actually holding that floor.
       #
       # @types/node is FLOOR-pinned to `engines.node` on purpose: the types must never describe APIs the
       # oldest supported runtime lacks, or code typechecks against something that is not there at runtime.
