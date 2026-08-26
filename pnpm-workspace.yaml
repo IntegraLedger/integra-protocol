@@ -41,7 +41,7 @@ catalog:
   "@aptos-labs/ts-sdk": "7.3.0" # Aptos lcp_payment Move-module overlay-contract binding — isolated to binding-aptos
   ripple-binary-codec: "2.9.0" # XRPL memo hex codec — dev-only, the opt-in integration test signs with it (binding-xrpl)
   ripple-keypairs: "3.0.0" # XRPL test-wallet keys — dev-only, same opt-in integration lane (binding-xrpl)
-  vitest: "4.1.10"
+  vitest: "4.1.11"
   fast-check: "4.9.0"
   "@cfworker/json-schema": "4.1.1" # 2020-12 validator for the conformance schema class (ESM, runtime-agnostic)
   "@types/node": "24.13.3" # FLOOR-pinned to engines (>=24) — types never exceed the oldest supported runtime

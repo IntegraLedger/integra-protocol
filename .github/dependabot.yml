@@ -16,12 +16,20 @@
 # `ripple-binary-codec`, `viem` and `@mysten/sui` — and all four passed the full suite. No `pnpm outdated`
 # sweep is needed for catalog entries.
 #
-# ⛔⛔ BUT THE LOCKFILE IS WHERE IT GOES WRONG. PR #12 bumped root devDependencies and, regenerating the
-# lockfile, rewrote `vitest`'s `catalog:` indirection into a concrete `4.1.11` against a catalog pinned at
-# `4.1.10`. Every job died at `pnpm install --frozen-lockfile` with
-# `vitest (lockfile: 4.1.11, manifest: catalog:)`. The bumps it wanted were applied by hand instead and the
-# PR closed. ⇒ **A Dependabot PR that touches BOTH a manifest and the catalog is the shape to distrust**;
-# one that touches the catalog alone has been reliable.
+# ⛔⛔ BUT GROUPED UPDATES BREAK THE CATALOG INDIRECTION. A grouped PR regenerates the lockfile in a way
+# that rewrites `vitest`'s `catalog:` specifier into a concrete version, so every job dies at
+# `pnpm install --frozen-lockfile` with `vitest (lockfile: 4.1.11, manifest: catalog:)`. Seen twice: #12
+# (dev-tooling, five updates) and #14 (dev-tooling, vitest alone) — the second based on current `main`,
+# so it is not staleness.
+#
+# ⭐ IT IS THE GROUPING, NOT THE CATALOG. Measured: bumping `vitest` to 4.1.11 in `pnpm-workspace.yaml` BY
+# HAND and letting pnpm regenerate leaves the indirection intact and `--frozen-lockfile` exits 0. The four
+# individual catalog PRs above passed for the same reason. An earlier version of this note blamed "a PR
+# that touches both a manifest and the catalog" — that was wrong, and #14 disproved it by touching only
+# the catalog and failing identically.
+#
+# ⇒ `vitest` is therefore NOT in the dev-tooling group below. It is catalog-managed, and a grouped bump of
+# it cannot produce an installable lockfile; individually it updates fine.
 #
 # ⛔ MEASURED 2026-08-03 — SECURITY UPDATES FOR TRANSITIVE DEPS DO NOT WORK HERE. Recording it as the note
 # above asks, because the failure mode is a FALSE NEGATIVE and therefore invisible: Dependabot does not
@@ -77,7 +85,7 @@ updates:
           - "dependency-cruiser"
           - "publint"
           - "@arethetypeswrong/*"
-          - "vitest"
+          # ⛔ `vitest` deliberately NOT here — see the grouped-update note at the top of this file.
         update-types: ["minor", "patch"]
     ignore:
       # ✅ LIVE AS OF 2026-08-26, and this comment used to say the opposite. It read "INERT TODAY, kept as
