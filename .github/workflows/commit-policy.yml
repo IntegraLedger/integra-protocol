@@ -1,0 +1,40 @@
+name: commit-policy
+on:
+  # Same filter as ci.yml, and for the same measured reason: a `push` block carrying only `tags-ignore`
+  # means "tags, minus these", which after ignoring everything is nothing at all — the workflow then
+  # stops running on branch pushes entirely. `branches: ["**"]` is the form that means "every branch, no
+  # tags". Tags are excluded because a 31-package release pushes 31 of them at once and every tag is a
+  # separate ref, so none of the runs could cancel the others.
+  #
+  # This gate cannot live in `pnpm verify`: its subject is the range a push ADDS, and a local verify has
+  # no "before" to compare against. CI is the only place the subject exists.
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-policy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trailers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # fetch-depth: 0 IS THE WHOLE JOB. The default depth-1 checkout holds one commit and no history,
+          # so `git rev-list <before>..<after>` cannot resolve and the gate would have nothing to read.
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: "24" }
+      # No pnpm install: the check imports nothing but node:child_process, and a gate that runs before the
+      # dependency tree exists cannot be broken by it.
+      #
+      # NOT PIPED, deliberately. A `run:` whose command is piped reports the exit status of the LAST stage
+      # of the pipe, so a failing checker behind `| tee` comes back green — measured elsewhere in this org.
+      - run: node scripts/check-commit-trailers.mjs "$BEFORE" "$AFTER"
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}

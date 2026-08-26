@@ -137,6 +137,26 @@ If you forget it, `git commit --amend -s` fixes the last commit and
 `git rebase --signoff <base>` fixes a branch; nobody is going to make a contribution difficult over a
 missing trailer.
 
+**You should not have to remember.** `pnpm install` points git at this repository's tracked hooks
+(`core.hooksPath` → `.githooks`, set by `scripts/setup-hooks.mjs`), and `prepare-commit-msg` appends the
+trailer when it is absent. Hooks live in your clone rather than in the tree, so a second machine needs the
+install too; `git config core.hooksPath .githooks` does it directly.
+
+**The `commit-policy` workflow is what actually holds the line.** It reads the commits a push adds and
+refuses one that carries no `Signed-off-by:` matching its author. Run it over your own work before pushing:
+
+```bash
+pnpm check:commit-trailers            # your unpushed commits
+```
+
+It is CI-only in the sense that it cannot join `pnpm verify` — its subject is the range a push adds, and a
+local verify has no "before" to compare against.
+
+That workflow also refuses **agent-authorship trailers** — a `Co-Authored-By:` naming an AI assistant, or a
+`claude.ai/code` session URL. Use whatever tools you like; the DCO trailer already says a human takes
+responsibility for the change, and this history is world-readable and permanent, so tooling exhaust does not
+belong in it.
+
 The licence is encoded, not merely recorded: [LICENSE](LICENSE) and [NOTICE](NOTICE) sit at the root, every
 `package.json` carries `"license": "Apache-2.0"`, and `scripts/sync-license.mjs` copies both files into each
 tarball at `prepack` so a consumer who never sees this repository still receives them. NOTICE travels

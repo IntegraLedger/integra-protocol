@@ -10,6 +10,8 @@
     "build": "pnpm -r build",
     "clean": "node scripts/check-dist-orphans.mjs --clean",
     "conformance": "node packages/conformance/dist/cli.js",
+    "prepare": "node scripts/setup-hooks.mjs",
+    "check:commit-trailers": "node scripts/check-commit-trailers.mjs",
     "check:dist": "node scripts/check-dist-orphans.mjs",
     "check:docblocks": "node scripts/check-docblocks.mjs",
     "check:docs": "node scripts/check-doc-snippets.mjs",

@@ -25,6 +25,25 @@ Build comes before typecheck deliberately: workspace packages consume each other
 | `pnpm check:docblocks` | Refuses a top-level export with no docblock — 100% floor, adjacency strict |
 | `pnpm check:dist` | Refuses a `dist/` output whose `src/` file was deleted or renamed |
 | `pnpm check:live-rails` | The live-rail inventory — derives which packages carry an env-gated on-chain suite, refuses a set that disagrees with its named floor, and refuses a `live-proofs.yml` that fails to map a credential a harness reads |
+| `pnpm check:commit-trailers` | Commit-message policy over a range. **Not part of `verify`** — its subject is the range a push adds, which does not exist locally. `commit-policy.yml` runs it on every push |
+
+## Commit messages
+
+Two rules, both enforced by `commit-policy.yml` on the range a push adds, and both worth knowing before you
+write a commit rather than after:
+
+- **Every commit carries a DCO `Signed-off-by:` matching its author.** CONTRIBUTING.md has always said so;
+  until 2026-08-26 nothing checked, and 64 commits carried none. The trailer is the only per-commit
+  provenance record LCP has, it is what lets battle-tested work move toward the standard later, and
+  CONTRIBUTING is right that it "cannot be reconstructed after the fact". `pnpm install` installs a
+  `prepare-commit-msg` hook that adds it, so the flag is a backstop rather than a habit.
+- **No agent-authorship trailers** — no `Co-Authored-By:` naming an assistant, no `claude.ai/code` session
+  URL, no "Generated with" line. This history is world-readable and permanent. The DCO trailer already
+  records who is responsible.
+
+⛔ **The remedy for a missed sign-off on public `main` is the habit, never a rewrite.** Amending published
+history breaks every clone and orphans the release tags, so the gate can only stop the next one — which is
+why the hook exists. Check before you push, not after.
 
 `pnpm verify` is **not hermetic**: one stage is `pnpm audit`, so a newly published advisory turns it red
 against an unchanged tree. If only that stage fails, record the advisory, run the remaining stages, and
