@@ -37,8 +37,8 @@ catalogs:
       specifier: 14.0.5
       version: 14.0.5
     ripple-binary-codec:
-      specifier: 2.9.0
-      version: 2.9.0
+      specifier: 2.10.0
+      version: 2.10.0
     ripple-keypairs:
       specifier: 3.0.0
       version: 3.0.0
@@ -488,7 +488,7 @@ importers:
         version: 24.13.3
       ripple-binary-codec:
         specifier: 'catalog:'
-        version: 2.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        version: 2.10.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       ripple-keypairs:
         specifier: 'catalog:'
         version: 3.0.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -2899,8 +2899,8 @@ packages:
     resolution: {integrity: sha512-JQHLKuVJV8lv9Qobmn4aUM2Dpv9WRRLKnNWfM8tN02fAbUtG8mUPsu9q9UYX8P76G4qzytEc5ZKMp/3JggNYmw==}
     engines: {node: '>= 18'}
 
-  ripple-binary-codec@2.9.0:
-    resolution: {integrity: sha512-DOv4CPwm2B5mjAJNHE4tfes7tIqefi85iun8BskS7/i1PvLIwVydHIbTV5hbQ7eT69Zg4K5dtO1CzfuvQVAYvQ==}
+  ripple-binary-codec@2.10.0:
+    resolution: {integrity: sha512-H4pBm2WdOMmVnA0HGUdWAShmUFdmqavWAsi2WlMCzOknc1XjrZssa/RxEyziaPww8MXe1OpgGU7uCs8G2nYe/A==}
     engines: {node: '>= 18'}
 
   ripple-keypairs@3.0.0:
@@ -4488,7 +4488,7 @@ snapshots:
 
   '@xrplf/isomorphic@1.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
-      '@noble/hashes': 2.2.0
+      '@noble/hashes': 2.3.0
       eventemitter3: 5.0.1
       ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
@@ -5337,13 +5337,13 @@ snapshots:
 
   ripple-address-codec@5.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
-      '@scure/base': 2.2.0
+      '@scure/base': 2.3.0
       '@xrplf/isomorphic': 1.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  ripple-binary-codec@2.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6):
+  ripple-binary-codec@2.10.0(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
       '@xrplf/isomorphic': 1.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       bignumber.js: 10.0.2

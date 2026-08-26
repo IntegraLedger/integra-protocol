@@ -39,7 +39,7 @@ catalog:
   "@stellar/stellar-sdk": "17.0.0"
   "@types/json-schema": "7.0.15" # canonical types for the `json-schema` module @stellar/stellar-sdk's contract/spec.d.ts imports (skipLibCheck:false workspace-wide) — dev-only, binding-stellar
   "@aptos-labs/ts-sdk": "7.3.0" # Aptos lcp_payment Move-module overlay-contract binding — isolated to binding-aptos
-  ripple-binary-codec: "2.9.0" # XRPL memo hex codec — dev-only, the opt-in integration test signs with it (binding-xrpl)
+  ripple-binary-codec: "2.10.0" # XRPL memo hex codec — dev-only, the opt-in integration test signs with it (binding-xrpl)
   ripple-keypairs: "3.0.0" # XRPL test-wallet keys — dev-only, same opt-in integration lane (binding-xrpl)
   vitest: "4.1.11"
   fast-check: "4.9.0"
