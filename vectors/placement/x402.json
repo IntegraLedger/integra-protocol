@@ -98,8 +98,8 @@
       }
     },
     {
-      "name": "a server-advertised sibling extension survives — clients MUST NOT delete or overwrite",
-      "$comment": "x402's own rule about x402's own map. A placement that pruned a sibling extension would make the client that used it non-conformant.",
+      "name": "a server-advertised sibling extension survives — the client cannot delete or overwrite existing info",
+      "$comment": "x402's own rule, in x402's own words: the client \"must include at least the info received; it may append additional info but cannot delete or overwrite existing info\". Stated in lower case and about the INFO rather than the map — LCP v1.37 §C.4 rendered it in RFC-2119 capitals about the map and v1.38 §C.4 withdrew that rendering. A placement that pruned a sibling extension would make the client that used it non-conformant.",
       "input": {
         "protocol": "x402",
         "op": "place",

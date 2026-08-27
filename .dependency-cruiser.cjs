@@ -84,8 +84,17 @@ module.exports = {
   options: {
     doNotFollow: { path: "node_modules" },
     tsConfig: { fileName: "tsconfig.base.json" },
-    // TS sources parsed via @swc/core: depcruise's TS-compiler parser supports <7.0.0 only and
-    // silently cruises ZERO modules under TS 7 (exit 0 — a vacuous gate). swc keeps every rule live.
+    // ⛔⛔ `parser: "swc"` REQUIRES `@swc/core` TO BE INSTALLED, AND A MISSING ENGINE CRUISES ZERO.
+    // Measured 2026-08-27: with `parser: "swc"` declared and `@swc/core` absent, depcruise prints
+    // `✔ no dependency violations found (0 modules, 0 dependencies cruised)` and EXITS 0 — a wholly
+    // vacuous gate that is the same colour as a passing one. `depcruise-gate.mjs`'s module floor is what
+    // actually catches that; this comment cannot fail a build.
+    // ⚠️ An older form of this note claimed the tsc parser "cruises ZERO modules under TS 7". That is
+    // NOT what happens and it was never measured: depcruise's `meta.cjs` declares `typescript
+    // ">=2.0.0 <7.0.0"`, so under TS 7 `tscShouldUse()` is false and it falls back to ACORN, whose
+    // loose recovery still finds the imports. Re-measured on this workspace, tsc / acorn / swc all
+    // cruise the identical module count. swc is kept because it resolves one extra edge and does not
+    // rely on error-recovery guesswork — a preference, not a rescue.
     parser: "swc",
     // enhancedResolveOptions is LOAD-BEARING. Without it depcruise cannot resolve pnpm-linked
     // workspace packages (`exports` map behind a symlink); it reports couldNotResolve, and every
