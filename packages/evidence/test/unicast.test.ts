@@ -5,9 +5,10 @@
  * other file in the protocol. The cause: this predicate had exactly two tests — one public host, one
  * private — so every individual range could be deleted or its bounds moved without a single failure.
  *
- * That matters more than a score. `agent-guard` in the product repo refuses a seller-supplied terms URL by
- * calling straight into here; `createHardenedResolver` gates every artifact fetch on it. An off-by-one in
- * the CGNAT or RFC1918 bounds is a hole in the buyer's network, and the tests would have stayed green.
+ * That matters more than a score. `@integraledger/agentic-terms` — the buyer kit, in its own repository
+ * since the 2026-08-13 severance — refuses a seller-supplied terms URL by calling straight into here;
+ * `createHardenedResolver` gates every artifact fetch on it. An off-by-one in the CGNAT or RFC1918
+ * bounds is a hole in the buyer's network, and the tests would have stayed green.
  *
  * Each range is therefore pinned at BOTH edges — the last address outside it and the first address inside —
  * because a bound that is only tested from the middle is a bound nobody has checked.
