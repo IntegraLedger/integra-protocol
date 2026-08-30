@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+.source/
+.wrangler/
+*.tsbuildinfo
+# Generated before every build by scripts/generate-package-pages.mjs, one file per public
+# package, each carrying that package's README verbatim. The README is the tracked copy;
+# committing these would create the second copy the site exists to avoid.
+content/docs/packages/
+# `next dev` scaffolds these into the project directory when it detects an AI coding agent.
+# The repository's instructions live at its root; nothing here should shadow them.
+AGENTS.md
+CLAUDE.md

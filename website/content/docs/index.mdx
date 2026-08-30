@@ -1,0 +1,52 @@
+---
+title: Overview
+description: The reference implementation of the Legal Context Protocol's open layer — what these packages are, and how to install them.
+---
+
+The **Legal Context Protocol** makes one join mechanical: the terms two parties agreed to, and the payment
+that settled them.
+
+A terms document is hashed to an **ATR hash**. That hash is then carried in a field the settlement itself
+commits to — an EIP-3009 `nonce`, a Solana memo, a Stellar muxed address, a Cardano metadata label.
+Recovering the hash from a settlement and recomputing it from a terms document are both deterministic, so
+the correspondence either holds or it does not, and anyone can check it without asking either party.
+
+These packages are the reference implementation of the open layer of that protocol: the record format, the
+verification walk, delegated authority, the settlement bindings, the reference placements, and the
+conformance corpus that decides whether an independent implementation agrees with this one.
+
+<Callout>
+This site documents an implementation. **LCP itself is a specification**, co-stewarded by Integra Ledger
+and AAA-ICDR and published at
+[legalcontextprotocol.org](https://legalcontextprotocol.org/standard). This repository implements that
+specification; it is not the specification.
+</Callout>
+
+## Install
+
+Every package publishes to npmjs.com under the `@integraledger` scope at `access: public`. There is no
+`.npmrc` to write, no registry line, and no token:
+
+```bash
+npm install @integraledger/lcp-kernel
+```
+
+All of them are Apache-2.0, ESM-only, and require Node 24 or newer. They are released together, so the one
+version number in the footer describes the whole set.
+
+## How the set is organized
+
+**Core** is the protocol itself — assembling and hashing a record, walking a verification, deciding whether
+a chain of grants attenuates, publishing and reading a discovery document, bundling evidence, and running
+the conformance corpus.
+
+**Placements** answer *where does an LCP reference ride* inside an agentic commerce protocol. One package
+per protocol, each of them writing the reference into a field that protocol already defines and reading it
+back out.
+
+**Bindings** answer *how is the hash welded* into a settlement on a given rail. One package per rail, each
+declaring the carrier that rail's own specification already permits, at the strength that rail actually
+gives it.
+
+Each package's page is that package's own `README.md`, rendered — the same file that ships inside its
+tarball and appears on its npm page, so there is no second copy here to go stale.

@@ -1,0 +1,11 @@
+name = "integra-protocol"
+compatibility_date = "2026-08-30"
+pages_build_output_dir = "out"
+
+# Read by functions/_middleware.ts. "true" folds integra-protocol.pages.dev into the canonical
+# host with a 301. It ships "false" and STAYS "false" until a subdomain is ruled, attached to
+# this project and answering — with no apex, the alias is the only host that serves, and a 301
+# to a host that does not answer would take it down. The canonical host in src/lib/site.ts is a
+# placeholder; see README.md "Deploying".
+[vars]
+CANONICAL_HOST_ATTACHED = "false"

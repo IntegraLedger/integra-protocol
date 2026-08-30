@@ -1,0 +1,6 @@
+# RFC 9116. Vulnerability reports go through GitHub Security Advisories, never a public issue.
+Contact: https://github.com/IntegraLedger/integra-protocol/security/advisories/new
+Policy: https://github.com/IntegraLedger/integra-protocol/blob/main/SECURITY.md
+Canonical: https://docs.integraledger.com/.well-known/security.txt
+Preferred-Languages: en
+Expires: 2027-08-30T00:00:00.000Z

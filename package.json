@@ -19,6 +19,8 @@
     "check:versions": "node scripts/check-versions.mjs",
     "corpus:seal": "node scripts/corpus-seal.mjs",
     "depcruise": "node scripts/depcruise-gate.mjs",
+    "docs:build": "npm --prefix website run build",
+    "docs:dev": "npm --prefix website run dev",
     "drift": "pnpm --filter @integraledger/lcp-binding-evm-escrow drift",
     "spec-drift": "node scripts/spec-drift.mjs",
     "lint": "biome check .",
