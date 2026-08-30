@@ -115,16 +115,17 @@ Deploys are manual, as every Cloudflare surface in this organization is:
 npm run build && wrangler pages deploy --remote
 ```
 
-**The canonical host is `lcp-packages.integraledger.com`**, ruled 2026-08-30 and written in
-`src/lib/site.ts`. It deliberately does not sit under `integraledger.com/lcp/*`, which is held at the zone
-by another service — a distinct subdomain does not collide with a path route.
+**The canonical host is `lcp-packages.integraledger.com`**, ruled 2026-08-30, written in `src/lib/site.ts`,
+attached to the Pages project and live. It deliberately does not sit under `integraledger.com/lcp/*`, which
+is held at the zone by another service — a distinct subdomain does not collide with a path route.
 
-⛔ **It is not attached yet, and `CANONICAL_HOST_ATTACHED` stays `"false"` until it answers.**
+`functions/_middleware.ts` 301s the `integra-protocol.pages.dev` alias to whatever `siteConfig.url` names,
+so the site is not two independently indexable copies of itself. It has to be a Pages Function, because
+that alias lives on Cloudflare's zone and no redirect rule on `integraledger.com` can reach it. It fires
+only while `CANONICAL_HOST_ATTACHED = "true"` in `wrangler.toml`.
 
-`functions/_middleware.ts` 301s the `integra-protocol.pages.dev` alias to whatever
-`siteConfig.url` names. It has to be a Pages Function, because that alias lives on Cloudflare's zone and
-no redirect rule on `integraledger.com` can reach it. It fires only while `CANONICAL_HOST_ATTACHED =
-"true"` in `wrangler.toml`, and **that ships `"false"`**: until a host is ruled, attached to the Pages
-project and returning 200, the alias is the only host that answers, and a 301 to a host that does not
-would take it down. Once the host answers, flip the var to `"true"` and deploy again; nothing else
-changes.
+⚠️ **That flag ships armed now, and the order it enforces is the point.** It was `"false"` until the
+canonical host was attached and measured answering 200 — and the host did return 522 for the first minutes
+after the domain was added, while the certificate provisioned. Arming the fold in that window would have
+301'd the only host that served to one that did not answer. **If the canonical host is ever moved or
+detached, set this back to `"false"` before the change, not after.**

@@ -3,9 +3,14 @@ compatibility_date = "2026-08-30"
 pages_build_output_dir = "out"
 
 # Read by functions/_middleware.ts. "true" folds integra-protocol.pages.dev into the canonical
-# host with a 301. The host is ruled — lcp-packages.integraledger.com, in src/lib/site.ts — but
-# this STAYS "false" until that host is attached to this Pages project and answering 200: until
-# then the .pages.dev alias is the only host that serves, and a 301 to a host that does not
-# answer would take it down. See README.md "Deploying".
+# host with a 301, so the site is not two independently indexable copies of itself.
+#
+# ARMED 2026-08-30, and only after the precondition it exists for was measured:
+# lcp-packages.integraledger.com is attached to this Pages project and answered 200 on twelve
+# consecutive probes. It returned 522 for the first few minutes after the domain was added, while
+# the certificate and route provisioned — which is exactly the state this flag guards against.
+# Arming it then would have 301'd the only host that served to one that did not answer.
+#
+# If the canonical host is ever moved or detached, set this back to "false" BEFORE the change.
 [vars]
-CANONICAL_HOST_ATTACHED = "false"
+CANONICAL_HOST_ATTACHED = "true"
