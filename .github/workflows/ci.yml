@@ -53,3 +53,42 @@ jobs:
       # stopped being correct the moment a SECOND private package existed. Packages are
       # intentionally ESM-only (§12); the esm-only profile ignores the expected node10/CJS resolution failures.
       - run: node scripts/publish-integrity.mjs
+
+  # The documentation site (website/), built but never deployed — Cloudflare Pages deploys are
+  # manual here, as they are for every Cloudflare surface in this organization.
+  #
+  # It is a separate job on a separate install for the same reason the site is outside
+  # `pnpm-workspace.yaml`: `pnpm verify` runs `pnpm audit --audit-level moderate` over a
+  # workspace carrying seven hand-curated transitive-CVE overrides, and putting Next and
+  # Fumadocs in that workspace would land every Next transitive advisory on the release gate.
+  # The site has its own npm lockfile and its own tree, and the release gate never sees it.
+  #
+  # Without this job a page that failed to render would reach main green, because nothing in
+  # `verify` builds the site.
+  docs:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Every page is dated from the last commit that changed its source — the sitemap's
+          # <lastmod> and the "last updated" line, and for a package page that source is the
+          # README it renders. A shallow clone has no history to read, so every page would
+          # silently date to the build. `check:export` refuses a sitemap with a missing date,
+          # so this is enforced rather than merely intended.
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck   # the app, then the Pages Function under functions/ (Workers types, not DOM)
+      - run: npm run build       # `prebuild` regenerates the package pages from packages/*/README.md first
+      # A green build proves the export compiled, not that it carries anything. This asserts on
+      # the bytes in out/: the files the site promises, a page for every package the manifests
+      # say is published and none for one they say is private, every sitemap URL dated, no
+      # third-party origin anywhere in the export, and Markdown exports that are Markdown.
+      - run: npm run check:export
