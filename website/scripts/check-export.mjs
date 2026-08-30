@@ -171,7 +171,91 @@ if (lastmodCount !== urlCount)
 if (!sitemap.includes(`<loc>${ORIGIN}</loc>`))
   fail(`sitemap does not carry ${ORIGIN} as the overview URL`);
 
-/* ---------- 5. The Markdown exports must be Markdown ---------- */
+/* ---------- 5. Every URL a machine is handed must resolve in this export ----------
+ *
+ * Found the hard way. Every package page shipped a BreadcrumbList whose middle item pointed at
+ * `/packages` — a URL that exists in no sitemap and no export, because the package pages are
+ * reached through a `...packages` expansion rather than a folder index. Thirty-one pages, each
+ * telling a crawler to follow a link to a 404, and every other gate green: the HTML was valid,
+ * the JSON-LD was valid, and the URL was well-formed. Only resolving it against the export
+ * catches that. This checks the URLs nothing else does — the ones a machine follows without a
+ * person ever seeing them. */
+
+/**
+ * `https://origin/a/b` -> the file the export serves for it, or undefined if it serves none.
+ *
+ * ⛔ `isFile()`, NOT `existsSync`. `/packages` is a DIRECTORY in the export and `existsSync`
+ * says yes to a directory, so the first version of this check reported "126 internal URLs all
+ * resolve" while the very defect it was written to catch was reintroduced and present on all
+ * thirty-one pages. A directory is not a page: Cloudflare Pages serves nothing at `/packages`
+ * unless a `packages.html` or `packages/index.html` exists, and neither does.
+ */
+function exportTarget(url) {
+  if (!url.startsWith(ORIGIN)) return undefined; // external by design; not ours to resolve
+  const path = url.slice(ORIGIN.length) || "/";
+  for (const candidate of [
+    path === "/" ? "index.html" : `${path.slice(1)}.html`,
+    path.slice(1),
+    `${path.slice(1)}/index.html`,
+  ]) {
+    if (!candidate) continue;
+    const file = join(OUT, candidate);
+    if (existsSync(file) && statSync(file).isFile()) return candidate;
+  }
+  return undefined;
+}
+
+const htmlPages = [];
+const collectHtml = (dir) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) collectHtml(path);
+    else if (entry.name.endsWith(".html")) htmlPages.push(path);
+  }
+};
+collectHtml(OUT);
+
+let internalUrls = 0;
+for (const path of htmlPages) {
+  const html = readFileSync(path, "utf8");
+  const where = path.slice(OUT.length + 1);
+  for (const block of html.matchAll(
+    /<script type="application\/ld\+json">(.*?)<\/script>/gs,
+  )) {
+    let data;
+    try {
+      data = JSON.parse(block[1].replaceAll("\\u003c", "<"));
+    } catch (error) {
+      fail(
+        `out/${where} carries JSON-LD that does not parse: ${error.message}`,
+      );
+      continue;
+    }
+    for (const item of data["@type"] === "BreadcrumbList"
+      ? (data.itemListElement ?? [])
+      : []) {
+      if (typeof item.item !== "string") continue;
+      internalUrls += 1;
+      if (item.item.startsWith(ORIGIN) && !exportTarget(item.item))
+        fail(
+          `out/${where} has a breadcrumb pointing at ${item.item}, which this export does not serve`,
+        );
+    }
+  }
+}
+
+for (const loc of read("sitemap.xml").matchAll(/<loc>([^<]+)<\/loc>/g)) {
+  internalUrls += 1;
+  if (!exportTarget(loc[1]))
+    fail(`the sitemap lists ${loc[1]}, which this export does not serve`);
+}
+
+if (internalUrls === 0)
+  fail(
+    "found no internal URLs to resolve at all — this check had no subject, so it proved nothing",
+  );
+
+/* ---------- 6. The Markdown exports must be Markdown ---------- */
 
 const llmsFull = read("llms-full.txt");
 if (/&#x[0-9A-Fa-f]+;/.test(llmsFull))
@@ -187,7 +271,7 @@ if (leakedTag)
 if (!read("llms.txt").includes(`${ORIGIN}/llms-full.txt`))
   fail("llms.txt does not point at llms-full.txt on the canonical origin");
 
-/* ---------- 6. Source-side: no TypeScript this repository does not compile ----------
+/* ---------- 7. Source-side: no TypeScript this repository does not compile ----------
  *
  * `pnpm check:docs` extracts and typechecks every column-0 `ts` fence in `docs/`, the root
  * README and every package README. It does NOT walk `website/content/`, so a TypeScript fence
@@ -230,5 +314,6 @@ if (failures.length > 0) {
 
 console.log(
   `check:export — ${published.length} published package(s), one page each; ` +
-    `${urlCount} sitemap URL(s) all dated; no third-party origin in the export.`,
+    `${urlCount} sitemap URL(s) all dated; ${internalUrls} internal URL(s) all resolve; ` +
+    `no third-party origin in the export.`,
 );

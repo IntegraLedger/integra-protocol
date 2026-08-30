@@ -35,26 +35,27 @@ import { source } from "@/lib/source";
 
 type DocPage = NonNullable<ReturnType<typeof source.getPage>>;
 
-/** Title-case a slug segment as a breadcrumb fallback label. */
-function humanize(segment: string): string {
-  return segment
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-/** Home → …ancestors… → current, using real page titles where resolvable. */
+/**
+ * Home → …ancestors… → current.
+ *
+ * ⛔ An ancestor segment with no page of its own is SKIPPED, not labelled from its slug. The package
+ * pages live under `/packages/<name>` and there is no page at `/packages` — the sidebar reaches them
+ * through a `...packages` expansion rather than a folder index — so labelling that segment "Packages"
+ * would put a URL in every package page's BreadcrumbList that 404s and appears in no sitemap. A
+ * breadcrumb is a navigational claim about pages that exist; a crawler follows it.
+ */
 function buildCrumbs(slug: string[], title: string) {
   const crumbs = [{ name: "Home", path: "/" }];
-  slug.forEach((segment, i) => {
+  for (let i = 0; i < slug.length; i++) {
     const sub = slug.slice(0, i + 1);
-    const isLast = i === slug.length - 1;
+    const path = `/${sub.join("/")}`;
+    if (i === slug.length - 1) {
+      crumbs.push({ name: title, path });
+      continue;
+    }
     const page = source.getPage(sub);
-    crumbs.push({
-      name: isLast ? title : (page?.data.title ?? humanize(segment)),
-      path: `/${sub.join("/")}`,
-    });
-  });
+    if (page) crumbs.push({ name: page.data.title, path });
+  }
   return crumbs;
 }
 
