@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import { PackageMeta } from "@/components/PackageMeta";
 import { markdownPath } from "@/lib/llms";
-import { packageForUrl } from "@/lib/packages";
+import { packageForUrl, description as siteDescription } from "@/lib/packages";
 import {
   absoluteUrl,
   breadcrumbJsonLd,
@@ -147,7 +147,7 @@ export function DocView({
 export function docMetadata(slug: string[]): Metadata {
   const page = source.getPage(slug);
   if (!page) return {};
-  const description = page.data.description ?? siteConfig.description;
+  const description = page.data.description ?? siteDescription;
   const image = {
     url: siteConfig.ogImage,
     width: 1200,

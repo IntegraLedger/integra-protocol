@@ -1,5 +1,5 @@
 import { orderedPages } from "@/lib/llms";
-import { packages } from "@/lib/packages";
+import { description, packages } from "@/lib/packages";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 import { packageVersion } from "@/lib/version";
 
@@ -15,7 +15,7 @@ export function GET() {
   const lines: string[] = [
     `# ${siteConfig.name}`,
     "",
-    `> ${siteConfig.description}`,
+    `> ${description}`,
     "",
     `${packages.length} Apache-2.0 packages, all published to npm under \`${siteConfig.npmScope}\` at \`${packageVersion}\`, implementing the ${siteConfig.standard.name} (${siteConfig.standard.short}): ${siteConfig.standard.specUrl}. This site documents the implementation; the specification is published separately.`,
     "",

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { JsonLd } from "@/components/JsonLd";
+import { description } from "@/lib/packages";
 import { organizationJsonLd, siteConfig, webSiteJsonLd } from "@/lib/site";
 import "./global.css";
 
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     template: siteConfig.titleTemplate,
     default: siteConfig.title,
   },
-  description: siteConfig.description,
+  description,
   applicationName: siteConfig.name,
   keywords: [...siteConfig.keywords],
   authors: [{ name: siteConfig.publisher.name, url: siteConfig.publisher.url }],
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: siteConfig.name,
     title: siteConfig.title,
-    description: siteConfig.description,
+    description,
     url: siteConfig.url,
     locale: siteConfig.locale,
     // og:image is injected by the app/opengraph-image.tsx file convention —
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: siteConfig.title,
-    description: siteConfig.description,
+    description,
   },
   // Favicon and apple-touch icon come from the app/icon.svg and app/apple-icon.tsx file
   // conventions; the manifest from app/manifest.ts. Nothing here to keep in sync.
@@ -89,7 +90,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* The per-package SoftwareSourceCode blocks are emitted on each package's own page.
             Thirty-one of them in the head of every page would be noise, and the question they
             answer — what do I install — is a question about one package at a time. */}
-        <JsonLd data={[organizationJsonLd(), webSiteJsonLd()]} />
+        <JsonLd data={[organizationJsonLd(), webSiteJsonLd(description)]} />
         <RootProvider
           search={{
             enabled: true,

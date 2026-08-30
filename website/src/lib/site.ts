@@ -26,9 +26,10 @@ export const siteConfig = {
   /** ~60 chars: brand front-loaded, no word repetition, keyword-rich. */
   title: "Integra LCP Packages — Legal Context Protocol, Implemented",
   titleTemplate: "%s | Integra LCP Packages",
-  /** ≤155 chars so search results show the whole claim; leads with the value proposition. */
-  description:
-    "Reference implementation of the Legal Context Protocol's open layer: 31 Apache-2.0 packages for ATR hashing, the verification walk, bindings and placements.",
+  /** Prefix of the site description; `siteDescription` completes it with the package count. */
+  descriptionPrefix: "The Legal Context Protocol's open layer, implemented:",
+  descriptionSuffix:
+    "Apache-2.0 packages for ATR hashing, the verification walk, bindings and placements.",
   keywords: [
     "Legal Context Protocol",
     "LCP",
@@ -81,6 +82,19 @@ export const siteConfig = {
   },
 } as const;
 
+/**
+ * The site description, with the number of packages read from the workspace rather than typed.
+ *
+ * ≤155 chars so search results show the whole claim, and it leads with the value proposition. The count
+ * is a parameter because this module is the one place on the site that may not touch the filesystem —
+ * every caller is a server component and passes `packages.length`. A number written into this string
+ * would be the last hand-kept count on a site whose whole design is that there are none, and it would go
+ * stale in the `<meta name="description">` of every page the first time a package landed.
+ */
+export function siteDescription(packageCount: number): string {
+  return `${siteConfig.descriptionPrefix} ${packageCount} ${siteConfig.descriptionSuffix}`;
+}
+
 /** Build an absolute URL on the canonical origin from a root-relative path. */
 export function absoluteUrl(path: string): string {
   return new URL(path, siteConfig.url).toString();
@@ -117,7 +131,7 @@ export function organizationJsonLd() {
 }
 
 /** WebSite JSON-LD — establishes the canonical site entity. */
-export function webSiteJsonLd() {
+export function webSiteJsonLd(description: string) {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -125,7 +139,7 @@ export function webSiteJsonLd() {
     name: siteConfig.name,
     alternateName: siteConfig.shortName,
     url: siteConfig.url,
-    description: siteConfig.description,
+    description,
     inLanguage: "en",
     publisher: { "@id": `${siteConfig.url}/#organization` },
     license: "https://www.apache.org/licenses/LICENSE-2.0",

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { description } from "@/lib/packages";
 import { siteConfig } from "@/lib/site";
 
 // Required for metadata route handlers under `output: export`.
@@ -8,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: siteConfig.name,
     short_name: siteConfig.shortName,
-    description: siteConfig.description,
+    description,
     start_url: "/",
     scope: "/",
     display: "standalone",

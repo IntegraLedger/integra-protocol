@@ -1,4 +1,5 @@
 import "server-only";
+import { siteDescription } from "@/lib/site";
 import {
   GROUPS,
   lockstepVersion,
@@ -29,6 +30,9 @@ export const packages: DocumentedPackage[] = publicPackages();
 
 /** The one version every documented package carries; asserted, not assumed. */
 export const packageVersion: string = lockstepVersion(packages);
+
+/** The site description, with the package count filled in from the workspace. */
+export const description: string = siteDescription(packages.length);
 
 export const packageGroups: Array<{
   id: string;

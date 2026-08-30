@@ -1,4 +1,5 @@
 import { orderedPages, pageMarkdown } from "@/lib/llms";
+import { description } from "@/lib/packages";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
 // Required for route handlers under `output: export`.
@@ -29,7 +30,7 @@ export async function GET() {
   const header = [
     `# ${siteConfig.name} — full documentation`,
     "",
-    `> ${siteConfig.description}`,
+    `> ${description}`,
     "",
     `Canonical site: ${siteConfig.url} · Index: ${siteConfig.url}/llms.txt`,
     "",
