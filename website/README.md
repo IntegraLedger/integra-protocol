@@ -115,10 +115,11 @@ Deploys are manual, as every Cloudflare surface in this organization is:
 npm run build && wrangler pages deploy --remote
 ```
 
-⛔ **The canonical host is a placeholder and is not attached.** `src/lib/site.ts` carries
-`https://docs.integraledger.com`; the subdomain has not been decided, and `docs.` and `protocol.` are both
-plausible. It also must not sit under `integraledger.com/lcp/*`, which is held at the zone by another
-service — no deploy of this site can reach those paths.
+**The canonical host is `lcp-packages.integraledger.com`**, ruled 2026-08-30 and written in
+`src/lib/site.ts`. It deliberately does not sit under `integraledger.com/lcp/*`, which is held at the zone
+by another service — a distinct subdomain does not collide with a path route.
+
+⛔ **It is not attached yet, and `CANONICAL_HOST_ATTACHED` stays `"false"` until it answers.**
 
 `functions/_middleware.ts` 301s the `integra-protocol.pages.dev` alias to whatever
 `siteConfig.url` names. It has to be a Pages Function, because that alias lives on Cloudflare's zone and

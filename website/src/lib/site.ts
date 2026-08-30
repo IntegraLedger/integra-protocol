@@ -10,17 +10,21 @@
 
 export const siteConfig = {
   /**
-   * Canonical production origin.
+   * Canonical production origin. Ruled by Fisher 2026-08-30.
    *
-   * PLACEHOLDER. The subdomain for this site is not decided; `docs.` and `protocol.` are both
-   * plausible. Changing it is this one line — nothing else in the site states a host — but it
-   * must not be attached until it is ruled, and `CANONICAL_HOST_ATTACHED` in wrangler.toml
-   * stays "false" until whichever host is chosen answers.
+   * Apex-subdomain, no `www`, no trailing slash. It names what the site documents — the
+   * `@integraledger/lcp-*` packages — rather than its genre, which is what makes it still
+   * correct beside `agenticterms.integraledger.com` if a second protocol documentation site
+   * ever exists.
    *
-   * It also may not live under `integraledger.com/lcp/*`: those paths are held at the zone by
-   * another service, and no deploy of this site can reach them.
+   * ⛔ It deliberately does NOT live under `integraledger.com/lcp/*`: those paths are held at
+   * the zone by another service and no deploy of this site can reach them. A distinct
+   * subdomain does not collide with a path route.
+   *
+   * This is the only place the host is written in code. `public/.well-known/security.txt` is
+   * a static file that cannot import it, so `scripts/check-export.mjs` asserts the two agree.
    */
-  url: "https://docs.integraledger.com",
+  url: "https://lcp-packages.integraledger.com",
   name: "Integra LCP Packages",
   shortName: "LCP Packages",
   /** ~60 chars: brand front-loaded, no word repetition, keyword-rich. */

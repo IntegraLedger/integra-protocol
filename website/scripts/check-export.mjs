@@ -24,7 +24,7 @@ const PACKAGES = join(WEBSITE, "..", "packages");
 
 /** The canonical origin, spelled out. This gate exists to fail if it ever moves without
  *  the site's single source (src/lib/site.ts) moving with it. */
-const ORIGIN = "https://docs.integraledger.com";
+const ORIGIN = "https://lcp-packages.integraledger.com";
 
 const failures = [];
 const fail = (message) => failures.push(message);
@@ -69,6 +69,22 @@ for (const file of [
 ]) {
   present(file);
 }
+
+/* ---------- 1b. Static files that restate the host must agree with it ----------
+ *
+ * `src/lib/site.ts` is the single source of truth for the origin, and every generated URL derives
+ * from it. `public/.well-known/security.txt` is a plain static file that cannot import it, so it
+ * spells the host out a second time — the one place on this site that does. RFC 9116 says a
+ * `Canonical` naming a URL the document is not served at makes the file invalid, and a reporter
+ * who follows it lands nowhere. Nothing else would notice, so this does. */
+
+const securityTxt = read(".well-known/security.txt");
+const canonical = /^Canonical:\s*(\S+)\s*$/m.exec(securityTxt)?.[1];
+if (canonical !== `${ORIGIN}/.well-known/security.txt`)
+  fail(
+    `.well-known/security.txt declares Canonical ${canonical ?? "(none)"}, but this site is served ` +
+      `at ${ORIGIN}. It restates the host that src/lib/site.ts owns; move them together.`,
+  );
 
 /* ---------- 2. A page per published package, and no page for a private one ----------
  *
