@@ -96,6 +96,45 @@ export async function assemble(
       "caps values: monetary amounts are decimal-integer strings of base units — raw JSON numbers are rejected",
     );
 
+  // Everywhere else, the narrower rule: a JSON number outside the safe-integer range is not the number the
+  // caller handed us. JS resolved 9007199254740993 to ...992 before this function was entered, and
+  // NaN/Infinity serialise to `null`. Both losses are silent, and neither is detectable HERE — the damaged
+  // value is indistinguishable from an honest one of the same magnitude — so the RANGE is refused rather
+  // than the damage found. A record is evidence, and evidence that quietly holds a different number than
+  // the parties agreed is worse than a refusal. Ordinary numbers pass, which is why this is not the `caps`
+  // rule extended: `caps` is machine-decided and takes decimal strings for every amount, while an open
+  // slot may legitimately carry `{"version": 2}`. A quantity needing more range is a decimal string too.
+  const unrepresentable = (v: Json, path: string): string | null => {
+    if (typeof v === "number")
+      return Number.isSafeInteger(v) ||
+        (!Number.isInteger(v) && Math.abs(v) < Number.MAX_SAFE_INTEGER)
+        ? null
+        : path;
+    if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) {
+        const hit = unrepresentable(v[i] as Json, `${path}[${i}]`);
+        if (hit !== null) return hit;
+      }
+      return null;
+    }
+    if (v !== null && typeof v === "object") {
+      for (const [k, nested] of Object.entries(v)) {
+        const hit = unrepresentable(nested, `${path}.${k}`);
+        if (hit !== null) return hit;
+      }
+      return null;
+    }
+    return null;
+  };
+  for (const [slot, value] of Object.entries(envelope)) {
+    const hit = unrepresentable(value, slot);
+    if (hit !== null)
+      throw new KernelError(
+        "assemble/unrepresentable-number",
+        `${hit}: a JSON number beyond the safe-integer range (±${Number.MAX_SAFE_INTEGER}), or NaN/Infinity, cannot be recorded faithfully — supply a decimal string`,
+      );
+  }
+
   const atrFile = new TextEncoder().encode(JSON.stringify(envelope));
   const atrHash = await hashAtr(atrFile);
   return { atrFile, atrHash };

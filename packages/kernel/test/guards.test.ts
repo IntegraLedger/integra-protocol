@@ -186,12 +186,85 @@ describe("assemble — caps carries decimal strings, never raw JSON numbers", ()
     expect(JSON.parse(new TextDecoder().decode(atrFile)).caps.USD).toBe("100");
   });
 
-  it("leaves a raw number alone in a slot that is NOT caps — the rule is caps-specific", async () => {
+  it("leaves a REPRESENTABLE raw number alone outside caps — the decimal-string rule is caps-specific", async () => {
     const { atrFile } = await assemble([
       ...MINIMAL,
       { slot: "other", value: { n: 1 } },
     ]);
     expect(JSON.parse(new TextDecoder().decode(atrFile)).other.n).toBe(1);
+  });
+});
+
+describe("assemble — a number it cannot record faithfully is refused, in ANY slot", () => {
+  const MAX = Number.MAX_SAFE_INTEGER; // 9007199254740991
+
+  it("refuses the value that silently LOSES A DIGIT", async () => {
+    // The motivating case, taken the way it actually arrives — parsed from an external document —
+    // rather than as a source literal, which the linter refuses outright (noPrecisionLoss) and which
+    // would anyway be resolved by the engine before this file ran. That is the whole difficulty: the
+    // loss happens before assemble() is entered, so the guard can only refuse the range, never
+    // recover what the caller meant. Without it the ATR records a number nobody agreed to.
+    const parsed: number = JSON.parse('{"amount":9007199254740993}').amount;
+    expect(parsed).toBe(MAX + 1); // the loss, pinned: ...993 arrives as ...992
+    await refuses(
+      [...MINIMAL, { slot: "price", value: { amount: parsed } }],
+      "assemble/unrepresentable-number",
+    );
+  });
+
+  it("refuses NaN and both infinities — JSON.stringify turns each into null", async () => {
+    expect(JSON.stringify({ x: NaN })).toBe('{"x":null}'); // the loss, pinned
+    for (const bad of [NaN, Infinity, -Infinity])
+      await refuses(
+        [...MINIMAL, { slot: "s", value: { x: bad } }],
+        "assemble/unrepresentable-number",
+      );
+  });
+
+  it("refuses at the exact boundary, and accepts the last good value", async () => {
+    await refuses(
+      [...MINIMAL, { slot: "s", value: MAX + 1 }],
+      "assemble/unrepresentable-number",
+    );
+    const { atrFile } = await assemble([...MINIMAL, { slot: "s", value: MAX }]);
+    expect(JSON.parse(new TextDecoder().decode(atrFile)).s).toBe(MAX);
+  });
+
+  it("finds one NESTED in an object, an array, and a mixed table of honest values", async () => {
+    for (const value of [
+      { deep: { amount: 1e21 } },
+      { tiers: [1, 2, 1e21] },
+      { USD: 100, EUR: 1e21 }, // the realistic shape: one bad cell among correct ones
+    ])
+      await refuses(
+        [...MINIMAL, { slot: "s", value }],
+        "assemble/unrepresentable-number",
+      );
+  });
+
+  it("names the path, so the refusal is actionable rather than 'malformed'", async () => {
+    await expect(
+      assemble([...MINIMAL, { slot: "caps2", value: { a: [{ b: 1e21 }] } }]),
+    ).rejects.toThrow(/caps2\.a\[0\]\.b/);
+  });
+
+  it("ACCEPTS ordinary numbers — this is not the caps rule extended", async () => {
+    const { atrFile } = await assemble([
+      ...MINIMAL,
+      {
+        slot: "s",
+        value: { version: 2, ratio: 1.5, tiny: 0.1, neg: -7, z: 0 },
+      },
+    ]);
+    const s = JSON.parse(new TextDecoder().decode(atrFile)).s;
+    expect(s).toEqual({ version: 2, ratio: 1.5, tiny: 0.1, neg: -7, z: 0 });
+  });
+
+  it("still reports the CAPS reason for a caps number, which is the more specific rule", async () => {
+    await refuses(
+      [...MINIMAL, { slot: "caps", value: { USD: 1e21 } }],
+      "assemble/caps-raw-number",
+    );
   });
 });
 

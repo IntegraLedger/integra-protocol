@@ -357,7 +357,8 @@
       }
     },
     {
-      "name": "raw numbers outside caps: Number::toString incl. the 1e21 exponent threshold",
+      "$comment": "Number::toString byte-stability for the numbers an open slot may still carry, now bounded by the safe-integer range. SUPERSEDED PIN (2026-08-31): this case previously carried `exp: 1e21` and pinned file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"exp\":1e+21}} at hash 0xc6e1d4084743252cb5a88e67d5e33683aa9f2b2bceae70fd8c879b003a53ed3c. It moved because assemble() now refuses any number beyond the safe-integer range in ANY slot: above 2^53 the engine cannot know whether the double it holds is the literal the caller wrote (9007199254740993 resolves to ...992 before assemble is entered), so the RANGE is refused rather than the damage detected. 1e21 is itself exactly representable, but it is indistinguishable at this boundary from a neighbour that is not, and a record is evidence. The exponent-threshold half of the old pin is now covered by the refusal case below. New hash re-derived independently with python3 hashlib over the exact expected file bytes, not copied from the implementation.",
+      "name": "raw numbers outside caps: Number::toString up to the safe-integer bound",
       "input": [
         {
           "slot": "terms",
@@ -371,14 +372,35 @@
           "slot": "metrics",
           "value": {
             "half": 3.5,
-            "exp": 1e21
+            "max": 9007199254740991
           }
         }
       ],
       "expected": {
-        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"exp\":1e+21}}",
-        "hash": "0xc6e1d4084743252cb5a88e67d5e33683aa9f2b2bceae70fd8c879b003a53ed3c"
+        "file": "{\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"max\":9007199254740991}}",
+        "hash": "0x6b26986a9b9412987b89784a289b4e01d1f30f96ba067db21460d03d308dd32a"
       }
+    },
+    {
+      "$comment": "The refusal that supersedes the 1e21 half of the case above. Beyond the safe-integer bound assemble() cannot record the caller's number faithfully, and cannot tell that it failed to — so it refuses the range. Applies in ANY slot; `caps` keeps its stricter decimal-string rule and its own reason code.",
+      "name": "unrepresentable number outside caps: beyond the safe-integer bound",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "metrics",
+          "value": {
+            "exp": 1e21
+          }
+        }
+      ],
+      "error": "assemble/unrepresentable-number"
     }
   ]
 }

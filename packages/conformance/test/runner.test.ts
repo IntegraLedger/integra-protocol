@@ -106,7 +106,11 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // omitting the OPTIONAL `spec` is read rather than refused; `report.schema` gains a report missing
 // `claimedClass`, now a required member; and `placement.ucp` gains the terms-url-missing refusal, which
 // UCP could not state while its manifest declared no slot for a locator its host has always had.
-const CORPUS_SIZE = 847;
+// 847 → 848 on 2026-08-31: `envelope.assemble` gains the refusal for a number beyond the safe-integer
+// range in any slot. Its sibling case moved rather than being added — the old pin carried `exp: 1e21`
+// and asserted that raw numbers outside `caps` are byte-stable, which is true and no longer reachable,
+// because above 2^53 the engine cannot know whether the double it holds is the literal the caller wrote.
+const CORPUS_SIZE = 848;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

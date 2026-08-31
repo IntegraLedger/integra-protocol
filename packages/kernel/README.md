@@ -48,6 +48,28 @@ hashes something the payer never signed.
 `normalizeTerms` is offered for authoring surfaces to stabilize a terms document *before* it is
 fingerprinted — CRLF to LF, trailing newlines collapsed to one, NFC. It never runs inside `assemble`.
 
+## Store the bytes, not the object
+
+The corollary of the section above, and the one that costs people real evidence: **an ATR is a file, not a
+data structure.** Retain `atrFile` as opaque bytes. Reconstructing one later from the slot values will not
+reproduce it unless you also kept their order, and a record whose bytes you cannot reproduce is a hash you
+cannot open — which is the whole of its evidentiary value.
+
+Two ways this is lost by default, both silent until the moment someone needs the record:
+
+- **A key-reordering store.** PostgreSQL `jsonb` decomposes to a binary form that does not preserve key
+  order and drops duplicate keys; `json` preserves the input text exactly. `jsonb` is the column type most
+  guidance tells you to prefer, so the default choice is the wrong one here. Store `bytea`, `text`, or the
+  file. Any ORM that round-trips through a parsed object has the same effect.
+- **Re-serializing in another runtime.** A JavaScript `JSON.parse` → `JSON.stringify` round-trip happens to
+  return the identical bytes, so a Node service can round-trip an ATR and never notice. Other runtimes
+  differ by default: Python's `json.dumps` inserts a space after `:` and `,` and escapes non-ASCII unless
+  called as `json.dumps(o, separators=(",", ":"), ensure_ascii=False)`. A verifier that re-serializes before
+  hashing computes a different digest and reports a mismatch — which reads as counterparty tampering, not as
+  a local encoding choice.
+
+The safe rule is the simple one: hash what you received, and keep what you hashed.
+
 ## Refusals are typed and loud
 
 Every guard has its own reason, because "the record is malformed" is not an actionable message:
