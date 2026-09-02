@@ -5,7 +5,7 @@
  *   instead of re-deriving the walk, so an inverted or emptied one reports a contradicted record as clean.
  * - `computeVerified` looks each required step up BY NAME and optional-chains the result. No test had ever
  *   asked for a class whose required step is simply absent from the report — the case the `?.` exists for.
- * - `parseEnvelope`'s `parsed === null` guard: `typeof null === "object"` and `Array.isArray(null)` is
+ * - `parseAtr`'s `parsed === null` guard: `typeof null === "object"` and `Array.isArray(null)` is
  *   false, so without that first disjunct a record whose bytes are literally `null` dereferences null.
  * - `jcsCanonicalize` throws on a value JSON cannot represent; nothing exercised it.
  */
@@ -84,11 +84,11 @@ describe("computeVerified when a required step is missing from the report entire
   });
 });
 
-describe("verify over ATR bytes that are not an LCP envelope", () => {
+describe("verify over ATR bytes that are not a kernel-assembled ATR", () => {
   const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
   const base = { asOf: "2026-07-25T00:00:00Z", coverage: COVERAGE } as const;
 
-  /** The recourse step is the one that parses the bytes as an envelope, so it carries the readout. */
+  /** The recourse step is the one that parses the bytes as an ATR, so it carries the readout. */
   const recourseOf = async (raw: string): Promise<unknown> =>
     (await verify({ ...base, atrBytes: bytes(raw) })).steps.find(
       (s) => s.name === "recourse-elections",
@@ -119,8 +119,8 @@ describe("verify over ATR bytes that are not an LCP envelope", () => {
     });
   });
 
-  it("gets PAST that gap once the bytes really are an envelope", async () => {
-    // The counterpart that keeps the four cases above from passing for the wrong reason: a real envelope
+  it("gets PAST that gap once the bytes really are an ATR", async () => {
+    // The counterpart that keeps the four cases above from passing for the wrong reason: a real ATR
     // must reach the elections check, not stop at "not machine readable".
     expect(await recourseOf('{"lcp":"0.3","id":"x"}')).toEqual({
       status: "not-attempted",

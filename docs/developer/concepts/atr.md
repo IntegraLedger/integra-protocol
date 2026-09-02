@@ -16,7 +16,7 @@ The record format is the specification's, published at
 ## One document, assembled from slots
 
 You do not hand `assemble` an object. You hand it an ordered list of **slots**, each a name with an inline
-value or a content reference, and it compiles them into the envelope:
+value or a content reference, and it compiles them into the ATR:
 
 ```ts no-check
 const { atrBytes, atrHash } = await assemble([
@@ -25,13 +25,13 @@ const { atrBytes, atrHash } = await assemble([
 ]);
 ```
 
-The difference matters because the engine controls the emitted document. It stamps the envelope format
+The difference matters because the engine controls the emitted document. It stamps the ATR format
 version (`lcp`) first, refuses `lcp` as a caller's slot, and refuses integer-like slot names — JavaScript
 serializes integer-like keys ahead of everything else regardless of insertion order, so a slot named `"1"`
 would jump in front of `lcp` and change the bytes. Slot names it does not recognize are preserved
 verbatim, so the format is open at the edges while the parts that fix the byte layout are not.
 
-Two slots are required and must be non-empty strings: `terms` and `id`. Beyond those the envelope carries
+Two slots are required and must be non-empty strings: `terms` and `id`. Beyond those the record carries
 optional slots the specification names — `identity`, `spendAuthority`, `acceptanceAuthority`, `intent`,
 `offer`, `regime`, `standingTrust`, `recourse`, `declarations`, `caps` — and preserves anything else.
 
@@ -92,7 +92,7 @@ This is the confusion worth heading off, because both are SHA-256 and both appea
 
 - The **`terms` reference** — `lcp:sha256:0x…` — is a content reference to an **input**: the hash of the
   terms document's own bytes. It points *outward*, at an artifact the record does not contain.
-- The **ATR hash** is the hash of the **assembled record**: the envelope, with the terms reference already
+- The **ATR hash** is the hash of the **assembled record**: the ATR, with the terms reference already
   inside it, serialized to bytes. It names the record itself, and it is what a settlement carries.
 
 Change the terms document and the reference changes, which changes the record's bytes, which changes the
@@ -177,5 +177,5 @@ document; the ATR hash names this record.
   step, and what it declines to establish.
 - [welds.md](welds.md) — how the ATR hash gets into a settlement, and how it is read back out.
 - [kernel README](../../../packages/kernel/README.md) — the API, the full refusal table, and the
-  prototype-free envelope rule.
+  prototype-free record rule.
 - [../getting-started.md](../getting-started.md) — the same assembly end to end, from a terms file up.

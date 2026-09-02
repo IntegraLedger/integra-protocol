@@ -8,11 +8,12 @@ export type Recourse = {
 };
 
 /**
- * The ATR envelope v0.3 — required lcp+terms+id, optional proportional slots, unknown keys preserved.
+ * The ATR v0.3 — required lcp+terms+id, optional proportional slots, unknown keys preserved.
+ * This is the shape of the artifact `atrHash` is taken over, not a wrapper around one.
  * Anchored by vectors/envelope/schema.json (the tree is the source of truth); the runtime opinion is
  * assemble()'s fail-fast checks — the kernel carries no validator (zero-dep).
  */
-export type Envelope = {
+export type Atr = {
   lcp: "0.3";
   terms: string;
   id: string;

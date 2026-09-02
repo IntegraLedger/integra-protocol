@@ -86,7 +86,7 @@ The numeric-slot rule is subtler than it looks: JavaScript serializes integer-li
 of insertion order, so a slot named `"1"` would jump ahead of the engine-stamped `lcp` field and change
 the bytes. It is refused rather than silently reordered.
 
-The assembled envelope is prototype-free, so a slot named `__proto__` becomes an ordinary key
+The assembled ATR is prototype-free, so a slot named `__proto__` becomes an ordinary key
 instead of vanishing from `JSON.stringify` and mutating a prototype on the way past.
 
 ## Requirement ids

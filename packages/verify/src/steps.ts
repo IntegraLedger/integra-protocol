@@ -353,7 +353,7 @@ export function commitmentStep(
 /**
  * RCS-1/2/4: the elections the record carries and the package it produced.
  *
- * The elections are read from THE HASHED RECORD ITSELF — `atrBytes` parsed as the LCP envelope — never from
+ * The elections are read from THE HASHED RECORD ITSELF — `atrBytes` parsed as the ATR — never from
  * a caller-supplied side channel, because RCS-1 requires the forum designation "recorded inside the terms
  * record" (TRM-9). What this step proves is therefore what was welded.
  *
@@ -368,10 +368,10 @@ export function recourseStep(
 ): StepOutcome {
   if (!present(atrBytes))
     return { status: "not-attempted", depth: "no-atr-bytes" };
-  const envelope = parseEnvelope(atrBytes);
-  if (!present(envelope))
+  const atr = parseAtr(atrBytes);
+  if (!present(atr))
     return { status: "not-attempted", depth: "atr-not-machine-readable" };
-  const recourse = envelope["recourse"];
+  const recourse = atr["recourse"];
   if (!present(recourse) || typeof recourse !== "object")
     return { status: "not-attempted", depth: "no-elections-recorded" };
   const elections = recourse as Record<string, unknown>;
@@ -392,10 +392,7 @@ export function recourseStep(
   //
   // Required IFF the terms slot is a ref, because an unconditional role would fail every honest
   // inline-terms package. `manifest.schema.json` already stated this rule; nothing enforced it.
-  if (
-    isRefTerms(envelope["terms"]) &&
-    !supplied.has("referenced terms document")
-  )
+  if (isRefTerms(atr["terms"]) && !supplied.has("referenced terms document"))
     return { status: "not-attempted", depth: "referenced-terms-not-retained" };
   return { status: "proved" };
 }
@@ -502,10 +499,8 @@ function stated(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/** Parse the ATR bytes as an LCP envelope, or `undefined` when they are not one (prose, PDF, foreign JSON). */
-function parseEnvelope(
-  atrBytes: Uint8Array,
-): Record<string, unknown> | undefined {
+/** Parse the ATR bytes as a kernel-assembled ATR, or `undefined` when they are not one (prose, PDF, foreign JSON). */
+function parseAtr(atrBytes: Uint8Array): Record<string, unknown> | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(new TextDecoder().decode(atrBytes));
@@ -514,8 +509,8 @@ function parseEnvelope(
   }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
     return undefined;
-  const envelope = parsed as Record<string, unknown>;
-  // `lcp` is engine-stamped by kernel.assemble on every record — its absence means these bytes are not an
-  // LCP envelope, whatever else they may be.
-  return typeof envelope["lcp"] === "string" ? envelope : undefined;
+  const atr = parsed as Record<string, unknown>;
+  // `lcp` is engine-stamped by kernel.assemble on every record — its absence means these bytes are not a
+  // kernel-assembled ATR, whatever else they may be.
+  return typeof atr["lcp"] === "string" ? atr : undefined;
 }

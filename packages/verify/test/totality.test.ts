@@ -416,8 +416,8 @@ describe("steps are total over an explicit null, not only over undefined", () =>
     });
   });
 
-  it("a JSON `null` document is not an LCP envelope", () => {
-    // `typeof null === "object"` again — parseEnvelope's own null guard, distinct from its array guard.
+  it("a JSON `null` document is not a kernel-assembled ATR", () => {
+    // `typeof null === "object"` again — parseAtr's own null guard, distinct from its array guard.
     const bytes = new TextEncoder().encode("null");
     expect(recourseStep(bytes, undefined)).toEqual({
       status: "not-attempted",

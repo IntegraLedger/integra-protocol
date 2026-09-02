@@ -84,7 +84,7 @@ Five more are appended when a `composition` slot is supplied — `offer-bound`, 
 `discovery-integrity`, `proportionality-declared`, `frc-non-gating` — and one more when a `placement` slot
 is supplied: `reference-placement`.
 
-`recourse-elections` reads its elections from the hashed record itself, parsed as the envelope, never from
+`recourse-elections` reads its elections from the hashed record itself, parsed as the ATR, never from
 a caller-supplied side channel. What it proves is therefore what was welded.
 
 ## The class ladder

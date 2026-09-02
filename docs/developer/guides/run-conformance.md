@@ -30,7 +30,7 @@ Every run prints the identity of the corpus it certified against, so you never h
 separately:
 
 ```text
-corpus: 44/44 areas, 848/848 cases, root bd2874c007ab6fc2… (authentic)
+corpus: 44/44 areas, 848/848 cases, root 3591cb4896d43865… (authentic)
 ```
 
 **Record that root digest beside any conformance claim you make** — it is what makes "we conform" a

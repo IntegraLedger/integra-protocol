@@ -2,7 +2,7 @@ import { type AtrHash, hashAtr } from "./atrHash.js";
 import { KernelError } from "./errors.js";
 import { isRef, type Ref } from "./ref.js";
 
-const LCP_VERSION = "0.3"; // engine-stamped envelope format version
+const LCP_VERSION = "0.3"; // engine-stamped ATR format version
 
 /** Any value expressible in JSON. The recursive definition is deliberate: a slot's `value` is
  *  serialised into the ATR file byte-for-byte, so a type permitting `undefined` or a `Date` would permit
@@ -33,8 +33,8 @@ export async function assemble(
   // become a normal own key — preserved like any unknown slot and seen by the duplicate/emit paths —
   // not silently mutate the prototype and vanish from JSON.stringify (that silent data loss is the
   // exact failure mode this engine's fail-fast slot guards exist to prevent). Open-extensibility holds.
-  const envelope: Record<string, Json> = Object.create(null);
-  envelope["lcp"] = LCP_VERSION;
+  const atr: Record<string, Json> = Object.create(null);
+  atr["lcp"] = LCP_VERSION;
   for (const s of slots) {
     if (s.slot === "lcp")
       throw new KernelError(
@@ -48,7 +48,7 @@ export async function assemble(
         "assemble/numeric-slot",
         `integer-like slot names are rejected: ${s.slot}`,
       );
-    if (Object.hasOwn(envelope, s.slot))
+    if (Object.hasOwn(atr, s.slot))
       throw new KernelError(
         "assemble/duplicate-slot",
         `duplicate slot: ${s.slot}`,
@@ -65,17 +65,17 @@ export async function assemble(
         "assemble/bad-ref",
         `invalid reference at ${s.slot}: ${s.ref}`,
       );
-    envelope[s.slot] = hasValue ? (s.value as Json) : (s.ref as string);
+    atr[s.slot] = hasValue ? (s.value as Json) : (s.ref as string);
   }
   // Required set = lcp (stamped) + terms + id; terms/id must be present and non-empty. Fail fast.
   const nonEmpty = (v: Json | undefined): boolean =>
     typeof v === "string" && v.length > 0;
-  if (!nonEmpty(envelope["id"]))
+  if (!nonEmpty(atr["id"]))
     throw new KernelError(
       "assemble/missing-id",
       "id is required on every record, non-empty",
     );
-  if (!nonEmpty(envelope["terms"]))
+  if (!nonEmpty(atr["terms"]))
     throw new KernelError(
       "assemble/missing-terms",
       "terms is required, non-empty",
@@ -90,7 +90,7 @@ export async function assemble(
         : v !== null && typeof v === "object"
           ? Object.values(v).every(noRawNumber)
           : true;
-  if (envelope["caps"] !== undefined && !noRawNumber(envelope["caps"]))
+  if (atr["caps"] !== undefined && !noRawNumber(atr["caps"]))
     throw new KernelError(
       "assemble/caps-raw-number",
       "caps values: monetary amounts are decimal-integer strings of base units — raw JSON numbers are rejected",
@@ -126,7 +126,7 @@ export async function assemble(
     }
     return null;
   };
-  for (const [slot, value] of Object.entries(envelope)) {
+  for (const [slot, value] of Object.entries(atr)) {
     const hit = unrepresentable(value, slot);
     if (hit !== null)
       throw new KernelError(
@@ -135,7 +135,7 @@ export async function assemble(
       );
   }
 
-  const atrBytes = new TextEncoder().encode(JSON.stringify(envelope));
+  const atrBytes = new TextEncoder().encode(JSON.stringify(atr));
   const atrHash = await hashAtr(atrBytes);
   return { atrBytes, atrHash };
 }
