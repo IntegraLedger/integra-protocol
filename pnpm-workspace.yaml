@@ -57,9 +57,14 @@ overrides:
   axios: ">=1.18.1"
   # Missing buffer bounds check in v3/v5/v6 when a buf is passed; @solana/web3.js pins ^8.
   uuid: ">=11.1.1"
-  # qs.stringify DoS on null entries in comma-format arrays. Dev-only, reached via
-  # @stryker-mutator/core > typed-rest-client.
-  qs: ">=6.15.2"
+  # qs <6.16.0 — TWO advisories, one entry. GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g (both moderate,
+  # published 2026-09-02): denial of service through an attacker-controlled `isBuffer`, fixed in 6.16.0.
+  # They supersede the advisory that first put this entry here (qs.stringify DoS on null entries in
+  # comma-format arrays, fixed in 6.15.2). Dev-only and NOT a consumer path — the sole route is
+  # @stryker-mutator/core > typed-rest-client, so nothing published reaches it. 6.16.0 was published
+  # 2026-08-29 and is past `minimumReleaseAge`'s 24h quarantine. Caught by the audit stage of
+  # `pnpm verify` against an unchanged tree.
+  qs: ">=6.16.0"
   # GHSA-rgw5-rvv9-x895 (high): unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation.
   # Dev-only and NOT a consumer path — the sole route is @stryker-mutator/core > minimatch, so nothing
   # published reaches it. Caught on 2026-08-03 by the audit stage of `pnpm verify`, mid-release; the
@@ -82,8 +87,13 @@ overrides:
   # 6.x, which is ESM-only with a changed API — that would satisfy the auditor by breaking the dependency.
   # 3.3.18 is the newest 3.x and is now well past `minimumReleaseAge`'s 24h quarantine.
   nanoid: ">=3.3.18 <4"
-  # GHSA-7p8r-x3mc-p8w7 (high, published 2026-08-03): host confusion via a backslash authority introducer.
-  # Dev-only and NOT a consumer path — the sole route is @stryker-mutator/core > ajv, so nothing published
-  # reaches it. Caught by the audit stage of `pnpm verify` mid-session, against an unchanged tree.
-  fast-uri: ">=3.1.5"
+  # fast-uri <4.1.3 — FOUR advisories, one entry. GHSA-5jgf-p345-68v8, GHSA-jqff-g426-hqxp,
+  # GHSA-f65p-4m7j-42xc and GHSA-fph4-wmhf-6fwf (all high, published 2026-09-02), fixed in 4.1.3. They
+  # supersede the advisory that first put this entry here — GHSA-7p8r-x3mc-p8w7 (high, published
+  # 2026-08-03): host confusion via a backslash authority introducer, fixed in 3.1.5. Dev-only and NOT a
+  # consumer path — the sole route is @stryker-mutator/core > ajv, so nothing published reaches it.
+  # 4.1.3 was published 2026-08-23 and is past `minimumReleaseAge`'s 24h quarantine; 4.1.4 was published
+  # the day these advisories were and is still inside it. Both caught by the audit stage of `pnpm verify`
+  # against an unchanged tree.
+  fast-uri: ">=4.1.3"
 
