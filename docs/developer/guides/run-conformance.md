@@ -30,7 +30,7 @@ Every run prints the identity of the corpus it certified against, so you never h
 separately:
 
 ```text
-corpus: 44/44 areas, 848/848 cases, root e338f607f8a6be92… (authentic)
+corpus: 44/44 areas, 848/848 cases, root 2d129ec92d91fae3… (authentic)
 ```
 
 **Record that root digest beside any conformance claim you make** — it is what makes "we conform" a
@@ -108,7 +108,7 @@ JSON Schema, inline. Three real ones, as they arrive on stdin:
 ```text
 {"class":"byteInput","input":{"encoding":"utf8","data":"abc"}}
 {"class":"assemble","input":[{"slot":"terms","value":"# Terms\nService provided as-is."},{"slot":"id","value":"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c"}]}
-{"class":"schema","input":{"lcp":"0.3","terms":"# Terms","id":"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c"},"schema":{"$schema":"https://json-schema.org/draft/2020-12/schema", …}}
+{"class":"schema","input":{"atr":"0.3","terms":"# Terms","id":"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c"},"schema":{"$schema":"https://json-schema.org/draft/2020-12/schema", …}}
 ```
 
 The schema travels *with* the request rather than by path, which is what lets a subject stay

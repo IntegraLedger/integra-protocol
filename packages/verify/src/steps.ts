@@ -510,7 +510,7 @@ function parseAtr(atrBytes: Uint8Array): Record<string, unknown> | undefined {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
     return undefined;
   const atr = parsed as Record<string, unknown>;
-  // `lcp` is engine-stamped by kernel.assemble on every record — its absence means these bytes are not a
+  // `atr` is engine-stamped by kernel.assemble on every record — its absence means these bytes are not a
   // kernel-assembled ATR, whatever else they may be.
-  return typeof atr["lcp"] === "string" ? atr : undefined;
+  return typeof atr["atr"] === "string" ? atr : undefined;
 }

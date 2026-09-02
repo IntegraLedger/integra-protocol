@@ -63,7 +63,7 @@ const receiptLogs = [
     topics: [
       "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
       "0x0000000000000000000000002222222222222222222222222222222222222222",
-      "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356",
+      "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99",
     ],
     data: "0x",
     transactionHash: settlement.txHash,
@@ -99,7 +99,7 @@ console.log(recovered.value);
 ```
 
 ```text
-0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
+0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
 ```
 
 A settlement carrying several `AuthorizationUsed` events is disambiguated by putting a `logIndex` on the
@@ -123,7 +123,7 @@ import {
 } from "@integraledger/lcp-binding-solana";
 
 const atrHash =
-  "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356";
+  "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99";
 
 // One confirmed transaction as `getParsedTransaction` returned it. `err: null` is the ONLY success.
 const reader: SolanaReader = {
@@ -158,7 +158,7 @@ console.log(JSON.stringify(await adapter.recover(ref, failedTx)));
 ```
 
 ```text
-0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
+0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
 {"refused":true,"haltClass":"verification-failure","code":"solana/no-atr-memo","detail":"no successful transaction carrying an atrHash memo for 5Nq8bF3sYy1Wp7vJc2kR4dQ9tH6aG8mZxL3nB5uC1eD7fS2rT4wV6yX8zA9bC1dE"}
 ```
 
@@ -177,7 +177,7 @@ import { assemble, atrHashEquals, hashAtr } from "@integraledger/lcp-kernel";
 
 // What Step 1 returned — off the EIP-3009 nonce on EVM, out of the memo on Solana.
 const recovered =
-  "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356";
+  "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99";
 
 // The ATR bytes you were handed. In a real check you READ these from wherever the record was retained
 // and pass them straight to `hashAtr`; the assembly here only makes the fence self-contained.
@@ -213,7 +213,7 @@ console.log(atrHashEquals(recovered, other.atrHash));
 ```
 
 ```text
-0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
+0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
 true
 false
 ```
@@ -250,7 +250,7 @@ const report = await verify({
   coverage: { ports: ["evm"], bindings: ["evm:x402"] },
   atrBytes,
   settledAtrHash:
-    "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356",
+    "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99",
   settlements: [
     {
       txHash:

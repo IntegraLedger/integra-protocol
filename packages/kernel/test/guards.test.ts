@@ -32,21 +32,21 @@ describe("assemble — the slot guards each refuse for their OWN reason", () => 
   it("mints a minimal record", async () => {
     const { atrBytes, atrHash } = await assemble(MINIMAL);
     const env = JSON.parse(new TextDecoder().decode(atrBytes));
-    expect(env.lcp).toBeDefined();
-    expect(Object.keys(env)[0]).toBe("lcp"); // engine-stamped, always first
+    expect(env.atr).toBeDefined();
+    expect(Object.keys(env)[0]).toBe("atr"); // engine-stamped, always first
     expect(isAtrHash(atrHash)).toBe(true);
   });
 
-  it("refuses a slot claiming the ENGINE-STAMPED lcp slot", async () => {
-    // `lcp` is stamped by the engine, never supplied. Letting a caller's slot set it would let a caller
+  it("refuses a slot claiming the ENGINE-STAMPED atr slot", async () => {
+    // `atr` is stamped by the engine, never supplied. Letting a caller's slot set it would let a caller
     // forge the version the record claims conformance to.
     await refuses(
-      [...MINIMAL, { slot: "lcp", value: "9.9" }],
+      [...MINIMAL, { slot: "atr", value: "9.9" }],
       "assemble/reserved-slot",
     );
   });
 
-  it("refuses integer-like slot names — they would jump ahead of lcp in emitted order", async () => {
+  it("refuses integer-like slot names — they would jump ahead of atr in emitted order", async () => {
     for (const slot of ["0", "1", "42", "4294967294"]) {
       await refuses(
         [...MINIMAL, { slot, value: "x" }],

@@ -320,7 +320,7 @@ import {
 } from "@integraledger/lcp-binding-solana";
 
 const atrHash =
-  "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356";
+  "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99";
 
 // THE CODEC — no SDK, no network, and therefore pinnable by a vector.
 const memo = encodeSplMemo(atrHash, "hex");
@@ -358,11 +358,11 @@ console.log(JSON.stringify(SOLANA_MANIFEST.weldGrades));
 ```
 
 ```text
-0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
-0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
+0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
+0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
 null
 encodeSplMemo: atrHash must be a 0x-prefixed 32-byte value, got "0xdead"
-0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356
+0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
 null
 {"spl-memo":"signature"}
 ```

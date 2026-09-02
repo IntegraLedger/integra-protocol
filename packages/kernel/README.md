@@ -76,14 +76,14 @@ Every guard has its own reason, because "the record is malformed" is not an acti
 
 | Refusal | Cause |
 |---|---|
-| `assemble/reserved-slot` | `lcp` is engine-stamped, not a caller's slot |
+| `assemble/reserved-slot` | `atr` is engine-stamped, not a caller's slot |
 | `assemble/numeric-slot` | Integer-like slot names reorder under JSON serialization |
 | `assemble/duplicate-slot` | The same slot supplied twice |
 | `assemble/slot-shape` | Not exactly one of `value` \| `ref` |
 | `assemble/bad-ref` | A `ref` that is not a well-formed `lcp:sha256:` reference |
 
 The numeric-slot rule is subtler than it looks: JavaScript serializes integer-like keys first regardless
-of insertion order, so a slot named `"1"` would jump ahead of the engine-stamped `lcp` field and change
+of insertion order, so a slot named `"1"` would jump ahead of the engine-stamped `atr` field and change
 the bytes. It is refused rather than silently reordered.
 
 The assembled ATR is prototype-free, so a slot named `__proto__` becomes an ordinary key

@@ -22,9 +22,8 @@
  * records the revision this tree is measured against; the two §2 additions are implemented in `discovery`,
  * `binding-core` and `atrHashEquals` rather than here.
  *
- * NOT the envelope format version. `assemble` stamps a separate, module-private `lcp: "0.3"` into every ATR
- * — that is the wire format of the document, versioned on its own clock, and conflating the two would put a
- * spec version in a field that has never carried one. If a future change needs both, they stay distinct.
+ * The ATR's own format version is stamped separately by assemble() as `atr` — the wire format of the
+ * document, versioned on its own clock. The two stay distinct.
  *
  * It lives in `kernel` because kernel is zero-dependency and every package that stamps the version already
  * depends on it. A constant this widely consumed cannot sit in a leaf package without inverting the tiers.

@@ -1,12 +1,12 @@
 {
-  "$comment": "RCS-1/2/4 as a verification step (the recourse family, TRM-9). RCS-1: every consequential transaction MUST carry a forum designation, recorded INSIDE the terms record — so the elections are read from the hashed ATR bytes themselves, never from a caller-supplied side channel; what is proved is what was welded. RCS-2: governing law MUST be elected and recorded. RCS-4: the transaction MUST produce a self-contained evidence package — the required roles are the specification's own enumeration (terms artifact; acceptance signature and its authority chain; the spend-authorization artifact or a verifiable reference; identity attestations and their assurance; the settlement reference and weld; timestamps), minus its explicitly conditional clause (fulfillment/order-state, 'where performance is disputed'). This step NEVER returns failed: an absent election is absence of proof, not a contradiction in the record, and must not impeach supportedClass to TC-0. Authored from the specification before the implementation existed.",
+  "$comment": "RCS-1/2/4 as a verification step (the recourse family, TRM-9). RCS-1: every consequential transaction MUST carry a forum designation, recorded INSIDE the terms record — so the elections are read from the hashed ATR bytes themselves, never from a caller-supplied side channel; what is proved is what was welded. RCS-2: governing law MUST be elected and recorded. RCS-4: the transaction MUST produce a self-contained evidence package — the required roles are the specification's own enumeration (terms artifact; acceptance signature and its authority chain; the spend-authorization artifact or a verifiable reference; identity attestations and their assurance; the settlement reference and weld; timestamps), minus its explicitly conditional clause (fulfillment/order-state, 'where performance is disputed'). This step NEVER returns failed: an absent election is absence of proof, not a contradiction in the record, and must not impeach supportedClass to TC-0. Authored from the specification before the implementation existed. 2026-09-02: every record here now opens with \"atr\":\"0.3\" rather than \"lcp\":\"0.3\" — the ATR's format-version member was renamed so it no longer collides with the LCP specification's own version line. No case in this area pins a hash, so no digest moved.",
   "cases": [
     {
       "name": "elections recorded and the evidence package complete — RCS-1/2/4 proved",
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -28,7 +28,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -50,7 +50,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -75,7 +75,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -187,7 +187,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\"}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\"}"
         },
         "evidenceRoles": [
           "atr",
@@ -210,7 +210,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -233,7 +233,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -256,7 +256,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":42}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":42}}"
         },
         "evidenceRoles": [
           "atr",
@@ -279,7 +279,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -302,7 +302,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"governingLaw\":\"   \"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"governingLaw\":\"   \"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -325,7 +325,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         }
       },
       "expected": {
@@ -338,7 +338,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": []
       },
@@ -352,7 +352,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "signed acceptance",
@@ -374,7 +374,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -396,7 +396,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -418,7 +418,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -440,7 +440,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -462,7 +462,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -484,7 +484,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -506,7 +506,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -528,7 +528,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"lcp:sha256:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"lcp:sha256:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -551,7 +551,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"lcp:sha256:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"lcp:sha256:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",
@@ -574,7 +574,7 @@
       "input": {
         "atr": {
           "encoding": "utf8",
-          "data": "{\"lcp\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+          "data": "{\"atr\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
         },
         "evidenceRoles": [
           "atr",

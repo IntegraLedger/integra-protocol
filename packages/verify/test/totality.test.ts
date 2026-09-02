@@ -112,7 +112,7 @@ describe("steps are total over an explicit null, not only over undefined", () =>
   it("recourseStep reads out on a null recourse block", () => {
     // `typeof null === "object"` slips past a `typeof !== "object"` guard, then `.forum` throws.
     const bytes = new TextEncoder().encode(
-      JSON.stringify({ lcp: "0.3", recourse: null }),
+      JSON.stringify({ atr: "0.3", recourse: null }),
     );
     expect(recourseStep(bytes, undefined)).toEqual({
       status: "not-attempted",
@@ -408,7 +408,7 @@ describe("steps are total over an explicit null, not only over undefined", () =>
 
   it("recourseStep refuses a PRIMITIVE recourse block", () => {
     const bytes = new TextEncoder().encode(
-      JSON.stringify({ lcp: "0.3", recourse: "arbitration" }),
+      JSON.stringify({ atr: "0.3", recourse: "arbitration" }),
     );
     expect(recourseStep(bytes, undefined)).toEqual({
       status: "not-attempted",

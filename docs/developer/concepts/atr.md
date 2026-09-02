@@ -26,9 +26,9 @@ const { atrBytes, atrHash } = await assemble([
 ```
 
 The difference matters because the engine controls the emitted document. It stamps the ATR format
-version (`lcp`) first, refuses `lcp` as a caller's slot, and refuses integer-like slot names — JavaScript
+version (`atr`) first, refuses `atr` as a caller's slot, and refuses integer-like slot names — JavaScript
 serializes integer-like keys ahead of everything else regardless of insertion order, so a slot named `"1"`
-would jump in front of `lcp` and change the bytes. Slot names it does not recognize are preserved
+would jump in front of `atr` and change the bytes. Slot names it does not recognize are preserved
 verbatim, so the format is open at the edges while the parts that fix the byte layout are not.
 
 Two slots are required and must be non-empty strings: `terms` and `id`. Beyond those the record carries
@@ -154,18 +154,21 @@ console.log((await hashAtr(atrBytes)) === atrHash); // true — recomputable fro
 <!-- SUPERSEDED PIN (2026-08-07): the record hash below was
      0xaacf7dcf7eba02d99d14b12d7deab4e0ad255f6b796305c04f9afdaef9ac9973 over a forum of "AAA-ICDR";
      the example forum was generalized (illustrative examples name no provider) and the new hash
-     re-derived independently (python hashlib over the printed one-line bytes). -->
+     re-derived independently (python hashlib over the printed one-line bytes).
+     SUPERSEDED PIN (2026-09-02): 0x3c7ac77760fe1c8d603dbd0554156390b4625df2de902f068da4f135f453f93b over a record whose first member was
+     "lcp":"0.3"; the format-version member was renamed to `atr` and the new hash re-derived the same
+     way. -->
 ```text
 true
-{"lcp":"0.3","terms":"lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30","id":"0xcfd11a6df93dae9b9ff76196eadf0939","parties":{"seller":"did:web:seller.example","buyer":"did:web:buyer.example"},"caps":{"USDC":"25000000"},"recourse":{"governingLaw":"US-NY","forum":"Arbitration Forum"}}
+{"atr":"0.3","terms":"lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30","id":"0xcfd11a6df93dae9b9ff76196eadf0939","parties":{"seller":"did:web:seller.example","buyer":"did:web:buyer.example"},"caps":{"USDC":"25000000"},"recourse":{"governingLaw":"US-NY","forum":"Arbitration Forum"}}
 0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30
-0x3c7ac77760fe1c8d603dbd0554156390b4625df2de902f068da4f135f453f93b
+0x91daf472e22c818546b2ad77ce43711610b4c60860ac80e3f1a8270835d8d424
 false
 true
 true
 ```
 
-The document is emitted in one line with no whitespace, `lcp` first, then the slots in the order they
+The document is emitted in one line with no whitespace, `atr` first, then the slots in the order they
 were supplied. That string is the record. Its SHA-256 is the fourth line.
 
 Note what the third and fourth lines are not: the same value. The `terms` reference names the terms
