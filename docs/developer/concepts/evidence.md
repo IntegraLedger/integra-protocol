@@ -107,7 +107,7 @@ import {
   verifyBundle,
 } from "@integraledger/lcp-evidence";
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -119,11 +119,11 @@ const { atrFile, atrHash } = await assemble([
 const cid = cidForAtrHash(atrHash);
 console.log(cid);
 console.log(atrHashFromCid(cid) === atrHash);
-console.log((await cidForBytes(atrFile)) === cid); // hashing the bytes lands on the same CID
+console.log((await cidForBytes(atrBytes)) === cid); // hashing the bytes lands on the same CID
 
 const acceptance = new TextEncoder().encode(`{"atrHash":"${atrHash}"}`);
 const bundle = await buildBundle([
-  { role: "atr", bytes: atrFile },
+  { role: "atr", bytes: atrBytes },
   { role: "signed acceptance", bytes: acceptance },
 ]);
 

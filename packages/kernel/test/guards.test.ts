@@ -30,8 +30,8 @@ async function refuses(slots: Slot[], code: string): Promise<void> {
 
 describe("assemble — the slot guards each refuse for their OWN reason", () => {
   it("mints a minimal record", async () => {
-    const { atrFile, atrHash } = await assemble(MINIMAL);
-    const env = JSON.parse(new TextDecoder().decode(atrFile));
+    const { atrBytes, atrHash } = await assemble(MINIMAL);
+    const env = JSON.parse(new TextDecoder().decode(atrBytes));
     expect(env.lcp).toBeDefined();
     expect(Object.keys(env)[0]).toBe("lcp"); // engine-stamped, always first
     expect(isAtrHash(atrHash)).toBe(true);
@@ -59,8 +59,8 @@ describe("assemble — the slot guards each refuse for their OWN reason", () => 
     // The regex is anchored and rejects leading zeros/signs/decimals, so these are ordinary string keys
     // and must survive. A looser guard would refuse legitimate slots.
     for (const slot of ["01", "1.0", "-1", "1e3", "v1", "1a"]) {
-      const { atrFile } = await assemble([...MINIMAL, { slot, value: "x" }]);
-      expect(JSON.parse(new TextDecoder().decode(atrFile))[slot]).toBe("x");
+      const { atrBytes } = await assemble([...MINIMAL, { slot, value: "x" }]);
+      expect(JSON.parse(new TextDecoder().decode(atrBytes))[slot]).toBe("x");
     }
   });
 
@@ -113,11 +113,11 @@ describe("assemble — the slot guards each refuse for their OWN reason", () => 
   });
 
   it("keeps __proto__ as an ORDINARY own key rather than mutating the prototype", async () => {
-    const { atrFile } = await assemble([
+    const { atrBytes } = await assemble([
       ...MINIMAL,
       { slot: "__proto__", value: "x" },
     ]);
-    const text = new TextDecoder().decode(atrFile);
+    const text = new TextDecoder().decode(atrBytes);
     expect(text).toContain("__proto__");
     expect(({} as Record<string, unknown>)["polluted"]).toBeUndefined();
   });
@@ -168,7 +168,7 @@ describe("assemble — caps carries decimal strings, never raw JSON numbers", ()
   });
 
   it("ACCEPTS decimal strings, null, booleans and empty containers", async () => {
-    const { atrFile } = await assemble([
+    const { atrBytes } = await assemble([
       ...MINIMAL,
       {
         slot: "caps",
@@ -183,15 +183,15 @@ describe("assemble — caps carries decimal strings, never raw JSON numbers", ()
         },
       },
     ]);
-    expect(JSON.parse(new TextDecoder().decode(atrFile)).caps.USD).toBe("100");
+    expect(JSON.parse(new TextDecoder().decode(atrBytes)).caps.USD).toBe("100");
   });
 
   it("leaves a REPRESENTABLE raw number alone outside caps — the decimal-string rule is caps-specific", async () => {
-    const { atrFile } = await assemble([
+    const { atrBytes } = await assemble([
       ...MINIMAL,
       { slot: "other", value: { n: 1 } },
     ]);
-    expect(JSON.parse(new TextDecoder().decode(atrFile)).other.n).toBe(1);
+    expect(JSON.parse(new TextDecoder().decode(atrBytes)).other.n).toBe(1);
   });
 });
 
@@ -226,8 +226,11 @@ describe("assemble — a number it cannot record faithfully is refused, in ANY s
       [...MINIMAL, { slot: "s", value: MAX + 1 }],
       "assemble/unrepresentable-number",
     );
-    const { atrFile } = await assemble([...MINIMAL, { slot: "s", value: MAX }]);
-    expect(JSON.parse(new TextDecoder().decode(atrFile)).s).toBe(MAX);
+    const { atrBytes } = await assemble([
+      ...MINIMAL,
+      { slot: "s", value: MAX },
+    ]);
+    expect(JSON.parse(new TextDecoder().decode(atrBytes)).s).toBe(MAX);
   });
 
   it("finds one NESTED in an object, an array, and a mixed table of honest values", async () => {
@@ -249,14 +252,14 @@ describe("assemble — a number it cannot record faithfully is refused, in ANY s
   });
 
   it("ACCEPTS ordinary numbers — this is not the caps rule extended", async () => {
-    const { atrFile } = await assemble([
+    const { atrBytes } = await assemble([
       ...MINIMAL,
       {
         slot: "s",
         value: { version: 2, ratio: 1.5, tiny: 0.1, neg: -7, z: 0 },
       },
     ]);
-    const s = JSON.parse(new TextDecoder().decode(atrFile)).s;
+    const s = JSON.parse(new TextDecoder().decode(atrBytes)).s;
     expect(s).toEqual({ version: 2, ratio: 1.5, tiny: 0.1, neg: -7, z: 0 });
   });
 

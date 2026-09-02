@@ -19,7 +19,7 @@ You do not hand `assemble` an object. You hand it an ordered list of **slots**, 
 value or a content reference, and it compiles them into the envelope:
 
 ```ts no-check
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   { slot: "terms", ref: "lcp:sha256:0x…" },
   { slot: "id", value: "0x…" },
 ]);
@@ -103,7 +103,7 @@ ATR hash. Change the `id` and only the ATR hash changes. They are related by con
 The property everything downstream rides on is this one:
 
 ```text
-hashAtr(atrFile) === atrHash
+hashAtr(atrBytes) === atrHash
 ```
 
 Anyone holding the ATR bytes can recompute the fingerprint, with no access to the producer, no service to
@@ -126,7 +126,7 @@ const termsRef =
   "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30";
 console.log(isRef(termsRef)); // true — the exact form assemble accepts
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   { slot: "terms", ref: termsRef }, // ref: the terms document lives outside the record
   { slot: "id", value: "0xcfd11a6df93dae9b9ff76196eadf0939" }, // inline
   {
@@ -140,7 +140,7 @@ const { atrFile, atrHash } = await assemble([
   }, // inline
 ]);
 
-console.log(new TextDecoder().decode(atrFile));
+console.log(new TextDecoder().decode(atrBytes));
 
 // Two hashes, two different things.
 console.log(parseRef(termsRef).hash); // the INPUT's hash — what `terms` points at
@@ -148,7 +148,7 @@ console.log(atrHash); // the RECORD's hash — what a settlement carries
 console.log(parseRef(termsRef).hash === atrHash); // false
 
 console.log(isAtrHash(atrHash)); // true
-console.log((await hashAtr(atrFile)) === atrHash); // true — recomputable from the bytes alone
+console.log((await hashAtr(atrBytes)) === atrHash); // true — recomputable from the bytes alone
 ```
 
 <!-- SUPERSEDED PIN (2026-08-07): the record hash below was

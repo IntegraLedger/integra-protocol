@@ -1,5 +1,5 @@
 export {
-  type AtrFile,
+  type AtrBytes,
   assemble,
   type Json,
   type Slot,

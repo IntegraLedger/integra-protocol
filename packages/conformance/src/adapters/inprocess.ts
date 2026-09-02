@@ -138,9 +138,9 @@ export class InProcessSubject implements Subject {
           return { output: validator.validate(req.input).valid };
         }
         case "assemble": {
-          const { atrFile, atrHash } = await assemble(req.input as Slot[]);
+          const { atrBytes, atrHash } = await assemble(req.input as Slot[]);
           return {
-            output: { file: new TextDecoder().decode(atrFile), hash: atrHash },
+            output: { file: new TextDecoder().decode(atrBytes), hash: atrHash },
           };
         }
         case "carrier":

@@ -181,7 +181,7 @@ const recovered =
 
 // The ATR bytes you were handed. In a real check you READ these from wherever the record was retained
 // and pass them straight to `hashAtr`; the assembly here only makes the fence self-contained.
-const { atrFile } = await assemble([
+const { atrBytes } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -193,7 +193,7 @@ const { atrFile } = await assemble([
   },
 ]);
 
-const recomputed = await hashAtr(atrFile);
+const recomputed = await hashAtr(atrBytes);
 console.log(recomputed);
 console.log(atrHashEquals(recovered, recomputed));
 
@@ -233,7 +233,7 @@ both sides would make `atr-fingerprint` compare a number to itself.
 import { assemble } from "@integraledger/lcp-kernel";
 import { verify } from "@integraledger/lcp-verify";
 
-const { atrFile } = await assemble([
+const { atrBytes } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -248,7 +248,7 @@ const { atrFile } = await assemble([
 const report = await verify({
   asOf: "2026-08-03T00:00:00Z",
   coverage: { ports: ["evm"], bindings: ["evm:x402"] },
-  atrBytes: atrFile,
+  atrBytes,
   settledAtrHash:
     "0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356",
   settlements: [

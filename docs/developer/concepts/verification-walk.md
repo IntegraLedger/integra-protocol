@@ -241,7 +241,7 @@ record — so `atr-fingerprint` fails and the claim is impeached.
 import { assemble } from "@integraledger/lcp-kernel";
 import { anyStepFailed, verify } from "@integraledger/lcp-verify";
 
-const { atrFile } = await assemble([
+const { atrBytes } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -253,7 +253,7 @@ const { atrFile } = await assemble([
 const report = await verify({
   asOf: "2026-08-03T00:00:00Z",
   coverage: { ports: [], bindings: ["evm-x402"] },
-  atrBytes: atrFile,
+  atrBytes,
   // Recovered from the settlement's carrier field — and it names a DIFFERENT record.
   settledAtrHash:
     "0x1111111111111111111111111111111111111111111111111111111111111111",

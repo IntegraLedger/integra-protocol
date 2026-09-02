@@ -17,7 +17,7 @@ Verification of a weld is three mechanical operations, in this order:
 
 1. **Recover.** Read the carrier field out of the settled artifact. This is `adapter.recover(ref, ports)`,
    and what it returns is the hash the *chain* holds.
-2. **Recompute.** Hash the ATR bytes you were handed. This is `hashAtr(atrFile)`.
+2. **Recompute.** Hash the ATR bytes you were handed. This is `hashAtr(atrBytes)`.
 3. **Compare.** Two 32-byte values, compared case-insensitively.
 
 There is no third source of truth consulted, no oracle asked, no signature of ours to trust. That is why
@@ -35,7 +35,7 @@ import {
 } from "@integraledger/lcp-binding-core";
 import { assemble, atrHashEquals, hashAtr } from "@integraledger/lcp-kernel";
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -52,7 +52,7 @@ const recovered = decodeLegalContextString(carried);
 console.log(recovered?.type, recovered?.value);
 
 // The correspondence: recompute over the ATR bytes you were handed, then compare.
-const recomputed = await hashAtr(atrFile);
+const recomputed = await hashAtr(atrBytes);
 console.log(atrHashEquals(recovered?.value ?? "", recomputed)); // true
 
 // A different record recomputes to a different hash, and the comparison simply fails.

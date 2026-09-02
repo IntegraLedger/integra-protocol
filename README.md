@@ -67,14 +67,14 @@ An ATR is one canonical JSON document. `assemble` compiles it and hashes its exa
 ```ts
 import { assemble, hashAtr } from "@integraledger/lcp-kernel";
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   { slot: "terms", ref: "lcp:sha256:0xaaaa…" }, // the terms document, by content hash
   { slot: "id", value: "0x3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f" },
   { slot: "parties", value: { seller: "did:web:seller.example", buyer: "did:web:buyer.example" } },
 ]);
 
 atrHash;                             // 0xdebb86b9…  the fingerprint the settlement will carry
-await hashAtr(atrFile) === atrHash;  // true — recomputable by anyone holding the bytes
+await hashAtr(atrBytes) === atrHash;  // true — recomputable by anyone holding the bytes
 ```
 
 `verify` walks a record and reports what it could establish:
@@ -82,13 +82,13 @@ await hashAtr(atrFile) === atrHash;  // true — recomputable by anyone holding 
 ```ts
 import { verify } from "@integraledger/lcp-verify";
 
-declare const atrFile: Uint8Array;      // the assembled ATR bytes, from the fence above
+declare const atrBytes: Uint8Array;      // the assembled ATR bytes, from the fence above
 declare const atrHash: `0x${string}`;   // its fingerprint
 
 const report = await verify({
   asOf: "2026-07-27T00:00:00Z",
   coverage: { ports: [], bindings: ["evm-x402"] },
-  atrBytes: atrFile,
+  atrBytes,
   settledAtrHash: atrHash,
   settlements: [{ txHash: "0x1111…" }],
 });

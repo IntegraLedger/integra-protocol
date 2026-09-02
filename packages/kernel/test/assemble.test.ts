@@ -25,8 +25,8 @@ describe("assemble — vectors", () => {
   it.each(ok)(
     "$name is byte-stable and self-hashing",
     async ({ input, expected }) => {
-      const { atrFile, atrHash } = await assemble(input);
-      expect(new TextDecoder().decode(atrFile)).toBe(expected.file);
+      const { atrBytes, atrHash } = await assemble(input);
+      expect(new TextDecoder().decode(atrBytes)).toBe(expected.file);
       expect(atrHash).toBe(expected.hash);
       expect(atrHash).toBe(
         await hashAtr(new TextEncoder().encode(expected.file)),
@@ -72,17 +72,17 @@ describe("assemble — properties", () => {
             { slot: "id", value: id },
             ...extra,
           ];
-          const { atrFile, atrHash } = await assemble(slots);
+          const { atrBytes, atrHash } = await assemble(slots);
           // (a) self-hashing
-          expect(await hashAtr(atrFile)).toBe(atrHash);
+          expect(await hashAtr(atrBytes)).toBe(atrHash);
           // (b) determinism
           const again = await assemble(slots);
-          expect(new TextDecoder().decode(again.atrFile)).toBe(
-            new TextDecoder().decode(atrFile),
+          expect(new TextDecoder().decode(again.atrBytes)).toBe(
+            new TextDecoder().decode(atrBytes),
           );
           // (c) unknown slots survive + (d) emitted key order is exactly lcp, terms, id, ...extras-in-order
           const parsed = JSON.parse(
-            new TextDecoder().decode(atrFile),
+            new TextDecoder().decode(atrBytes),
           ) as Record<string, unknown>;
           expect(Object.keys(parsed)).toEqual([
             "lcp",

@@ -22,14 +22,14 @@ and the rail port.
 ```ts
 import { assemble, hashAtr, isAtrHash } from "@integraledger/lcp-kernel";
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   { slot: "terms", ref: "lcp:sha256:0xaaaa…" },
   { slot: "id", value: "0x3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f" },
   { slot: "parties", value: { seller: "did:web:seller.example", buyer: "did:web:buyer.example" } },
 ]);
 
 isAtrHash(atrHash);                  // true
-await hashAtr(atrFile) === atrHash;  // true
+await hashAtr(atrBytes) === atrHash;  // true
 ```
 
 A slot carries **exactly one** of `value` (inline) or `ref` (an `lcp:sha256:` content reference).
@@ -51,7 +51,7 @@ fingerprinted — CRLF to LF, trailing newlines collapsed to one, NFC. It never 
 ## Store the bytes, not the object
 
 The corollary of the section above, and the one that costs people real evidence: **an ATR is a file, not a
-data structure.** Retain `atrFile` as opaque bytes. Reconstructing one later from the slot values will not
+data structure.** Retain `atrBytes` as opaque bytes. Reconstructing one later from the slot values will not
 reproduce it unless you also kept their order, and a record whose bytes you cannot reproduce is a hash you
 cannot open — which is the whole of its evidentiary value.
 

@@ -23,12 +23,12 @@ export type Slot = { slot: string; value?: Json; ref?: Ref };
 /** The assembled ATR as its exact bytes. This — not the object it came from — is what `atrHash` is taken
  *  over, and the reason the type is `Uint8Array` rather than a parsed shape: any re-serialisation is a
  *  chance to produce different bytes for the same document. */
-export type AtrFile = Uint8Array;
+export type AtrBytes = Uint8Array;
 
 /** Compile one canonical JSON document and hash its exact bytes. Pure: same slots in, same bytes out. */
 export async function assemble(
   slots: Slot[],
-): Promise<{ atrFile: AtrFile; atrHash: AtrHash }> {
+): Promise<{ atrBytes: AtrBytes; atrHash: AtrHash }> {
   // Prototype-free record: a slot named "__proto__" (or any Object.prototype accessor) must
   // become a normal own key — preserved like any unknown slot and seen by the duplicate/emit paths —
   // not silently mutate the prototype and vanish from JSON.stringify (that silent data loss is the
@@ -135,7 +135,7 @@ export async function assemble(
       );
   }
 
-  const atrFile = new TextEncoder().encode(JSON.stringify(envelope));
-  const atrHash = await hashAtr(atrFile);
-  return { atrFile, atrHash };
+  const atrBytes = new TextEncoder().encode(JSON.stringify(envelope));
+  const atrHash = await hashAtr(atrBytes);
+  return { atrBytes, atrHash };
 }

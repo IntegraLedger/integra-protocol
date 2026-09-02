@@ -61,7 +61,7 @@ a slot is a typed refusal rather than an override:
 ```ts
 import { assemble, hashAtr, isAtrHash } from "@integraledger/lcp-kernel";
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -73,10 +73,10 @@ const { atrFile, atrHash } = await assemble([
   },
 ]);
 
-console.log(new TextDecoder().decode(atrFile)); // the canonical document, as hashed
+console.log(new TextDecoder().decode(atrBytes)); // the canonical document, as hashed
 console.log(atrHash); // the fingerprint a settlement will carry
 console.log(isAtrHash(atrHash)); // true
-console.log((await hashAtr(atrFile)) === atrHash); // true — recomputable by anyone holding the bytes
+console.log((await hashAtr(atrBytes)) === atrHash); // true — recomputable by anyone holding the bytes
 ```
 
 ```text
@@ -100,7 +100,7 @@ deterministic. This fence repeats the assembly so it runs on its own:
 import { assemble } from "@integraledger/lcp-kernel";
 import { verify } from "@integraledger/lcp-verify";
 
-const { atrFile, atrHash } = await assemble([
+const { atrBytes, atrHash } = await assemble([
   {
     slot: "terms",
     ref: "lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30",
@@ -115,7 +115,7 @@ const { atrFile, atrHash } = await assemble([
 const report = await verify({
   asOf: "2026-08-03T00:00:00Z",
   coverage: { ports: [], bindings: ["evm-x402"] },
-  atrBytes: atrFile,
+  atrBytes,
   // In a real check this is the hash RECOVERED from the settlement's carrier field, not one you computed.
   settledAtrHash: atrHash,
   settlements: [
