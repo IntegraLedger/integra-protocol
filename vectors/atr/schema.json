@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vectors.integraledger.dev/envelope/schema.json",
+  "$id": "https://vectors.integraledger.dev/atr/schema.json",
   "title": "ATR v0.3",
   "$comment": "ATR required set = lcp + terms + id; terms + id present AND non-empty (fail-fast at assemble()); lcp = the literal \"0.3\" (envelope format version, distinct from the LCP spec version); id = a non-empty string (low-entropy values accepted-but-flagged at the weld boundary, never kernel-graded — no strict 128-bit pattern); slot placement: governing law + liability under recourse, declarations + caps top-level, all slot values open (unknown keys preserved).",
   "type": "object",

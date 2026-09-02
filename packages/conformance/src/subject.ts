@@ -20,7 +20,7 @@ export type SubjectResponse = { output?: unknown; error?: string };
  * vector files with `JSON.parse` and `CliSubject` re-serializes with `JSON.stringify`, so a
  * duplicate key is collapsed before any subject sees it. A subject that keeps both entries re-emits
  * a duplicate key into the hashed bytes and reads back the wrong one — an atrHash divergence the
- * corpus will report as green. (Ordering IS certified — see the envelope.assemble vectors.)
+ * corpus will report as green. (Ordering IS certified — see the atr.assemble vectors.)
  */
 export interface Subject {
   handle(req: SubjectRequest): Promise<SubjectResponse>;

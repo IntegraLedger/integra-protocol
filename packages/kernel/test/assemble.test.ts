@@ -12,7 +12,7 @@ type OkCase = {
 type BadCase = { name: string; input: Slot[]; error: string };
 const V = JSON.parse(
   readFileSync(
-    new URL("../../../vectors/envelope/assemble.json", import.meta.url),
+    new URL("../../../vectors/atr/assemble.json", import.meta.url),
     "utf8",
   ),
 ) as {

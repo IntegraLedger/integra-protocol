@@ -110,6 +110,8 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // range in any slot. Its sibling case moved rather than being added — the old pin carried `exp: 1e21`
 // and asserted that raw numbers outside `caps` are byte-stable, which is true and no longer reachable,
 // because above 2^53 the engine cannot know whether the double it holds is the literal the caller wrote.
+// 2026-09-02: area ids envelope.assemble/envelope.schema became atr.assemble/atr.schema. Size unchanged —
+// the corpus moved, nothing was added or removed.
 const CORPUS_SIZE = 848;
 
 describe("conformance runner", () => {

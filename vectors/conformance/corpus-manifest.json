@@ -14,15 +14,15 @@
       "phase": "P1"
     },
     {
-      "id": "envelope.schema",
-      "file": "envelope/documents.json",
+      "id": "atr.schema",
+      "file": "atr/documents.json",
       "class": "schema",
-      "schema": "envelope/schema.json",
+      "schema": "atr/schema.json",
       "phase": "P1"
     },
     {
-      "id": "envelope.assemble",
-      "file": "envelope/assemble.json",
+      "id": "atr.assemble",
+      "file": "atr/assemble.json",
       "class": "assemble",
       "phase": "P1"
     },
