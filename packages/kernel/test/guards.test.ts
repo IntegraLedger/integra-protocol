@@ -12,20 +12,20 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { assemble, type Component } from "../src/assemble.js";
+import { assemble, type Slot } from "../src/assemble.js";
 import { atrHashEquals, canonicalAtrHash, isAtrHash } from "../src/atrHash.js";
 import { bytesToHex, hexToBytes } from "../src/hex.js";
 import { isRef, parseRef } from "../src/ref.js";
 import { normalizeTerms } from "../src/terms.js";
 
 /** The minimum a record needs to mint: id + terms, both non-empty. */
-const MINIMAL: Component[] = [
+const MINIMAL: Slot[] = [
   { slot: "id", value: "01J000000000000000000000" },
   { slot: "terms", value: "lcp:sha256:0x" + "ab".repeat(32) },
 ];
 
-async function refuses(components: Component[], code: string): Promise<void> {
-  await expect(assemble(components)).rejects.toMatchObject({ code });
+async function refuses(slots: Slot[], code: string): Promise<void> {
+  await expect(assemble(slots)).rejects.toMatchObject({ code });
 }
 
 describe("assemble — the slot guards each refuse for their OWN reason", () => {
@@ -37,8 +37,8 @@ describe("assemble — the slot guards each refuse for their OWN reason", () => 
     expect(isAtrHash(atrHash)).toBe(true);
   });
 
-  it("refuses a component claiming the ENGINE-STAMPED lcp slot", async () => {
-    // `lcp` is stamped by the engine, never supplied. Letting a component set it would let a caller
+  it("refuses a slot claiming the ENGINE-STAMPED lcp slot", async () => {
+    // `lcp` is stamped by the engine, never supplied. Letting a caller's slot set it would let a caller
     // forge the version the record claims conformance to.
     await refuses(
       [...MINIMAL, { slot: "lcp", value: "9.9" }],
@@ -75,15 +75,15 @@ describe("assemble — the slot guards each refuse for their OWN reason", () => 
     );
   });
 
-  it("refuses a component with BOTH value and ref, and one with NEITHER", async () => {
+  it("refuses a slot with BOTH value and ref, and one with NEITHER", async () => {
     await refuses(
       [
         ...MINIMAL,
         { slot: "x", value: "a", ref: `lcp:sha256:0x${"11".repeat(32)}` },
       ],
-      "assemble/component-shape",
+      "assemble/slot-shape",
     );
-    await refuses([...MINIMAL, { slot: "x" }], "assemble/component-shape");
+    await refuses([...MINIMAL, { slot: "x" }], "assemble/slot-shape");
   });
 
   it("refuses a malformed ref", async () => {

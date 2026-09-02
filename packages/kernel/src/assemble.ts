@@ -4,7 +4,7 @@ import { isRef, type Ref } from "./ref.js";
 
 const LCP_VERSION = "0.3"; // engine-stamped envelope format version
 
-/** Any value expressible in JSON. The recursive definition is deliberate: a component's `value` is
+/** Any value expressible in JSON. The recursive definition is deliberate: a slot's `value` is
  *  serialised into the ATR file byte-for-byte, so a type permitting `undefined` or a `Date` would permit
  *  an ATR whose hash nobody else can reproduce. */
 export type Json =
@@ -15,57 +15,57 @@ export type Json =
   | Json[]
   | { [k: string]: Json };
 /** One named piece of an ATR. Exactly one of `value` (inline) or `ref` (content-addressed) is used — a
- *  component carrying both, or neither, is rejected at assembly. The `slot` namespace is open — the kernel
+ *  slot carrying both, or neither, is rejected at assembly. The `slot` namespace is open — the kernel
  *  preserves slots it does not know, which is what lets a profile add fields without a new kernel — with
- *  two exclusions it enforces: reserved envelope slots, and integer-like names, which JSON serialisation
+ *  two exclusions it enforces: reserved ATR slots, and integer-like names, which JSON serialisation
  *  would reorder to the front and so change the bytes. */
-export type Component = { slot: string; value?: Json; ref?: Ref };
+export type Slot = { slot: string; value?: Json; ref?: Ref };
 /** The assembled ATR as its exact bytes. This — not the object it came from — is what `atrHash` is taken
  *  over, and the reason the type is `Uint8Array` rather than a parsed shape: any re-serialisation is a
  *  chance to produce different bytes for the same document. */
 export type AtrFile = Uint8Array;
 
-/** Compile one canonical JSON document and hash its exact bytes. Pure: same components in, same bytes out. */
+/** Compile one canonical JSON document and hash its exact bytes. Pure: same slots in, same bytes out. */
 export async function assemble(
-  components: Component[],
+  slots: Slot[],
 ): Promise<{ atrFile: AtrFile; atrHash: AtrHash }> {
-  // Prototype-free record: a component named "__proto__" (or any Object.prototype accessor) must
+  // Prototype-free record: a slot named "__proto__" (or any Object.prototype accessor) must
   // become a normal own key — preserved like any unknown slot and seen by the duplicate/emit paths —
   // not silently mutate the prototype and vanish from JSON.stringify (that silent data loss is the
   // exact failure mode this engine's fail-fast slot guards exist to prevent). Open-extensibility holds.
   const envelope: Record<string, Json> = Object.create(null);
   envelope["lcp"] = LCP_VERSION;
-  for (const c of components) {
-    if (c.slot === "lcp")
+  for (const s of slots) {
+    if (s.slot === "lcp")
       throw new KernelError(
         "assemble/reserved-slot",
-        "lcp is engine-stamped, not a component",
+        "lcp is engine-stamped, not a caller's slot",
       );
     // JS serialization orders integer-like keys first regardless of insertion — a slot named "1"
     // would jump ahead of lcp and falsify the engine-controlled emitted order. Refused, never reordered.
-    if (/^(0|[1-9][0-9]*)$/.test(c.slot))
+    if (/^(0|[1-9][0-9]*)$/.test(s.slot))
       throw new KernelError(
         "assemble/numeric-slot",
-        `integer-like slot names are rejected: ${c.slot}`,
+        `integer-like slot names are rejected: ${s.slot}`,
       );
-    if (Object.hasOwn(envelope, c.slot))
+    if (Object.hasOwn(envelope, s.slot))
       throw new KernelError(
         "assemble/duplicate-slot",
-        `duplicate slot: ${c.slot}`,
+        `duplicate slot: ${s.slot}`,
       );
-    const hasValue = c.value !== undefined;
-    const hasRef = c.ref !== undefined;
+    const hasValue = s.value !== undefined;
+    const hasRef = s.ref !== undefined;
     if (hasValue === hasRef)
       throw new KernelError(
-        "assemble/component-shape",
-        `component must have exactly one of value|ref: ${c.slot}`,
+        "assemble/slot-shape",
+        `slot must have exactly one of value|ref: ${s.slot}`,
       );
-    if (hasRef && !isRef(c.ref as string))
+    if (hasRef && !isRef(s.ref as string))
       throw new KernelError(
         "assemble/bad-ref",
-        `invalid reference at ${c.slot}: ${c.ref}`,
+        `invalid reference at ${s.slot}: ${s.ref}`,
       );
-    envelope[c.slot] = hasValue ? (c.value as Json) : (c.ref as string);
+    envelope[s.slot] = hasValue ? (s.value as Json) : (s.ref as string);
   }
   // Required set = lcp (stamped) + terms + id; terms/id must be present and non-empty. Fail fast.
   const nonEmpty = (v: Json | undefined): boolean =>

@@ -6,8 +6,8 @@ An assembled **ATR** — one canonical JSON document naming the terms, the parti
 of a transaction — the **ATR hash** over its exact bytes, and a verification walk over that record which
 reports, step by step, what it could establish and what it could not. About thirty minutes.
 
-Nothing here touches a chain or a network. `assemble` is pure over its components, and the walk is pure
-over the inputs it is handed; both run locally, offline, and deterministically. The same components in
+Nothing here touches a chain or a network. `assemble` is pure over its slots, and the walk is pure
+over the inputs it is handed; both run locally, offline, and deterministically. The same slots in
 produce the same bytes out, which is what makes the hash recomputable by anyone holding those bytes.
 
 You need Node 24 or newer. Every package in this repository is ESM-only.
@@ -54,9 +54,9 @@ node -e 'console.log("0x"+require("node:crypto").randomBytes(16).toString("hex")
 Keep both values verbatim if you want the ATR hash printed below to be the one you compute. A freshly
 generated `id` is a different record, and therefore a different hash — which is the property working.
 
-Now assemble. A component carries **exactly one** of `value` (inline) or `ref` (a content reference), and
+Now assemble. A slot carries **exactly one** of `value` (inline) or `ref` (a content reference), and
 `terms` and `id` are required and non-empty. The `lcp` version field is engine-stamped, so supplying it as
-a component is a typed refusal rather than an override:
+a slot is a typed refusal rather than an override:
 
 ```ts
 import { assemble, hashAtr, isAtrHash } from "@integraledger/lcp-kernel";

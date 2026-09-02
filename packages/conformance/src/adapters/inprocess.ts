@@ -28,9 +28,9 @@ import {
 import { cidForAtrHash, encodeCarBlocksHex } from "@integraledger/lcp-evidence";
 import {
   assemble,
-  type Component,
   hashAtr,
   normalizeTerms,
+  type Slot,
 } from "@integraledger/lcp-kernel";
 import { placementFor } from "@integraledger/lcp-placements";
 import {
@@ -138,7 +138,7 @@ export class InProcessSubject implements Subject {
           return { output: validator.validate(req.input).valid };
         }
         case "assemble": {
-          const { atrFile, atrHash } = await assemble(req.input as Component[]);
+          const { atrFile, atrHash } = await assemble(req.input as Slot[]);
           return {
             output: { file: new TextDecoder().decode(atrFile), hash: atrHash },
           };

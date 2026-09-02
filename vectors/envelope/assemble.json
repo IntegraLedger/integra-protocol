@@ -94,7 +94,7 @@
       }
     },
     {
-      "name": "ref component placed at slot",
+      "name": "ref slot placed at slot",
       "input": [
         {
           "slot": "terms",
@@ -115,7 +115,7 @@
       }
     },
     {
-      "name": "component with both value and ref",
+      "name": "slot with both value and ref",
       "input": [
         {
           "slot": "terms",
@@ -131,10 +131,11 @@
           "ref": "lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
         }
       ],
-      "error": "assemble/component-shape"
+      "error": "assemble/slot-shape",
+      "$comment": "SUPERSEDED PIN (2026-09-02): the code was assemble/component-shape. Renamed with the type: `Component` became `Slot`, the word the kernel already uses for what the input fills — and the word White Paper #4 does not use for its thirteen architectural components."
     },
     {
-      "name": "component with neither value nor ref",
+      "name": "slot with neither value nor ref",
       "input": [
         {
           "slot": "terms",
@@ -148,7 +149,8 @@
           "slot": "x"
         }
       ],
-      "error": "assemble/component-shape"
+      "error": "assemble/slot-shape",
+      "$comment": "SUPERSEDED PIN (2026-09-02): the code was assemble/component-shape. Renamed with the type: `Component` became `Slot`, the word the kernel already uses for what the input fills — and the word White Paper #4 does not use for its thirteen architectural components."
     },
     {
       "name": "invalid ref",

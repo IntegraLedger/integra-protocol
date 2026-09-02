@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { assemble, type Component } from "../src/assemble.js";
+import { assemble, type Slot } from "../src/assemble.js";
 import { hashAtr } from "../src/atrHash.js";
 
 type OkCase = {
   name: string;
-  input: Component[];
+  input: Slot[];
   expected: { file: string; hash: string };
 };
-type BadCase = { name: string; input: Component[]; error: string };
+type BadCase = { name: string; input: Slot[]; error: string };
 const V = JSON.parse(
   readFileSync(
     new URL("../../../vectors/envelope/assemble.json", import.meta.url),
@@ -67,16 +67,16 @@ describe("assemble — properties", () => {
         fc.string({ minLength: 1 }),
         extras,
         async (terms, id, extra) => {
-          const components: Component[] = [
+          const slots: Slot[] = [
             { slot: "terms", value: terms },
             { slot: "id", value: id },
             ...extra,
           ];
-          const { atrFile, atrHash } = await assemble(components);
+          const { atrFile, atrHash } = await assemble(slots);
           // (a) self-hashing
           expect(await hashAtr(atrFile)).toBe(atrHash);
           // (b) determinism
-          const again = await assemble(components);
+          const again = await assemble(slots);
           expect(new TextDecoder().decode(again.atrFile)).toBe(
             new TextDecoder().decode(atrFile),
           );
@@ -99,12 +99,12 @@ describe("assemble — properties", () => {
   it("(e) rejects any integer-like slot name with assemble/numeric-slot", async () => {
     await fc.assert(
       fc.asyncProperty(fc.nat(), async (n) => {
-        const components: Component[] = [
+        const slots: Slot[] = [
           { slot: "terms", value: "t" },
           { slot: "id", value: "i" },
           { slot: String(n), value: "x" },
         ];
-        await expect(assemble(components)).rejects.toMatchObject({
+        await expect(assemble(slots)).rejects.toMatchObject({
           code: "assemble/numeric-slot",
         });
       }),

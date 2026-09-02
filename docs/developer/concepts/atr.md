@@ -13,10 +13,10 @@ The record format is the specification's, published at
 [legalcontextprotocol.org/standard](https://legalcontextprotocol.org/standard). This page describes what
 `@integraledger/lcp-kernel` implements; where the two disagree, the specification is right.
 
-## One document, assembled from components
+## One document, assembled from slots
 
-You do not hand `assemble` an object. You hand it an ordered list of **components**, each naming one slot,
-and it compiles them into the envelope:
+You do not hand `assemble` an object. You hand it an ordered list of **slots**, each a name with an inline
+value or a content reference, and it compiles them into the envelope:
 
 ```ts no-check
 const { atrFile, atrHash } = await assemble([
@@ -41,12 +41,12 @@ fails loudly rather than guessing.
 
 ## `value` or `ref` — exactly one
 
-A component carries **exactly one** of:
+A slot carries **exactly one** of:
 
 - **`value`** — the slot's content, inline, as JSON.
 - **`ref`** — an `lcp:sha256:` content reference to bytes held elsewhere.
 
-Both, or neither, is a typed refusal (`assemble/component-shape`) rather than a guess about which the
+Both, or neither, is a typed refusal (`assemble/slot-shape`) rather than a guess about which the
 caller meant. A `ref` must match the exact form `lcp:sha256:0x` followed by 64 hex characters; anything
 else is `assemble/bad-ref`.
 
@@ -111,12 +111,12 @@ call, and no trust in whoever handed them the bytes. That is what makes the walk
 a comparison rather than an appeal to authority, and it is what makes a weld checkable by a party who was
 not present at settlement.
 
-`assemble` is pure over its components — same components in, same bytes out — so the recomputation is not
+`assemble` is pure over its slots — same slots in, same bytes out — so the recomputation is not
 a re-run of the producer's process. It is a hash of bytes.
 
 ## Assembled, and checked
 
-This record uses both component forms: `terms` is a `ref`, and everything else is inline.
+This record uses both slot forms: `terms` is a `ref`, and everything else is inline.
 
 ```ts
 import { assemble, hashAtr, isAtrHash, isRef, parseRef } from "@integraledger/lcp-kernel";
@@ -165,7 +165,7 @@ true
 true
 ```
 
-The document is emitted in one line with no whitespace, `lcp` first, then the components in the order they
+The document is emitted in one line with no whitespace, `lcp` first, then the slots in the order they
 were supplied. That string is the record. Its SHA-256 is the fourth line.
 
 Note what the third and fourth lines are not: the same value. The `terms` reference names the terms

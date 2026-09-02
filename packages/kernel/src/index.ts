@@ -1,8 +1,8 @@
 export {
   type AtrFile,
   assemble,
-  type Component,
   type Json,
+  type Slot,
 } from "./assemble.js";
 export {
   type AtrHash,

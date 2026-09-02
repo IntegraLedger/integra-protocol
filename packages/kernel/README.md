@@ -32,7 +32,7 @@ isAtrHash(atrHash);                  // true
 await hashAtr(atrFile) === atrHash;  // true
 ```
 
-A component carries **exactly one** of `value` (inline) or `ref` (an `lcp:sha256:` content reference).
+A slot carries **exactly one** of `value` (inline) or `ref` (an `lcp:sha256:` content reference).
 Both, or neither, is a typed refusal rather than a guess.
 
 ## Why the bytes are hashed as handed
@@ -76,17 +76,17 @@ Every guard has its own reason, because "the record is malformed" is not an acti
 
 | Refusal | Cause |
 |---|---|
-| `assemble/reserved-slot` | `lcp` is engine-stamped, not a caller's component |
+| `assemble/reserved-slot` | `lcp` is engine-stamped, not a caller's slot |
 | `assemble/numeric-slot` | Integer-like slot names reorder under JSON serialization |
 | `assemble/duplicate-slot` | The same slot supplied twice |
-| `assemble/component-shape` | Not exactly one of `value` \| `ref` |
+| `assemble/slot-shape` | Not exactly one of `value` \| `ref` |
 | `assemble/bad-ref` | A `ref` that is not a well-formed `lcp:sha256:` reference |
 
 The numeric-slot rule is subtler than it looks: JavaScript serializes integer-like keys first regardless
 of insertion order, so a slot named `"1"` would jump ahead of the engine-stamped `lcp` field and change
 the bytes. It is refused rather than silently reordered.
 
-The assembled envelope is prototype-free, so a component named `__proto__` becomes an ordinary key
+The assembled envelope is prototype-free, so a slot named `__proto__` becomes an ordinary key
 instead of vanishing from `JSON.stringify` and mutating a prototype on the way past.
 
 ## Requirement ids
