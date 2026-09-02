@@ -1,8 +1,9 @@
 # The ATR
 
-An **ATR** — Agreed Terms Record — is one canonical JSON document naming the terms, the parties, and the
-commercial slots of a transaction. Its SHA-256, taken over the assembled file's exact bytes, is the **ATR
-hash**: the fingerprint a settlement carries and a verifier recomputes.
+An **ATR** — Agentic Transaction Record — is the standalone artifact whose SHA-256, taken over its exact
+bytes, is the **ATR hash**: the fingerprint a settlement carries and a verifier recomputes.
+`@integraledger/lcp-kernel` mints one as JSON: its `terms` slot carries the agreement inline, or
+incorporates it by content-addressed reference.
 
 Everything else in this repository rides on that one property. A binding welds the hash into a settlement;
 the walk recomputes it and compares. Neither can be stronger than the record, so the record is defined

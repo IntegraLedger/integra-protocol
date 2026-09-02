@@ -2,9 +2,9 @@
 
 ATR assembly and hashing — the smallest thing every other package agrees on.
 
-An **ATR** (Agreed Terms Record) is one canonical JSON document naming the terms, the parties, and the
-commercial slots of a transaction. Its SHA-256 is the **ATR hash**: the fingerprint a settlement carries
-and a verifier recomputes.
+An **ATR** (Agentic Transaction Record) is the standalone artifact whose SHA-256 is the **ATR hash** — the
+fingerprint a settlement carries and a verifier recomputes. This kernel mints one as JSON: its `terms` slot
+carries the agreement inline, or incorporates it by content-addressed reference.
 
 Zero runtime dependencies, by design and by enforced rule. Everything downstream is free to depend on
 this; it depends on nothing.
