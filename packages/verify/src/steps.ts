@@ -177,7 +177,14 @@ export async function fingerprintStep(
 export function settlementStep(
   settlements: unknown[] | undefined,
 ): StepOutcome {
-  if (!present(settlements))
+  // A non-array in the slot is not an enumeration — `.length` on it is `undefined` on an object, a number
+  // or a boolean, and `undefined === 0` is false, so every one of them fell through to `proved` with ZERO
+  // settlements enumerated. `{ length: 5 }` is the sharpest case: a duck-typed object that answers the
+  // only question this step used to ask. That is this module's capitalised rule read backwards — ABSENT
+  // INPUTS NEVER PROVE — on the rung that carries TC-1. Same screen, same reasoning and the same token as
+  // an absent slot, exactly as `authorityStep` rules on a non-array chain: the caller supplied nothing
+  // this step can enumerate, which is distinct from a real port that enumerated nothing.
+  if (!present(settlements) || !Array.isArray(settlements))
     return { status: "not-attempted", depth: "no-enumeration-port" };
   if (settlements.length === 0)
     return { status: "not-attempted", depth: "no-settlement-found" };
@@ -229,6 +236,22 @@ export function authorityStep(chain: AuthorityLink[] | undefined): StepOutcome {
       return { status: "not-attempted", depth: "malformed-authority-chain" };
     // ATA-3, gate one: the parent must have permitted delegation at all. Impeccably attenuated bounds
     // re-issued by a holder who was never authorized to re-issue them are still a forged link.
+    //
+    // TYPE-SCREENED FIRST, on the same rule as `revoked` and `active` below and as
+    // `authority.walkableGrant` applies to `delegable` on the producing side. Read for truthiness alone
+    // this gate answered `proved` for every non-boolean but `0` and `""` — the strings `"false"`, `"no"`
+    // and `"0"`, an empty array, an empty object — so the word that DENIES permission read as permission
+    // and the load-bearing delegation rung cleared on a value nobody stated.
+    //
+    // ABSENCE parts company with the two siblings here, and only here. `revoked` and `active` name their
+    // own gaps because "never consulted" and "consulted and clean" are different facts; delegability has
+    // no such gap, because ATA-3 fixes a restrictive DEFAULT — unstated is non-delegable, which is a
+    // ruling and stays `failed`. That is why the screen sits behind `present` rather than in front of it.
+    if (
+      present(link.parentDelegable) &&
+      typeof link.parentDelegable !== "boolean"
+    )
+      return { status: "not-attempted", depth: "malformed-authority-chain" };
     if (!link.parentDelegable)
       return { status: "failed", haltClass: "verification-failure" };
     // ATA-3, gate two: depth. A depth-exhausted parent admits no link below it, and a link may not mint
@@ -336,13 +359,19 @@ export function commitmentStep(
   // Both halves must be usable bounds objects. `isWithin` is the pure ATA-2 predicate and is deliberately
   // strict — it does `Object.keys` on what it is given — so the walk, not the predicate, owns the totality
   // at this boundary. A half-supplied commitment slot is no commitment: a gap, never a contradiction.
+  //
+  // The halves go through `boundsShaped`, which is the screen written for exactly this and was never
+  // carried here. `typeof x !== "object"` admits an ARRAY, and `Object.keys([])` answers `[]` rather than
+  // throwing — so `isWithin` read an array as a bounds with NO dimensions, i.e. unbounded, and skipped all
+  // four gates. A $50M commitment therefore cleared the ATA-4 containment rung against a leaf grant that
+  // was never readable, while `authorityStep` answered `malformed-authority-chain` on the same value.
+  // ⚠️ `{}` PROVING is correct and is not what this closes: ATA-2 makes an absent dimension unbounded, so
+  // an empty-object leaf bounds nothing. Only the array is the defect.
   if (
     !present(c) ||
     typeof c !== "object" ||
-    !present(c.commitment) ||
-    typeof c.commitment !== "object" ||
-    !present(c.leafBounds) ||
-    typeof c.leafBounds !== "object"
+    !boundsShaped(c.commitment) ||
+    !boundsShaped(c.leafBounds)
   )
     return { status: "not-attempted", depth: "no-commitment" };
   return commitmentWithinLeaf(c.commitment, c.leafBounds)

@@ -116,7 +116,11 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // slot, which the kernel had refused since the member existed and the corpus had never asked; and bare
 // `lcp` and `atr`, which name the specification and the record — plus one preservation case pinning
 // `lcpVersion` open as the ordinary name for a profile's targeted specification version.
-const CORPUS_SIZE = 852;
+// 852 → 856 on 2026-09-02: `verify.authorityWalk` gains four `parentDelegable` cases — three non-boolean
+// shapes the truthiness read had proved (the strings "false" and "0" among them, so the word denying
+// permission read as permission), plus a control pinning that an ABSENT flag still FAILS under ATA-3's
+// restrictive default rather than becoming a gap alongside them.
+const CORPUS_SIZE = 856;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

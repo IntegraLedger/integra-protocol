@@ -383,6 +383,194 @@ describe("steps are total over an explicit null, not only over undefined", () =>
     });
   });
 
+  /**
+   * ATA-3 gate one, the THIRD boolean on a link and the one that had no type screen. `revoked` and
+   * `active` are both `typeof`-checked above; `authority.walkableGrant` refuses a non-boolean `delegable`
+   * on the producing side. This slot was read for truthiness alone, so every non-boolean but `0` and `""`
+   * cleared the rung that asks whether the parent was permitted to delegate at all — the string `"false"`,
+   * the string `"0"`, an empty array and an empty object each PROVED it.
+   *
+   * ABSENCE is where this slot parts company with its two siblings, and deliberately: an unstated
+   * delegability is ATA-3's restrictive default (non-delegable ⇒ `failed`, the ruling
+   * `authority.linkAttenuates` makes at issuance), not a gap with a name of its own. Both halves are
+   * asserted, because a screen written as "non-boolean ⇒ malformed" without the `present` guard would
+   * silently convert that ruling into a gap.
+   */
+  describe("authorityStep — the delegability slot", () => {
+    const link = (over: Record<string, unknown>) =>
+      [
+        {
+          bounds: { caps: { USD: "100" } },
+          parentBounds: { caps: { USD: "1000" } },
+          revoked: false,
+          active: true,
+          ...over,
+        },
+      ] as unknown as AuthorityLink[];
+
+    it.each([
+      ['the string "false"', "false"],
+      ['the string "no"', "no"],
+      ['the string "0"', "0"],
+      ["an empty array", []],
+      ["an empty object", {}],
+      ["the number 1", 1],
+      ['the string "true"', "true"],
+    ])(
+      "a parentDelegable of %s is the caller's shape error, never a proof",
+      (_label, value) => {
+        expect(authorityStep(link({ parentDelegable: value }))).toEqual({
+          status: "not-attempted",
+          depth: "malformed-authority-chain",
+        });
+      },
+    );
+
+    it("an ABSENT parentDelegable still FAILS — the restrictive default is a ruling, not a gap", () => {
+      expect(authorityStep(link({}))).toEqual({
+        status: "failed",
+        haltClass: "verification-failure",
+      });
+    });
+
+    it("a null parentDelegable reads as absent, for the same reason a null `revoked` does", () => {
+      expect(authorityStep(link({ parentDelegable: null }))).toEqual({
+        status: "failed",
+        haltClass: "verification-failure",
+      });
+    });
+
+    it("`false` still FAILS and `true` still proves — the screen is not simply always-refuse", () => {
+      expect(authorityStep(link({ parentDelegable: false }))).toEqual({
+        status: "failed",
+        haltClass: "verification-failure",
+      });
+      expect(authorityStep(link({ parentDelegable: true }))).toEqual({
+        status: "proved",
+      });
+    });
+  });
+
+  /**
+   * `settlementStep` proves the TC-1 payment rung, and it read `.length` on whatever the slot held.
+   * `.length` is `undefined` on an object, a number and a boolean, `undefined === 0` is false, so every
+   * one of them fell through to `proved` — a settlement rung cleared with ZERO settlements enumerated,
+   * which is the module's own capitalised rule ("ABSENT INPUTS NEVER PROVE") read backwards.
+   * `{ length: 5 }` is the sharpest case: a duck-typed object that answers the only question the step
+   * asked. `authorityStep` added exactly this `Array.isArray` screen for exactly this reason.
+   *
+   * The slot's own token is `no-enumeration-port` — the caller supplied no readable enumeration — which is
+   * the same token an absent slot gets, and distinct from `no-settlement-found`, which says a real port
+   * was consulted and answered nothing.
+   */
+  describe("settlementStep is total over a non-array settlements slot", () => {
+    const gap = {
+      status: "not-attempted",
+      depth: "no-enumeration-port",
+    } as const;
+
+    it.each([
+      ["an object", {}],
+      ["a duck-typed object carrying a length", { length: 5 }],
+      ["a number", 42],
+      ["the number 0", 0],
+      ["a boolean", true],
+      ["a string", "abc"],
+      ["an empty string", ""],
+    ])("reads out on %s rather than proving over it", (_label, value) => {
+      expect(settlementStep(value as unknown as unknown[])).toEqual(gap);
+    });
+
+    it("a real EMPTY array is still `no-settlement-found` — a consulted port that found nothing", () => {
+      expect(settlementStep([])).toEqual({
+        status: "not-attempted",
+        depth: "no-settlement-found",
+      });
+    });
+
+    it("a real non-empty array still proves — the screen is not simply always-refuse", () => {
+      expect(settlementStep([{ txHash: "0xabc" }])).toEqual({
+        status: "proved",
+      });
+    });
+
+    it("verify() reports the gap end-to-end and never reaches TC-1 on it", async () => {
+      const report = await verify({
+        asOf: "2026-07-16T00:00:00Z",
+        coverage: { ports: [], bindings: [] },
+        settlements: { length: 5 } as unknown as unknown[],
+      });
+      const settlement = report.steps.find(
+        (s) => s.name === "settlement-enumeration",
+      );
+      expect(settlement?.outcome).toEqual(gap);
+      expect(report.supportedClass).toBe("TC-0");
+    });
+  });
+
+  /**
+   * ATA-4 containment, and the one place `boundsShaped` was not carried. `commitmentStep` screened its
+   * two halves with `typeof !== "object"`, which admits `[]` — and `Object.keys([])` answers `[]`, so
+   * `isWithin` reads an array as a bounds with NO dimensions, i.e. unbounded, and skips all four gates.
+   * A $50M commitment therefore cleared the rung against a leaf grant that was never readable.
+   *
+   * `leafBounds: {}` proving is CORRECT and is asserted below as the control: an absent dimension is
+   * unbounded by ATA-2's own rule, so `{}` is a leaf that bounds nothing. Only the ARRAY is the defect,
+   * which is why the two cases sit beside each other — a screen that refused both would break the rule
+   * it is supposed to enforce.
+   */
+  describe("commitmentStep is total over an ARRAY-shaped bounds half", () => {
+    const gap = {
+      status: "not-attempted",
+      depth: "no-commitment",
+    } as const;
+    const big = { caps: { USD: "50000000" } };
+
+    it("refuses an array leafBounds — a $50M commitment must not clear an unreadable leaf", () => {
+      expect(
+        commitmentStep({ commitment: big, leafBounds: [] } as never),
+      ).toEqual(gap);
+    });
+
+    it("refuses an array commitment — the other side of the disjunction", () => {
+      expect(
+        commitmentStep({ commitment: [], leafBounds: big } as never),
+      ).toEqual(gap);
+    });
+
+    it("still PROVES against an empty-object leaf — an absent dimension is unbounded (ATA-2)", () => {
+      expect(commitmentStep({ commitment: big, leafBounds: {} })).toEqual({
+        status: "proved",
+      });
+    });
+
+    it("still FAILS a real overrun — the screen has not disengaged the containment gate", () => {
+      expect(
+        commitmentStep({ commitment: big, leafBounds: { caps: { USD: "1" } } }),
+      ).toEqual({ status: "failed", haltClass: "verification-failure" });
+    });
+
+    it("matches authorityStep on the same value — one shape rule, two steps", () => {
+      // `authorityStep` has always answered `malformed-authority-chain` for an array bounds slot. The two
+      // depth tokens differ because the slots do, but the RULING must not: an array is a shape gap on
+      // both, never a proof on one and a gap on the other.
+      expect(
+        authorityStep([
+          {
+            bounds: {},
+            parentBounds: [],
+            parentDelegable: true,
+            revoked: false,
+            active: true,
+          },
+        ] as unknown as AuthorityLink[]).status,
+      ).toBe("not-attempted");
+      expect(
+        commitmentStep({ commitment: big, leafBounds: [] } as never).status,
+      ).toBe("not-attempted");
+    });
+  });
+
   it("commitmentStep refuses a primitive commitment half", () => {
     const bad = { commitment: "USD", leafBounds: { caps: { USD: "1" } } };
     expect(commitmentStep(bad as never)).toEqual({

@@ -62,6 +62,56 @@ const arbInput = fc.record(
   { requiredKeys: ["asOf", "coverage"] },
 );
 
+/**
+ * Which shape each step needs in its slot before it may prove anything over one, paired with the slot it
+ * reads. This is the half the totality property was missing.
+ *
+ * "Never throws" is only half of totality. A step that survives a malformed slot by PROVING over it has
+ * not been made total; it has been made credulous, and the report then states a rung the record never
+ * carried — the module's own capitalised rule, "ABSENT INPUTS NEVER PROVE", read backwards. Asserting
+ * only that the walk returns a boolean and a class inside the ladder is satisfied by exactly that walk,
+ * which is what `settlement-enumeration` was: `.length` on an object is `undefined`, `undefined === 0` is
+ * false, and every non-array slot the generator emitted reached `proved` with zero settlements
+ * enumerated, 500 runs at a time, for as long as this file has existed.
+ */
+const READABLE: Record<string, (slot: unknown) => boolean> = {
+  // Only a real array is an enumeration. `.length` on anything else is absent or a duck-typed lie.
+  "settlement-enumeration": (slot) => Array.isArray(slot) && slot.length > 0,
+  // Both halves must be objects `isWithin` can walk — and `Object.keys([])` answers `[]`, so an array
+  // reads as a bounds with NO dimensions (unbounded) rather than as a refusal.
+  "commitment-vs-leaf": (slot) => {
+    if (!shaped(slot)) return false;
+    const c = slot as { commitment?: unknown; leafBounds?: unknown };
+    return shaped(c.commitment) && shaped(c.leafBounds);
+  },
+  // A chain is a non-empty array of link objects; anything else is unwalkable.
+  "authority-attenuation": (slot) =>
+    Array.isArray(slot) &&
+    slot.length > 0 &&
+    slot.every((l) => typeof l === "object" && l !== null),
+  // Both parties must be objects carrying a resolution chain.
+  "resolve-party": (slot) => {
+    if (!shaped(slot)) return false;
+    const i = slot as { seller?: unknown; buyer?: unknown };
+    const party = (v: unknown) =>
+      shaped(v) && Array.isArray((v as { chain?: unknown }).chain);
+    return party(i.seller) && party(i.buyer);
+  },
+};
+
+/** An object `Object.keys` can walk — not `null`, and not an array. */
+function shaped(v: unknown): boolean {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Which generated slot each of those steps reads. */
+const SLOT_OF: Record<string, string> = {
+  "settlement-enumeration": "settlements",
+  "commitment-vs-leaf": "commitment",
+  "authority-attenuation": "authorityChain",
+  "resolve-party": "identity",
+};
+
 describe("verify — totality: a malformed record is REPORTED, never thrown on", () => {
   it("never throws, whatever shape the caller supplies", async () => {
     await fc.assert(
@@ -71,6 +121,31 @@ describe("verify — totality: a malformed record is REPORTED, never thrown on",
         const report = await verify(input as unknown as VerifyInput);
         expect(typeof report.verified).toBe("boolean");
         expect(LADDER).toContain(report.supportedClass);
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it("an UNREADABLE slot never PROVES its step — not throwing is only half of totality", async () => {
+    // `failed` is deliberately permitted: a slot can be readable and still contradict itself, and this
+    // property does not adjudicate that. The one outcome forbidden is `proved` over a shape the step
+    // cannot read.
+    await fc.assert(
+      fc.asyncProperty(arbInput, async (input) => {
+        const record = input as unknown as Record<string, unknown>;
+        const report = await verify(input as unknown as VerifyInput);
+        for (const step of report.steps) {
+          const readable = READABLE[step.name];
+          const slotName = SLOT_OF[step.name];
+          if (readable === undefined || slotName === undefined) continue;
+          if (readable(record[slotName])) continue;
+          // Reported as a triple so a counterexample names the slot and its value, not just a status.
+          expect({
+            step: step.name,
+            slot: record[slotName],
+            status: step.outcome.status,
+          }).not.toMatchObject({ status: "proved" });
+        }
       }),
       { numRuns: 500 },
     );

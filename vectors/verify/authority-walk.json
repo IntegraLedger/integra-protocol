@@ -1,5 +1,5 @@
 {
-  "$comment": "ATA-3 at VERIFICATION time — verify.authorityStep. The verification-side mirror of authority/link-attenuates.json; producer and verifier must not diverge, so every delegation gate appears in both. This is the load-bearing rung of the walk: a forged chain that clears it carries a class it never earned. Outcomes follow the walk's two rules — a chain that CONTRADICTS itself (unpermitted, depth-escalated, widened, revoked, expired) is `failed(verification-failure)` and impeaches the class to TC-0; a chain that is merely ABSENT or empty is `not-attempted`, a gap that never proves — and that includes a link that never STATES its revocation (`no-revocation-stated`) or liveness (`no-liveness-stated`), because 'the flattener never consulted a status list' and 'the pinned snapshot says unrevoked' must not be the same value. A non-boolean in either slot is the caller's shape error (`malformed-authority-chain`), never the record's contradiction. Key order in `expected` mirrors the outcome objects as constructed.",
+  "$comment": "ATA-3 at VERIFICATION time — verify.authorityStep. The verification-side mirror of authority/link-attenuates.json; producer and verifier must not diverge, so every delegation gate appears in both. This is the load-bearing rung of the walk: a forged chain that clears it carries a class it never earned. Outcomes follow the walk's two rules — a chain that CONTRADICTS itself (unpermitted, depth-escalated, widened, revoked, expired) is `failed(verification-failure)` and impeaches the class to TC-0; a chain that is merely ABSENT or empty is `not-attempted`, a gap that never proves — and that includes a link that never STATES its revocation (`no-revocation-stated`) or liveness (`no-liveness-stated`), because 'the flattener never consulted a status list' and 'the pinned snapshot says unrevoked' must not be the same value. A non-boolean in either slot is the caller's shape error (`malformed-authority-chain`), never the record's contradiction. The SAME type screen governs `parentDelegable`, which is the one boolean on a link that had none: read for truthiness, the strings 'false' and '0', an empty array and an empty object all PROVE the delegation rung, so the word that denies permission reads as permission. It parts company with `revoked` and `active` on ABSENCE only — an unstated delegability is ATA-3's restrictive default (non-delegable, hence `failed`) rather than a gap, which is what `authority/link-attenuates.json` pins on the producing side. Key order in `expected` mirrors the outcome objects as constructed.",
   "cases": [
     {
       "name": "no chain supplied — a gap, never a proof",
@@ -60,6 +60,109 @@
               }
             },
             "parentDelegable": false
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "haltClass": "verification-failure"
+      }
+    },
+    {
+      "name": "a parentDelegable of the STRING \"false\" is the caller's shape error — the word that denies permission must not read as permission",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": "false",
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "a NUMERIC parentDelegable is malformed on the same rule a non-boolean revoked is",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": 1,
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "an OBJECT parentDelegable is malformed — every non-boolean is truthy or falsy, and neither is a statement of permission",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "parentDelegable": {},
+            "revoked": false,
+            "active": true
+          }
+        ]
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-authority-chain"
+      }
+    },
+    {
+      "name": "an ABSENT parentDelegable still FAILS — ATA-3 defaults to non-delegable, which is a ruling and not a shape gap",
+      "input": {
+        "chain": [
+          {
+            "bounds": {
+              "caps": {
+                "USD": "5000"
+              }
+            },
+            "parentBounds": {
+              "caps": {
+                "USD": "1000000"
+              }
+            },
+            "revoked": false,
+            "active": true
           }
         ]
       },
