@@ -198,6 +198,48 @@ describe("docs/developer describes the tree the tree actually is", () => {
     );
   });
 
+  /**
+   * ⛔ THE ONLY SEMVER GUIDANCE IN ANY PROSE IN THIS REPOSITORY IS THE ROOT README'S, AND IT WAS WRONG.
+   *
+   * It stated "Every package here is at 0.9.0" four times over and told the reader to pin `^0.9.0` — a
+   * range that, by the rule the same paragraph explains, can never reach `0.15.x`. It had been wrong for
+   * six minor releases. The guidance is now written without worked numbers, which is what makes it survive
+   * a bump; the ONE remaining version literal is the line the reader actually wants, and it is held here.
+   *
+   * Subject set is every `x.y.z` literal in that section, and an empty one is refused: a section that
+   * stopped naming a version would silently stop being checked, which is how the wrong number lasted.
+   */
+  it("the version the README states is the version the tree ships", () => {
+    const version = (
+      JSON.parse(read("packages/kernel/package.json")) as { version: string }
+    ).version;
+    const readme = read("README.md");
+    const start = readme.indexOf("### What the `0.x` line means");
+    expect(
+      start,
+      "the README's release section was renamed or removed",
+    ).toBeGreaterThan(-1);
+    const section = readme.slice(start, readme.indexOf("\n## ", start));
+    const literals = [...section.matchAll(/\b\d+\.\d+\.\d+\b/g)].map(
+      (m) => m[0],
+    );
+    expect(
+      literals.length,
+      "the README's release section names no version at all — a section that stopped naming one would " +
+        "silently stop being checked",
+    ).toBeGreaterThan(0);
+    // Historical numbers are legitimate where the section explains its own past, so they are quoted in
+    // backticks; the CURRENT claim is bolded. Only the bolded one is a claim about this tree.
+    const claimed = [...section.matchAll(/\*\*(\d+\.\d+\.\d+)\*\*/g)].map(
+      (m) => m[1],
+    );
+    expect(
+      claimed.length,
+      "the README states no CURRENT version in bold",
+    ).toBeGreaterThan(0);
+    for (const c of claimed) expect(c).toBe(version);
+  });
+
   it("the corpus size in the docs is the corpus size", () => {
     const seal = JSON.parse(read("vectors/conformance/corpus-seal.json")) as {
       areas: Record<string, { cases: number }>;

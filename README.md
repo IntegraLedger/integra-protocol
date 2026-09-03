@@ -35,11 +35,11 @@ npm install @integraledger/lcp-kernel
 Every release builds a CycloneDX SBOM over the resolved dependency graph and retains it as a build
 artifact for a year — long enough that a disclosure reaching back past ninety days still finds it.
 
-### What `0.9.0` means
+### What the `0.x` line means
 
-Every package here is at **0.9.0**, and the number is a statement rather than an accident. This is a release
-candidate for 1.0: the implementation is complete against LCP v1.38 and certified by the conformance
-corpus on every commit. It is not a preview, and it is not a first draft.
+Every package here ships at one version — currently **0.15.1** — and the `0.` is a statement rather than an
+accident. This is a release candidate for 1.0: the implementation is complete against LCP v1.38 and
+certified by the conformance corpus on every commit. It is not a preview, and it is not a first draft.
 
 It is not `1.0` because **the distance left to travel is the specification's, not the implementation's.** LCP
 is stewarded by a committee that has not yet frozen the standard, and a `1.0` from the reference
@@ -48,11 +48,14 @@ be the reference implementation quietly ratifying the spec, which is not its job
 
 What that means for you, concretely:
 
-- **Within `0.9.x`**, breaking changes to the wire format, the verification verdicts or the conformance
+- **Within a minor line**, breaking changes to the wire format, the verification verdicts or the conformance
   corpus will not ship. Patches are fixes and additions.
-- **A minor bump — `0.9.0` to `0.10.0` — may break you**, and under semver's `0.x` rule your package manager
-  already treats it that way: `^0.9.0` resolves inside `0.9.x` and will not cross to `0.10`. Pin with that
-  in mind.
+- **A minor bump may break you**, and under semver's `0.x` rule your package manager already treats it that
+  way: a caret range stays inside the minor it was written against and will not cross to the next. Pin with
+  that in mind. (The numbers are deliberately not spelled out here beyond the line above — a worked example
+  is a version literal, and a version literal in prose is wrong from the day after it is written. This
+  section said `0.9.0` for six minor releases, and the caret it recommended could never have reached the
+  packages it was recommending.)
 - **Every break is recorded** in the affected package's `CHANGELOG.md`, with the reason, not just the diff.
 - **`1.0` arrives when the specification does.** It will not be a marketing decision.
 
