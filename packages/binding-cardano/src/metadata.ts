@@ -9,7 +9,9 @@
  *     64 hex chars = 64 bytes = exactly Cardano's per-string 64-byte metadatum limit, so it fits in a
  *     single text chunk (no CIP-20 chunking needed; a `0x`-prefixed form would be 66 bytes and OVERFLOW,
  *     which is why the on-chain value is bare hex).
- *   - `v` — the LCP spec version (e.g. "0.1.38"), a short text string.
+ *   - `v` — the LCP spec version, a short text string. The value is `LCP_SPEC_VERSION`, imported and
+ *     never spelled out: a revision written into a comment ships in the tarball and stops being current
+ *     the day the constant moves.
  *
  * The CBOR here is HAND-ROLLED (restricted to the narrow subset this
  * one metadatum needs: text, uint-length-prefixed map) to the canonical-CBOR rules (RFC 8949 §4.2.1):
@@ -93,7 +95,7 @@ function normalizeBareHash(atrHash: string): string {
 
 /** The JSON shape of the LCP label value as Blockfrost returns it under `json_metadata`. */
 export interface LcpMetadataValue {
-  /** LCP spec version this binding conforms to (e.g. "0.1.38"). */
+  /** LCP spec version this binding conforms to — the value of `LCP_SPEC_VERSION`, never a literal. */
   v: string;
   /** atrHash as bare lowercase hex (no 0x), 64 chars. */
   atrHash: string;

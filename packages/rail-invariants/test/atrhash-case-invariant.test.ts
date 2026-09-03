@@ -40,18 +40,27 @@ const PACKAGES = new URL("../../", import.meta.url).pathname;
 const HOME = "kernel/src/atrHash.ts";
 
 /**
- * `.toLowerCase()` applied to an expression ending in an atrHash-named identifier or member.
+ * `.toLowerCase()` applied to an expression whose atrHash-ness is visible in a NAME.
  *
- * The NAME is the signal, because it is all a lint-shaped check can see. `settledAtrHash.toLowerCase()`
+ * The name is the signal, because it is all a lint-shaped check can see. `settledAtrHash.toLowerCase()`
  * concerns a terms reference; `log.address.toLowerCase()` does not. Both are legal JavaScript, and only one
  * is governed by §2.5.
  *
+ * ⛔ THREE SPELLINGS WERE INVISIBLE, AND ALL THREE WERE IN THE TREE. The old character class was
+ * `[A-Za-z0-9_.[\]?]` — it admitted a bracket but not the QUOTE inside one, so `doc["atrHash"]` could not
+ * be reached; and it required the fold to sit directly against the name, so neither `f(atrHash)` nor
+ * `atrHashFromCid(cid)` could be. Meanwhile the docblock at the top of this file said "nothing in the tree
+ * case-folds an atrHash except this file", and `discovery/src/emit.ts`, `binding-canton/src/anchor.ts` and
+ * `evidence/src/manifest.ts` each did. A gate that names its reach must actually reach that far, or the
+ * sentence is the defect.
+ *
  * KNOWN LIMIT, stated rather than hidden: an atrHash held in a variable not named for one —
- * `const h = ref.value; h.toLowerCase()` — is invisible here. Closing that needs type information this
- * check does not have. A gate whose reach is written down beats one that quietly over-claims.
+ * `const h = ref.value; h.toLowerCase()`, or `e.ref.slice(11).toLowerCase()` — is still invisible.
+ * Closing that needs type information this check does not have. A gate whose reach is written down beats
+ * one that quietly over-claims.
  */
 const FOLDED_ATRHASH =
-  /[A-Za-z0-9_.[\]?]*[Aa]tr[Hh]ash(?:\(\))?\??\.toLowerCase\(\)/;
+  /[Aa]tr[Hh]ash[A-Za-z0-9_]*\s*(?:\([^)]*\))?\s*["']?\]?\)?\??\s*\.toLowerCase\(\)/;
 
 /** Every `.ts` under a package's `src/`, as a package-relative path. */
 function shippedSourceFiles(): string[] {

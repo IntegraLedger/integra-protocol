@@ -19,4 +19,4 @@ as rewritable in transit as one in `links`. The rule is now stated once and appl
 previously returned a written document.
 
 The corpus gains the write half of the rule and an https control beside it. 859 → 861; the corpus root
-moved to `3f81c57a7485baa2…`.
+moved to `a47801f6ecfc96b2…`.

@@ -42,12 +42,12 @@ jobs:
     permissions:
       contents: write # push tags — the only write this workflow performs
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Tags are written against the commit each version's provenance names, which is usually NOT the
           # tip. A shallow clone would not contain it and the reconciler would refuse rather than guess.
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
       - name: Reconcile tags against the registry

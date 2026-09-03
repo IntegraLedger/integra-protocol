@@ -202,7 +202,10 @@ export async function verifyBundle(
         entries: [],
         reason: `block ${block.cid} does not hash to its content (tamper)`,
       };
-    presentDigests.add(atrHashFromCid(block.cid).toLowerCase());
+    // `atrHashFromCid` renders each byte with `toString(16)`, so its output is lowercase by
+    // construction. The `.toLowerCase()` that used to sit here restated a canonicalization that had
+    // already happened, in the one place the tree reserves for doing it.
+    presentDigests.add(atrHashFromCid(block.cid));
     if (block.cid === root) manifestBytes = block.bytes;
   }
   if (manifestBytes === undefined)

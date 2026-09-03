@@ -9,6 +9,17 @@ import { UCP_PLACEMENT } from "./manifest.js";
 
 const base = makePlacement(UCP_PLACEMENT);
 
+/** The one rule, stated once: a url-typed reference on this protocol must be HTTPS. */
+function insecureTermsUrl(ref: LegalContextRef): Refusal | null {
+  if (ref.type !== "url" || ref.value.startsWith("https://")) return null;
+  return {
+    refused: true,
+    haltClass: "verification-failure",
+    code: "ucp/insecure-terms-url",
+    detail: `a terms link must be HTTPS — an http: reference is rewritable in transit: ${ref.value}`,
+  };
+}
+
 /**
  * The UCP reference placement — the kit plus ONE protocol rule the kit cannot know.
  *
@@ -41,17 +52,6 @@ const base = makePlacement(UCP_PLACEMENT);
  * http:" pins exactly this. The scope is by TYPE, not by which carrier answered: a url-typed reference is
  * legal in the capability too, and an http: URL there is exactly as rewritable as one in `links`.
  */
-/** The one rule, stated once: a url-typed reference on this protocol must be HTTPS. */
-function insecureTermsUrl(ref: LegalContextRef): Refusal | null {
-  if (ref.type !== "url" || ref.value.startsWith("https://")) return null;
-  return {
-    refused: true,
-    haltClass: "verification-failure",
-    code: "ucp/insecure-terms-url",
-    detail: `a terms link must be HTTPS — an http: reference is rewritable in transit: ${ref.value}`,
-  };
-}
-
 export const ucpPlacement: ReferencePlacementAdapter = {
   ...base,
   place(ad: LegalContextAdvertisement, doc: unknown) {

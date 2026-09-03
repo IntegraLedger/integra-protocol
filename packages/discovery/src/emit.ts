@@ -1,3 +1,4 @@
+import { canonicalAtrHash } from "@integraledger/lcp-kernel";
 import { type LegalContextJson, parseLegalContextJson } from "./schema.js";
 
 /**
@@ -14,6 +15,6 @@ export function emit(profile: LegalContextJson): LegalContextJson {
   // chose. The intake side (`parseLegalContextJson`) still accepts either case, because §2.5 constrains
   // what an implementation writes and a counterparty's document is theirs.
   if (typeof doc["atrHash"] === "string")
-    doc["atrHash"] = doc["atrHash"].toLowerCase();
+    doc["atrHash"] = canonicalAtrHash(doc["atrHash"], "emit");
   return parseLegalContextJson(doc);
 }

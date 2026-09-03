@@ -12,7 +12,8 @@
  * a literal. Pinning one would make every assertion here a second place to edit on the next bump —
  * which is the failure being closed, reintroduced in the gate meant to close it.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { LCP_SPEC_VERSION } from "@integraledger/lcp-kernel";
 import { describe, expect, it } from "vitest";
 
@@ -81,17 +82,43 @@ describe("LCP_SPEC_VERSION is the single source of truth", () => {
     expect(pins.some((p) => p.v === LCP_SPEC_VERSION)).toBe(true);
   });
 
-  it("no source file re-declares the version as its own literal", () => {
-    // The constant only helps while it stays the ONLY definition. This catches a future package that
-    // hardcodes the string instead of importing — the exact way the original four copies came about.
-    // `binding-cardano/src/constants.ts` re-EXPORTS it, which is a reference and not a redeclaration.
-    const offenders = [
-      "packages/discovery/src/schema.ts",
-      "packages/binding-cardano/src/constants.ts",
-    ].filter((path) =>
-      readFileSync(new URL(`../../../${path}`, import.meta.url), {
-        encoding: "utf8",
-      }).includes(`"${LCP_SPEC_VERSION}"`),
+  it("no shipped source file spells the version out as a literal", () => {
+    // The constant only helps while it stays the ONLY place the string appears. This catches a future
+    // package that hardcodes it instead of importing — the exact way the original four copies came about.
+    //
+    // ⛔ THE SUBJECT SET IS DERIVED. It used to be a two-element array naming `discovery/src/schema.ts`
+    // and `binding-cardano/src/constants.ts`, under a comment claiming it "catches a FUTURE package that
+    // hardcodes the string" — which it could not, because a future package is by definition not in a list
+    // written today. `binding-cardano/src/metadata.ts` already carried the literal twice, in docblocks
+    // reading `e.g. "0.1.38"`, and this test could not see the file. A version spelled out in a comment
+    // is a version literal: it is shipped in the tarball, a reader takes it for the current one, and
+    // nothing updates it.
+    //
+    // One exemption, and it is the definition itself rather than a name on a list.
+    const DEFINITION = "packages/kernel/src/spec-version.ts";
+    const root = new URL("../../../", import.meta.url).pathname;
+    const sources: string[] = [];
+    const walk = (dir: string, rel: string): void => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) walk(p, `${rel}/${name}`);
+        else if (name.endsWith(".ts")) sources.push(`${rel}/${name}`);
+      }
+    };
+    for (const pkg of readdirSync(join(root, "packages"))) {
+      const src = join(root, "packages", pkg, "src");
+      if (existsSync(src)) walk(src, `packages/${pkg}/src`);
+    }
+    // A walk that stops matching finds no offenders, which is the same colour as a clean tree.
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources).toContain(DEFINITION);
+
+    const offenders = sources.filter(
+      (path) =>
+        path !== DEFINITION &&
+        readFileSync(join(root, path), { encoding: "utf8" }).includes(
+          `"${LCP_SPEC_VERSION}"`,
+        ),
     );
     expect(offenders).toEqual([]);
   });

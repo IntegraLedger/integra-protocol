@@ -39,8 +39,17 @@ for (const entry of readdirSync(packagesDir).sort()) {
   let manifest;
   try {
     manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  } catch {
-    continue; // not a package directory
+  } catch (err) {
+    // ⛔ ENOENT is "not a package directory" and is the only quiet case. A manifest that EXISTS and will
+    // not parse is a package nobody can classify, and the old blanket `continue` classified it as absent —
+    // so a stray comma removed a package from the publishable set and this gate reported the smaller set
+    // as clean. The same collapse lived in `release.yml`'s packing loop.
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === "ENOENT") continue;
+    console.error(
+      `publish-integrity: ${manifestPath} exists and cannot be parsed (${err.message}). ` +
+        "Refusing: a package whose manifest is unreadable is not a package that is private.",
+    );
+    process.exit(1);
   }
   (manifest.private === true ? skipped : publishable).push(manifest.name);
 }

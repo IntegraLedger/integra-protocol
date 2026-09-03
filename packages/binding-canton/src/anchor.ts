@@ -20,7 +20,11 @@
  * different payload on the wire for the same inputs, and the caller — who knows when the settlement
  * actually happened — is the one with the fact to stamp.
  */
-import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
+import {
+  atrHashEquals,
+  canonicalAtrHash,
+  isAtrHash,
+} from "@integraledger/lcp-kernel";
 
 /** The `LcpAnchor` contract payload — the on-ledger fields of the overlay contract. */
 export interface LcpAnchorPayload {
@@ -62,11 +66,9 @@ function stripHexPrefix(s: string): string {
 
 /** The 64-char lowercase-hex, prefix-less on-ledger form of a canonical `0x`-prefixed atrHash. */
 export function atrHashToLedgerText(atrHash: string): string {
-  if (!isAtrHash(atrHash))
-    throw new Error(
-      `atrHashToLedgerText: atrHash must be a 0x-prefixed 32-byte value, got "${atrHash}"`,
-    );
-  return stripHexPrefix(atrHash).toLowerCase();
+  // `canonicalAtrHash` is the validation and the case-fold as one call — the kernel is the only place in
+  // the tree that may fold an atrHash, and inlining the two halves here was a second copy of that rule.
+  return stripHexPrefix(canonicalAtrHash(atrHash, "atrHashToLedgerText"));
 }
 
 /** Recover a canonical `0x`-prefixed atrHash from an on-ledger `Text` field, or `null` if malformed. */

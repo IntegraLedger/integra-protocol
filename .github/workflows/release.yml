@@ -137,14 +137,27 @@ jobs:
       # later rebuild — the approval gate is only meaningful if the approved bytes are the kept bytes. Kept as its own step rather than folded away because it is also the
       # hook signed provenance would attach to if the plan ever allows it (see the header).
       - name: Pack the publishable set
+        shell: bash # `run:` defaults to `bash -e`; naming it is the house rule, and `-e` matters below
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dist-tarballs"
           # The publishable set is derived from `private` in each manifest, never a name pattern: a name
           # filter silently stops being correct the moment a package is renamed or a second private
           # package appears — both have now happened. Same rule as scripts/publish-integrity.mjs.
+          # ⛔ THREE OUTCOMES, AND A BROKEN MANIFEST IS ITS OWN. This read `|| continue`, which treated
+          # every non-zero alike — and a `require` that throws exits 1, exactly as a private package does.
+          # So a stray comma or a bad merge removed a package from the publishable set, it was packed by
+          # nothing, and the run stayed green. The probe now exits 2 for an unreadable manifest, which is
+          # the only way the two can be told apart: 0 packs, 1 is private, 2 stops the release.
+          # `|| status=$?` rather than a bare call: under `bash -e` a non-zero exit would abort the step
+          # before the `case` could read it, which is the same silence in a different costume.
           for dir in packages/*/; do
-            node -e "process.exit(require('./${dir}package.json').private ? 1 : 0)" || continue
-            ( cd "$dir" && pnpm pack --pack-destination "$GITHUB_WORKSPACE/dist-tarballs" )
+            status=0
+            node -e "let m; try { m = require('./${dir}package.json'); } catch (e) { console.error(e.message); process.exit(2); } process.exit(m.private === true ? 1 : 0)" || status=$?
+            case $status in
+              0) ( cd "$dir" && pnpm pack --pack-destination "$GITHUB_WORKSPACE/dist-tarballs" ) ;;
+              1) ;;
+              *) echo "::error::${dir}package.json could not be read (node exited $status) — refusing to release a set derived from a manifest nobody could parse"; exit 1 ;;
+            esac
           done
           ls -1 "$GITHUB_WORKSPACE/dist-tarballs"
 

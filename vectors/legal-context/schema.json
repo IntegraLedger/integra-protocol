@@ -64,5 +64,5 @@
   "required": ["terms"],
   "additionalProperties": {},
   "title": "legal-context.json",
-  "description": "LCP discovery document served at /.well-known/legal-context.json (spec v0.1.38 §2.4–2.5)."
+  "description": "LCP discovery document served at /.well-known/legal-context.json (spec v0.1.38 LCP §2.4–2.5)."
 }

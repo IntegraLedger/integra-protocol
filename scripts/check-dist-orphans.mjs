@@ -79,6 +79,21 @@ if (orphans.length > 0) {
   process.exit(1);
 }
 
+// ⛔ THE NON-EMPTY FLOOR. This was the only gate in `scripts/` without one, and an unbuilt tree printed
+// "0 build outputs across 0 packages" and exited 0 — a clean bill of health over nothing examined, which is
+// the failure this repository names most often. `packages` counts directories that HAVE a src/, so zero
+// means the scan is broken rather than the tree is small; `checked` counts tsc outputs, so zero means the
+// tree was never built, and a check of a `dist/` that does not exist certifies nothing about the one that
+// will.
+if (packages === 0 || checked === 0) {
+  console.error(
+    `check:dist — REFUSING: ${checked} build output(s) across ${packages} package(s) with a src/ ` +
+      "directory. An empty scan is not a pass. Run `pnpm -r build` first; if the tree IS built, the " +
+      "scan is broken and the fix is the scan, never this floor.",
+  );
+  process.exit(1);
+}
+
 console.log(
   `check:dist — ${checked} build outputs across ${packages} packages, every one tracing to a live src/ file.`,
 );

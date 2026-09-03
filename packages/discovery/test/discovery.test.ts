@@ -68,6 +68,30 @@ describe("canonical JSON Schema artifact", () => {
       "terms",
     );
   });
+
+  /**
+   * ⛔ `vectors/legal-context/schema.json` IS RENDERED, NEVER WRITTEN.
+   *
+   * That file is what a third party validates their discovery document against, and it is generated from
+   * the Zod schema in `src/schema.ts` — so the only honest relationship between them is equality. It was
+   * guarded by the two `toContain` assertions above and nothing else, which pin one substring of `$id` and
+   * one member of `required`: `properties`, every `pattern`, and `required` itself could each have
+   * diverged in silence. Measured 2026-09-03, one already had — the vector's `description` was missing a
+   * word the generator emits, which is small and is exactly the size of drift a substring test is built to
+   * miss.
+   *
+   * Compared as PARSED values rather than bytes: the file's on-disk formatting is biome's, and a byte
+   * comparison would be a test of the formatter.
+   */
+  it("the published schema vector is the schema this package generates", () => {
+    const vector = JSON.parse(
+      readFileSync(
+        new URL("../../../vectors/legal-context/schema.json", import.meta.url),
+        "utf8",
+      ),
+    ) as Record<string, unknown>;
+    expect(vector).toEqual(LEGAL_CONTEXT_JSON_SCHEMA);
+  });
 });
 
 describe("emit normalizes the atrHash's case, and nothing else's (LCP §2.5)", () => {
