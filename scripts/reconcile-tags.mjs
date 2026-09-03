@@ -29,7 +29,16 @@
  * An untagged release is visibly missing; a mis-tagged one is a wrong answer that reads as a right one.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { argv, exit } from "node:process";
 
 const WRITE = argv.includes("--write");
@@ -59,6 +68,39 @@ async function publishedVersions(name) {
   );
   if (!res.ok) return null;
   return Object.keys((await res.json()).versions ?? {});
+}
+
+/** Whether the registry will actually hand this version to an installer — the one test a staged version
+ *  fails. Runs npm in a scratch directory with scripts, audit and funding off; ETARGET means staged. */
+function installable(name, version) {
+  const dir = mkdtempSync(join(tmpdir(), "reconcile-tags-probe-"));
+  try {
+    writeFileSync(
+      join(dir, "package.json"),
+      '{"name":"probe","private":true}\n',
+    );
+    execFileSync(
+      "npm",
+      [
+        "install",
+        `${name}@${version}`,
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--no-save",
+      ],
+      { cwd: dir, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" },
+    );
+    return true;
+  } catch (cause) {
+    const msg = String(cause.stderr ?? cause.message);
+    if (/ETARGET|No matching version/i.test(msg)) return false;
+    throw new Error(
+      `${name}@${version}: install probe failed for a reason other than ETARGET, refusing to guess:\n${msg.trim().slice(0, 400)}`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /** The commit a published version was built from, per its own SLSA provenance. */
@@ -111,6 +153,16 @@ for (const name of names) {
     checked++;
     const tag = `${name}@${version}`;
     if (remote.has(tag)) continue;
+    if (!installable(name, version)) {
+      // ⛔ Listed is not published. The packument's `versions`, `time` and `dist-tags` all carry a STAGED
+      // version — one awaiting a maintainer's approval — and so do the per-version document, its tarball
+      // URL and its attestations: every read-only endpoint answers 200 for it. Only an install refuses it
+      // (ETARGET). This script tagged six staged versions on 2026-09-03 from the packument alone, putting
+      // tags on a public repository that pointed at a version later withdrawn. A tag is a claim that the
+      // version shipped; an install is the only witness that it did.
+      console.log(`  ${tag}: staged, not published — no tag`);
+      continue;
+    }
     const sha = await provenanceCommit(name, version);
     if (sha === null) {
       unresolvable.push(
