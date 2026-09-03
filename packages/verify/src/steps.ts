@@ -179,6 +179,13 @@ export async function fingerprintStep(
     return { status: "not-attempted", depth: "malformed-atr-bytes" };
   if (!present(settledAtrHash))
     return { status: "not-attempted", depth: "no-settled-hash" };
+  // The SECOND slot of this step, screened for the same reason as the first. `present` only rejects null
+  // and undefined, so a non-string reached `atrHashEquals`, whose `RegExp.test` coerces its argument — and
+  // an object whose `toString` is not callable makes that coercion throw `Cannot convert object to
+  // primitive value`. `not-attempted` under its own name, never `no-settled-hash`: that one means ABSENT,
+  // and something was supplied here.
+  if (typeof settledAtrHash !== "string")
+    return { status: "not-attempted", depth: "malformed-settled-hash" };
   const recomputed = await hashAtr(atrBytes);
   // Decoded-byte comparison per LCP §2.5. This is the rung that proves the settlement committed to THIS
   // document, so a comparison that could answer `true` for two malformed strings is the wrong primitive.
@@ -227,6 +234,15 @@ export async function acceptanceStep(
     return { status: "not-attempted", depth: "no-settled-hash" };
   if (!present(verifier))
     return { status: "not-attempted", depth: "no-signature-verifier" };
+  // Both atrHash-shaped slots, screened for the reason `fingerprintStep` states: `atrHashEquals` compares
+  // decoded bytes but reaches them through a `RegExp.test`, which COERCES — so an object whose `toString`
+  // is not callable throws rather than answering `false`. `SignedAcceptance.atrHash` is typed, and a
+  // record off a wire is not bound by a type.
+  if (
+    typeof settledAtrHash !== "string" ||
+    typeof acceptance.atrHash !== "string"
+  )
+    return { status: "not-attempted", depth: "malformed-settled-hash" };
   const outcome = await verifyAcceptance(acceptance, settledAtrHash, verifier);
   return "refused" in outcome
     ? { status: "failed", haltClass: outcome.haltClass }

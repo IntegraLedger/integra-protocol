@@ -17,10 +17,12 @@
  * `vectors/{authority/link-attenuates,verify/authority-walk}.json`, where they are checked cross-party
  * against both the producer and the verifier — a second hand-written copy here would only invite drift.
  */
+import type { SignedAcceptance } from "@integraledger/lcp-authority";
 import { describe, expect, it } from "vitest";
 import { type RecordIdentity, verify } from "../src/index.js";
 import {
   type AuthorityLink,
+  acceptanceStep,
   authorityStep,
   commitmentStep,
   fingerprintStep,
@@ -650,6 +652,63 @@ describe("steps are total over an explicit null, not only over undefined", () =>
         });
       },
     );
+
+    /**
+     * ⛔ THE OTHER SLOT OF THE SAME STEP. `atrBytes` was screened; `settledAtrHash` was only checked for
+     * presence, and `present()` answers true for anything that is not null or undefined. So a non-string
+     * reached `atrHashEquals`, whose `RegExp.test` coerces its argument — and an object whose `toString`
+     * is not callable makes that coercion THROW `Cannot convert object to primitive value`.
+     *
+     * Found by this package's own fast-check property, on seed 385868373, after the shallow inputs it
+     * generated for months never carried both slots at once. A settlement reference that is not a string
+     * is a malformed slot, exactly like `atrBytes` that are not bytes, and it reads out under its own name
+     * rather than as `no-settled-hash` — which means ABSENT, and something was supplied here.
+     */
+    it.each([
+      ["an object with a non-callable toString", { toString: "" }],
+      ["a plain object", {}],
+      ["an array", []],
+      ["a number", 7],
+      ["a boolean", true],
+      ["a Symbol-bearing object", { [Symbol.toPrimitive]: 1 }],
+    ])(
+      "fingerprintStep reads out on a settledAtrHash that is %s instead of throwing",
+      async (_label, value) => {
+        await expect(
+          fingerprintStep(elected, value as unknown as string),
+        ).resolves.toEqual({
+          status: "not-attempted",
+          depth: "malformed-settled-hash",
+        });
+      },
+    );
+
+    it("acceptanceStep screens BOTH of its atrHash-shaped slots the same way", async () => {
+      const acceptance: SignedAcceptance = {
+        atrHash: settled as `0x${string}`,
+        signer: "0x0000000000000000000000000000000000000001",
+        scheme: "evm:eip191",
+        signature: "0xdead",
+        signedAt: "2026-09-03T00:00:00Z",
+        payloadType: "atrHash",
+      };
+      const verifier = { verify: async (): Promise<boolean> => true };
+      const bad = { toString: "" } as unknown as `0x${string}`;
+      await expect(acceptanceStep(acceptance, bad, verifier)).resolves.toEqual({
+        status: "not-attempted",
+        depth: "malformed-settled-hash",
+      });
+      await expect(
+        acceptanceStep({ ...acceptance, atrHash: bad }, settled, verifier),
+      ).resolves.toEqual({
+        status: "not-attempted",
+        depth: "malformed-settled-hash",
+      });
+      // …and a well-formed pair still reaches the verifier.
+      await expect(
+        acceptanceStep(acceptance, settled, verifier),
+      ).resolves.toEqual({ status: "proved" });
+    });
 
     it("real bytes still hash and still FAIL a fingerprint that does not match", async () => {
       await expect(fingerprintStep(elected, settled)).resolves.toEqual({
