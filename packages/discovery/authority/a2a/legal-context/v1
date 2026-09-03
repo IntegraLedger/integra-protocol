@@ -27,7 +27,7 @@ The declaration is one entry in an Agent Card's `capabilities.extensions[]`:
 ```json
 {
   "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
-  "description": "Requires an Agreed Terms Record at LCP level 2 or above.",
+  "description": "Requires an Agentic Transaction Record at LCP level 2 or above.",
   "required": true,
   "params": { "minimumLevel": 2, "acceptedDisputeMethods": ["aaa-icdr"] }
 }

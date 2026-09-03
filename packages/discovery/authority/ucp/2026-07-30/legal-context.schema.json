@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://integraledger.com/lcp/ucp/2026-07-30/legal-context.schema.json",
   "title": "com.integraledger.legal_context — UCP capability configuration",
-  "description": "The `config` payload of the `com.integraledger.legal_context` UCP capability. A declaration states what a counterparty REQUIRES of an agreement's Agreed Terms Record before it will transact. Reading one obliges nobody and emitting one commits no counterparty: it is a pre-filter, so that two parties who cannot possibly agree find out before a payment is attempted rather than after. `2026-07-30` is the date this capability was defined, not the date of any host specification, and dated paths are immutable — a new version adds a path and never edits one. This document describes a technology harness. It asserts nothing about whether any agreement is lawful, sound or enforceable.",
+  "description": "The `config` payload of the `com.integraledger.legal_context` UCP capability. A declaration states what a counterparty REQUIRES of an agreement's Agentic Transaction Record before it will transact. Reading one obliges nobody and emitting one commits no counterparty: it is a pre-filter, so that two parties who cannot possibly agree find out before a payment is attempted rather than after. `2026-07-30` is the date this capability was defined, not the date of any host specification, and dated paths are immutable — a new version adds a path and never edits one. This document describes a technology harness. It asserts nothing about whether any agreement is lawful, sound or enforceable.",
   "type": "object",
   "additionalProperties": false,
   "required": ["minimumLevel"],

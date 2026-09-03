@@ -12,7 +12,7 @@ sound or enforceable, and nothing in it is a legal judgment.
 ## What the capability means
 
 A Universal Commerce Protocol party that declares `com.integraledger.legal_context` is stating what it
-requires of an agreement's **Agreed Terms Record (ATR)** before it will transact.
+requires of an agreement's **Agentic Transaction Record (ATR)** before it will transact.
 
 An ATR is a terms document. Its identity is the SHA-256 hash of that document's bytes, and a settlement is
 *welded* to it by carrying that hash in a field the payment rail already has — so that the record and the
