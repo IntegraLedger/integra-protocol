@@ -57,7 +57,14 @@ export interface SignedAcceptance {
   elections?: { forum?: string; governingLaw?: string };
 }
 
-/** The signature-verification port — pure input, boolean out. binding-evm-common implements it. */
+/**
+ * The signature-verification port — pure input, boolean out. `binding-evm-common` implements it.
+ *
+ * `false` means CHECKED AND INVALID. An implementation that could not check — an unreachable node, a
+ * scheme it does not implement — must reject, never return `false`: the caller renders `false` as
+ * `acceptance/bad-signature`, and an implementation that answers `false` for a chain it never reached
+ * publishes a valid acceptance as a forgery.
+ */
 export interface SignatureVerifier {
   verify(acceptance: SignedAcceptance): Promise<boolean>;
 }
@@ -104,6 +111,12 @@ export function verifyAcceptanceStructure(
  * Verify an acceptance binds `expectedAtrHash`, does not exceed the leaf grant (ATA-4), and has a valid
  * signature (via the port). Returns an `Outcome`: a `verification-failure` Refusal on any gate, else the
  * verified acceptance. The structural gates run first (fail before touching the chain), then the signature.
+ *
+ * ⛔ **A rejection from the port is NOT caught here, deliberately.** `acceptance/bad-signature` says
+ * "signature did not verify", which is a claim about the record; a verifier that could not reach the chain
+ * has made no claim about it at all. The port's contract is that `false` means checked-and-invalid and a
+ * throw means could-not-check — so wrapping this call in a catch that refused would republish every RPC
+ * outage as a forgery, and the caller could no longer tell a bad acceptance from an unavailable node.
  */
 export async function verifyAcceptance(
   acceptance: SignedAcceptance,

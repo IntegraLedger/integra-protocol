@@ -39,13 +39,20 @@ const ok = await verifyAcceptanceSignature(acceptance);
 const onChain = await verifyAcceptanceSignature(acceptance, smartAccountOpts);
 ```
 
-## Three outcomes, kept distinct
+## Four outcomes, kept distinct
 
 A malformed **configuration** throws — an absent chain id or a missing client is an integration error the
 caller must fix. A malformed **record** throws — an unparseable timestamp is a different fact from a
 forged signature, and letting it hide behind a bad-signature verdict would lose that. A malformed
 **signature** returns `false` — recovery over forged bytes fails deep in curve math, and a verifier that
-crashes on a forgery cannot report the forgery.
+crashes on a forgery cannot report the forgery. A chain that could not **answer** throws — an HTTP 429 or
+a timeout says nothing whatever about the signature, and reporting it as `false` publishes a valid buyer
+acceptance as a forgery, a verdict the next run reverses.
+
+The last two are told apart by the scheme, not by the error class: `eip191` and `eip712` verify by pure
+offline recovery, so a throw there is the signature; `erc1271` and `erc6492` verify on-chain, and viem
+already returns `false` for a signature its validator rejects and throws only when the node could not be
+reached.
 
 Collapsing any two of those into one another is how a verifier ends up reporting the wrong thing about
 the one case it exists for.

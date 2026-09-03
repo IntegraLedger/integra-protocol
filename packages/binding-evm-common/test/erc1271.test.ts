@@ -314,10 +314,53 @@ describe("verifyAcceptanceSignature — smart-account schemes verify through the
     });
   });
 
-  it("an on-chain call that throws is reported as false, not propagated (a verifier must not crash)", async () => {
+  /**
+   * ⛔ **The fourth outcome: the chain could not answer.**
+   *
+   * viem's `verifyTypedData` / `verifyMessage` already draw this line. A signature the validator rejects —
+   * forged, malformed, wrong signer — makes the deployless call revert; viem catches its own
+   * `VerificationError` and RETURNS `false`. It throws only for the other thing: an HTTP 429, a timeout, a
+   * node returning garbage. So on the smart-account path a throw is never "verified as forged"; it is
+   * "not verified", and this package's README says in terms that those are different facts.
+   *
+   * These cases replace one that asserted the opposite — "an on-chain call that throws is reported as
+   * false, not propagated (a verifier must not crash)". That test pinned the defect: it made an RPC outage
+   * indistinguishable from a forgery, so `authority`'s `verifyAcceptance` refused a valid buyer acceptance
+   * as `acceptance/bad-signature` — "signature did not verify" — a published verdict that re-running an
+   * hour later reverses. The EOA cases above hold the boundary from the other side: those closures are
+   * pure recovery with no I/O, so a throw there IS the signature and `false` remains right.
+   */
+  it.each([
+    ["evm:erc1271", "HTTP request failed. Status: 429 Too Many Requests"],
+    ["evm:erc6492", "The request took too long to respond."],
+  ] as const)(
+    "%s: an RPC failure PROPAGATES — an unreachable node is not a forged signature",
+    async (scheme, message) => {
+      const verifyTypedData = vi.fn(async () => {
+        throw new Error(message);
+      });
+      const client = { verifyTypedData } as unknown as PublicClient;
+      await expect(
+        verifyAcceptanceSignature(
+          {
+            atrHash,
+            signer: SMART_ACCOUNT,
+            scheme,
+            signature: SIG,
+            signedAt: signedAtRfc,
+            payloadType: "eip712-acceptance-envelope",
+          },
+          { chainId, client },
+        ),
+      ).rejects.toThrow(message);
+      expect(verifyTypedData).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("raw-atrHash payload: an RPC failure propagates there too", async () => {
     const client = {
-      verifyTypedData: vi.fn(async () => {
-        throw new Error("execution reverted");
+      verifyMessage: vi.fn(async () => {
+        throw new Error("HTTP request failed. Status: 503 Service Unavailable");
       }),
     } as unknown as PublicClient;
     await expect(
@@ -325,12 +368,29 @@ describe("verifyAcceptanceSignature — smart-account schemes verify through the
         {
           atrHash,
           signer: SMART_ACCOUNT,
-          scheme: "evm:erc6492",
+          scheme: "evm:erc1271",
           signature: SIG,
           signedAt: signedAtRfc,
-          payloadType: "eip712-acceptance-envelope",
+          payloadType: "atrHash",
         },
-        { chainId, client },
+        { client },
+      ),
+    ).rejects.toThrow(/503/);
+  });
+
+  it("the client's own false verdict is still false — only a THROW is the fourth outcome", async () => {
+    const { client } = fakeClient(false);
+    await expect(
+      verifyAcceptanceSignature(
+        {
+          atrHash,
+          signer: SMART_ACCOUNT,
+          scheme: "evm:erc1271",
+          signature: SIG,
+          signedAt: signedAtRfc,
+          payloadType: "atrHash",
+        },
+        { client },
       ),
     ).resolves.toBe(false);
   });

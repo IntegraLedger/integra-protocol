@@ -148,7 +148,7 @@ export interface AcceptanceVerifyOpts {
  * Verify an acceptance signature. EOA schemes recover offline; smart-account schemes verify on-chain through
  * `opts.client`. Returns a boolean (the port contract).
  *
- * THREE OUTCOMES, and keeping them distinct is the whole point:
+ * FOUR OUTCOMES, and keeping them distinct is the whole point:
  *
  *  - **A malformed CONFIGURATION throws** (absent `chainId` for the envelope, absent client for a smart
  *    account) — an integration error the caller must fix, not a fact about the record.
@@ -160,18 +160,29 @@ export interface AcceptanceVerifyOpts {
  *    curve math ("Point is not on curve"), and a verifier that crashes on a forgery cannot report the
  *    forgery — the adversarial case is exactly the one verification exists for. An unrecoverable signature
  *    is definitively not a valid signature, so the walk records an honest `failed(verification-failure)`.
+ *  - **A chain that could not ANSWER throws.** ⛔ This one used to be swallowed as `false`, and it is the
+ *    reason the guard is now scheme-shaped rather than wrapped around everything. For an EOA scheme the
+ *    bound closure is pure recovery with no I/O, so a throw there IS the signature. For `evm:erc1271` and
+ *    `evm:erc6492` it is an on-chain call, and viem has already drawn this line inside it: a signature the
+ *    validator rejects makes the deployless call revert, viem catches its own `VerificationError` and
+ *    returns `false`, and it rethrows only for an HTTP 429, a timeout, or a node that answered garbage.
+ *    Collapsing that into `false` published a valid buyer acceptance as `acceptance/bad-signature` —
+ *    "signature did not verify" — for as long as an RPC was rate-limited, a verdict that reverses on the
+ *    next run. "Not verified" and "verified as forged" are different facts.
  *
- * The guard therefore wraps ONLY the recovery/verification calls. Widening it to cover the normalization
- * above would collapse the second outcome into the third.
+ * The guard therefore wraps ONLY the OFFLINE recovery calls. Widening it over the normalization above
+ * collapses the second outcome into the third; widening it over the on-chain call collapses the fourth.
  */
 export async function verifyAcceptanceSignature(
   input: AcceptanceSignatureInput,
   opts?: AcceptanceVerifyOpts,
 ): Promise<boolean> {
   // Normalization + configuration: OUTSIDE the guard, so both stay loud.
-  const recover = prepareRecovery(input, opts);
+  const { run, offline } = prepareRecovery(input, opts);
+  // On-chain: viem's verdict is the whole answer, and anything it throws is the chain failing to give one.
+  if (!offline) return await run();
   try {
-    return await recover();
+    return await run();
   } catch {
     return false; // the signature itself did not recover — not a valid signature
   }
@@ -184,11 +195,17 @@ class ConfigurationError extends Error {}
  * Normalize the record's fields and bind the scheme-appropriate recovery call, returning it UNEXECUTED so
  * the caller can guard the recovery alone. Anything wrong with the configuration or the record's own fields
  * throws from here, before the guard exists.
+ *
+ * `offline` says whether the bound call does any I/O, and it is the caller's whole basis for deciding
+ * whether a throw is a fact about the signature or a fact about the network. It is derived from the scheme
+ * here — where the branch is already taken — rather than sniffed off an error class at the catch site: an
+ * allowlist of transport-error names is a subject set that goes stale silently, and getting it wrong in
+ * that direction reports a forgery.
  */
 function prepareRecovery(
   input: AcceptanceSignatureInput,
   opts?: AcceptanceVerifyOpts,
-): () => Promise<boolean> {
+): { run: () => Promise<boolean>; offline: boolean } {
   // A signer that is not an address is a malformed RECORD, not a forgery — thrown here, before the guard,
   // for the same reason rfc3339ToUnixSeconds throws: recovery over it would fail deep in viem and read as
   // a bad-signature verdict about a signature nobody could have examined.
@@ -216,15 +233,21 @@ function prepareRecovery(
       // `opts` (not `opts?.`): the chainId gate above already proved it defined — an optional chain here
       // would be dead syntax guarding an impossible state, and the mutation run flags it as equivalent.
       const client = requireClient(opts.client, input.scheme);
-      return () =>
-        client.verifyTypedData({ address: signer, ...typedData, signature });
+      return {
+        offline: false,
+        run: () =>
+          client.verifyTypedData({ address: signer, ...typedData, signature }),
+      };
     }
-    return async () => {
-      const recovered = await recoverTypedDataAddress({
-        ...typedData,
-        signature,
-      });
-      return recovered.toLowerCase() === signer.toLowerCase();
+    return {
+      offline: true,
+      run: async () => {
+        const recovered = await recoverTypedDataAddress({
+          ...typedData,
+          signature,
+        });
+        return recovered.toLowerCase() === signer.toLowerCase();
+      },
     };
   }
 
@@ -232,15 +255,21 @@ function prepareRecovery(
   const raw = assertBytes32(input.atrHash); // throws loud on a malformed atrHash
   if (isContract) {
     const client = requireClient(opts?.client, input.scheme);
-    return () =>
-      client.verifyMessage({ address: signer, message: { raw }, signature });
+    return {
+      offline: false,
+      run: () =>
+        client.verifyMessage({ address: signer, message: { raw }, signature }),
+    };
   }
-  return async () => {
-    const recovered = await recoverMessageAddress({
-      message: { raw },
-      signature,
-    });
-    return recovered.toLowerCase() === signer.toLowerCase();
+  return {
+    offline: true,
+    run: async () => {
+      const recovered = await recoverMessageAddress({
+        message: { raw },
+        signature,
+      });
+      return recovered.toLowerCase() === signer.toLowerCase();
+    },
   };
 }
 
