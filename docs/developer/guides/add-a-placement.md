@@ -352,7 +352,7 @@ npx @integraledger/lcp-conformance
 ```
 
 ```text
-conformance: 851 passed, 1 failed, 0 skipped (none)
+conformance: 859 passed, 1 failed, 0 skipped (none)
 FAIL placement.a2a / extract reads the camelCase-Ref spelling some agents emit: expected {"ok":true,"value":{"ref":{"type":"sha256","value":"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"},"termsUrl":{"kind":"no-field-declared"}}} got {"refused":true,"haltClass":"verification-failure","code":"a2a/reference-absent"}
 ```
 
