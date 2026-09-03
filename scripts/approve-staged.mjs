@@ -15,14 +15,21 @@
  * Tags are written here, after the registry has confirmed the version is live, and only for what actually
  * went live.
  *
- *   node scripts/approve-staged.mjs --otp 123456          approve every staged version, then tag
+ *   node scripts/approve-staged.mjs --otp 123456          approve what is staged AT THE TREE'S VERSION, then tag
  *   node scripts/approve-staged.mjs --otp 123456 --dry-run  show what would be approved
  *   node scripts/approve-staged.mjs --list                  just list what is staged
+ *   node scripts/approve-staged.mjs --otp 123456 --reject-stale   first reject rows staged at any OTHER version
+ *
+ * It approves only the version the tree is at. Staging happens on every push and a staged version cannot be
+ * re-staged, so a correction landed after a stage leaves the superseded bytes staged beside the corrected
+ * ones; rows at another version are refused by name, and rejected only with --reject-stale.
  *
  * A TOTP code lives about 30 seconds. npm accepts one per approval, so a long run may need a second code:
  * on an OTP rejection this stops rather than continuing, and re-running skips what already went live.
  */
 import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { argv, exit } from "node:process";
 
 const arg = (flag) => {
@@ -92,11 +99,77 @@ if (rows.length === 0) {
 console.log(`${rows.length} staged version(s):`);
 for (const r of rows) console.log(`  ${r.name}@${r.version}  (${r.id})`);
 
+/* ---------- The version the TREE is at is the only version this script may approve ----------
+ *
+ * Staging is append-only from the registry's side: a version staged once cannot be re-staged, and every
+ * push of `main` stages whatever `package.json` carries. So a correction landed after a stage — the
+ * ordinary case, since staging happens on every push — leaves the earlier bytes sitting staged beside
+ * the later ones, and this script used to approve EVERYTHING it listed. One `--otp` would have published
+ * both the superseded bytes and the corrected ones. The tree knows which version it is at, so the tree
+ * decides: rows at any other version are refused, named, and — only when asked — rejected. */
+const treeVersion = (() => {
+  const versions = new Set(
+    readdirSync("packages")
+      .map((p) => {
+        try {
+          return JSON.parse(readFileSync(join("packages", p, "package.json"), "utf8")).version;
+        } catch {
+          return undefined;
+        }
+      })
+      .filter((v) => typeof v === "string"),
+  );
+  if (versions.size !== 1) {
+    console.error(
+      `\nthe tree carries ${versions.size} package versions (${[...versions].join(", ")}); the fixed group is one\n` +
+        "number, so nothing can be approved until it is.",
+    );
+    exit(1);
+  }
+  return [...versions][0];
+})();
+
+const matching = rows.filter((r) => r.version === treeVersion);
+const stale = rows.filter((r) => r.version !== treeVersion);
+if (stale.length > 0) {
+  console.log(`\n${stale.length} staged at a version this tree is NOT at (tree: ${treeVersion}):`);
+  for (const r of stale) console.log(`  ${r.name}@${r.version}  (${r.id})`);
+}
+
 if (has("--list")) exit(0);
 if (has("--dry-run")) {
-  console.log("\n--dry-run: nothing approved.");
+  const staleNote =
+    stale.length === 0
+      ? "."
+      : `; ${stale.length} stale row(s) would be ${has("--reject-stale") ? "rejected first" : "REFUSED — pass --reject-stale to reject them"}.`;
+  console.log(`\n--dry-run: nothing approved. Would approve ${matching.length} at ${treeVersion}${staleNote}`);
   exit(0);
 }
+
+if (stale.length > 0 && !has("--reject-stale")) {
+  console.error(
+    `\nRefusing to approve: ${stale.length} staged row(s) are at a version other than ${treeVersion}, and an\n` +
+      "approval here approves every row it is given. Either reject them first — `npm stage reject <id>` for\n" +
+      "each id above — or re-run with --reject-stale to have this script reject them before approving the rest.",
+  );
+  exit(1);
+}
+for (const r of stale) {
+  process.stdout.write(`rejecting ${r.name}@${r.version} … `);
+  try {
+    run("npm", ["stage", "reject", r.id]);
+    console.log("rejected");
+  } catch (cause) {
+    console.log("FAILED");
+    console.error(`\n${String(cause.stderr ?? cause.message).trim()}`);
+    exit(1);
+  }
+}
+if (matching.length === 0) {
+  console.log(`\nnothing staged at ${treeVersion}; nothing to approve.`);
+  exit(0);
+}
+rows = matching;
 
 const otp = arg("--otp");
 if (otp === undefined) {
