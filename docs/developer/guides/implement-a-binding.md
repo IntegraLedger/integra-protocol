@@ -403,7 +403,7 @@ npx @integraledger/lcp-conformance --phase P3
 ```
 
 ```text
-conformance: 366 passed, 1 failed, 18 skipped (verify.authorityWalk, verify.classLadder, verify.recourse, verify.identity, vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
+conformance: 372 passed, 1 failed, 18 skipped (verify.authorityWalk, verify.classLadder, verify.recourse, verify.identity, vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
 FAIL binding.profiles / the examplechain note profile validates: expected true got false
 ```
 

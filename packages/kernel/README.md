@@ -81,6 +81,14 @@ Every guard has its own reason, because "the record is malformed" is not an acti
 | `assemble/duplicate-slot` | The same slot supplied twice |
 | `assemble/slot-shape` | Not exactly one of `value` \| `ref` |
 | `assemble/bad-ref` | A `ref` that is not a well-formed `lcp:sha256:` reference |
+| `assemble/missing-id` | `id` is required on every record, and must be a non-empty string |
+| `assemble/missing-terms` | `terms` is required, and must be a non-empty string |
+| `assemble/caps-raw-number` | A raw JSON number anywhere under `caps` — monetary amounts are decimal-integer strings of base units |
+| `assemble/unrepresentable-number` | A JSON number beyond the safe-integer range, or `NaN`/`Infinity` — it cannot be recorded faithfully |
+
+The table is every guard, and `rail-invariants` holds it that way: it derives the `assemble/*` codes from
+`kernel/src` and refuses a code with no row and a row naming no code. It listed five of nine for as long as
+there were nine.
 
 The numeric-slot rule is subtler than it looks: JavaScript serializes integer-like keys first regardless
 of insertion order, so a slot named `"1"` would jump ahead of the engine-stamped `atrVersion` field and change

@@ -35,8 +35,14 @@ expected output or the expected typed error **code**:
 ```
 
 Nothing in either case is executable, which is what lets the same corpus judge an implementation written in
-Rust, Go or Python. Of the 861 registered cases, 131 assert a refusal this way — a conformant implementation
-has to refuse the right inputs, not merely accept the right ones.
+Rust, Go or Python. Of the 861 registered cases, **226 assert a failure rather than a value** — 95 pin a
+typed error, the way the case above does, and 131 pin a returned `Refusal`. A conformant implementation has
+to refuse the right inputs, not merely accept the right ones.
+
+Those three numbers are derived from the corpus manifest by `rail-invariants`, not counted by hand. They had
+to be: "131 assert a refusal this way" pointed at an `error` example while carrying the `Refusal` count, so
+the sentence was two honest measurements welded into one wrong claim, and no reading of the corpus yielded
+the number beside the words that introduced it.
 
 Note what the second case pins: the **code**, never the message text. The code is the contract, because
 callers route on it; the message is a diagnostic for a human. Pinning prose would buy a stricter-looking

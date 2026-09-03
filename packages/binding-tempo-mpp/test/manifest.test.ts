@@ -33,8 +33,10 @@ describe("TEMPO_MPP_MANIFEST", () => {
   it("declares the FULL recovery triple, and it was observed rather than asserted", () => {
     // Observed on Tempo mainnet 2026-07-30, not read off a spec: recovered from a tx hash through a
     // public RPC, and re-found by a topic-3 filter. All three legs are true of the code, not aspirational.
-    // Four of the eleven shipped profiles carry the triple (this one, evm:x402, cardano, evm:escrow); what
-    // is particular here is the carrier and the index key, not the triple. See the manifest's own note.
+    // What is particular here is the carrier and the index key, not the triple, which several profiles
+    // carry. The set is DERIVED in `rail-invariants/test/recovery-triple-invariant.test.ts` rather than
+    // counted here: this comment said "four of the eleven" and named evm:escrow, which declares no such
+    // triple, over a corpus that ships thirteen profiles. See the manifest's own note.
     expect(TEMPO_MPP_MANIFEST.recovery).toEqual({
       onChain: true,
       zeroPartyRecoverable: true,

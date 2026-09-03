@@ -25,7 +25,7 @@
  * ★ WHAT IT DELIBERATELY DOES NOT DO. It does not assert prose *wording* — only numbers and table contents.
  * A doc that explains a fact differently is doing its job; a doc that states a different fact is not.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { APTOS_MANIFEST } from "@integraledger/lcp-binding-aptos";
 import { CANTON_MANIFEST } from "@integraledger/lcp-binding-canton";
 import { CANTON_X402_MANIFEST } from "@integraledger/lcp-binding-canton-x402";
@@ -238,6 +238,110 @@ describe("docs/developer describes the tree the tree actually is", () => {
       "the README states no CURRENT version in bold",
     ).toBeGreaterThan(0);
     for (const c of claimed) expect(c).toBe(version);
+  });
+
+  /**
+   * ⛔ EVERY `assemble/*` GUARD HAS A ROW, AND EVERY ROW NAMES A GUARD.
+   *
+   * `kernel/README.md`'s refusal table is the only place a reader is told what the engine refuses and why,
+   * and it listed five of nine — `missing-id`, `missing-terms`, `caps-raw-number` and
+   * `unrepresentable-number` were absent for as long as they existed. A partial table does not read as
+   * partial: it reads as the set. Closed in BOTH directions, because a row for a guard that was deleted is
+   * the same defect pointed the other way.
+   */
+  it("kernel's refusal table is every assemble/* guard the kernel raises", () => {
+    const codes = new Set(
+      readdirSync(`${ROOT}packages/kernel/src`)
+        .filter((f) => f.endsWith(".ts"))
+        .flatMap((f) => [
+          ...read(`packages/kernel/src/${f}`).matchAll(
+            /"(assemble\/[a-z-]+)"/g,
+          ),
+        ])
+        .map((m) => m[1] as string),
+    );
+    expect(
+      codes.size,
+      "found no assemble/* codes in kernel/src at all",
+    ).toBeGreaterThan(0);
+    const readme = read("packages/kernel/README.md");
+    const rows = new Set(
+      [...readme.matchAll(/^\| `(assemble\/[a-z-]+)` \|/gm)].map(
+        (m) => m[1] as string,
+      ),
+    );
+    expect([...rows].sort()).toEqual([...codes].sort());
+  });
+
+  /**
+   * ⛔ THIS PACKAGE'S README NAMES EVERY INVARIANT IT HOLDS.
+   *
+   * It said "Current invariant: the success gate" while eight other invariant suites sat in the same
+   * directory. A reader deciding whether a property is guarded here reads that sentence and stops.
+   */
+  it("the rail-invariants README names every invariant file in this directory", () => {
+    const files = readdirSync(`${ROOT}packages/rail-invariants/test`)
+      .filter((f) => f.endsWith(".test.ts"))
+      .sort();
+    expect(files.length, "found no invariant suites at all").toBeGreaterThan(0);
+    const readme = read("packages/rail-invariants/README.md");
+    const named = files.filter((f) => readme.includes(`\`${f}\``));
+    expect(named, "the README does not name every suite in test/").toEqual(
+      files,
+    );
+    // And the other direction: a row naming a file that no longer exists.
+    for (const m of readme.matchAll(/`([a-z0-9-]+\.test\.ts)`/g))
+      expect(
+        files,
+        `the README names ${m[1]}, which is not in test/`,
+      ).toContain(m[1]);
+  });
+
+  /**
+   * ⛔ THE REFUSAL COUNTS IN `conformance.md` ARE DERIVED, BECAUSE EDITING THEM IS WHAT WENT WRONG.
+   *
+   * The page said "Of the N registered cases, 131 assert a refusal this way" immediately below an example
+   * pinning a typed `error` — so the sentence carried the `Refusal` count under words introducing the
+   * error count, and no single reading of the corpus produced the number beside those words. Two honest
+   * measurements welded into one wrong claim is not fixed by measuring again; it is fixed by naming both
+   * and deriving both.
+   */
+  it("the refusal counts in conformance.md are the corpus's", () => {
+    const manifest = JSON.parse(
+      read("vectors/conformance/corpus-manifest.json"),
+    ) as {
+      areas: { file: string }[];
+    };
+    let total = 0;
+    let typedErrors = 0;
+    let refusals = 0;
+    for (const area of manifest.areas) {
+      const cases = (
+        JSON.parse(read(`vectors/${area.file}`)) as { cases: object[] }
+      ).cases;
+      for (const c of cases) {
+        total += 1;
+        // A case pins a typed error with an `error` key; it pins a returned Refusal by carrying
+        // `refused: true` inside its expected outcome. They are disjoint by construction — an outcome is
+        // one or the other — and the union is what "asserts a failure" means.
+        const hasError = "error" in c;
+        const refused = JSON.stringify(
+          (c as { expected?: unknown; expect?: unknown }).expected ??
+            (c as { expect?: unknown }).expect ??
+            null,
+        ).includes('"refused":true');
+        if (hasError) typedErrors += 1;
+        else if (refused) refusals += 1;
+      }
+    }
+    expect(total, "the corpus manifest resolved no cases").toBeGreaterThan(0);
+    const page = read("docs/developer/concepts/conformance.md");
+    expect(page).toContain(`Of the ${total} registered cases`);
+    expect(page).toContain(
+      `**${typedErrors + refusals} assert a failure rather than a value**`,
+    );
+    expect(page).toContain(`${typedErrors} pin a\ntyped error`);
+    expect(page).toContain(`${refusals} pin a returned \`Refusal\``);
   });
 
   it("the corpus size in the docs is the corpus size", () => {

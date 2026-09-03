@@ -1,7 +1,8 @@
 /**
  * The x402 `exact` / EIP-3009 WeldAdapter (LCP `LCP-X402-EVM-NONCE-1`). Built on the live
  * (`lcp-x402-reference`, 114 tests) onto binding-core's `WeldAdapter` contract, with the typed-data
- * machinery reused from `binding-evm-common` (viem lives only here and in binding-evm-common).
+ * machinery reused from `binding-evm-common` (viem is confined to the EVM packages, and `depcruise`
+ * holds it there — it reaches no non-EVM binding and no placement).
  *
  * - `propose`  — build the EIP-3009 authorization + typed-data with `nonce = atrHash` (after the Permit2
  *                filter); the payer signs the returned `typedData`.

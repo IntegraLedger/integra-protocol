@@ -772,8 +772,8 @@ export function readDeclaredPaths(
  *
  * The value half matters as much as the slot half. `carrierClass` is declared per slot,
  * and the canonical field's label is `"integrity"` because the MANIFEST is required to permit at least one
- * content-addressed type — which says nothing about what a given document put there. Four shipped manifests
- * permit `url` alongside `sha256` (ACP, UCP, x402, ACK), so `{type:"url", …}` in the canonical slot read
+ * content-addressed type — which says nothing about what a given document put there. Several shipped
+ * manifests permit `url` alongside `sha256`, so `{type:"url", …}` in the canonical slot read
  * back as integrity-bearing and satisfied this function: exactly the substitution the class axis exists to
  * refuse — a located document standing in for an attested one — arriving through the one field nobody was
  * checking. LCP v1.38 §C.2 describes it ("A terms-of-use policy page is not a per-transaction terms record

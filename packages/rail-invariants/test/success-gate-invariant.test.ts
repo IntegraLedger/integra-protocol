@@ -346,8 +346,10 @@ describe("the success-gate invariant, across every rail", () => {
   }
 
   it("the structural rails carry no outcome field BY the rail's nature — declared, not probed", () => {
-    // Recorded so the list is reviewable in one place: these six cannot produce a failed transaction that
-    // still carries a weld, which is why no probe exists. See each package's header for the mechanism.
+    // Recorded so the list is reviewable in one place: the rails below cannot produce a failed transaction
+    // that still carries a weld, which is why no probe exists. The count is not restated — it is the length
+    // of the array the assertion pins, and this comment said "six" over seven entries. See each package's
+    // header for the mechanism.
     const structural = MANIFESTS.filter(
       ([, m]) => m.successGate === "structural",
     ).map(([r]) => r);

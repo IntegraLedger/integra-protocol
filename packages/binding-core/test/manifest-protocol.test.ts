@@ -22,8 +22,8 @@ const canonical = read(
   "../../../vectors/vocabulary/protocol-id.schema.json",
 ) as { enum: string[] };
 
-// Every profile that must NOT declare a protocol: escrow is a mechanism, and the seven bare rails bind no
-// protocol at all. Their omission is the designed state, not an oversight, and the schema's non-required
+// Every profile that must NOT declare a protocol: escrow is a mechanism, and the six bare rails below bind
+// no protocol at all — the list is seven entries because escrow is one of them and is not a rail. Their omission is the designed state, not an oversight, and the schema's non-required
 // `protocol` is what makes it legal.
 //
 // `sui` is NOT in this list, and the reason is the field's contract rather than a preference. Pay402 is an
