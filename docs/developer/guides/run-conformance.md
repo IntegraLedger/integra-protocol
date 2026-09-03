@@ -195,7 +195,7 @@ console.log(report.failed[0]);
 ```
 
 ```text
-conformance: 13 passed, 835 failed, 0 skipped
+conformance: 13 passed, 839 failed, 0 skipped
 failing areas: 43 of 44
 {
   area: 'atrhash.compute',
@@ -277,7 +277,7 @@ And a real failure, from a corpus with one expected value altered — the summar
 per failing case naming the area, the case, and both values:
 
 ```text
-conformance: 847 passed, 1 failed, 0 skipped (none)
+conformance: 851 passed, 1 failed, 0 skipped (none)
 FAIL atrhash.compute / empty-terms: expected "0x0000000000000000000000000000000000000000000000000000000000000000" got "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 ```
 
