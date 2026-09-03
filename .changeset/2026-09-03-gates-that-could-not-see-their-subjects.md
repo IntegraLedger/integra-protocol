@@ -35,4 +35,4 @@ Six gate weaknesses, and the three shipped case-folds one of them was not reachi
 Behaviour: `emit` and `atrHashToLedgerText` now throw the kernel's message rather than each package's own
 on a malformed atrHash. Both threw before.
 
-The corpus root moves to `a47801f6ecfc96b2…` — the schema vector's re-render is a sealed file.
+The corpus root moves to `c2875add14f5f2bf…` — the schema vector's re-render is a sealed file.
