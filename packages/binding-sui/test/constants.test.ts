@@ -6,6 +6,7 @@
  * `::PaymentSettled` suffix, so an untrusted package cannot spoof the weld), which means a drifted
  * module/event segment silently matches nothing rather than matching the wrong thing.
  */
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   getSuiConfig,
@@ -68,6 +69,34 @@ describe("fully-qualified Pay402 Move names", () => {
     expect(PAY402_MODULE).toBe("payment");
     expect(PAY402_SETTLE_FUNCTION).toBe("settle_payment");
     expect(PAY402_SETTLED_EVENT).toBe("PaymentSettled");
+  });
+
+  /**
+   * ⛔ **THE PROSE IS PART OF THE CLAIM.** `src/manifest.ts` said in its opening paragraph that Pay402's
+   * "Move module is `x402_payment`", while `constants.ts` composes every fully-qualified name from
+   * `payment` — and the manifest itself used `payment` twenty-seven lines further down, in the
+   * `MoveEventType` it tells a reader to filter on. Two names for one module, in one file.
+   *
+   * The constant is the one that is right, and the live testnet harness is the witness: it appends a real
+   * `settle_payment` call built from `pay402SettleTarget` and then filters real events with
+   * `pay402SettledEventType`. A Move call naming a module the package does not contain does not execute,
+   * so a passing live run could not have been produced by the wrong name.
+   *
+   * A name that only appears in a sentence is a name no test resolves, which is how this survived. So the
+   * sentence is checked: any "Move module `x`" the manifest states must be the module the builders use.
+   */
+  it("the manifest's prose names the same Move module the builders compose", () => {
+    const manifestSrc = readFileSync(
+      new URL("../src/manifest.ts", import.meta.url),
+      "utf8",
+    );
+    const stated = [
+      ...manifestSrc.matchAll(/Move module (?:is )?`([A-Za-z0-9_]+)`/g),
+    ].map((m) => m[1]);
+    // Refuse an empty subject set: a reworded sentence must fail here rather than silently stop being
+    // checked, which is the shape this very defect took.
+    expect(stated.length).toBeGreaterThan(0);
+    for (const name of stated) expect(name).toBe(PAY402_MODULE);
   });
 
   it("keeps the settle target and the settled event type distinct", () => {

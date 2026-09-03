@@ -4,10 +4,18 @@ import type { BindingManifest } from "@integraledger/lcp-binding-core";
  * The Sui Pay402 `payment_id` binding manifest.
  *
  * **protocol = "x402", SCOPED TO PAY402 — and the scoping is the substance.** Pay402 is an x402
- * facilitator, not a bare-rail payment primitive: its Move module is `x402_payment` and `settle_payment`
- * takes a `facilitator_fee`. The field's contract is `absent IFF protocol-neutral`, so omitting it would be
- * a positive claim of neutrality this binding cannot make. The rail id stays `sui`: the rail is the chain,
- * the protocol is what settles over it.
+ * facilitator, not a bare-rail payment primitive: its Move module is `payment` and its `settle_payment`
+ * entry takes a `facilitator_fee`. The field's contract is `absent IFF protocol-neutral`, so omitting it
+ * would be a positive claim of neutrality this binding cannot make. The rail id stays `sui`: the rail is
+ * the chain, the protocol is what settles over it.
+ *
+ * ⛔ This paragraph said `x402_payment` until 2026-09-03, and contradicted its own §recovery paragraph
+ * twenty-seven lines below, which names the `MoveEventType` filter `<pkg>::payment::PaymentSettled`.
+ * `constants.ts` composes every fully-qualified name from `PAY402_MODULE = "payment"`, and the live
+ * testnet harness is the witness that the constant is the right one: a `moveCall` naming a module the
+ * deployed package does not contain never executes, so a passing live settle could not have come from the
+ * other spelling. `test/constants.test.ts` now checks this sentence against the constant, because a name
+ * that appears only in prose is a name no test resolves.
  *
  * **BUT THIS IS NOT x402'S PUBLISHED exact-Sui SCHEME, AND A READER MUST NOT INFER THAT.** Verified at
  * `x402-foundation/x402` HEAD 2026-08-08, `specs/schemes/exact/scheme_exact_sui.md` describes a different

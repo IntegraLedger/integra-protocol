@@ -27,9 +27,11 @@ const canonical = read(
 // `protocol` is what makes it legal.
 //
 // `sui` is NOT in this list, and the reason is the field's contract rather than a preference. Pay402 is an
-// x402 facilitator — Move module `x402_payment`, a `facilitator_fee` parameter — so under `absent iff
+// x402 facilitator — a `settle_payment` entry taking a `facilitator_fee` — so under `absent iff
 // protocol-neutral` its silence was a false claim of neutrality, and it made "which rails settle x402?"
-// answer `evm:x402` alone. Moving it here again would reinstate that.
+// answer `evm:x402` alone. Moving it here again would reinstate that. (This comment named the Move module
+// `x402_payment`; it is `payment`, and `binding-sui`'s own suite is where that is checked against the
+// constant the package composes its call targets from.)
 const PROTOCOL_NEUTRAL_PROFILES = [
   "escrow",
   "aptos",
