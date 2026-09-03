@@ -123,7 +123,10 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // 856 → 859 on 2026-09-02: `verify.recourse` gains three non-array evidence-package cases — an object and
 // a number, which `new Set` raised on, and a STRING, which is iterable and so read as one role per
 // character. The empty-array control beside them is unchanged and still `evidence-package-incomplete`.
-const CORPUS_SIZE = 859;
+// 859 → 861 on 2026-09-03: `placement.ucp` gains the write half of the https rule — a `place` that refuses
+// an `http:` url reference, and the https control beside it. `extract` had refused one since the rule
+// landed while `place` wrote one, so the placement could emit a document its own extractor rejects.
+const CORPUS_SIZE = 861;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

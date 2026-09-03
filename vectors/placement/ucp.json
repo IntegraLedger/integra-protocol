@@ -172,6 +172,56 @@
       }
     },
     {
+      "name": "place REFUSES an http: url reference — a placement never writes what it will not read",
+      "$comment": "The https rule is UCP's semantics, not the kit's mechanics, and it is symmetric. `extract` refused an http: reference from the day the rule landed while `place` accepted one, so this placement could emit a document its own extractor rejects — a round trip that fails on bytes we wrote ourselves. The carrier is the same in both directions: a url-typed reference in the policies[] entry is exactly as rewritable in transit as one in the links alias.",
+      "input": {
+        "protocol": "ucp",
+        "op": "place",
+        "ref": {
+          "type": "url",
+          "value": "http://seller.example/terms"
+        },
+        "doc": {
+          "id": "checkout_1"
+        }
+      },
+      "expected": {
+        "refused": true,
+        "haltClass": "verification-failure",
+        "code": "ucp/insecure-terms-url"
+      }
+    },
+    {
+      "name": "place ACCEPTS an https: url reference and extract reads it back — the rule bites on the scheme, not the type",
+      "$comment": "The mirror of the case above: url-typed references are a permitted carrier here, and the refusal is about http: alone.",
+      "input": {
+        "protocol": "ucp",
+        "op": "roundtrip",
+        "ref": {
+          "type": "url",
+          "value": "https://seller.example/terms"
+        },
+        "doc": {
+          "id": "checkout_1"
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "ref": {
+            "type": "url",
+            "value": "https://seller.example/terms"
+          },
+          "termsUrl": {
+            "kind": "declared-fields-empty",
+            "fields": [
+              "policies[type=com.integraledger.policy.legal_context].url"
+            ]
+          }
+        }
+      }
+    },
+    {
       "name": "extract round-trips the policies[] entry",
       "input": {
         "protocol": "ucp",

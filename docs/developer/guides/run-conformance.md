@@ -30,7 +30,7 @@ Every run prints the identity of the corpus it certified against, so you never h
 separately:
 
 ```text
-corpus: 44/44 areas, 859/859 cases, root b68782d12246526e… (authentic)
+corpus: 44/44 areas, 861/861 cases, root 3f81c57a7485baa2… (authentic)
 ```
 
 **Record that root digest beside any conformance claim you make** — it is what makes "we conform" a
@@ -54,12 +54,12 @@ is what the rest of this guide uses. Once it is on `PATH` after a global install
 own is fine.
 
 ```text
-conformance: 859 passed, 0 failed, 0 skipped (none)
+conformance: 861 passed, 0 failed, 0 skipped (none)
 ```
 
 That is one line, and every part of it is load-bearing.
 
-- **`859 passed`** — the size of the corpus that actually ran. Quote this number, not the exit code. A green
+- **`861 passed`** — the size of the corpus that actually ran. Quote this number, not the exit code. A green
   run over a shrunken corpus is a regression wearing a disguise, and `0 failed` cannot tell the two apart.
 - **`0 failed`** — no case disagreed. The process exits `0`; a single failure exits `1`, so this is usable
   as a CI gate directly.
@@ -178,7 +178,7 @@ const vectors = new URL(
   "file:///srv/my-lcp/node_modules/@integraledger/lcp-conformance/vectors/",
 );
 
-// State the phase. `runCorpus` defaults to "P1" — 101 of the 859 cases — where the CLI defaults to
+// State the phase. `runCorpus` defaults to "P1" — 101 of the 861 cases — where the CLI defaults to
 // the wired floor. Omitting it here is the quiet way to certify an eighth of the corpus. "P8" is
 // the top of the ladder today; check `report.skipped` is empty rather than trusting this string.
 const report = await runCorpus(new CliSubject("python3", ["subject.py"]), {
