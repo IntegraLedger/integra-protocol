@@ -28,7 +28,7 @@
  * on an OTP rejection this stops rather than continuing, and re-running skips what already went live.
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { argv, exit } from "node:process";
 
@@ -112,7 +112,9 @@ const treeVersion = (() => {
     readdirSync("packages")
       .map((p) => {
         try {
-          return JSON.parse(readFileSync(join("packages", p, "package.json"), "utf8")).version;
+          return JSON.parse(
+            readFileSync(join("packages", p, "package.json"), "utf8"),
+          ).version;
         } catch {
           return undefined;
         }
@@ -132,7 +134,9 @@ const treeVersion = (() => {
 const matching = rows.filter((r) => r.version === treeVersion);
 const stale = rows.filter((r) => r.version !== treeVersion);
 if (stale.length > 0) {
-  console.log(`\n${stale.length} staged at a version this tree is NOT at (tree: ${treeVersion}):`);
+  console.log(
+    `\n${stale.length} staged at a version this tree is NOT at (tree: ${treeVersion}):`,
+  );
   for (const r of stale) console.log(`  ${r.name}@${r.version}  (${r.id})`);
 }
 
@@ -142,7 +146,9 @@ if (has("--dry-run")) {
     stale.length === 0
       ? "."
       : `; ${stale.length} stale row(s) would be ${has("--reject-stale") ? "rejected first" : "REFUSED — pass --reject-stale to reject them"}.`;
-  console.log(`\n--dry-run: nothing approved. Would approve ${matching.length} at ${treeVersion}${staleNote}`);
+  console.log(
+    `\n--dry-run: nothing approved. Would approve ${matching.length} at ${treeVersion}${staleNote}`,
+  );
   exit(0);
 }
 
