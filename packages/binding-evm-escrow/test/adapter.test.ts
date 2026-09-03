@@ -131,6 +131,63 @@ describe("salt codec", () => {
     expect(back).toBe(atr);
     expect(back).toHaveLength(66);
   });
+
+  /**
+   * ⛔ THE SALT IS AN EMIT PATH AND IT VALIDATED NOTHING. `saltFromAtrHash` was `BigInt(h)` under a
+   * comment claiming "a malformed atrHash is a programming error surfaced by BigInt() (fail-fast)".
+   * `BigInt` accepts ANY parseable numeral, so it fails fast on almost nothing: a decimal string, a
+   * binary or octal literal, a whitespace-padded value, a hash of the wrong length.
+   *
+   * The harm is a SILENT ROUND TRIP rather than a crash. `0x` + `ab`×31 welds as a salt and recovers as
+   * `0x00abab…` — a DIFFERENT hash — so a verifier reports a mismatch against a settlement that welded
+   * exactly what it was handed, and the party least able to explain it is the one that did nothing
+   * wrong. `"12345"` welds as `0x…3039`. A 33-byte value recovers as 68 characters, not a bytes32.
+   *
+   * This was the only EVM rail with no atrHash validation at all: `binding-evm-x402` calls
+   * `canonicalAtrHash` twice, `binding-evm-mpp` six times, `binding-tempo-mpp` three, this package zero.
+   * THROWING is that function's stated contract for an emit path — "writing a canonical form of a
+   * non-hash would put a fabricated reference on a wire" — and it is what the original comment intended.
+   */
+  it.each([
+    [
+      "31 bytes — welds, then recovers as a DIFFERENT hash",
+      `0x${"ab".repeat(31)}`,
+    ],
+    [
+      "33 bytes — recovers as 68 characters, not a bytes32",
+      `0x${"ab".repeat(33)}`,
+    ],
+    ["a decimal numeral", "12345"],
+    ["the empty string", ""],
+    ["a binary literal", "0b1010"],
+    ["an octal literal", "0o777"],
+    ["a hash with surrounding whitespace", `  0x${"ab".repeat(32)}  `],
+    ["an uppercase 0X prefix — not the ATR canon", `0X${"AB".repeat(32)}`],
+    ["non-hex digits", `0x${"zz".repeat(32)}`],
+  ])("⛔ REFUSES %s rather than welding it", (_why, bad) => {
+    expect(() => saltFromAtrHash(bad as `0x${string}`)).toThrow(/32-byte/);
+  });
+
+  it("⭐ still accepts uppercase HEX DIGITS — the ATR canon is case-insensitive on the digits", () => {
+    // The one case that must NOT be refused, and the reason the screen is `isAtrHash` rather than a
+    // lowercase-only regex: an uppercase hash is the same hash and the counterparty spelling it that way
+    // is conformant. Recovery emits the canonical lowercase.
+    const upper = `0x${"AB".repeat(32)}` as `0x${string}`;
+    expect(atrHashFromSalt(saltFromAtrHash(upper))).toBe(
+      `0x${"ab".repeat(32)}`,
+    );
+  });
+
+  it("⛔ atrHashFromSalt refuses a salt no uint256 could hold — the mirror of the same rule", () => {
+    // The reverse is a decode path fed by viem's uint256, so this is unreachable through the adapter. It
+    // is exported, and `padStart(64)` does not truncate: an out-of-range salt returns a string LONGER
+    // than 66 characters, which then compares unequal to every real atrHash instead of being refused.
+    expect(() => atrHashFromSalt(1n << 256n)).toThrow(/uint256/);
+    expect(() => atrHashFromSalt(-1n)).toThrow(/uint256/);
+    // Both ends of the range are in — a `<`/`<=` slip either way is otherwise invisible.
+    expect(atrHashFromSalt((1n << 256n) - 1n)).toBe(`0x${"ff".repeat(32)}`);
+    expect(atrHashFromSalt(0n)).toBe(`0x${"00".repeat(32)}`);
+  });
 });
 
 describe("propose", () => {

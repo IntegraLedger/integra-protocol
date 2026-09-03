@@ -12,6 +12,7 @@ import type {
   WeldAdapter,
 } from "@integraledger/lcp-binding-core";
 import { refOf } from "@integraledger/lcp-binding-evm-common";
+import { canonicalAtrHash } from "@integraledger/lcp-kernel";
 import { type Abi, decodeEventLog, type Log, parseAbi } from "viem";
 import { AUTH_CAPTURE_ESCROW } from "./collectors.js";
 import { type EscrowEventName, EVENT_TO_STATE } from "./lifecycle.js";
@@ -47,12 +48,40 @@ export interface PaymentInfo {
   salt: bigint;
 }
 
-/** `salt = uint256(atrHash)` — the 32-byte atrHash reinterpreted as a uint256. */
+/**
+ * `salt = uint256(atrHash)` — the 32-byte atrHash reinterpreted as a uint256.
+ *
+ * ⛔ **VALIDATED, because `BigInt` is not a validation.** This was a bare `BigInt(atrHash)` on the
+ * strength of a comment saying a malformed value would be "surfaced by BigInt() (fail-fast)". `BigInt`
+ * accepts any parseable numeral — a decimal string, a binary or octal literal, a whitespace-padded value,
+ * a hash of the wrong length — so it fails fast on almost nothing, and this was the only EVM rail with no
+ * atrHash check anywhere in it.
+ *
+ * The harm is a SILENT ROUND TRIP rather than a crash. A 31-byte value welds and comes back out of
+ * {@link atrHashFromSalt} zero-extended — a DIFFERENT hash — so a verifier reports a mismatch against a
+ * settlement that welded exactly what it was handed. `"12345"` welds as `0x…3039`.
+ *
+ * THROWS rather than refusing, which is {@link canonicalAtrHash}'s contract for an emit path and what the
+ * original comment meant to arrange: writing a canonical form of a non-hash puts a fabricated reference
+ * on a wire. Uppercase hex DIGITS are accepted and lowercased — the ATR canon is case-insensitive on the
+ * digits, so a counterparty spelling its own hash that way is conformant.
+ */
 export function saltFromAtrHash(atrHash: `0x${string}`): bigint {
-  return BigInt(atrHash);
+  return BigInt(canonicalAtrHash(atrHash, "saltFromAtrHash"));
 }
-/** Recover the atrHash from a `PaymentInfo.salt` — the reverse (lowercase 0x, 32 bytes). */
+/**
+ * Recover the atrHash from a `PaymentInfo.salt` — the reverse (lowercase 0x, 32 bytes).
+ *
+ * ⛔ The range is asserted for the same reason the forward direction validates: `padStart` pads and never
+ * truncates, so a salt outside `[0, 2^256)` returns a string LONGER than a bytes32, which then compares
+ * unequal to every real atrHash instead of being refused. Unreachable through the adapter — viem decodes
+ * `salt` as a uint256 — and reachable by any caller of this export.
+ */
 export function atrHashFromSalt(salt: bigint): `0x${string}` {
+  if (salt < 0n || salt >= 1n << 256n)
+    throw new Error(
+      `atrHashFromSalt: salt must fit a uint256, got ${salt.toString()}`,
+    );
   return `0x${salt.toString(16).padStart(64, "0")}`;
 }
 
@@ -179,8 +208,9 @@ export function createEscrowAdapter(config: EscrowAdapterConfig): WeldAdapter {
       ctx: unknown,
     ): Promise<Outcome<EscrowProposal>> {
       const c = ctx as EscrowProposalContext;
-      // The salt is filled from the atrHash — never re-derived. No value-level Refusal
-      // on this path; a malformed atrHash is a programming error surfaced by BigInt() (fail-fast).
+      // The salt is filled from the atrHash — never re-derived. No value-level Refusal on this path; a
+      // malformed atrHash is a programming error and `saltFromAtrHash` throws on one. It used to say
+      // "surfaced by BigInt()", which surfaced almost nothing — see that function.
       const paymentInfo: PaymentInfo = { ...c, salt: saltFromAtrHash(atrHash) };
       return { ok: true, value: { paymentInfo } };
     },
