@@ -183,10 +183,16 @@ reason is **not** that the seam already models the difference. It does not, for 
 
 `carrierClass` is declared **per slot**, not derived from the value. ACK declares no `discovery` alias and no
 `termsUrlFields`, so the canonical slot is the only place a `url` can sit — and `readDeclaredPaths` reports that
-slot `integrity`. Measured: `{ "type": "url", "value": "http://…" }` at
-`credentialSubject.metadata.legalContext` extracts successfully, reads back `carrierClass: "integrity"`, and
-**passes `requireIntegrity`**. A caller that needs an attested document and checks only the class does not learn
-from the class that it got a rewritable locator; it has to look at the reference's own `type`.
+slot `integrity`. Re-measured 2026-09-03: `{ "type": "url", "value": "http://…" }` at
+`credentialSubject.metadata.legalContext` extracts successfully and reads back `carrierClass: "integrity"`, but
+**`requireIntegrity` returns `undefined` for it** — that function now checks the value's own type as well as the
+slot's declared class, so a located document can no longer stand in for an attested one there. A `sha256`
+reference in the same slot passes.
+
+⚠️ This paragraph claimed the opposite — that such a reference "passes `requireIntegrity`" — and it was true
+when written and stopped being true when the value half landed. What is still worth knowing is narrower and
+still real: the CLASS on its own is a slot's declaration, not a fact about the value, so a caller that reads
+`carrierClass` directly and skips `requireIntegrity` learns nothing from it about what it actually got.
 
 That is left as it is deliberately, for consistency rather than comfort. `placement-acp` is published and
 ratified riding the identical `reference-object` slot with the identical `["sha256", "url"]` carrier types and no

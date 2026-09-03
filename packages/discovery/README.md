@@ -53,7 +53,7 @@ declare const advertisedAtrHash: `0x${string}`;
 
 const result = await checkListingIntegrity(listing, servedTermsBytes, advertisedAtrHash);
 // Read the fields, not just `ok`: a PDF whose hash MATCHES is `ok: false` with
-// `status: "listing-format-not-machine-readable"` and `hashesAgree: true`.
+// `status: "listing-format-not-machine-readable"` and `hashesMatch: true`.
 console.log(result.status);
 ```
 

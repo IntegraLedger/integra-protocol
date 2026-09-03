@@ -27,7 +27,7 @@ declare const payTo: string;
 declare const ports: VerifierPorts; // your viem-backed ChainReader + ArtifactResolver
 declare const txHash: `0x${string}`;
 
-const d = getX402Deployment("base-sepolia-usdc");
+const d = getX402Deployment("base-sepolia"); // one of: base, base-sepolia, avalanche, monad
 const adapter = createX402Adapter({
   chainId: d.chainId,
   asset: d.asset,

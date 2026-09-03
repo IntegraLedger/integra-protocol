@@ -101,7 +101,7 @@ npx @integraledger/lcp-conformance --phase P4
 ```
 
 ```text
-conformance: 458 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
+conformance: 471 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
 ```
 
 That run is green and certifies roughly half of what the bare run certifies. The skips are printed by name

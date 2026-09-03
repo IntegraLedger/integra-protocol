@@ -11,7 +11,7 @@ pnpm workspace, Node >= 24, TypeScript with `isolatedDeclarations`. Apache-2.0.
 
 ```
 check:versions → check:docblocks → check:live-rails → check:harness-proof → corpus-seal --check → audit
-  → build → check:dist → lint → depcruise → typecheck → check:docs → test
+  → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
 ```
 
 Build comes before typecheck deliberately: workspace packages consume each other through built `dist/`, so
@@ -22,6 +22,7 @@ Build comes before typecheck deliberately: workspace packages consume each other
 | `pnpm verify` | Must exit 0 before anything is claimed done |
 | `pnpm mutation <pkg>` | Per package — `STRYKER_PKG` is required and the config throws without it |
 | `pnpm check:docs` | Typechecks every TS fence in `docs/`, the root README and every package README — the count is derived, never written down |
+| `pnpm check:doc-calls` | RUNS the self-contained example calls in those fences — a call of a workspace export whose every argument is a literal — and refuses one that throws or returns a `Refusal`. A line annotated `// throws` / `// refuses` must fail; elided arguments and calls inside a `try` are skipped |
 | `pnpm check:docblocks` | Refuses a top-level export with no docblock — 100% floor, adjacency strict |
 | `pnpm check:dist` | Refuses a `dist/` output whose `src/` file was deleted or renamed |
 | `pnpm check:harness-proof` | Refuses a live-rail harness that can report a PASS without doing its work — a `return` in a test body (Vitest records one as passed, never as skipped) or a body with no `expect`. Subject set is `check:live-rails`' inventory, so the two cannot disagree about what a harness is |

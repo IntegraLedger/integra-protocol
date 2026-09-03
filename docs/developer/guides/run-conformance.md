@@ -81,7 +81,7 @@ npx @integraledger/lcp-conformance --phase P4
 ```
 
 ```text
-conformance: 458 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
+conformance: 471 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
 ```
 
 Green, and certifying roughly half of what the bare run certifies. The skipped areas are named individually
@@ -195,7 +195,7 @@ console.log(report.failed[0]);
 ```
 
 ```text
-conformance: 13 passed, 846 failed, 0 skipped
+conformance: 13 passed, 848 failed, 0 skipped
 failing areas: 43 of 44
 {
   area: 'atrhash.compute',
@@ -277,7 +277,7 @@ And a real failure, from a corpus with one expected value altered — the summar
 per failing case naming the area, the case, and both values:
 
 ```text
-conformance: 858 passed, 1 failed, 0 skipped (none)
+conformance: 860 passed, 1 failed, 0 skipped (none)
 FAIL atrhash.compute / empty-terms: expected "0x0000000000000000000000000000000000000000000000000000000000000000" got "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 ```
 

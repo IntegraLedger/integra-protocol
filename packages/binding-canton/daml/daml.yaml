@@ -2,8 +2,11 @@
 #
 # Build with the Daml SDK, then upload the resulting DAR to your participant:
 #
-#     daml build                       # -> .daml/dist/lcp-anchor-0.10.1.dar
-#     daml ledger upload-dar --host <participant> .daml/dist/lcp-anchor-0.10.1.dar
+#     daml build                       # -> .daml/dist/lcp-anchor-<version>.dar
+#     daml ledger upload-dar --host <participant> .daml/dist/lcp-anchor-*.dar
+#
+# The version in that name is the `version:` below, which a test holds equal to the npm package's. Writing
+# it out here pins a number that moves every release, so it is a glob.
 #
 # The PACKAGE ID is the hash of the compiled DAR, so it is deployment-specific and is supplied to this
 # library per call (`lcpAnchorTemplateId(packageId)`) rather than hardcoded. That is why this package ships

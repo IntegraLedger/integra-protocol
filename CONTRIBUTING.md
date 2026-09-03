@@ -66,7 +66,7 @@ exactly this reason.
 
 ```bash
 pnpm verify          # check:versions → check:docblocks → check:live-rails → check:harness-proof → corpus-seal
-                     #   → audit → build → check:dist → lint → depcruise → typecheck → check:docs → test
+                     #   → audit → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 pnpm conformance            # the whole corpus, no --phase
 ```

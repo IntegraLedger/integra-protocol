@@ -36,12 +36,24 @@ npm install @integraledger/lcp-placement-ucp
 import { UCP_PLACEMENT, ucpPlacement } from "@integraledger/lcp-placement-ucp";
 
 declare const checkout: unknown; // the UCP checkout response, as received
+declare const atrHash: `0x${string}`;
 
-const placed = ucpPlacement.place({ ref: { type: "sha256", value: "0x…" } }, checkout);
+// `termsUrl` is REQUIRED beside an integrity-bearing reference on this protocol: the manifest declares a
+// terms-URL slot, and a counterparty holding only a hash cannot resolve it. Omitting it refuses
+// `ucp/terms-url-missing` rather than writing a reference nobody can follow.
+const placed = ucpPlacement.place(
+  {
+    ref: { type: "sha256", value: atrHash },
+    termsUrl: "https://seller.example/.well-known/legal-context.json",
+  },
+  checkout,
+);
 const ref = ucpPlacement.extract(checkout);
 ```
 
-Both members are total: a refusal is a returned value, never a thrown exception.
+Both members are total: a refusal is a returned value, never a thrown exception. Both also enforce one rule
+of UCP's own — a `url`-typed reference must be HTTPS — so `place` will not write what `extract` would
+refuse.
 
 ## Specification provenance — verified against the live host, 2026-07-29 — and it re-cut the package
 

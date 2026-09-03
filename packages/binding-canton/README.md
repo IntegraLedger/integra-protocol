@@ -72,9 +72,13 @@ One chain, two carriers, two bindings — the same shape EVM already has with `e
 `daml/Main.daml` and `daml/daml.yaml` are in the tarball. Build and upload them:
 
 ```bash
-daml build                       # -> .daml/dist/lcp-anchor-0.9.0.dar
-daml ledger upload-dar --host <participant> .daml/dist/lcp-anchor-0.9.0.dar
+daml build                       # -> .daml/dist/lcp-anchor-<version>.dar
+daml ledger upload-dar --host <participant> .daml/dist/lcp-anchor-*.dar
 ```
+
+The version in that filename is `daml.yaml`'s, which a test holds equal to this package's — so it moves with
+every release. It is written as a glob here on purpose: a pinned number in a copyable command is a command
+that stops working at the next bump, and this one had named `0.9.0` for six minor versions.
 
 The package id is the **hash of the compiled DAR**, so you pass it per call
 (`lcpAnchorTemplateId(packageId)`). That is why the source ships rather than a prebuilt `.dar`: an artifact
