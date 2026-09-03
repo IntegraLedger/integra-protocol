@@ -27,8 +27,13 @@ function reader(
   perAccount: string[] = [],
 ): StellarReader {
   return {
-    async settlementView(txHash: string): Promise<StellarSettlementView> {
-      return views[txHash] ?? { muxedDestination: null };
+    async settlementView(
+      txHash: string,
+    ): Promise<StellarSettlementView | null> {
+      // ⛔ `null` for a hash the script does not hold — the port's own "Horizon has no such transaction".
+      // This used to answer `{ muxedDestination: null }`, which made every unknown hash indistinguishable
+      // from a real transaction that paid an unmuxed address.
+      return views[txHash] ?? null;
     },
     async transactionsFor(_account: string): Promise<string[]> {
       return perAccount;
@@ -164,9 +169,11 @@ describe("observe", () => {
     expect(o.detail).toContain("tx-plain");
   });
 
-  it("refuses a transaction the reader has never heard of", async () => {
+  it("refuses a transaction the reader has never heard of, AS never heard of", async () => {
     const o = await adapter.observe({ txHash: "tx-unknown" }, reader({}));
     expect("refused" in o && o.refused).toBe(true);
+    if (!("refused" in o)) throw new Error("expected a refusal");
+    expect(o.code).toBe("stellar/no-such-transaction");
   });
 
   it("forwards the same refusal recover produces, adding nothing", async () => {
@@ -339,6 +346,44 @@ describe("the success gate — a FAILED transaction is never a settlement", () =
     );
     if (!("refused" in r)) throw new Error("expected a refusal");
     expect(r.code).toBe("stellar/unsuccessful-transaction");
+  });
+});
+
+/**
+ * ⛔ **A transaction Horizon does not have is not a transaction with no muxed destination.**
+ *
+ * `StellarReader.settlementView` returned `StellarSettlementView` with no `null` in it, so a reader had no
+ * way to say "no such transaction" — it had to invent a view, and the only view it could invent read as a
+ * real transaction that paid an unmuxed address. Every surface then refused `stellar/no-muxed-destination`
+ * about a hash Horizon had never heard of: a claim about a settlement, made where nothing was found to
+ * make a claim about. Four sibling rails — solana, cardano, xrpl, hedera — all carry a
+ * `no-such-transaction` reading for exactly this, and each cites the distinction; this rail is the one
+ * they cite that could not make it.
+ */
+describe("a transaction the reader does not have", () => {
+  it("all four surfaces report no-such-transaction, not no-muxed-destination", async () => {
+    const rdr = reader({}, ["missing"]);
+    const [v, r, o] = await Promise.all([
+      adapter.verify(ATR, { txHash: "missing" }, rdr),
+      adapter.recover({ txHash: "missing" }, rdr),
+      adapter.observe({ txHash: "missing" }, rdr),
+    ]);
+    for (const outcome of [v, r, o]) {
+      if (!("refused" in outcome)) throw new Error("expected a refusal");
+      expect(outcome.code).toBe("stellar/no-such-transaction");
+      expect(outcome.haltClass).toBe("verification-failure");
+    }
+    // A scan over hashes the reader cannot produce yields nothing, and throws nothing.
+    expect(await adapter.enumerate(ATR, "GACCOUNT", rdr)).toEqual([]);
+  });
+
+  it("still says no-muxed-destination when the transaction EXISTS and paid an unmuxed address", async () => {
+    const r = await adapter.recover(
+      { txHash: "tx1" },
+      reader({ tx1: { muxedDestination: null, successful: true } }),
+    );
+    if (!("refused" in r)) throw new Error("expected a refusal");
+    expect(r.code).toBe("stellar/no-muxed-destination");
   });
 });
 

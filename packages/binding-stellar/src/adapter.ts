@@ -76,7 +76,17 @@ export function isSettledSuccessfully(view: StellarSettlementView): boolean {
 
 /** Reads confirmed Stellar transactions — an injected port over Horizon / the SDK. */
 export interface StellarReader {
-  settlementView(txHash: string): Promise<StellarSettlementView>;
+  /**
+   * One transaction's settlement view, or `null` when Horizon has no such transaction.
+   *
+   * ⛔ The `null` is load-bearing and was missing until 2026-09-03. Without it a reader asked about a hash
+   * Horizon has never seen had to INVENT a view, and the only view it could invent —
+   * `{ muxedDestination: null }` — is what a real transaction paying an unmuxed address looks like. Every
+   * surface then refused `no-muxed-destination` about a transaction that does not exist: a claim about a
+   * settlement, made where there was nothing to make a claim about. Four sibling rails carry a
+   * `no-such-transaction` reading for precisely this distinction, and cite this one as the model for it.
+   */
+  settlementView(txHash: string): Promise<StellarSettlementView | null>;
   /** Tx hashes touching an account's payment history (best-effort scan input for `enumerate`). */
   transactionsFor(account: string, limit?: number): Promise<string[]>;
 }
@@ -202,6 +212,13 @@ export function createStellarAdapter(
   const noMuxedDestination = (txHash: string): Refusal =>
     refuse("no-muxed-destination", `no CAP-67 muxed destination in ${txHash}`);
 
+  /** A hash Horizon does not have. NOT a settlement that paid the wrong address — nothing was examined. */
+  const noSuchTransaction = (txHash: string): Refusal =>
+    refuse(
+      "no-such-transaction",
+      `Horizon has no transaction ${txHash} — nothing was examined, so this is not a statement about a settlement`,
+    );
+
   /**
    * The on-chain mux prefix of a SUCCESSFUL settlement. Returns the refusal reason as a discriminated
    * value so `recover` and `observe` report WHY: a failed transaction is not "no destination".
@@ -211,10 +228,14 @@ export function createStellarAdapter(
     reader: StellarReader,
   ): Promise<
     | { prefix: Uint8Array; muxedDestination: string }
+    | { reason: "no-such-transaction" }
     | { reason: "no-muxed-destination" }
     | { reason: "unsuccessful" }
   > {
     const view = await reader.settlementView(ref.txHash);
+    // FIRST, and before anything is read off the view: a transaction nobody has is not a transaction
+    // whose destination was wrong.
+    if (view === null) return { reason: "no-such-transaction" };
     if (view.muxedDestination === null)
       return { reason: "no-muxed-destination" };
     if (!isSettledSuccessfully(view)) return { reason: "unsuccessful" };
@@ -228,12 +249,13 @@ export function createStellarAdapter(
 
   /** The refusal for whichever reason `onChainPrefix` gave — shared by all four surfaces. */
   const refusalFor = (
-    reason: "no-muxed-destination" | "unsuccessful",
+    reason: "no-such-transaction" | "no-muxed-destination" | "unsuccessful",
     txHash: string,
-  ): Refusal =>
-    reason === "unsuccessful"
-      ? unsuccessful(txHash)
-      : noMuxedDestination(txHash);
+  ): Refusal => {
+    if (reason === "unsuccessful") return unsuccessful(txHash);
+    if (reason === "no-such-transaction") return noSuchTransaction(txHash);
+    return noMuxedDestination(txHash);
+  };
 
   return {
     manifest,
@@ -302,8 +324,11 @@ export function createStellarAdapter(
       for (const txHash of hashes) {
         const view = await reader.settlementView(txHash);
         // A failed transaction's envelope still carries the M-address — the scan must skip it, or a
-        // ledger full of failures enumerates as a ledger full of settlements.
+        // ledger full of failures enumerates as a ledger full of settlements. A hash the reader cannot
+        // resolve is skipped for the same reason: a scan reports what it found, never what it could not
+        // look at.
         if (
+          view !== null &&
           view.muxedDestination !== null &&
           isSettledSuccessfully(view) &&
           verifyMuxedBinding({ muxedM: view.muxedDestination, atrHash })
