@@ -13,6 +13,13 @@ import { makeCantonX402Reader } from "../src/adapter.js";
 const CFG = {
   jsonLedgerUrl: "https://participant.example",
   bearerJwt: "jwt-token",
+  // ⛔ Supplied by the caller, not by this package. These are NOT the paths it once shipped as constants
+  // (`/v1/updates/transfer`, `/v1/updates/transfers`), and that is deliberate: those named no endpoint of
+  // any published Daml JSON API version, and the only thing that ever asserted them was a stub in this
+  // file compared against the URL the code itself built — a test and a code path restating one guess to
+  // each other. A fixture that reuses the shipped default cannot notice the default is wrong.
+  transferPath: "/deployment-specific/transfer",
+  transfersPath: "/deployment-specific/transfers",
 };
 const ATR = `0x${"ab".repeat(32)}`;
 
@@ -45,9 +52,22 @@ describe("makeCantonX402Reader — construction", () => {
     );
   });
 
+  it.each(["transferPath", "transfersPath"] as const)(
+    "refuses an empty %s rather than POSTing to the base URL",
+    (field) => {
+      // An empty path resolves to `jsonLedgerUrl` itself, and a participant that answers anything at `/`
+      // would have that read as a transfer view. The refusal is at CONSTRUCTION, not at the first read.
+      expect(() => makeCantonX402Reader({ ...CFG, [field]: "" })).toThrow(
+        /does not guess your participant/,
+      );
+    },
+  );
+
   it("needs NO package id — the memo rides the token-standard transfer", () => {
     // The overlay this replaced required the deployed lcp-anchor DAR's package id, which is the hash of
-    // a Daml package this repository does not ship. Nothing deployment-specific is configured now.
+    // a Daml package this repository does not ship. No DAR is configured now; the two endpoint paths are,
+    // because how a deployment exposes a token-standard transfer over HTTP is a fact about that
+    // deployment and not about Canton.
     expect(() => makeCantonX402Reader(CFG)).not.toThrow();
   });
 });
@@ -63,9 +83,7 @@ describe("transferView", () => {
     const calls = stubFetch({ json: async () => ({ result: view }) });
     const reader = makeCantonX402Reader(CFG);
     expect(await reader.transferView("update-1")).toEqual(view);
-    expect(calls[0]?.url).toBe(
-      "https://participant.example/v1/updates/transfer",
-    );
+    expect(calls[0]?.url).toBe(`${CFG.jsonLedgerUrl}${CFG.transferPath}`);
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
       updateId: "update-1",
     });
@@ -93,9 +111,7 @@ describe("transfersFor", () => {
       "u1",
       "u2",
     ]);
-    expect(calls[0]?.url).toBe(
-      "https://participant.example/v1/updates/transfers",
-    );
+    expect(calls[0]?.url).toBe(`${CFG.jsonLedgerUrl}${CFG.transfersPath}`);
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
       party: "merchant::1220abc",
     });
@@ -124,7 +140,7 @@ describe("the transport fails LOUD", () => {
       json: async () => ({}),
     }));
     await expect(makeCantonX402Reader(CFG).transferView("u")).rejects.toThrow(
-      /\/v1\/updates\/transfer HTTP 503: participant down/,
+      new RegExp(`${CFG.transferPath} HTTP 503: participant down`),
     );
   });
 

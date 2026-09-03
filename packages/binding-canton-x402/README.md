@@ -49,6 +49,11 @@ const extra = adapter.propose(atrHash); // { memo: "0x…" }
 const reader = makeCantonX402Reader({
   jsonLedgerUrl: "https://participant.example",
   bearerJwt: process.env["CANTON_READER_JWT"] ?? "",
+  // Your deployment's own paths. This package does not guess them: how a Canton Coin
+  // `TransferFactory_Transfer` is exposed over HTTP is a property of the participant, the scan proxy or
+  // the facilitator in front of it, not of Canton. An empty string is refused at construction.
+  transferPath: process.env["CANTON_X402_TRANSFER_PATH"] ?? "",
+  transfersPath: process.env["CANTON_X402_TRANSFERS_PATH"] ?? "",
 });
 const settled = await adapter.observe({ updateId }, reader);
 // { ok: true, value: { state: "settled", atrHash, receiver, amount, instrumentId } }

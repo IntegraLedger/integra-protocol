@@ -17,6 +17,14 @@
  *   CANTON_READER_JWT     a participant JWT whose readAs includes a stakeholder of the transfer
  *   CANTON_UPDATE_ID      the ledger update id of a settled x402 transfer carrying an LCP memo
  *   CANTON_EXPECTED_ATR   the atrHash the seller advertised in that payment's extra.memo
+ *   CANTON_X402_TRANSFER_PATH   the path on that participant answering one update id with its transfer
+ *   CANTON_X402_TRANSFERS_PATH  the path answering one party's visible transfer update ids
+ *
+ * ⛔ The last two are credentials in the same sense as the rest: the package shipped them as constants
+ * (`/v1/updates/transfer`, `/v1/updates/transfers`), and those name no endpoint of any published Daml
+ * JSON API version. How a deployment exposes a token-standard transfer over HTTP is a fact about that
+ * deployment, so this suite is told rather than assuming — and a rail that cannot be told is a rail that
+ * is not proven, which `check:live-rails --check-env` reports by name.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -29,12 +37,16 @@ const URL_ = process.env["CANTON_JSON_API_URL"];
 const JWT = process.env["CANTON_READER_JWT"];
 const UPDATE_ID = process.env["CANTON_UPDATE_ID"];
 const EXPECTED_ATR = process.env["CANTON_EXPECTED_ATR"];
+const TRANSFER_PATH = process.env["CANTON_X402_TRANSFER_PATH"];
+const TRANSFERS_PATH = process.env["CANTON_X402_TRANSFERS_PATH"];
 
 const ready =
   URL_ !== undefined &&
   JWT !== undefined &&
   UPDATE_ID !== undefined &&
-  EXPECTED_ATR !== undefined;
+  EXPECTED_ATR !== undefined &&
+  TRANSFER_PATH !== undefined &&
+  TRANSFERS_PATH !== undefined;
 const suite = ready ? describe : describe.skip;
 
 suite("binding-canton — live participant (CANTON_JSON_API_URL set)", () => {
@@ -45,7 +57,12 @@ suite("binding-canton — live participant (CANTON_JSON_API_URL set)", () => {
     const updateId = UPDATE_ID as string;
     const expected = EXPECTED_ATR as string;
 
-    const reader = makeCantonX402Reader({ jsonLedgerUrl, bearerJwt });
+    const reader = makeCantonX402Reader({
+      jsonLedgerUrl,
+      bearerJwt,
+      transferPath: TRANSFER_PATH as string,
+      transfersPath: TRANSFERS_PATH as string,
+    });
     const adapter = createCantonX402Adapter(CANTON_X402_MANIFEST);
 
     const recovered = await adapter.recover({ updateId }, reader);

@@ -103,6 +103,8 @@ jobs:
           CANTON_READER_JWT: ${{ secrets.CANTON_READER_JWT }}
           CANTON_SELLER_PARTY: ${{ secrets.CANTON_SELLER_PARTY }}
           CANTON_UPDATE_ID: ${{ secrets.CANTON_UPDATE_ID }}
+          CANTON_X402_TRANSFERS_PATH: ${{ secrets.CANTON_X402_TRANSFERS_PATH }}
+          CANTON_X402_TRANSFER_PATH: ${{ secrets.CANTON_X402_TRANSFER_PATH }}
           CARDANO_LCP_ATR_HASH: ${{ secrets.CARDANO_LCP_ATR_HASH }}
           CARDANO_LCP_TX_HASH: ${{ secrets.CARDANO_LCP_TX_HASH }}
           CARDANO_NETWORK: ${{ secrets.CARDANO_NETWORK }}
@@ -157,6 +159,8 @@ jobs:
           CANTON_READER_JWT: ${{ secrets.CANTON_READER_JWT }}
           CANTON_SELLER_PARTY: ${{ secrets.CANTON_SELLER_PARTY }}
           CANTON_UPDATE_ID: ${{ secrets.CANTON_UPDATE_ID }}
+          CANTON_X402_TRANSFERS_PATH: ${{ secrets.CANTON_X402_TRANSFERS_PATH }}
+          CANTON_X402_TRANSFER_PATH: ${{ secrets.CANTON_X402_TRANSFER_PATH }}
           CARDANO_LCP_ATR_HASH: ${{ secrets.CARDANO_LCP_ATR_HASH }}
           CARDANO_LCP_TX_HASH: ${{ secrets.CARDANO_LCP_TX_HASH }}
           CARDANO_NETWORK: ${{ secrets.CARDANO_NETWORK }}

@@ -100,21 +100,49 @@ export interface CantonX402Adapter {
   ): Promise<CantonX402SettlementRef[]>;
 }
 
-/** Config for a live Daml JSON Ledger API participant reader. */
+/** Config for a live participant reader over a deployment's HTTP ledger surface. */
 export interface CantonX402ReaderConfig {
-  /** JSON Ledger API base URL — e.g. `https://164.92.95.184.nip.io`. */
+  /** Ledger API base URL — e.g. `https://participant.example`. */
   jsonLedgerUrl: string;
   /** Bearer JWT authenticating the reading party on the participant. */
   bearerJwt: string;
+  /**
+   * The path, relative to `jsonLedgerUrl`, that answers ONE update id with its transfer view. POSTed a
+   * `{ updateId }` body; answers a Daml `{ result, errors }` envelope.
+   *
+   * ⛔ **REQUIRED, and deliberately not defaulted.** This package shipped `/v1/updates/transfer` as a
+   * constant, and that is not an endpoint of any published Daml JSON API version: v1 defines
+   * `/v1/create`, `/v1/exercise`, `/v1/query` and `/v1/fetch` and no `updates` family at all, and the
+   * update endpoints that do exist live under `/v2/`. Nothing in this repository could have caught it —
+   * the only assertion over it is a stubbed `fetch` compared against the URL the code itself builds, so
+   * the test and the code restate one guess.
+   *
+   * The honest shape is configuration rather than a better guess. A Canton Coin
+   * `TransferFactory_Transfer` is a token-standard object, and how a given deployment exposes one over
+   * HTTP — stock JSON Ledger API version, scan proxy, or a facilitator's own service — is a property of
+   * that deployment. This package will not invent it: supply the path your participant answers on.
+   */
+  transferPath: string;
+  /**
+   * The path, relative to `jsonLedgerUrl`, that answers one party's visible transfer update ids. POSTed a
+   * `{ party, limit? }` body. REQUIRED for the same reason as {@link CantonX402ReaderConfig.transferPath};
+   * it shipped as `/v1/updates/transfers`.
+   */
+  transfersPath: string;
 }
 
 /**
- * A live `CantonX402Reader` over the Daml JSON Ledger API, PURE `fetch` — no Daml SDK.
+ * A live `CantonX402Reader` over a participant's HTTP ledger surface, PURE `fetch` — no Daml SDK.
  *
  * Fails LOUD on a non-2xx response or a Daml `errors[]` envelope; an absent update surfaces as `null`,
  * because a reference the participant cannot see is a value the caller must classify, not a transport
  * failure. No package id is required — the memo rides the CIP-56 token-standard transfer, so unlike the
  * overlay this replaced there is no deployment-specific DAR to deploy or configure.
+ *
+ * ⛔ **The two endpoint paths are yours to supply, and are refused when empty.** See
+ * {@link CantonX402ReaderConfig.transferPath}: the constants this once shipped named no endpoint of any
+ * published Daml JSON API version, and the only thing asserting them was a stubbed `fetch` compared with
+ * the URL this function builds — a test and a code path restating one guess to each other.
  */
 export function makeCantonX402Reader(
   cfg: CantonX402ReaderConfig,
@@ -123,6 +151,16 @@ export function makeCantonX402Reader(
     throw new Error("makeCantonX402Reader: jsonLedgerUrl is empty");
   if (cfg.bearerJwt.length === 0)
     throw new Error("makeCantonX402Reader: bearerJwt is empty");
+  // Fail at CONSTRUCTION, not at the first read: an empty path would POST to the base URL, and a
+  // participant answering something at `/` would be read as a transfer view.
+  if (cfg.transferPath.length === 0)
+    throw new Error(
+      "makeCantonX402Reader: transferPath is empty — this package does not guess your participant's update endpoint",
+    );
+  if (cfg.transfersPath.length === 0)
+    throw new Error(
+      "makeCantonX402Reader: transfersPath is empty — this package does not guess your participant's update endpoint",
+    );
 
   async function ledgerCall<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${cfg.jsonLedgerUrl}${path}`, {
@@ -150,13 +188,13 @@ export function makeCantonX402Reader(
       updateId: string,
     ): Promise<CantonX402TransferView | null> {
       const result = await ledgerCall<CantonX402TransferView | null>(
-        "/v1/updates/transfer",
+        cfg.transferPath,
         { updateId },
       );
       return result ?? null;
     },
     async transfersFor(party: string, limit?: number): Promise<string[]> {
-      return ledgerCall<string[]>("/v1/updates/transfers", {
+      return ledgerCall<string[]>(cfg.transfersPath, {
         party,
         ...(limit !== undefined ? { limit } : {}),
       });
