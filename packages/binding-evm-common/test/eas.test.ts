@@ -126,6 +126,33 @@ describe("isEasValidAsOf (as-of-settlement, not as-of-now)", () => {
       ).toBe(false);
     },
   );
+  /**
+   * ⛔ An attestation that did not YET exist at the as-of instant was not valid then.
+   *
+   * `time` — EAS's creation timestamp — was decoded and then read by nothing, so this predicate answered
+   * "valid as of the settlement" about an attestation minted after it. Revocation and expiry both bound
+   * the interval from above; nothing bounded it from below, and that is the one direction an attester can
+   * exploit after the fact.
+   *
+   * The boundary mirrors the other two: revoked or expired AT the as-of second is invalid, so attested AT
+   * the as-of second is valid — the attestation was live for exactly that instant.
+   */
+  it("invalid: attested AFTER the as-of time", () => {
+    expect(
+      isEasValidAsOf(decodeEasAttestation(raw({ time: asOf + 1n })), asOf),
+    ).toBe(false);
+  });
+  it("valid: attested exactly AT the as-of time (the boundary is inclusive)", () => {
+    expect(
+      isEasValidAsOf(decodeEasAttestation(raw({ time: asOf })), asOf),
+    ).toBe(true);
+  });
+  it("valid: attested before the as-of time", () => {
+    expect(
+      isEasValidAsOf(decodeEasAttestation(raw({ time: asOf - 1n })), asOf),
+    ).toBe(true);
+  });
+
   it("invalid: does not exist", () => {
     expect(
       isEasValidAsOf(

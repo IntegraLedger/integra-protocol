@@ -88,16 +88,26 @@ export function decodeEasAttestation(raw: RawEasAttestation): EasAttestation {
 }
 
 /**
- * Was this attestation valid AS OF `asOfUnixSeconds`? — it must exist, not have been revoked at/before the
- * as-of time (revocationTime 0 = never revoked), and not have expired by then (expirationTime 0 = no expiry).
- * EAS has no historical query, so a live read yields today's revocationTime; a settlement-time snapshot of the
- * uid is the authority (same as the Bitstring status-list as-of rule) — this predicate states the semantics.
+ * Was this attestation valid AS OF `asOfUnixSeconds`? — it must exist, must already have been ATTESTED by
+ * then, must not have been revoked at/before the as-of time (revocationTime 0 = never revoked), and must
+ * not have expired by then (expirationTime 0 = no expiry). EAS has no historical query, so a live read
+ * yields today's revocationTime; a settlement-time snapshot of the uid is the authority (same as the
+ * Bitstring status-list as-of rule) — this predicate states the semantics.
+ *
+ * ⛔ **The `time` gate bounds the interval from BELOW, and it was missing until 2026-09-03.** Revocation
+ * and expiry both bound it from above, so an attestation minted the day AFTER a settlement was reported
+ * "valid as of" that settlement — backdating by omission, and the one direction an attester can exploit
+ * after the fact. `time` was decoded and read by nothing.
+ *
+ * All three boundaries are inclusive in the same sense: revoked or expired AT the as-of second is invalid,
+ * attested AT the as-of second is valid. The attestation was live for exactly that instant.
  */
 export function isEasValidAsOf(
   att: EasAttestation,
   asOfUnixSeconds: bigint,
 ): boolean {
   if (!att.exists) return false;
+  if (att.time > asOfUnixSeconds) return false;
   if (att.revocationTime !== 0n && att.revocationTime <= asOfUnixSeconds)
     return false;
   if (att.expirationTime !== 0n && att.expirationTime <= asOfUnixSeconds)
