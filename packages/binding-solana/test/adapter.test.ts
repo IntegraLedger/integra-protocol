@@ -217,6 +217,107 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
     const views = parseMemoViews(tx);
     expect(recoverAtrHashFromMemoViews(views)).toBe(ATR);
   });
+
+  /**
+   * ⛔ A memo emitted through CPI is a memo.
+   *
+   * A program that calls the Memo program on the payer's behalf — which is how a router, a facilitator or
+   * any settlement program emits one — produces an INNER instruction. `getParsedTransaction` reports those
+   * under `meta.innerInstructions`, not in `transaction.message.instructions`, and this mapper read only
+   * the second. So a genuinely welded settlement read as no weld at all: `recover` refused
+   * `solana/no-atr-memo` about a transaction that carried the atrHash, and the manifest's
+   * `zeroPartyRecoverable` claim was false for every deployment that does not emit the memo top-level.
+   *
+   * Inner instructions come after the top-level ones, deliberately: `recoverAtrHashFromMemoViews` takes
+   * the first that decodes, so a memo the payer signed directly still wins over one a program emitted.
+   */
+  it("finds a memo emitted through CPI (meta.innerInstructions), not only a top-level one", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            {
+              programId: new PublicKey(TOKEN_PROGRAM_ID),
+              parsed: { type: "transferChecked" },
+              program: "spl-token",
+            },
+          ],
+        },
+      },
+      meta: {
+        err: null,
+        innerInstructions: [
+          {
+            index: 0,
+            instructions: [
+              {
+                programId: new PublicKey(MEMO_PROGRAM_ID),
+                parsed: ATR,
+                program: "spl-memo",
+              },
+            ],
+          },
+        ],
+      },
+    } as unknown as ParsedTransactionWithMeta;
+    const views = parseMemoViews(tx);
+    expect(views).toEqual([
+      { programId: TOKEN_PROGRAM_ID },
+      { programId: MEMO_PROGRAM_ID, memoUtf8: ATR },
+    ]);
+    expect(recoverAtrHashFromMemoViews(views)).toBe(ATR);
+    expect(recoverAtrHashFromTxView(parseTxView(tx))).toBe(ATR);
+  });
+
+  it("keeps a top-level memo ahead of a CPI one — the payer's own weld wins", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            {
+              programId: new PublicKey(MEMO_PROGRAM_ID),
+              parsed: ATR,
+              program: "spl-memo",
+            },
+          ],
+        },
+      },
+      meta: {
+        err: null,
+        innerInstructions: [
+          {
+            index: 0,
+            instructions: [
+              {
+                programId: new PublicKey(MEMO_PROGRAM_ID),
+                parsed: OTHER,
+                program: "spl-memo",
+              },
+            ],
+          },
+        ],
+      },
+    } as unknown as ParsedTransactionWithMeta;
+    expect(recoverAtrHashFromMemoViews(parseMemoViews(tx))).toBe(ATR);
+  });
+
+  it("tolerates an RPC that reports no innerInstructions at all", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            {
+              programId: new PublicKey(MEMO_PROGRAM_ID),
+              parsed: ATR,
+              program: "spl-memo",
+            },
+          ],
+        },
+      },
+      meta: { err: null },
+    } as unknown as ParsedTransactionWithMeta;
+    expect(recoverAtrHashFromMemoViews(parseMemoViews(tx))).toBe(ATR);
+  });
 });
 
 describe("parseTxView (SDK→pure boundary, with the success field)", () => {

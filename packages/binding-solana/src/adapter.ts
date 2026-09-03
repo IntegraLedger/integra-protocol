@@ -14,7 +14,9 @@ import type { BindingManifest, Outcome } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
 import {
   type Connection,
+  type ParsedInstruction,
   type ParsedTransactionWithMeta,
+  type PartiallyDecodedInstruction,
   PublicKey,
   type TransactionError,
   TransactionInstruction,
@@ -76,10 +78,24 @@ export function recoverAtrHashFromMemoViews(
   return null;
 }
 
-/** Map a parsed transaction's top-level instructions into memo views (the SDK→pure boundary). */
+/**
+ * Map a parsed transaction's instructions into memo views (the SDK→pure boundary).
+ *
+ * ⛔ **Top-level AND inner, because a memo emitted through CPI is a memo.** A program calling the Memo
+ * program on the payer's behalf — a router, a facilitator, any settlement program — produces an INNER
+ * instruction, which `getParsedTransaction` reports under `meta.innerInstructions` and not in
+ * `transaction.message.instructions`. Reading only the second made a genuinely welded settlement read as
+ * no weld: `recover` refused `solana/no-atr-memo` about a transaction that carried the atrHash, and the
+ * manifest's `zeroPartyRecoverable` claim was false for every deployment that does not emit the memo at
+ * the top level.
+ *
+ * Order is deliberate: top-level first, then inner in the order the RPC reports them.
+ * `recoverAtrHashFromMemoViews` takes the FIRST view that decodes, so a memo the payer signed directly
+ * still wins over one a program emitted on their behalf.
+ */
 export function parseMemoViews(tx: ParsedTransactionWithMeta): MemoView[] {
   const out: MemoView[] = [];
-  for (const ins of tx.transaction.message.instructions) {
+  const push = (ins: ParsedInstruction | PartiallyDecodedInstruction): void => {
     const programId = ins.programId.toBase58();
     if ("parsed" in ins) {
       // ParsedInstruction — the Memo program parses to a plain string (its `parsed` value).
@@ -93,7 +109,12 @@ export function parseMemoViews(tx: ParsedTransactionWithMeta): MemoView[] {
       // than false-refusing a genuinely welded settlement (the manifest's zeroPartyRecoverable claim).
       out.push({ programId, data: bs58.decode(ins.data) });
     }
-  }
+  };
+  for (const ins of tx.transaction.message.instructions) push(ins);
+  // `meta` is null when the RPC supplied none, and `innerInstructions` is absent when the transaction had
+  // none — both are "no inner instructions", never an error.
+  for (const inner of tx.meta?.innerInstructions ?? [])
+    for (const ins of inner.instructions) push(ins);
   return out;
 }
 
