@@ -1,4 +1,9 @@
-import type { Aptos, TransactionResponse } from "@aptos-labs/ts-sdk";
+import {
+  type Aptos,
+  AptosApiError,
+  AptosApiType,
+  type TransactionResponse,
+} from "@aptos-labs/ts-sdk";
 import { describe, expect, it, vi } from "vitest";
 import {
   type AptosReader,
@@ -459,5 +464,52 @@ describe("makeAptosReader", () => {
     const view = await reader.txView("0xtx");
     expect(view?.success).toBe(false);
     expect(recoverAtrHashFromTxView(view, TESTNET_MODULE)).toBeNull();
+  });
+
+  /**
+   * ⛔ The port's contract is `null` for a transaction the fullnode does not have, and this shipped
+   * implementation threw instead: `getTransactionByHash` raises `AptosApiError` on a 404. So `recover`
+   * threw where every sibling rail returns a Refusal, so a caller auditing a hash the node has never seen
+   * got an exception rather than an answer. A hash nobody has heard of IS an answer.
+   *
+   * Only 404 is absence. Everything else the fullnode can fail with — a 429, a 500, a dropped connection
+   * — is "we could not look", and that must stay loud rather than being reported as an absent transaction.
+   */
+  function apiError(status: number): AptosApiError {
+    return new AptosApiError({
+      apiType: AptosApiType.FULLNODE,
+      aptosRequest: { url: "https://fullnode.example", method: "GET" },
+      aptosResponse: {
+        status,
+        statusText: status === 404 ? "Not Found" : "Too Many Requests",
+        data: {},
+        headers: {},
+        config: {},
+        url: "https://fullnode.example/transactions/by_hash/0xtx",
+        request: {},
+      },
+    } as never);
+  }
+
+  it("reports a 404 as null — the port promises null for a transaction the node lacks", async () => {
+    const reader = makeAptosReader({
+      getTransactionByHash: async () => {
+        throw apiError(404);
+      },
+    } as unknown as Aptos);
+    await expect(reader.txView("0xtx")).resolves.toBeNull();
+
+    const adapter = createAptosAdapter(APTOS_MANIFEST, "testnet");
+    const out = await adapter.recover({ hash: "0xtx" }, reader);
+    expect("refused" in out && out.code).toBe("aptos/no-settle-payment-id");
+  });
+
+  it("does NOT swallow any other API failure — a 429 is not an absent transaction", async () => {
+    const reader = makeAptosReader({
+      getTransactionByHash: async () => {
+        throw apiError(429);
+      },
+    } as unknown as Aptos);
+    await expect(reader.txView("0xtx")).rejects.toBeInstanceOf(AptosApiError);
   });
 });

@@ -20,7 +20,12 @@
  * binding-xrpl and binding-hedera.
  */
 
-import type { Aptos, Event, TransactionResponse } from "@aptos-labs/ts-sdk";
+import {
+  type Aptos,
+  AptosApiError,
+  type Event,
+  type TransactionResponse,
+} from "@aptos-labs/ts-sdk";
 import type { BindingManifest, Outcome } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
 import {
@@ -170,8 +175,23 @@ export interface AptosReader {
 export function makeAptosReader(aptos: Aptos): AptosReader {
   return {
     async txView(hash: string): Promise<AptosTxView | null> {
-      const tx = await aptos.getTransactionByHash({ transactionHash: hash });
-      return parseTxView(tx);
+      try {
+        const tx = await aptos.getTransactionByHash({ transactionHash: hash });
+        return parseTxView(tx);
+      } catch (err) {
+        // The port promises `null` for a transaction the fullnode does not have, and the SDK expresses
+        // that as a THROW: `getTransactionByHash` raises `AptosApiError` with status 404. Left
+        // unhandled, `recover` threw where the surface returns a Refusal, so a caller auditing a hash
+        // the node has never seen got an exception instead of an answer. A hash nobody has heard of is
+        // an answer.
+        //
+        // ⛔ ONLY 404. A 429, a 500 or a dropped connection is "we could not look", which is a different
+        // fact from "there is no such transaction" — reporting the first as the second would let an
+        // outage read as a settlement that never happened, which is the same collapse the acceptance
+        // verifier keeps apart between an unreachable node and a forged signature.
+        if (err instanceof AptosApiError && err.status === 404) return null;
+        throw err;
+      }
     },
   };
 }
