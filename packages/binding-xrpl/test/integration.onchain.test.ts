@@ -24,8 +24,16 @@
  * The XRPL signing SDK (ripple-keypairs / ripple-binary-codec) is a DEV dependency. The package's
  * PUBLISHED dependency surface stays pure-TS with no chain SDK — the runtime adapter reads through an
  * injected `XrplReader` — and a devDependency never reaches a consumer, so the discipline holds while the
- * proof stays runnable. The dynamic import and its loud skip remain the honest report for an incomplete
- * install.
+ * proof stays runnable.
+ *
+ * ⛔ **An incomplete install REFUSES.** Until 2026-09-03 the dynamic import returned `null` on failure and
+ * this test `console.warn`ed and RETURNED, under a comment calling that a "skip LOUD". Vitest has no such
+ * outcome: a returning body is recorded as PASSED, so `scripts/live-proof-gate.mjs` — which adjudicates on
+ * `failed === 0 && pending === 0 && passed > 0` precisely because an exit code certifies nothing — would
+ * have printed "Rail proven live" over a run that signed, submitted and read nothing. This was the only
+ * one of the eleven harnesses with a path to a credentialed pass that touches no chain. A missing
+ * dependency is a refusal, not a skip and not a pass, so the loader throws and `check:harness-proof` now
+ * refuses the shape in any harness.
  */
 import { hashAtr, isAtrHash } from "@integraledger/lcp-kernel";
 import { describe, expect, it } from "vitest";
@@ -41,14 +49,16 @@ import type { XrplMemo } from "../src/memo.js";
 const SEED = process.env.XRPL_TESTNET_SEED;
 const DESTINATION = process.env.XRPL_TESTNET_DESTINATION;
 
-// Probe for the optional signing SDK so a run with a seed but no SDK skips LOUD rather than throwing.
+// Load the signing SDK, REFUSING an incomplete install. The import is dynamic because the dependency is
+// dev-only, not because its absence is tolerable: this suite exists to sign and submit, and it cannot do
+// either without these two.
 async function loadXrplSdk(): Promise<{
   deriveKeypair: (seed: string) => { publicKey: string; privateKey: string };
   deriveAddress: (pub: string) => string;
   sign: (blob: string, priv: string) => string;
   encode: (tx: unknown) => string;
   encodeForSigning: (tx: unknown) => string;
-} | null> {
+}> {
   try {
     const kp = (await import("ripple-keypairs")) as unknown as {
       deriveKeypair: (seed: string) => {
@@ -63,8 +73,14 @@ async function loadXrplSdk(): Promise<{
       encodeForSigning: (tx: unknown) => string;
     };
     return { ...kp, ...codec };
-  } catch {
-    return null;
+  } catch (cause) {
+    throw new Error(
+      "binding-xrpl live proof: XRPL_TESTNET_SEED and XRPL_TESTNET_DESTINATION are set, but the signing " +
+        "SDK (ripple-keypairs / ripple-binary-codec) could not be imported. The rail is NOT proven — " +
+        "install the dev dependencies and run again. This is a refusal rather than a skip: a returning " +
+        "test body is recorded as a PASS, and a pass here would certify a weld that never happened.",
+      { cause },
+    );
   }
 }
 
@@ -74,15 +90,7 @@ suite(
   "binding-xrpl — live testnet (XRPL_TESTNET_SEED + DESTINATION set)",
   () => {
     it("welds an atrHash into a testnet Payment InvoiceID and recovers it", async () => {
-      const sdk = await loadXrplSdk();
-      if (sdk === null) {
-        // Skip LOUD: the cred is present but the optional signing SDK is not installed. Never fake it.
-        console.warn(
-          "binding-xrpl integration: XRPL_TESTNET_SEED is set but ripple-keypairs / ripple-binary-codec " +
-            "are not installed — skipping the live weld (install them to run this test).",
-        );
-        return;
-      }
+      const sdk = await loadXrplSdk(); // throws, loudly, on an incomplete install
       if (SEED === undefined || DESTINATION === undefined)
         throw new Error("unreachable: SEED/DESTINATION gate");
       const cfg = getXrplConfig("testnet");

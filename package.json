@@ -15,6 +15,7 @@
     "check:dist": "node scripts/check-dist-orphans.mjs",
     "check:docblocks": "node scripts/check-docblocks.mjs",
     "check:docs": "node scripts/check-doc-snippets.mjs",
+    "check:harness-proof": "node scripts/check-harness-proof.mjs",
     "check:live-rails": "node scripts/live-rails.mjs",
     "check:versions": "node scripts/check-versions.mjs",
     "corpus:seal": "node scripts/corpus-seal.mjs",
@@ -28,7 +29,7 @@
     "release:approve": "node scripts/approve-staged.mjs",
     "test": "pnpm -r --workspace-concurrency=3 test",
     "typecheck": "pnpm -r typecheck",
-    "verify": "pnpm check:versions && pnpm check:docblocks && pnpm check:live-rails && node scripts/corpus-seal.mjs --check && pnpm audit --audit-level moderate && pnpm -r build && pnpm check:dist && pnpm lint && pnpm depcruise && pnpm -r typecheck && pnpm check:docs && pnpm test"
+    "verify": "pnpm check:versions && pnpm check:docblocks && pnpm check:live-rails && pnpm check:harness-proof && node scripts/corpus-seal.mjs --check && pnpm audit --audit-level moderate && pnpm -r build && pnpm check:dist && pnpm lint && pnpm depcruise && pnpm -r typecheck && pnpm check:docs && pnpm test"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",

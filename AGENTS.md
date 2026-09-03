@@ -10,8 +10,8 @@ pnpm workspace, Node >= 24, TypeScript with `isolatedDeclarations`. Apache-2.0.
 `pnpm verify` is the one that counts. It runs, in order:
 
 ```
-check:versions → check:docblocks → check:live-rails → corpus-seal --check → audit → build → check:dist
-  → lint → depcruise → typecheck → check:docs → test
+check:versions → check:docblocks → check:live-rails → check:harness-proof → corpus-seal --check → audit
+  → build → check:dist → lint → depcruise → typecheck → check:docs → test
 ```
 
 Build comes before typecheck deliberately: workspace packages consume each other through built `dist/`, so
@@ -24,6 +24,7 @@ Build comes before typecheck deliberately: workspace packages consume each other
 | `pnpm check:docs` | Typechecks every TS fence in `docs/`, the root README and every package README — the count is derived, never written down |
 | `pnpm check:docblocks` | Refuses a top-level export with no docblock — 100% floor, adjacency strict |
 | `pnpm check:dist` | Refuses a `dist/` output whose `src/` file was deleted or renamed |
+| `pnpm check:harness-proof` | Refuses a live-rail harness that can report a PASS without doing its work — a `return` in a test body (Vitest records one as passed, never as skipped) or a body with no `expect`. Subject set is `check:live-rails`' inventory, so the two cannot disagree about what a harness is |
 | `pnpm check:live-rails` | The live-rail inventory — derives which packages carry an env-gated on-chain suite, refuses a set that disagrees with its named floor, and refuses a `live-proofs.yml` that fails to map a credential a harness reads |
 | `pnpm check:commit-trailers` | Commit-message policy over a range. **Not part of `verify`** — its subject is the range a push adds, which does not exist locally. `commit-policy.yml` runs it on every push |
 
@@ -110,6 +111,11 @@ well-known documents · `conformance` the corpus runner · `binding-*` thirteen 
   banner, so there is nothing to grep and a green exit code certifies nothing. `live-proofs.yml` therefore
   adjudicates on the JSON reporter's counts — passed > 0, skipped == 0 — via `scripts/live-proof-gate.mjs`,
   and never on the exit code. Anything that runs these suites owes the same check.
+- **Counts close the EMPTY run and cannot close the HOLLOW one.** A test body that `return`s is recorded
+  as **passed**, not pending, so it satisfies `passed > 0 && pending === 0` while touching no chain —
+  `binding-xrpl` had exactly that path until 2026-09-03. Not decidable from a report, so it is decided in
+  the source: `check:harness-proof` refuses a `return` in a live-rail test body and a body with no
+  `expect`. In a live harness, a missing dependency or an unusable credential is a **throw**.
 - **Enumerate the live harnesses by property, never by filename.** Nine are `integration.onchain.test.ts`
   and two are `integration.canton.test.ts`; a glob for the first silently omits Canton at both layers.
   `scripts/live-rails.mjs` is the inventory, and it refuses rather than returning a short set.

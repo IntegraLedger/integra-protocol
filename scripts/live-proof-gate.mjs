@@ -21,6 +21,13 @@
  * banner is a string someone may reword, and on the day it is reworded the guard stops guarding while
  * staying green. Counts cannot be reworded.
  *
+ * ⛔ **What counts cannot see: the HOLLOW run.** A test body that returns early is recorded as PASSED,
+ * not pending, so it satisfies all three conditions above while touching no chain — `binding-xrpl` had
+ * exactly that path until 2026-09-03. No report distinguishes it, so it is refused where it is decidable:
+ * `scripts/check-harness-proof.mjs` (the `check:harness-proof` stage of `pnpm verify`) refuses a `return`
+ * in a live-rail test body and a body with no `expect`. The two are halves of one property — this gate
+ * says the run happened, that one says the run could not have been hollow.
+ *
  * Usage: node scripts/live-proof-gate.mjs <report.json> <rail-name>
  */
 import { readFileSync } from "node:fs";
