@@ -52,12 +52,13 @@
   — so neither reaches a published manifest. Stated because the catalog diff shows six entries and only four
   of them are the reason for the bump.
   
-  ⛔ **Consumers repin protocol and these four in ONE commit.** `integra-agentic-commerce` pins `viem`
-  through its own catalog under a comment that reads *"MUST equal the protocol repo's catalog pin"*, and its
-  `protocol-integration` gate — which compiles against this repo's UNRELEASED source — went red the hour
-  after `920325c` and stayed red across five of its own unrelated commits. That gate is the reason this
-  changeset is deliberate rather than incidental: it put the discovery before the irreversible act, which is
-  its stated job.
+  ⛔ **Consumers repin protocol and these four in ONE commit.** A consumer that mirrors this repository's
+  `viem` pin through its own catalog — which is how a tree keeps ONE copy of that structural client type —
+  cannot move one without the other: the moment the two disagree, everything compiling against both stops
+  building, and it stays broken until protocol and the four peers land together. A downstream integration
+  gate compiling against this repository's UNRELEASED source is what surfaces that, and it surfaced it here,
+  hours after `920325c`. That is the reason this changeset is deliberate rather than incidental: the
+  discovery came before the irreversible act, which is such a gate's stated job.
 
 ## 0.13.0
 
