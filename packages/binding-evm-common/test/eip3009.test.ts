@@ -292,6 +292,44 @@ describe("verifyEip3009Signature", () => {
       await verifyEip3009Signature(typedData, bySomeoneElse, other.address),
     ).toBe(true);
   });
+
+  /**
+   * The public predicate over an OUT-OF-RANGE signature. `isCanonicalSignature` is where the rule lives,
+   * but what a caller holds is this function, and its docblock's promise is about this function: it
+   * "Answers `false` rather than throwing for the two UNTRUSTED inputs".
+   *
+   * ⛔ It threw. A seller pre-flighting an inbound x402 `PaymentPayload` was crashed by a hand-built
+   * 65-byte string costing nothing to produce — no key, no chain, no funds. `"not-a-signature"` was the
+   * only malformed shape the suite drove, and that is a shape the REGEX already refused, so every gate
+   * past the regex was untested against a hostile value.
+   */
+  describe("answers over an out-of-range signature rather than throwing", () => {
+    const N =
+      0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+    const rs = (r: bigint, s: bigint, v = 27): string =>
+      `0x${r.toString(16).padStart(64, "0")}${s.toString(16).padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;
+    const ONE = 0x11n << 248n;
+
+    it.each([
+      ["a zero s", rs(ONE, 0n)],
+      ["a zero r", rs(0n, ONE)],
+      ["both zero", rs(0n, 0n)],
+      ["r exactly at n", rs(N, ONE)],
+      ["r above n", rs((1n << 256n) - 1n, ONE)],
+    ])("answers false for %s", async (_label, bad) => {
+      const { typedData } = await signed();
+      await expect(
+        verifyEip3009Signature(typedData, bad, account.address),
+      ).resolves.toBe(false);
+    });
+
+    it("the honest signature still verifies — the range gates refuse nothing real", async () => {
+      const { typedData, signature } = await signed();
+      await expect(
+        verifyEip3009Signature(typedData, signature, account.address),
+      ).resolves.toBe(true);
+    });
+  });
 });
 
 /**
@@ -337,5 +375,49 @@ describe("isCanonicalSignature — the boundaries ECRecover.sol enforces", () =>
       ok.slice(2),
     ])
       expect(isCanonicalSignature(bad)).toBe(false);
+  });
+
+  /**
+   * ⛔ THE RANGE GATES — the third and fourth rules `ECRecover.sol` enforces, and the ones this predicate
+   * did not carry. Shape, low-s and `v ∈ {27,28}` were here; `r` and `s` being in `[1, n)` were not.
+   *
+   * `ecrecover` returns the ZERO ADDRESS for `r = 0`, `s = 0` or either component at or above `n`, and
+   * OpenZeppelin's `ECRecover.recover` — which `FiatTokenV2` routes through — reverts on a zero signer
+   * rather than returning it. So these are refusals of the token, exactly as low-s is, and this predicate's
+   * job is to answer "one `FiatTokenV2` will accept at all".
+   *
+   * Asserted HERE and not only through the public function because that is where the rule is written, and
+   * because {@link verifyEip3009Signature} could otherwise be repaired with a `try` — which would answer
+   * `false` for an unencodable `typedData` too, and tell an operator with a mis-copied `tokenName` that
+   * every honest payer is a forger. The head note reserves the throw for exactly that case.
+   */
+  const N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+  const rs = (r: bigint, s: bigint, v = 27): string =>
+    `0x${r.toString(16).padStart(64, "0")}${s.toString(16).padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;
+  const ONE = 0x11n << 248n; // a well-formed, in-range component
+
+  it("⛔ refuses a ZERO r or a ZERO s — ecrecover answers the zero address, and the token reverts on it", () => {
+    expect(isCanonicalSignature(rs(0n, ONE))).toBe(false);
+    expect(isCanonicalSignature(rs(ONE, 0n))).toBe(false);
+    expect(isCanonicalSignature(rs(0n, 0n))).toBe(false);
+  });
+
+  it("⛔ refuses an r AT OR ABOVE the curve order — `1 <= r < n`, and n itself is out", () => {
+    expect(isCanonicalSignature(rs(N, ONE))).toBe(false);
+    expect(isCanonicalSignature(rs(N + 1n, ONE))).toBe(false);
+    expect(isCanonicalSignature(rs((1n << 256n) - 1n, ONE))).toBe(false);
+  });
+
+  it("⭐ accepts r EXACTLY at n-1 and at 1 — the boundary is closed on the inside", () => {
+    // Without both ends a `<=`/`<` slip is invisible, the same argument the `n/2` case above makes.
+    expect(isCanonicalSignature(rs(N - 1n, ONE))).toBe(true);
+    expect(isCanonicalSignature(rs(1n, 1n))).toBe(true);
+  });
+
+  it("s needs no separate upper gate — low-s already caps it below n/2", () => {
+    // Stated so nobody adds a redundant `s < n` check later: `s <= n/2 < n` holds by construction, so the
+    // only value the range rule adds on the s side is zero, which the first case above pins.
+    expect(HALF_N < N).toBe(true);
+    expect(isCanonicalSignature(rs(ONE, HALF_N))).toBe(true);
   });
 });

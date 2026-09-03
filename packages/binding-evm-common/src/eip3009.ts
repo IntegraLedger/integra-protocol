@@ -160,12 +160,26 @@ const SECP256K1_HALF_N =
   0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0n;
 
 /**
+ * secp256k1's group order — the range `ecrecover` itself requires of `r` and `s`.
+ *
+ * ⛔ **The gate low-s does not cover, and the one a hostile counterparty reaches for.** `ecrecover` answers
+ * the ZERO ADDRESS rather than reverting for `r = 0`, `s = 0`, or either component at or above `n`, and
+ * OpenZeppelin's `ECRecover.recover` — which `FiatTokenV2` routes through — then reverts on the zero
+ * signer. These are refusals of the TOKEN on exactly the footing low-s is, so they belong in the same
+ * predicate rather than in a caller's `try`. Low-s already caps `s` below `n/2`, so on the `s` side the
+ * only value this rule adds is zero.
+ */
+const SECP256K1_N =
+  0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+
+/**
  * Whether the 65-byte signature is one `FiatTokenV2` will accept at all, before asking who signed it.
  *
- * Not a style check. Both rules come straight out of the token's `ECRecover.sol`, and skipping either one
- * turns {@link verifyEip3009Signature} from *"the chain will accept this"* into *"some chain might"*.
+ * Not a style check. Every rule comes straight out of the token's `ECRecover.sol` and the `ecrecover`
+ * precompile beneath it, and skipping any one turns {@link verifyEip3009Signature} from *"the chain will
+ * accept this"* into *"some chain might"* — or, for the range rules, into a throw.
  *
- * ⭐ Exported so the boundary is reachable by a test. `s === n/2` is ACCEPTED (the token's guard is
+ * ⭐ Exported so the boundaries are reachable by a test. `s === n/2` is ACCEPTED (the token's guard is
  * `s > n/2`), and no signing run will ever produce that value — so an off-by-one there is invisible from
  * the public predicate, where such a signature simply fails to recover and answers `false` either way.
  */
@@ -178,7 +192,14 @@ export function isCanonicalSignature(signature: string): boolean {
     signature,
   );
   if (parts === null) return false;
-  if (BigInt(`0x${parts[2] as string}`) > SECP256K1_HALF_N) return false;
+  const r = BigInt(`0x${parts[1] as string}`);
+  const s = BigInt(`0x${parts[2] as string}`);
+  // RANGE before malleability. `1 <= r < n` and `s !== 0`: outside these the recovery does not merely
+  // yield the wrong answer, it raises — which is how an attacker-chosen 65 bytes, costing no key, no
+  // chain and no funds, crashed a seller pre-flighting an inbound payload instead of being refused.
+  if (r === 0n || r >= SECP256K1_N) return false;
+  if (s === 0n) return false;
+  if (s > SECP256K1_HALF_N) return false;
   const v = Number.parseInt(parts[3] as string, 16);
   return v === 27 || v === 28;
 }
