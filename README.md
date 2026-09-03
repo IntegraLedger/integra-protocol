@@ -267,8 +267,8 @@ against stock, unmodified implementations.
 
 ```bash
 pnpm install
-pnpm verify          # versions → docblocks → live-rails → corpus-seal → audit → build → dist → lint
-                     #   → depcruise → typecheck → docs → test
+pnpm verify          # versions → docblocks → live-rails → harness-proof → corpus-seal → audit → build
+                     #   → dist → lint → depcruise → typecheck → docs → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 ```
 

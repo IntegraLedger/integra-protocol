@@ -65,8 +65,8 @@ exactly this reason.
 ## The gates
 
 ```bash
-pnpm verify          # check:versions → check:docblocks → check:live-rails → corpus-seal → audit → build
-                     #   → check:dist → lint → depcruise → typecheck → check:docs → test
+pnpm verify          # check:versions → check:docblocks → check:live-rails → check:harness-proof → corpus-seal
+                     #   → audit → build → check:dist → lint → depcruise → typecheck → check:docs → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 pnpm conformance            # the whole corpus, no --phase
 ```
