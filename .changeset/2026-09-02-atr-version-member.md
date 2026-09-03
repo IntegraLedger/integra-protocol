@@ -1,8 +1,11 @@
 ---
-"@integraledger/lcp-kernel": minor
-"@integraledger/lcp-conformance": minor
-"@integraledger/lcp-verify": minor
+"@integraledger/lcp-kernel": patch
+"@integraledger/lcp-conformance": patch
+"@integraledger/lcp-verify": patch
 ---
+
+0.15.0 was staged and withdrawn before publication; this ships in 0.15.1 as the first release after 0.14.0
+to carry the first-member rename.
 
 An assembled ATR's first member is `"atrVersion": "0.3"`, not `"atr": "0.3"`. This supersedes the 0.15.0
 entry that named `atr` as the new first member: that version was staged and never published, so no record
