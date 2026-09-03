@@ -1,5 +1,21 @@
 # @integraledger/lcp-placements
 
+## 0.15.1
+
+### Patch Changes
+
+- Updated dependencies [431b8ec]
+  - @integraledger/lcp-binding-core@0.15.1
+  - @integraledger/lcp-placement-a2a@0.15.1
+  - @integraledger/lcp-placement-ack@0.15.1
+  - @integraledger/lcp-placement-acp@0.15.1
+  - @integraledger/lcp-placement-ap2@0.15.1
+  - @integraledger/lcp-placement-mastercard-vi@0.15.1
+  - @integraledger/lcp-placement-mpp@0.15.1
+  - @integraledger/lcp-placement-ucp@0.15.1
+  - @integraledger/lcp-placement-visa-tap@0.15.1
+  - @integraledger/lcp-placement-x402@0.15.1
+
 ## 0.15.0
 
 ### Patch Changes

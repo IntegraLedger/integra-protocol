@@ -1,5 +1,17 @@
 # @integraledger/lcp-binding-evm-x402
 
+## 0.15.1
+
+### Patch Changes
+
+- Updated dependencies [83ae16e]
+- Updated dependencies [1da6c07]
+- Updated dependencies [431b8ec]
+- Updated dependencies [9c42f73]
+  - @integraledger/lcp-kernel@0.15.1
+  - @integraledger/lcp-binding-evm-common@0.15.1
+  - @integraledger/lcp-binding-core@0.15.1
+
 ## 0.15.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-placement-mpp",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "Places an LCP reference into an MPP (Machine Payments Protocol) charge request.",
   "keywords": [
     "lcp",

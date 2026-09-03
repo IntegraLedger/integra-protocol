@@ -1,5 +1,13 @@
 # @integraledger/lcp-discovery
 
+## 0.15.1
+
+### Patch Changes
+
+- Updated dependencies [83ae16e]
+- Updated dependencies [9c42f73]
+  - @integraledger/lcp-kernel@0.15.1
+
 ## 0.15.0
 
 ### Patch Changes

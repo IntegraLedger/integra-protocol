@@ -1,5 +1,35 @@
 # @integraledger/lcp-kernel
 
+## 0.15.1
+
+### Patch Changes
+
+- 83ae16e: 0.15.0 shipped with `atrVersion` as the assembled ATR's first member; its 0.15.0 changelog entry, written
+  before that rename landed, names `atr`. This entry corrects the record: from 0.15.0 the first member is
+  `atrVersion`.
+  
+  An assembled ATR's first member is `"atrVersion": "0.3"`, not `"atr": "0.3"`. No published release ever
+  emitted `"atr"` as the first member — 0.15.0's code already stamped `atrVersion`, and only its changelog
+  entry named the earlier spelling.
+  
+  Why: a version field names what it versions. `"atr": "0.3"` names the artifact, and a reader can take it
+  for an identifier; `"atrVersion": "0.3"` is unmistakable on the wire. The bare `atr` was the only stamped
+  name that needed that sentence to be read correctly.
+  
+  BREAKING for consumers: the `Atr` type's first member is `atrVersion`, `assemble` refuses a caller slot
+  named `atrVersion` with `assemble/reserved-slot`, `verify`'s recourse step recognises a kernel-assembled
+  ATR by that member, and every derived digest moves with it — every pinned vector hash was re-derived
+  independently and its superseded values recorded, and the corpus root moved with them.
+- 9c42f73: `assemble` refuses the slot names `lcp` and `atr` with `assemble/reserved-slot`, beside the `atrVersion`
+  refusal it already made. `lcp` names the specification, and bare on the wire it is ambiguous between a
+  version, a reference and a label; `atr` names the record itself. A profile that records the specification
+  version it targets uses an ordinary, clearly named slot — `lcpVersion` — which stays open.
+  
+  The corpus gains four `atr.assemble` cases: `atrVersion` as a caller's slot refused, which the kernel had
+  done since the member existed and the corpus had never pinned; `lcp` refused; `atr` refused; and
+  `lcpVersion` preserved verbatim, so the openness is pinned rather than inherited. 848 → 852 cases; the
+  corpus root moved.
+
 ## 0.15.0
 
 ### Minor Changes

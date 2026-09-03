@@ -1,5 +1,103 @@
 # @integraledger/lcp-conformance
 
+## 0.15.1
+
+### Patch Changes
+
+- 83ae16e: 0.15.0 shipped with `atrVersion` as the assembled ATR's first member; its 0.15.0 changelog entry, written
+  before that rename landed, names `atr`. This entry corrects the record: from 0.15.0 the first member is
+  `atrVersion`.
+  
+  An assembled ATR's first member is `"atrVersion": "0.3"`, not `"atr": "0.3"`. No published release ever
+  emitted `"atr"` as the first member — 0.15.0's code already stamped `atrVersion`, and only its changelog
+  entry named the earlier spelling.
+  
+  Why: a version field names what it versions. `"atr": "0.3"` names the artifact, and a reader can take it
+  for an identifier; `"atrVersion": "0.3"` is unmistakable on the wire. The bare `atr` was the only stamped
+  name that needed that sentence to be read correctly.
+  
+  BREAKING for consumers: the `Atr` type's first member is `atrVersion`, `assemble` refuses a caller slot
+  named `atrVersion` with `assemble/reserved-slot`, `verify`'s recourse step recognises a kernel-assembled
+  ATR by that member, and every derived digest moves with it — every pinned vector hash was re-derived
+  independently and its superseded values recorded, and the corpus root moved with them.
+- 9c42f73: `assemble` refuses the slot names `lcp` and `atr` with `assemble/reserved-slot`, beside the `atrVersion`
+  refusal it already made. `lcp` names the specification, and bare on the wire it is ambiguous between a
+  version, a reference and a label; `atr` names the record itself. A profile that records the specification
+  version it targets uses an ordinary, clearly named slot — `lcpVersion` — which stays open.
+  
+  The corpus gains four `atr.assemble` cases: `atrVersion` as a caller's slot refused, which the kernel had
+  done since the member existed and the corpus had never pinned; `lcp` refused; `atr` refused; and
+  `lcpVersion` preserved verbatim, so the openness is pinned rather than inherited. 848 → 852 cases; the
+  corpus root moved.
+- e959bf3: Three verification steps proved a rung over a slot they could not read. Each is now shape-screened on the
+  rule a sibling step in the same file already applied, so `steps.ts`'s own capitalised rule — ABSENT INPUTS
+  NEVER PROVE — holds for the untyped caller these steps exist for.
+  
+  - `authorityStep` read `parentDelegable` for TRUTHINESS. ATA-3 gate one asks whether the parent was
+    permitted to delegate at all, and every non-boolean but `0` and `""` cleared it: the strings `"false"`,
+    `"no"` and `"0"`, an empty array, an empty object. It is now type-screened exactly as `revoked` and
+    `active` are beside it, and as `authority.walkableGrant` screens `delegable` on the producing side — a
+    non-boolean is `not-attempted("malformed-authority-chain")`. An ABSENT flag is unchanged and still
+    `failed`: ATA-3 fixes a restrictive default, which is a ruling rather than a gap.
+  - `settlementStep` read `.length` on whatever the slot held. `.length` is `undefined` on an object, a
+    number and a boolean, and `undefined === 0` is false, so `{}`, `42`, `true`, `"abc"` and the duck-typed
+    `{ length: 5 }` all reached `proved` with zero settlements enumerated — on the rung that carries TC-1. A
+    non-array is now `not-attempted("no-enumeration-port")`, the same token an absent slot gets and the same
+    ruling `authorityStep` makes on a non-array chain.
+  - `commitmentStep` screened its two bounds halves with `typeof !== "object"`, which admits an array.
+    `Object.keys([])` answers `[]`, so `isWithin` read an array as a bounds with no dimensions — unbounded —
+    and skipped all four ATA-2 gates: a $50M commitment cleared ATA-4 containment against a leaf grant that
+    was never readable. Both halves now go through `boundsShaped`, the screen written for this and never
+    carried here. An empty-object leaf still PROVES, which is correct — an absent dimension is unbounded.
+  
+  The corpus gains four `verify.authorityWalk` cases: three non-boolean `parentDelegable` shapes, and a
+  control pinning that an absent flag still fails rather than joining them as a gap. 852 → 856 cases; the
+  corpus root moved.
+  
+  `verify`'s totality property was asserting only that the walk returns a boolean and a class inside the
+  ladder, which a walk that proves every rung over nonsense also satisfies — that is what hid the settlement
+  defect through 500 runs a time. It now also asserts that a step handed a slot it cannot read never answers
+  `proved`.
+- 2959833: `verify()` was not total: two slots reached a primitive that raises, so a malformed record became a
+  `TypeError` at the callsite instead of a report. `steps.ts` states the opposite in capitals — EVERY STEP
+  IS TOTAL, "because the callers they exist for are untyped", and "a walk that throws cannot report the
+  malformation it was handed".
+  
+  - `fingerprintStep` handed `atrBytes` to `SubtleCrypto.digest`, which does its own type check and throws.
+    A JSON-decoded byte array — what an HTTP intake produces for `{"atrBytes":[123,34,97,125]}`, the live
+    path — an object, a number, a string and a boolean all raised. A slot that is not a `BufferSource` now
+    reads `not-attempted("malformed-atr-bytes")`. Not `indeterminate`: that says the ATR could not be
+    retrieved, and here something was supplied.
+  - `recourseStep` handed `evidenceRoles` to `new Set`, which throws on a non-iterable — and a STRING, which
+    IS iterable, quietly became a package of one role per character, so `"atr"` read as `a`, `t`, `r`. A
+    non-array now reads `not-attempted("no-evidence-package")`, the token an absent slot gets. A real empty
+    array is untouched and still `evidence-package-incomplete`: supplied and short is not absent.
+  
+  Both are reachable only past a SECOND slot — `fingerprintStep` returns `indeterminate` before hashing
+  unless a settled hash is also present, `recourseStep` stops at four earlier guards unless the ATR parses
+  and carries both elections — which is why neither had a case.
+  
+  The corpus gains three `verify.recourse` cases. 856 → 859; the corpus root moved.
+  
+  The property test whose title is "never throws, whatever shape the caller supplies" had **no `atrBytes`
+  key in its generator at all**, so every one of its 500 runs short-circuited at the first guard of both
+  steps. A generator that omits a slot is not a weak oracle; nothing downstream of the omission is under
+  test. It now generates `atrBytes` and `settledAtrHash` — real bytes, a real ATR, and the untyped shapes
+  including the JSON byte array — and both throws reproduce from it.
+- Updated dependencies [83ae16e]
+- Updated dependencies [431b8ec]
+- Updated dependencies [9c42f73]
+- Updated dependencies [e959bf3]
+- Updated dependencies [2959833]
+  - @integraledger/lcp-kernel@0.15.1
+  - @integraledger/lcp-verify@0.15.1
+  - @integraledger/lcp-binding-core@0.15.1
+  - @integraledger/lcp-authority@0.15.1
+  - @integraledger/lcp-discovery@0.15.1
+  - @integraledger/lcp-evidence@0.15.1
+  - @integraledger/lcp-placement-x402@0.15.1
+  - @integraledger/lcp-placements@0.15.1
+
 ## 0.15.0
 
 ### Minor Changes

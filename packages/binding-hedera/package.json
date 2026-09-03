@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-hedera",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "Welds an ATR hash into a Hedera Token Service transfer.",
   "keywords": [
     "lcp",

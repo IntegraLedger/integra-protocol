@@ -1,5 +1,12 @@
 # @integraledger/lcp-placement-ack
 
+## 0.15.1
+
+### Patch Changes
+
+- Updated dependencies [431b8ec]
+  - @integraledger/lcp-binding-core@0.15.1
+
 ## 0.15.0
 
 ### Patch Changes
