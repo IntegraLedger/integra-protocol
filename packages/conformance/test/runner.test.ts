@@ -120,7 +120,10 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // shapes the truthiness read had proved (the strings "false" and "0" among them, so the word denying
 // permission read as permission), plus a control pinning that an ABSENT flag still FAILS under ATA-3's
 // restrictive default rather than becoming a gap alongside them.
-const CORPUS_SIZE = 856;
+// 856 → 859 on 2026-09-02: `verify.recourse` gains three non-array evidence-package cases — an object and
+// a number, which `new Set` raised on, and a STRING, which is iterable and so read as one role per
+// character. The empty-array control beside them is unchanged and still `evidence-package-incomplete`.
+const CORPUS_SIZE = 859;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

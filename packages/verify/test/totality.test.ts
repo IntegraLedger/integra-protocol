@@ -23,6 +23,7 @@ import {
   type AuthorityLink,
   authorityStep,
   commitmentStep,
+  fingerprintStep,
   recourseStep,
   resolvePartyStep,
   settlementStep,
@@ -601,6 +602,144 @@ describe("steps are total over an explicit null, not only over undefined", () =>
     expect(recourseStep(bytes, undefined)).toEqual({
       status: "not-attempted",
       depth: "no-elections-recorded",
+    });
+  });
+
+  /**
+   * The two slots that made `verify()` NOT TOTAL — it threw `TypeError` rather than reporting.
+   *
+   * `steps.ts` states in capitals that EVERY STEP IS TOTAL, "because the callers they exist for are
+   * untyped — a foreign conformance subject, an unvalidated intake", and that "a walk that throws cannot
+   * report the malformation it was handed". Both of these reached a primitive that does its own type
+   * check and raises: `SubtleCrypto.digest` on `atrBytes`, `new Set` on `evidenceRoles`.
+   *
+   * `[123, 34, 97, 125]` is the live path rather than a contrived shape: it is what `JSON.parse` yields
+   * for `{"atrBytes":[123,34,97,125]}`, which is how an ATR crosses an HTTP intake. The caller gets an
+   * exception at the callsite instead of a report saying the bytes were unreadable.
+   *
+   * Reaching either line takes a SECOND slot — `fingerprintStep` returns `indeterminate` before hashing
+   * unless `settledAtrHash` is also present, and `recourseStep` returns at its first four guards unless
+   * the ATR parses AND carries both elections. That is why neither had a case: the shallow input stops
+   * short of the throw, and the property test that should have found them generated no `atrBytes` at all.
+   */
+  describe("the walk is total over the two slots that reached a throwing primitive", () => {
+    const settled = `0x${"11".repeat(32)}`;
+    const elected = new TextEncoder().encode(
+      JSON.stringify({
+        atrVersion: "0.3",
+        terms: "These terms govern the purchase of one dataset license.",
+        recourse: { forum: "arbitration, seat New York", governingLaw: "DE" },
+      }),
+    );
+
+    it.each([
+      ["a JSON-decoded byte array — the HTTP-intake path", [123, 34, 97, 125]],
+      ["an empty array", []],
+      ["an object", {}],
+      ["a number", 7],
+      ["a string", "abc"],
+      ["a boolean", true],
+    ])(
+      "fingerprintStep reads out on %s instead of throwing in SubtleCrypto.digest",
+      async (_label, value) => {
+        await expect(
+          fingerprintStep(value as unknown as Uint8Array, settled),
+        ).resolves.toEqual({
+          status: "not-attempted",
+          depth: "malformed-atr-bytes",
+        });
+      },
+    );
+
+    it("real bytes still hash and still FAIL a fingerprint that does not match", async () => {
+      await expect(fingerprintStep(elected, settled)).resolves.toEqual({
+        status: "failed",
+        haltClass: "verification-failure",
+      });
+    });
+
+    it("real bytes still PROVE against their own hash — the screen has not disengaged the rung", async () => {
+      // Recomputed here through the same kernel the step uses; what is asserted is that the step still
+      // reaches it, not what the digest is (`vectors/atrhash/` pins the digest itself).
+      const { hashAtr } = await import("@integraledger/lcp-kernel");
+      await expect(
+        fingerprintStep(elected, await hashAtr(elected)),
+      ).resolves.toEqual({ status: "proved" });
+    });
+
+    it("an ABSENT atrBytes is still `indeterminate` — unretrieved is not malformed", async () => {
+      await expect(fingerprintStep(undefined, settled)).resolves.toEqual({
+        status: "indeterminate",
+      });
+    });
+
+    it.each([
+      ["a number", 42],
+      ["an object", {}],
+      ["a role-shaped object", { atr: 1 }],
+      ["a boolean", true],
+    ])(
+      "recourseStep reads out on %s evidenceRoles instead of throwing in `new Set`",
+      (_label, value) => {
+        expect(
+          recourseStep(elected, value as unknown as readonly string[]),
+        ).toEqual({ status: "not-attempted", depth: "no-evidence-package" });
+      },
+    );
+
+    it("a STRING evidenceRoles is a gap, not a package — a string is iterable over its characters", () => {
+      // `new Set("atr")` is `{"a","t","r"}`, so this used to read as a package of three roles that
+      // happened to be incomplete. It is not a package at all.
+      expect(
+        recourseStep(elected, "atr" as unknown as readonly string[]),
+      ).toEqual({
+        status: "not-attempted",
+        depth: "no-evidence-package",
+      });
+    });
+
+    it("a real EMPTY array is still `evidence-package-incomplete` — supplied and short, not absent", () => {
+      expect(recourseStep(elected, [])).toEqual({
+        status: "not-attempted",
+        depth: "evidence-package-incomplete",
+      });
+    });
+
+    it("a real COMPLETE package still proves — the screen has not disengaged RCS-4", () => {
+      expect(
+        recourseStep(elected, [
+          "atr",
+          "signed acceptance",
+          "authority chain",
+          "spend artifact",
+          "attestation",
+          "settlement",
+          "weld",
+          "timestamp",
+        ]),
+      ).toEqual({ status: "proved" });
+    });
+
+    it("verify() survives both at once — the whole walk, not just the steps", async () => {
+      const report = await verify({
+        asOf: "2026-07-16T00:00:00Z",
+        coverage: { ports: [], bindings: [] },
+        atrBytes: [123, 34, 97, 125] as unknown as Uint8Array,
+        settledAtrHash: settled,
+        evidenceRoles: 42 as unknown as readonly string[],
+      });
+      const statuses = Object.fromEntries(
+        report.steps.map((s) => [s.name, s.outcome]),
+      );
+      expect(statuses["atr-fingerprint"]).toEqual({
+        status: "not-attempted",
+        depth: "malformed-atr-bytes",
+      });
+      expect(statuses["recourse-elections"]).toEqual({
+        status: "not-attempted",
+        depth: "atr-not-machine-readable",
+      });
+      expect(report.supportedClass).toBe("TC-0");
     });
   });
 

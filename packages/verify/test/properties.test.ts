@@ -40,10 +40,56 @@ const anySlot = fc.oneof(
   fc.object({ maxDepth: 2 }),
 );
 
+/** A well-formed, kernel-shaped ATR carrying both recourse elections — the document that makes
+ *  `recourse-elections` reach its evidence-roles gate instead of stopping at `atr-not-machine-readable`. */
+const REAL_ATR = new TextEncoder().encode(
+  JSON.stringify({
+    atrVersion: "0.3",
+    terms: "These terms govern the purchase of one dataset license.",
+    recourse: { forum: "arbitration, seat New York", governingLaw: "Delaware" },
+  }),
+);
+
+/**
+ * The ATR-bytes slot, and the reason this generator had to grow.
+ *
+ * `atrBytes` was ABSENT from `arbInput` entirely, so every run short-circuited: `fingerprintStep` returned
+ * `indeterminate` at its first line and `recourseStep` returned `no-atr-bytes` at its first line. Two steps
+ * were therefore generated against 500 times and REACHED zero times, and both threw on the shapes below —
+ * `SubtleCrypto.digest` on a plain array, `new Set` on a non-iterable. A generator that omits a slot is not
+ * a weak oracle, it is no oracle: nothing downstream of the omission is under test at all.
+ *
+ * The three arms are the three real callers. A byte array is what a JSON-over-HTTP intake decodes
+ * `{"atrBytes":[123,34,…]}` into and is the live path; `anySlot` is the rest of the untyped surface; and
+ * the two well-formed arms are what stops the property from passing merely because nothing ever gets past
+ * the first guard.
+ */
+const arbAtrBytes = fc.oneof(
+  anySlot,
+  fc.array(fc.integer({ min: 0, max: 255 }), { maxLength: 8 }),
+  fc.uint8Array({ maxLength: 16 }),
+  fc.constant(REAL_ATR),
+);
+
+/** The settled fingerprint: the shapes an untyped caller supplies, plus a real 32-byte hex hash. */
+const arbSettledAtrHash = fc.oneof(
+  anySlot,
+  fc
+    .string({
+      unit: fc.constantFrom(..."0123456789abcdef"),
+      minLength: 64,
+      maxLength: 64,
+    })
+    .map((h) => `0x${h}`),
+);
+
 const arbInput = fc.record(
   {
     asOf: fc.oneof(fc.constant("2026-07-16T00:00:00Z"), fc.string()),
     coverage: fc.oneof(fc.constant({ ports: [], bindings: [] }), anySlot),
+    // Both slots reach a step that dereferences them, and neither was generated before.
+    atrBytes: arbAtrBytes,
+    settledAtrHash: arbSettledAtrHash,
     settlements: anySlot,
     authorityChain: anySlot,
     commitment: anySlot,
@@ -97,6 +143,9 @@ const READABLE: Record<string, (slot: unknown) => boolean> = {
       shaped(v) && Array.isArray((v as { chain?: unknown }).chain);
     return party(i.seller) && party(i.buyer);
   },
+  // RCS-4's package is a list of role names. `new Set` raises on a non-iterable and iterates a STRING by
+  // character, so `"atr"` would read as a three-role package — the one non-array shape that answers.
+  "recourse-elections": (slot) => Array.isArray(slot),
 };
 
 /** An object `Object.keys` can walk — not `null`, and not an array. */
@@ -110,6 +159,7 @@ const SLOT_OF: Record<string, string> = {
   "commitment-vs-leaf": "commitment",
   "authority-attenuation": "authorityChain",
   "resolve-party": "identity",
+  "recourse-elections": "evidenceRoles",
 };
 
 describe("verify — totality: a malformed record is REPORTED, never thrown on", () => {

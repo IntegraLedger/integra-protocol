@@ -157,12 +157,26 @@ function nonBlank(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/** Bytes `hashAtr` can actually digest. `SubtleCrypto.digest` does its own type check and THROWS on
+ *  anything that is not a `BufferSource`, so this is the screen that keeps `fingerprintStep` total —
+ *  `ArrayBuffer.isView` is exactly the set the primitive accepts as a view, and it is realm-agnostic where
+ *  `instanceof Uint8Array` is not. A JSON-decoded `[123, 34, 97, 125]` is the shape this exists for: it is
+ *  what an HTTP intake produces for `{"atrBytes":[…]}`, and it is neither bytes nor refused by `typeof`. */
+function digestibleBytes(value: unknown): boolean {
+  return ArrayBuffer.isView(value) || value instanceof ArrayBuffer;
+}
+
 /** Recompute the fingerprint over the retrieved ATR bytes and compare to what the settlement committed. */
 export async function fingerprintStep(
   atrBytes: Uint8Array | undefined,
   settledAtrHash: string | undefined,
 ): Promise<StepOutcome> {
   if (!present(atrBytes)) return { status: "indeterminate" }; // unretrievable ATR — not a failure
+  // A slot that is not bytes is the caller's shape error, and it is NOT `indeterminate`: `indeterminate`
+  // says the ATR could not be retrieved, and something WAS supplied here. `not-attempted` under its own
+  // name, like every other malformed slot in this module.
+  if (!digestibleBytes(atrBytes))
+    return { status: "not-attempted", depth: "malformed-atr-bytes" };
   if (!present(settledAtrHash))
     return { status: "not-attempted", depth: "no-settled-hash" };
   const recomputed = await hashAtr(atrBytes);
@@ -408,8 +422,14 @@ export function recourseStep(
     return { status: "not-attempted", depth: "no-forum-elected" }; // RCS-1
   if (!stated(elections["governingLaw"]))
     return { status: "not-attempted", depth: "no-governing-law-elected" }; // RCS-2
-  if (!present(evidenceRoles))
-    return { status: "not-attempted", depth: "no-evidence-package" }; // RCS-4
+  // RCS-4. A slot that is not an ARRAY is no package at all, and reads out under the same token an absent
+  // one gets — the ruling `authorityStep` makes on a non-array chain. Two reasons, and both are live:
+  // `new Set` raises on a non-iterable, so `{}`, `42` and `true` threw out of a module whose contract is
+  // totality; and a STRING is iterable, so `"atr"` quietly became a three-role package of `a`, `t`, `r`,
+  // which is worse than the throw because it answers. A real empty array is untouched and still reads
+  // `evidence-package-incomplete`: it was supplied and is short, which is a different fact from absent.
+  if (!present(evidenceRoles) || !Array.isArray(evidenceRoles))
+    return { status: "not-attempted", depth: "no-evidence-package" };
   const supplied = new Set(evidenceRoles);
   if (!RCS4_REQUIRED_ROLES.every((role) => supplied.has(role)))
     return { status: "not-attempted", depth: "evidence-package-incomplete" };

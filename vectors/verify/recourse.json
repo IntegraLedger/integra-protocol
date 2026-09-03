@@ -1,5 +1,5 @@
 {
-  "$comment": "RCS-1/2/4 as a verification step (the recourse family, TRM-9). RCS-1: every consequential transaction MUST carry a forum designation, recorded INSIDE the terms record — so the elections are read from the hashed ATR bytes themselves, never from a caller-supplied side channel; what is proved is what was welded. RCS-2: governing law MUST be elected and recorded. RCS-4: the transaction MUST produce a self-contained evidence package — the required roles are the specification's own enumeration (terms artifact; acceptance signature and its authority chain; the spend-authorization artifact or a verifiable reference; identity attestations and their assurance; the settlement reference and weld; timestamps), minus its explicitly conditional clause (fulfillment/order-state, 'where performance is disputed'). This step NEVER returns failed: an absent election is absence of proof, not a contradiction in the record, and must not impeach supportedClass to TC-0. Authored from the specification before the implementation existed. 2026-09-02: every record here now opens with \"atrVersion\":\"0.3\". The ATR's format-version member was `lcp`, which collided with the LCP specification's own version line, and then briefly `atr`, which named the artifact rather than its version; a version field names what it versions. No case in this area pins a hash, so no digest moved.",
+  "$comment": "RCS-1/2/4 as a verification step (the recourse family, TRM-9). RCS-1: every consequential transaction MUST carry a forum designation, recorded INSIDE the terms record — so the elections are read from the hashed ATR bytes themselves, never from a caller-supplied side channel; what is proved is what was welded. RCS-2: governing law MUST be elected and recorded. RCS-4: the transaction MUST produce a self-contained evidence package — the required roles are the specification's own enumeration (terms artifact; acceptance signature and its authority chain; the spend-authorization artifact or a verifiable reference; identity attestations and their assurance; the settlement reference and weld; timestamps), minus its explicitly conditional clause (fulfillment/order-state, 'where performance is disputed'). This step NEVER returns failed: an absent election is absence of proof, not a contradiction in the record, and must not impeach supportedClass to TC-0. Authored from the specification before the implementation existed. 2026-09-02: every record here now opens with \"atrVersion\":\"0.3\". The ATR's format-version member was `lcp`, which collided with the LCP specification's own version line, and then briefly `atr`, which named the artifact rather than its version; a version field names what it versions. No case in this area pins a hash, so no digest moved. A slot that is not an ARRAY is no package at all and reads `no-evidence-package`, the token an absent slot gets: `new Set` raises on a non-iterable, and a STRING — which is iterable — would otherwise read as one role per character. That is distinct from the empty array beside it, which is a package that was supplied and is short.",
   "cases": [
     {
       "name": "elections recorded and the evidence package complete — RCS-1/2/4 proved",
@@ -345,6 +345,48 @@
       "expected": {
         "status": "not-attempted",
         "depth": "evidence-package-incomplete"
+      }
+    },
+    {
+      "name": "a NON-ARRAY evidence package is no package at all — an object supplies no roles and must not be iterated",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": {}
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-evidence-package"
+      }
+    },
+    {
+      "name": "a NUMBER in the evidence-package slot reads out rather than crashing the walk",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": 42
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-evidence-package"
+      }
+    },
+    {
+      "name": "a STRING is not a package — a string iterates over its characters, so \"atr\" would read as three roles",
+      "input": {
+        "atr": {
+          "encoding": "utf8",
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"These terms govern the purchase of one dataset license.\",\"id\":\"01960b1c-6a3e-7c4d-9f10-2b8e5d7a4c11\",\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"}}"
+        },
+        "evidenceRoles": "atr"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "no-evidence-package"
       }
     },
     {
