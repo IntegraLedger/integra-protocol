@@ -39,7 +39,7 @@ describe("assemble — vectors", () => {
 });
 
 describe("assemble — properties", () => {
-  // Safe extra slots: unique names from a pool that excludes atr/terms/id and all integer-like names, string values.
+  // Safe extra slots: unique names from a pool that excludes atrVersion/terms/id and all integer-like names, string values.
   const slotName = fc.constantFrom(
     "alpha",
     "beta",
@@ -80,12 +80,12 @@ describe("assemble — properties", () => {
           expect(new TextDecoder().decode(again.atrBytes)).toBe(
             new TextDecoder().decode(atrBytes),
           );
-          // (c) unknown slots survive + (d) emitted key order is exactly atr, terms, id, ...extras-in-order
+          // (c) unknown slots survive + (d) emitted key order is exactly atrVersion, terms, id, ...extras-in-order
           const parsed = JSON.parse(
             new TextDecoder().decode(atrBytes),
           ) as Record<string, unknown>;
           expect(Object.keys(parsed)).toEqual([
-            "atr",
+            "atrVersion",
             "terms",
             "id",
             ...extra.map((e) => e.slot),

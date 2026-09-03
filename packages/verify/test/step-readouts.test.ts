@@ -28,7 +28,7 @@ import {
   settlementStep,
 } from "../src/steps.js";
 
-const ATR_BYTES = new TextEncoder().encode('{"atr":"0.3","id":"x"}');
+const ATR_BYTES = new TextEncoder().encode('{"atrVersion":"0.3","id":"x"}');
 const WRONG_HASH = `0x${"11".repeat(32)}` as const;
 
 const ACCEPTANCE: SignedAcceptance = {

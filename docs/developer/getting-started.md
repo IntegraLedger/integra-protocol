@@ -55,7 +55,7 @@ Keep both values verbatim if you want the ATR hash printed below to be the one y
 generated `id` is a different record, and therefore a different hash — which is the property working.
 
 Now assemble. A slot carries **exactly one** of `value` (inline) or `ref` (a content reference), and
-`terms` and `id` are required and non-empty. The `atr` version field is engine-stamped, so supplying it as
+`terms` and `id` are required and non-empty. The `atrVersion` field is engine-stamped, so supplying it as
 a slot is a typed refusal rather than an override:
 
 ```ts
@@ -79,13 +79,14 @@ console.log(isAtrHash(atrHash)); // true
 console.log((await hashAtr(atrBytes)) === atrHash); // true — recomputable by anyone holding the bytes
 ```
 
-<!-- SUPERSEDED PIN (2026-09-02): the record hash below was
+<!-- SUPERSEDED PINS (2026-09-02): the record hash below was
      0xc7004db2c5ab2231c497513e50c4a75da051f8d67172366e39e1c24944aed356 over a record whose first member was
-     "lcp":"0.3"; the format-version member was renamed to `atr` and the new hash re-derived
-     independently (python hashlib over the printed one-line bytes). -->
+     "lcp":"0.3", and then 0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99 over "atr":"0.3";
+     the format-version member was renamed twice before any release carried it, and the new hash was
+     re-derived independently each time (python hashlib over the printed one-line bytes). -->
 ```text
-{"atr":"0.3","terms":"lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30","id":"0xcfd11a6df93dae9b9ff76196eadf0939","parties":{"seller":"did:web:seller.example","buyer":"did:web:buyer.example"}}
-0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99
+{"atrVersion":"0.3","terms":"lcp:sha256:0xe6ad241521e947349b7d5e1cb19c122f478278a58d55665c6bc35143ef2a6f30","id":"0xcfd11a6df93dae9b9ff76196eadf0939","parties":{"seller":"did:web:seller.example","buyer":"did:web:buyer.example"}}
+0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b
 true
 true
 ```

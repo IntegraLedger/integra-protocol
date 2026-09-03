@@ -1,9 +1,9 @@
 {
-  "$comment": "Walk scenarios (verify package fixture, not a conformance corpus area — the cross-party format is the JCS serialization). `input` is a verify() input: `atrBytes` uses the {encoding,data} byte convention, and `acceptanceVerifier` names a deterministic port the harness supplies ('accepts' | 'rejects') because a signature-verifier port is a function, not serializable JSON. `expected` pins verified, claimedClass (the caller's input, echoed), supportedClass (the FINDING — the highest class whose every required step is proved, TC-0 on any failure), assurance (the BUYER's stated level), and each step's status. What the cases pin about the class: it is computed from the steps alone, so it is neither capped by the claim (case 1 claims TC-2 and reaches TC-3) nor held up by it (a gap lowers the class to whatever the proved rungs reach, and an unproved TC-1 rung leaves TC-0), while a contradiction — a bad signature, a widened link, a mismatched fingerprint — impeaches to TC-0 outright. AMENDED 2026-07-24: the walk gained `recourse-elections` (RCS-1/2/4), the acceptance rung became signature-gated, and the thin TC-3 case landed. SUPERSEDED PINS (2026-08-19): supportedClass previously echoed `claimedClass` unless a step FAILED, so a record proving nothing reported the class the caller named; nine cases carried that value and now carry the class their steps reach. SUPERSEDED PINS (2026-08-07): dispute-resolution examples generalized -- illustrative examples name no provider; atrHash 0x6de976ec4ab4ed507b467975a34c9a147a928aa570bf9f9145e7f5e18c4ae631 -> 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 (JSON terms doc) and 0xf7975153e43b4e63bcb3ce565c584deb335a919edb840384799844178e96742a -> 0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98 (markdown terms doc), each re-derived independently with python3 hashlib over the exact data bytes.",
+  "$comment": "Walk scenarios (verify package fixture, not a conformance corpus area — the cross-party format is the JCS serialization). `input` is a verify() input: `atrBytes` uses the {encoding,data} byte convention, and `acceptanceVerifier` names a deterministic port the harness supplies ('accepts' | 'rejects') because a signature-verifier port is a function, not serializable JSON. `expected` pins verified, claimedClass (the caller's input, echoed), supportedClass (the FINDING — the highest class whose every required step is proved, TC-0 on any failure), assurance (the BUYER's stated level), and each step's status. What the cases pin about the class: it is computed from the steps alone, so it is neither capped by the claim (case 1 claims TC-2 and reaches TC-3) nor held up by it (a gap lowers the class to whatever the proved rungs reach, and an unproved TC-1 rung leaves TC-0), while a contradiction — a bad signature, a widened link, a mismatched fingerprint — impeaches to TC-0 outright. AMENDED 2026-07-24: the walk gained `recourse-elections` (RCS-1/2/4), the acceptance rung became signature-gated, and the thin TC-3 case landed. SUPERSEDED PINS (2026-08-19): supportedClass previously echoed `claimedClass` unless a step FAILED, so a record proving nothing reported the class the caller named; nine cases carried that value and now carry the class their steps reach. SUPERSEDED PINS (2026-08-07): dispute-resolution examples generalized -- illustrative examples name no provider; atrHash 0x6de976ec4ab4ed507b467975a34c9a147a928aa570bf9f9145e7f5e18c4ae631 -> 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 (JSON terms doc) and 0xf7975153e43b4e63bcb3ce565c584deb335a919edb840384799844178e96742a -> 0x7cb22b045fcffc2795a602344d07331ff38f54d882909e9d80be4b5126720e98 (markdown terms doc), each re-derived independently with python3 hashlib over the exact data bytes. SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it — `lcp` (which collided with the LCP specification's own version line) became `atr`, and `atr` (which names the artifact rather than its version) became `atrVersion`, because a version field names what it versions. The JSON-terms digest moved 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 -> 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 -> 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473; every case whose pins moved records that chain, each value re-derived independently with python3 hashlib over the exact record bytes.",
   "cases": [
     {
       "name": "fully-supplied structural walk — every TC-3 rung proved, so the class REACHES TC-3 though the caller claimed only TC-2",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -12,9 +12,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -22,7 +22,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -124,7 +124,7 @@
     },
     {
       "name": "the thin TC-3 slice — every TC-3 rung proved, verified raised honestly at mechanical depth",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -133,9 +133,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -143,7 +143,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -247,7 +247,7 @@
     },
     {
       "name": "TC-3 with no signature verifier — the acceptance never proves, so the class rests at the TC-2 its rungs reach",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -256,9 +256,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -266,7 +266,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -369,7 +369,7 @@
     },
     {
       "name": "TC-3 with a signature that does not verify — impeached to TC-0",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -378,9 +378,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -388,7 +388,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -614,7 +614,7 @@
     },
     {
       "name": "TC-3 whose evidence package omits the spend artifact — RCS-4 incomplete, so the class rests at TC-2",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -623,9 +623,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -633,7 +633,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -736,7 +736,7 @@
     },
     {
       "name": "an EMPTY authority chain proves nothing — the ATA rung never proves, so the class rests at TC-2",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -745,9 +745,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -755,7 +755,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -843,7 +843,7 @@
     },
     {
       "name": "forged-widening authority link impeaches the class to TC-0",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -852,9 +852,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -896,7 +896,7 @@
     },
     {
       "name": "a link below a NON-DELEGABLE parent impeaches the class to TC-0 (ATA-3)",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -905,9 +905,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -949,7 +949,7 @@
     },
     {
       "name": "a link that mints itself more delegation depth than its parent held impeaches to TC-0 (ATA-3)",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -958,9 +958,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -1004,7 +1004,7 @@
     },
     {
       "name": "a link that OMITS its depth below a depth-bounded parent impeaches to TC-0 (ATA-3 — absent means unbounded, which is strictly more than the parent held)",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation.",
       "input": {
         "asOf": "2026-07-24T12:05:00Z",
         "coverage": {
@@ -1013,9 +1013,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -1092,7 +1092,7 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
         "settledAtrHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "settlements": [
@@ -1133,9 +1133,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -1143,7 +1143,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -1238,7 +1238,7 @@
           "resolve-party": "not-attempted"
         }
       },
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation. A resolution chain records HOW a party was resolved. An entry whose `via` is empty records nothing, so the chain is present in shape only. Proving attribution from it would let a record claim both parties were resolved while naming no method for either."
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation. A resolution chain records HOW a party was resolved. An entry whose `via` is empty records nothing, so the chain is present in shape only. Proving attribution from it would let a record claim both parties were resolved while naming no method for either."
     },
     {
       "name": "resolve-party is NOT proved by an EMPTY chain entry (IDN-1) — a TC-1 rung, so the class is TC-0",
@@ -1250,9 +1250,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -1260,7 +1260,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -1351,7 +1351,7 @@
           "resolve-party": "not-attempted"
         }
       },
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation. `chain: [{}]` is a non-empty array of nothing. Length alone is not evidence: the step must read what the entries say, or an array of blanks passes the same gate a real resolution does."
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation. `chain: [{}]` is a non-empty array of nothing. Length alone is not evidence: the step must read what the entries say, or an array of blanks passes the same gate a real resolution does."
     },
     {
       "name": "resolve-party is NOT proved for a party with no subject (IDN-1) — a TC-1 rung, so the class is TC-0",
@@ -1363,9 +1363,9 @@
         },
         "atrBytes": {
           "encoding": "utf8",
-          "data": "{\"atr\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
+          "data": "{\"atrVersion\":\"0.3\",\"terms\":\"Seller grants Buyer a non-exclusive licence to one dataset. Delivery on settlement.\",\"id\":\"0198f2a1-4c7e-7b3d-8a55-6e21d9f0b4c3\",\"identity\":{\"seller\":{\"subject\":\"did:web:seller.example\",\"assurance\":\"legal-party\"},\"buyer\":{\"subject\":\"0xb15d0925\",\"assurance\":\"attested\"}},\"recourse\":{\"governingLaw\":\"Delaware, United States of America\",\"forum\":\"Expedited Commercial Arbitration Rules, seat New York, NY\",\"disputeMethod\":\"arbitration\"},\"caps\":{\"USD\":\"5000\"}}"
         },
-        "settledAtrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+        "settledAtrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
         "settlements": [
           {
             "chainId": 84532,
@@ -1373,7 +1373,7 @@
           }
         ],
         "acceptance": {
-          "atrHash": "0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3",
+          "atrHash": "0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473",
           "signer": "0xb15d09250fA3d2eA1c4B5F7a90D8c3E6b17a0925",
           "scheme": "evm:eip712",
           "signature": "0xababababababababababababababababababababababababababababababababcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd1b",
@@ -1472,7 +1472,7 @@
           "resolve-party": "not-attempted"
         }
       },
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 over the same bytes with the first member named `lcp`. New hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation. IDN-1 is the statement of WHO. A party resolved to the empty string names nobody, so the record cannot carry an attribution rung for it."
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): hash 0xbbe6bfab419550a890a18bf97e53cc72e54086927218449e5920701fa115ccd1 over these bytes with that first member. It was then `atr`, which names the artifact rather than its version: hash 0x972524307ab90bba07fc52044f290d2d924ab467e334eb55df2fd32d24c453d3. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x48ea5dfbd9c13d3907ac5e0ea6ae36443d0ca56e2f2d93249cc68134f5dd6473 re-derived independently with python3 hashlib over the exact record bytes, not copied from the implementation. IDN-1 is the statement of WHO. A party resolved to the empty string names nobody, so the record cannot carry an attribution rung for it."
     }
   ]
 }

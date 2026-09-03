@@ -22,7 +22,7 @@
  * records the revision this tree is measured against; the two §2 additions are implemented in `discovery`,
  * `binding-core` and `atrHashEquals` rather than here.
  *
- * The ATR's own format version is stamped separately by assemble() as `atr` — the wire format of the
+ * The ATR's own format version is stamped separately by assemble() as `atrVersion` — the wire format of the
  * document, versioned on its own clock. The two stay distinct.
  *
  * It lives in `kernel` because kernel is zero-dependency and every package that stamps the version already

@@ -3,7 +3,7 @@
     {
       "name": "minimal record",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "# Terms",
         "id": "0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c"
       },
@@ -12,7 +12,7 @@
     {
       "name": "fully populated",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "# Terms",
         "id": "0x01",
         "recourse": { "governingLaw": "NY", "forum": "Arbitration Forum" },
@@ -24,7 +24,7 @@
     {
       "name": "unknown key preserved",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "custom": { "a": 1 }
@@ -33,38 +33,38 @@
     },
     {
       "name": "missing id",
-      "input": { "atr": "0.3", "terms": "x" },
+      "input": { "atrVersion": "0.3", "terms": "x" },
       "expected": false
     },
     {
       "name": "missing terms",
-      "input": { "atr": "0.3", "id": "0x01" },
+      "input": { "atrVersion": "0.3", "id": "0x01" },
       "expected": false
     },
     {
-      "name": "missing atr",
+      "name": "missing atrVersion",
       "input": { "terms": "x", "id": "0x01" },
       "expected": false
     },
     {
       "name": "empty terms",
-      "input": { "atr": "0.3", "terms": "", "id": "0x01" },
+      "input": { "atrVersion": "0.3", "terms": "", "id": "0x01" },
       "expected": false
     },
     {
       "name": "empty id",
-      "input": { "atr": "0.3", "terms": "x", "id": "" },
+      "input": { "atrVersion": "0.3", "terms": "x", "id": "" },
       "expected": false
     },
     {
       "name": "wrong format version",
-      "input": { "atr": "0.2", "terms": "x", "id": "0x01" },
+      "input": { "atrVersion": "0.2", "terms": "x", "id": "0x01" },
       "expected": false
     },
     {
       "name": "caps as decimal-integer strings",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "caps": { "max": "1000000000000000000000" }
@@ -74,7 +74,7 @@
     {
       "name": "caps with a raw JSON number",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "caps": { "max": 9007199254740993 }
@@ -84,7 +84,7 @@
     {
       "name": "caps with a nested raw number",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "caps": { "perAsset": { "usdc": 1e21 } }
@@ -94,7 +94,7 @@
     {
       "name": "caps with a non-numeric string",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "caps": { "max": "banana" }
@@ -104,7 +104,7 @@
     {
       "name": "augmented regime with explicit references",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "regime": "augmented",
@@ -119,7 +119,7 @@
     {
       "name": "augmented regime without standingTrust",
       "input": {
-        "atr": "0.3",
+        "atrVersion": "0.3",
         "terms": "x",
         "id": "0x01",
         "regime": "augmented"

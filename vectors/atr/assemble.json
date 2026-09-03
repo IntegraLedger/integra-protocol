@@ -2,7 +2,7 @@
   "cases": [
     {
       "name": "minimal record",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"# Terms\\nService provided as-is.\",\"id\":\"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c\"} at hash 0xa1bbf89795454a42145bfb2e4d0f33c83aa576f6eefd78ba2f39f99fa444549b. New hash 0xa1bbf89795454a42145bfb2e4d0f33c83aa576f6eefd78ba2f39f99fa444549b re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"# Terms\\nService provided as-is.\",\"id\":\"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c\"} at hash 0xebbd7d8d17a7c988bee53682175446806f235f0d6c5ff054c39077d2e62d3df8. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"# Terms\\nService provided as-is.\",\"id\":\"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c\"} at hash 0xa1bbf89795454a42145bfb2e4d0f33c83aa576f6eefd78ba2f39f99fa444549b. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0xf4febf8153ba0e8dae3074982826b34f0bbb50be1c8f4cf5e5f12f361ab6b678 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -14,8 +14,8 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"# Terms\\nService provided as-is.\",\"id\":\"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c\"}",
-        "hash": "0xa1bbf89795454a42145bfb2e4d0f33c83aa576f6eefd78ba2f39f99fa444549b"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"# Terms\\nService provided as-is.\",\"id\":\"0x9f8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c\"}",
+        "hash": "0xf4febf8153ba0e8dae3074982826b34f0bbb50be1c8f4cf5e5f12f361ab6b678"
       }
     },
     {
@@ -56,7 +56,7 @@
     },
     {
       "name": "escaping pin (the JSON.stringify wire contract)",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"} at hash 0x9e878972d4fca868491f1563a7fe997be3366333535dc31162b005bd788904a4. New hash 0x9e878972d4fca868491f1563a7fe997be3366333535dc31162b005bd788904a4 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"} at hash 0x12698cb24a1ab844d075dd09b986ee4e1b623ff9f34acb1e55e7f7e566302166. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"} at hash 0x9e878972d4fca868491f1563a7fe997be3366333535dc31162b005bd788904a4. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0xfeff7024dc331c1e1cc0740ad2f7ac2395808a21016f10ee8f1c0d03def66187 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -68,13 +68,13 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"}",
-        "hash": "0x9e878972d4fca868491f1563a7fe997be3366333535dc31162b005bd788904a4"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"}",
+        "hash": "0xfeff7024dc331c1e1cc0740ad2f7ac2395808a21016f10ee8f1c0d03def66187"
       }
     },
     {
       "name": "__proto__ slot preserved as an own key (no silent drop)",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"__proto__\":{\"a\":1}} at hash 0x82f562fec829da48454b03fcad74c3e9dd92d19652637608a92e8548984051df. New hash 0x82f562fec829da48454b03fcad74c3e9dd92d19652637608a92e8548984051df re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"__proto__\":{\"a\":1}} at hash 0x68b9e5b4cefba11f69be0744661800714b4a9ffb785d671b2448ec496478f5b0. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"__proto__\":{\"a\":1}} at hash 0x82f562fec829da48454b03fcad74c3e9dd92d19652637608a92e8548984051df. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0xb1747c248a36cc7e962a272c1f5b829c65888eae0a805b657e738192a13de503 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -92,13 +92,13 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"__proto__\":{\"a\":1}}",
-        "hash": "0x82f562fec829da48454b03fcad74c3e9dd92d19652637608a92e8548984051df"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"__proto__\":{\"a\":1}}",
+        "hash": "0xb1747c248a36cc7e962a272c1f5b829c65888eae0a805b657e738192a13de503"
       }
     },
     {
       "name": "ref slot placed at slot",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"spendAuthority\":\"lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"} at hash 0xe996798448b50c83b2ae4afc20457f5322d5c0806bdd7a95800a3f52be6e95ba. New hash 0xe996798448b50c83b2ae4afc20457f5322d5c0806bdd7a95800a3f52be6e95ba re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"spendAuthority\":\"lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"} at hash 0xb1494ae1db38db44ac048673fc676df720c65f589467afa0b0b398b642cd6e4c. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"spendAuthority\":\"lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"} at hash 0xe996798448b50c83b2ae4afc20457f5322d5c0806bdd7a95800a3f52be6e95ba. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0xa0e1bd829fdb254eadd5d90c6b9c74c6d8b394d7b5131dda060fb8e8cc37942c re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -114,8 +114,8 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"spendAuthority\":\"lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"}",
-        "hash": "0xe996798448b50c83b2ae4afc20457f5322d5c0806bdd7a95800a3f52be6e95ba"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"spendAuthority\":\"lcp:sha256:0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"}",
+        "hash": "0xa0e1bd829fdb254eadd5d90c6b9c74c6d8b394d7b5131dda060fb8e8cc37942c"
       }
     },
     {
@@ -266,7 +266,7 @@
     },
     {
       "name": "nested integer-like keys sort ahead of string keys, ascending",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\"}} at hash 0x45f4a88131ca92252d424b006183901765d9570689a9e272bae4f785e6604b6c. New hash 0x45f4a88131ca92252d424b006183901765d9570689a9e272bae4f785e6604b6c re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\"}} at hash 0x23c05ae8021d13454dbef3e5eb6626f3971a78cac96b5fd85c8743d471f430a9. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\"}} at hash 0x45f4a88131ca92252d424b006183901765d9570689a9e272bae4f785e6604b6c. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0xd930a82eb7edd32a6a293fd9aa74299d1d3fb2bbcb91d29acce9a5e406e72ebd re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -286,13 +286,13 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\"}}",
-        "hash": "0x45f4a88131ca92252d424b006183901765d9570689a9e272bae4f785e6604b6c"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\"}}",
+        "hash": "0xd930a82eb7edd32a6a293fd9aa74299d1d3fb2bbcb91d29acce9a5e406e72ebd"
       }
     },
     {
       "name": "array-index boundary: 2^32-2 is an index, 2^32-1 is an ordinary key",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"4294967294\":\"z\",\"b\":\"x\",\"4294967295\":\"a\"}} at hash 0x7b999ae2d5dd59cfabc204ed4118ffe475aff47911904f0d8fa2b2dfa99bb5d5. New hash 0x7b999ae2d5dd59cfabc204ed4118ffe475aff47911904f0d8fa2b2dfa99bb5d5 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"4294967294\":\"z\",\"b\":\"x\",\"4294967295\":\"a\"}} at hash 0xc84417cc5e3397d0647b9d8de8727e6181e3861b6b740d8e0d4c164a16e369da. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"4294967294\":\"z\",\"b\":\"x\",\"4294967295\":\"a\"}} at hash 0x7b999ae2d5dd59cfabc204ed4118ffe475aff47911904f0d8fa2b2dfa99bb5d5. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x41a5cb25fec5e8ad86a59d37ce95da579a2f0291020fcd5e28d2e54bdb1de765 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -312,13 +312,13 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"4294967294\":\"z\",\"b\":\"x\",\"4294967295\":\"a\"}}",
-        "hash": "0x7b999ae2d5dd59cfabc204ed4118ffe475aff47911904f0d8fa2b2dfa99bb5d5"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"4294967294\":\"z\",\"b\":\"x\",\"4294967295\":\"a\"}}",
+        "hash": "0x41a5cb25fec5e8ad86a59d37ce95da579a2f0291020fcd5e28d2e54bdb1de765"
       }
     },
     {
       "name": "integer-key ordering applies at depth, not only at the envelope top level",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"inner\":{\"1\":\"a\",\"3\":\"c\"},\"z\":\"last\"}} at hash 0x0dcfbd7e2eac4b1ac806753f2d43e119d7d087ec0a9ff6a0a5098f60b4c53d5f. New hash 0x0dcfbd7e2eac4b1ac806753f2d43e119d7d087ec0a9ff6a0a5098f60b4c53d5f re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"inner\":{\"1\":\"a\",\"3\":\"c\"},\"z\":\"last\"}} at hash 0x1b3b516260d740f50fa7e6b853085794cbf4db6ebf54088c38b3c16723946da1. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"inner\":{\"1\":\"a\",\"3\":\"c\"},\"z\":\"last\"}} at hash 0x0dcfbd7e2eac4b1ac806753f2d43e119d7d087ec0a9ff6a0a5098f60b4c53d5f. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x619d7f866b320d459be6ecdd24525a5a2a2e1d56783aa994fb3e56d05e90fc5f re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "terms",
@@ -340,13 +340,13 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"inner\":{\"1\":\"a\",\"3\":\"c\"},\"z\":\"last\"}}",
-        "hash": "0x0dcfbd7e2eac4b1ac806753f2d43e119d7d087ec0a9ff6a0a5098f60b4c53d5f"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"meta\":{\"inner\":{\"1\":\"a\",\"3\":\"c\"},\"z\":\"last\"}}",
+        "hash": "0x619d7f866b320d459be6ecdd24525a5a2a2e1d56783aa994fb3e56d05e90fc5f"
       }
     },
     {
       "name": "unpaired surrogate in a SLOT NAME (the escaping pin covers values only)",
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"\\ud800\":\"x\",\"terms\":\"a\",\"id\":\"0x00\"} at hash 0x6fdb3e5b94ccfe1da768d120feea486a758ba92472fdd919ee47ea12f6db269f. New hash 0x6fdb3e5b94ccfe1da768d120feea486a758ba92472fdd919ee47ea12f6db269f re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"\\ud800\":\"x\",\"terms\":\"a\",\"id\":\"0x00\"} at hash 0xfd961ce7f82f53620615298225dcd1f0d9dc6039dd8a54903cafd0407f17514d. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"\\ud800\":\"x\",\"terms\":\"a\",\"id\":\"0x00\"} at hash 0x6fdb3e5b94ccfe1da768d120feea486a758ba92472fdd919ee47ea12f6db269f. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x494593559df644126a2fcd9594398da9625b8c9572148880324ed1758934a2b0 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [
         {
           "slot": "\ud800",
@@ -362,12 +362,12 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"\\ud800\":\"x\",\"terms\":\"a\",\"id\":\"0x00\"}",
-        "hash": "0x6fdb3e5b94ccfe1da768d120feea486a758ba92472fdd919ee47ea12f6db269f"
+        "file": "{\"atrVersion\":\"0.3\",\"\\ud800\":\"x\",\"terms\":\"a\",\"id\":\"0x00\"}",
+        "hash": "0x494593559df644126a2fcd9594398da9625b8c9572148880324ed1758934a2b0"
       }
     },
     {
-      "$comment": "SUPERSEDED PIN (2026-09-02): the ATR's format-version member was named `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time); the record's first member is now \"atr\":\"0.3\". Previous file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"max\":9007199254740991}} at hash 0x092b61121775ae214a1a7c82065fe4e0019a93b9c729f20cb23f48c274dd4b4c. New hash 0x092b61121775ae214a1a7c82065fe4e0019a93b9c729f20cb23f48c274dd4b4c re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation. Number::toString byte-stability for the numbers an open slot may still carry, now bounded by the safe-integer range. SUPERSEDED PIN (2026-08-31): this case previously carried `exp: 1e21` and pinned file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"exp\":1e+21}} at hash 0xc6e1d4084743252cb5a88e67d5e33683aa9f2b2bceae70fd8c879b003a53ed3c. It moved because assemble() now refuses any number beyond the safe-integer range in ANY slot: above 2^53 the engine cannot know whether the double it holds is the literal the caller wrote (9007199254740993 resolves to ...992 before assemble is entered), so the RANGE is refused rather than the damage detected. 1e21 is itself exactly representable, but it is indistinguishable at this boundary from a neighbour that is not, and a record is evidence. The exponent-threshold half of the old pin is now covered by the refusal case below. New hash re-derived independently with python3 hashlib over the exact expected file bytes, not copied from the implementation.",
+      "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"max\":9007199254740991}} at hash 0x6b26986a9b9412987b89784a289b4e01d1f30f96ba067db21460d03d308dd32a. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"max\":9007199254740991}} at hash 0x092b61121775ae214a1a7c82065fe4e0019a93b9c729f20cb23f48c274dd4b4c. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0x2f911def491da7298148bc7dd30ed530a17c6856d305d572c3c44d82f8e8b45b re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation. Number::toString byte-stability for the numbers an open slot may still carry, now bounded by the safe-integer range. SUPERSEDED PIN (2026-08-31): this case previously carried `exp: 1e21` and pinned file {\"lcp\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"exp\":1e+21}} at hash 0xc6e1d4084743252cb5a88e67d5e33683aa9f2b2bceae70fd8c879b003a53ed3c. It moved because assemble() now refuses any number beyond the safe-integer range in ANY slot: above 2^53 the engine cannot know whether the double it holds is the literal the caller wrote (9007199254740993 resolves to ...992 before assemble is entered), so the RANGE is refused rather than the damage detected. 1e21 is itself exactly representable, but it is indistinguishable at this boundary from a neighbour that is not, and a record is evidence. The exponent-threshold half of the old pin is now covered by the refusal case below. New hash re-derived independently with python3 hashlib over the exact expected file bytes, not copied from the implementation.",
       "name": "raw numbers outside caps: Number::toString up to the safe-integer bound",
       "input": [
         {
@@ -387,8 +387,8 @@
         }
       ],
       "expected": {
-        "file": "{\"atr\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"max\":9007199254740991}}",
-        "hash": "0x092b61121775ae214a1a7c82065fe4e0019a93b9c729f20cb23f48c274dd4b4c"
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"metrics\":{\"half\":3.5,\"max\":9007199254740991}}",
+        "hash": "0x2f911def491da7298148bc7dd30ed530a17c6856d305d572c3c44d82f8e8b45b"
       }
     },
     {

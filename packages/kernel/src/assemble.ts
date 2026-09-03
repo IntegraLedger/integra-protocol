@@ -34,15 +34,15 @@ export async function assemble(
   // not silently mutate the prototype and vanish from JSON.stringify (that silent data loss is the
   // exact failure mode this engine's fail-fast slot guards exist to prevent). Open-extensibility holds.
   const atr: Record<string, Json> = Object.create(null);
-  atr["atr"] = ATR_VERSION;
+  atr["atrVersion"] = ATR_VERSION;
   for (const s of slots) {
-    if (s.slot === "atr")
+    if (s.slot === "atrVersion")
       throw new KernelError(
         "assemble/reserved-slot",
-        "atr is engine-stamped, not a caller's slot",
+        "atrVersion is engine-stamped, not a caller's slot",
       );
     // JS serialization orders integer-like keys first regardless of insertion — a slot named "1"
-    // would jump ahead of atr and falsify the engine-controlled emitted order. Refused, never reordered.
+    // would jump ahead of atrVersion and falsify the engine-controlled emitted order. Refused, never reordered.
     if (/^(0|[1-9][0-9]*)$/.test(s.slot))
       throw new KernelError(
         "assemble/numeric-slot",
@@ -67,7 +67,7 @@ export async function assemble(
       );
     atr[s.slot] = hasValue ? (s.value as Json) : (s.ref as string);
   }
-  // Required set = atr (stamped) + terms + id; terms/id must be present and non-empty. Fail fast.
+  // Required set = atrVersion (stamped) + terms + id; terms/id must be present and non-empty. Fail fast.
   const nonEmpty = (v: Json | undefined): boolean =>
     typeof v === "string" && v.length > 0;
   if (!nonEmpty(atr["id"]))

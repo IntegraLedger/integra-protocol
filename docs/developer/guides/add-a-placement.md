@@ -163,7 +163,7 @@ const a2a = makePlacement(A2A);
 
 const ref: LegalContextRef = {
   type: "sha256",
-  value: "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99",
+  value: "0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b",
 };
 
 // `place` is PURE — it returns a new document and never mutates the one it was handed. Sibling fields
@@ -193,8 +193,8 @@ attempt("alias-repeats-field", {
 ```
 
 ```text
-{"id":"task-1","metadata":{"traceId":"abc","legalContext":{"type":"sha256","value":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99"}}}
-{"ok":true,"value":{"ref":{"type":"sha256","value":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99"},"termsUrl":{"kind":"no-field-declared"}}}
+{"id":"task-1","metadata":{"traceId":"abc","legalContext":{"type":"sha256","value":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b"}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b"},"termsUrl":{"kind":"no-field-declared"}}}
 url-only: the reference field metadata.legalContext permits no integrity-bearing carrier type (sha256/ipfs/ar) — that is discovery, not a placement
 extension-tier-A: protocol-extension is Tier B by definition (LCP §8.3.6) — a Tier A claim is incoherent
 alias-repeats-field: readAlso repeats the canonical field metadata.legalContext — that is a duplicate, not an alias
@@ -240,7 +240,7 @@ console.log(`carrierTypes: ${m.carrierTypes.join(", ")}`);
 
 const ref: LegalContextRef = {
   type: "sha256",
-  value: "0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99",
+  value: "0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b",
 };
 
 const challenge = {
@@ -290,10 +290,10 @@ reference-object in a object-path at extensions.legalContext.info
 readAlso: accepts.0.extra.atrHash as bare-value
 termsUrlFields: extensions.legalContext.info.legalContextUrl, accepts.0.extra.legalContextUrl
 carrierTypes: sha256
-{"x402Version":2,"accepts":[{"scheme":"exact","network":"base-sepolia","maxAmountRequired":"25000000","extra":{"atrHash":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99","legalContextUrl":"https://seller.example/.well-known/legal-context.json"}}],"extensions":{"legalContext":{"info":{"type":"sha256","value":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99","legalContextUrl":"https://seller.example/.well-known/legal-context.json"},"schema":{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"legalContext — x402 extension info","description":"The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.","type":"object","additionalProperties":false,"required":["type","value","legalContextUrl"],"properties":{"type":{"description":"The digest algorithm over the terms document. `sha256` is the only value this version defines.","type":"string","const":"sha256"},"value":{"description":"The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.","type":"string","pattern":"^0x[0-9a-f]{64}$"},"legalContextUrl":{"description":"Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.","type":"string","format":"uri"}}}}}}
-{"ok":true,"value":{"ref":{"type":"sha256","value":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99"},"termsUrl":{"kind":"read","url":"https://seller.example/.well-known/legal-context.json"}}}
-{"ok":true,"value":{"ref":{"type":"sha256","value":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99"},"termsUrl":{"kind":"declared-fields-empty","fields":["extensions.legalContext.info.legalContextUrl","accepts.0.extra.legalContextUrl"]}}}
-{"ok":true,"value":{"ref":{"type":"sha256","value":"0xe86225e8541075b52506b25d1d7de54677931857862754d8d14db7080fde1f99"},"termsUrl":{"kind":"declared-fields-empty","fields":["extensions.legalContext.info.legalContextUrl","accepts.0.extra.legalContextUrl"]}}}
+{"x402Version":2,"accepts":[{"scheme":"exact","network":"base-sepolia","maxAmountRequired":"25000000","extra":{"atrHash":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b","legalContextUrl":"https://seller.example/.well-known/legal-context.json"}}],"extensions":{"legalContext":{"info":{"type":"sha256","value":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b","legalContextUrl":"https://seller.example/.well-known/legal-context.json"},"schema":{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"legalContext — x402 extension info","description":"The `info` payload of the `legalContext` x402 extension at challenge time: a Legal Context Protocol reference to the terms governing this transaction, plus the URL the terms document can be fetched from. The reference identifies the exact terms document; it is not the terms. This describes a technology harness and asserts nothing about whether any agreement is lawful, sound or enforceable.","type":"object","additionalProperties":false,"required":["type","value","legalContextUrl"],"properties":{"type":{"description":"The digest algorithm over the terms document. `sha256` is the only value this version defines.","type":"string","const":"sha256"},"value":{"description":"The atrHash — SHA-256 of the terms document, lowercase hex with an 0x prefix.","type":"string","pattern":"^0x[0-9a-f]{64}$"},"legalContextUrl":{"description":"Where the terms document this hash covers can be fetched. A reader verifies the document against `value`; the URL is a locator and never the authority.","type":"string","format":"uri"}}}}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b"},"termsUrl":{"kind":"read","url":"https://seller.example/.well-known/legal-context.json"}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b"},"termsUrl":{"kind":"declared-fields-empty","fields":["extensions.legalContext.info.legalContextUrl","accepts.0.extra.legalContextUrl"]}}}
+{"ok":true,"value":{"ref":{"type":"sha256","value":"0x9cf831839b0cf901b1f5a26c1be80acab3f624875bb0edf74c63dd99adda6f3b"},"termsUrl":{"kind":"declared-fields-empty","fields":["extensions.legalContext.info.legalContextUrl","accepts.0.extra.legalContextUrl"]}}}
 {"refused":true,"haltClass":"verification-failure","code":"x402/reference-absent","detail":"no extensions.legalContext.info on this document"}
 ```
 

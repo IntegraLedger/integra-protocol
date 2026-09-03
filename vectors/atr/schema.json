@@ -2,11 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://vectors.integraledger.dev/atr/schema.json",
   "title": "ATR v0.3",
-  "$comment": "ATR required set = atr + terms + id; terms + id present AND non-empty (fail-fast at assemble()); atr = the literal \"0.3\" (the ATR format version); id = a non-empty string (low-entropy values accepted-but-flagged at the weld boundary, never kernel-graded — no strict 128-bit pattern); slot placement: governing law + liability under recourse, declarations + caps top-level, all slot values open (unknown keys preserved).",
+  "$comment": "ATR required set = atrVersion + terms + id; terms + id present AND non-empty (fail-fast at assemble()); atrVersion = the literal \"0.3\" (the ATR format version); id = a non-empty string (low-entropy values accepted-but-flagged at the weld boundary, never kernel-graded — no strict 128-bit pattern); slot placement: governing law + liability under recourse, declarations + caps top-level, all slot values open (unknown keys preserved).",
   "type": "object",
-  "required": ["atr", "terms", "id"],
+  "required": ["atrVersion", "terms", "id"],
   "properties": {
-    "atr": {
+    "atrVersion": {
       "const": "0.3",
       "description": "ATR format version, engine-stamped"
     },

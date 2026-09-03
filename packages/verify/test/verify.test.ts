@@ -96,7 +96,9 @@ describe("verify — structural walk (honest class readout)", () => {
   it("a claim cannot cap the class either — proved rungs reach past what was claimed", async () => {
     // The mirror of the case above, and the reason the claim is not a ceiling: White paper #4 §5 defines
     // the class as "the highest class whose criteria it fully meets", which a caller aiming low cannot lower.
-    const atrBytes = new TextEncoder().encode('{"atr":"0.3","terms":"x"}');
+    const atrBytes = new TextEncoder().encode(
+      '{"atrVersion":"0.3","terms":"x"}',
+    );
     const report = await verify({
       asOf: "2026-07-16T00:00:00Z",
       coverage: { ports: ["evm"], bindings: ["evm:x402"] },
@@ -146,7 +148,7 @@ describe("verify — structural walk (honest class readout)", () => {
 
   it("mechanical depth raises verified when the required steps are proved", async () => {
     const atrBytes = new TextEncoder().encode(
-      '# T\natr: "0.3"\nterms: t\nid: x\n',
+      '# T\natrVersion: "0.3"\nterms: t\nid: x\n',
     );
     const settled = await hashAtr(atrBytes); // the fingerprint proves
     const report = await verify({

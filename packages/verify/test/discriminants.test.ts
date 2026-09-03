@@ -49,7 +49,7 @@ describe("anyStepFailed", () => {
 
   it("agrees with the supportedClass impeachment the walk itself produced", async () => {
     const impeached = await verify({
-      atrBytes: new TextEncoder().encode('{"atr":"0.3","id":"x"}'),
+      atrBytes: new TextEncoder().encode('{"atrVersion":"0.3","id":"x"}'),
       settledAtrHash: `0x${"11".repeat(32)}`,
       asOf: "2026-07-25T00:00:00Z",
       coverage: COVERAGE,
@@ -112,7 +112,7 @@ describe("verify over ATR bytes that are not a kernel-assembled ATR", () => {
       });
   });
 
-  it("reads out the same gap for valid JSON carrying no engine-stamped `atr` member", async () => {
+  it("reads out the same gap for valid JSON carrying no engine-stamped `atrVersion` member", async () => {
     expect(await recourseOf('{"id":"x"}')).toEqual({
       status: "not-attempted",
       depth: "atr-not-machine-readable",
@@ -122,7 +122,7 @@ describe("verify over ATR bytes that are not a kernel-assembled ATR", () => {
   it("gets PAST that gap once the bytes really are an ATR", async () => {
     // The counterpart that keeps the four cases above from passing for the wrong reason: a real ATR
     // must reach the elections check, not stop at "not machine readable".
-    expect(await recourseOf('{"atr":"0.3","id":"x"}')).toEqual({
+    expect(await recourseOf('{"atrVersion":"0.3","id":"x"}')).toEqual({
       status: "not-attempted",
       depth: "no-elections-recorded",
     });
@@ -134,7 +134,7 @@ describe("verify with no settlements supplied", () => {
     const report = await verify({
       asOf: "2026-07-25T00:00:00Z",
       coverage: COVERAGE,
-      atrBytes: new TextEncoder().encode('{"atr":"0.3","id":"x"}'),
+      atrBytes: new TextEncoder().encode('{"atrVersion":"0.3","id":"x"}'),
     });
     expect(report.settlements).toEqual({ found: [], multiplySettled: false });
   });
