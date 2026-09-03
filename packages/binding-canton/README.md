@@ -28,11 +28,12 @@ declare const buyer: string;
 declare const seller: string;
 declare const packageId: string; // the hash of YOUR uploaded lcp-anchor DAR
 declare const contractId: string;
+declare const createdAt: string; // ISO-8601 UTC — required by the template, never defaulted here
 
 const adapter = createCantonAdapter(CANTON_MANIFEST);
 
 // BUYER — the create-LcpAnchor command to submit (buyer signatory, seller observer).
-const command = adapter.propose({ packageId, buyer, seller, atrHash });
+const command = adapter.propose({ packageId, buyer, seller, atrHash, createdAt });
 
 // VERIFIER — the atrHash back off an active anchor contract.
 const reader = makeCantonParticipantReader({
@@ -101,9 +102,10 @@ import {
 declare const atrHash: string;
 declare const buyer: string;
 declare const seller: string;
+declare const createdAt: string; // ISO-8601 UTC, e.g. "2026-09-03T00:00:00Z"
 
 atrHashToLedgerText(atrHash); // the bare lowercase 64-hex the `Text` field carries — no `0x`
-const payload = buildAnchorPayload({ buyer, seller, atrHash });
+const payload = buildAnchorPayload({ buyer, seller, atrHash, createdAt });
 ```
 
 ## What that costs, stated plainly

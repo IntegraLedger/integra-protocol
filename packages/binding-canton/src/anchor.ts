@@ -12,6 +12,13 @@
  * `buildAnchorPayload` fails LOUD on a malformed atrHash (fail-fast, at the source). `readAnchorAtrHash`
  * returns `null` for a payload that does not carry a well-formed atrHash, so a participant query can skip
  * a non-LCP contract without treating it as an error (mirrors binding-solana's decode → null).
+ *
+ * ⛔ **`createdAt` is a REQUIRED INPUT, never defaulted here.** The template declares it `Text` and
+ * required, so a payload without it is one the participant rejects with a Daml type error — which is what
+ * this codec produced until 2026-09-03, on a package whose drift gate had been taught the exception. It
+ * is not defaulted to `new Date()` because this codec is pure: a builder that read the clock would put a
+ * different payload on the wire for the same inputs, and the caller — who knows when the settlement
+ * actually happened — is the one with the fact to stamp.
  */
 import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
 
@@ -25,6 +32,27 @@ export interface LcpAnchorPayload {
   atrHash: string;
   /** An optional opaque payment reference carried alongside the anchor (empty when unused). */
   paymentRef: string;
+  /**
+   * ISO-8601 UTC, stamped by the creating client. Evidence of WHEN the anchor was made; the template
+   * never gates on it. Required by `LcpAnchor`, so a payload without it is one the participant rejects.
+   */
+  createdAt: string;
+}
+
+/**
+ * ISO-8601 UTC with a literal `Z`, the form the template documents — offsets and local times are refused
+ * rather than normalized, because two clients writing the same instant two ways would put two spellings
+ * of one fact on one ledger.
+ */
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/;
+
+/** The `createdAt` the template requires, validated. Throws on anything else — never defaulted. */
+export function anchorCreatedAt(createdAt: string): string {
+  if (!ISO_UTC.test(createdAt) || Number.isNaN(Date.parse(createdAt)))
+    throw new Error(
+      `anchorCreatedAt: createdAt must be ISO-8601 UTC ending in "Z" (e.g. 2026-09-03T00:00:00Z), got "${createdAt}"`,
+    );
+  return createdAt;
 }
 
 /** Strip a leading `0x`/`0X` if present. */
@@ -56,6 +84,7 @@ export function buildAnchorPayload(inputs: {
   seller: string;
   atrHash: string;
   paymentRef?: string;
+  createdAt: string;
 }): LcpAnchorPayload {
   if (inputs.buyer.length === 0)
     throw new Error("buildAnchorPayload: buyer party is empty");
@@ -66,6 +95,7 @@ export function buildAnchorPayload(inputs: {
     seller: inputs.seller,
     atrHash: atrHashToLedgerText(inputs.atrHash),
     paymentRef: inputs.paymentRef ?? "",
+    createdAt: anchorCreatedAt(inputs.createdAt),
   };
 }
 

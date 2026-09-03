@@ -80,13 +80,16 @@ export function recoverAtrHashFromAnchors(
  *  x402 Canton-Coin transfer, whose memo rides the transfer itself. */
 export interface CantonAdapter {
   manifest: BindingManifest;
-  /** Build the `create-LcpAnchor` command the buyer submits to anchor `atrHash` (buyer=signatory). */
+  /** Build the `create-LcpAnchor` command the buyer submits to anchor `atrHash` (buyer=signatory).
+   *  `createdAt` is ISO-8601 UTC and is REQUIRED: the template declares it, and a command missing it is
+   *  one the participant rejects. It is the caller's to supply — this builder does not read the clock. */
   propose(inputs: {
     packageId: string;
     buyer: string;
     seller: string;
     atrHash: string;
     paymentRef?: string;
+    createdAt: string;
   }): CreateAnchorCommand;
   /** Recover the atrHash from a confirmed anchor, or a `verification-failure` Refusal if none binds. */
   recover(
@@ -219,6 +222,7 @@ export function createCantonAdapter(manifest: BindingManifest): CantonAdapter {
       seller: string;
       atrHash: string;
       paymentRef?: string;
+      createdAt: string;
     }): CreateAnchorCommand {
       return {
         templateId: lcpAnchorTemplateId(inputs.packageId),
@@ -226,6 +230,7 @@ export function createCantonAdapter(manifest: BindingManifest): CantonAdapter {
           buyer: inputs.buyer,
           seller: inputs.seller,
           atrHash: inputs.atrHash,
+          createdAt: inputs.createdAt,
           // Spread conditionally: exactOptionalPropertyTypes forbids passing `paymentRef: undefined`
           // to an optional field (buildAnchorPayload defaults an ABSENT paymentRef to "").
           ...(inputs.paymentRef !== undefined

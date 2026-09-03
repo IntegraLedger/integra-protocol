@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  anchorCreatedAt,
   atrHashToLedgerText,
   buildAnchorPayload,
   type LcpAnchorPayload,
@@ -43,17 +44,21 @@ describe("atrHashToLedgerText / ledgerTextToAtrHash", () => {
 });
 
 describe("buildAnchorPayload", () => {
+  const CREATED_AT = "2026-09-03T00:00:00Z";
+
   it("carries the atrHash as a Text field and the parties, defaulting paymentRef", () => {
     const payload = buildAnchorPayload({
       buyer: "Buyer::1220abc",
       seller: "Seller::1220def",
       atrHash: ATR,
+      createdAt: CREATED_AT,
     });
     expect(payload).toEqual({
       buyer: "Buyer::1220abc",
       seller: "Seller::1220def",
       atrHash: ATR_TEXT,
       paymentRef: "",
+      createdAt: CREATED_AT,
     });
   });
 
@@ -63,20 +68,59 @@ describe("buildAnchorPayload", () => {
       seller: "Seller::1220def",
       atrHash: ATR,
       paymentRef: "invoice-42",
+      createdAt: CREATED_AT,
     });
     expect(payload.paymentRef).toBe("invoice-42");
   });
 
   it("fails loud on an empty party or a malformed atrHash", () => {
     expect(() =>
-      buildAnchorPayload({ buyer: "", seller: "S", atrHash: ATR }),
+      buildAnchorPayload({
+        buyer: "",
+        seller: "S",
+        atrHash: ATR,
+        createdAt: CREATED_AT,
+      }),
     ).toThrow(/buyer/);
     expect(() =>
-      buildAnchorPayload({ buyer: "B", seller: "", atrHash: ATR }),
+      buildAnchorPayload({
+        buyer: "B",
+        seller: "",
+        atrHash: ATR,
+        createdAt: CREATED_AT,
+      }),
     ).toThrow(/seller/);
     expect(() =>
-      buildAnchorPayload({ buyer: "B", seller: "S", atrHash: "0xdead" }),
+      buildAnchorPayload({
+        buyer: "B",
+        seller: "S",
+        atrHash: "0xdead",
+        createdAt: CREATED_AT,
+      }),
     ).toThrow(/32-byte/);
+  });
+});
+
+describe("anchorCreatedAt", () => {
+  it("accepts ISO-8601 UTC, with or without fractional seconds", () => {
+    expect(anchorCreatedAt("2026-09-03T00:00:00Z")).toBe(
+      "2026-09-03T00:00:00Z",
+    );
+    expect(anchorCreatedAt("2026-09-03T00:00:00.123Z")).toBe(
+      "2026-09-03T00:00:00.123Z",
+    );
+  });
+
+  it("refuses an offset, a local time, a bare date and a nonsense instant", () => {
+    // One instant must have one spelling on the ledger, so an offset is refused rather than normalized.
+    for (const bad of [
+      "2026-09-03T00:00:00+02:00",
+      "2026-09-03T00:00:00",
+      "2026-09-03",
+      "2026-13-03T00:00:00Z",
+      "",
+    ])
+      expect(() => anchorCreatedAt(bad)).toThrow(/ISO-8601 UTC/);
   });
 });
 
@@ -86,6 +130,7 @@ describe("readAnchorAtrHash / verifyAnchorAtrHash", () => {
     seller: "Seller::1220def",
     atrHash: ATR_TEXT,
     paymentRef: "",
+    createdAt: "2026-09-03T00:00:00Z",
   };
 
   it("reads the atrHash off a queried payload", () => {

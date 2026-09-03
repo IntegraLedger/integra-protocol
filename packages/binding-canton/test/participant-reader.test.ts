@@ -30,6 +30,7 @@ function anchor(contractId: string): LcpAnchorContract {
       seller: "Seller::1220def",
       atrHash: ATR_TEXT,
       paymentRef: "",
+      createdAt: "2026-09-03T00:00:00Z",
     },
   };
 }

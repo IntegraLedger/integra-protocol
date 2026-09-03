@@ -22,6 +22,7 @@ function payload(atrHashText: string): LcpAnchorPayload {
     seller: "Seller::1220def",
     atrHash: atrHashText,
     paymentRef: "",
+    createdAt: "2026-09-03T00:00:00Z",
   };
 }
 
@@ -35,6 +36,30 @@ function contract(contractId: string, atrHashText: string): LcpAnchorContract {
 
 describe("propose", () => {
   const adapter = createCantonAdapter(CANTON_MANIFEST);
+  const CREATED_AT = "2026-09-03T00:00:00Z";
+
+  it("stamps the createdAt the template requires, and refuses a payload without one", () => {
+    // The participant rejects a create missing a required field, so a command built without it is a
+    // command that cannot be submitted. It is REQUIRED rather than defaulted: this builder does not read
+    // the clock, and the caller is the one who knows when the settlement happened.
+    const cmd = adapter.propose({
+      packageId: PKG,
+      buyer: "B",
+      seller: "S",
+      atrHash: ATR,
+      createdAt: CREATED_AT,
+    });
+    expect(cmd.payload.createdAt).toBe(CREATED_AT);
+    expect(() =>
+      adapter.propose({
+        packageId: PKG,
+        buyer: "B",
+        seller: "S",
+        atrHash: ATR,
+        createdAt: "2026-09-03 00:00:00+02:00",
+      }),
+    ).toThrow(/ISO-8601 UTC/);
+  });
 
   it("builds a create-LcpAnchor command with the fully-qualified templateId and the atrHash Text field", () => {
     const cmd = adapter.propose({
@@ -42,6 +67,7 @@ describe("propose", () => {
       buyer: "Buyer::1220abc",
       seller: "Seller::1220def",
       atrHash: ATR,
+      createdAt: CREATED_AT,
     });
     expect(cmd.templateId).toBe(`${PKG}:Main:LcpAnchor`);
     expect(cmd.payload.atrHash).toBe(ATR_TEXT);
@@ -58,6 +84,7 @@ describe("propose", () => {
       seller: "Seller::1220def",
       atrHash: ATR,
       paymentRef: "invoice-42",
+      createdAt: CREATED_AT,
     });
     expect(cmd.payload.paymentRef).toBe("invoice-42");
   });
@@ -69,6 +96,7 @@ describe("propose", () => {
         buyer: "B",
         seller: "S",
         atrHash: ATR,
+        createdAt: CREATED_AT,
       }),
     ).toThrow(/packageId is empty/);
   });
@@ -80,6 +108,7 @@ describe("propose", () => {
         buyer: "B",
         seller: "S",
         atrHash: "0xdead",
+        createdAt: CREATED_AT,
       }),
     ).toThrow(/32-byte/);
   });

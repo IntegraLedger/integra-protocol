@@ -54,6 +54,7 @@ suite("binding-canton — live participant (CANTON_JSON_API_URL set)", () => {
       buyer,
       seller,
       atrHash,
+      createdAt: new Date().toISOString(),
     });
 
     // Create the LcpAnchor contract (buyer=signatory) via the Daml JSON Ledger API.
@@ -65,7 +66,11 @@ suite("binding-canton — live participant (CANTON_JSON_API_URL set)", () => {
       },
       body: JSON.stringify({
         templateId: cmd.templateId,
-        payload: { ...cmd.payload, createdAt: new Date().toISOString() },
+        // The command is submitted AS BUILT. Until 2026-09-03 this line read
+        // `{ ...cmd.payload, createdAt: … }`, patching in a field the template requires and the codec
+        // never sent — so the only create that ever worked was this harness's, and every consumer's
+        // `propose()` would have been rejected by the participant.
+        payload: cmd.payload,
       }),
     });
     expect(res.ok).toBe(true);

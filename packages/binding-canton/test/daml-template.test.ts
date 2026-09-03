@@ -55,18 +55,26 @@ describe("the shipped Daml template matches the codec that talks to it", () => {
     expect(daml).toContain(`template ${LCP_ANCHOR_ENTITY}`);
   });
 
-  it("declares exactly the fields the codec sends, plus the client-stamped createdAt", () => {
+  it("declares exactly the fields the codec sends — no exceptions", () => {
     // `buildAnchorPayload` is the only thing that constructs a create payload, so its output IS the
-    // library's side of the contract. `createdAt` is stamped by the caller at create time rather than by
-    // the codec, which is why it is named here instead of being derived.
+    // library's side of the contract, and the two sets must be EQUAL.
+    //
+    // ⛔ This assertion used to read `[...sent, "createdAt"]`, under a comment explaining that the caller
+    // stamps that field. Nothing did: `createdAt` was required by the template, appeared nowhere in
+    // `src/`, and the only code that ever supplied it was this package's own live harness, patching the
+    // codec's output by hand before the create. Every `propose()` a consumer sent would have been rejected
+    // by the participant with a Daml type error — the exact failure this gate exists to catch — and the
+    // gate was green because it had been taught the exception. A drift gate that names its own drift
+    // asserts that the two sides agree except where they do not.
     const sent = Object.keys(
       buildAnchorPayload({
         buyer: "buyer::1220",
         seller: "seller::1220",
         atrHash: `0x${"ab".repeat(32)}`,
+        createdAt: "2026-09-03T00:00:00Z",
       }),
     );
-    expect(templateFields().sort()).toEqual([...sent, "createdAt"].sort());
+    expect(templateFields().sort()).toEqual(sent.sort());
   });
 
   it("keeps the buyer signatory and the seller an observer", () => {

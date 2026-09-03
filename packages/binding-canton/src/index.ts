@@ -10,6 +10,7 @@ export {
   recoverAtrHashFromAnchors,
 } from "./adapter.js";
 export {
+  anchorCreatedAt,
   atrHashToLedgerText,
   buildAnchorPayload,
   type LcpAnchorPayload,
