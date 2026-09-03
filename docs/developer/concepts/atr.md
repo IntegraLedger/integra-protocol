@@ -26,7 +26,8 @@ const { atrBytes, atrHash } = await assemble([
 ```
 
 The difference matters because the engine controls the emitted document. It stamps the ATR format
-version (`atrVersion`) first, refuses `atrVersion` as a caller's slot, and refuses integer-like slot names — JavaScript
+version (`atrVersion`) first, refuses `atrVersion` as a caller's slot along with the reserved names `lcp` and `atr` — a profile
+records the specification version it targets as `lcpVersion` — and refuses integer-like slot names — JavaScript
 serializes integer-like keys ahead of everything else regardless of insertion order, so a slot named `"1"`
 would jump in front of `atrVersion` and change the bytes. Slot names it does not recognize are preserved
 verbatim, so the format is open at the edges while the parts that fix the byte layout are not.

@@ -4,6 +4,20 @@ import { isRef, type Ref } from "./ref.js";
 
 const ATR_VERSION = "0.3"; // engine-stamped ATR format version
 
+// Slot names no caller may fill, each with the reason it is refused. `atrVersion` is stamped by the
+// engine. `lcp` names the specification, and bare on the wire it is ambiguous between a version, a
+// reference and a label — a profile records the specification version it targets under an ordinary,
+// clearly named slot such as `lcpVersion`, which stays open. `atr` names the record itself. A Map, not
+// an object, so a lookup for `__proto__` or `constructor` finds nothing rather than a prototype member.
+const RESERVED_SLOTS: ReadonlyMap<string, string> = new Map([
+  ["atrVersion", "atrVersion is engine-stamped, not a caller's slot"],
+  [
+    "lcp",
+    "lcp names the specification and is reserved — a profile states the version it targets as lcpVersion",
+  ],
+  ["atr", "atr names the record itself and is reserved"],
+]);
+
 /** Any value expressible in JSON. The recursive definition is deliberate: a slot's `value` is
  *  serialised into the ATR file byte-for-byte, so a type permitting `undefined` or a `Date` would permit
  *  an ATR whose hash nobody else can reproduce. */
@@ -36,11 +50,9 @@ export async function assemble(
   const atr: Record<string, Json> = Object.create(null);
   atr["atrVersion"] = ATR_VERSION;
   for (const s of slots) {
-    if (s.slot === "atrVersion")
-      throw new KernelError(
-        "assemble/reserved-slot",
-        "atrVersion is engine-stamped, not a caller's slot",
-      );
+    const reserved = RESERVED_SLOTS.get(s.slot);
+    if (reserved !== undefined)
+      throw new KernelError("assemble/reserved-slot", reserved);
     // JS serialization orders integer-like keys first regardless of insertion — a slot named "1"
     // would jump ahead of atrVersion and falsify the engine-controlled emitted order. Refused, never reordered.
     if (/^(0|[1-9][0-9]*)$/.test(s.slot))

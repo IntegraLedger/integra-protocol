@@ -55,6 +55,85 @@
       "error": "assemble/numeric-slot"
     },
     {
+      "name": "atrVersion as a caller slot is refused (engine-stamped)",
+      "$comment": "Added 2026-09-02. The kernel has refused a caller's slot at the stamped first member since the member existed, and the corpus never asked: on 0.14.0 the member was `lcp` and no assemble/reserved-slot case pinned it, and the two renames since carried the refusal across without a vector. A foreign implementation could pass every case here while letting a caller overwrite the format version. Pinned now, under the name the member has when it first ships.",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "atrVersion",
+          "value": "9.9"
+        }
+      ],
+      "error": "assemble/reserved-slot"
+    },
+    {
+      "name": "lcp as a slot name is reserved (it names the specification)",
+      "$comment": "`lcp` names the Legal Context Protocol itself, and bare on the wire it is ambiguous between a version, a reference and a label — it was the ATR's first member on 0.14.0 and named a format version there, while `lcp:sha256:` opens every reference. A profile that records the specification version it targets uses an ordinary, clearly named slot; see the lcpVersion case below, which pins that name open.",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "lcp",
+          "value": "0.1.38"
+        }
+      ],
+      "error": "assemble/reserved-slot"
+    },
+    {
+      "name": "atr as a slot name is reserved (it names the record itself)",
+      "$comment": "`atr` is the Agentic Transaction Record — the artifact this document IS. A member of the record carrying the record's own name reads as a nested or second record, and it was the first member's name for one staged, unpublished version. Reserved for the same reason atrVersion is: a stamped or artifact-level name is not a caller's to fill.",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "atr",
+          "value": "0.3"
+        }
+      ],
+      "error": "assemble/reserved-slot"
+    },
+    {
+      "name": "lcpVersion is an ordinary slot, preserved verbatim",
+      "$comment": "The open name a profile uses to record the specification version it targets. Pinned as PRESERVED so that the reservation of `lcp` cannot creep to this name — openness that is only inherited from the absence of a refusal is one prefix match away from closing. Hash re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
+      "input": [
+        {
+          "slot": "terms",
+          "value": "a"
+        },
+        {
+          "slot": "id",
+          "value": "0x00"
+        },
+        {
+          "slot": "lcpVersion",
+          "value": "0.1.38"
+        }
+      ],
+      "expected": {
+        "file": "{\"atrVersion\":\"0.3\",\"terms\":\"a\",\"id\":\"0x00\",\"lcpVersion\":\"0.1.38\"}",
+        "hash": "0x85017d083fc9de3fdfa47148e8199c34f57380ccd3cc2a61ab029fb5079433de"
+      }
+    },
+    {
       "name": "escaping pin (the JSON.stringify wire contract)",
       "$comment": "SUPERSEDED PINS (2026-09-02): the ATR's format-version member was renamed twice before any release carried it. It was `lcp`, colliding with the LCP specification's own version line (0.1.38 at the time): file {\"lcp\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"} at hash 0x12698cb24a1ab844d075dd09b986ee4e1b623ff9f34acb1e55e7f7e566302166. It was then `atr`, which names the artifact rather than its version: file {\"atr\":\"0.3\",\"terms\":\"NFC:é nonBMP:😀 ctrl:\\u0007 tab:\\t quote:\\\" backslash:\\\\ loneSurrogate:\\ud800\",\"id\":\"0x01\"} at hash 0x9e878972d4fca868491f1563a7fe997be3366333535dc31162b005bd788904a4. A version field names what it versions, so the record's first member is now \"atrVersion\":\"0.3\". New hash 0xfeff7024dc331c1e1cc0740ad2f7ac2395808a21016f10ee8f1c0d03def66187 re-derived independently with python3 hashlib over the expected file bytes, not copied from the implementation.",
       "input": [

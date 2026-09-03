@@ -76,7 +76,7 @@ Every guard has its own reason, because "the record is malformed" is not an acti
 
 | Refusal | Cause |
 |---|---|
-| `assemble/reserved-slot` | `atrVersion` is engine-stamped, not a caller's slot |
+| `assemble/reserved-slot` | `atrVersion` is engine-stamped, and bare `lcp` (the specification) and `atr` (the record itself) are reserved names — a profile records the specification version it targets as `lcpVersion` |
 | `assemble/numeric-slot` | Integer-like slot names reorder under JSON serialization |
 | `assemble/duplicate-slot` | The same slot supplied twice |
 | `assemble/slot-shape` | Not exactly one of `value` \| `ref` |

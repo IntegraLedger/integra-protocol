@@ -46,6 +46,29 @@ describe("assemble — the slot guards each refuse for their OWN reason", () => 
     );
   });
 
+  it("refuses the reserved names lcp and atr — the specification and the record are not slots", async () => {
+    // Bare `lcp` is ambiguous on the wire between a version, a reference and a label; `atr` is the
+    // artifact this document already is. Neither is a caller's to fill.
+    await refuses(
+      [...MINIMAL, { slot: "lcp", value: "0.1.38" }],
+      "assemble/reserved-slot",
+    );
+    await refuses(
+      [...MINIMAL, { slot: "atr", value: "0.3" }],
+      "assemble/reserved-slot",
+    );
+  });
+
+  it("keeps lcpVersion open — the ordinary name for the specification version a profile targets", async () => {
+    // The reservation is exact-match on `lcp`; a clearly named ordinary slot is preserved like any other.
+    const { atrBytes } = await assemble([
+      ...MINIMAL,
+      { slot: "lcpVersion", value: "0.1.38" },
+    ]);
+    const env = JSON.parse(new TextDecoder().decode(atrBytes));
+    expect(env.lcpVersion).toBe("0.1.38");
+  });
+
   it("refuses integer-like slot names — they would jump ahead of atrVersion in emitted order", async () => {
     for (const slot of ["0", "1", "42", "4294967294"]) {
       await refuses(

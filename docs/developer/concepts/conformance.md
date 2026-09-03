@@ -35,7 +35,7 @@ expected output or the expected typed error **code**:
 ```
 
 Nothing in either case is executable, which is what lets the same corpus judge an implementation written in
-Rust, Go or Python. Of the 848 registered cases, 131 assert a refusal this way — a conformant implementation
+Rust, Go or Python. Of the 852 registered cases, 131 assert a refusal this way — a conformant implementation
 has to refuse the right inputs, not merely accept the right ones.
 
 Note what the second case pins: the **code**, never the message text. The code is the contract, because
@@ -76,7 +76,7 @@ implementation never has to know where the corpus lives on disk, or that it live
 
 ## The count ratchets, and a green run is not the whole answer
 
-**Today the corpus is 848 cases across 44 areas.** That number is not a fact about this page; it is a fact
+**Today the corpus is 852 cases across 44 areas.** That number is not a fact about this page; it is a fact
 about the tree, and it is quoted here from a run rather than from memory. Reproduce it:
 
 ```bash
@@ -84,12 +84,12 @@ npx @integraledger/lcp-conformance
 ```
 
 ```text
-conformance: 848 passed, 0 failed, 0 skipped (none)
+conformance: 852 passed, 0 failed, 0 skipped (none)
 ```
 
 The rule that number exists to serve: **a green suite over a shrunken corpus is a regression wearing a
 disguise.** Deleting a vector removes an obligation, and the exit code cannot tell you that happened —
-`0 failed` reads identically whether 848 cases ran or six did. So the counts are what gets reported, not the
+`0 failed` reads identically whether 852 cases ran or six did. So the counts are what gets reported, not the
 exit status, and `packages/conformance/test/runner.test.ts` pins the expected size so a case that silently
 stops being registered fails the build.
 

@@ -112,7 +112,11 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // because above 2^53 the engine cannot know whether the double it holds is the literal the caller wrote.
 // 2026-09-02: area ids envelope.assemble/envelope.schema became atr.assemble/atr.schema. Size unchanged —
 // the corpus moved, nothing was added or removed.
-const CORPUS_SIZE = 848;
+// 848 → 852 on 2026-09-02: `atr.assemble` gains three reserved-slot refusals — `atrVersion` as a caller's
+// slot, which the kernel had refused since the member existed and the corpus had never asked; and bare
+// `lcp` and `atr`, which name the specification and the record — plus one preservation case pinning
+// `lcpVersion` open as the ordinary name for a profile's targeted specification version.
+const CORPUS_SIZE = 852;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {
