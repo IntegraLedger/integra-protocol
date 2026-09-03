@@ -1,5 +1,12 @@
 # @integraledger/lcp-binding-evm-escrow
 
+## 0.15.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.15.0
+  - @integraledger/lcp-binding-evm-common@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-xrpl",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Welds an ATR hash into an XRP Ledger payment.",
   "keywords": [
     "lcp",

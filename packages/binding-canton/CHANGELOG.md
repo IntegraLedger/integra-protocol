@@ -1,5 +1,13 @@
 # @integraledger/lcp-binding-canton
 
+## 0.15.0
+
+### Patch Changes
+
+- Updated dependencies [42fb196]
+  - @integraledger/lcp-kernel@0.15.0
+  - @integraledger/lcp-binding-core@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes

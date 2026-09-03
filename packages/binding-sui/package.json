@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-sui",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Welds an ATR hash into a Sui settlement through the Pay402 facilitator.",
   "keywords": [
     "lcp",

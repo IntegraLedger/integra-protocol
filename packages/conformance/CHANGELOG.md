@@ -1,5 +1,50 @@
 # @integraledger/lcp-conformance
 
+## 0.15.0
+
+### Minor Changes
+
+- 42fb196: The ATR's type is named `Atr`, its bytes `atrBytes`, and one assembly input a `Slot`. The format version is
+  stamped as `atr` rather than `lcp`, which collided with the specification's own version line.
+  
+  BREAKING for consumers: `Envelope` → `Atr`, `AtrFile`/`atrFile` → `AtrBytes`/`atrBytes`,
+  `Component` → `Slot`, refusal code `assemble/component-shape` → `assemble/slot-shape`, and an assembled ATR's
+  first member is now `"atr": "0.3"`. Every derived digest moves with that first member; the corpus areas
+  `envelope.assemble` and `envelope.schema` are now `atr.assemble` and `atr.schema`, every pinned vector hash
+  was re-derived independently with its superseded value recorded, and `verify`'s recourse step recognises a
+  kernel-assembled ATR by the new member. "Envelope" is reserved for what carries a record — the AP2 transport
+  envelope, the EIP-712 acceptance envelope — and names nothing the kernel mints.
+
+### Patch Changes
+
+- 49431e0: Correct a conformance vector that attributed LCP v1.37's withdrawn RFC-2119 capitals to the x402
+  specification itself.
+  
+  `vectors/placement/x402.json`'s sibling-extension case was named *"clients MUST NOT delete or overwrite"*
+  and its `$comment` called that "x402's own rule about x402's own map". Neither half survives measurement.
+  The host states the rule in lower case and about the DATA rather than the map — the client "must include at
+  least the info received; it may append additional info but cannot delete or overwrite existing info" — and
+  `placement-x402`'s own README already records that v1.37 rendered it in capitals and that **v1.38 §C.4
+  withdrew that rendering**. So the package documentation and the shipped corpus disagreed about a
+  quotation, with the corpus carrying the superseded one into every consumer that reads the vectors.
+  
+  The case now quotes the host verbatim and names the revision that changed. Behaviour is unchanged: only the
+  case name and its comment move, so the corpus counts hold at 44 areas / 847 cases / 82 files and only the
+  seal root moves.
+  
+  Also adds `scorecard.yml`, which ran in the sibling public repository and not here — this repository
+  publishes thirty-one packages to that one's two — and a standing rule in `CLAUDE.md` that everything
+  written here is world-readable, which was stated only about commit history.
+- Updated dependencies [42fb196]
+  - @integraledger/lcp-kernel@0.15.0
+  - @integraledger/lcp-verify@0.15.0
+  - @integraledger/lcp-authority@0.15.0
+  - @integraledger/lcp-binding-core@0.15.0
+  - @integraledger/lcp-discovery@0.15.0
+  - @integraledger/lcp-evidence@0.15.0
+  - @integraledger/lcp-placement-x402@0.15.0
+  - @integraledger/lcp-placements@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes
