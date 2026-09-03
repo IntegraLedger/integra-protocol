@@ -692,6 +692,85 @@ describe("the own-property invariant holds on BOTH halves, not just on read", ()
     });
   });
 
+  /**
+   * The FOURTH read on this seam, and the one the invariant had never reached: the entry's TERMS-URL
+   * field.
+   *
+   * `taggedEntry`'s docblock claims the entry is read "by the same own-property and first-match rules"
+   * {@link readFromContainer} reads the reference under. That is true of FINDING the entry and false of
+   * reading a field out of it: the reference goes through `Object.hasOwn(rec, valueField)`, while the
+   * terms URL was a bare index read. An entry that owns only the reference and INHERITS `url` therefore
+   * handed the caller an attacker-chosen locator as the counterparty's own advertisement.
+   *
+   * The two absences are what make it a defect rather than a preference. An entry with no `url` anywhere
+   * reads `declared-fields-empty` — the manifest declares a slot and this document left it blank — and an
+   * entry that never CLAIMED the URL must read the same, because it did not claim it. This is UCP's live
+   * shape: `termsUrlField: "url"` on a `policies[type=…]` entry.
+   */
+  describe("the entry terms-URL field is read own-property, like the reference beside it", () => {
+    const withEntryUrl: PlacementManifest = {
+      ...taggedArray,
+      container: {
+        ...(taggedArray.container as Extract<
+          PlacementManifest["container"],
+          { kind: "tagged-array" }
+        >),
+        termsUrlField: "url",
+      },
+    };
+    const t = makePlacement(withEntryUrl);
+    const SLOT = "constraints[type=urn:example:lcp-terms-hash].url";
+    const own = { type: "urn:example:lcp-terms-hash", value: HASH };
+    const EMPTY = { kind: "declared-fields-empty", fields: [SLOT] } as const;
+
+    it("reads an OWNED url — the control, without which the screen proves nothing", () => {
+      expect(
+        t.extract({
+          constraints: [{ ...own, url: "https://seller.example/terms" }],
+        }),
+      ).toEqual({
+        ok: true,
+        value: {
+          ref: REF,
+          termsUrl: { kind: "read", url: "https://seller.example/terms" },
+        },
+      });
+    });
+
+    it("reads NO url as an empty declared slot", () => {
+      expect(t.extract({ constraints: [{ ...own }] })).toEqual({
+        ok: true,
+        value: { ref: REF, termsUrl: EMPTY },
+      });
+    });
+
+    it("does NOT read a url the entry only INHERITS — an attacker's locator is not an advertisement", () => {
+      const entry = Object.create({ url: "https://attacker.example/terms" });
+      Object.assign(entry, own);
+      expect(Object.hasOwn(entry, "url")).toBe(false);
+      expect(entry.url).toBe("https://attacker.example/terms"); // the prototype answers
+      expect(t.extract({ constraints: [entry] })).toEqual({
+        ok: true,
+        value: { ref: REF, termsUrl: EMPTY },
+      });
+    });
+
+    it("an inherited url cannot manufacture a MISMATCH against an owned one either", () => {
+      // The reconciliation arm. An inherited value that survived to here would ALSO refuse a document
+      // whose one real advertisement is perfectly coherent — denial of service by prototype, on top of
+      // the substitution above.
+      const entry = Object.create({ url: "https://attacker.example/terms" });
+      Object.assign(entry, own, { url: "https://seller.example/terms" });
+      expect(t.extract({ constraints: [entry] })).toEqual({
+        ok: true,
+        value: {
+          ref: REF,
+          termsUrl: { kind: "read", url: "https://seller.example/terms" },
+        },
+      });
+    });
+  });
+
   it("a tagged-array entry that only INHERITS the tag is not selected, on read or write", () => {
     const t = makePlacement(taggedArray);
     const c = taggedArray.container as Extract<

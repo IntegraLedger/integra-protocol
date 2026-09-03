@@ -928,11 +928,24 @@ function readTermsUrls(
   const readings: { path: string; raw: unknown }[] = (
     manifest.termsUrlFields ?? []
   ).map((path) => ({ path, raw: readAtPath(doc, path) }));
-  if (entry !== undefined)
+  if (entry !== undefined) {
+    // OWN-PROPERTY, like the reference read out of the same entry (`readFromContainer`'s `valueField`
+    // branch) and like every segment of `readAtPath`. A bare index read walks the prototype chain, and a
+    // document is attacker-influenced input: an entry OWNING only `type` and the reference, inheriting
+    // `url`, handed the caller `{kind:"read", url:"<attacker's>"}` — a locator nobody advertised,
+    // presented as the counterparty's own. It also reached the reconciliation arm, where an inherited
+    // value can manufacture a `mismatch` against a document whose one real advertisement is coherent.
+    // `undefined` here means the entry did not claim the slot, which is what `declared-fields-empty`
+    // exists to say — the same answer an entry with no `url` at all already gave.
+    const rec = taggedEntry(doc, entry.container);
     readings.push({
       path: entry.label,
-      raw: taggedEntry(doc, entry.container)?.[entry.field],
+      raw:
+        rec !== undefined && Object.hasOwn(rec, entry.field)
+          ? rec[entry.field]
+          : undefined,
     });
+  }
 
   let hit: { path: string; url: string } | undefined;
   for (const { path, raw } of readings) {
