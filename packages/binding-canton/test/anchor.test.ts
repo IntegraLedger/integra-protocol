@@ -188,3 +188,49 @@ describe("readAnchorAtrHash / verifyAnchorAtrHash", () => {
     ).toBe(false);
   });
 });
+
+describe("anchorCreatedAt anchors its pattern at BOTH ends", () => {
+  it("refuses ISO EXPANDED-YEAR notation, which is a second spelling of the same instant", () => {
+    // `+002026-09-03T00:00:00Z` is valid ISO 8601 and `Date.parse` accepts it as the very same instant as
+    // the plain form — so the date check alone cannot tell them apart. Only the anchored pattern can. This
+    // is the hazard the fixed form exists for: two clients writing one instant two ways would put two
+    // spellings of one fact on one ledger, and the template gates on none of it.
+    const expanded = "+002026-09-03T00:00:00Z";
+    expect(Date.parse(expanded)).toBe(Date.parse("2026-09-03T00:00:00Z"));
+    expect(() => anchorCreatedAt(expanded)).toThrow(/ISO-8601 UTC/);
+  });
+
+  it.each([
+    ["leading whitespace", "  2026-09-03T00:00:00Z"],
+    ["trailing whitespace", "2026-09-03T00:00:00Z  "],
+    ["a trailing offset", "2026-09-03T00:00:00Z+00:00"],
+  ])("refuses %s around an otherwise valid instant", (_why, candidate) => {
+    expect(() => anchorCreatedAt(candidate)).toThrow(/ISO-8601 UTC/);
+  });
+
+  it("accepts the exact form the template documents", () => {
+    expect(anchorCreatedAt("2026-09-03T00:00:00Z")).toBe(
+      "2026-09-03T00:00:00Z",
+    );
+  });
+});
+
+describe("the refusals name the caller that made them", () => {
+  it("atrHashToLedgerText names ITSELF, so a malformed hash is attributed where it entered", () => {
+    expect(() => atrHashToLedgerText("0xdead")).toThrow(/atrHashToLedgerText/);
+  });
+});
+
+describe("verifyAnchorAtrHash over a payload carrying no well-formed atrHash", () => {
+  it("answers FALSE rather than comparing a null against the expected hash", () => {
+    const payload: LcpAnchorPayload = {
+      buyer: "Alice::1220",
+      seller: "Bob::1220",
+      atrHash: "garbage",
+      paymentRef: "",
+      createdAt: "2026-09-03T00:00:00Z",
+    };
+    expect(readAnchorAtrHash(payload)).toBeNull();
+    expect(verifyAnchorAtrHash({ payload, atrHash: ATR })).toBe(false);
+  });
+});

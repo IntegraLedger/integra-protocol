@@ -176,3 +176,36 @@ describe("the participant's failures stay LOUD", () => {
     ).rejects.toThrow(/HTTP 502/);
   });
 });
+
+describe("the failure message is the evidence, so its shape is pinned", () => {
+  it("a body that cannot be read leaves the message EMPTY where the body goes, never the reason", async () => {
+    // `res.text()` rejecting is the ordinary case for a consumed or aborted stream. The catch exists so a
+    // 500 still names its status; what it must not do is put its own filler where the participant's words
+    // belong, because an operator reading the log would attribute that text to the participant.
+    stubFetch(
+      () =>
+        ({
+          ok: false,
+          status: 500,
+          json: async () => ({}),
+          text: async () => {
+            throw new Error("body stream already read");
+          },
+        }) as unknown as Response,
+    );
+    await expect(
+      makeCantonParticipantReader(CFG).queryByAtrHash(ATR_TEXT),
+    ).rejects.toThrow(/\/v1\/query HTTP 500: $/);
+  });
+
+  it("SEPARATES multiple Daml errors, so two failures do not read as one sentence", async () => {
+    stubFetch(() =>
+      response({
+        body: { errors: ["unknown template id", "party not allocated"] },
+      }),
+    );
+    await expect(
+      makeCantonParticipantReader(CFG).queryByAtrHash(ATR_TEXT),
+    ).rejects.toThrow(/errors: unknown template id; party not allocated/);
+  });
+});

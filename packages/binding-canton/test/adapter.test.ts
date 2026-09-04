@@ -243,3 +243,35 @@ describe("createCantonAdapter", () => {
     ).toThrow('manifest.rail "solana" is not "canton"');
   });
 });
+
+describe("enumerate is a FILTER, and the participant's index is not the comparison", () => {
+  const adapter = createCantonAdapter(CANTON_MANIFEST);
+
+  function readerFor(rows: LcpAnchorContract[]): CantonParticipantReader {
+    return {
+      async fetchByContractId(): Promise<LcpAnchorContract | null> {
+        return null;
+      },
+      async queryByAtrHash(): Promise<LcpAnchorContract[]> {
+        return rows;
+      },
+    };
+  }
+
+  it("SKIPS a row whose payload carries no well-formed atrHash, rather than comparing a null", async () => {
+    // The participant answered the query, so the row is in the index; its payload is still whatever was
+    // written. A row that cannot yield an atrHash is not a match and is not an error either — the query
+    // walks past it. Comparing the null instead would fail the whole enumeration on one bad row.
+    const out = await adapter.enumerate(
+      ATR,
+      readerFor([contract("bad", "garbage"), contract("good", ATR_TEXT)]),
+    );
+    expect(out).toEqual([{ contractId: "good" }]);
+  });
+
+  it("names ITSELF when the atrHash it was handed is malformed", async () => {
+    await expect(adapter.enumerate("0xdead", readerFor([]))).rejects.toThrow(
+      /enumerate/,
+    );
+  });
+});
