@@ -150,3 +150,28 @@ describe("collectors", () => {
     );
   });
 });
+
+describe("a collector refusal names the collector it is about", () => {
+  /**
+   * ⛔ Both refusals here are read by a person deciding what to do about a deployment, and both codes are
+   * shared across collectors — `escrow/unproven-collector` is returned for two of them. So the code alone
+   * cannot say WHICH collector was rejected or why it fell short, and the detail was free to delete without
+   * a test noticing. An operator told only "unproven-collector" has to go read the table themselves.
+   */
+  it("tx-grade names the collector AND the grade it actually has", () => {
+    const refusal = assertSignatureGrade("PreApproval");
+    expect(refusal).not.toBeNull();
+    expect(refusal?.detail).toContain("PreApproval");
+    expect(refusal?.detail).toMatch(/signature-grade weld is required/);
+  });
+
+  it.each(["Permit2", "SpendPermission"] as const)(
+    "unproven names %s, not just its shared code",
+    (name) => {
+      const refusal = assertSignatureGrade(name);
+      expect(refusal).not.toBeNull();
+      expect(refusal?.detail).toContain(name);
+      expect(refusal?.detail).toMatch(/on-chain/);
+    },
+  );
+});

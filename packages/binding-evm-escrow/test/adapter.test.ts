@@ -493,3 +493,95 @@ describe("decodeEscrowLogs surfaces the indexed paymentInfoHash", () => {
     expect(decoded?.paymentInfoHash).not.toBe(KEY);
   });
 });
+
+describe("a recovery that SUCCEEDED says so, and one that refused says why", () => {
+  /**
+   * ⛔ `expect("refused" in out).toBe(false)` is not an assertion that the call succeeded. `Outcome` is a
+   * union, and an object carrying `ok: false` alongside a value has no `refused` key either — so it passes
+   * that check while telling a caller who narrows on `ok` that a recovery which found its atrHash failed.
+   * At a verification boundary that is a weld reported as unrecoverable. The success flag is asserted here.
+   */
+  it("the logIndex-pinned success carries ok: true, not merely the absence of a refusal", async () => {
+    const other = `0x${"ee".repeat(32)}` as const;
+    const chain = fakeChain({
+      txLogs: [
+        authorizedLog(
+          { ...PI, salt: saltFromAtrHash(other) },
+          SETTLEMENT.txHash as Hex,
+          0,
+        ),
+        authorizedLog(PI, SETTLEMENT.txHash as Hex, 1),
+      ],
+    });
+    const out = await adapter.recover(
+      { ...SETTLEMENT, logIndex: 1 },
+      portsWith(chain),
+    );
+    expect(out).toEqual({ ok: true, value: ATR });
+  });
+
+  it("the unpinned single-payment success carries ok: true", async () => {
+    const chain = fakeChain({
+      txLogs: [authorizedLog(PI, SETTLEMENT.txHash as Hex, 0)],
+    });
+    const out = await adapter.recover(SETTLEMENT, portsWith(chain));
+    expect(out).toEqual({ ok: true, value: ATR });
+  });
+
+  /**
+   * ⛔ The `detail` is the half a human reads. A refusal whose code is right and whose detail is empty tells
+   * an operator that recovery failed and nothing about which settlement, which log index, or how many
+   * payments were in play — and every one of these three details was free to delete without a test noticing.
+   */
+  it("no-recoverable-event names WHAT it looked for", async () => {
+    const chain = fakeChain({
+      txLogs: [capturedLog(SETTLEMENT.txHash as Hex, 0)],
+    });
+    const out = await adapter.recover(SETTLEMENT, portsWith(chain));
+    expect(out).toMatchObject({ code: "escrow/no-recoverable-event" });
+    if ("refused" in out)
+      expect(out.detail).toMatch(/PaymentAuthorized\/PaymentCharged/);
+  });
+
+  it("log-index-not-found names the index it was pinned to AND the settlement", async () => {
+    const chain = fakeChain({
+      txLogs: [authorizedLog(PI, SETTLEMENT.txHash as Hex, 0)],
+    });
+    const out = await adapter.recover(
+      { ...SETTLEMENT, logIndex: 9 },
+      portsWith(chain),
+    );
+    expect(out).toMatchObject({ code: "escrow/log-index-not-found" });
+    if ("refused" in out) {
+      expect(out.detail).toContain("9");
+      expect(out.detail).toContain(SETTLEMENT.txHash);
+    }
+  });
+
+  it("ambiguous-settlement names HOW MANY payments disagreed, which is what tells the caller to pin one", async () => {
+    const other = `0x${"ee".repeat(32)}` as const;
+    const chain = fakeChain({
+      txLogs: [
+        authorizedLog(PI, SETTLEMENT.txHash as Hex, 0),
+        authorizedLog(
+          { ...PI, salt: saltFromAtrHash(other) },
+          SETTLEMENT.txHash as Hex,
+          1,
+        ),
+      ],
+    });
+    const out = await adapter.recover(SETTLEMENT, portsWith(chain));
+    expect(out).toMatchObject({ code: "escrow/ambiguous-settlement" });
+    if ("refused" in out) {
+      expect(out.detail).toContain("2");
+      expect(out.detail).toContain(SETTLEMENT.txHash);
+      expect(out.detail).toMatch(/logIndex/);
+    }
+  });
+
+  it("saltFromAtrHash names ITSELF when handed a malformed hash, so the throw is attributed", () => {
+    expect(() => saltFromAtrHash("0xdead" as `0x${string}`)).toThrow(
+      /saltFromAtrHash/,
+    );
+  });
+});
