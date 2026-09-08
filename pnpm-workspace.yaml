@@ -31,7 +31,7 @@ ignoredBuiltDependencies:
   - "utf-8-validate"
 catalog:
   zod: "4.4.3" # trust boundaries only — never the kernel
-  viem: "2.55.19" # EVM client / typed-data + 1271/6492 verify — the EVM bindings, and the escrow drift guard
+  viem: "2.56.3" # EVM client / typed-data + 1271/6492 verify — the EVM bindings, and the escrow drift guard
   multiformats: "14.0.5" # raw-CIDv1 content addressing (CID == atrHash) — evidence bundles
   "@solana/kit": "8.2.0" # Solana devnet integration test only — binding-solana ships NO chain SDK
   bs58: "6.0.0" # base58 decode for a memo instruction the RPC returns partially-decoded (binding-solana)
