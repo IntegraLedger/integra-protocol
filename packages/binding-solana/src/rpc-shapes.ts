@@ -49,8 +49,9 @@ export interface ParsedTransactionShape {
 /**
  * The two reads this binding performs, as a PORT.
  *
- * A consumer wires it to whatever they already have — a `@solana/web3.js` `Connection` satisfies it, and
- * so does a bare `fetch` against a JSON-RPC endpoint. This package installs no SDK to offer it.
+ * A consumer wires it to whatever they already have — an SDK client or a bare `fetch` against a JSON-RPC
+ * endpoint — in a few lines. This package installs no SDK to offer it, which is the point: a binding that
+ * shipped one would make every consumer run the version it chose.
  */
 export interface SolanaRpc {
   getParsedTransaction(

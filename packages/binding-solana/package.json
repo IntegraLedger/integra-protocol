@@ -53,7 +53,7 @@
     "bs58": "catalog:"
   },
   "devDependencies": {
-    "@solana/web3.js": "catalog:",
+    "@solana/kit": "catalog:",
     "@types/node": "catalog:",
     "vitest": "catalog:"
   },

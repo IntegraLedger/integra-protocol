@@ -169,9 +169,9 @@ export interface SolanaReader {
 }
 
 /** Wrap a {@link SolanaRpc} as a {@link SolanaReader}. ⭐ **This package installs NO chain SDK**: the port
- *  is two methods, a `@solana/web3.js` `Connection` satisfies it, and so does a bare `fetch` against a
- *  JSON-RPC endpoint. You supply it, because the endpoint is a deployment choice. Read-only: nothing here
- *  submits a transaction. */
+ *  is two methods over the wire shapes, and any RPC client can be wired to it in a few lines — see
+ *  `test/integration.onchain.test.ts`, which does exactly that against a live devnet. You supply it,
+ *  because the endpoint is a deployment choice. Read-only: nothing here submits a transaction. */
 export function makeSolanaReader(connection: SolanaRpc): SolanaReader {
   return {
     async txView(signature: string): Promise<SolanaTxView | null> {
