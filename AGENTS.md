@@ -45,6 +45,18 @@ write a commit rather than after:
   URL, no "Generated with" line. This history is world-readable and permanent. The DCO trailer already
   records who is responsible.
 
+  ⛔⛔ **AND 53 OF THE 126 COMMITS ON `main` CARRY ONE, WHICH THIS SECTION USED TO STATE AS THOUGH IT DID NOT.**
+  Measured 2026-09-07 with the repository's own gate. The rule above was written as a rule and read as a
+  description of the history, and it was never true of it — the sign-off bullet accounts for its 65
+  exceptions and this one accounted for none. **Two of them landed AFTER the gate**: `49431e0` on 08-27, and
+  `155a83b`, whose own subject is *"The trailer gate rejected a human named Claude, and could not read a root
+  commit"* — the commit fixing the gate carried what the gate bans.
+
+  ⛔ **They stand, and the number is frozen for the sign-offs' reason.** These are public and permanent;
+  amending them breaks every clone and orphans the release tags, which is a worse outcome than the trailers.
+  The gate can only stop the next one. ⚠️ **The number going up is a defect, and it is the one thing here a
+  reader should check** — `pnpm check:commit-trailers` over the range a push adds is what stops it.
+
 ⛔ **The remedy for a missed sign-off on public `main` is the habit, never a rewrite.** Amending published
 history breaks every clone and orphans the release tags, so the gate can only stop the next one — which is
 why the hook exists. Check before you push, not after.

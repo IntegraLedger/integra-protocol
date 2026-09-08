@@ -123,7 +123,7 @@ export function encodeLegalContextString(ref: LegalContextRef): string {
 }
 
 /**
- * The value as EMITTED. LCP v0.1.38 §2.5 gained a RECOMMENDED that an atrHash is emitted lowercase, so a
+ * The value as EMITTED. LCP §2.5 gained a RECOMMENDED that an atrHash is emitted lowercase, so a
  * `sha256` reference has exactly one wire form however the caller spelled it.
  *
  * **Scoped to `sha256`, and the scoping is load-bearing rather than tidiness.** A `url`'s path and query

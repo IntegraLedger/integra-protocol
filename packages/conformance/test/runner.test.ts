@@ -61,7 +61,7 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // absent field at least reads as absent. LCP §2.5 imposes no such rule, so this is the tree applying its
 // own "an empty election is not an election" discipline consistently. Four cases: blank, whitespace, the
 // same rule on the contact block, and a real election that must still validate.
-// 839 → 825 on 2026-08-08: placement-acp's top-level carrier WRITE was retired (LCP v1.38 §C.2 —
+// 839 → 825 on 2026-08-08: placement-acp's top-level carrier WRITE was retired (LCP §C.2 —
 // CheckoutSessionBase is additionalProperties:false and CheckoutSession is a bare allOf over it, so no
 // ExtensionDeclaration can authorise a new top-level key; measured INVALID with ajv 8.20 against
 // spec/2026-04-17). Fifteen cases went with it: the six that asserted the write, and the nine whose whole
@@ -80,7 +80,7 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // `description` when our reference is merged in. Verified at UCP HEAD: checkout.json has eighteen properties
 // and `extensions` is not among them, while `additionalProperties: true` meant the old write landed and was
 // never read. Silent, which is worse than rejected.
-// 827 → 810 on 2026-08-08: placement-mastercard-vi became DECLARATION-ONLY. LCP v1.38 §C.7, closing
+// 827 → 810 on 2026-08-08: placement-mastercard-vi became DECLARATION-ONLY. LCP §C.7, closing
 // "Tier B — there is no Tier A carrier" —
 // "A deployment MUST NOT write an unregistered legal-context constraint into a VI mandate and expect it to
 // travel" — and the host leaves no carrier: only OPEN mandates carry a constraints array, and there
@@ -90,7 +90,7 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // the path they covered is gone — and one replaces them, using the checkout OPEN mandate the withdrawn
 // writeCondition permitted, so it fails if the write ever returns. Every extract case survives: a
 // counterparty who writes one holds a real reference, and reading it costs nothing.
-// 810 → 812 on 2026-08-08: LCP v0.1.38 §2.5's new RECOMMENDED — an atrHash is EMITTED lowercase — with
+// 810 → 812 on 2026-08-08: LCP §2.5's new RECOMMENDED — an atrHash is EMITTED lowercase — with
 // its companion negative. The second case is the one that matters: `url` must pass through with its case
 // EXACTLY intact, because a URL's path and query are case-sensitive and folding one would rewrite the
 // reference into a different document. The same holds for the other content-addressed types (base58btc

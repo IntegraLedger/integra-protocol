@@ -58,7 +58,7 @@ export type PlacementRegistration =
  * surface all dispatch through here rather than each keeping a map that can drift.
  *
  * A `Partial` record on purpose: `mcp` is a known protocol id that is **not a field placement at all**. LCP
- * v1.38 §C.9 and §10 describe an LCP-aware MCP *server* — tools, resources and prompts, plus a
+ * LCP §C.9 and §10 describe an LCP-aware MCP *server* — tools, resources and prompts, plus a
  * `capabilities.extensions` negotiation map — with no document field for a reference to ride in. So its
  * absence is the correct terminal state, not a gap awaiting a `placement-mcp`, and certainly not a hole to
  * fill with a stub that throws. Note that a protocol can be registered here AND carry a settlement binding

@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { SUI_COLLECTION_PATH } from "./constants.js";
 
 /**
  * The Sui Pay402 `payment_id` binding manifest.
@@ -63,6 +64,6 @@ export const SUI_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on checkpoint (Pay402 settle_payment) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { pay402: "signature" },
+  weldGrades: { [SUI_COLLECTION_PATH]: "signature" },
   lifecycleStates: ["proposed", "settled"],
 };

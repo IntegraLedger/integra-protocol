@@ -9,7 +9,7 @@ import { mastercardViManifest } from "./manifest.js";
  *
  * **DECLARATION ONLY — `place` refuses, and that is the ruling, not a gap.** The manifest is the
  * machine-readable statement of where an LCP reference WOULD sit in a VI mandate, and it is exact. What is
- * withdrawn is emitting one. LCP v1.38 §C.7, closing "Tier B — there is no Tier A carrier":
+ * withdrawn is emitting one. LCP §C.7, closing "Tier B — there is no Tier A carrier":
  *
  * > A deployment **MUST NOT** write an unregistered legal-context constraint into a VI mandate and expect
  * > it to travel.
@@ -50,7 +50,7 @@ export function makeMastercardViPlacement(
       haltClass: "verification-failure",
       code: "mastercard-vi/tier-b-not-writable",
       detail:
-        "this placement is declaration-only: LCP v1.38 §C.7 states a deployment MUST NOT write an unregistered legal-context constraint into a VI mandate, because open mandates carrying an unknown constraint type MUST be rejected in whole by any conformant verifier — the manifest records where the reference would sit if the type were registered, and `extract` reads one a counterparty wrote",
+        "this placement is declaration-only: LCP §C.7 states a deployment MUST NOT write an unregistered legal-context constraint into a VI mandate, because open mandates carrying an unknown constraint type MUST be rejected in whole by any conformant verifier — the manifest records where the reference would sit if the type were registered, and `extract` reads one a counterparty wrote",
     }),
   };
 }

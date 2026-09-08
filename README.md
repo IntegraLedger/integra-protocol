@@ -38,7 +38,7 @@ artifact for a year — long enough that a disclosure reaching back past ninety 
 ### What the `0.x` line means
 
 Every package here ships at one version — currently **0.15.1** — and the `0.` is a statement rather than an
-accident. This is a release candidate for 1.0: the implementation is complete against LCP v1.38 and
+accident. This is a release candidate for 1.0: the implementation is complete against the published LCP specification and
 certified by the conformance corpus on every commit. It is not a preview, and it is not a first draft.
 
 It is not `1.0` because **the distance left to travel is the specification's, not the implementation's.** LCP
@@ -76,7 +76,7 @@ const { atrBytes, atrHash } = await assemble([
   { slot: "parties", value: { seller: "did:web:seller.example", buyer: "did:web:buyer.example" } },
 ]);
 
-atrHash;                             // 0xdebb86b9…  the fingerprint the settlement will carry
+atrHash;                             // 0x90f284be…  the fingerprint the settlement will carry
 await hashAtr(atrBytes) === atrHash;  // true — recomputable by anyone holding the bytes
 ```
 
@@ -172,10 +172,13 @@ key on the wire that no implementation of that host reads, the host decides it a
 The source, the vectors and some runtime strings cite short requirement ids — `IDN-3`, `RCS-5`,
 `WLD-3`, `ATA-4` and their kin. **They are not LCP clause numbers**, and looking for
 them in the specification will not find them — LCP is cited here by section (`§8.3.1`, `§C.2`), and anything
-of the form `XXX-n` is from a different document.
+of the form `XXX-n` is defined below rather than in the standard.
 
-They come from Integra's own functional specification of what a complete agent transaction requires — an
-analysis that predates and motivates this implementation, organised into fourteen families:
+They are **this project's own requirement taxonomy**, published here and nowhere else, in fourteen
+families. There is no other document to go and read: the table below is the definition, and every
+requirement an id tags is stated in full in the sentence beside it — `recourse is the record's elected
+forum (PAY-3/RCS-5), never dispute resolution` carries its meaning whether or not the reader resolves the
+tag. The id is review shorthand, not a citation.
 
 | | | | |
 |---|---|---|---|
@@ -186,12 +189,14 @@ analysis that predates and motivates this implementation, organised into fourtee
 
 They are kept because they are load-bearing in review: `WLD-3` names the recovery triple that
 `BindingManifest.recovery` encodes, and `IDN-3` names the stated-assurance rule the verifier gates on, in
-one token each. They are glossed here — rather than silently dropped or left unexplained — because a
-citation a reader cannot resolve is worse than prose, and the family name plus this table is enough to read
-any of them as what it is: a requirement Integra asserts, not a conformance obligation the standard imposes.
+one token each. ⛔ They are glossed here rather than left unexplained, because **a citation a reader cannot
+resolve is worse than prose** — and this repository is public, so a tag pointing at something a reader has
+no access to would be exactly that. The family name plus this table is enough to read any of them as what
+it is: a requirement this project asserts, not a conformance obligation the standard imposes.
 
 Nothing in this repository's behaviour depends on them. Where an id and an LCP section say different
-things, the section governs, and where only an id is cited the claim is Integra's own.
+things, **the section governs** — LCP is the standard and this is one implementation of it — and where only
+an id is cited the claim is this project's own rather than the specification's.
 
 ## Packages
 
@@ -253,10 +258,10 @@ have both — x402 does, and the two answer different questions.
 | [`placement-mpp`](packages/placement-mpp) | MPP | A | `methodDetails.atrHash` |
 | [`placement-ap2`](packages/placement-ap2) | AP2 | A | `metadata.legalContext` on the transport envelope |
 | [`placement-ack`](packages/placement-ack) | ACK | A | `credentialSubject.metadata.legalContext` |
-| [`placement-acp`](packages/placement-acp) | ACP | A | session `metadata.legal_context`; the top-level `legal_context` is READ only — v1.38 §C.2 withdrew the write |
+| [`placement-acp`](packages/placement-acp) | ACP | A | session `metadata.legal_context`; the top-level `legal_context` is READ only — LCP §C.2 withdrew the write |
 | [`placement-ucp`](packages/placement-ucp) | UCP | A | `policies[type=com.integraledger.policy.legal_context]`, reading also the `terms_of_service` link |
 | [`placement-visa-tap`](packages/placement-visa-tap) | Visa TAP | A | `headers.x-lcp-hash` — the set's only `header-map` container, outside `Signature-Input` |
-| [`placement-mastercard-vi`](packages/placement-mastercard-vi) | Mastercard VI | B | a custom Layer-2 constraint under the **deployment's own** reverse-DNS namespace — declaration only; `place` refuses unconditionally, per v1.38 §C.7 |
+| [`placement-mastercard-vi`](packages/placement-mastercard-vi) | Mastercard VI | B | a custom Layer-2 constraint under the **deployment's own** reverse-DNS namespace — declaration only; `place` refuses unconditionally, per LCP §C.7 |
 | [`placement-a2a`](packages/placement-a2a) | A2A | A | task `metadata.legalContext` |
 
 `mcp` is a known protocol id with **no placement**, and that is terminal rather than pending: LCP §C.9 and
@@ -270,8 +275,8 @@ against stock, unmodified implementations.
 
 ```bash
 pnpm install
-pnpm verify          # versions → docblocks → live-rails → harness-proof → corpus-seal → audit → build
-                     #   → dist → lint → depcruise → typecheck → docs → doc-calls → test
+pnpm verify          # versions → docblocks → declared-imports → weld-grade-keys → live-rails → harness-proof → corpus-seal → audit
+                     #   → build → dist → lint → depcruise → typecheck → docs → doc-calls → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 ```
 

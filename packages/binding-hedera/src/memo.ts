@@ -52,7 +52,7 @@ export function encodeMemoAtrHash(atrHash: string): string {
  * is not an error. Two things are foreign here. The first is anything that is not a well-formed atrHash.
  * The second is MPP's Attribution memo, which IS a well-formed atrHash by shape — required on every MPP
  * charge transaction, exactly 32 bytes, `0x`-prefixed — and reading one as a terms reference would
- * manufacture a weld no seller ever made. LCP v1.38 §C.1 makes discriminating a MUST.
+ * manufacture a weld no seller ever made. LCP §C.1 makes discriminating a MUST.
  */
 export function decodeMemoAtrHash(memo: string): `0x${string}` | null {
   if (!isAtrHash(memo)) return null;

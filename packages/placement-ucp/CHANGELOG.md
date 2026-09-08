@@ -121,7 +121,7 @@ claimedClass`, so a record proving nothing — no settlement, no acceptance, no 
   `placement-x402` — the inlined wire schema now IS the authority document minus `$id` and `$defs`
   (Bazaar forbids both on the wire), drift-gated in `lcp-conformance` where the two packages meet.
   `termsUrlFields` declares both slots the wire carries; the bare-hash alias is written (`extra` stopped
-  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP v1.38 §C.4's own Tier A
+  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP §C.4's own Tier A
   illustration carries the pair there); the `url` carrier admission is withdrawn (`carrierTypes` is
   `sha256` alone — the schema on the wire is `const: "sha256"`, and no shipped reader ever accepted a url
   in this slot). The `place` override shrinks to composition: the kit performs the whole placement and the
@@ -173,7 +173,7 @@ and a large number of documentation claims were corrected against the host speci
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

@@ -1,26 +1,28 @@
 /**
- * THE LCP SPECIFICATION VERSION THIS IMPLEMENTATION TARGETS — one literal, for every surface that stamps it.
+ * THE LCP SPECIFICATION EDITION THIS IMPLEMENTATION TARGETS — one literal, for every surface that stamps it.
  *
- * FIVE surfaces stamp it and none of them may hold its own copy: `binding-cardano` (written on-chain as
- * the metadatum `v`), `discovery`'s schema `$id` and its description string — both DERIVED from this
- * constant rather than copied — and the two data files, `vectors/legal-context/schema.json` and
- * `vectors/binding/cardano-metadatum.json`, which carry it literally because JSON cannot import.
- * Nothing tied them together, so they drifted — all of them sat at
- * `0.1.36` after every other package had reconciled to v1.37, and no surface said whether that was a
- * deliberate pin or an oversight. Four copies of one fact is the defect; bumping four copies would only
- * have reset the clock on it.
+ * ⛔⛔ **IT IS THE PUBLISHED EDITION, AND IT MUST NEVER AGAIN BE A PRIVATE REVISION NUMBER.** This constant
+ * carried one until 2026-09-07 — a number from a working series no reader of the specification can
+ * resolve, and which a public package has no business publishing. The specification
+ * is published at `github.com/legal-context-protocol/legal-context-protocol` and its header says
+ * **Version: 1.0**. That is the only version an implementation can honestly claim to target, because it is
+ * the only one a counterparty can go and read.
  *
- * WHAT IT MEANS, precisely: the version of the specification whose **§2 conformance surface** this
+ * ⚠️ **The old value was not merely private, it was BROKEN.** `discovery` derives its schema `$id` from
+ * this constant, so every discovery document this library produced carried
+ * that private number in its schema URL — measured 2026-09-07: a **404**, at every value the constant had
+ * ever held. The `$id` is now the canonical one
+ * the specification itself publishes, which is UNVERSIONED and returns 200; see `discovery/src/schema.ts`.
+ *
+ * WHAT IT MEANS, precisely: the edition of the specification whose **§2 conformance surface** this
  * implementation is written against. It is NOT a build number and NOT the version of any package — those
- * move independently and often. It moves when §2 moves, and it also moves to record that this
- * implementation has been re-checked against a newer revision, which is the more common case: v1.37 was a
- * corrections release whose §2 was byte-identical to v1.36.
+ * move independently and often. It moves when the published edition moves.
  *
- * v0.1.38 is likewise a corrections release. §2 — the whole conformance surface — is byte-identical to
- * v0.1.37 except the `atrHash` row, which gains a RECOMMENDED (emit lowercase) and a MUST (compare the
- * decoded bytes, not the strings). Everything else that moved is Appendix C, which is informative. The bump
- * records the revision this tree is measured against; the two §2 additions are implemented in `discovery`,
- * `binding-core` and `atrHashEquals` rather than here.
+ * ⭐ **Re-measured against the published text on 2026-09-07, and §2 carries what this tree implements.**
+ * The `atrHash` row states both rules this implementation was built to: *"lowercase hex is RECOMMENDED for
+ * emission"*, and *"Two `atrHash` values are equal when their decoded 32-byte values are equal, so
+ * implementations MUST compare the decoded bytes rather than the strings."* Those are implemented in
+ * `discovery`, `binding-core` and `atrHashEquals` rather than here.
  *
  * The ATR's own format version is stamped separately by assemble() as `atrVersion` — the wire format of the
  * document, versioned on its own clock. The two stay distinct.
@@ -29,8 +31,7 @@
  * depends on it. A constant this widely consumed cannot sit in a leaf package without inverting the tiers.
  *
  * Data files cannot import it. `vectors/legal-context/schema.json` and `vectors/binding/cardano-metadatum.json`
- * carry the string literally, so the repository's spec-version drift gate asserts they equal this constant — the same
- * shape as the manifest drift checks elsewhere in the tree. Change this value and those tests name the files
- * that have not followed.
+ * carry the string literally, so `scripts/spec-drift.mjs` asserts they equal this constant. Change this value
+ * and that gate names the files that have not followed.
  */
-export const LCP_SPEC_VERSION = "0.1.38";
+export const LCP_SPEC_VERSION = "1.0";

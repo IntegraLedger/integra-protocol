@@ -9,4 +9,4 @@
  * truncated tree fails against the runner's own expectation rather than against its own restated one.
  */
 export const CORPUS_ROOT =
-  "c2875add14f5f2bf68cd6cbc0d79fe96aa99d9599a783a566f21a110f5431ff9";
+  "4c9d2d02a36fa4589513ec7f7fae19da6b3c37ff0c5ac15b4847867aa1c60681";

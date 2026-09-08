@@ -29,3 +29,10 @@ export {
   type MemoEncoding,
   verifySplMemo,
 } from "./memo.js";
+
+export type {
+  ParsedInstructionShape,
+  ParsedTransactionShape,
+  SolanaInstruction,
+  SolanaRpc,
+} from "./rpc-shapes.js";

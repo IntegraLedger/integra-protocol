@@ -26,7 +26,7 @@
  * `LEGAL_CONTEXT_WELL_KNOWN_PATH` keeps its hyphen — RFC 8615 well-known names are hyphenated.
  *
  * The retired spelling survives on purpose in `binding-core`'s kit fixtures, where it is sample input to
- * container-validation cases cut against v1.37 §C.3's `extensions` shape. Those are historical by
+ * container-validation cases cut against LCP §C.3's `extensions` shape. Those are historical by
  * construction and assert nothing about this deployment's identity.
  *
  * UCP's convention is `[reverse-domain].{service}.{capability}`. Three components rather than four is the
@@ -102,7 +102,7 @@ export const A2A_LCP_EXTENSION_URI =
  *
  * **The name changed at v1.0 and only the new spelling is emitted.** It was `X-A2A-Extensions` through
  * v0.3.0 (`docs/topics/extensions.md` line 110 at the `v0.3.0` tag) and is `A2A-Extensions` in the released
- * v1.0 (same file, lines 172-189 at `0ef1b02`). LCP v1.38 §C.8 shows the v1.0 spelling and records the
+ * v1.0 (same file, lines 172-189 at `0ef1b02`). LCP §C.8 shows the v1.0 spelling and records the
  * rename itself. No shim
  * accepts the old one: an agent speaking A2A v0.3.0 is speaking a superseded protocol version, and quietly
  * honouring both would hide that from a deployment that needs to know.

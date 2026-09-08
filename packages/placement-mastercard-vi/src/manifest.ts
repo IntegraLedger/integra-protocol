@@ -27,7 +27,7 @@ const REVERSE_DNS = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
  *
  * Cut against the LIVE Verifiable Intent specification (`verifiableintent.dev/spec/` §9.1 Constraint Type
  * Registry and `verifiableintent.dev/spec/constraints/`) — gate discharged 2026-07-30 and reconciled against
- * LCP v1.37 §C.7, which it CORRECTED on three counts — and v1.38 §C.7 has since adopted the conclusion,
+ * LCP §C.7, which it CORRECTED on three counts — and LCP §C.7 has since adopted the conclusion,
  * stating "Tier B — there is no Tier A carrier" and withdrawing the write outright. See the README for the full gate record.
  *
  * **The mechanism is the host's own extension point.** Layer 2 registers eight constraint types verifiers
@@ -60,7 +60,7 @@ const REVERSE_DNS = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
  * `atrHash`-aware, which no VI verifier is.
  *
  * **NAMING IS NOT THE OBSTACLE, and an earlier docblock said it was.** It claimed the registered type "has
- * a name only the FIDO Alliance Payments TWG can assign". That is false. LCP v1.38 §C.7, in the paragraph
+ * a name only the FIDO Alliance Payments TWG can assign". That is false. LCP §C.7, in the paragraph
  * opening "Custom naming is available and is not the obstacle": the
  * `mandate.checkout.*` and `mandate.payment.*` namespaces are "open for extension by implementers", with
  * registration a SHOULD for interoperability, and collision-resistant URI naming (a URN such as
@@ -128,6 +128,6 @@ export function mastercardViManifest(reverseDomain: string): PlacementManifest {
     field: `constraints[type=${tag}].value`,
     carrierTypes: ["sha256"],
     specRef:
-      "Mastercard Verifiable Intent — custom Layer-2 constraint type under reverse-DNS naming (§9.1); constraints appear only in Autonomous open mandates, where unknown types MUST be rejected — so this placement is DECLARATION-ONLY per LCP v1.38 §C.7 and `place` refuses (withdrawn 2026-08-08; gate originally discharged 2026-07-30: see README)",
+      "Mastercard Verifiable Intent — custom Layer-2 constraint type under reverse-DNS naming (§9.1); constraints appear only in Autonomous open mandates, where unknown types MUST be rejected — so this placement is DECLARATION-ONLY per LCP §C.7 and `place` refuses (withdrawn 2026-08-08; gate originally discharged 2026-07-30: see README)",
   };
 }

@@ -100,8 +100,8 @@
   `buildEip3009TypedData` has been here since the canonical EVM binding shipped, and nothing beside it could
   answer whether a given authorization was actually signed by the account it names. So a seller surface
   holding a payer's credential had three bad options: take the signature on trust until settlement, grow a
-  viem dependency of its own, or reimplement recovery. `seller-mpp` needs exactly this for the 2026-08-24
-  audit's C-28, and `seller-x402` already reaches here for `makeEvmAcceptanceVerifier` — the commons owns EVM
+  viem dependency of its own, or reimplement recovery. A seller MPP surface needs exactly this to check a payer's
+  authorization before settlement, and `seller-x402` already reaches here for `makeEvmAcceptanceVerifier` — the commons owns EVM
   crypto, and this is the piece that was missing.
 
   ⭐ **`ecrecover`, because that is what the TOKEN does.** `FiatTokenV2.transferWithAuthorization` recovers the
@@ -188,7 +188,7 @@ and a large number of documentation claims were corrected against the host speci
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

@@ -53,7 +53,7 @@ export type PlacementPattern =
  * shape before it can talk to us. `pattern: "protocol-extension"` is Tier B BY DEFINITION per §8.3.6 — the
  * schema rejects the combination, so the type and the vector tree agree.
  *
- * **This axis is coarse on purpose, and it is NOT the strength axis.** Several protocols in LCP v1.38
+ * **This axis is coarse on purpose, and it is NOT the strength axis.** Several protocols in LCP
  * Appendix C offer more than one Tier A carrier — a strong one that is declared, negotiated and
  * schema-published but activates only where the counterparty has adopted it, and a weak one that is
  * undeclared but works against every conformant implementation on day one. UCP is the clearest case: §C.3
@@ -90,14 +90,14 @@ export type PlacementEncoding =
  * - `discovery` — the value only LOCATES a document. A `url` says where to look and commits to nothing about
  *   what is found there, which may change after the fact without any reader being able to tell.
  *
- * The distinction is load-bearing because several protocols in LCP v1.38 Appendix C present both at
+ * The distinction is load-bearing because several protocols in LCP Appendix C present both at
  * once — UCP's §C.3 offers a hash-bearing `policies[]` entry and a bare `links` URL side by side — and a
  * tolerant reader that fell from the first to the second would hand its caller a URL where a hash
  * was asked for. That is the whole reason a `discovery` hit is REPORTED as one and never silently promoted:
  * a url locates a document and commits to nothing about its content, so promoting it would answer a question
  * about integrity with evidence that carries none.
  *
- * LCP v1.38 §C.2 states it too — "A terms-of-use policy page is not a per-transaction terms record and is
+ * LCP §C.2 states it too — "A terms-of-use policy page is not a per-transaction terms record and is
  * not a substitute for one" — as support rather than as the ground.
  */
 export type CarrierClass = "integrity" | "discovery";
@@ -184,7 +184,7 @@ export type PlacementContainer =
        * names it in advance, and {@link PlacementManifest.termsUrlFields} is object-path only by
        * construction. UCP is the consumer: `policies[]` is `additionalProperties: true` with `url` declared
        * on the policy object itself ("Optional link to the full policy document", `format: uri`, verified at
-       * UCP HEAD `source/schemas/shopping/types/policy.json`), and LCP v1.38 §C.3's own illustration carries
+       * UCP HEAD `source/schemas/shopping/types/policy.json`), and LCP §C.3's own illustration carries
        * `url` and `atrHash` side by side in one entry.
        *
        * Written on the entry this container OWNS — the one carrying our tag — so unlike `constants` it
@@ -206,9 +206,9 @@ export type PlacementContainer =
  * the original case — `CheckoutSessionBase` is `additionalProperties: false`, so the write was authorized
  * only by a declaration in the session at `capabilities.extensions[]` naming
  * `$.CheckoutSession.legal_context`, and the gate read that authorization before writing the field it
- * authorizes. LCP v1.38 §C.2 withdrew the write outright, so `placement-acp` now writes only the
+ * authorizes. LCP §C.2 withdrew the write outright, so `placement-acp` now writes only the
  * unconditional `metadata.legal_context` and needs no gate. Mastercard Verifiable Intent was the second,
- * and v1.38 §C.7 made that placement declaration-only for the same kind of reason.
+ * and LCP §C.7 made that placement declaration-only for the same kind of reason.
  *
  * The axis is kept because what it encodes is not ACP-specific: a host that authorizes a field per document
  * will appear again, and the alternative — each placement hand-rolling the check inside its own `place` —
@@ -245,14 +245,14 @@ export type PlacementContainer =
  * Autonomous-mode Layer 2 OPEN mandates and says outright: "Constraints do NOT appear in Immediate mode
  * credentials (`vct: "mandate.checkout.1"` and `vct: "mandate.payment.1"`)". So the two open `vct` values are
  * the only documents an LCP constraint could be written into. `placement-mastercard-vi` writes nothing at
- * all — v1.38 §C.7 withdrew the write — and why it does not is the sharpest available illustration of the
+ * all — LCP §C.7 withdrew the write — and why it does not is the sharpest available illustration of the
  * rule below.
  *
  * **`tier` IS NOT A GATE.** `place()` is gated on `writeCondition` alone and never reads `tier`, so a
  * manifest can declare `tier: "B"` and still ship a writer. On Verifiable Intent that combination is
  * unsafe: in the open mandates "Regardless of strictness mode, verifiers MUST reject open mandates
  * containing unknown constraint types", so a custom LCP type has no home against a stock verifier and a
- * written constraint gets the WHOLE mandate rejected. LCP v1.38 §C.7 states the conclusion — "Tier B —
+ * written constraint gets the WHOLE mandate rejected. LCP §C.7 states the conclusion — "Tier B —
  * there is no Tier A carrier" — and the placement is declaration-only.
  *
  * The one shape this cannot gate on is a bare array of strings — ACP's REQUEST carries
@@ -412,7 +412,7 @@ export type PlacementManifest = {
    *
    * A LIST, not a single path, because the predecessor member was singular and that was a measured defect
    * twice over. x402's wire carries the URL in BOTH `accepts[].extra` and `extensions.legalContext.info` —
-   * LCP v1.38 §C.4's own illustration uses the first — so a singular declaration could only name one, and
+   * LCP §C.4's own illustration uses the first — so a singular declaration could only name one, and
    * the buyer-side parser that generalized over it had to report the other slot as unanswerable
    * (`undeclared-at-answering-carrier`) rather than read it. Worse, no write path existed AT ALL: the member
    * was declared, hygiene-checked, read by parsers that demand the URL — and never placed, so a seller
@@ -710,8 +710,8 @@ type ReadableManifest = Pick<
  *
  * Returns the CARRIER CLASS for the same reason at a higher stake. A caller that needs integrity must be able
  * to tell that what it got was a URL — the fall from a hash carrier to a discovery carrier is a real downgrade
- * and a located document cannot stand in for an attested one (LCP v1.38 §C.2 describes it; v1.37 forbade
- * it in those words). This function never refuses a discovery hit; it
+ * and a located document cannot stand in for an attested one — LCP §C.2 describes it. This function
+ * never refuses a discovery hit; it
  * labels it, and {@link requireIntegrity} is how a caller that cannot accept one says so.
  *
  * Only paths the manifest declares are read. There is no heuristic, no "try camelCase too": an accepted shape
@@ -776,7 +776,7 @@ export function readDeclaredPaths(
  * manifests permit `url` alongside `sha256`, so `{type:"url", …}` in the canonical slot read
  * back as integrity-bearing and satisfied this function: exactly the substitution the class axis exists to
  * refuse — a located document standing in for an attested one — arriving through the one field nobody was
- * checking. LCP v1.38 §C.2 describes it ("A terms-of-use policy page is not a per-transaction terms record
+ * checking. LCP §C.2 describes it ("A terms-of-use policy page is not a per-transaction terms record
  * and is not a substitute for one"). The axis does not depend on which way the appendix words it.
  *
  * The slot half is kept rather than replaced. A deployment that declares an alias `discovery` has said what

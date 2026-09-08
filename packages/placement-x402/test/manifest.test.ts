@@ -41,7 +41,7 @@ describe("x402 placement — manifest matches the tree", () => {
 
   it("the bare-hash alias IS WRITTEN — §C.4's illustration is a reader some counterparty built", () => {
     // The reversal the manifest docblock records: `extra` stopped being wholly scheme-private when §6.1
-    // reserved names inside it, LCP v1.38 §C.4's Tier A illustration carries the pair there, and the
+    // reserved names inside it, LCP §C.4's Tier A illustration carries the pair there, and the
     // shipped buyer parser reconciles both carriers so a mirror cannot drift silently. An unwritten alias
     // beside two written terms-URL slots would emit a challenge whose `extra` carries the URL and not the
     // hash — half of §C.4's shape, which is the worst of both.

@@ -43,7 +43,7 @@ which unit landed first.
 
 ## `mcp` is absent because MCP has no field carrier
 
-Not a pending `placement-mcp`. LCP §C.9 and §10 — v1.38, and unchanged on this point from v1.37 — describe
+Not a pending `placement-mcp`. LCP §C.9 and §10 — describe
 an LCP-aware MCP **server** — tools,
 resources and prompts, plus a `capabilities.extensions` negotiation map keyed by a reverse domain — and no
 document field for a reference to ride in. MCP is a delivery surface, not a placement, so `mcp`'s absence

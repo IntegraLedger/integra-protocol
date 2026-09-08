@@ -8,14 +8,14 @@
  * **slot 3** of the core scheme's seven-slot HMAC canonicalization, so the seller's own MAC commits them to
  * the value before payment. (Slot 3, not 4: the core draft's table is 0-based, and
  * `draft-ryan-httpauth-payment-01` on the IETF datatracker — the mirror of the core scheme that
- * paymentauth.org publishes as `draft-httpauth-payment-00`, both recorded by LCP v1.38 §C.1 — carries the
+ * paymentauth.org publishes as `draft-httpauth-payment-00`, both recorded by LCP §C.1 — carries the
  * identical 0-based table. `placement-mpp` has always said 3.) When it is present the server verifies
  * "`Transfer` **and/or** `TransferWithMemo`" logs, so the advertised value must equal the on-chain memo or
  * the payment does not verify. The and/or matters and is not a quibble: a memo transfer emits BOTH events,
- * so a verifier matching on `Transfer` alone wrongly concludes there was no memo — LCP v1.38 §C.1 records
+ * so a verifier matching on `Transfer` alone wrongly concludes there was no memo — LCP §C.1 records
  * exactly this. That is the whole binding: one field, MAC-protected off-chain and topic-indexed on-chain.
  *
- * **THE CARRIER IS CONTESTED, and LCP v1.38 §C.1 now records it.** When a seller supplies NO
+ * **THE CARRIER IS CONTESTED, and LCP §C.1 now records it.** When a seller supplies NO
  * `methodDetails.memo`, MPP does not leave the memo empty: it
  * generates an *attribution memo* filling all 32 bytes —
  *

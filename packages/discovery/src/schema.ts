@@ -49,7 +49,7 @@ const HTTPS_URL_PATTERN = "^https://[^\\s]+$";
  */
 export const LEGAL_CONTEXT_WELL_KNOWN_PATH = "/.well-known/legal-context.json";
 
-// `atrHash`: 0x + 64 hex, accepted case-INSENSITIVELY. LCP v0.1.38 §2.5 RECOMMENDS emitting lowercase and
+// `atrHash`: 0x + 64 hex, accepted case-INSENSITIVELY. LCP §2.5 RECOMMENDS emitting lowercase and
 // `emit()` does, but that constrains what WE write: a counterparty's document is theirs, and refusing an
 // uppercase spelling of a well-formed hash would reject a conformant peer over a presentation choice.
 const ATR_HASH_PATTERN = "^0x[0-9a-fA-F]{64}$";
@@ -136,7 +136,13 @@ export function isMachineReadableTermsFormat(
 /** The canonical language-neutral JSON Schema (draft 2020-12), generated from the Zod schema. */
 export const LEGAL_CONTEXT_JSON_SCHEMA: Readonly<Record<string, unknown>> =
   Object.freeze({
-    $id: `https://legalcontextprotocol.org/schema/${LCP_SPEC_VERSION}/legal-context.json`,
+    // ⛔⛔ THE CANONICAL `$id` THE SPECIFICATION ITSELF PUBLISHES, and it is UNVERSIONED on purpose.
+    // This was `…/schema/${LCP_SPEC_VERSION}/legal-context.json`, which put an internal revision number
+    // into every discovery document this library produced AND resolved to nothing: measured 2026-09-07,
+    // that URL is a 404 at every value the constant has held. The specification's own
+    // `spec/legal-context.schema.json` declares this id and it returns 200. A `$id` is an identity, not a
+    // version stamp — the edition is carried in the description below, where a reader can act on it.
+    $id: "https://legalcontextprotocol.org/schema/legal-context.schema.json",
     ...(z.toJSONSchema(legalContextSchema, {
       target: "draft-2020-12",
     }) as Record<string, unknown>),

@@ -50,10 +50,10 @@
   "dependencies": {
     "@integraledger/lcp-binding-core": "workspace:*",
     "@integraledger/lcp-kernel": "workspace:*",
-    "@solana/web3.js": "catalog:",
     "bs58": "catalog:"
   },
   "devDependencies": {
+    "@solana/web3.js": "catalog:",
     "@types/node": "catalog:",
     "vitest": "catalog:"
   },

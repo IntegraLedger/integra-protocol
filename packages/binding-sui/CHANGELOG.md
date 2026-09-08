@@ -99,7 +99,7 @@ package that disagreed with its own source. No version 0.10.0 exists on the regi
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

@@ -51,10 +51,10 @@
   "dependencies": {
     "@integraledger/lcp-binding-core": "workspace:*",
     "@integraledger/lcp-binding-evm-common": "workspace:*",
+    "@integraledger/lcp-kernel": "workspace:*",
     "viem": "catalog:"
   },
   "devDependencies": {
-    "@integraledger/lcp-kernel": "workspace:*",
     "@types/node": "catalog:",
     "vitest": "catalog:"
   },

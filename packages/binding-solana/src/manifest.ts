@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { SOLANA_COLLECTION_PATH } from "./constants.js";
 
 /**
  * The Solana SPL-Memo binding manifest.
@@ -59,6 +60,6 @@ export const SOLANA_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on confirmation (SPL transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "spl-memo": "signature" },
+  weldGrades: { [SOLANA_COLLECTION_PATH]: "signature" },
   lifecycleStates: ["proposed", "settled"],
 };

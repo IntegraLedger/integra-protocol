@@ -121,14 +121,14 @@
 
 ### Patch Changes
 
-- 49431e0: Correct a conformance vector that attributed LCP v1.37's withdrawn RFC-2119 capitals to the x402
+- 49431e0: Correct a conformance vector that attributed a withdrawn draft's RFC-2119 capitals to the x402
   specification itself.
   
   `vectors/placement/x402.json`'s sibling-extension case was named *"clients MUST NOT delete or overwrite"*
   and its `$comment` called that "x402's own rule about x402's own map". Neither half survives measurement.
   The host states the rule in lower case and about the DATA rather than the map — the client "must include at
   least the info received; it may append additional info but cannot delete or overwrite existing info" — and
-  `placement-x402`'s own README already records that v1.37 rendered it in capitals and that **v1.38 §C.4
+  `placement-x402`'s own README already records that an earlier draft rendered it in capitals and that **LCP §C.4
   withdrew that rendering**. So the package documentation and the shipped corpus disagreed about a
   quotation, with the corpus carrying the superseded one into every consumer that reads the vectors.
   
@@ -325,7 +325,7 @@ claimedClass`, so a record proving nothing — no settlement, no acceptance, no 
   `placement-x402` — the inlined wire schema now IS the authority document minus `$id` and `$defs`
   (Bazaar forbids both on the wire), drift-gated in `lcp-conformance` where the two packages meet.
   `termsUrlFields` declares both slots the wire carries; the bare-hash alias is written (`extra` stopped
-  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP v1.38 §C.4's own Tier A
+  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP §C.4's own Tier A
   illustration carries the pair there); the `url` carrier admission is withdrawn (`carrierTypes` is
   `sha256` alone — the schema on the wire is `const: "sha256"`, and no shipped reader ever accepted a url
   in this slot). The `place` override shrinks to composition: the kit performs the whole placement and the
@@ -389,7 +389,7 @@ package that disagreed with its own source. No version 0.10.0 exists on the regi
 
   The conformance corpus is re-sealed: root `32fa90a62eb83930…`, 812/812 across 44 areas, unchanged in size.
   Twenty-two cases pinned the old spellings and were updated; the retired spelling survives deliberately in
-  `binding-core`'s kit fixtures, where it is sample input to container-validation cases cut against v1.37
+  `binding-core`'s kit fixtures, where it is sample input to container-validation cases cut against an earlier draft
   §C.3's `extensions` shape and asserts nothing about this deployment's identity.
 
   `minor` rather than `major` because these packages are pre-1.0, where minor is the breaking increment.
@@ -405,7 +405,7 @@ package that disagreed with its own source. No version 0.10.0 exists on the regi
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { COLLECTORS } from "./collectors.js";
 
 /**
  * The Commerce Payments escrow binding manifest (`AuthCaptureEscrow`, authorize→capture).
@@ -75,12 +76,19 @@ export const ESCROW_MANIFEST: BindingManifest = {
     reversible: true,
     note: 'on-rail void/refund within refundExpiry — not dispute resolution (RCS-5); capture is not reversed, refund is a fresh on-rail remedy. The atrHash welded into PaymentInfo.salt MUST be per-transaction: salt is specified as the struct\'s entropy source ("a source of entropy to ensure unique hashes across different payments") and an atrHash carries none, so a repeat purchase under one ATR with the same payer, caps and expiries produces a PaymentInfo the escrow has already seen and reverts.',
   },
-  weldGrades: {
-    ERC3009: "signature",
-    Permit2: "signature",
-    SpendPermission: "signature",
-    PreApproval: "tx",
-  },
+  // ⛔⛔ DERIVED FROM `COLLECTORS`, NEVER RESTATED. These four were literals that happened to agree with the
+  // collector declarations beside them — and the sibling rail proved what that costs: `binding-evm-x402`
+  // shipped `weldGrades` keyed `ERC3009`, this package's collector name, where an x402 consumer looks the
+  // grade up under `eip3009`. The map and the lookup key disagreed inside one published package and the
+  // answer was `undefined`. Here the keys ARE `CollectorName` and each grade is the collector's own
+  // `grade`, so the two cannot come apart: adding a collector adds its row, and changing a grade changes
+  // it in the one place the on-chain proof is recorded.
+  weldGrades: Object.fromEntries(
+    Object.values(COLLECTORS).map((collector) => [
+      collector.name,
+      collector.grade,
+    ]),
+  ),
   lifecycleStates: [
     "proposed",
     "authorized",

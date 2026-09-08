@@ -64,16 +64,16 @@ and the PaymentRequirements table), four facts were confirmed and each one decid
 Extension identifiers are implementation-defined strings — no registry, no reverse-domain rule — so the
 `legalContext` key is available today and this placement is Tier A on the wire.
 
-### Drift from LCP v1.37 §C.4 — recorded then adopted by v1.38
+### Drift from LCP §C.4 — recorded then adopted by LCP
 
 The host governs: its live specification is binding and LCP's Appendix C is an illustration.
 Two differences, neither of which changes the design:
 
-- v1.37 rendered the echo rule in RFC-2119 capitals ("MAY append to but **MUST NOT** delete or overwrite")
-  where the host states it in lower case and about the data rather than the map. **v1.38 §C.4 now says
-  exactly that**, so this item is discharged; it is kept because it is why the package reads the way it does
-  and states it about the extensions map. The live spec states it in lower case and about the `info` payload.
-  Same rule, weaker modality, one level lower.
+- The appendix once rendered the echo rule in RFC-2119 capitals ("MAY append to but **MUST NOT** delete or
+  overwrite") where the host states it in lower case and about the data rather than the map. **LCP §C.4 now
+  says exactly that** — it records the rule "in lower case and about the `info` payload rather than the
+  map" — so this item is discharged; it is kept because it is why the package reads the way it does and
+  states it about the extensions map. Same rule, weaker modality, one level lower.
 - The live spec also carries `extra` on `PaymentPayload.accepted`, which §C.4 does not mention.
 
 ### Drift from a strict buyer-side reader, recorded for the same reason
@@ -188,7 +188,7 @@ needs a content-addressed value says so — it checks the decoded type as well a
 
 ## Provenance
 
-Cut against x402 v2 and reconciled against LCP v1.37 §C.4 on 2026-07-30, and re-read against **v1.38 §C.4**
+Cut against x402 v2 and reconciled against LCP §C.4 on 2026-07-30, and re-read against **LCP §C.4**
 on 2026-08-12 — which adopted the drift items below and added §6.1's reserved keys. The host revision is
 `x402-foundation/x402@db5da2e65952` (`specs/x402-specification-v2.md`), which is what `spec-pins.json`
 records this tree read on 2026-08-11 and what `pnpm spec-drift` watches. The **paths and shapes** are

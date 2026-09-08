@@ -3,8 +3,8 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
 /**
  * ACP (Agentic Commerce Protocol) reference placement, cut against the live spec (stable 2026-04-17,
  * `spec/2026-04-17/json-schema/schema.agentic_checkout.json` and `schema.extension.json`), re-read 2026-07-28,
- * reconciled against LCP v1.37 §C.2 the same day, re-read 2026-07-30 for the write half, and re-cut against
- * v1.38 §C.2 on 2026-08-08 when that section withdrew the write.
+ * reconciled against LCP §C.2 the same day, re-read 2026-07-30 for the write half, and re-cut against
+ * LCP §C.2 on 2026-08-08 when that section withdrew the write.
  *
  * **The session object is TOP-LEVEL.** `CheckoutSessionBase` carries `id`, `protocol`, `capabilities`,
  * `buyer`, `status`, `currency`, `totals`, `metadata`, … directly — there is no `checkout` wrapper on the
@@ -30,7 +30,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * written, and no extension declaration can authorise one: `CheckoutSessionBase` is
  * `additionalProperties: false` and `CheckoutSession` is `allOf: [CheckoutSessionBase]` with no properties
  * of its own, so a session carrying an undeclared top-level key fails validation against the released
- * schema. LCP v1.38 §C.2 says the same. ACP's own core `discount` extension works only because `discounts`
+ * schema. LCP §C.2 says the same. ACP's own core `discount` extension works only because `discounts`
  * is ALREADY a declared property of `CheckoutSessionBase` — its `extends` array documents where the field
  * is rather than creating one.
  *
@@ -48,7 +48,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * it, the agent sends the identifiers it understands, and the response returns the declarations active in the
  * session. Discovery and negotiation are what the declaration is for. Authorisation is not.
  *
- * LCP v1.38 §C.2 also records what riding `metadata` costs: it is "undeclared, unnegotiated, absent from
+ * LCP §C.2 also records what riding `metadata` costs: it is "undeclared, unnegotiated, absent from
  * discovery, and carrying no published schema — the appropriate fallback for a counterparty that has not
  * adopted the extensions framework". What it buys is reach. It asks nothing of the counterparty, and it is
  * the only placement here that works against a stock ACP implementation today.
@@ -85,10 +85,10 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * per-transaction reference could not ride there even if the two were conflated. Falling back to `links`
  * when `metadata.legal_context_url` is absent would silently substitute a policy page for a terms record —
  * a fallback path. The reason is the carrier's own: those links "carry no hash-verified integrity
- * guarantee" (LCP v1.38 §C.2), so falling to one would answer a question about integrity with evidence that
+ * guarantee" (LCP §C.2), so falling to one would answer a question about integrity with evidence that
  * carries none. §C.2 adds that "A terms-of-use policy page is not a per-transaction terms record and is not
- * a substitute for one" — descriptive in v1.38, where v1.37 wrote "MUST NOT be substituted for one". This
- * The conclusion does not rest on which way the appendix words it.
+ * a substitute for one" — stated descriptively rather than as a MUST NOT. The conclusion does not rest on
+ * which way the appendix words it: the carrier has no integrity guarantee either way.
  *
  * **Write direction, and it is NOT the same for both carriers.** `metadata` appears on `CheckoutSessionBase`
  * and on `CheckoutSessionCreateRequest`, and is **absent** from `CheckoutSessionUpdateRequest`
@@ -140,7 +140,7 @@ export const ACP_PLACEMENT: PlacementManifest = {
   // BEFORE any alias, so on a document carrying both the canonical `metadata` string answers, which is
   // deliberate (a document carrying two spellings is answered with ours) and is pinned as its own case.
   //
-  // 1. `legal_context` TOP-LEVEL is READ and never written. LCP v1.38 §C.2 withdrew the home it would be
+  // 1. `legal_context` TOP-LEVEL is READ and never written. LCP §C.2 withdrew the home it would be
   //    written into: `CheckoutSessionBase` is `additionalProperties: false` and `CheckoutSession` is a bare
   //    `allOf` over it with no properties of its own, so no ExtensionDeclaration can make a new top-level
   //    key valid — measured INVALID with ajv 8.20 against `spec/2026-04-17`. A counterparty that emits one
