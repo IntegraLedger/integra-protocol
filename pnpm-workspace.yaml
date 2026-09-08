@@ -30,7 +30,7 @@ ignoredBuiltDependencies:
   - "bufferutil"
   - "utf-8-validate"
 catalog:
-  zod: "4.4.3" # trust boundaries only — never the kernel
+  zod: "4.5.4" # trust boundaries only — never the kernel
   viem: "2.55.19" # EVM client / typed-data + 1271/6492 verify — the EVM bindings, and the escrow drift guard
   multiformats: "14.0.5" # raw-CIDv1 content addressing (CID == atrHash) — evidence bundles
   "@solana/kit": "8.2.0" # Solana devnet integration test only — binding-solana ships NO chain SDK
