@@ -1,5 +1,56 @@
 # @integraledger/lcp-placement-ucp
 
+## 0.16.0
+
+### Minor Changes
+
+- 3ca1d2b: UCP's HTTPS rule now applies to `place`, not only to `extract`.
+  
+  The placement wrapped `extract` alone, under a docblock reasoning that "`place` never writes the links
+  alias, so the write side has no URL to police". The write side does have one: the `policies[]` entry
+  `place` writes carries the reference itself, `url` is a permitted carrier type here, and `place` accepted an
+  `http:` url reference and emitted a document this very module's `extract` refuses. A placement that will
+  not read back the bytes it wrote fails a round trip on its own output.
+  
+  The terms URL was never the gap — the kit already refuses a non-https `termsUrl` at
+  `ucp/terms-url-malformed`. The reference was, and a url-typed reference inside a policies entry is exactly
+  as rewritable in transit as one in `links`. The rule is now stated once and applied in both directions.
+  
+  **This changes published behaviour**: `ucpPlacement.place` refuses `ucp/insecure-terms-url` where it
+  previously returned a written document.
+  
+  The corpus gains the write half of the rule and an https control beside it. 859 → 861; the corpus root
+  moved to `c2875add14f5f2bf…`.
+
+### Patch Changes
+
+- feab885: Five README examples that failed on their first line, and a gate that runs the examples.
+  
+  Each was the first thing a stranger runs, on the npmjs landing page:
+  
+  - `binding-evm-x402` opened with `getX402Deployment("base-sepolia-usdc")`; the keys are `base`,
+    `base-sepolia`, `avalanche`, `monad`. It threw.
+  - `discovery` told the reader to read `hashesAgree`; the field is `hashesMatch`, so the documented read is
+    `undefined` — falsy — and records a MISMATCH for a hash that matched, the exact defect the two-field
+    design exists to prevent.
+  - `placement-ucp`'s only usage example refused `ucp/terms-url-missing`: this protocol declares a terms-URL
+    slot, so an integrity-bearing reference needs one, and every sibling README passes it.
+  - `placement-ack` claimed a `url` carrier in the canonical slot "passes `requireIntegrity`". It did when
+    written; `requireIntegrity` now checks the value's type as well as the slot's declared class and returns
+    `undefined`. The narrower point that survives is stated instead.
+  - `binding-canton` documented a DAR filename, `lcp-anchor-0.9.0.dar`, that no build produces —
+    `daml.yaml` carries the package version, gated by a test. Both the README and `daml.yaml`'s own comment
+    now write the version as a glob, because a pinned number inside a copyable command goes stale at the
+    next bump and had already done so twice.
+  
+  The mechanism behind all five is that `check:docs` COMPILES fences and never runs them. `check:doc-calls`
+  runs the subset that can be run — a call of a workspace export whose every argument is a literal — and
+  refuses a throw or a returned `Refusal`. It also reads the inversion: a line the document annotates
+  `// throws` or `// refuses` must fail, so a demonstration that quietly starts succeeding is caught too.
+  Elided arguments (`"0x…"`) and calls inside a `try` are skipped as structurally not assertions. It refuses
+  an empty subject set, and it runs 30 calls across 74 fences today.
+- @integraledger/lcp-binding-core@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes

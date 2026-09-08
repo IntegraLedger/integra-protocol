@@ -37,7 +37,7 @@ artifact for a year — long enough that a disclosure reaching back past ninety 
 
 ### What the `0.x` line means
 
-Every package here ships at one version — currently **0.15.1** — and the `0.` is a statement rather than an
+Every package here ships at one version — currently **0.16.0** — and the `0.` is a statement rather than an
 accident. This is a release candidate for 1.0: the implementation is complete against the published LCP specification and
 certified by the conformance corpus on every commit. It is not a preview, and it is not a first draft.
 

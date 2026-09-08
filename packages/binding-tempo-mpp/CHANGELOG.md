@@ -1,5 +1,12 @@
 # @integraledger/lcp-binding-tempo-mpp
 
+## 0.16.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes

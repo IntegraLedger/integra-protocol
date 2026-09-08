@@ -1,5 +1,15 @@
 # @integraledger/lcp-binding-evm-mpp
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [2fd5eb2]
+- Updated dependencies [bb48020]
+  - @integraledger/lcp-binding-evm-common@0.16.0
+  - @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
