@@ -32,12 +32,16 @@ export {
   decodeStatusList,
   isActiveAsOf,
   revokedAsOf,
+  STATUS_LIST_MAX_BYTES,
   statusBit,
 } from "./status.js";
 export {
+  AUTHORITY_CHAIN_MAX_LINKS,
+  type ChainWalkHalt,
   type ChainWalkInput,
   type ChainWalkResult,
   type GrantProofVerifier,
+  type VerifiedChainWalkResult,
   type WalkedLink,
   walkChain,
   walkChainStructure,

@@ -18,7 +18,11 @@ Built on [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdap
 **viem**.
 
 ```ts
-import { atrHashFromSalt, createEscrowAdapter } from "@integraledger/lcp-binding-evm-escrow";
+import {
+  atrHashFromSalt,
+  AUTH_CAPTURE_ESCROW,
+  createEscrowAdapter,
+} from "@integraledger/lcp-binding-evm-escrow";
 import type { VerifierPorts } from "@integraledger/lcp-binding-core";
 
 declare const atrHash: `0x${string}`;
@@ -29,7 +33,13 @@ declare const ctx: Omit<
 declare const ports: VerifierPorts; // your viem-backed ChainReader + ArtifactResolver
 declare const txHash: `0x${string}`;
 
-const adapter = createEscrowAdapter({ chainId: 84532 });
+// `escrow` is REQUIRED — it is not defaulted, because AUTH_CAPTURE_ESCROW is the deterministic
+// deployment on Base Mainnet and Base Sepolia and on no other chain, and it is hashed into the
+// settlement key. Pass the address of the deployment you are actually reading.
+const adapter = createEscrowAdapter({
+  chainId: 84532,
+  escrow: AUTH_CAPTURE_ESCROW,
+});
 
 // SERVICE OPERATOR — the PaymentInfo to submit, with `salt` filled from the atrHash.
 const proposed = await adapter.propose(atrHash, ctx);
@@ -71,6 +81,7 @@ One escrow transaction can authorize or charge several independent payments, eac
 | `escrow/ambiguous-settlement` | The transaction carries salt-bearing events with *different* salts and the `SettlementRef` pins no `logIndex`. Pin one. The same payment seen through both `PaymentAuthorized` and `PaymentCharged` carries one salt and resolves normally. |
 | `escrow/log-index-not-found` | A pinned `logIndex` matches no salt-bearing event — a failure, never a fall-through to the first one. |
 | `escrow/no-recoverable-event` | No `PaymentAuthorized`/`PaymentCharged` with a cleartext `PaymentInfo` in the settlement. |
+| `escrow/unreadable-event` | The reading came back empty **and** the escrow emitted a log this package's event ABI cannot decode. Answering "nothing settled here" would contradict the escrow's own logs. |
 
 Recovery is an **event-data scan**, not a topic filter: `paymentInfoHash` is the only indexed key and it
 is not derivable from an ATR hash alone, so `enumerate` fetches the salt-bearing events over a range and

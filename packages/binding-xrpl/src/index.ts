@@ -13,6 +13,9 @@ export {
   getXrplConfig,
   LCP_MEMO_FORMAT,
   LCP_MEMO_TYPE,
+  XRPL_ACCOUNT_SCAN_DEPTH,
+  XRPL_INVOICE_ID_PATH,
+  XRPL_TX_MEMO_PATH,
   type XrplNetwork,
   type XrplNetworkConfig,
 } from "./constants.js";

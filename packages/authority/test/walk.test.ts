@@ -330,11 +330,13 @@ async function realChain(): Promise<{
 }
 
 describe("walkChain — the cryptographic proof gate, over the real Ed25519 port", () => {
-  it("proves a real two-hop chain end-to-end", async () => {
+  it("proves a real two-hop chain end-to-end, and tags the readout VERIFIED", async () => {
     const { input, port } = await realChain();
     const walk = await walkChain(input, port);
-    if (walk.status !== "walked")
-      throw new Error(`expected walked, got ${walk.status}`);
+    // `verified`, not `walked`: the literal is the only thing that distinguishes a readout whose proofs
+    // were checked from one whose were not, and `verify.authorityWalk` accepts nothing else.
+    if (walk.status !== "verified")
+      throw new Error(`expected verified, got ${walk.status}`);
     expect(walk.links).toHaveLength(2);
     expect(walk.links[1]).toMatchObject({
       parentDelegable: true,
@@ -384,26 +386,14 @@ describe("walkChain — the cryptographic proof gate, over the real Ed25519 port
     });
   });
 
-  it("a structural refusal wins before the port is ever consulted", async () => {
-    // The empty directory REJECTS any consultation, so reaching the spliced-link refusal proves order.
-    const officer = "did:example:officer";
-    const spliced = grant(officer, AGENT_DID, { caps: { USDC: "1" } });
-    spliced.proof = {
-      ...(spliced.proof as NonNullable<AtaGrant["proof"]>),
-      verificationMethod: "did:example:mallory#k",
-    };
+  it("a link's own structural refusal wins before ITS proof is consulted", async () => {
+    // The empty directory REJECTS any consultation, so reaching a refusal at all proves the port was
+    // never asked. The refusal is on the ROOT — with the proof gate inside the loop, a link deeper in the
+    // chain would have had its predecessors' proofs consulted first, which is the bound this move buys.
     const walk = await walkChain(
       {
         principal: PRINCIPAL,
-        chain: [
-          grant(
-            PRINCIPAL,
-            officer,
-            { caps: { USDC: "5000" } },
-            { delegable: true },
-          ),
-          spliced,
-        ],
+        chain: [grant("did:example:mallory", AGENT_DID, {})],
         acceptanceSigner: AGENT,
         asOf: AS_OF,
       },
@@ -411,8 +401,133 @@ describe("walkChain — the cryptographic proof gate, over the real Ed25519 port
     );
     expect(walk).toMatchObject({
       status: "refused",
-      code: "walk/spliced-link",
+      code: "walk/root-not-principal",
     });
+  });
+
+  it("a forged proof stops the walk AT ITS LINK — no LATER link is even read", async () => {
+    // The defect this pins, measured before the proof gate moved into the loop: the whole structural walk
+    // ran first, so a 5000-link chain pointing at 1 MiB status lists blocked for 3.9 s and inflated 5.2 GB
+    // before the port was asked about link 0, whose proof was forged.
+    //
+    // The tell is WHICH refusal comes back. Link 0's proof is forged and link 1 widens its parent, so a
+    // second-pass walk reaches the widening first and answers `walk/widened-bounds` — it read a link it
+    // had no business reading. Walking incrementally, link 0's proof refuses and link 1 is never seen.
+    const { input, port } = await realChain();
+    const [root, link] = input.chain as [AtaGrant, AtaGrant];
+    const tamperedRoot: AtaGrant = {
+      ...root,
+      credentialSubject: {
+        ...root.credentialSubject,
+        // NARROWER than signed, so the tamper is structurally invisible — only the proof can catch it.
+        bounds: { caps: { USDC: "4000000" } },
+      },
+    };
+    const widened: AtaGrant = {
+      ...link,
+      credentialSubject: {
+        ...link.credentialSubject,
+        bounds: { caps: { USDC: "99000000" } },
+      },
+    };
+    const walk = await walkChain(
+      { ...input, chain: [tamperedRoot, widened] },
+      port,
+    );
+    expect(walk).toMatchObject({
+      status: "refused",
+      code: "walk/proof-invalid",
+    });
+  });
+
+  it("a forged proof inflates NO status list — the gate sits in front of lifecycle", async () => {
+    // The other half of the same bound, and the expensive half: a status list is a decompressor pointed at
+    // a counterparty's bytes, ceilinged at 1 MiB EACH. A link whose proof does not cover it has no claim on
+    // that work. Counted through a getter on the caller's own snapshot record.
+    const { input, port } = await realChain();
+    const [root, link] = input.chain as [AtaGrant, AtaGrant];
+    let reads = 0;
+    const snapshots = Object.defineProperty({}, LIST, {
+      enumerable: true,
+      get: () => {
+        reads++;
+        return SNAPSHOT;
+      },
+    }) as Record<string, string>;
+    const tamperedRoot: AtaGrant = {
+      ...root,
+      credentialSubject: {
+        ...root.credentialSubject,
+        bounds: { caps: { USDC: "4000000" } }, // narrower than signed — invisible to the structural gates
+      },
+      credentialStatus: {
+        type: "BitstringStatusListEntry",
+        statusListCredential: LIST,
+        statusListIndex: "12",
+        statusPurpose: "revocation",
+      },
+    };
+    const walk = await walkChain(
+      { ...input, chain: [tamperedRoot, link], statusSnapshots: snapshots },
+      port,
+    );
+    expect(walk).toMatchObject({
+      status: "refused",
+      code: "walk/proof-invalid",
+    });
+    expect(reads).toBe(0);
+  });
+
+  it("a chain past AUTHORITY_CHAIN_MAX_LINKS is declined before any work is done", async () => {
+    // 65 links, one over the ceiling — the literal, not the constant: an assertion built out of the value
+    // it checks moves with it and asserts nothing. A GAP rather than a refusal, because the chain did not
+    // contradict itself; this verifier declined to walk it, and declining never impeaches and never passes.
+    const chain: AtaGrant[] = [];
+    let issuer = PRINCIPAL;
+    for (let i = 0; i < 65; i++) {
+      const subject = `did:example:hop${i}`;
+      chain.push(grant(issuer, subject, {}, { delegable: true }));
+      issuer = subject;
+    }
+    const consulted: AtaGrant[] = [];
+    const walk = await walkChain(
+      {
+        principal: PRINCIPAL,
+        chain,
+        acceptanceSigner: AGENT,
+        asOf: AS_OF,
+      },
+      {
+        verify: (g: AtaGrant): Promise<boolean> => {
+          consulted.push(g);
+          return Promise.resolve(true);
+        },
+      },
+    );
+    expect(walk).toEqual({
+      status: "not-attempted",
+      depth: "authority-chain-too-long",
+    });
+    expect(consulted).toEqual([]);
+  });
+
+  it("64 links walk — the ceiling admits its own boundary", async () => {
+    const chain: AtaGrant[] = [];
+    let issuer = PRINCIPAL;
+    for (let i = 0; i < 63; i++) {
+      const subject = `did:example:hop${i}`;
+      chain.push(grant(issuer, subject, {}, { delegable: true }));
+      issuer = subject;
+    }
+    chain.push(grant(issuer, AGENT_DID, {}));
+    expect(chain).toHaveLength(64);
+    const walk = await walkChainStructure({
+      principal: PRINCIPAL,
+      chain,
+      acceptanceSigner: AGENT,
+      asOf: AS_OF,
+    });
+    expect(walk.status).toBe("walked");
   });
 
   it("a gap passes through untouched — an unwalkable chain never reaches the port", async () => {
@@ -737,6 +852,57 @@ describe("walkChainStructure — credentialStatus edges beyond the vectors", () 
       }),
     ).toEqual(MALFORMED_STATUS);
   });
+  it("ONE snapshot read per status list, however many links point at it", async () => {
+    // The defect: every link with a status entry decoded the list independently, so a chain at the
+    // 64-link ceiling inflated a 1 MiB list 64 times to read 64 bits. The snapshots are hash-pinned and
+    // immutable for the walk, so a decode is a pure function of the encoded string.
+    //
+    // Counted through a GETTER on the caller's own snapshot record — not a stub of the decoder. The map
+    // is `Record<string, string>` and a getter-backed property is one; what it measures is exactly the
+    // property at issue, since the walk reads the record only when it is about to decode.
+    let reads = 0;
+    const snapshots = Object.defineProperty({}, LIST, {
+      enumerable: true,
+      get: () => {
+        reads++;
+        return SNAPSHOT;
+      },
+    }) as Record<string, string>;
+    const entry = (
+      index: string,
+    ): NonNullable<AtaGrant["credentialStatus"]> => ({
+      type: "BitstringStatusListEntry",
+      statusListCredential: LIST,
+      statusListIndex: index,
+      statusPurpose: "revocation",
+    });
+    const officer = "did:example:officer";
+    const walk = await walkChainStructure({
+      principal: PRINCIPAL,
+      chain: [
+        grant(
+          PRINCIPAL,
+          officer,
+          { caps: { USDC: "5000" } },
+          { delegable: true },
+          { credentialStatus: entry("1") },
+        ),
+        grant(
+          officer,
+          AGENT_DID,
+          { caps: { USDC: "5000" } },
+          {},
+          { credentialStatus: entry("2") },
+        ),
+      ],
+      acceptanceSigner: AGENT,
+      asOf: AS_OF,
+      statusSnapshots: snapshots,
+    });
+    expect(walk.status).toBe("walked");
+    expect(reads).toBe(1);
+  });
+
   it("a purpose this walk has no semantics for is its own gap, distinct from malformed", async () => {
     // `suspension` is well-formed and meaningful — just not revocation. Reporting it as malformed would
     // blame the issuer for a shape error it did not make; reading it AS revocation would refuse a chain
@@ -839,7 +1005,46 @@ describe("walkChainStructure — the readout, exactly", () => {
     if (walk.status !== "walked")
       throw new Error(`expected walked, got ${walk.status}`);
     // toStrictEqual: a `parentMaxDepth: undefined` key is NOT the same readout as an absent one —
-    // JSON round-trips differ, and the conformance door compares serialized bytes.
+    // JSON round-trips differ, and the conformance door compares serialized bytes. `revoked` is absent
+    // for the same reason and it is the load-bearing absence here: this grant names no status list, so
+    // the walk consulted none. It used to be stamped `false`, which is the value that PROVES.
+    expect(walk.links).toStrictEqual([
+      {
+        bounds: { caps: { USDC: "5" } },
+        parentBounds: {},
+        parentDelegable: true,
+        active: true,
+      },
+    ]);
+  });
+
+  it("a grant that DOES name a status list states `revoked`, having actually read the snapshot", async () => {
+    // The control beside the absence above. Without it, "omit the field" and "never state the field"
+    // would be the same test, and the walk could stop consulting status lists entirely without a failure.
+    const walk = await walkChainStructure({
+      principal: PRINCIPAL,
+      chain: [
+        grant(
+          PRINCIPAL,
+          AGENT_DID,
+          { caps: { USDC: "5" } },
+          {},
+          {
+            credentialStatus: {
+              type: "BitstringStatusListEntry",
+              statusListCredential: LIST,
+              statusListIndex: "12",
+              statusPurpose: "revocation",
+            },
+          },
+        ),
+      ],
+      acceptanceSigner: AGENT,
+      asOf: AS_OF,
+      statusSnapshots: { [LIST]: SNAPSHOT },
+    });
+    if (walk.status !== "walked")
+      throw new Error(`expected walked, got ${walk.status}`);
     expect(walk.links).toStrictEqual([
       {
         bounds: { caps: { USDC: "5" } },

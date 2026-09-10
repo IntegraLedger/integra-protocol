@@ -92,12 +92,25 @@ function canonicalAtrHashOrNull(atrHash: string): string | null {
  * `usesX402InvoiceBinding` is the seller's own answer to "am I setting `extra.invoiceId`?" — the one piece
  * of information that exists off-chain and can never be recovered from the ledger. Refusing here is the
  * only place the collision can be caught at all.
+ *
+ * ⛔⛔ **IT WAS OPTIONAL, SO THE GUARD DEFAULTED OFF.** A seller that never passed the field — which is
+ * every seller who does not know the field exists, and that is precisely the seller this guard is for —
+ * got a weld minted with no question asked. A guard whose default is "do not guard" is not a guard; it is
+ * a switch for callers who had already thought about the problem. And the cost of getting it wrong is not
+ * recoverable: `InvoiceID` is ONE field, an x402 invoice binding spends it on `SHA-256(invoiceId)`, and
+ * nothing on-chain distinguishes 32 opaque bytes of one from 32 of the other. A verifier reading that
+ * payment later cannot tell it was asked the wrong question.
+ *
+ * ⭐ **REQUIRED, so the seller ANSWERS rather than omits.** `false` is a perfectly good answer and costs
+ * one word; there is no answer that costs nothing, which is the whole point. This is the same reasoning
+ * this module's docblock already gives for refusing rather than "quietly picking" — the omission WAS the
+ * quiet pick.
  */
 export function proposeInvoiceId(inputs: {
   atrHash: string;
-  usesX402InvoiceBinding?: boolean;
+  usesX402InvoiceBinding: boolean;
 }): string {
-  if (inputs.usesX402InvoiceBinding === true)
+  if (inputs.usesX402InvoiceBinding)
     throw new Error(
       "proposeInvoiceId: this payment already binds an x402 extra.invoiceId, which occupies InvoiceID as SHA-256(invoiceId) — the two welds are mutually exclusive per transaction and nothing on-chain tells them apart, so the LCP weld cannot ride this payment",
     );

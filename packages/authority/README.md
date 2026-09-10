@@ -126,7 +126,7 @@ const walk = await walkChain(
   { principal, chain, acceptanceSigner, asOf, statusSnapshots },
   proofVerifier, // a GrantProofVerifier — cryptosuite implementations live with their producers
 );
-// { status: "walked", links }         — verified custody, flattened per-hop readout
+// { status: "verified", links }       — custody AND every proof, flattened per-hop readout
 // { status: "refused", code, … }      — a spliced link, a forged widening, a revoked grant …
 // { status: "not-attempted", depth }  — an unwalkable input; a gap never passes and never impeaches
 ```
@@ -136,7 +136,12 @@ the acceptance signer, a proof that does not cover the grant as presented — ea
 Everything `linkAttenuates` gates at issuance is applied per hop, and lifecycle is evaluated **as-of the
 settlement instant** against hash-pinned status-list snapshots, never a live dereference. The
 cryptographic proof gate is the injected port's; `walkChainStructure` is the deterministic half the
-conformance corpus certifies.
+conformance corpus certifies, and it succeeds as `walked` rather than `verified` — one literal, so that a
+readout whose proofs nobody checked cannot be mistaken for one whose proofs were. `verify.authorityWalk`
+accepts only the `verified` form.
+
+The chain is bounded at `AUTHORITY_CHAIN_MAX_LINKS` (64) and the proof gate runs inside the walk loop, so
+a forged link stops the walk where it sits rather than after the whole chain has been read.
 
 ## Requirement ids
 

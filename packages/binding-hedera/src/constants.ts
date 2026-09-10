@@ -55,6 +55,29 @@ export function getHederaConfig(network: HederaNetwork): HederaNetworkConfig {
 export const HEDERA_MEMO_MAX_BYTES = 100;
 
 /**
+ * The account scan's own page bound — the Mirror Node's largest `limit`, and the depth
+ * {@link "./adapter.js".HederaAdapter.enumerate} uses when the caller names none.
+ *
+ * ⛔⛔ **THE SERVER'S DEFAULT USED TO GOVERN, AND IT IS 25.** `enumerate` forwarded `limit` verbatim, so
+ * an absent `limit` meant the Mirror Node picked — and a scan of an account's twenty-five most recent
+ * transactions was returned as though it were the answer. A settlement twenty-six transactions back read
+ * as an EMPTY ARRAY, which on a best-effort scan is indistinguishable from "this account never settled
+ * that atrHash". Nobody asked for twenty-five; nobody was told they got twenty-five.
+ *
+ * MEASURED live against `https://mainnet-public.mirrornode.hedera.com/api/v1/transactions` on 2026-09-10,
+ * account-scoped and not: **no `limit` returns 25**, `limit=100` returns 100, and `limit=101` and
+ * `limit=200` BOTH return 100 — over-asking is silently reduced rather than refused, so asking for more
+ * than this buys nothing and hides the reduction.
+ *
+ * ⭐ Sui's rail defaults to its endpoint's max page and then PAGES to exhaustion. This one cannot: the
+ * {@link "./adapter.js".HederaReader} port hands back transaction ids and no cursor, so there is nothing
+ * to walk with. The honest consequence is stated rather than papered over — with no `limit` named,
+ * `enumerate` asks for this many and THROWS if it gets them all, because a full page is precisely the
+ * case where the scan cannot tell a complete answer from a truncated one.
+ */
+export const HEDERA_MIRROR_MAX_PAGE = 100;
+
+/**
  * USDC on Hedera has 6 decimals — 1 USDC = 1_000_000 base units.
  *
  * RAIL-QUALIFIED ON PURPOSE. Four bindings publish a USDC decimal count and they are NOT all the same —

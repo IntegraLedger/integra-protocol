@@ -126,14 +126,23 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // 859 → 861 on 2026-09-03: `placement.ucp` gains the write half of the https rule — a `place` that refuses
 // an `http:` url reference, and the https control beside it. `extract` had refused one since the rule
 // landed while `place` wrote one, so the placement could emit a document its own extractor rejects.
-const CORPUS_SIZE = 861;
+// 861 → 865 on 2026-09-10: `verify.referencePlacement` gains the CARRIER TYPE, which the step never read.
+// A `url` reference — which a conformant UCP merchant produces from the REQUIRED `links[]` entry without
+// placing any LCP capability at all — was compared as a fingerprint, never matched, and impeached an
+// otherwise-sound record to TC-0. Two of the four are the `ipfs`/`ar` pair, integrity-bearing but
+// addressing a CID this pure walk cannot re-derive; the fourth is an unregistered type, which reads as a
+// malformed extraction rather than as either carrier-class gap.
+// 865 → 866 on 2026-09-10: `report.schema` gains a missing-`depth` negative. The report never stated the
+// depth it ran at, so a structural walk and a mechanical one over the same inputs serialized to IDENTICAL
+// bytes and `verified: false` could not be read as impeached rather than unattempted. The three positive
+// documents in that area gained the member in the same edit.
+const CORPUS_SIZE = 866;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {
-    // Phase P8 is the wired floor, so this is every area. Running without an explicit phase defaults to
-    // P1, which exercises 95 cases — well under CORPUS_SIZE, and a green that means far less than it
-    // appears to. Only P1's share is stated as a literal: it is a property of the P1 areas and does not
-    // move when a later phase grows, so unlike a hardcoded total it cannot go stale behind the pin.
+    // Phase P8 is the wired floor and also the runner's default today, so this is every area. It is
+    // still stated explicitly: the default is derived from the ladder's top, and a test that leaned on
+    // that would stop asserting anything the day a P9 arrives with no dispatch behind it.
     const report = await runCorpus(new InProcessSubject(), {
       vectors: VECTORS,
       phase: "P8",

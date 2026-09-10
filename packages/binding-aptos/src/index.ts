@@ -15,6 +15,7 @@ export {
   type SettlePaymentCall,
 } from "./adapter.js";
 export {
+  APTOS_COLLECTION_PATH,
   type AptosNetwork,
   type AptosNetworkConfig,
   explorerTxUrl,

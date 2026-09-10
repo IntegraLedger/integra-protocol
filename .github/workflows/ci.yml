@@ -46,6 +46,16 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: "${{ matrix.node }}", cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
+      # ⛔ THE VULNERABILITY SCANNER, PINNED BY VERSION AND VERIFIED BY CHECKSUM. `pnpm verify` runs
+      # `check:advisories`, which REFUSES when the binary is absent rather than skipping — a scanner that
+      # quietly does not run reports clean on the day it matters. Downloading it unverified would make the
+      # gate trust whatever the network returned, which is the opposite of what it is for.
+      - name: Install osv-scanner (pinned)
+        run: |
+          curl -sSfL -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/download/v2.5.1/osv-scanner_linux_amd64
+          echo "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be  /usr/local/bin/osv-scanner" | sha256sum -c -
+          chmod +x /usr/local/bin/osv-scanner
       - run: pnpm verify        # verify builds first (pnpm -r build): workspace packages consume each other via built dist/, so kernel must be built before conformance is typechecked/tested. Build also produces the dist/ + tarball publint/attw inspect below.
       # publish-integrity (publint + attw) runs on the packages that GET PUBLISHED. The script derives that
       # set from `private` in each manifest rather than a name pattern: a private package has no published

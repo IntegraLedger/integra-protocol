@@ -1240,6 +1240,18 @@ export function requireWritten(
   return out;
 }
 
+/** How much of a counterparty value a refusal `detail` may quote. A `detail` exists to tell a human WHICH
+ *  value was wrong; the ten-thousandth character of it serves nobody, and copying a 50 MB carrier value
+ *  into an error message is how one document becomes a much larger one. */
+const DESCRIBE_MAX_CHARS = 200;
+
+/** Cut a rendered fragment to {@link DESCRIBE_MAX_CHARS}, saying so rather than trailing off silently. */
+function clip(s: string): string {
+  return s.length <= DESCRIBE_MAX_CHARS
+    ? s
+    : `${s.slice(0, DESCRIBE_MAX_CHARS)}… (${String(s.length)} chars)`;
+}
+
 /**
  * Build a `ReferencePlacementAdapter` from a manifest alone.
  *
@@ -1271,8 +1283,43 @@ export function makePlacement(
   });
   const malformedDocument = (): Outcome<never> =>
     refuse("document-malformed", `a ${p} document is a non-null object`);
-  const describe = (raw: unknown): string =>
-    typeof raw === "string" ? raw : JSON.stringify(raw);
+  /**
+   * ⛔⛔ THE REFUSAL MESSAGE IS BUILT FROM THE COUNTERPARTY'S OWN VALUE, SO IT MUST BE TOTAL AND BOUNDED.
+   *
+   * This was `JSON.stringify(raw)`, and `JSON.stringify` RECURSES. Every `extract` and `place` in the
+   * nine placement packages is this one body, and each of the four call sites below reaches it on the
+   * REFUSAL path — the path taken precisely when the document is not what we expected. So a counterparty
+   * document of ~240 KB, nested a hundred thousand deep, parsed cleanly through `JSON.parse` and then
+   * blew the stack inside the message builder: `RangeError: Maximum call stack size exceeded` raised out
+   * of `extract`, where the contract is an `Outcome` carrying `<protocol>/reference-malformed`. The
+   * narrowing was already right — `readDeclaredPaths` filters to the manifest's declared path before
+   * anything decodes — and the reader still died describing what it had correctly refused.
+   *
+   * The stack is not its only way to fail on a value we did not author. `JSON.stringify` THROWS on a
+   * `BigInt` and on a circular structure, and it RETURNS `undefined` — not a string — where a `toJSON`
+   * says so, which the declared `: string` quietly denies. And it is unbounded in LENGTH: a 50 MB carrier
+   * string became a 50 MB refusal `detail`, so one hostile document minted a much larger one.
+   *
+   * ⇒ Total and clipped. A hand-rolled bounded-depth renderer was tried and withdrawn: it moved the same
+   * four failure modes into thirty-odd branches of our own, none of which a refusal message needs, and
+   * the mutation run said so — a formatter nobody exercises is a formatter nobody has checked. Every one
+   * of these failures is a catchable exception that leaves the runtime working, the stack one included,
+   * so a single `try` covers the lot — including the two a depth-bounded renderer would still have missed
+   * (circular, `BigInt`). Short strings pass through verbatim, so the messages a reader already knows are
+   * unchanged.
+   */
+  const describe = (raw: unknown): string => {
+    if (raw === null || typeof raw !== "object") return clip(String(raw));
+    try {
+      const json = JSON.stringify(raw);
+      if (json !== undefined) return clip(json);
+    } catch {
+      // Deep enough to exhaust the stack, circular, or carrying a BigInt. Which one it was is not a fact
+      // about the counterparty's REFERENCE, which is what this message is about; that it was undescribable
+      // is. Falls through to the shape below.
+    }
+    return `<undescribable ${Array.isArray(raw) ? "array" : "object"}>`;
+  };
 
   return {
     manifest,

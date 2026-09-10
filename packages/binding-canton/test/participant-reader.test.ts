@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  CANTON_DEFAULT_TIMEOUT_MS,
   type LcpAnchorContract,
   makeCantonParticipantReader,
 } from "../src/adapter.js";
@@ -207,5 +208,89 @@ describe("the failure message is the evidence, so its shape is pinned", () => {
     await expect(
       makeCantonParticipantReader(CFG).queryByAtrHash(ATR_TEXT),
     ).rejects.toThrow(/errors: unknown template id; party not allocated/);
+  });
+});
+
+/**
+ * ⛔⛔ **A `result: null` PASSED THE ENVELOPE CHECK AND CAME BACK AS AN ARRAY.**
+ *
+ * `ledgerCall` refuses an ABSENT `result`, and `null` is present — so `queryByAtrHash` returned `null`
+ * under a declared `LcpAnchorContract[]` and `enumerate`'s `for…of` threw `TypeError: anchors is not
+ * iterable`. That is an exception out of a surface whose every other answer is a value or a Refusal,
+ * raised by the shape of a counterparty's response rather than by anything the caller did.
+ *
+ * ⭐ The check is the ARRAY, not not-null: a `/v1/query` that answers an object is exactly as unusable,
+ * and both are the same fact — this participant is not speaking the query shape we were pointed at.
+ */
+describe("a query result that is not a list of contracts is refused, not returned", () => {
+  it("⛔ throws on a null result instead of handing it back as a list", async () => {
+    stubFetch(() => response({ body: { result: null } }));
+    await expect(
+      makeCantonParticipantReader(CFG).queryByAtrHash(ATR_TEXT),
+    ).rejects.toThrow(/returned a null result where an array/);
+  });
+
+  it("⛔ throws on an object result too — the array is the check", async () => {
+    stubFetch(() => response({ body: { result: { contracts: [] } } }));
+    await expect(
+      makeCantonParticipantReader(CFG).queryByAtrHash(ATR_TEXT),
+    ).rejects.toThrow(/returned a object result where an array/);
+  });
+
+  it("an EMPTY array is still a perfectly good answer — no anchors is a value", async () => {
+    // The guard is about the SHAPE. A participant that legitimately holds nothing must not be turned
+    // into a transport failure by it.
+    stubFetch(() => response({ body: { result: [] } }));
+    expect(
+      await makeCantonParticipantReader(CFG).queryByAtrHash(ATR_TEXT),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * ⛔⛔ **`fetch` HAS NO TIMEOUT OF ITS OWN AND NOTHING HERE SUPPLIED ONE.** A participant that accepted the
+ * connection and never answered hung `recover`, `observe` and `enumerate` forever — no error, no refusal,
+ * no return. On a surface contracted to hand back an `Outcome` that is worse than a failure: a refusal can
+ * be retried and a promise that never settles cannot.
+ */
+describe("every request carries a deadline", () => {
+  it.each(["queryByAtrHash", "fetchByContractId"] as const)(
+    "⛔ passes an AbortSignal on %s",
+    async (method) => {
+      const spy = stubFetch(() =>
+        response({ body: { result: method === "queryByAtrHash" ? [] : null } }),
+      );
+      const reader = makeCantonParticipantReader(CFG);
+      await (method === "queryByAtrHash"
+        ? reader.queryByAtrHash(ATR_TEXT)
+        : reader.fetchByContractId("c1"));
+      expect(spy.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    },
+  );
+
+  it("⛔⛔ a participant that never answers REJECTS rather than hanging", async () => {
+    // The property, driven rather than asserted about the signal object: a fetch that never settles is
+    // aborted by the deadline and surfaces as a throw out of the reader port.
+    vi.stubGlobal(
+      "fetch",
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new Error("The operation was aborted due to timeout")),
+          );
+        }),
+    );
+    await expect(
+      makeCantonParticipantReader({ ...CFG, timeoutMs: 5 }).fetchByContractId(
+        "c1",
+      ),
+    ).rejects.toThrow(/abort/i);
+  });
+
+  it("the deadline is configurable, and defaults when it is not named", async () => {
+    expect(CANTON_DEFAULT_TIMEOUT_MS).toBe(10_000);
+    const spy = stubFetch(() => response({ body: { result: null } }));
+    await makeCantonParticipantReader(CFG).fetchByContractId("c1");
+    expect(spy.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
   });
 });

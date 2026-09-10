@@ -42,7 +42,17 @@ const RATCHET = {
   // RAISED 89 -> 91. Measured 91.81 twice on 2026-08-09, identical to two decimal places.
   "binding-aptos": 91,
   // RAISED 94 -> 95. Measured 95.48 twice on 2026-08-09.
-  "binding-canton": 95,
+  //
+  // RAISED 95 -> 97. Measured 97.46 at 1dc7f14 and 97.63 on 2026-09-10 after the request deadline, the
+  // array-shape check on `/v1/query` and the split of `no-such-contract` from `no-lcp-anchor` — two
+  // readings of two different trees, both more than two points clear of the floor seeded in August, and
+  // ZERO timeouts in each, so this package's score is not clock-dependent the way `conformance`'s is.
+  //
+  // All five survivors predate this change and none is a hole: two `x !== null` guards standing in front
+  // of a call that already answers correctly for null (`atrHashEquals`, `verifyAnchorAtrHash`), the `^`
+  // and `$` anchors on `stripHexPrefix`'s and `ISO_UTC`'s patterns, and `propose`'s conditional spread of
+  // an absent `paymentRef`, which `buildAnchorPayload` defaults to the same "" either way.
+  "binding-canton": 97,
   // RAISED 94 -> 96. Measured 96.58 twice on 2026-08-09. The floor was seeded at the sibling overlay
   // rail's number when this package split out, and had never been measured against its own suite.
   "binding-canton-x402": 96,
@@ -61,7 +71,16 @@ const RATCHET = {
   // RAISED 90 -> 97. Measured 97.22 on 2026-08-08 after the recover ambiguity work. The floor had been
   // seven points below the real score, which is the shape the handoff warned about: a ratchet that passes
   // on headroom rather than on kills reports green for a suite that has stopped covering something.
-  "binding-evm-escrow": 97,
+  //
+  // RAISED 97 -> 99. Measured 99.63 on 2026-09-10 (270 mutants, 269 killed, ZERO timeouts) after the
+  // required escrow address and the ABI-drift guard landed — and the same package measured 100.00 at
+  // 1dc7f14 before either. So 97 was three points low and had gone back to passing on headroom, which is
+  // exactly what the note above says to watch for; two readings of two trees, both clear of 99.
+  //
+  // The single survivor is a true EQUIVALENT, not a gap: `catch { return undefined; }` -> `catch {}` in
+  // `decodeKnownEscrowEvent`. A bare catch block falls through to the end of the function and returns
+  // `undefined`, so the mutant computes the identical value and no test can tell them apart.
+  "binding-evm-escrow": 99,
   // RAISED 96 -> 99. Measured 99.32 twice on 2026-08-09, up from the 96.53 the floor was set at: the
   // §8.3.5 id-reuse work landed with tests. The surviving mutants are refusal `detail` prose literals,
   // left alive deliberately — pinning them would encode one implementation's phrasing as the standard.
@@ -83,7 +102,18 @@ const RATCHET = {
   // RAISED 93 -> 97. Measured 97.40 twice on 2026-08-09 — the largest headroom in the tree, and the
   // shape the handoff warned about: a floor four points low passes on headroom rather than on kills.
   "binding-stellar": 97,
-  "binding-sui": 97,
+  // RAISED 97 -> 99. Measured 99.56 twice on 2026-09-10, identical to two decimal places, after the
+  // GraphQL transport's remediation. It had DROPPED to 90.10 when that transport landed — 26 survivors in
+  // `graphql.ts`, and reading them as a specification rather than as a list of tests to add is what found
+  // the two defects nobody had reported: an UNPAGED `effects.events` connection (the endpoint truncates at
+  // 20 and Sui allows 1024 events per transaction, so a buyer-composed PTB could bury the weld) and a
+  // nullable `Query.events` dereferenced unguarded. `graphql.ts` now sits at 100.
+  //
+  // The two survivors are EQUIVALENT rather than undesirable, and both were MEASURED by planting them and
+  // re-running the suite green, not argued: `adapter.ts`'s `atr === null` leg and `payment-id.ts`'s
+  // `decoded === null` leg both guard a call to `atrHashEquals`, and `atrHashEquals(null, valid)` is
+  // `false` — driven, not assumed — so removing either guard changes no answer any caller can see.
+  "binding-sui": 99,
   // 94.17 measured over 343 mutants; 20 unkilled = 19 SURVIVED + 1 with NO COVERAGE, and every one is
   // accounted for below. Two different reasons, and conflating them would be the dishonest part — some are
   // prose we decline to pin, the rest are equivalents nothing could kill:
@@ -159,7 +189,14 @@ const RATCHET = {
   // `optionsRecord`'s key whitelist, and `Object.hasOwn` in `get`. Each of those is a behaviour a vector or
   // a package test now names, so a revert reads as a failure rather than a score drift.
   discovery: 89,
-  evidence: 86,
+  // RAISED 86 -> 88. Measured 88.80 twice on 2026-09-10 (658 killed + 8 timeout of 750), up from 86.49
+  // on the same suite the day the CAR span gate, the builder/verifier agreement and the resolver's
+  // one-budget timeout landed. Most of the rise is the refusal CODES: `ResolverError.code` is the
+  // documented contract ("compare the code, not the message") and every resolver test asserted the
+  // MESSAGE, so blanking a code to `""` survived ten times over. The survivors that remain are refusal
+  // prose literals and the two `typeof x === "string"` guards in `readEntries`'s type predicates, which
+  // exist so the `Set.has`/`RegExp.test` call typechecks and are equivalent mutants at runtime.
+  evidence: 88,
   kernel: 92,
   // 100 at 17/17, and the 17 is the point: every mutant lives in the MANIFEST, because
   // `makePlacement(A2A_PLACEMENT)` is the whole adapter and holds no literal to mutate. A2A asks for no rule

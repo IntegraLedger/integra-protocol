@@ -1,5 +1,5 @@
 {
-  "$comment": "ATA chain CUSTODY at verification time — authority.walkChainStructure. A flattened AuthorityLink readout cannot express what the walk checks, so a consumer of one is trusting whoever produced it. The walk consumes presented AtaGrant VCs and refuses what no per-link readout can express: a spliced link (signed by a key that is not the parent's subject), a root issued by someone other than the declared principal, a leaf granted to anyone but the acceptance signer. It then applies the SAME delegation gates linkAttenuates enforces at issuance, plus lifecycle as-of the settlement instant (expiry windows; revocation from the hash-pinned status-list snapshot, never a live dereference). This corpus certifies the STRUCTURAL half — deterministic over presented documents; the cryptographic proof gate (does the proof verify over the grant AS PRESENTED?) is port-injected and proven in the authority package tests, exactly the acceptance split. Outcome discipline is verify's three-way rule: a chain that CONTRADICTS itself is refused (verification-failure); a missing or unwalkable input is not-attempted, never failed, never passed. Key order in `expected` mirrors the outcome objects as constructed; refusal `detail` prose is deliberately not pinned.",
+  "$comment": "ATA chain CUSTODY at verification time — authority.walkChainStructure. A flattened AuthorityLink readout cannot express what the walk checks, so a consumer of one is trusting whoever produced it. The walk consumes presented AtaGrant VCs and refuses what no per-link readout can express: a spliced link (signed by a key that is not the parent's subject), a root issued by someone other than the declared principal, a leaf granted to anyone but the acceptance signer. It then applies the SAME delegation gates linkAttenuates enforces at issuance, plus lifecycle as-of the settlement instant (expiry windows; revocation from the hash-pinned status-list snapshot, never a live dereference). This corpus certifies the STRUCTURAL half — deterministic over presented documents; the cryptographic proof gate (does the proof verify over the grant AS PRESENTED?) is port-injected and proven in the authority package tests, exactly the acceptance split. Outcome discipline is verify's three-way rule: a chain that CONTRADICTS itself is refused (verification-failure); a missing or unwalkable input is not-attempted, never failed, never passed. A walked link states `revoked` ONLY where a status entry was consulted: a grant carrying no `credentialStatus` names no list, so the walk consulted nothing and states nothing, and verify.authorityStep reads that absence as the gap `no-revocation-stated`. It used to be stamped `false` — the PROVING value for a check that never ran, and the reason the walk-fed door could never reach a gap the hand-flattened one has reached since 2026-08-08. `active` does NOT follow it: an absent validity window is a complete statement (unbounded) that the walk EVALUATES, where revocation status is not in the document at all. Key order in `expected` mirrors the outcome objects as constructed; refusal `detail` prose is deliberately not pinned.",
   "cases": [
     {
       "name": "no chain supplied — a gap, never a proof",
@@ -1125,7 +1125,6 @@
             },
             "parentBounds": {},
             "parentDelegable": true,
-            "revoked": false,
             "active": true
           }
         ]
@@ -1172,7 +1171,6 @@
             },
             "parentBounds": {},
             "parentDelegable": true,
-            "revoked": false,
             "active": true
           }
         ]
@@ -1313,7 +1311,6 @@
             "parentBounds": {},
             "parentDelegable": true,
             "maxDepth": 2,
-            "revoked": false,
             "active": true
           },
           {
@@ -1339,7 +1336,6 @@
             "parentDelegable": true,
             "parentMaxDepth": 2,
             "maxDepth": 0,
-            "revoked": false,
             "active": true
           }
         ]
@@ -1450,7 +1446,6 @@
             "parentBounds": {},
             "parentDelegable": true,
             "maxDepth": 2,
-            "revoked": false,
             "active": true
           },
           {
@@ -1473,7 +1468,6 @@
             "parentDelegable": true,
             "parentMaxDepth": 2,
             "maxDepth": 1,
-            "revoked": false,
             "active": true
           },
           {
@@ -1499,7 +1493,6 @@
             "parentDelegable": true,
             "parentMaxDepth": 1,
             "maxDepth": 0,
-            "revoked": false,
             "active": true
           }
         ]

@@ -155,24 +155,49 @@ describe("createCantonAdapter", () => {
     expect(r).toEqual({ ok: true, value: ATR });
   });
 
-  it("recover refuses (verification-failure) when the contract is absent", async () => {
+  /**
+   * ⛔⛔ **TWO DIFFERENT FACTS CAME BACK AS ONE REFUSAL.** `contract === null ? null : readAnchorAtrHash(…)`
+   * collapsed "the participant has no such contract" into "the contract is there and carries no atrHash",
+   * and both answered `canton/no-lcp-anchor`. One says the reference points at nothing this participant
+   * can see — a wrong contract id, an archived anchor, a party without visibility — and the other is a
+   * verdict about a contract that exists: it is not an LCP anchor. A caller acts differently on each.
+   *
+   * ⭐ The sibling rail already split them (`canton/no-such-update` vs `canton/no-lcp-memo`), as does
+   * every other rail in the tree. Two adapters over one ledger disagreeing about how many answers a
+   * failed read has is exactly the drift this closes.
+   */
+  it("⛔ recover refuses an ABSENT contract as no-such-contract", async () => {
     const r = await adapter.recover({ contractId: "missing" }, reader({}));
     expect(r).toMatchObject({
       refused: true,
       haltClass: "verification-failure",
-      code: "canton/no-lcp-anchor",
-      detail: expect.stringContaining(
-        "no active LcpAnchor carrying an atrHash",
-      ),
+      code: "canton/no-such-contract",
+      detail: expect.stringContaining("no active contract at contractId"),
     });
   });
 
-  it("recover refuses when the contract carries no well-formed atrHash", async () => {
+  it("⛔ and a PRESENT contract with no atrHash as no-lcp-anchor — a different fact", async () => {
     const r = await adapter.recover(
       { contractId: "c1" },
       reader({ c1: contract("c1", "garbage") }),
     );
-    expect(r).toMatchObject({ refused: true, code: "canton/no-lcp-anchor" });
+    expect(r).toMatchObject({
+      refused: true,
+      haltClass: "verification-failure",
+      code: "canton/no-lcp-anchor",
+      detail: expect.stringContaining("it exists and it is not an LCP anchor"),
+    });
+  });
+
+  it("⛔ so the two codes are DIFFERENT — the assertion the collapse would fail", async () => {
+    const absent = await adapter.recover({ contractId: "missing" }, reader({}));
+    const present = await adapter.recover(
+      { contractId: "c1" },
+      reader({ c1: contract("c1", "garbage") }),
+    );
+    expect("refused" in absent && absent.code).not.toBe(
+      "refused" in present && present.code,
+    );
   });
 
   it("observe reports the anchored transition", async () => {
@@ -187,26 +212,28 @@ describe("createCantonAdapter", () => {
   });
 
   it.each([
-    ["the contract is absent", {}, "missing"],
+    ["the contract is absent", {}, "missing", "canton/no-such-contract"],
     [
       "the contract carries no atrHash",
       { c1: contract("c1", "garbage") },
       "c1",
+      "canton/no-lcp-anchor",
     ],
   ])(
     "observe PROPAGATES the refusal when %s — it never reports an anchor that is not there",
-    async (_why, byId, contractId) => {
+    async (_why, byId, contractId, code) => {
       const o = await adapter.observe(
         { contractId },
         reader(byId as Record<string, LcpAnchorContract>),
       );
       // Passing the refusal through is the whole guard: without it observe answers
       // `{state: "anchored", atrHash: undefined}` — a settled-looking transition for a
-      // contract the participant does not hold.
+      // contract the participant does not hold. And the CODE travels with it, so observe cannot
+      // flatten the two readings recover keeps apart.
       expect(o).toMatchObject({
         refused: true,
         haltClass: "verification-failure",
-        code: "canton/no-lcp-anchor",
+        code,
       });
     },
   );

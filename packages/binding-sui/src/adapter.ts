@@ -233,10 +233,20 @@ export function createSuiAdapter(manifest: BindingManifest): SuiAdapter {
       const out: SuiSettlementRef[] = [];
       for (const v of views) {
         if (v.type !== eventType || v.paymentId === undefined) continue;
-        if (v.digest === undefined) continue;
         const atr = decodeAtrPaymentId(v.paymentId);
-        if (atr !== null && atrHashEquals(atr, atrHash))
-          out.push({ digest: v.digest, packageId });
+        if (atr === null || !atrHashEquals(atr, atrHash)) continue;
+        // ⛔ A MATCH THIS SCAN CANNOT NAME IS NOT A NON-MATCH. A digest-less view used to `continue` here,
+        // which put "the reader could not tell us which transaction this was" and "no settlement bears
+        // this atrHash" into the same empty array — the exact confusion `enumerate`'s own fail-fast on a
+        // malformed atrHash exists to prevent one line above. The test is deliberately AFTER the atrHash
+        // comparison: a digest-less event that is not ours is none of this scan's business, and throwing
+        // on one would let an unrelated co-located settlement abort a search that had already succeeded.
+        if (v.digest === undefined)
+          throw new Error(
+            `enumerate: a ${eventType} event carrying atrHash ${atrHash} arrived with no transaction ` +
+              `digest, so the settlement it proves cannot be referenced`,
+          );
+        out.push({ digest: v.digest, packageId });
       }
       return out;
     },

@@ -59,7 +59,17 @@ export interface TempoSettlementRef {
   readonly logIndex?: number;
 }
 
-/** The block window an enumeration covers — the half a caller chooses. */
+/**
+ * The block window an enumeration covers — the half a caller chooses.
+ *
+ * ⭐ **THIS RAIL'S SCAN BOUND IS THE WINDOW, AND IT CANNOT TRUNCATE IN SILENCE.** There is no `limit` on
+ * this rail's `enumerate` and there is deliberately no default window: both ends are REQUIRED, so "the
+ * caller asked for everything" is a range the caller wrote down. That is what keeps it honest end to end —
+ * `eth_getLogs` answers a range it will not serve with an ERROR (a result cap, a block-span cap) rather
+ * than a short list, so a node's own bound arrives as a throw out of the reader port and never as a
+ * settlement quietly missing from the answer. Rails whose endpoint pages instead (Hedera's Mirror Node,
+ * Cardano's label indexers) have to state a depth precisely because they have no equivalent of this.
+ */
 export interface TempoBlockRange {
   readonly fromBlock: string | number;
   readonly toBlock: string | number;
@@ -141,8 +151,19 @@ export function settlementRefOf(log: TempoLogView): TempoSettlementRef {
     throw new Error(
       "settlementRefOf: the log carries no transactionHash — a log cannot be attributed to a settlement without one",
     );
-  const logIndex = quantityToNumber(log.logIndex);
-  return logIndex === null ? { txHash } : { txHash, logIndex };
+  const raw = log.logIndex;
+  // ⛔ ABSENT and MALFORMED are two different facts and this used to make them one. `quantityToNumber`
+  // answered `null` for both, so a `logIndex` the transport had mangled produced a ref with no logIndex —
+  // an unpinned ref, quietly less precise than the log it came from. Absence is legitimate (a caller may
+  // hand over a log it read without one); a present value that is not a JSON-RPC quantity is a broken
+  // transport, and this is the same argument the `transactionHash` throw above already makes.
+  if (raw === undefined) return { txHash };
+  const logIndex = quantityToNumber(raw);
+  if (logIndex === null)
+    throw new Error(
+      `settlementRefOf: logIndex ${JSON.stringify(raw)} is not a JSON-RPC quantity — a 0x-prefixed hex string or an integer. An unprefixed decimal is the trap: it used to be parsed in base 16, so "16" became 22 and the ref pinned the wrong log of the right transaction`,
+    );
+  return { txHash, logIndex };
 }
 
 /**
