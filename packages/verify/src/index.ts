@@ -74,7 +74,11 @@ export {
   type VerificationStep,
   type VerifyDepth,
 } from "./report.js";
+// `computeSupportedClass` computes the report's `supportedClass` — the FINDING half of every report — and
+// was reachable from no consumer. A reader who wants to recompute the finding over a foreign
+// implementation's steps, or over a set of their own, could name `computeVerified` and not this one.
 export {
+  computeSupportedClass,
   computeVerified,
   REQUIRED_STEPS,
   type StepName,
@@ -281,6 +285,10 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
     assurance: input.identity?.buyer?.assurance ?? "no-assurance-stated",
     claimedClass: claimed,
     supportedClass: computeSupportedClass(stepsForVerified),
+    // The effective depth, echoed for the same reason `claimedClass` is: `verified` is false at
+    // structural depth by construction, so without this the report cannot say whether a `false` is an
+    // impeachment or an unraised summary — and the two serialized to identical bytes.
+    depth,
     asOf: input.asOf,
     steps,
     coverage: input.coverage,

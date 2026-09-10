@@ -7,6 +7,7 @@
         "assurance": "L2",
         "claimedClass": "TC-2",
         "supportedClass": "TC-2",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
           {
@@ -46,6 +47,7 @@
         "assurance": "L2",
         "claimedClass": "TC-2",
         "supportedClass": "TC-1",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
           {
@@ -74,6 +76,7 @@
         "assurance": "L2",
         "claimedClass": "TC-2",
         "supportedClass": "TC-2",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
           {
@@ -109,6 +112,7 @@
         "assurance": "L2",
         "claimedClass": "TC-2",
         "supportedClass": "TC-2",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [],
         "coverage": {
@@ -128,6 +132,7 @@
       "input": {
         "assurance": "L2",
         "supportedClass": "TC-2",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [],
         "coverage": {
@@ -143,12 +148,53 @@
       "expected": false
     },
     {
+      "name": "missing depth",
+      "$comment": "`verified` is false at STRUCTURAL depth by construction, so a report that states the summary without the depth it was computed at cannot be read: a stranger cannot tell an impeachment from an unraised one, and two walks over the same inputs at the two depths serialize to identical bytes. Required for the same reason claimedClass is — a report carrying only the finding cannot say what the finding was measured against.",
+      "input": {
+        "verified": true,
+        "assurance": "L2",
+        "claimedClass": "TC-2",
+        "supportedClass": "TC-2",
+        "asOf": "2026-07-16T00:00:00Z",
+        "steps": [
+          {
+            "name": "atr-hash",
+            "outcome": {
+              "status": "proved"
+            }
+          },
+          {
+            "name": "buyer-acceptance",
+            "outcome": {
+              "status": "not-attempted",
+              "depth": "no-buyer-port"
+            }
+          }
+        ],
+        "coverage": {
+          "ports": ["evm"],
+          "bindings": ["escrow"]
+        },
+        "settlements": {
+          "found": [
+            {
+              "chain": "base-sepolia",
+              "tx": "0xabc"
+            }
+          ],
+          "multiplySettled": false
+        }
+      },
+      "expected": false
+    },
+    {
       "name": "failed step missing haltClass",
       "input": {
         "verified": false,
         "assurance": "L2",
         "claimedClass": "TC-1",
         "supportedClass": "TC-1",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [
           {
@@ -176,6 +222,7 @@
         "assurance": "L2",
         "claimedClass": "TC-2",
         "supportedClass": "TC-2",
+        "depth": "structural",
         "asOf": "2026-07-16T00:00:00Z",
         "steps": [],
         "coverage": {
@@ -193,6 +240,7 @@
         "assurance": "attested",
         "claimedClass": "TC-3",
         "supportedClass": "TC-3",
+        "depth": "structural",
         "asOf": "2026-07-01T12:00:00Z",
         "steps": [
           {

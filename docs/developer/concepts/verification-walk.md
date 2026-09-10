@@ -140,6 +140,12 @@ The claim is still reported, as `claimedClass`, because `verified` answers *"did
 it claimed?"* and cannot be read without it. Comparing the two is the useful act: where they agree the
 record met its own shape, and where they differ it did not.
 
+The **depth** is reported for the same reason, and it is the field that makes a `false` readable at all. A
+`verified: false` may mean impeached or merely not-attempted-mechanically, and step outcomes are
+depth-agnostic — so until the report stated its own depth, a structural walk and a mechanical one over the
+same inputs serialized to **identical bytes**, and a stranger holding the artifact instead of re-running the
+walk could not tell which had produced it. `report.schema.json` requires it.
+
 Note what `depth` does and does not touch. Step outcomes are depth-agnostic — they depend on the inputs
 supplied, not on the depth — so `depth` governs `verified` alone. That is also why a `not-attempted` rung
 never lowers the class *dishonestly*: it lowers it because nothing proved, and the step's own reason says
