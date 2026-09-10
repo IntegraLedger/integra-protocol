@@ -19,6 +19,7 @@ export {
   verifyAnchorAtrHash,
 } from "./anchor.js";
 export {
+  CANTON_COLLECTION_PATH,
   type CantonNetwork,
   type CantonNetworkConfig,
   getCantonConfig,

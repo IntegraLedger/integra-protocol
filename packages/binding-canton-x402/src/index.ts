@@ -9,6 +9,7 @@ export {
   makeCantonX402Reader,
 } from "./adapter.js";
 export {
+  CANTON_X402_COLLECTION_PATH,
   CANTON_X402_MEMO_KEY,
   CANTON_X402_MEMO_MAX_BYTES,
   type CantonX402Network,

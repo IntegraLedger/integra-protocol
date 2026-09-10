@@ -10,6 +10,7 @@ export {
 } from "./adapter.js";
 export {
   getHederaConfig,
+  HEDERA_COLLECTION_PATH,
   HEDERA_MEMO_MAX_BYTES,
   HEDERA_USDC_DECIMALS,
   type HederaNetwork,
