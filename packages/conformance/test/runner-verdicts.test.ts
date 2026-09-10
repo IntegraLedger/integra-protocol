@@ -166,15 +166,20 @@ describe("the phase ladder", () => {
 });
 
 describe("CliSubject", () => {
-  it("rejects when the executable cannot be spawned, rather than hanging on it", async () => {
+  it("rejects with the SPAWN failure when the executable cannot be spawned", async () => {
     // Without the 'error' listener this promise never settles, and the corpus run hangs forever with
     // no output — the worst failure mode for a gate that other implementations depend on.
+    //
+    // The message is asserted, not merely that it rejects. Node emits 'close' after a failed spawn too,
+    // so a listener that settled nothing would still reject — from `JSON.parse("")`, blaming the subject
+    // for writing bad JSON when it was never started. A bare `.rejects.toThrow()` cannot tell the two
+    // apart, and the wrong one sends a foreign implementer looking at their output format.
     await expect(
       new CliSubject("integra-no-such-executable-exists").handle({
         class: "echo",
         input: {},
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/ENOENT|spawn/);
   });
 
   it("rejects when the subject writes something that is not JSON", async () => {
