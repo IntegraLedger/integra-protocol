@@ -203,6 +203,32 @@ describe("settlementRefOf", () => {
     };
     expect(() => settlementRefOf(noTx)).toThrow(/transactionHash/);
   });
+
+  /**
+   * ⛔⛔ **AN ABSENT `logIndex` AND A MANGLED ONE USED TO BE THE SAME ANSWER.** `quantityToNumber` returned
+   * `null` for both, so a decimal `"16"` — which the old body read as 22 — and a `logIndex` the transport
+   * had corrupted BOTH produced a ref with no logIndex. Absence is a legitimate state a log may be in; a
+   * present value that is not a JSON-RPC quantity is a broken transport, and this function already throws
+   * over exactly that for `transactionHash`.
+   */
+  it("⛔⛔ THROWS on a logIndex that is not a JSON-RPC quantity, rather than dropping it", () => {
+    const full = memoLog({});
+    const decimal: TempoLogView = { ...full, logIndex: "16" };
+    expect(() => settlementRefOf(decimal)).toThrow(/not a JSON-RPC quantity/);
+  });
+
+  it("⛔ and the message names the trap, because 22 is a plausible answer", () => {
+    const full = memoLog({});
+    expect(() => settlementRefOf({ ...full, logIndex: "16" })).toThrow(/22/);
+  });
+
+  it("⭐ a hex logIndex reads as hex — the fix does not change a well-formed value", () => {
+    const full = memoLog({});
+    expect(settlementRefOf({ ...full, logIndex: "0x16" })).toEqual({
+      txHash: MAINNET_TX_HASH,
+      logIndex: 22,
+    });
+  });
 });
 
 describe("tempoMemoLogFilter", () => {

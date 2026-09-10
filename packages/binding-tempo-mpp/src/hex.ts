@@ -41,12 +41,38 @@ export function uint256FromData(data: string): bigint | null {
   return BigInt(`0x${word}`);
 }
 
-/** A JSON-RPC quantity (`"0x3"`) or plain number as a number; `null` when absent or malformed. */
-export function quantityToNumber(
-  value: string | number | undefined,
-): number | null {
-  if (value === undefined) return null;
+/**
+ * A JSON-RPC quantity (`"0x3"`) or plain integer as a number; `null` when the value is not one.
+ *
+ * ⛔⛔ **IT READ A DECIMAL STRING AS HEX, AND `"16"` CAME BACK AS 22.** The body was
+ * `Number.parseInt(stripHexPrefix(value), 16)`, and stripping a prefix that is not there leaves the
+ * string exactly as it was — so every unprefixed decimal was parsed in base 16 and silently became a
+ * DIFFERENT NUMBER. `settlementRefOf` is the caller, so the wrong number became a `logIndex`: the ref
+ * pinned log 22 of a transaction whose weld sat at log 16, and `recover` on that ref then answers about
+ * another leg of the settlement or refuses `log-index-not-found` for a settlement that welded correctly.
+ *
+ * ⛔ The prefix is REQUIRED because that is what a JSON-RPC quantity IS (EIP-1474: `0x`-prefixed hex), and
+ * because no reading of a bare `"16"` is safe — as hex it is 22 and as decimal it is 16, and nothing in
+ * the value says which was meant. Refusing is the only answer that is not a guess.
+ *
+ * ⛔ And the pattern is anchored rather than left to `parseInt`, which stops at the first character it
+ * cannot use: `parseInt("1g", 16)` is `1`, so a truncated or corrupted quantity used to come back as a
+ * plausible smaller number instead of as nothing. That is the same silent-truncation failure {@link toWord}
+ * throws over, one type down.
+ *
+ * ⭐ `undefined` is NOT accepted here, and that is the point rather than tidiness: this function used to
+ * answer `null` for a value that was absent and for one that was junk, which made the two indistinguishable
+ * to every caller. Absence is a legitimate state a log may be in; junk is a broken transport. The caller
+ * separates them — see {@link "./log.js".settlementRefOf} — and it can only do that if the two do not
+ * arrive here as one.
+ */
+export function quantityToNumber(value: string | number): number | null {
   if (typeof value === "number") return Number.isInteger(value) ? value : null;
-  const parsed = Number.parseInt(stripHexPrefix(value), 16);
-  return Number.isNaN(parsed) ? null : parsed;
+  if (!/^0x[0-9a-f]+$/i.test(value)) return null;
+  // `parseInt` with radix 16 strips an optional `0x` itself, so the prefix is left on rather than sliced:
+  // one fewer place for the two spellings of "where the digits start" to disagree.
+  const parsed = Number.parseInt(value, 16);
+  // A quantity past 2^53 does not survive a `number`: `parseInt` returns the nearest representable value
+  // and says nothing, which is the same silent-wrong-number failure this function exists to stop.
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }
