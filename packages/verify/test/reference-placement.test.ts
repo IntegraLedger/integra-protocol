@@ -137,12 +137,12 @@ describe("reference-placement is wired into verify()'s walk", () => {
         seller: {
           subject: "did:web:m.example",
           assurance: "domain-controlled",
-          chain: [{ via: "dns" }],
+          chain: [{ via: "domain-control" }],
         },
         buyer: {
           subject: "0xb15d",
           assurance: "wallet-signature-only",
-          chain: [{ via: "wallet" }],
+          chain: [{ via: "key" }],
         },
       },
       placement: {

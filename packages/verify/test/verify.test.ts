@@ -56,10 +56,10 @@ describe("verify — the two depths are distinguishable in the artifact", () => 
   // mechanical one over the SAME inputs serialized to identical bytes — and `verified: false` could not be
   // read as "impeached" or as "never attempted mechanically" by anyone holding only the artifact. Step
   // outcomes are deliberately depth-agnostic, so the step list could not recover it either.
-  const base = {
+  const base: VerifyInput = {
     asOf: "2026-07-16T00:00:00Z",
     coverage: { ports: [], bindings: [] },
-  } as const;
+  };
 
   it("the report states the depth it ran at, and the default is stated rather than left absent", async () => {
     expect((await verify({ ...base })).depth).toBe("structural");
