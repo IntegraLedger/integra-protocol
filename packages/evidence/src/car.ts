@@ -26,7 +26,9 @@ export const RAW_BLOCK_MAX_BYTES = 1_048_576;
 
 /** A CID or CAR fault, carrying a stable `code` (`car/truncated`, `car/cid-version`, `car/bad-root-index`,
  *  …). Compare the `code`, not the message. Every one of them means the bytes are malformed — a
- *  well-formed bundle whose content simply does not verify is reported as a result, not thrown. */
+ *  well-formed bundle whose content simply does not verify is reported as a result, not thrown.
+ *  `verifyBundle` turns every one of these into `fault: "malformed"`, which is the distinction they carry:
+ *  "these bytes are not a bundle", never "this bundle does not verify". */
 export class CidError extends Error {
   // Declared-and-assigned, not a `public readonly` constructor parameter: parameter properties are
   // TypeScript-only syntax that cannot be erased, and the workspace compiles under `erasableSyntaxOnly`.
@@ -141,6 +143,34 @@ function readVarint(
   return { value, next: i };
 }
 
+/**
+ * Refuse a declared span that does not fit the bytes actually available, naming what and where.
+ *
+ * ⛔ EVERY span in a CARv1 is a length the COUNTERPARTY wrote, and `Uint8Array.prototype.subarray` CLAMPS
+ * an out-of-range end instead of throwing. So a one-byte edit to a section's length prefix does not
+ * corrupt the parse — it walks the cursor over the section that follows, and `decodeCar` returns a SHORTER
+ * block list with no error at all. The bundle "parses", the caller reports success, and evidence that is
+ * in the file is not in the result: a wrong answer wearing a right answer's clothes, which is the worst
+ * shape a fault can take in a package whose whole job is to say what was retained. Measured 2026-09-10 on
+ * a real four-block bundle: ONE byte of a section's length prefix changed, the file the same 547 bytes
+ * long, four blocks in and TWO blocks out — no throw, no reason, two artifacts gone from the readout.
+ *
+ * The same clamp reads a TRUNCATED transfer as a short block, which then fails its own CID check — so an
+ * interrupted download was reported as tamper. Refusing the span says which of the two actually happened.
+ */
+function assertSpan(
+  what: string,
+  at: number,
+  end: number,
+  limit: number,
+): void {
+  if (end > limit)
+    throw new CidError(
+      "car/truncated",
+      `${what} at offset ${at} declares an end at ${end}, past the ${limit} bytes available — refusing rather than clamping`,
+    );
+}
+
 /** DAG-CBOR of `{roots:[cid], version:1}` — keys length-sorted (roots < version); CID as tag-42 with the
  *  0x00 identity-multibase prefix. Only the single-root evidence-bundle shape is encoded (fixed structure). */
 function encodeHeader(rootCidBytes: Uint8Array): number[] {
@@ -237,19 +267,43 @@ export interface DecodedCar {
   blocks: { cid: string; bytes: Uint8Array }[];
 }
 
-/** Read one raw-CIDv1 (`01 55 12 20 <32>`) from `bytes` at `at`; returns the CID + its byte span. */
+/**
+ * Read one raw-CIDv1 (`01 55 12 20 <32>`) from `bytes` at `at`; returns the CID + its byte span.
+ *
+ * ⚠️ All four fields are ENFORCED, not merely read past. `verifyBundle` recomputes each block's CID as a
+ * raw-sha256 CIDv1 and compares strings, so a block carrying any other codec or hash function could only
+ * ever come back as "does not hash to its content (tamper)" — an accusation of forgery against a bundle
+ * that is merely in a shape this decoder does not read. Refusing here says which of the two happened.
+ */
 function readCid(bytes: Uint8Array, at: number): { cid: CID; next: number } {
   const v = readVarint(bytes, at); // version
   if (v.value !== 1)
     throw new CidError("car/cid-version", "only CIDv1 blocks are supported");
   const codec = readVarint(bytes, v.next);
+  if (codec.value !== raw.code)
+    throw new CidError(
+      "car/cid-codec",
+      `block CID codec is 0x${codec.value.toString(16)}, not raw (0x55) — an evidence bundle carries raw leaves only`,
+    );
   const mhCode = readVarint(bytes, codec.next);
+  if (mhCode.value !== SHA256_CODE)
+    throw new CidError(
+      "car/cid-multihash",
+      `block CID multihash is 0x${mhCode.value.toString(16)}, not sha2-256 (0x12)`,
+    );
   const mhLen = readVarint(bytes, mhCode.next);
+  if (mhLen.value !== SHA256_DIGEST_BYTES)
+    throw new CidError(
+      "car/cid-digest-length",
+      `block CID declares a ${mhLen.value}-byte digest, not ${SHA256_DIGEST_BYTES}`,
+    );
   const digestEnd = mhLen.next + mhLen.value;
-  const digest = bytes.subarray(mhLen.next, digestEnd);
-  if (digest.length !== mhLen.value)
-    throw new CidError("car/truncated", "CID digest truncated");
-  const cid = CID.create(1, codec.value, createDigest(mhCode.value, digest));
+  assertSpan("block CID digest", mhLen.next, digestEnd, bytes.length);
+  const cid = CID.create(
+    1,
+    raw.code,
+    createDigest(SHA256_CODE, bytes.subarray(mhLen.next, digestEnd)),
+  );
   return { cid, next: digestEnd };
 }
 
@@ -257,14 +311,23 @@ function readCid(bytes: Uint8Array, at: number): { cid: CID; next: number } {
 export function decodeCar(car: Uint8Array): DecodedCar {
   const hlen = readVarint(car, 0);
   const headerEnd = hlen.next + hlen.value;
-  const header = car.subarray(hlen.next, headerEnd);
-  const roots = decodeHeaderRoots(header);
+  assertSpan("CARv1 header", 0, headerEnd, car.length);
+  const roots = decodeHeaderRoots(car.subarray(hlen.next, headerEnd));
   const blocks: { cid: string; bytes: Uint8Array }[] = [];
   let i = headerEnd;
   while (i < car.length) {
     const seclen = readVarint(car, i);
     const sectionEnd = seclen.next + seclen.value;
+    assertSpan(`block section ${blocks.length}`, i, sectionEnd, car.length);
     const { cid, next: dataStart } = readCid(car, seclen.next);
+    // The CID lives INSIDE the section it introduces. Where it does not, `subarray(dataStart, sectionEnd)`
+    // has start past end and answers an EMPTY block — a block present in the file, reported as no bytes.
+    assertSpan(
+      `block ${blocks.length}'s CID`,
+      seclen.next,
+      dataStart,
+      sectionEnd,
+    );
     blocks.push({
       cid: cid.toString(),
       bytes: car.subarray(dataStart, sectionEnd),
@@ -304,8 +367,16 @@ function decodeHeaderRoots(header: Uint8Array): string[] {
         "car/header",
         "CID byte string missing the identity multibase prefix",
       );
-    const cidBytes = header.subarray(i + 1, i + bslen);
-    roots.push(CID.decode(cidBytes).toString());
+    // The declared byte string must fit the header — `subarray` would clamp a long one and hand
+    // `CID.decode` a short buffer, which throws something that is not a CidError out of this codec.
+    assertSpan(`root ${n}'s CID byte string`, i, i + bslen, header.length);
+    let root: CID;
+    try {
+      root = CID.decode(header.subarray(i + 1, i + bslen));
+    } catch {
+      throw new CidError("car/header", `root ${n} is not a decodable CID`);
+    }
+    roots.push(root.toString());
     i += bslen;
   }
   return roots;
