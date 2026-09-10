@@ -250,7 +250,14 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
     });
   }
 
-  const found = input.settlements ?? [];
+  // AN ENUMERATION IS AN ARRAY, and only an array. `input.settlements ?? []` handed the slot through
+  // untouched, so `settlements: "none"` reached the report as `found: "none"` with `multiplySettled: true`
+  // — four characters read as four settlements — on the same slot `settlementStep` had just reported as
+  // `no-enumeration-port`. One report, two answers about one input. `{ length: 5 }` is the sharper case:
+  // a duck-typed object that answers the only question this line asked. Same screen and same reasoning as
+  // the step's (steps.ts), so the two cannot part company again; the report's `found` is also declared an
+  // array by `report.schema.json`, which a non-array quietly violated.
+  const found = Array.isArray(input.settlements) ? input.settlements : [];
   const depth = input.depth ?? "structural";
   const claimed = input.claimedClass ?? "TC-2";
   const stepsForVerified = steps.map((s) => ({
