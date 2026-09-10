@@ -32,7 +32,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * means an ACK record's terms reference is recoverable from the receipt alone.
  *
  * **`pattern` is `http-advisory` (§8.3.7) — and `sidecar-attestation` was the live alternative, not
- * `protocol-extension`.** LCP v1.38 §C.10 correctly observes that this carrier is unusual: because it sits
+ * `protocol-extension`.** LCP §C.10 correctly observes that this carrier is unusual: because it sits
  * inside a Verifiable Credential it is covered by the issuer's proof, bound to the issuer's assertion rather
  * than merely transported alongside it — a claim that holds of the payload the issuer signs and of nothing
  * else, which is why `place` REFUSES a document that already carries a `proof`. §C.10 states the coverage and
@@ -83,7 +83,7 @@ export const ACK_PLACEMENT: PlacementManifest = {
   container: { kind: "object-path" },
   field: "credentialSubject.metadata.legalContext",
   // ACK's own keys are camelCase throughout (`paymentRequestToken`, `policyRef`, `settlementReference`), so
-  // `legalContext` is the host protocol's house style, matches v1.38 §C.10's canonical example byte for byte,
+  // `legalContext` is the host protocol's house style, matches LCP §C.10's canonical example byte for byte,
   // and is what `place` writes. The snake_case spelling is DECLARED — not sniffed — because an implementer
   // arriving from ACP, whose schema is snake_case throughout, holds a real reference in it. A declared alias
   // is auditable where a "try snake_case too" heuristic is not.

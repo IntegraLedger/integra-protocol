@@ -13,8 +13,11 @@ npm install @integraledger/lcp-binding-solana
 | **Carrier** | SPL Memo instruction data |
 | **Surface** | `createSolanaAdapter` returning a rail-native adapter over a `SolanaReader` port — **not** [`@integraledger/lcp-binding-core`](../binding-core#readme)'s `WeldAdapter`, whose shape is EVM's |
 
-Installing this package installs **`@solana/web3.js`** — it is a direct dependency, and `makeSolanaReader`
-is the one place its types reach this API. You construct the `Connection`; nothing here submits anything.
+⭐ **This package installs NO chain SDK.** `propose` returns a plain `SolanaInstruction` — `programId`,
+`keys`, `data` — and `makeSolanaReader` takes a two-method `SolanaRpc` port over the shapes Solana's
+`jsonParsed` encoding actually sends. Wire it to whatever client you already run, in a few lines; nothing
+here submits anything. A binding that shipped an SDK would make every consumer run the version it chose,
+and would hand them its transitive tree along with it.
 
 ```ts
 import {
@@ -25,7 +28,7 @@ import {
 
 declare const atrHash: string;
 declare const signature: string;
-/** a @solana/web3.js `Connection` — `new Connection(getSolanaConfig("devnet").rpcUrl)` */
+/** your own RPC client, wired to the two-method port — see the package's devnet test for a worked one */
 declare const connection: Parameters<typeof makeSolanaReader>[0];
 
 const adapter = createSolanaAdapter(SOLANA_MANIFEST);

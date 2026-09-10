@@ -64,9 +64,16 @@ exactly this reason.
 
 ## The gates
 
+⚠️ **One of them needs a tool that is not a package.** `check:advisories` runs
+[`osv-scanner`](https://google.github.io/osv-scanner/) over `pnpm-lock.yaml`, and it **refuses rather than
+skips** when the binary is absent — a scanner that quietly does not run is a scanner that reports clean on
+the day it matters. Install it once (`brew install osv-scanner`, or a pinned release binary); CI installs
+v2.5.1 verified by checksum. Exemptions live in `osv-scanner.toml`, and every one carries a `reason` and an
+`ignoreUntil` — an exemption with no expiry is a suppression that outlives whoever understood it.
+
 ```bash
-pnpm verify          # check:versions → check:docblocks → check:live-rails → check:harness-proof → corpus-seal
-                     #   → audit → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
+pnpm verify          # check:versions → check:docblocks → check:declared-imports → check:weld-grade-keys → check:live-rails → check:harness-proof → corpus-seal
+                     #   → advisories → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 pnpm conformance            # the whole corpus, no --phase
 ```

@@ -1,5 +1,53 @@
 # @integraledger/lcp-binding-stellar
 
+## 0.18.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.18.0
+  - @integraledger/lcp-kernel@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.17.0
+  - @integraledger/lcp-kernel@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.1
+  - @integraledger/lcp-kernel@0.16.1
+
+## 0.16.0
+
+### Minor Changes
+
+- 4bf4eb3: A transaction Horizon does not have is no longer reported as a transaction with no muxed destination.
+  
+  `StellarReader.settlementView` returned `Promise<StellarSettlementView>` with no `null` in it, so a reader
+  asked about a hash Horizon has never seen had to invent a view — and the only view it could invent,
+  `{ muxedDestination: null }`, is exactly what a real transaction paying an unmuxed address looks like. All
+  four surfaces then refused `stellar/no-muxed-destination` about a transaction that does not exist: a claim
+  about a settlement, made where there was nothing to make a claim about. Four sibling rails — solana,
+  cardano, xrpl, hedera — carry a `no-such-transaction` reading for precisely this distinction and cite this
+  rail as the model for it.
+  
+  The port now returns `StellarSettlementView | null`, and `null` refuses `stellar/no-such-transaction`
+  across `verify`, `recover` and `observe`; `enumerate` skips it, as it skips a failed transaction, because a
+  scan reports what it found and never what it could not look at.
+  
+  **This changes published behaviour and the port's type.** A `StellarReader` implementation keeps
+  compiling — a narrower return type still satisfies the wider one — but a caller matching on
+  `stellar/no-muxed-destination` for an unknown hash now sees `stellar/no-such-transaction`.
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
@@ -125,7 +173,7 @@ package that disagreed with its own source. No version 0.10.0 exists on the regi
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

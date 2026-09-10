@@ -45,7 +45,11 @@ function makeMirrorReader(mirrorBaseUrl: string): HederaReader {
       const tx = body.transactions?.[0];
       if (tx === undefined) return null;
       return {
-        ...(tx.memo_base64 != null ? { memoBase64: tx.memo_base64 } : {}),
+        // The raw REST field, spelled as what it is. One memo field, one declared encoding — the reader
+        // cannot hand over a decoded memo and a raw one at the same time and leave the adapter to guess.
+        ...(tx.memo_base64 != null
+          ? { memo: { encoding: "base64" as const, value: tx.memo_base64 } }
+          : {}),
         ...(tx.result !== undefined ? { result: tx.result } : {}),
       };
     },

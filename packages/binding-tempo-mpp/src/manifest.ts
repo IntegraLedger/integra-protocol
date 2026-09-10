@@ -1,4 +1,8 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import {
+  TEMPO_TRANSFER_FROM_WITH_MEMO_PATH,
+  TEMPO_TRANSFER_WITH_MEMO_PATH,
+} from "./constants.js";
 
 /**
  * The Tempo TIP-20 memo binding manifest for MPP (LCP §8.3.1 Native Field).
@@ -61,8 +65,8 @@ export const TEMPO_MPP_MANIFEST: BindingManifest = {
     note: "final on confirmation (TIP-20 transferWithMemo) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
   weldGrades: {
-    "tip20-transferWithMemo": "signature",
-    "tip20-transferFromWithMemo": "tx",
+    [TEMPO_TRANSFER_WITH_MEMO_PATH]: "signature",
+    [TEMPO_TRANSFER_FROM_WITH_MEMO_PATH]: "tx",
   },
   lifecycleStates: ["proposed", "settled"],
 };

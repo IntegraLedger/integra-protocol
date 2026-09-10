@@ -122,6 +122,46 @@ describe("reference-placement is wired into verify()'s walk", () => {
     expect(report.verified).toBe(false);
   });
 
+  it("a CONFORMANT UCP merchant's terms link no longer impeaches the whole record", async () => {
+    // The measured end-to-end defect. UCP makes `links[]` REQUIRED on a checkout response and names
+    // `terms_of_service` as its recommended type, so a merchant that placed no LCP capability at all
+    // extracts through the declared discovery alias as `{type:"url", value:"https://…/terms"}` —
+    // `binding-core`'s own `requireIntegrity` answers `undefined` on that same hit. Compared as a
+    // fingerprint it never matched, so this step answered `failed` and drove an otherwise-sound record to
+    // TC-0: a record impeached because its counterparty is an ordinary UCP merchant.
+    const { atrBytes: _unretrieved, ...base } = BASE; // TC-1 rungs only; the ATR itself is beside the point
+    const report = await verify({
+      ...base,
+      settlements: [{ txHash: "0xa" }],
+      identity: {
+        seller: {
+          subject: "did:web:m.example",
+          assurance: "domain-controlled",
+          chain: [{ via: "domain-control" }],
+        },
+        buyer: {
+          subject: "0xb15d",
+          assurance: "wallet-signature-only",
+          chain: [{ via: "key" }],
+        },
+      },
+      placement: {
+        extracted: {
+          ref: { type: "url", value: "https://merchant.example/terms" },
+          termsUrl: { kind: "no-field-declared" },
+        },
+      },
+    });
+    expect(
+      report.steps.find((s) => s.name === "reference-placement")?.outcome,
+    ).toEqual({
+      status: "not-attempted",
+      depth: "reference-not-integrity-bearing",
+    });
+    // The rungs the record DID earn still stand: a gap never impeaches.
+    expect(report.supportedClass).toBe("TC-1");
+  });
+
   it("an absent placement appends NO step — reports stay byte-identical", async () => {
     const without = await verify({ ...BASE });
     expect(without.steps.some((s) => s.name === "reference-placement")).toBe(

@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { XRPL_INVOICE_ID_PATH, XRPL_TX_MEMO_PATH } from "./constants.js";
 
 /**
  * The XRPL `InvoiceID` binding manifest.
@@ -56,6 +57,9 @@ export const XRPL_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on validation (tesSUCCESS) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "invoice-id": "signature", "tx-memo": "signature" }, // tx-memo is the read-only legacy carrier
+  weldGrades: {
+    [XRPL_INVOICE_ID_PATH]: "signature",
+    [XRPL_TX_MEMO_PATH]: "signature",
+  }, // tx-memo is the read-only legacy carrier
   lifecycleStates: ["proposed", "settled"],
 };

@@ -113,3 +113,31 @@ export function requireTip20Token(token: string, context: string): string {
     );
   return token.toLowerCase();
 }
+
+/**
+ * ⛔⛔ THE COLLECTION PATH THIS RAIL'S `weldGrades` IS KEYED BY — exported so a consumer looks the grade up
+ * with the SAME token this manifest declares it under.
+ *
+ * `binding-evm-x402` shipped `0.15.1` with `weldGrades` keyed `ERC3009` — the escrow sibling's COLLECTOR
+ * name — while the value a consumer computes from an x402 offer is `eip3009`. The map and the lookup key
+ * disagreed inside one published package, so `weldGrades[assetTransferMethod]` answered `undefined`: the
+ * grade absent rather than wrong, which reads as a rail declaring no weld grade at all. Nothing caught it —
+ * the profile schema constrains weldGrades VALUES (`signature` | `tx`) and says nothing about keys.
+ *
+ * ⇒ The key is a constant, not a literal, on every rail. `check:weld-grade-keys` holds it.
+ */
+export const TEMPO_TRANSFER_WITH_MEMO_PATH = "tip20-transferWithMemo";
+
+/**
+ * ⛔⛔ THE COLLECTION PATH THIS RAIL'S `weldGrades` IS KEYED BY — exported so a consumer looks the grade up
+ * with the SAME token this manifest declares it under.
+ *
+ * `binding-evm-x402` shipped `0.15.1` with `weldGrades` keyed `ERC3009` — the escrow sibling's COLLECTOR
+ * name — while the value a consumer computes from an x402 offer is `eip3009`. The map and the lookup key
+ * disagreed inside one published package, so `weldGrades[assetTransferMethod]` answered `undefined`: the
+ * grade absent rather than wrong, which reads as a rail declaring no weld grade at all. Nothing caught it —
+ * the profile schema constrains weldGrades VALUES (`signature` | `tx`) and says nothing about keys.
+ *
+ * ⇒ The key is a constant, not a literal, on every rail. `check:weld-grade-keys` holds it.
+ */
+export const TEMPO_TRANSFER_FROM_WITH_MEMO_PATH = "tip20-transferFromWithMemo";

@@ -93,7 +93,7 @@ describe("MPP's attribution memo is not a terms reference", () => {
   // keccak256("mpp")[0..3] = 0xef1ed712 then VERSION(1) = 0x01. That is byte-for-byte the shape of an
   // atrHash, so an undiscriminated decoder reads MPP's server-and-challenge fingerprint as a terms
   // reference — and `enumerate`'s Mirror Node scan then returns every MPP charge on the account as an LCP
-  // settlement the seller never made. LCP v1.38 §C.1 states it as a MUST. binding-tempo-mpp has guarded
+  // settlement the seller never made. LCP §C.1 states it as a MUST. binding-tempo-mpp has guarded
   // the same collision since 2026-07-30 on empirical grounds; on Hedera it is normative.
   const ATTRIBUTION = `0xef1ed71201${"00".repeat(27)}`;
 

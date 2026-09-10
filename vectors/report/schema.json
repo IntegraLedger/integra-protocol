@@ -10,6 +10,7 @@
     "claimedClass",
     "supportedClass",
     "steps",
+    "depth",
     "asOf",
     "coverage",
     "settlements"
@@ -27,6 +28,10 @@
     "supportedClass": {
       "type": "string",
       "description": "the class the walk reached (TC-0..TC-4) — the highest whose every required step is proved, TC-0 if any step failed; a finding computed from the steps alone, neither capped nor lifted by `claimedClass`"
+    },
+    "depth": {
+      "type": "string",
+      "description": "the depth the walk ran at (structural | mechanical) — REQUIRED, because `verified` is false at structural depth by construction and a report carrying only the summary cannot say whether a false is an impeachment or an unraised one; without it a structural report and a mechanical one over the same inputs serialize to identical bytes"
     },
     "asOf": {
       "type": "string",

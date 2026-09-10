@@ -112,7 +112,7 @@ describe("Mastercard VI placement — manifest matches the tree", () => {
   it("declares NO writeCondition — there is no write for one to gate", () => {
     // It carried one until 2026-08-08, permitting the two OPEN mandates. That was the correct reading of
     // where a constraint could sit, and `binding-core` acted on it — place() gates on writeCondition alone
-    // and never reads `tier`, so `tier: "B"` was a label rather than a gate. LCP v1.38 §C.7 withdrew the
+    // and never reads `tier`, so `tier: "B"` was a label rather than a gate. LCP §C.7 withdrew the
     // write entirely, which leaves a writeCondition inert: a reader meeting one would infer the placement
     // writes under some condition, and it never writes at all.
     expect(mastercardViManifest(OURS).writeCondition).toBeUndefined();

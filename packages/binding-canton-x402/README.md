@@ -93,7 +93,9 @@ carrier is used. No private key is needed; a party's cooperation is.
 
 **Not forward-indexable.** A participant's update stream is one participant's view, not a chain-global
 index, and the memo is a metadata value rather than an indexed key. `enumerate` scans one party's visible
-transfers and says so.
+transfers and says so — and its `limit` is required, because the scan depth is a bound somebody has to
+choose and this package does not even guess the endpoint PATH it reads from. Left optional it was
+forwarded verbatim, so the deployment's own default governed and a settlement past it came back as `[]`.
 
 **Scoped to x402.** The manifest declares `protocol: "x402"` because the field, its 256-byte ceiling and
 its enforcement are all x402's. A Canton Coin payment settled outside x402 does not get this carrier — and

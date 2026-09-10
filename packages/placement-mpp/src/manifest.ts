@@ -17,7 +17,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * challenge `id` to the challenge parameters is a server MUST in the `id` field description (core §5.1.1,
  * "Servers MUST bind this value to the …") — **and a SHOULD in the section devoted to it** (§5.1.2.1,
  * "Servers SHOULD bind the challenge id to the challenge parameters"). The host is internally inconsistent
- * here, verified at paymentauth.org 2026-08-08, and LCP v1.38 §C.1 names the same split rather than
+ * here, verified at paymentauth.org 2026-08-08, and LCP §C.1 names the same split rather than
  * resolving it. This package's tamper-evidence claim rests on the MUST, so the SHOULD is recorded beside
  * it: against a server that took the weaker reading, the guarantee below is weaker too. The seven-slot
  * canonicalization
@@ -61,7 +61,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * **Tier B — the outer challenge parameter.** A custom parameter on the outer `WWW-Authenticate: Payment`
  * challenge is permitted today by the extension policy (§9.3: unknown parameters MUST be ignored by
  * clients) — and note the same section requires lowercase names, so it would have to spell `legalcontext`,
- * not `legalContext`. LCP v1.38 §C.1 now writes `legalcontext` and states the MUST itself
+ * not `legalContext`. LCP §C.1 now writes `legalcontext` and states the MUST itself
  * ("custom parameter names MUST be lowercase"), adopting what this comment recorded as drift owed back to
  * the spec. Bringing it under the binding requires
  * extending the seven-slot canonicalization input, which is a coordinated change to the core draft. An outer
@@ -73,7 +73,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * is capped at exactly one — which is also why **no discovery alias can be declared here.** A url-typed
  * `readAlso` would need a second permitted carrier type, and the cap forbids it. That is the right answer
  * rather than a limitation: `termsUrlFields` declares where the terms URL lives, labelled as the different
- * datum it is, and a located document cannot stand in for an attested one (LCP v1.38 §C.2).
+ * datum it is, and a located document cannot stand in for an attested one (LCP §C.2).
  *
  * `termsUrlFields` (plural, one entry): MPP's wire carries exactly one terms-URL slot, unlike x402's two.
  * The kit writes it beside the hash and REQUIRES it of every advertisement here — `carrierTypes` is

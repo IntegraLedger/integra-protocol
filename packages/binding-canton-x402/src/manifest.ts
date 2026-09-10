@@ -1,5 +1,8 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
-import { CANTON_X402_MEMO_KEY } from "./constants.js";
+import {
+  CANTON_X402_COLLECTION_PATH,
+  CANTON_X402_MEMO_KEY,
+} from "./constants.js";
 
 /**
  * The Canton transfer-memo binding manifest.
@@ -77,6 +80,6 @@ export const CANTON_X402_MANIFEST: BindingManifest = {
     reversible: false,
     note: "a Canton transfer consumes the input holdings it names and Canton has no reversal, so an executed transfer's memo is permanent; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "x402-memo": "tx" },
+  weldGrades: { [CANTON_X402_COLLECTION_PATH]: "tx" },
   lifecycleStates: ["proposed", "settled"],
 };

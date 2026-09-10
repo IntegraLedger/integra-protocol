@@ -10,9 +10,9 @@
  * paths — the ordinary way a real record arrives short of proof.
  */
 import type {
-  ChainWalkResult,
   SignatureVerifier,
   SignedAcceptance,
+  VerifiedChainWalkResult,
 } from "@integraledger/lcp-authority";
 import { hashAtr } from "@integraledger/lcp-kernel";
 import { describe, expect, it } from "vitest";
@@ -290,13 +290,13 @@ describe("authorityStep — each ATA-3 gate reports its own contradiction", () =
 });
 
 describe("authorityStepFromWalk — the walk's readout, not a caller's flattening", () => {
-  // `ChainWalkResult` is the INPUT type here, so these are inputs rather than stand-ins for the walk. The
-  // real walk → step round-trip is pinned in `packages/conformance/test/walk-readout.test.ts`, which is
-  // the one package importing both sides and running the corpus vectors through them.
+  // `VerifiedChainWalkResult` is the INPUT type here, so these are inputs rather than stand-ins for the
+  // walk. The real walk → step round-trip is pinned in `packages/conformance/test/walk-readout.test.ts`,
+  // which is the one package importing both sides and running the corpus vectors through them.
   it("maps a REFUSED walk to a failure, carrying the walk's own halt class", () => {
     // A refusal is a reasoned contradiction — the chain was spliced, or widened, or revoked — so it
     // impeaches, exactly as the flattened step's own contradiction arms do.
-    const refused: ChainWalkResult = {
+    const refused: VerifiedChainWalkResult = {
       status: "refused",
       haltClass: "verification-failure",
       code: "walk/spliced-link",
@@ -322,9 +322,9 @@ describe("authorityStepFromWalk — the walk's readout, not a caller's flattenin
     }
   });
 
-  it("re-proves a WALKED readout through the flattened step", () => {
-    const walked: ChainWalkResult = {
-      status: "walked",
+  it("re-proves a VERIFIED readout through the flattened step", () => {
+    const verified: VerifiedChainWalkResult = {
+      status: "verified",
       links: [
         {
           parentDelegable: true,
@@ -337,15 +337,15 @@ describe("authorityStepFromWalk — the walk's readout, not a caller's flattenin
         },
       ],
     };
-    expect(authorityStepFromWalk(walked)).toEqual({ status: "proved" });
+    expect(authorityStepFromWalk(verified)).toEqual({ status: "proved" });
   });
 
-  it("does NOT rubber-stamp a walked readout — the step still gates it", () => {
+  it("does NOT rubber-stamp a verified readout — the step still gates it", () => {
     // Re-proving is the point of the composition: if `walked` short-circuited to `proved`, the custody
     // walk and the verification step could drift apart without any test noticing. A readout whose link
     // widens its parent must still fail, even though the walk handed it over.
-    const widening: ChainWalkResult = {
-      status: "walked",
+    const widening: VerifiedChainWalkResult = {
+      status: "verified",
       links: [
         {
           parentDelegable: true,
@@ -370,12 +370,16 @@ describe("authorityStepFromWalk — the walk's readout, not a caller's flattenin
       status: "not-attempted",
       depth: "no-authority-walk",
     });
-    expect(authorityStepFromWalk(42 as unknown as ChainWalkResult)).toEqual({
+    expect(
+      authorityStepFromWalk(42 as unknown as VerifiedChainWalkResult),
+    ).toEqual({
       status: "not-attempted",
       depth: "no-authority-walk",
     });
     expect(
-      authorityStepFromWalk({ status: "wat" } as unknown as ChainWalkResult),
+      authorityStepFromWalk({
+        status: "wat",
+      } as unknown as VerifiedChainWalkResult),
     ).toEqual({ status: "not-attempted", depth: "no-authority-chain" });
   });
 });
@@ -444,7 +448,7 @@ describe("verify — the walk reaches the report, refusals and all", () => {
     expect(report.supportedClass).toBe("TC-0");
   });
 
-  it("a WALKED chain proves, and agrees with the hand-flattened path on the same links", async () => {
+  it("a VERIFIED chain proves, and agrees with the hand-flattened path on the same links", async () => {
     const links = [
       {
         bounds: {},
@@ -456,7 +460,7 @@ describe("verify — the walk reaches the report, refusals and all", () => {
     ];
     const viaWalk = await verify({
       ...base,
-      authorityWalk: { status: "walked", links },
+      authorityWalk: { status: "verified", links },
     });
     const viaChain = await verify({ ...base, authorityChain: links });
     expect(authority(viaWalk)).toEqual({ status: "proved" });

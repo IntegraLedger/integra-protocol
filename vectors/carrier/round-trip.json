@@ -392,7 +392,7 @@
     },
     {
       "name": "sha256-uppercase/encode-string EMITS lowercase (§2.5 RECOMMENDED)",
-      "$comment": "LCP v0.1.38 §2.5 gained a RECOMMENDED that an atrHash is EMITTED lowercase. Emission only: the read side returns a received value verbatim, which vectors/placement/visa-tap.json pins as its own case. A caller holding an uppercase-digit spelling of a hash gets one wire form out of this encoder.",
+      "$comment": "LCP §2.5 gained a RECOMMENDED that an atrHash is EMITTED lowercase. Emission only: the read side returns a received value verbatim, which vectors/placement/visa-tap.json pins as its own case. A caller holding an uppercase-digit spelling of a hash gets one wire form out of this encoder.",
       "input": {
         "op": "encodeString",
         "arg": {

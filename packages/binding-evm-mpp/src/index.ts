@@ -15,4 +15,4 @@ export {
   type MppEvmChallengeBinding,
   notRecoverableByConstruction,
 } from "./id-reuse.js";
-export { MPP_EVM_MANIFEST } from "./manifest.js";
+export { MPP_COLLECTION_PATH, MPP_EVM_MANIFEST } from "./manifest.js";

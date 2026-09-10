@@ -83,8 +83,8 @@ Read against the host protocol's own live specifications, not LCP's Appendix C.
 
 **Two drifts found, recorded rather than smoothed over.**
 
-- **The core draft's identifier.** (Discharged: v1.38 §C.1 now records both identities and cites
-  `draft-httpauth-payment-00` as the family's own publication.) LCP v1.37 §C.1 cited
+- **The core draft's identifier.** (Discharged: LCP §C.1 now records both identities and cites
+  `draft-httpauth-payment-00` as the family's own publication.) LCP §C.1 cited
   `draft-ryan-httpauth-payment-01` (the IETF individual submission). paymentauth.org's own document index
   publishes the core scheme as **`draft-httpauth-payment-00.html`**. Both were read for this gate; they agree
   on §5.1.1 and on the seven slots. Treat the paymentauth.org copy as the live one — it is the family's own
@@ -169,7 +169,7 @@ from it, never occupied by it.
 ## Provenance
 
 Cut against `draft-evm-charge-00` and the core `Payment` scheme at paymentauth.org, gate discharged
-2026-07-30, and reconciled against LCP v1.37 §C.1 and §8.3.5 the same day; re-read against **v1.38 §C.1** on
+2026-07-30, and reconciled against LCP §C.1 and §8.3.5 the same day; re-read against **LCP §C.1** on
 2026-08-12, which adopted the identifier finding below. The derivation oracles in
 `vectors/binding/mpp-evm-id-reuse.json` were produced by two independent keccak-256 implementations
 (pycryptodome and Foundry `cast keccak`), and `abi.encodePacked`'s string semantics were confirmed against

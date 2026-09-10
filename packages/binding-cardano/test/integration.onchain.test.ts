@@ -62,10 +62,11 @@ function makeBlockfrostReader(
         validContract: valid_contract,
       };
     },
-    async txsWithLabel(label: number, limit?: number): Promise<string[]> {
-      const count = limit ?? 100;
+    async txsWithLabel(label: number, limit: number): Promise<string[]> {
+      // Blockfrost's own page argument, filled from the depth the caller named — never left off, which
+      // would let this endpoint's default decide how deep a global-label scan goes.
       const res = await fetch(
-        `${base}/metadata/txs/labels/${label}?count=${count}&order=desc`,
+        `${base}/metadata/txs/labels/${label}?count=${limit}&order=desc`,
         { headers },
       );
       if (!res.ok)

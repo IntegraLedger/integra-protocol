@@ -24,10 +24,10 @@ export const LCP_METADATA_LABEL = 8847;
 /**
  * The LCP spec version this binding conforms to, stamped into the metadata payload's `v` field and so
  * WRITTEN ON-CHAIN. Re-exported from `kernel` rather than declared here: it was a fourth independent copy
- * of one fact and drifted to `0.1.36` while the rest of the tree reconciled to v1.37. The export is kept
- * because `v` is this binding's own wire concern and callers reach for it here — but the value now has one
- * definition, and `kernel/src/spec-version.ts` documents what it means and when it moves. It stamps
- * `0.1.38` today — LCP v1.38.
+ * of one fact and drifted away from the rest of the tree. The export is kept because `v` is this binding's
+ * own wire concern and callers reach for it here — but the value now has one definition, and
+ * `kernel/src/spec-version.ts` documents what it means and when it moves. It stamps the published
+ * specification's edition, which is what a counterparty reading this metadatum can go and check.
  *
  * `propose` takes it as a DEFAULT, not a constant, so a deployment stamping a different version is a
  * supported act rather than a fork.
@@ -70,3 +70,17 @@ export function getCardanoConfig(
 ): CardanoNetworkConfig {
   return network === "preprod" ? PREPROD : MAINNET;
 }
+
+/**
+ * ⛔⛔ THE COLLECTION PATH THIS RAIL'S `weldGrades` IS KEYED BY — exported so a consumer looks the grade up
+ * with the SAME token this manifest declares it under.
+ *
+ * `binding-evm-x402` shipped `0.15.1` with `weldGrades` keyed `ERC3009` — the escrow sibling's COLLECTOR
+ * name — while the value a consumer computes from an x402 offer is `eip3009`. The map and the lookup key
+ * disagreed inside one published package, so `weldGrades[assetTransferMethod]` answered `undefined`: the
+ * grade absent rather than wrong, which reads as a rail declaring no weld grade at all. Nothing caught it —
+ * the profile schema constrains weldGrades VALUES (`signature` | `tx`) and says nothing about keys.
+ *
+ * ⇒ The key is a constant, not a literal, on every rail. `check:weld-grade-keys` holds it.
+ */
+export const CARDANO_COLLECTION_PATH = "tx-metadata";

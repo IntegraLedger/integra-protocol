@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-evm-escrow",
-  "version": "0.15.1",
+  "version": "0.18.0",
   "description": "Welds an ATR hash into an authorize-and-capture escrow settlement on EVM chains.",
   "keywords": [
     "lcp",
@@ -51,10 +51,10 @@
   "dependencies": {
     "@integraledger/lcp-binding-core": "workspace:*",
     "@integraledger/lcp-binding-evm-common": "workspace:*",
+    "@integraledger/lcp-kernel": "workspace:*",
     "viem": "catalog:"
   },
   "devDependencies": {
-    "@integraledger/lcp-kernel": "workspace:*",
     "@types/node": "catalog:",
     "vitest": "catalog:"
   },

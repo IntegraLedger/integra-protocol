@@ -17,8 +17,8 @@ packages:
 # The trap is that a warm `node_modules` does not re-run the decision, so `pnpm verify` stays green locally
 # while a cold install fails. Test a change here with a fresh clone, never with an existing tree.
 #
-# bufferutil / utf-8-validate are OPTIONAL native accelerators of `ws` (a @solana/web3.js transitive dep);
-# both have pure-JS fallbacks and binding-solana uses only HTTP RPC (no websocket subscriptions), so their
+# bufferutil / utf-8-validate are OPTIONAL native accelerators of `ws`, pulled in transitively by the
+# Solana devnet test's SDK; both have pure-JS fallbacks and the binding uses only HTTP RPC, so their
 # native builds are deliberately skipped — same no-arbitrary-postinstall posture as @swc/core, whose native
 # parser binding ships prebuilt as an optional dependency (verified: dependency-cruiser's swc parser works).
 allowBuilds:
@@ -33,7 +33,7 @@ catalog:
   zod: "4.4.3" # trust boundaries only — never the kernel
   viem: "2.55.19" # EVM client / typed-data + 1271/6492 verify — the EVM bindings, and the escrow drift guard
   multiformats: "14.0.5" # raw-CIDv1 content addressing (CID == atrHash) — evidence bundles
-  "@solana/web3.js": "1.98.4" # Solana SPL-Memo native-field binding — isolated to binding-solana
+  "@solana/kit": "8.2.0" # Solana devnet integration test only — binding-solana ships NO chain SDK
   bs58: "6.0.0" # base58 decode for a memo instruction the RPC returns partially-decoded (binding-solana)
   "@mysten/sui": "2.26.2" # Sui Pay402 payment_id native-field binding — isolated to binding-sui
   "@stellar/stellar-sdk": "17.0.0" # Stellar CAP-67 muxed-address native-field binding — StrKey/MuxedAccount; isolated to binding-stellar
@@ -55,7 +55,7 @@ minimumReleaseAge: 1440 # supply-chain default: 24h quarantine on new releases
 overrides:
   # GHSA proxy-inheritance (high) + 9 moderates. Reaches consumers via the published binding-stellar.
   axios: ">=1.18.1"
-  # Missing buffer bounds check in v3/v5/v6 when a buf is passed; @solana/web3.js pins ^8.
+  # Missing buffer bounds check in v3/v5/v6 when a buf is passed.
   uuid: ">=11.1.1"
   # qs <6.16.0 — TWO advisories, one entry. GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g (both moderate,
   # published 2026-09-02): denial of service through an attacker-controlled `isBuffer`, fixed in 6.16.0.

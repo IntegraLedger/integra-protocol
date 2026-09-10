@@ -1,5 +1,53 @@
 # @integraledger/lcp-verify
 
+## 0.18.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @integraledger/lcp-authority@0.18.0
+  - @integraledger/lcp-binding-core@0.18.0
+  - @integraledger/lcp-kernel@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-authority@0.17.0
+  - @integraledger/lcp-binding-core@0.17.0
+  - @integraledger/lcp-kernel@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-authority@0.16.1
+  - @integraledger/lcp-binding-core@0.16.1
+  - @integraledger/lcp-kernel@0.16.1
+
+## 0.16.0
+
+### Patch Changes
+
+- b83fa29: `verify` no longer throws on a `settledAtrHash` that is not a string.
+  
+  `fingerprintStep` screened `atrBytes` and only checked `settledAtrHash` for PRESENCE — and `present()`
+  rejects null and undefined and nothing else. So a non-string reached `atrHashEquals`, which compares
+  decoded bytes but reaches them through a `RegExp.test`, and `test` coerces its argument: an object whose
+  `toString` is not callable makes that coercion throw `Cannot convert object to primitive value`. The
+  package's own contract is that a malformed record is REPORTED, never thrown on.
+  
+  Found by this package's fast-check property on seed 385868373, and reproduced on `main` before this branch.
+  `acceptanceStep` carried the same hole on both of its atrHash-shaped slots — `SignedAcceptance.atrHash` is
+  typed, and a record off a wire is not bound by a type.
+  
+  Both now read out `not-attempted` with depth `malformed-settled-hash`, under their own name rather than
+  `no-settled-hash`, which means ABSENT where something was supplied.
+- Updated dependencies [bb48020]
+  - @integraledger/lcp-authority@0.16.0
+  - @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
@@ -232,7 +280,7 @@ claimedClass`, so a record proving nothing — no settlement, no acceptance, no 
   `placement-x402` — the inlined wire schema now IS the authority document minus `$id` and `$defs`
   (Bazaar forbids both on the wire), drift-gated in `lcp-conformance` where the two packages meet.
   `termsUrlFields` declares both slots the wire carries; the bare-hash alias is written (`extra` stopped
-  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP v1.38 §C.4's own Tier A
+  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP §C.4's own Tier A
   illustration carries the pair there); the `url` carrier admission is withdrawn (`carrierTypes` is
   `sha256` alone — the schema on the wire is `const: "sha256"`, and no shipped reader ever accepted a url
   in this slot). The `place` override shrinks to composition: the kit performs the whole placement and the
@@ -286,7 +334,7 @@ and a large number of documentation claims were corrected against the host speci
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

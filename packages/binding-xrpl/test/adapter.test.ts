@@ -5,6 +5,7 @@ import {
   type XrplPaymentView,
   type XrplReader,
 } from "../src/adapter.js";
+import { XRPL_ACCOUNT_SCAN_DEPTH } from "../src/constants.js";
 import { decodeInvoiceId, encodeInvoiceId } from "../src/invoice-id.js";
 import { XRPL_MANIFEST } from "../src/manifest.js";
 import { buildLcpMemo, type XrplMemo } from "../src/memo.js";
@@ -38,7 +39,11 @@ function settledInvoiceView(atrHash: string): XrplPaymentView {
 describe("createXrplAdapter.propose", () => {
   it("builds the InvoiceID carrying the atrHash", () => {
     const adapter = createXrplAdapter(XRPL_MANIFEST);
-    expect(decodeInvoiceId(adapter.propose({ atrHash: ATR }))).toBe(ATR);
+    expect(
+      decodeInvoiceId(
+        adapter.propose({ atrHash: ATR, usesX402InvoiceBinding: false }),
+      ),
+    ).toBe(ATR);
   });
 
   it("REFUSES when the seller also binds an x402 extra.invoiceId", () => {
@@ -274,5 +279,95 @@ describe("enumerate skips payments that carry no weld", () => {
         },
       }),
     ).resolves.toEqual([{ txHash: "HIT" }]);
+  });
+});
+
+/**
+ * ⛔⛔ **THE SERVER'S DEFAULT GOVERNED THE SCAN.**
+ *
+ * `enumerate` forwarded `limit` verbatim, so an absent one meant rippled chose the depth. Measured live on
+ * 2026-09-10 against `https://s1.ripple.com:51234/`: `account_tx` with no `limit` returns 200 transactions
+ * AND a `marker` — there is more, and `XrplReader.paymentHashesFor` returns hashes with no marker to reach
+ * it. So a settlement past 200 came out as `[]`, which on a best-effort scan is indistinguishable from
+ * "this account never settled that atrHash".
+ *
+ * ⭐ The number is not the fix; asking for it is. Naming the depth makes it ours and comparable against
+ * what came back, so a full page with no `limit` named is a throw rather than a short answer.
+ */
+describe("the account scan states its own bound", () => {
+  const adapter = createXrplAdapter(XRPL_MANIFEST);
+  const hashes = (n: number): string[] =>
+    Array.from({ length: n }, (_, i) => `hash${i}`);
+
+  function scanReader(all: string[]): XrplReader & { asked: number[] } {
+    const asked: number[] = [];
+    return {
+      asked,
+      async paymentView(): Promise<XrplPaymentView | null> {
+        return settledView([]);
+      },
+      async paymentHashesFor(
+        _account: string,
+        limit?: number,
+      ): Promise<string[]> {
+        if (limit !== undefined) asked.push(limit);
+        return limit === undefined ? all : all.slice(0, limit);
+      },
+    };
+  }
+
+  it("⛔ asks rippled for a stated depth rather than letting the server pick", async () => {
+    const rdr = scanReader(hashes(3));
+    await adapter.enumerate(ATR, "rSeller", rdr);
+    expect(rdr.asked).toEqual([XRPL_ACCOUNT_SCAN_DEPTH]);
+  });
+
+  it("⛔⛔ THROWS when the defaulted scan comes back full — truncation it cannot rule out", async () => {
+    await expect(
+      adapter.enumerate(
+        ATR,
+        "rSeller",
+        scanReader(hashes(XRPL_ACCOUNT_SCAN_DEPTH + 10)),
+      ),
+    ).rejects.toThrow(/came back full/);
+  });
+
+  it("an explicit limit is the CALLER's bound — a full page there is what they asked for", async () => {
+    expect(
+      await adapter.enumerate(ATR, "rSeller", scanReader(hashes(50)), 10),
+    ).toEqual([]);
+  });
+
+  it("and it is passed through untouched", async () => {
+    const rdr = scanReader(hashes(50));
+    await adapter.enumerate(ATR, "rSeller", rdr, 7);
+    expect(rdr.asked).toEqual([7]);
+  });
+
+  it("⛔ refuses a limit that is not a positive integer rather than passing it to rippled", async () => {
+    for (const bad of [0, -1, 2.5]) {
+      await expect(
+        adapter.enumerate(ATR, "rSeller", scanReader(hashes(3)), bad),
+      ).rejects.toThrow(/limit must be a positive integer/);
+    }
+  });
+
+  it("a limit of 1 is a legitimate bound — the floor is 1, not 2", async () => {
+    // `< 1` and `<= 1` differ by exactly the smallest scan a caller can ask for.
+    const rdr = scanReader(hashes(5));
+    await adapter.enumerate(ATR, "rSeller", rdr, 1);
+    expect(rdr.asked).toEqual([1]);
+  });
+
+  it("a defaulted scan one short of full is an answer, not a throw", async () => {
+    // The boundary matters: `>=` and `>` differ by exactly the case where the page is full, which is the
+    // case that cannot be distinguished from truncation.
+    expect(
+      await adapter.enumerate(
+        ATR,
+        "rSeller",
+        scanReader(hashes(XRPL_ACCOUNT_SCAN_DEPTH - 1)),
+      ),
+    ).toEqual([]);
   });
 });

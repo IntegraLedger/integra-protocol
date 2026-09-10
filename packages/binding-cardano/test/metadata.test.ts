@@ -11,6 +11,8 @@ import {
 const ATR =
   "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
 const ATR_BARE = ATR.slice(2);
+const OTHER_BARE =
+  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 // An ARBITRARY version string, deliberately NOT `LCP_SPEC_VERSION`. Every case passes it explicitly, so
 // nothing here asserts the default — and the canonical-CBOR oracles below are pinned to these exact bytes.
 // Tying it to the constant would force a re-derivation of every oracle each time the spec version moves,
@@ -171,6 +173,70 @@ describe("recoverAtrHashFromMetadata (Blockfrost-shaped array)", () => {
         LABEL,
       ),
     ).toBeNull();
+  });
+
+  /**
+   * ⛔⛔ **`m.label === String(label)` LOST TO A NUMERIC LABEL, AND THE ANSWER WAS A FALSE NEGATIVE.**
+   *
+   * A strict comparison against a string never matches `8847`, so `find` answered `undefined` and a
+   * genuinely welded settlement read `cardano/no-atr-metadata` — the refusal that says the transaction
+   * carries no LCP weld at all. The number is the NATURAL shape from two of the three indexers this
+   * package's own port docblock names: db-sync and Koios hand back a number and only Blockfrost quotes
+   * it. So the verdict depended on which indexer a consumer bridged, and it failed in the direction
+   * nobody can challenge — "no LCP metadata here" looks exactly like the truth.
+   */
+  it("⛔⛔ finds a NUMERIC label — the shape db-sync and Koios return", () => {
+    expect(
+      recoverAtrHashFromMetadata(
+        [{ label: LABEL, json_metadata: { v: V, atrHash: ATR_BARE } }],
+        LABEL,
+      ),
+    ).toBe(ATR);
+  });
+
+  it("⭐ and the two spellings of one label read identically", () => {
+    // The property, rather than one of its two arms: an indexer's choice of JSON type is not a fact
+    // about the settlement, so it must not change the verdict.
+    const value = { v: V, atrHash: ATR_BARE };
+    expect(
+      recoverAtrHashFromMetadata(
+        [{ label: LABEL, json_metadata: value }],
+        LABEL,
+      ),
+    ).toBe(
+      recoverAtrHashFromMetadata(
+        [{ label: String(LABEL), json_metadata: value }],
+        LABEL,
+      ),
+    );
+  });
+
+  it("⭐ a DIFFERENT numeric label still misses — normalising is not loosening", () => {
+    // `String(x) === String(y)` on word64 labels is exact: distinct labels have distinct decimal
+    // spellings, so nothing new matches. Without this, the fix would read as "compare more leniently".
+    expect(
+      recoverAtrHashFromMetadata(
+        [{ label: 721, json_metadata: { v: V, atrHash: ATR_BARE } }],
+        LABEL,
+      ),
+    ).toBeNull();
+  });
+
+  it("⭐ and the FIRST matching label wins over a later one, whichever way each is spelled", () => {
+    // A transaction may carry the label twice; the entry order is the indexer's, and normalising the
+    // comparison must not reorder the search.
+    expect(
+      recoverAtrHashFromMetadata(
+        [
+          { label: LABEL, json_metadata: { v: V, atrHash: ATR_BARE } },
+          {
+            label: String(LABEL),
+            json_metadata: { v: V, atrHash: OTHER_BARE },
+          },
+        ],
+        LABEL,
+      ),
+    ).toBe(ATR);
   });
 });
 

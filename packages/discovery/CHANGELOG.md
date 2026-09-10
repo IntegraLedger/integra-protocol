@@ -1,5 +1,85 @@
 # @integraledger/lcp-discovery
 
+## 0.18.0
+
+### Patch Changes
+
+- @integraledger/lcp-kernel@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-kernel@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-kernel@0.16.1
+
+## 0.16.0
+
+### Patch Changes
+
+- feab885: Five README examples that failed on their first line, and a gate that runs the examples.
+  
+  Each was the first thing a stranger runs, on the npmjs landing page:
+  
+  - `binding-evm-x402` opened with `getX402Deployment("base-sepolia-usdc")`; the keys are `base`,
+    `base-sepolia`, `avalanche`, `monad`. It threw.
+  - `discovery` told the reader to read `hashesAgree`; the field is `hashesMatch`, so the documented read is
+    `undefined` — falsy — and records a MISMATCH for a hash that matched, the exact defect the two-field
+    design exists to prevent.
+  - `placement-ucp`'s only usage example refused `ucp/terms-url-missing`: this protocol declares a terms-URL
+    slot, so an integrity-bearing reference needs one, and every sibling README passes it.
+  - `placement-ack` claimed a `url` carrier in the canonical slot "passes `requireIntegrity`". It did when
+    written; `requireIntegrity` now checks the value's type as well as the slot's declared class and returns
+    `undefined`. The narrower point that survives is stated instead.
+  - `binding-canton` documented a DAR filename, `lcp-anchor-0.9.0.dar`, that no build produces —
+    `daml.yaml` carries the package version, gated by a test. Both the README and `daml.yaml`'s own comment
+    now write the version as a glob, because a pinned number inside a copyable command goes stale at the
+    next bump and had already done so twice.
+  
+  The mechanism behind all five is that `check:docs` COMPILES fences and never runs them. `check:doc-calls`
+  runs the subset that can be run — a call of a workspace export whose every argument is a literal — and
+  refuses a throw or a returned `Refusal`. It also reads the inversion: a line the document annotates
+  `// throws` or `// refuses` must fail, so a demonstration that quietly starts succeeding is caught too.
+  Elided arguments (`"0x…"`) and calls inside a `try` are skipped as structurally not assertions. It refuses
+  an empty subject set, and it runs 30 calls across 74 fences today.
+- f630fd2: Six gate weaknesses, and the three shipped case-folds one of them was not reaching.
+  
+  - `check:dist` was the only gate in `scripts/` with no non-empty floor: an unbuilt tree printed
+    `0 build outputs across 0 packages` and exited 0. Driven by `pnpm clean` — it now refuses.
+  - `spec-version.test.ts` claimed to catch "a future package that hardcodes the string" over a literal
+    two-element array of paths, which by construction cannot contain a future package.
+    `binding-cardano/src/metadata.ts` already carried the literal twice, in docblocks reading
+    `e.g. "0.1.38"`. The subject set is derived from every `packages/*/src/**/*.ts`, exempting only the
+    definition; the two comments now name the constant instead of a revision.
+  - `atrhash-case-invariant` said "nothing in the tree case-folds an atrHash except this file" while three
+    files did. Its regex admitted a bracket but not the quote inside one, and required the fold to sit
+    against the name, so `doc["atrHash"].toLowerCase()`, `stripHexPrefix(atrHash).toLowerCase()` and
+    `atrHashFromCid(cid).toLowerCase()` were all invisible. Widened, and the three sites now go through the
+    kernel: `discovery`'s emit path and `binding-canton`'s ledger-text form call `canonicalAtrHash` (one
+    validation and one fold, in the one place that owns both), and `evidence`'s fold is gone — the value it
+    folded is lowercase by construction.
+  - `vectors/legal-context/schema.json` is what a third party validates against, generated from the Zod
+    schema, and guarded only by two `toContain` assertions. It had already drifted: its `description` was
+    missing a word the generator emits. The vector is re-rendered and pinned by equality on the parsed value.
+  - `release.yml`'s packing loop read `|| continue`, and a `require` that throws exits 1 exactly as a private
+    package does — so a manifest with a stray comma silently left the publishable set and the run stayed
+    green. The probe now exits 2 for an unreadable manifest and the release stops. `publish-integrity.mjs`
+    had the same collapse in a `catch { continue }` and now distinguishes ENOENT from a parse failure.
+  - `tags.yml` annotated two pinned action SHAs `v5.0.1` and `v6.0.0`; the same SHAs are annotated `v7.0.1`
+    and `v7.0.0` at twenty other sites in this repository. The SHA is what pins, so nothing was exploitable —
+    the comment is what a reviewer reads.
+  
+  Behaviour: `emit` and `atrHashToLedgerText` now throw the kernel's message rather than each package's own
+  on a malformed atrHash. Both threw before.
+  
+  The corpus root moves to `c2875add14f5f2bf…` — the schema vector's re-render is a sealed file.
+- @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
@@ -179,7 +259,7 @@
   `placement-x402` — the inlined wire schema now IS the authority document minus `$id` and `$defs`
   (Bazaar forbids both on the wire), drift-gated in `lcp-conformance` where the two packages meet.
   `termsUrlFields` declares both slots the wire carries; the bare-hash alias is written (`extra` stopped
-  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP v1.38 §C.4's own Tier A
+  being wholly scheme-private when x402 §6.1 reserved names inside it, and LCP §C.4's own Tier A
   illustration carries the pair there); the `url` carrier admission is withdrawn (`carrierTypes` is
   `sha256` alone — the schema on the wire is `const: "sha256"`, and no shipped reader ever accepted a url
   in this slot). The `place` override shrinks to composition: the kit performs the whole placement and the
@@ -274,7 +354,7 @@ package that disagreed with its own source. No version 0.10.0 exists on the regi
 
   The conformance corpus is re-sealed: root `32fa90a62eb83930…`, 812/812 across 44 areas, unchanged in size.
   Twenty-two cases pinned the old spellings and were updated; the retired spelling survives deliberately in
-  `binding-core`'s kit fixtures, where it is sample input to container-validation cases cut against v1.37
+  `binding-core`'s kit fixtures, where it is sample input to container-validation cases cut against an earlier draft
   §C.3's `extensions` shape and asserts nothing about this deployment's identity.
 
   `minor` rather than `major` because these packages are pre-1.0, where minor is the breaking increment.
@@ -284,7 +364,7 @@ package that disagreed with its own source. No version 0.10.0 exists on the regi
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

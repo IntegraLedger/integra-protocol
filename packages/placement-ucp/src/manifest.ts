@@ -3,7 +3,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
 /**
  * UCP (Universal Commerce Protocol) reference placement, cut against the live spec (2026-04-08, ucp.dev —
  * overview §capabilities, §namespace-governance, §intersection-algorithm, and the checkout capability's
- * response schema), gate discharged 2026-07-29 against LCP v1.37 §C.3, and re-cut against the live UCP schemas and v1.38 §C.3
+ * response schema), gate discharged 2026-07-29 against LCP §C.3, and re-cut against the live UCP schemas and LCP §C.3
  * on 2026-08-08 when the canonical carrier moved.
  *
  * **THE CANONICAL CARRIER IS A `policies[]` ENTRY, AND UCP HAS NO `extensions` MAP TO WRITE INTO.** A

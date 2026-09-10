@@ -19,7 +19,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * fragments (starting with `#`); external references … are not allowed", and says a facilitator "must not
  * resolve external `$ref`/`$id` values … when validating an untrusted `schema`". So an external `$ref`
  * here would not merely be unresolvable to a counterparty that declines to fetch — wherever Bazaar
- * governs, it is rejected outright. LCP v1.38 §C.4 draws the same conclusion ("publish a resolvable
+ * governs, it is rejected outright. LCP §C.4 draws the same conclusion ("publish a resolvable
  * schema or inline it — and inlining is the safer of the two"). Dropping `$id` and `$defs` from the
  * inlined form is that rule applied: the authority document's `$id` is an absolute URL, and its `$defs`
  * carries the RECEIPT-time definition, which is not this challenge-time `info` and would bloat every 402.
@@ -73,7 +73,7 @@ export const LEGAL_CONTEXT_SCHEMA: Readonly<Record<string, unknown>> =
  *
  * **THE CANONICAL REPOSITORY IS THE FOUNDATION'S, and the citation moved on 2026-08-08.** Every
  * reference here named `coinbase/x402`, which the GitHub API reports as `"fork": true`;
- * `x402-foundation/x402` is `"fork": false` and is what LCP v1.38 §C.4's own *Checked against* line
+ * `x402-foundation/x402` is `"fork": false` and is what LCP §C.4's own *Checked against* line
  * reads. Citing a fork invites a reader to diff against a copy that may lag. The revision is pinned
  * rather than left as a bare repo name, because "the live spec" with no commit is not a claim anyone
  * can re-check.
@@ -102,7 +102,7 @@ export const LEGAL_CONTEXT_SCHEMA: Readonly<Record<string, unknown>> =
  *
  * **The extension key is `legalContext`, deliberately not a reverse-domain name.** x402 imposes no namespace
  * rule, and `legalContext` is the spelling emitters put on the wire, the spelling buyer parsers read, and the
- * one LCP v1.38 §C.4's own illustration shows. The `com.integraledger.*` reverse-domain namespace applies to
+ * one LCP §C.4's own illustration shows. The `com.integraledger.*` reverse-domain namespace applies to
  * hosts that REQUIRE one — UCP does; x402 does not — and renaming this key to suit a convention x402 does not
  * have would put a spelling on the wire that no counterparty reads.
  *
@@ -117,7 +117,7 @@ export const LEGAL_CONTEXT_SCHEMA: Readonly<Record<string, unknown>> =
  * and writing into another party's namespace is not our act. That reasoning has been overtaken. First, the
  * host itself no longer treats `extra` as wholly scheme-private: §6.1 reserves `assetTransferMethod` and
  * `paymentFlow` inside it as protocol-governed names, so `extra` is a host-managed extension surface with
- * scheme-specific residue, not a foreign namespace. Second, LCP v1.38 §C.4's own Tier A illustration puts
+ * scheme-specific residue, not a foreign namespace. Second, LCP §C.4's own Tier A illustration puts
  * `atrHash` AND `legalContextUrl` in `accepts[].extra` — a third-party reader built from the spec's example
  * reads `extra` first, and a challenge that leaves it empty is invisible to that reader. Third, the shipped
  * buyer parser reads BOTH carriers and reconciles, refusing disagreement — so the mirror cannot drift
