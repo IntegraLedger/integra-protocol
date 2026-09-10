@@ -1,5 +1,65 @@
 # @integraledger/lcp-authority
 
+## 0.18.0
+
+### Minor Changes
+
+- The walk that checked no proof and the walk that checked every proof were the same value.
+  
+  ⛔ **BREAKING, and it is the reason this is a minor.** `walkChainStructure` and `walkChain` both returned
+  `ChainWalkResult`, whose success case is `{status:"walked", links}` — there was nowhere in the type to
+  record that a proof had been checked, and `walkChain` returned the structural object verbatim. Measured: the
+  same chain, with `proofValue: "zTOTALLYFORGED"`, reads **`proved`** through the structural walk and
+  **`failed`** through the verifying one, and `verify` documents the structural walk as its *preferred* input.
+  
+  `walkChain` now returns `VerifiedChainWalkResult`, succeeding as `{status:"verified", links}`, and
+  `verify`'s `authorityWalk` accepts only that type — a structural result is a **compile error** there, not a
+  runtime screen. A shared private helper yields bare `WalkedLink[]` so only the two entry points can name a
+  status: `walkChain` cannot return the structural object even by accident.
+  
+  ⚠️ **A cross-implementation semantics change rides with it.** An absent `credentialStatus` used to stamp
+  `revoked: false` — the proving value. `revoked` is now stated only where a status entry was consulted, so
+  `authority-attenuation` is unprovable for a chain whose grants carry no status list, and such a chain cannot
+  reach TC-3. ATA-3 requires revocability, `authority-producer-ref` emits a status entry from issuance, and
+  `no-revocation-stated` is already the token for this condition. **The conformance corpus moves with it:
+  861 → 866 cases, root `4c9d2d02…` → `63df22e2…`.**
+  
+  Also in this release, across the line:
+  
+  - **`authority`** — the structural walk ran to completion before any proof was checked, with no length
+    bound: 5000 links inflated **5.2 GB** and blocked **3.9 s** with **0 proofs checked**, the first of them
+    forged. Verification now sits inside the walk, per link, and `AUTHORITY_CHAIN_MAX_LINKS = 64` refuses
+    longer chains as a gap rather than a contradiction.
+  - **`verify`** — a conformant UCP merchant carrying only the REQUIRED `terms_of_service` link was driven to
+    **TC-0**; so was every `ipfs:`/`ar:` reference, through the carrier types meant to be the strongest.
+    `discoveryIntegrity: null` read as a DSC-2 violation. Four composition slots read for truthiness, so the
+    string `"false"` proved the rung it denies. `frcSignals` threw `TypeError` out of `verify()`.
+    `settlements: "none"` reported `multiplySettled: true`. The report gains a required `depth`, because a
+    structural and a mechanical report over the same inputs serialized to identical bytes.
+  - **`conformance`** — `runCorpus` defaulted to phase P1: **102 of 866 cases certified under a seal line
+    reading `866/866`**. The default is now derived from the phase ladder.
+  - **`evidence`** — one byte of a CAR length prefix suppressed two artifacts and `verifyBundle` still
+    answered `ok: true`; an empty bundle the builder refuses to construct verified clean; a 50 ms timeout
+    returned after 1512 ms because the DNS lookup sat outside it. A bundle verdict now carries `fault`, so a
+    refusal without a reason is unrepresentable.
+  - **`binding-sui`** — the read that recovers a weld looked at the first twenty events of a transaction the
+    **buyer** composes, and Sui permits 1024: a weld buried past position 20 read as never anchored. Both
+    connections are now walked to exhaustion. Which fields are bytes is read from the endpoint's own
+    `contents.type.layout` rather than guessed from a field name.
+  - **the rails** — `binding-solana` and `binding-hedera` decoded counterparty-authored payloads before
+    filtering to what they trust, so one bad memo killed a scan; `binding-core` accepted
+    `lcp:url:javascript:…` as a legal-context reference; `binding-xrpl`'s InvoiceID collision guard was
+    optional and therefore off by default; `binding-tempo-mpp` read a decimal quantity as hex, so `"16"`
+    pinned log 22; `binding-cardano` compared a metadata label against a string, so db-sync and Koios
+    settlements read as unwelded; `binding-evm-escrow` defaulted its escrow address, and that address is
+    hashed into `paymentInfoHash`. Eleven rails declared a weld-grade token and withheld it from their barrel.
+  - **all nine placements** crashed building the refusal message for a document they had correctly refused.
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.18.0
+  - @integraledger/lcp-kernel@0.18.0
+
 ## 0.17.0
 
 ### Patch Changes
