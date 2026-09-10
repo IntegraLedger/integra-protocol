@@ -1,5 +1,12 @@
 # @integraledger/lcp-binding-hedera
 
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.1
+  - @integraledger/lcp-kernel@0.16.1
+
 ## 0.16.0
 
 ### Patch Changes
