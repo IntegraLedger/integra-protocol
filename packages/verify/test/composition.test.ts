@@ -304,13 +304,22 @@ describe("the composition steps are total over untyped slots", () => {
   it("a malformed FRC slot REFUSES rather than throwing out of the step", () => {
     // `sigs.some is not a function` for the first two, and a null dereference for the third. A
     // verification surface that throws cannot report the malformation it was handed.
+    //
+    // The MIXED array is the one that says `every` rather than `some`: read with `some`, an array whose
+    // first entry is a good signal would read as readable and the unreadable second one — whose `gated`
+    // could be the impeachment — would be silently dropped.
     for (const frcSignals of [
       { psp: { role: "psp", gated: true } },
       "psp",
       [null],
+      [undefined],
       [{ role: "psp" }],
       [{ role: 7, gated: false }],
       [{ role: "psp", gated: "yes" }],
+      [
+        { role: "psp", gated: false },
+        { role: 7, gated: true },
+      ],
     ]) {
       expect(
         frcNonGatingStep(untyped({ frcSignals })),

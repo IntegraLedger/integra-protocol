@@ -53,12 +53,29 @@ const na = (why: string): StepOutcome => ({
  * Three-way, because `steps.ts`'s discipline needs all three: `true` proves, `false`/absent is the record's
  * own incompleteness (a gap), and a NON-boolean is the CALLER's shape error and reads out under its own
  * name — the same split `fingerprintStep` draws between `no-settled-hash` and `malformed-settled-hash`.
+ * The first two collapse onto the BOOLEAN itself rather than onto tokens of their own: absent and stated-
+ * false take the same arm at every callsite, and a third token nobody compares is a value a mutant can
+ * change without any caller noticing.
  */
-type BoolSlot = "stated-true" | "unstated" | "malformed";
-function boolSlot(value: unknown): BoolSlot {
-  if (value === undefined) return "unstated";
+function boolSlot(value: unknown): boolean | "malformed" {
+  if (value === undefined) return false; // absent and stated-false are the same gap, by this module's rule
   if (typeof value !== "boolean") return "malformed";
-  return value ? "stated-true" : "unstated";
+  return value;
+}
+
+/** BOTH OPS members, read once each. Read inside the `&&` instead, the second slot's screen would never
+ *  run for an absent `operations` — the first arm short-circuits — so a malformed second member could
+ *  only be seen when the first was already good. One reader for the step and the flattened readout, so the
+ *  two cannot answer differently about the same input. */
+function operationSlots(c: CompositionInput | undefined): {
+  order: boolean | "malformed";
+  reconciliation: boolean | "malformed";
+} {
+  const ops = c?.operations;
+  return {
+    order: boolSlot(ops?.orderStateRef),
+    reconciliation: boolSlot(ops?.reconciliationIds),
+  };
 }
 
 /** The DSC reading, or `"malformed"` for a value outside the closed set. The taxonomy is closed and the
@@ -91,10 +108,18 @@ function frcReading(
 ): readonly { readonly role: string; readonly gated: boolean }[] | "malformed" {
   if (value === undefined) return [];
   if (!Array.isArray(value)) return "malformed";
+  // EVERY entry, not some: one unreadable signal makes the whole slot unreadable, because a `gated` this
+  // cannot see is exactly the impeachment it might have carried.
+  //
+  // The two screens are `!= null` and the property types, and there is deliberately no `typeof s ===
+  // "object"` in front of them. A property read on a primitive is TOTAL (`(42).role` is `undefined`, and
+  // the type checks then refuse it), so an object test would refuse nothing those checks do not — except a
+  // FUNCTION carrying the two members, which reads out as a signal perfectly well. A clause that changes
+  // no answer any caller can see is a clause nothing can falsify.
   return value.every(
     (s) =>
-      typeof s === "object" &&
       s !== null &&
+      s !== undefined &&
       typeof (s as { role?: unknown }).role === "string" &&
       typeof (s as { gated?: unknown }).gated === "boolean",
   )
@@ -106,17 +131,14 @@ function frcReading(
 export function offerBoundStep(c: CompositionInput | undefined): StepOutcome {
   const slot = boolSlot(c?.offerBound);
   if (slot === "malformed") return na("malformed-offer-bound");
-  return slot === "stated-true" ? { status: "proved" } : na("no-offer");
+  return slot ? { status: "proved" } : na("no-offer");
 }
 /** OPS core — the always-applicable OPS bindings (OPS-2 order/fulfillment ref AND OPS-5 reconciliation). */
 export function operationsStep(c: CompositionInput | undefined): StepOutcome {
-  const order = boolSlot(c?.operations?.orderStateRef);
-  const reconciliation = boolSlot(c?.operations?.reconciliationIds);
+  const { order, reconciliation } = operationSlots(c);
   if (order === "malformed" || reconciliation === "malformed")
     return na("malformed-operations");
-  return order === "stated-true" && reconciliation === "stated-true"
-    ? { status: "proved" }
-    : na("ops-incomplete");
+  return order && reconciliation ? { status: "proved" } : na("ops-incomplete");
 }
 /** DSC-1/2 — "ok" proves; "mismatch" is a hard DSC-2 violation (verification-failure); else not-attempted. */
 export function discoveryIntegrityStep(
@@ -164,11 +186,10 @@ export function readCompositionSlots(
   const read = frcReading(input?.frcSignals);
   const sigs = read === "malformed" ? [] : read;
   const discovery = discoveryReading(input?.discoveryIntegrity);
+  const { order, reconciliation } = operationSlots(input);
   return {
-    offerBound: boolSlot(input?.offerBound) === "stated-true",
-    operationsBound:
-      boolSlot(input?.operations?.orderStateRef) === "stated-true" &&
-      boolSlot(input?.operations?.reconciliationIds) === "stated-true",
+    offerBound: boolSlot(input?.offerBound) === true,
+    operationsBound: order === true && reconciliation === true,
     discoveryIntegrity: discovery === "malformed" ? "not-checked" : discovery,
     proportionalityTier: isTier(input?.proportionalityTier)
       ? input.proportionalityTier
