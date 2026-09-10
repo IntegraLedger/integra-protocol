@@ -127,8 +127,22 @@ describe("the runner's verdict is a comparison, not an assumption", () => {
 });
 
 describe("the phase ladder", () => {
-  it("defaults to P1, which SKIPS the later areas rather than running them", async () => {
+  it("defaults to the WHOLE corpus — nothing skipped, which is what the contract said all along", async () => {
+    // The defect: the default was `"P1"` while `RunOptions.phase` documented "the full set". A library
+    // caller that stated no phase certified 102 of the real corpus's 866 cases — 11.8% — and the seal
+    // line beside it reads `865/865 … (authentic)`, which answers a question about the CORPUS rather
+    // than about the run and is easy to read as agreement. The default is now derived from the ladder's
+    // own top, so it cannot drift behind a phase that is added later.
+    //
+    // Asserted on the SKIP LIST, not on a count: an empty skip list is the property (every area ran),
+    // where a number would also be satisfied by a fixture that happened to grow.
     const report = await run(new EchoSubject("honest"));
+    expect(report.skipped).toEqual([]);
+    expect(report.passed).toBe(3);
+  });
+
+  it("an explicit LOWER phase still narrows the run — the default is a default, not a floor", async () => {
+    const report = await run(new EchoSubject("honest"), "P1");
     expect(report.passed).toBe(2);
     expect(report.skipped).toEqual(["mini.late"]);
   });
@@ -171,6 +185,33 @@ describe("CliSubject", () => {
         { class: "echo", input: {} },
       ),
     ).rejects.toThrow();
+  });
+
+  it("kills and REFUSES a subject that answers with silence", async () => {
+    // The third hang, and the one nothing covered: a subject that spawns fine and writes valid nothing.
+    // A foreign implementation blocked on a socket, or looping, held the whole corpus run open with no
+    // output and no name for the case that did it. The refusal names the executable.
+    //
+    // 150 ms is this CASE's budget, passed in — never the module constant, which would make the
+    // assertion move with the value it is supposed to check. The subprocess sleeps two orders of
+    // magnitude longer, so the margin is not a race.
+    await expect(
+      new CliSubject("node", ["-e", "setTimeout(() => {}, 30000)"], 150).handle(
+        { class: "echo", input: {} },
+      ),
+    ).rejects.toThrow(/did not answer within 150ms and was killed/);
+  });
+
+  it("a subject that answers PROMPTLY is untouched by the timeout", async () => {
+    // The control. A gate that refuses everything is not a gate, and a kill that fires on a healthy
+    // subject would turn every corpus run red — so the fast path is asserted under the same short budget.
+    await expect(
+      new CliSubject(
+        "node",
+        ["-e", "process.stdout.write(JSON.stringify({ output: 42 }))"],
+        5_000,
+      ).handle({ class: "echo", input: {} }),
+    ).resolves.toEqual({ output: 42 });
   });
 });
 

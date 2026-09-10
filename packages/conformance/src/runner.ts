@@ -42,10 +42,16 @@ function phaseIndex(p: string): number {
   if (i === -1) throw new Error(`unknown phase: ${p}`);
   return i;
 }
+/** The ladder's top, and therefore the whole corpus — DERIVED, never a second literal. The default used
+ *  to be `"P1"` while this module's contract said "the full set", so a library caller that stated no
+ *  phase certified 102 of 866 cases — 11.8% — beside a seal line reading `866/866 … (authentic)`, which
+ *  answers a different question and reads like agreement. The CLI's own floor is a SEPARATE statement
+ *  about what its dispatch has WIRED (`cli.ts`), and stays where it is. */
+const FULL_CORPUS_PHASE = PHASES[PHASES.length - 1] as string;
 
 /**
- * Run every area whose `phase` is AT OR BELOW the requested phase (default "P1") from the given
- * tree. The comparison is CUMULATIVE — a floor, never an exact match: running at "P3" exercises
+ * Run every area whose `phase` is AT OR BELOW the requested phase (default: the ladder's top, i.e. the
+ * WHOLE corpus) from the given tree. The comparison is CUMULATIVE — a floor, never an exact match: running at "P3" exercises
  * the whole P1 corpus too, so a later phase can never produce a confident green that skipped the
  * kernel. Later-phase areas are skipped, never failed. The tree location is explicit — the caller
  * states which tree certifies (the repo tree in-repo; the packaged copy via the CLI default).
@@ -57,7 +63,7 @@ export async function runCorpus(
 ): Promise<Report> {
   const read = (rel: string): unknown =>
     JSON.parse(readFileSync(new URL(rel, opts.vectors), "utf8"));
-  const upTo = phaseIndex(opts.phase ?? "P1");
+  const upTo = phaseIndex(opts.phase ?? FULL_CORPUS_PHASE);
   const manifest = read("conformance/corpus-manifest.json") as {
     areas: {
       id: string;

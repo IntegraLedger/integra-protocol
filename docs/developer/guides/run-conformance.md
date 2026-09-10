@@ -30,7 +30,7 @@ Every run prints the identity of the corpus it certified against, so you never h
 separately:
 
 ```text
-corpus: 44/44 areas, 865/865 cases, root bcf49f54d470e7be… (authentic)
+corpus: 44/44 areas, 866/866 cases, root 256f85775aee56de… (authentic)
 ```
 
 **Record that root digest beside any conformance claim you make** — it is what makes "we conform" a
@@ -54,12 +54,12 @@ is what the rest of this guide uses. Once it is on `PATH` after a global install
 own is fine.
 
 ```text
-conformance: 865 passed, 0 failed, 0 skipped (none)
+conformance: 866 passed, 0 failed, 0 skipped (none)
 ```
 
 That is one line, and every part of it is load-bearing.
 
-- **`865 passed`** — the size of the corpus that actually ran. Quote this number, not the exit code. A green
+- **`866 passed`** — the size of the corpus that actually ran. Quote this number, not the exit code. A green
   run over a shrunken corpus is a regression wearing a disguise, and `0 failed` cannot tell the two apart.
 - **`0 failed`** — no case disagreed. The process exits `0`; a single failure exits `1`, so this is usable
   as a CI gate directly.
@@ -81,7 +81,7 @@ npx @integraledger/lcp-conformance --phase P4
 ```
 
 ```text
-conformance: 471 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
+conformance: 472 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
 ```
 
 Green, and certifying roughly half of what the bare run certifies. The skipped areas are named individually
@@ -178,9 +178,10 @@ const vectors = new URL(
   "file:///srv/my-lcp/node_modules/@integraledger/lcp-conformance/vectors/",
 );
 
-// State the phase. `runCorpus` defaults to "P1" — 101 of the 865 cases — where the CLI defaults to
-// the wired floor. Omitting it here is the quiet way to certify an eighth of the corpus. "P8" is
-// the top of the ladder today; check `report.skipped` is empty rather than trusting this string.
+// The phase is CUMULATIVE and defaults to the ladder's top — the whole corpus. It used to default to
+// "P1", which is 102 of the 866 cases, so omitting it was the quiet way to certify an eighth of the
+// corpus beside a seal line reading 866/866. State it anyway when you mean a narrower run, and check
+// `report.skipped` is empty rather than trusting any phase string to still be the top one.
 const report = await runCorpus(new CliSubject("python3", ["subject.py"]), {
   vectors,
   phase: "P8",
@@ -195,7 +196,7 @@ console.log(report.failed[0]);
 ```
 
 ```text
-conformance: 13 passed, 852 failed, 0 skipped
+conformance: 13 passed, 853 failed, 0 skipped
 failing areas: 43 of 44
 {
   area: 'atrhash.compute',
@@ -277,7 +278,7 @@ And a real failure, from a corpus with one expected value altered — the summar
 per failing case naming the area, the case, and both values:
 
 ```text
-conformance: 864 passed, 1 failed, 0 skipped (none)
+conformance: 865 passed, 1 failed, 0 skipped (none)
 FAIL atrhash.compute / empty-terms: expected "0x0000000000000000000000000000000000000000000000000000000000000000" got "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 ```
 

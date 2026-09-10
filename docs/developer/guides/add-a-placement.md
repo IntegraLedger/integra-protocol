@@ -352,7 +352,7 @@ npx @integraledger/lcp-conformance
 ```
 
 ```text
-conformance: 865 passed, 1 failed, 0 skipped (none)
+conformance: 866 passed, 1 failed, 0 skipped (none)
 FAIL placement.a2a / extract reads the camelCase-Ref spelling some agents emit: expected {"ok":true,"value":{"ref":{"type":"sha256","value":"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"},"termsUrl":{"kind":"no-field-declared"}}} got {"refused":true,"haltClass":"verification-failure","code":"a2a/reference-absent"}
 ```
 
@@ -363,10 +363,10 @@ not because a parser learned a new guess.
 Two things to know before you run any of this. **`lcp-conformance` cannot be pointed at a third party** — it
 always drives the in-process implementation, and driving a foreign one is the library API,
 `runCorpus(subject, opts)` with a `CliSubject`; see [run-conformance.md](run-conformance.md). And
-**`runCorpus` defaults `phase` to `"P1"`** where the CLI defaults to the wired floor. P1 is 95 cases —
-roughly an eighth of the corpus — and it contains **no placement area at all**, so a library caller who
-omits `phase` certifies none of the work above. State the phase, and check `report.skipped` is empty rather
-than trusting a string.
+**`runCorpus` defaults `phase` to the ladder's top — the whole corpus** — where the CLI defaults to its own
+wired floor. It used to default to `"P1"`, which is 102 cases and contains **no placement area at all**, so
+a library caller who omitted `phase` certified none of the work above. State the phase anyway when you mean
+a narrower run, and check `report.skipped` is empty rather than trusting a string.
 
 Then the repository's own gates, which a new package passes like every other:
 
