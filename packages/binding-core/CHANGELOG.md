@@ -1,5 +1,11 @@
 # @integraledger/lcp-binding-core
 
+## 0.18.1
+
+### Patch Changes
+
+- @integraledger/lcp-kernel@0.18.1
+
 ## 0.18.0
 
 ### Patch Changes

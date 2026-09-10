@@ -1,5 +1,42 @@
 # @integraledger/lcp-binding-evm-common
 
+## 0.18.1
+
+### Patch Changes
+
+- The line converges on one `zod`, one `viem`, one `@mysten/sui` and one `@stellar/stellar-sdk`
+  
+  The catalogue moved in `75ec0f4` and nothing was released from it, which left the published line
+  declaring one set of versions and this repository's source declaring another. Seven packages carry those
+  four names in their **published** manifests, so the bump is a change to what consumers must resolve —
+  not an internal one:
+  
+  ```
+  @stellar/stellar-sdk  17.0.0  -> 17.0.1     lcp-binding-stellar
+  @mysten/sui           2.26.2  -> 2.29.0     lcp-binding-sui
+  zod                   4.4.3   -> 4.5.4      lcp-discovery
+  viem                  2.55.19 -> 2.56.3     lcp-binding-evm-{common,escrow,mpp,x402}
+  ```
+  
+  ⭐ **A PATCH, and the choice is load-bearing rather than cosmetic.** Consumers declare these packages as
+  `^0.18.0` peers, and a caret on a `0.x` range is MINOR-LOCKED: `^0.18.0` accepts `0.18.1` and refuses
+  `0.19.0`. A minor would therefore force every consumer to edit its peer floor before it could resolve at
+  all — turning a dependency convergence into a breaking-change sweep across two repositories. Nothing in
+  the public surface changed; only the versions these packages ask their host to supply.
+  
+  ⛔ **WHY IT HAD TO BE RELEASED RATHER THAN LEFT.** `integra-agentic-commerce` runs `check:shared-pins`,
+  which compares its catalogue against what the **published** `@integraledger/*` tarballs declare, read out
+  of `node_modules`. With the catalogue moved here and nothing published, that gate reported the line at two
+  versions of each name and its `protocol-integration` job went red **with no commit landing in that
+  repository to explain it**. Two copies of `zod` in one tree is not a bookkeeping complaint: schemas built
+  by one copy fail `instanceof` against the other, and no type-checker sees it.
+  
+  Measured before cutting this: with the catalogue converged, that repository's whole gate passes against
+  this line — every stage, 2013 + 731 tests. The divergence was the only finding.
+- @integraledger/lcp-authority@0.18.1
+  - @integraledger/lcp-binding-core@0.18.1
+  - @integraledger/lcp-kernel@0.18.1
+
 ## 0.18.0
 
 ### Patch Changes
