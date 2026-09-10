@@ -61,8 +61,12 @@ describe("termsFormat classification", () => {
 
 describe("canonical JSON Schema artifact", () => {
   it("exports a draft-2020-12 schema with terms required", () => {
-    expect(String(LEGAL_CONTEXT_JSON_SCHEMA["$id"])).toContain(
-      "legal-context.json",
+    // ⛔ THE CANONICAL ID, ASSERTED WHOLE. This read `toContain("legal-context.json")`, which the old
+    // broken `…/schema/0.1.38/legal-context.json` satisfied perfectly — a substring test cannot tell a
+    // resolvable id from an unresolvable one, and that is how a 404 shipped in every discovery document
+    // this library produced. The specification publishes exactly one id for this schema.
+    expect(String(LEGAL_CONTEXT_JSON_SCHEMA["$id"])).toBe(
+      "https://legalcontextprotocol.org/schema/legal-context.schema.json",
     );
     expect(LEGAL_CONTEXT_JSON_SCHEMA["required"] as string[]).toContain(
       "terms",
@@ -100,7 +104,7 @@ describe("emit normalizes the atrHash's case, and nothing else's (LCP §2.5)", (
   const UP = `0x${H.slice(2).toUpperCase()}`;
 
   it("emits an uppercase-digit atrHash as lowercase", () => {
-    // §2.5 gained a RECOMMENDED in v0.1.38: emit lowercase, so a served document has exactly one spelling
+    // LCP §2.5 carries a RECOMMENDED: emit lowercase, so a served document has exactly one spelling
     // however the profile was authored.
     const doc = emit({
       terms: "https://seller.example/terms.md",

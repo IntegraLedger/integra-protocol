@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { APTOS_COLLECTION_PATH } from "./constants.js";
 
 /**
  * The Aptos `lcp_payment` Move-module binding manifest.
@@ -45,6 +46,6 @@ export const APTOS_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on execution (Move settle_payment) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "settle-payment": "signature" },
+  weldGrades: { [APTOS_COLLECTION_PATH]: "signature" },
   lifecycleStates: ["proposed", "settled"],
 };

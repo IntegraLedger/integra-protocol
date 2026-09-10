@@ -6,7 +6,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * Cut against the LIVE A2A specification: `specification/a2a.proto` in `a2aproject/A2A` at commit `0ef1b02`,
  * plus `docs/specification.md`, `docs/topics/extensions.md` and
  * `docs/topics/extension-and-binding-governance.md` at the same commit. Gate discharged 2026-07-30 and
- * reconciled against LCP v1.37 §C.8 the same day and re-checked against v1.38 §C.8 on 2026-08-08 — see the README for the discharge, the ONE drift it found
+ * reconciled against LCP §C.8 the same day and re-checked against LCP §C.8 on 2026-08-08 — see the README for the discharge, the ONE drift it found
  * in the appendix (`AgentExtension` has a fourth field, `description`), and why §C.8's "not expected to be
  * dereferenced" sentence is NOT a drift: the host states it verbatim for its own official URI namespace, and
  * the hosted-specification line elsewhere in A2A's docs is SHOULD-level publication guidance for an author's

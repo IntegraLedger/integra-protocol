@@ -72,8 +72,23 @@ export interface CardanoTxView {
 export interface CardanoReader {
   /** One confirmed transaction's view (metadata + `valid_contract`), or `null` if the indexer has none. */
   txView(txHash: string): Promise<CardanoTxView | null>;
-  /** Tx hashes carrying the given metadata label (`GET /metadata/txs/labels/{label}`) — the forward index. */
-  txsWithLabel(label: number, limit?: number): Promise<string[]>;
+  /**
+   * Tx hashes carrying the given metadata label (`GET /metadata/txs/labels/{label}`) — the forward index.
+   *
+   * ⛔⛔ **`limit` IS REQUIRED, AND THAT IS THIS RAIL'S ANSWER TO THE SCAN QUESTION.** It was optional and
+   * forwarded verbatim, so an absent one handed the depth of the scan to whichever indexer the consumer
+   * bridged — Blockfrost pages this endpoint, db-sync and Koios have their own bounds — and the result
+   * came back as a plain array with nothing saying it had been cut. On this rail that is the sharpest
+   * version of the problem in the tree: the LCP label is DEDICATED and global, so this index accumulates
+   * every LCP settlement on Cardano by every seller, and an unbounded-looking query really returns the
+   * most recent page of all of them. A settlement past it reads as `[]`, which is exactly what "this
+   * atrHash never settled" looks like.
+   *
+   * ⭐ Unlike Hedera, this package cannot state a measured page size, and inventing one would be worse
+   * than the defect: three indexers are named in the docblock above and they do not agree. The caller
+   * names the depth, and a full result is then the bound the caller chose rather than one nobody saw.
+   */
+  txsWithLabel(label: number, limit: number): Promise<string[]>;
 }
 
 /** Recover the atrHash from a confirmed tx's metadata, or null if no LCP label carries a valid atrHash. */
@@ -139,11 +154,13 @@ export interface CardanoAdapter {
     ref: CardanoSettlementRef,
     reader: CardanoReader,
   ): Promise<Outcome<{ state: "settled"; atrHash: `0x${string}` }>>;
-  /** Metadata-label-index scan for settlements bearing `atrHash` (native forward index — see the manifest). */
+  /** Metadata-label-index scan for settlements bearing `atrHash` (native forward index — see the manifest).
+   *  `limit` is the scan DEPTH and it is REQUIRED — see {@link CardanoReader.txsWithLabel} for why this
+   *  package will not choose it, and for what an absent one used to mean on a global label index. */
   enumerate(
     atrHash: string,
     reader: CardanoReader,
-    limit?: number,
+    limit: number,
   ): Promise<CardanoSettlementRef[]>;
 }
 
@@ -233,7 +250,7 @@ export function createCardanoAdapter(
     async enumerate(
       atrHash: string,
       reader: CardanoReader,
-      limit?: number,
+      limit: number,
     ): Promise<CardanoSettlementRef[]> {
       // Fail-fast, like propose: a malformed atrHash can never match a decoded metadatum, and the silent
       // [] it would produce is indistinguishable from "no settlements" (mirrors buildLcpMetadataValue's
@@ -241,6 +258,12 @@ export function createCardanoAdapter(
       if (!isAtrHash(atrHash))
         throw new Error(
           `enumerate: atrHash must be a 0x-prefixed 32-byte value, got "${atrHash}"`,
+        );
+      // The same reasoning applied to the bound: a scan of zero returns [], which is the answer that
+      // cannot be told apart from "this atrHash never settled".
+      if (!Number.isInteger(limit) || limit < 1)
+        throw new Error(
+          `enumerate: limit must be a positive integer — it is the depth of a scan over a GLOBAL label index and this package will not choose it, got ${limit}`,
         );
       const txHashes = await reader.txsWithLabel(LCP_METADATA_LABEL, limit);
       const out: CardanoSettlementRef[] = [];

@@ -15,6 +15,7 @@ export {
   MUX_ID_BYTES,
   MUX_SCHEME,
   PUBNET_PASSPHRASE,
+  STELLAR_COLLECTION_PATH,
   STELLAR_USDC_DECIMALS,
   type StellarNetwork,
   type StellarNetworkConfig,

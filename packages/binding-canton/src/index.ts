@@ -1,4 +1,5 @@
 export {
+  CANTON_DEFAULT_TIMEOUT_MS,
   type CantonAdapter,
   type CantonParticipantConfig,
   type CantonParticipantReader,
@@ -19,6 +20,7 @@ export {
   verifyAnchorAtrHash,
 } from "./anchor.js";
 export {
+  CANTON_COLLECTION_PATH,
   type CantonNetwork,
   type CantonNetworkConfig,
   getCantonConfig,

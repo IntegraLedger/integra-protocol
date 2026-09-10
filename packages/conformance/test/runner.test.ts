@@ -61,7 +61,7 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // absent field at least reads as absent. LCP §2.5 imposes no such rule, so this is the tree applying its
 // own "an empty election is not an election" discipline consistently. Four cases: blank, whitespace, the
 // same rule on the contact block, and a real election that must still validate.
-// 839 → 825 on 2026-08-08: placement-acp's top-level carrier WRITE was retired (LCP v1.38 §C.2 —
+// 839 → 825 on 2026-08-08: placement-acp's top-level carrier WRITE was retired (LCP §C.2 —
 // CheckoutSessionBase is additionalProperties:false and CheckoutSession is a bare allOf over it, so no
 // ExtensionDeclaration can authorise a new top-level key; measured INVALID with ajv 8.20 against
 // spec/2026-04-17). Fifteen cases went with it: the six that asserted the write, and the nine whose whole
@@ -80,7 +80,7 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // `description` when our reference is merged in. Verified at UCP HEAD: checkout.json has eighteen properties
 // and `extensions` is not among them, while `additionalProperties: true` meant the old write landed and was
 // never read. Silent, which is worse than rejected.
-// 827 → 810 on 2026-08-08: placement-mastercard-vi became DECLARATION-ONLY. LCP v1.38 §C.7, closing
+// 827 → 810 on 2026-08-08: placement-mastercard-vi became DECLARATION-ONLY. LCP §C.7, closing
 // "Tier B — there is no Tier A carrier" —
 // "A deployment MUST NOT write an unregistered legal-context constraint into a VI mandate and expect it to
 // travel" — and the host leaves no carrier: only OPEN mandates carry a constraints array, and there
@@ -90,7 +90,7 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // the path they covered is gone — and one replaces them, using the checkout OPEN mandate the withdrawn
 // writeCondition permitted, so it fails if the write ever returns. Every extract case survives: a
 // counterparty who writes one holds a real reference, and reading it costs nothing.
-// 810 → 812 on 2026-08-08: LCP v0.1.38 §2.5's new RECOMMENDED — an atrHash is EMITTED lowercase — with
+// 810 → 812 on 2026-08-08: LCP §2.5's new RECOMMENDED — an atrHash is EMITTED lowercase — with
 // its companion negative. The second case is the one that matters: `url` must pass through with its case
 // EXACTLY intact, because a URL's path and query are case-sensitive and folding one would rewrite the
 // reference into a different document. The same holds for the other content-addressed types (base58btc
@@ -126,14 +126,23 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // 859 → 861 on 2026-09-03: `placement.ucp` gains the write half of the https rule — a `place` that refuses
 // an `http:` url reference, and the https control beside it. `extract` had refused one since the rule
 // landed while `place` wrote one, so the placement could emit a document its own extractor rejects.
-const CORPUS_SIZE = 861;
+// 861 → 865 on 2026-09-10: `verify.referencePlacement` gains the CARRIER TYPE, which the step never read.
+// A `url` reference — which a conformant UCP merchant produces from the REQUIRED `links[]` entry without
+// placing any LCP capability at all — was compared as a fingerprint, never matched, and impeached an
+// otherwise-sound record to TC-0. Two of the four are the `ipfs`/`ar` pair, integrity-bearing but
+// addressing a CID this pure walk cannot re-derive; the fourth is an unregistered type, which reads as a
+// malformed extraction rather than as either carrier-class gap.
+// 865 → 866 on 2026-09-10: `report.schema` gains a missing-`depth` negative. The report never stated the
+// depth it ran at, so a structural walk and a mechanical one over the same inputs serialized to IDENTICAL
+// bytes and `verified: false` could not be read as impeached rather than unattempted. The three positive
+// documents in that area gained the member in the same edit.
+const CORPUS_SIZE = 866;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {
-    // Phase P8 is the wired floor, so this is every area. Running without an explicit phase defaults to
-    // P1, which exercises 95 cases — well under CORPUS_SIZE, and a green that means far less than it
-    // appears to. Only P1's share is stated as a literal: it is a property of the P1 areas and does not
-    // move when a later phase grows, so unlike a hardcoded total it cannot go stale behind the pin.
+    // Phase P8 is the wired floor and also the runner's default today, so this is every area. It is
+    // still stated explicitly: the default is derived from the ladder's top, and a test that leaned on
+    // that would stop asserting anything the day a P9 arrives with no dispatch behind it.
     const report = await runCorpus(new InProcessSubject(), {
       vectors: VECTORS,
       phase: "P8",

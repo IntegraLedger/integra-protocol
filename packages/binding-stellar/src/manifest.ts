@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { STELLAR_COLLECTION_PATH } from "./constants.js";
 
 /**
  * The Stellar CAP-67 muxed-address binding manifest.
@@ -73,6 +74,6 @@ export const STELLAR_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on ledger close (Soroban SAC transfer) — no on-rail reversal; only atrHash[:8] rides in the CAP-67 mux id, so settlement alone confirms the prefix-8 match but does NOT recover the full hash (the full atrHash comes from off-chain extensions.legalContext.info); recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "cap67-mux": "signature" },
+  weldGrades: { [STELLAR_COLLECTION_PATH]: "signature" },
   lifecycleStates: ["proposed", "settled"],
 };

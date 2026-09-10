@@ -15,6 +15,7 @@
  */
 import type { BindingManifest, Outcome } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
+import { XRPL_ACCOUNT_SCAN_DEPTH } from "./constants.js";
 import { decodeInvoiceId, proposeInvoiceId } from "./invoice-id.js";
 import { readLcpMemoAtrHash, type XrplMemo } from "./memo.js";
 
@@ -112,7 +113,9 @@ export interface XrplAdapter {
    */
   propose(inputs: {
     atrHash: string;
-    usesX402InvoiceBinding?: boolean;
+    /** REQUIRED — the seller's own answer to "am I setting `extra.invoiceId`?". Optional, it defaulted the
+     *  guard OFF for every seller who had not heard of it; see {@link proposeInvoiceId}. */
+    usesX402InvoiceBinding: boolean;
   }): string;
   /** Recover the atrHash from a validated settlement, or a `verification-failure` Refusal if none binds. */
   recover(
@@ -125,7 +128,14 @@ export interface XrplAdapter {
     ref: XrplSettlementRef,
     reader: XrplReader,
   ): Promise<Outcome<{ state: "settled"; atrHash: `0x${string}` }>>;
-  /** Best-effort account scan for settlements bearing `atrHash` (NOT a native index — see the manifest). */
+  /**
+   * Best-effort account scan for settlements bearing `atrHash` (NOT a native index — see the manifest).
+   *
+   * ⛔ `limit` is the scan DEPTH and it is yours to set. Omitted, this asks rippled for
+   * {@link XRPL_ACCOUNT_SCAN_DEPTH} and THROWS if the page comes back full — `account_tx` continues
+   * through a `marker` this reader port does not carry, so a saturated scan cannot be told from a
+   * complete one.
+   */
   enumerate(
     atrHash: string,
     account: string,
@@ -189,7 +199,7 @@ export function createXrplAdapter(manifest: BindingManifest): XrplAdapter {
 
     propose(inputs: {
       atrHash: string;
-      usesX402InvoiceBinding?: boolean;
+      usesX402InvoiceBinding: boolean;
     }): string {
       return proposeInvoiceId(inputs);
     },
@@ -222,7 +232,23 @@ export function createXrplAdapter(manifest: BindingManifest): XrplAdapter {
         throw new Error(
           `enumerate: atrHash must be a 0x-prefixed 32-byte value, got "${atrHash}"`,
         );
-      const hashes = await reader.paymentHashesFor(account, limit);
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 1))
+        throw new Error(
+          `enumerate: limit must be a positive integer, got ${limit}`,
+        );
+      // ⛔ NOT `reader.paymentHashesFor(account, limit)`. Forwarding an absent `limit` handed the depth of
+      // this scan to rippled, whose `account_tx` default is 200 (measured — see XRPL_ACCOUNT_SCAN_DEPTH),
+      // and a settlement past it came back as an empty array nobody could tell from "no settlements".
+      const depth = limit ?? XRPL_ACCOUNT_SCAN_DEPTH;
+      const hashes = await reader.paymentHashesFor(account, depth);
+      // ⛔⛔ A FULL PAGE WITH NO `limit` NAMED IS A REFUSAL, NOT AN ANSWER. An explicit `limit` is the
+      // caller's own bound and a full result is what they asked for; an absent one means "every
+      // settlement on this account", and this rail cannot serve that — `account_tx` continues through a
+      // `marker` and `XrplReader` returns hashes without one, so there is nothing to page with.
+      if (limit === undefined && hashes.length >= depth)
+        throw new Error(
+          `enumerate: the account scan of ${account} came back full at ${hashes.length} of ${depth} payments, so it cannot tell a complete answer from a truncated one — rippled's account_tx continues through a marker this reader port does not carry, so name the depth you want with an explicit \`limit\` and take the bound as yours`,
+        );
       const out: XrplSettlementRef[] = [];
       for (const txHash of hashes) {
         const atr = recoverAtrHashFromPayment(await reader.paymentView(txHash));

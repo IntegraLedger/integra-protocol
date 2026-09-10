@@ -86,7 +86,7 @@ against a version string. Four things were confirmed:
    precondition rather than an assumed one.
 
 **One premise corrected.** This package was designed on the understanding that ACK is the only protocol in
-the set with no LCP Appendix C section. That was true of v1.36 and is **false of v1.37**, which added
+the set with no LCP Appendix C section. That is **false of the published specification**, which carries
 **§C.10**. §C.10 agrees with the code on every point that matters here, including the camelCase
 `legalContext` spelling this package makes canonical, so nothing in the build changed — but the premise did,
 and the host's own code decides either way.
@@ -225,7 +225,7 @@ By contrast the ordering rule above stands on ACK's own published procedure, whi
 ## Provenance
 
 Cut against the ACK reference implementation at `main`, read **2026-07-30** (repo pushed 2026-07-29), and
-reconciled against LCP v1.37 §C.10 the same day, and re-read against **v1.38 §C.10** on 2026-08-12 — which
+reconciled against LCP §C.10 the same day, and re-read against **LCP §C.10** on 2026-08-12 — which
 still spells the carrier `legalContext`, as this package does. The carrier-strength rules — per-alias `carrierClass` and
 `write`, and `org.legalcontextprotocol.*` reserved for a TSC-ratified capability — neither apply to a
 manifest whose only alias is an integrity spelling and which advertises no namespaced capability.

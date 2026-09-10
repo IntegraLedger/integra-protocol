@@ -16,7 +16,7 @@
  * The two rails reached it from opposite directions and that difference is worth keeping in view.
  * `binding-tempo-mpp` guarded it on EMPIRICAL grounds: sampling Tempo mainnet on 2026-07-30, every
  * `TransferWithMemo` observed carried an attribution memo (45/45 and 73/73 in two windows). On Hedera it is
- * NORMATIVE — LCP v1.38 §C.1 states that a reader MUST discriminate before treating memo bytes as a terms
+ * NORMATIVE — LCP §C.1 states that a reader MUST discriminate before treating memo bytes as a terms
  * reference.
  *
  * **THE DISCRIMINATOR IS THE HOST'S, NOT OURS.** The tag is four bytes of a keccak digest, so an atrHash

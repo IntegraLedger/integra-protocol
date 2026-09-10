@@ -25,10 +25,17 @@ const read = (path: string): unknown =>
   );
 
 describe("LCP_SPEC_VERSION is the single source of truth", () => {
-  it("is a bare MAJOR.MINOR.PATCH string — no leading v, no range", () => {
-    // It is stamped verbatim into an on-chain metadatum and into a URL path segment. A stray "v" prefix or
-    // whitespace would be written to a chain, where it cannot be corrected.
-    expect(LCP_SPEC_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+  it("is a bare dotted numeric edition — no leading v, no range, no whitespace", () => {
+    // It is stamped verbatim into an on-chain metadatum. A stray "v" prefix or whitespace would be written
+    // to a chain, where it cannot be corrected.
+    //
+    // ⛔ THREE COMPONENTS WERE REQUIRED HERE UNTIL 2026-09-07, and the rule was wrong rather than strict.
+    // It was written when this constant held Integra's internal `0.1.x` working series. The PUBLISHED
+    // specification's header reads `Version: 1.0` — two components — so a three-component rule would have
+    // forced this tree to invent a `1.0.0` the specification does not use, which is the same defect as the
+    // internal number it replaced: a version no reader can go and check. What the rule is FOR is that the
+    // value is safe to write on a chain and into text, and that is what it now says.
+    expect(LCP_SPEC_VERSION).toMatch(/^\d+(?:\.\d+)+$/);
   });
 
   it("the shipped legal-context schema's $id and description carry it", () => {
@@ -38,9 +45,15 @@ describe("LCP_SPEC_VERSION is the single source of truth", () => {
     >;
     const id = schema["$id"];
     expect(typeof id).toBe("string");
-    // The version is a PATH SEGMENT — asserted with slashes so a version appearing anywhere else in the
-    // URL (a host, a query) cannot satisfy this.
-    expect(id as string).toContain(`/${LCP_SPEC_VERSION}/`);
+    // ⛔⛔ THE `$id` NO LONGER CARRIES THE VERSION, AND THAT IS THE FIX RATHER THAN A REGRESSION. It used
+    // to be asserted as a PATH SEGMENT — `/${LCP_SPEC_VERSION}/` — which is how every discovery document
+    // this library produced came to carry `…/schema/0.1.38/legal-context.json`, a URL that resolved to
+    // nothing at any value the constant ever held (measured 404, 2026-09-07). The specification publishes
+    // one canonical, UNVERSIONED id in `spec/legal-context.schema.json`, and it returns 200. An `$id` is an
+    // identity; the edition belongs in the description, which is asserted below.
+    expect(id as string).toBe(
+      "https://legalcontextprotocol.org/schema/legal-context.schema.json",
+    );
 
     // The DESCRIPTION carries the version too, and until 2026-08-08 nothing gated it: a bump could leave
     // this string on the old revision with the suite green. This test was already NAMED as though it
@@ -113,13 +126,27 @@ describe("LCP_SPEC_VERSION is the single source of truth", () => {
     expect(sources.length).toBeGreaterThan(0);
     expect(sources).toContain(DEFINITION);
 
-    const offenders = sources.filter(
-      (path) =>
-        path !== DEFINITION &&
-        readFileSync(join(root, path), { encoding: "utf8" }).includes(
-          `"${LCP_SPEC_VERSION}"`,
-        ),
-    );
+    // ⛔⛔ **THE MATCH IS CONTEXTUAL, AND IT HAD TO BECOME SO WHEN THE EDITION BECAME `1.0`.** A bare
+    // `includes("\"" + version + "\"")` was sound while the constant held `0.1.38`, a string that appears
+    // nowhere by accident. `"1.0"` does: `binding-core/src/placement.ts` names it in a docblock about
+    // canonical ARRAY INDICES — `"01"`, `"1.0"`, `"-1"` are not indices — which is not a copy of the spec
+    // version and never was. Exempting that file by name would be the list this test already refuses.
+    //
+    // ⇒ A line is an offender when it spells the version AND says what it is spelling. That is derived
+    // from the line, so a future package hardcoding the version in a version-shaped sentence is caught,
+    // and a future docblock mentioning `1.0` about something else is not.
+    const NAMES_THE_SUBJECT = /\b(?:spec|specification|LCP|version|edition)\b/i;
+    const offenders = sources.filter((path) => {
+      if (path === DEFINITION) return false;
+      const text = readFileSync(join(root, path), { encoding: "utf8" });
+      return text
+        .split("\n")
+        .some(
+          (line) =>
+            line.includes(`"${LCP_SPEC_VERSION}"`) &&
+            NAMES_THE_SUBJECT.test(line),
+        );
+    });
     expect(offenders).toEqual([]);
   });
 });

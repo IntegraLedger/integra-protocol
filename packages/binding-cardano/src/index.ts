@@ -11,6 +11,7 @@ export {
   recoverAtrHashFromTxView,
 } from "./adapter.js";
 export {
+  CARDANO_COLLECTION_PATH,
   type CardanoNetwork,
   type CardanoNetworkConfig,
   getCardanoConfig,

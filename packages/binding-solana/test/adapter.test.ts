@@ -1,8 +1,3 @@
-import {
-  type Connection,
-  type ParsedTransactionWithMeta,
-  PublicKey,
-} from "@solana/web3.js";
 import bs58 from "bs58";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -20,6 +15,7 @@ import {
 import { MEMO_PROGRAM_ID, TOKEN_PROGRAM_ID } from "../src/constants.js";
 import { SOLANA_MANIFEST } from "../src/manifest.js";
 import { decodeSplMemo, encodeSplMemo } from "../src/memo.js";
+import type { ParsedTransactionShape, SolanaRpc } from "../src/rpc-shapes.js";
 
 const ATR =
   "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
@@ -38,13 +34,13 @@ function settled(...memos: MemoView[]): SolanaTxView {
 function memoTx(
   atrHash: string,
   err: SolanaTxView["err"] = null,
-): ParsedTransactionWithMeta {
+): ParsedTransactionShape {
   return {
     transaction: {
       message: {
         instructions: [
           {
-            programId: new PublicKey(MEMO_PROGRAM_ID),
+            programId: MEMO_PROGRAM_ID,
             parsed: atrHash,
             program: "spl-memo",
           },
@@ -52,13 +48,13 @@ function memoTx(
       },
     },
     meta: { err },
-  } as unknown as ParsedTransactionWithMeta;
+  } as unknown as ParsedTransactionShape;
 }
 
 describe("buildAtrMemoInstruction", () => {
   it("targets the Memo program and carries the atrHash in its data", () => {
     const ix = buildAtrMemoInstruction(ATR, "hex");
-    expect(ix.programId.toBase58()).toBe(MEMO_PROGRAM_ID);
+    expect(ix.programId).toBe(MEMO_PROGRAM_ID);
     expect(ix.keys).toEqual([]);
     expect(decodeSplMemo(Uint8Array.from(ix.data), "hex")).toBe(ATR);
   });
@@ -174,19 +170,19 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
         message: {
           instructions: [
             {
-              programId: new PublicKey(TOKEN_PROGRAM_ID),
+              programId: TOKEN_PROGRAM_ID,
               parsed: { type: "transferChecked" },
               program: "spl-token",
             },
             {
-              programId: new PublicKey(MEMO_PROGRAM_ID),
+              programId: MEMO_PROGRAM_ID,
               parsed: ATR,
               program: "spl-memo",
             },
           ],
         },
       },
-    } as unknown as ParsedTransactionWithMeta;
+    } as unknown as ParsedTransactionShape;
     const views = parseMemoViews(tx);
     // One view per instruction, in order, and the token instruction's OBJECT `parsed` value does not
     // become memo text — only a string one does, which is what the Memo program parses to.
@@ -206,14 +202,14 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
         message: {
           instructions: [
             {
-              programId: new PublicKey(MEMO_PROGRAM_ID),
+              programId: MEMO_PROGRAM_ID,
               accounts: [],
               data: bs58.encode(memoBytes),
             },
           ],
         },
       },
-    } as unknown as ParsedTransactionWithMeta;
+    } as unknown as ParsedTransactionShape;
     const views = parseMemoViews(tx);
     expect(recoverAtrHashFromMemoViews(views)).toBe(ATR);
   });
@@ -237,7 +233,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
         message: {
           instructions: [
             {
-              programId: new PublicKey(TOKEN_PROGRAM_ID),
+              programId: TOKEN_PROGRAM_ID,
               parsed: { type: "transferChecked" },
               program: "spl-token",
             },
@@ -251,7 +247,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
             index: 0,
             instructions: [
               {
-                programId: new PublicKey(MEMO_PROGRAM_ID),
+                programId: MEMO_PROGRAM_ID,
                 parsed: ATR,
                 program: "spl-memo",
               },
@@ -259,7 +255,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
           },
         ],
       },
-    } as unknown as ParsedTransactionWithMeta;
+    } as unknown as ParsedTransactionShape;
     const views = parseMemoViews(tx);
     expect(views).toEqual([
       { programId: TOKEN_PROGRAM_ID },
@@ -275,7 +271,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
         message: {
           instructions: [
             {
-              programId: new PublicKey(MEMO_PROGRAM_ID),
+              programId: MEMO_PROGRAM_ID,
               parsed: ATR,
               program: "spl-memo",
             },
@@ -289,7 +285,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
             index: 0,
             instructions: [
               {
-                programId: new PublicKey(MEMO_PROGRAM_ID),
+                programId: MEMO_PROGRAM_ID,
                 parsed: OTHER,
                 program: "spl-memo",
               },
@@ -297,8 +293,66 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
           },
         ],
       },
-    } as unknown as ParsedTransactionWithMeta;
+    } as unknown as ParsedTransactionShape;
     expect(recoverAtrHashFromMemoViews(parseMemoViews(tx))).toBe(ATR);
+  });
+
+  /**
+   * ⛔⛔ A CO-LOCATED INSTRUCTION THE BUYER AUTHORED MUST NOT BE ABLE TO DENY THE READING.
+   *
+   * The buyer builds the settlement transaction, so every instruction sitting next to the weld is
+   * counterparty-controlled. This mapper used to `bs58.decode` the data of EVERY unparsed instruction
+   * before anything asked which program emitted it, and `bs58.decode` throws on the first character
+   * outside the base58 alphabet. That throw is not a refusal: it escapes `parseTxView` →
+   * `SolanaReader.txView` → `recover`, so a caller auditing a genuinely welded settlement got an
+   * exception instead of an answer, over bytes this binding was never going to read.
+   *
+   * The reachable path is the PORT. `SolanaRpc` is public and consumer-implemented — a
+   * `@solana/web3.js` `Connection` does not satisfy it structurally — so the bridge is always someone's
+   * own. One that hands through base64 instruction data makes the throw near-certain (`0`, `O`, `I`,
+   * `l`, `+`, `/`, `=` are all outside base58) while the memo itself still arrives as a `parsed` string.
+   *
+   * Both halves are pinned: the weld still recovers, AND the mapping still reports one view per
+   * instruction in order, so the "top-level beats CPI" property is not quietly traded away for the fix.
+   */
+  it("recovers the weld even when a buyer-authored instruction carries undecodable data", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            { programId: MEMO_PROGRAM_ID, parsed: ATR, program: "spl-memo" },
+            // Not base58: 0, O, I and l are outside the alphabet. A bridge handing through base64
+            // produces this shape for any instruction the RPC did not parse.
+            { programId: TOKEN_PROGRAM_ID, accounts: [], data: "0OIl+/=" },
+          ],
+        },
+      },
+      meta: { err: null },
+    } as unknown as ParsedTransactionShape;
+    const views = parseMemoViews(tx);
+    expect(views).toEqual([
+      { programId: MEMO_PROGRAM_ID, memoUtf8: ATR },
+      { programId: TOKEN_PROGRAM_ID },
+    ]);
+    expect(recoverAtrHashFromMemoViews(views)).toBe(ATR);
+    expect(recoverAtrHashFromTxView(parseTxView(tx))).toBe(ATR);
+  });
+
+  /** The other half of the same rule: the instruction we DID come to read is not allowed to fail
+   *  silently. A Memo-program instruction whose data does not decode is the thing under audit, and a
+   *  skip there would be the false `no-atr-memo` refusal the filter exists to prevent. */
+  it("still throws when the MEMO program's own data is undecodable", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            { programId: MEMO_PROGRAM_ID, accounts: [], data: "0OIl+/=" },
+          ],
+        },
+      },
+      meta: { err: null },
+    } as unknown as ParsedTransactionShape;
+    expect(() => parseMemoViews(tx)).toThrow(/base58/i);
   });
 
   it("tolerates an RPC that reports no innerInstructions at all", () => {
@@ -307,7 +361,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
         message: {
           instructions: [
             {
-              programId: new PublicKey(MEMO_PROGRAM_ID),
+              programId: MEMO_PROGRAM_ID,
               parsed: ATR,
               program: "spl-memo",
             },
@@ -315,7 +369,7 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
         },
       },
       meta: { err: null },
-    } as unknown as ParsedTransactionWithMeta;
+    } as unknown as ParsedTransactionShape;
     expect(recoverAtrHashFromMemoViews(parseMemoViews(tx))).toBe(ATR);
   });
 });
@@ -336,7 +390,7 @@ describe("parseTxView (SDK→pure boundary, with the success field)", () => {
     const tx = {
       ...memoTx(ATR),
       meta: null,
-    } as unknown as ParsedTransactionWithMeta;
+    } as unknown as ParsedTransactionShape;
     expect("err" in parseTxView(tx)).toBe(false);
   });
 });
@@ -487,7 +541,7 @@ describe("createSolanaAdapter", () => {
 });
 
 /**
- * The SDK→port adapter over a @solana/web3.js `Connection`. Thin, but it owns three facts nothing else
+ * The SDK→port adapter over a Solana JSON-RPC endpoint. Thin, but it owns three facts nothing else
  * holds: an unknown signature resolves to a null view (not a crash), the transaction's `meta.err`
  * reaches the view, and the account scan is bounded by the caller's limit when one is given.
  */
@@ -497,7 +551,7 @@ describe("makeSolanaReader", () => {
   // for the wrong reason. The token program's own address is as good as any account to scan.
   const ADDRESS = TOKEN_PROGRAM_ID;
 
-  function fakeConnection(over: Record<string, unknown> = {}): Connection {
+  function fakeSolanaRpc(over: Record<string, unknown> = {}): SolanaRpc {
     return {
       getParsedTransaction: vi.fn(async () => memoTx(ATR)),
       getSignaturesForAddress: vi.fn(async () => [
@@ -505,11 +559,11 @@ describe("makeSolanaReader", () => {
         { signature: "sigB" },
       ]),
       ...over,
-    } as unknown as Connection;
+    } as unknown as SolanaRpc;
   }
 
   it("reads a confirmed transaction's view, asking for versioned transactions", async () => {
-    const connection = fakeConnection();
+    const connection = fakeSolanaRpc();
     const view = await makeSolanaReader(connection).txView(SIG);
     expect(recoverAtrHashFromTxView(view)).toBe(ATR);
     // Without maxSupportedTransactionVersion the RPC refuses any v0 transaction outright.
@@ -519,7 +573,7 @@ describe("makeSolanaReader", () => {
   });
 
   it("surfaces a runtime failure's err — the gate sees what the RPC saw", async () => {
-    const connection = fakeConnection({
+    const connection = fakeSolanaRpc({
       getParsedTransaction: async () => memoTx(ATR, FAILED),
     });
     const view = await makeSolanaReader(connection).txView(SIG);
@@ -528,14 +582,14 @@ describe("makeSolanaReader", () => {
   });
 
   it("maps an unknown signature (null) to a null view rather than crashing the scan", async () => {
-    const connection = fakeConnection({
+    const connection = fakeSolanaRpc({
       getParsedTransaction: async () => null,
     });
     await expect(makeSolanaReader(connection).txView(SIG)).resolves.toBeNull();
   });
 
   it("returns the signature strings for an address, passing a limit only when given one", async () => {
-    const connection = fakeConnection();
+    const connection = fakeSolanaRpc();
     const reader = makeSolanaReader(connection);
     expect(await reader.signaturesFor(ADDRESS)).toEqual(["sigA", "sigB"]);
     expect(connection.getSignaturesForAddress).toHaveBeenLastCalledWith(

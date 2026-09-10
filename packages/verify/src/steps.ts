@@ -30,20 +30,22 @@
  *
  * `authorityStep` reads a FLATTENED chain, every field of which is a derived fact it must take on trust.
  * `authorityStepFromWalk` is the path that removes that trust — it consumes `authority.walkChain`'s
- * readout directly, so the caller never flattens anything. Both are exported: the flattened door stays
+ * VERIFIED readout directly, so the caller never flattens anything and cannot substitute the structural
+ * walk, whose proofs nobody checked. Both are exported: the flattened door stays
  * open because a foreign conformance subject may legitimately derive its links some other way, and this
  * module's totality rule means such a caller gets an honest readout rather than a compile wall.
  */
 import {
   type Bounds,
-  type ChainWalkResult,
   commitmentWithinLeaf,
   type IdentityResolution,
   isWithin,
   type SignatureVerifier,
   type SignedAcceptance,
+  type VerifiedChainWalkResult,
   verifyAcceptance,
 } from "@integraledger/lcp-authority";
+import { isKnownCarrierType } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, hashAtr } from "@integraledger/lcp-kernel";
 import type { StepOutcome } from "./report.js";
 
@@ -74,18 +76,24 @@ export interface AuthorityLink {
   maxDepth?: number;
   /** Revoked as-of settlement, from the hash-pinned status-list snapshot.
    *
-   *  REQUIRED, for the same reason `parentDelegable` is: "the flattener never consulted a status list"
-   *  and "the walk checked the pinned snapshot and the link is unrevoked" are otherwise the same absent
-   *  value, and one of them proves. `authority.WalkedLink` already states it always, never defaulted, so
-   *  a walk-fed caller satisfies this for free and only a hand-flattener feels it — which is the point.
+   *  ABSENT MEANS NOBODY CONSULTED A STATUS LIST, and the runtime is the whole gate: absence reads
+   *  `not-attempted` with depth `no-revocation-stated`, a `true` fails, and a non-boolean reads
+   *  `malformed-authority-chain`. "The flattener never consulted a status list" and "the pinned snapshot
+   *  says unrevoked" must not be the same value, and one of them proves — the rule this module's corpus
+   *  states, pinned cross-implementation since 2026-08-08.
    *
-   *  The compile error is not the whole gate, and must not be relied on as one — at runtime an absent value reads as
-   *  unrevoked and PROVED, on the grounds that the corpus pinned that reading cross-implementation. The
-   *  corpus was the thing to change, and on 2026-08-08 it was: absence now reads `not-attempted` with
-   *  depth `no-revocation-stated`, and a non-boolean reads `malformed-authority-chain`. Type and runtime
-   *  agree, so the untyped caller this step exists for gets the same answer a typed one is prevented from
-   *  asking. */
-  revoked: boolean;
+   *  OPTIONAL, unlike `parentDelegable` and `active` beside it, and the asymmetry is the point rather than
+   *  an oversight. Those two always have an answer: ATA-3 fixes a restrictive DEFAULT for delegability, and
+   *  an absent validity window is a complete statement (unbounded) that `isActiveAsOf` evaluates. Revocation
+   *  has a third case they do not — a grant carrying no `credentialStatus` names no list, so there is
+   *  nothing to consult and nothing to state. `authority.WalkedLink` OMITS the field for exactly that grant,
+   *  having previously stamped `false` for it, which is the proving value for a check that never ran; a
+   *  required field here would make the honest readout unassignable and force the walk back to the lie.
+   *
+   *  So the compile error is gone and the runtime gate is unchanged — which was already the ruling: this
+   *  field's own note used to say the compile error "is not the whole gate, and must not be relied on as
+   *  one". A hand-flattener that omits it gets `no-revocation-stated`, which never proves. */
+  revoked?: boolean;
   /** Temporally active as-of settlement (expiry). REQUIRED on the same grounds as `revoked` — an
    *  unstated liveness and a checked-and-live one must not be the same value. Runtime matches: absent is
    *  `not-attempted` with depth `no-liveness-stated`, its OWN token rather than revocation's, so a report
@@ -360,18 +368,25 @@ export function authorityStep(chain: AuthorityLink[] | undefined): StepOutcome {
  * never checked that link N+1 was signed by link N's subject, never dereferenced a status list — yields a
  * confident `proved`. A caller that walks first constructs no link at all and cannot make that mistake.
  *
- * The mapping needs no interpretation, because `ChainWalkResult` already draws this module's own line:
+ * IT TAKES THE VERIFIED WALK ONLY, and that is a type wall rather than a preference.
+ * `authority.walkChainStructure` checks no proof at all — a chain whose only `proofValue` reads
+ * `zTOTALLYFORGED` walks clean through it — so its readout and `walkChain`'s used to be the same value and
+ * this step could not tell which one it had. `VerifiedChainWalkResult`'s success arm is `verified` rather
+ * than `walked`, so handing over the structural readout no longer compiles. There is no runtime screen for
+ * it, deliberately: a check would say the wall is bypassable, and it is not.
+ *
+ * The mapping needs no interpretation, because the readout already draws this module's own line:
  * `refused` is a reasoned CONTRADICTION (a spliced link, an issuer discontinuity, a forged widening, a
- * revoked grant) and carries the halt class with it; `not-attempted` is the walk's honest GAP, its depth
- * passed through verbatim; `walked` hands over links whose every field the walk STATED rather than
- * defaulted. Re-proving those links through `authorityStep` is deliberate rather than redundant — it is
- * what stops the custody walk and the verification step from drifting apart, and
- * `packages/conformance/the repository's walk-readout tests` pins that the walk's output is exactly what the step
- * proves. Total over untyped input like every step here: an unrecognized readout carries no links, so it
- * falls through to `authorityStep`'s own gap rather than throwing.
+ * revoked grant, a proof that does not cover the grant as presented) and carries the halt class with it;
+ * `not-attempted` is the walk's honest GAP, its depth passed through verbatim; `verified` hands over links
+ * whose every field the walk STATED rather than defaulted. Re-proving those links through `authorityStep`
+ * is deliberate rather than redundant — it is what stops the custody walk and the verification step from
+ * drifting apart, and `packages/conformance/test/walk-readout.test.ts` pins that the walk's output is
+ * exactly what the step proves. Total over untyped input like every step here: an unrecognized readout
+ * carries no links, so it falls through to `authorityStep`'s own gap rather than throwing.
  */
 export function authorityStepFromWalk(
-  walk: ChainWalkResult | undefined,
+  walk: VerifiedChainWalkResult | undefined,
 ): StepOutcome {
   if (!present(walk) || typeof walk !== "object")
     return { status: "not-attempted", depth: "no-authority-walk" };
@@ -518,6 +533,10 @@ export interface PlacementInput {
  * nothing to enumerate, and letting a placement stand in for a settlement rung would let a record that
  * moved no money read as classed.
  *
+ * ⚠️ Because it can ONLY pull the answer down, every arm short of a genuine contradiction has to be a gap.
+ * A `url` or a CID compared as a fingerprint never matches, so reading the value without its carrier TYPE
+ * turned "this counterparty published a terms link" into `supportedClass: TC-0`. See the type gate below.
+ *
  * Total, like every step: the shape checks stay even though the arguments are typed, because the callers
  * this exists for are untyped — a foreign conformance subject, an unvalidated intake. A malformed
  * extraction is a GAP, never a `failed`: the caller's shape error says nothing about whether the record
@@ -542,6 +561,39 @@ export function referencePlacementStep(
     typeof (ref as { value?: unknown }).value !== "string"
   )
     return { status: "not-attempted", depth: "malformed-extracted-reference" };
+  // THE CARRIER TYPE, which this step never read — and the value alone cannot be compared without it.
+  //
+  // `url` is the measured case and the serious one. UCP makes `links[]` REQUIRED on a checkout response
+  // and names `terms_of_service` as its recommended type, so a CONFORMANT merchant that placed no LCP
+  // capability at all still extracts as `{type:"url", value:"https://…/terms"}` through the declared
+  // discovery alias. Compared as a fingerprint, that URL never equals the atrHash, so this step answered
+  // `failed` and drove an otherwise-sound record to `supportedClass: TC-0` — impeaching a record because
+  // its counterparty is an ordinary UCP merchant. A url LOCATES a document and commits to nothing about
+  // its content (LCP §C.2), which is exactly why `binding-core.requireIntegrity` refuses it, and why the
+  // honest answer here is a gap rather than a contradiction.
+  //
+  // `ipfs` and `ar` ARE integrity-bearing and still cannot be compared HERE: their value is a CID, not
+  // the record fingerprint, and re-deriving one needs `evidence.cidForAtrHash`, which this pure module
+  // does not depend on. Reading a CID as a fingerprint impeaches every content-addressed reference on the
+  // wire — the same defect as the url, arriving through the carrier types that are supposed to be the
+  // strong ones. Its own token, because "the seller advertised a location instead of terms" and "this
+  // verifier cannot re-derive that address" are different findings.
+  //
+  // Impeachment is reserved for a `sha256` reference naming a DIFFERENT record. That is the only carrier
+  // whose value IS the fingerprint this step holds.
+  const carrier: unknown = (ref as { type?: unknown }).type;
+  if (!isKnownCarrierType(carrier))
+    return { status: "not-attempted", depth: "malformed-extracted-reference" };
+  if (carrier === "url")
+    return {
+      status: "not-attempted",
+      depth: "reference-not-integrity-bearing",
+    };
+  if (carrier !== "sha256")
+    return {
+      status: "not-attempted",
+      depth: "reference-not-a-record-fingerprint",
+    };
   if (typeof settledAtrHash !== "string")
     return { status: "not-attempted", depth: "no-record-fingerprint" };
 

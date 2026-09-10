@@ -1,5 +1,5 @@
 {
-  "$id": "https://legalcontextprotocol.org/schema/0.1.38/legal-context.json",
+  "$id": "https://legalcontextprotocol.org/schema/legal-context.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -64,5 +64,5 @@
   "required": ["terms"],
   "additionalProperties": {},
   "title": "legal-context.json",
-  "description": "LCP discovery document served at /.well-known/legal-context.json (spec v0.1.38 LCP §2.4–2.5)."
+  "description": "LCP discovery document served at /.well-known/legal-context.json (spec v1.0 LCP §2.4–2.5)."
 }

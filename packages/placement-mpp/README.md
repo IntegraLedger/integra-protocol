@@ -41,16 +41,17 @@ Both members are total: a refusal is a returned value, never a thrown exception.
 ## Specification provenance — verified against the live host, 2026-07-30 — per method, because MPP is a family
 
 Read against the live specification family published at paymentauth.org and the IETF Datatracker on
-2026-07-30. Three findings correct both the design this package was specced from and LCP v1.37 §C.1.
+2026-07-30. Three findings correct both the design this package was specced from and LCP §C.1.
 
-### 1. The core scheme moved one revision, one day after v1.37 was checked
+### 1. The core scheme moved one revision, one day after LCP §C.1 was checked
 
 The core scheme is now **`draft-httpauth-payment-00`, 29 July 2026, expires 30 January 2027**. It re-issues
 `draft-ryan-httpauth-payment-01` (18 March 2026, expires 19 September 2026) without the personal-submission
-prefix, which restarts the revision counter at `-00`. **v1.38 §C.1 records both identities**, so this is
-discharged. LCP v1.37 §C.1 cited the `-ryan-` revision and was
-checked 2026-07-28 — one day before the successor landed, so its citation and its "published March 18, 2026
-and expiring September 19, 2026" sentence are now stale by one revision.
+prefix, which restarts the revision counter at `-00`. **LCP §C.1 records both identities** —
+`draft-httpauth-payment-00` at paymentauth.org and in the family's repository, `draft-ryan-httpauth-payment`
+on the IETF datatracker at latest revision `-01` — so this is discharged. The appendix's own reconciliation
+was checked 2026-07-28, one day before the successor landed, so a citation of the `-ryan-` revision alone was
+stale the day after it was made; that is the read this section re-did.
 
 Diffing the two bodies, the substantive additions are: §7.4 `Accept-Payment` client-preference negotiation
 (plus its IANA registration, ABNF and Appendix B.2 examples), §11.2.2 challenge-binding secret management, a
@@ -124,7 +125,7 @@ ever will" is not a property to rely on.
 A custom parameter on the outer `WWW-Authenticate: Payment` challenge is permitted today — §9.3:
 "Implementations MAY define additional parameters in challenges ... Unknown parameters MUST be ignored by
 clients." The same section requires lowercase parameter names, so it would have to spell **`legalcontext`**,
-not `legalContext` as v1.37 §C.1 writes it. Either way an outer parameter is
+not `legalContext` as LCP §C.1 writes it. Either way an outer parameter is
 outside the seven slots and therefore **unbound**, and bringing it under the binding means extending the
 canonicalization input — a coordinated change to the core draft. No Tier B manifest is declared for it:
 declaring a shape the host protocol has not defined is exactly the assertion this repository does not make.
@@ -146,17 +147,19 @@ The slot is `bare-value`, which fixes the carrier type from the field's own cont
 `carrierTypes` at exactly one. A url-typed `readAlso` would need a second permitted type, so the cap forbids
 one — and that is the correct answer rather than a limitation to work around. The terms URL is declared as
 `termsUrlFields`, labelled as the different datum it is, and a reference read can never silently descend to it:
-LCP §C.2 rules out substituting a located document for an attested one — v1.37 as a MUST NOT, v1.38 as a
-statement of fact. `place` writes the URL into the declared slot beside the hash — and REFUSES an
-advertisement without one, because every reference this manifest admits is integrity-bearing and a hash no
-counterparty can resolve is unverifiable (integra-protocol#8's rule; the buyer-side MPP parser has always
-demanded the URL, and the write side now refuses first instead of emitting a body that parser rejects).
+LCP §C.2 rules out substituting a located document for an attested one, and rules it out as a statement of
+fact rather than as a prohibition — terms links carry "no hash-verified integrity guarantee", which is why
+the hash rides the integrity-bearing carrier and the URL does not. `place` writes the URL into the declared
+slot beside the hash — and REFUSES an advertisement without one, because every reference this manifest
+admits is integrity-bearing and a hash no counterparty can resolve is unverifiable (integra-protocol#8's
+rule; the buyer-side MPP parser has always demanded the URL, and the write side now refuses first instead of
+emitting a body that parser rejects).
 
 ## Provenance
 
 Cut against the live MPP specification family (paymentauth.org, core `draft-httpauth-payment-00` of 29 July
-2026), gate discharged per method **2026-07-30**, and reconciled against LCP v1.37 §C.1 the same day; re-read
-against **v1.38 §C.1** on 2026-08-12, which now reads all ten charge methods and records the core draft's
+2026), gate discharged per method **2026-07-30**, and reconciled against LCP §C.1 the same day; re-read
+against **LCP §C.1** on 2026-08-12, which now reads all ten charge methods and records the core draft's
 dual identity. The family was re-enumerated and §C.1 re-read on
 2026-08-08. The
 per-method table above is that record.

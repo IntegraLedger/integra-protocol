@@ -1,0 +1,19 @@
+# Vulnerability exemptions for `pnpm check:advisories`, in osv-scanner's own format.
+#
+# ⛔ EVERY ENTRY CARRIES A `reason` AND AN `ignoreUntil`. The reason is what a reviewer reads; the date is
+# what makes them read it again. An exemption with no expiry is a suppression that outlives everyone who
+# understood it — which is why this file is used instead of `pnpm audit --ignore` or `auditConfig.ignoreGhsas`,
+# neither of which can carry either field.
+#
+# ⭐ Ignoring a vulnerability also ignores its aliases, so an entry keyed on a GHSA still holds when the
+# same advisory arrives as a CVE. That is the scanner's behaviour, not this file's.
+#
+# ⚠️ AN EMPTY FILE IS THE GOAL, AND IT IS CURRENTLY EMPTY. The last exemption this repository would have
+# needed was GHSA-528h-pc64-c93x — a moderate DoS reached through `@solana/web3.js` → `jayson` →
+# `stream-json`. It was not declared: the dependency was removed instead, which is the answer whenever it
+# is available. Declaring is for when it is not.
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-31
+# reason = "Reached only from <path>; <why it cannot execute here>. Reviewed by <name>."

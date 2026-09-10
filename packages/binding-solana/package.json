@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/lcp-binding-solana",
-  "version": "0.15.1",
+  "version": "0.18.0",
   "description": "Welds an ATR hash into a Solana SPL token settlement.",
   "keywords": [
     "lcp",
@@ -50,10 +50,10 @@
   "dependencies": {
     "@integraledger/lcp-binding-core": "workspace:*",
     "@integraledger/lcp-kernel": "workspace:*",
-    "@solana/web3.js": "catalog:",
     "bs58": "catalog:"
   },
   "devDependencies": {
+    "@solana/kit": "catalog:",
     "@types/node": "catalog:",
     "vitest": "catalog:"
   },

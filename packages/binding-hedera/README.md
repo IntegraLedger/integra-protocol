@@ -38,6 +38,18 @@ if (!("refused" in recovered)) console.log(recovered.value); // "0x…"
 // Narrow with `"refused" in x` — `Refusal` has no `ok`, so the union cannot discriminate on one.
 ```
 
+**Your reader supplies the memo once, and says how it is spelled.** `HederaTxView.memo` is one field —
+`{ encoding: "text", value }` if you decoded the Mirror Node's `memo_base64` yourself, `{ encoding:
+"base64", value }` if you passed it through raw. There is deliberately no way to supply both: when there
+were two optional fields an empty decoded one beat a raw one carrying the real weld, and a welded
+settlement refused `hedera/no-atr-memo`.
+
+**You name the depth of an account scan.** `enumerate`'s `limit` is the scan depth. Omitted, it asks the
+Mirror Node for its largest page (100 — measured; the server's own default with no `limit` is 25) and
+**throws** if that page comes back full, because `HederaReader.transactionsFor` returns ids and no cursor,
+so a saturated scan cannot be told apart from a complete one. An explicit `limit` is your bound and a full
+result there is what you asked for.
+
 ## The carrier
 
 The ATR hash rides `TransferTransaction.transactionMemo` — an existing Hedera primitive for an arbitrary

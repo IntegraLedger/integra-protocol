@@ -1,5 +1,80 @@
 # @integraledger/lcp-binding-evm-common
 
+## 0.18.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @integraledger/lcp-authority@0.18.0
+  - @integraledger/lcp-binding-core@0.18.0
+  - @integraledger/lcp-kernel@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-authority@0.17.0
+  - @integraledger/lcp-binding-core@0.17.0
+  - @integraledger/lcp-kernel@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-authority@0.16.1
+  - @integraledger/lcp-binding-core@0.16.1
+  - @integraledger/lcp-kernel@0.16.1
+
+## 0.16.0
+
+### Minor Changes
+
+- 2fd5eb2: `isEasValidAsOf` now bounds the validity interval from below.
+  
+  The predicate answers "was this attestation valid AS OF the settlement". It gated on existence, revocation
+  and expiry — three facts that all bound the interval from ABOVE — and never read `att.time`, EAS's creation
+  timestamp, which was decoded and used by nothing. So an attestation minted the day after a settlement was
+  reported valid as of that settlement: backdating by omission, and the one direction an attester can exploit
+  after the fact.
+  
+  `att.time > asOfUnixSeconds` is now a refusal. The boundary is inclusive in the same sense as the other
+  two: revoked or expired AT the as-of second is invalid, attested AT the as-of second is valid.
+  
+  **This changes published behaviour** — a caller passing an attestation newer than its as-of instant now
+  gets `false` where it previously got `true`.
+- bb48020: An RPC outage is no longer reported as a forged signature.
+  
+  `verifyAcceptanceSignature` wrapped the bound verification call in `try { … } catch { return false }`. For
+  `eip191` and `eip712` that closure is pure offline recovery, so a throw genuinely is the signature. For
+  `evm:erc1271` and `evm:erc6492` it is an on-chain call, and viem has already drawn the line inside it: a
+  signature the validator rejects makes the deployless call revert, viem catches its own `VerificationError`
+  and returns `false`, and it rethrows only for an HTTP 429, a timeout, or a node that answered garbage.
+  Swallowing that rethrow turned every rate-limited RPC into `acceptance/bad-signature` — "signature did not
+  verify" — publishing a valid buyer acceptance as a forgery, a verdict the next run reverses. The package's
+  own README argued the opposite doctrine three paragraphs above the code: "'not verified' and 'verified as
+  forged' are different facts."
+  
+  The guard is now scheme-shaped: it wraps the offline recovery only, and an on-chain call's throw
+  propagates. **This changes published behaviour** — a caller of `verifyAcceptanceSignature` or of the
+  `SignatureVerifier` returned by `makeEvmAcceptanceVerifier`, on a smart-account scheme, must now handle a
+  rejection where it previously received `false`. That is the point of the change: the two facts were
+  indistinguishable and one of them was wrong. The `false` verdict for a signature the chain actually
+  rejected is unchanged.
+  
+  `authority` gains no behaviour change, only the contract in writing: `SignatureVerifier.verify` returning
+  `false` means CHECKED AND INVALID, and `verifyAcceptance` deliberately does not catch a rejection from the
+  port, because `acceptance/bad-signature` is a claim about the record and an unreachable node has made none.
+  
+  The replaced test asserted the defect outright — "an on-chain call that throws is reported as false, not
+  propagated (a verifier must not crash)".
+
+### Patch Changes
+
+- Updated dependencies [bb48020]
+  - @integraledger/lcp-authority@0.16.0
+  - @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
@@ -100,8 +175,8 @@
   `buildEip3009TypedData` has been here since the canonical EVM binding shipped, and nothing beside it could
   answer whether a given authorization was actually signed by the account it names. So a seller surface
   holding a payer's credential had three bad options: take the signature on trust until settlement, grow a
-  viem dependency of its own, or reimplement recovery. `seller-mpp` needs exactly this for the 2026-08-24
-  audit's C-28, and `seller-x402` already reaches here for `makeEvmAcceptanceVerifier` — the commons owns EVM
+  viem dependency of its own, or reimplement recovery. A seller MPP surface needs exactly this to check a payer's
+  authorization before settlement, and `seller-x402` already reaches here for `makeEvmAcceptanceVerifier` — the commons owns EVM
   crypto, and this is the piece that was missing.
 
   ⭐ **`ecrecover`, because that is what the TOKEN does.** `FiatTokenV2.transferWithAuthorization` recovers the
@@ -188,7 +263,7 @@ and a large number of documentation claims were corrected against the host speci
 First public release.
 
 `0.9.0` is deliberate: this is a release candidate for 1.0, not a preview. The implementation is complete
-against LCP v1.38 and certified by the conformance corpus, and the remaining distance to 1.0 is the
+against the published LCP specification and certified by the conformance corpus, and the remaining distance to 1.0 is the
 specification's own — the standard is still moving through its steering committee, and this package will not
 claim a stability its protocol has not yet promised.
 

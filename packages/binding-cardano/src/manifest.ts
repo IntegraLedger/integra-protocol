@@ -1,5 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
-import { LCP_METADATA_LABEL } from "./constants.js";
+import { CARDANO_COLLECTION_PATH, LCP_METADATA_LABEL } from "./constants.js";
 
 /**
  * The Cardano LCP-metadata binding manifest.
@@ -48,6 +48,6 @@ export const CARDANO_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on settlement confirmation (native ADA transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "tx-metadata": "signature" },
+  weldGrades: { [CARDANO_COLLECTION_PATH]: "signature" },
   lifecycleStates: ["proposed", "settled"],
 };

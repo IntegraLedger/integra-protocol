@@ -51,3 +51,56 @@ export function getXrplConfig(network: XrplNetwork): XrplNetworkConfig {
 
 /** 1 XRP = 1_000_000 drops (the base unit of `Payment.Amount`). */
 export const DROPS_PER_XRP = 1_000_000;
+
+/**
+ * ⛔⛔ THE COLLECTION PATH THIS RAIL'S `weldGrades` IS KEYED BY — exported so a consumer looks the grade up
+ * with the SAME token this manifest declares it under.
+ *
+ * `binding-evm-x402` shipped `0.15.1` with `weldGrades` keyed `ERC3009` — the escrow sibling's COLLECTOR
+ * name — while the value a consumer computes from an x402 offer is `eip3009`. The map and the lookup key
+ * disagreed inside one published package, so `weldGrades[assetTransferMethod]` answered `undefined`: the
+ * grade absent rather than wrong, which reads as a rail declaring no weld grade at all. Nothing caught it —
+ * the profile schema constrains weldGrades VALUES (`signature` | `tx`) and says nothing about keys.
+ *
+ * ⇒ The key is a constant, not a literal, on every rail. `check:weld-grade-keys` holds it.
+ */
+export const XRPL_INVOICE_ID_PATH = "invoice-id";
+
+/**
+ * ⛔⛔ THE COLLECTION PATH THIS RAIL'S `weldGrades` IS KEYED BY — exported so a consumer looks the grade up
+ * with the SAME token this manifest declares it under.
+ *
+ * `binding-evm-x402` shipped `0.15.1` with `weldGrades` keyed `ERC3009` — the escrow sibling's COLLECTOR
+ * name — while the value a consumer computes from an x402 offer is `eip3009`. The map and the lookup key
+ * disagreed inside one published package, so `weldGrades[assetTransferMethod]` answered `undefined`: the
+ * grade absent rather than wrong, which reads as a rail declaring no weld grade at all. Nothing caught it —
+ * the profile schema constrains weldGrades VALUES (`signature` | `tx`) and says nothing about keys.
+ *
+ * ⇒ The key is a constant, not a literal, on every rail. `check:weld-grade-keys` holds it.
+ */
+export const XRPL_TX_MEMO_PATH = "tx-memo";
+
+/**
+ * The account scan's own bound — the depth {@link "./adapter.js".XrplAdapter.enumerate} asks rippled for
+ * when the caller names none.
+ *
+ * ⛔⛔ **THE SERVER'S DEFAULT USED TO GOVERN.** `enumerate` forwarded `limit` verbatim, so an absent one
+ * meant rippled picked how deep an `account_tx` scan went — and a settlement past it came back as an
+ * EMPTY ARRAY, which on a best-effort scan is indistinguishable from "this account never settled that
+ * atrHash". Nobody chose the depth and nobody was told what it was.
+ *
+ * MEASURED live against `https://s1.ripple.com:51234/` on 2026-09-10, `account_tx` over
+ * `rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh`: with no `limit` the server returns **200 transactions and a
+ * `marker`**; `limit: 200` and `limit: 500` both return exactly what was asked for, each with a `marker`.
+ * So there is no discoverable ceiling to ask for — this server serves whatever it is asked — and the
+ * number below is deliberately the server's own default rather than a larger guess about an endpoint this
+ * package does not operate. rippled's `account_tx` is documented as not being REQUIRED to honour `limit`
+ * at all, which is a second reason not to treat a bigger number as a bigger guarantee.
+ *
+ * ⭐ **THE VALUE IS NOT THE FIX; ASKING FOR IT IS.** Naming the depth makes it ours, checkable, and
+ * comparable against what came back — and a full page with no `limit` named is then a THROW, because
+ * `account_tx` continues through a `marker` that {@link "./adapter.js".XrplReader} does not carry. There
+ * is nothing to page with, so a saturated scan is exactly the case where this rail cannot tell a complete
+ * answer from a truncated one.
+ */
+export const XRPL_ACCOUNT_SCAN_DEPTH = 200;

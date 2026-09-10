@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { CANTON_COLLECTION_PATH } from "./constants.js";
 
 /**
  * The Canton `LcpAnchor` overlay-contract binding manifest.
@@ -72,6 +73,6 @@ export const CANTON_MANIFEST: BindingManifest = {
     reversible: false,
     note: "an LcpAnchor contract is only ever archived by a NEW transaction (Daml has no reversal); recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "lcp-anchor": "tx" },
+  weldGrades: { [CANTON_COLLECTION_PATH]: "tx" },
   lifecycleStates: ["proposed", "anchored"],
 };

@@ -6,7 +6,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  * Cut against the LIVE TAP specification published at Visa Developer
  * (`developer.visa.com/capabilities/trusted-agent-protocol/trusted-agent-protocol-specifications`), the
  * `visa/trusted-agent-protocol` reference implementation's RFC 9421 documentation, and RFC 9421 itself —
- * gate discharged 2026-07-30 against LCP v1.37 §C.6, re-checked against v1.38 §C.6 on 2026-08-08 — no
+ * gate discharged 2026-07-30 against LCP §C.6, re-checked against LCP §C.6 on 2026-08-08 — no
  * material drift either time.
  *
  * TAP is built on HTTP Message Signatures [RFC 9421] with a three-signature model establishing agent

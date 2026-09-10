@@ -21,7 +21,7 @@ import type { PlacementManifest } from "@integraledger/lcp-binding-core";
  *
  * **Tier B — inside the mandate.** Embedding the reference in the AP2 mandate itself, so the legal context
  * travels through the mandate chain with the consumer's authorization, requires an upstream extension. v0.2
- * makes that harder than LCP v1.37 §C.5 stated — and v1.38 §C.5 now states it too, describing the closed
+ * makes that harder than LCP §C.5 stated — and LCP §C.5 now states it too, describing the closed
  * `anyOf` and the FIDO Alliance filing path, so this is no longer drift owed back to the spec. A mandate is
  * a signed SD-JWT whose `vct` "MUST match the
  * exact `vct` string, including the version suffix", so an added claim is a NEW credential type rather than a

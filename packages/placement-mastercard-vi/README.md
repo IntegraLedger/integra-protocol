@@ -20,7 +20,7 @@ npm install @integraledger/lcp-placement-mastercard-vi
 | **Write** | **none — declaration only.** `place` refuses; `extract` reads |
 | **Carrier types** | `sha256` only |
 | **Signature** | inherited — Layer 2's claims are signed with the key bound in Layer 1's `cnf.jwk` |
-| **Spec** | Verifiable Intent specification; withdrawn from writing per LCP v1.38 §C.7, **2026-08-08** |
+| **Spec** | Verifiable Intent specification; withdrawn from writing per LCP §C.7, **2026-08-08** |
 | **Depends on** | [`@integraledger/lcp-binding-core`](../binding-core#readme) — `makePlacement` and the manifest vocabulary |
 
 ## Use
@@ -45,7 +45,7 @@ const placed = placement.place(
 
 ## Declaration only — `place` refuses
 
-`place` returns `mastercard-vi/tier-b-not-writable` on every document. LCP v1.38 §C.7:
+`place` returns `mastercard-vi/tier-b-not-writable` on every document. LCP §C.7:
 
 > A deployment **MUST NOT** write an unregistered legal-context constraint into a VI mandate and expect it
 > to travel.
@@ -69,7 +69,7 @@ real reference, and reading it costs nothing.
 ## Naming is not the obstacle
 
 A previous release said the registered type "has a name only the FIDO Alliance Payments TWG can assign".
-LCP v1.38 §C.7 records the opposite: the `mandate.checkout.*` and `mandate.payment.*` namespaces are *"open
+LCP §C.7 records the opposite: the `mandate.checkout.*` and `mandate.payment.*` namespaces are *"open
 for extension by implementers"*, registration is a **SHOULD** for interoperability, and collision-resistant
 URI naming (a URN such as `urn:example:loyalty-points`) is available for types outside them.
 
@@ -111,11 +111,11 @@ claims were put to the spec. **Two hold; the third fails, and the failure is wha
 The gate has done its job: there is **no Tier A path** here. That is a finding, not a defect, and it is why
 this package declares `tier: "B"` rather than shipping a Tier A claim the host would refuse.
 
-## Drift against LCP v1.37 §C.7 — three items, since adopted by v1.38
+## Drift against LCP §C.7 — three items, since adopted by LCP
 
-The host governs: its live specification is binding and Appendix C is an illustration. v1.37 §C.7 was
+The host governs: its live specification is binding and Appendix C is an illustration. LCP §C.7 was
 checked against the Verifiable Intent draft dated 2026-02-18 and had drifted from it by the time this
-package was cut. **All three items below are now in the appendix**: v1.38 §C.7 states that the
+package was cut. **All three items below are now in the appendix**: LCP §C.7 states that the
 specification has no `stage` field, that mode and kind ride `vct` rather than a `layer` member, and that the
 registered types share only `type` — with `mandate.payment.amount_range` spelled `{ type, currency, min,
 max }` and carrying no `value`. Its heading is now "Tier B — there is no Tier A carrier". The debt is paid;
@@ -136,8 +136,7 @@ the record below is kept because it is why the package was built this way.
 What §C.7 gets right and this package keeps: the mechanism is a custom Layer-2 constraint that inherits the
 Layer-2 signature, and the Tier B forward work is registering LCP-aware constraint types — which, in the
 appendix's own words, "converts legal context from unusable to mandatory-to-evaluate, and makes it
-safe in open mandates and under strict verification." (v1.37 wrote "optionally-skipped" where v1.38 writes
-"unusable" — the quotation follows the current text.)
+safe in open mandates and under strict verification."
 
 ## Why `opaque-challenge`, and why not the other three tokens
 
@@ -205,8 +204,8 @@ arrived.
 ## Provenance
 
 Cut against the live Verifiable Intent specification, gate discharged **2026-07-30**, and reconciled against
-LCP v1.37 §C.7 the same day — with the three drift items above recorded rather than followed. Re-read
-against **v1.38 §C.7** on 2026-08-12: the appendix has adopted all three, and the package's determinations
+LCP §C.7 the same day — with the three drift items above recorded rather than followed. Re-read
+against **LCP §C.7** on 2026-08-12: the appendix has adopted all three, and the package's determinations
 are unchanged by that.
 
 ---

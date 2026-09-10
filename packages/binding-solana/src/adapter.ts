@@ -1,5 +1,5 @@
 /**
- * The Solana SPL-Memo WeldAdapter — thin I/O with @solana/web3.js isolated here. It intentionally
+ * The Solana SPL-Memo WeldAdapter — thin I/O behind a two-method port, with no chain SDK. It intentionally
  * does NOT implement binding-core's `WeldAdapter`: that port is EVM-shaped (`SettlementRef.txHash` is a
  * `0x`-hex value, `ChainReader` speaks `eth_getLogs`), and Solana speaks base58 signatures + parsed
  * transactions. Rather than lie through those types, this exposes a Solana-native surface (signature refs,
@@ -12,18 +12,15 @@
  */
 import type { BindingManifest, Outcome } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
-import {
-  type Connection,
-  type ParsedInstruction,
-  type ParsedTransactionWithMeta,
-  type PartiallyDecodedInstruction,
-  PublicKey,
-  type TransactionError,
-  TransactionInstruction,
-} from "@solana/web3.js";
 import bs58 from "bs58";
 import { MEMO_PROGRAM_ID } from "./constants.js";
 import { decodeSplMemo, encodeSplMemo, type MemoEncoding } from "./memo.js";
+import type {
+  ParsedInstructionShape,
+  ParsedTransactionShape,
+  SolanaInstruction,
+  SolanaRpc,
+} from "./rpc-shapes.js";
 
 /** A Solana settlement reference — a transaction signature (base58). */
 export interface SolanaSettlementRef {
@@ -43,12 +40,12 @@ export interface MemoView {
 export function buildAtrMemoInstruction(
   atrHash: string,
   encoding: MemoEncoding = "hex",
-): TransactionInstruction {
-  return new TransactionInstruction({
+): SolanaInstruction {
+  return {
     keys: [],
-    programId: new PublicKey(MEMO_PROGRAM_ID),
-    data: Buffer.from(encodeSplMemo(atrHash, encoding)),
-  });
+    programId: MEMO_PROGRAM_ID,
+    data: encodeSplMemo(atrHash, encoding),
+  };
 }
 
 /**
@@ -60,7 +57,7 @@ export function buildAtrMemoInstruction(
  */
 export interface SolanaTxView {
   memos: MemoView[];
-  err?: TransactionError | null;
+  err?: unknown;
 }
 
 /** Recover the atrHash from a set of instruction views (the first memo that decodes wins). Pure. */
@@ -92,11 +89,34 @@ export function recoverAtrHashFromMemoViews(
  * Order is deliberate: top-level first, then inner in the order the RPC reports them.
  * `recoverAtrHashFromMemoViews` takes the FIRST view that decodes, so a memo the payer signed directly
  * still wins over one a program emitted on their behalf.
+ *
+ * ⛔⛔ **FILTER TO THE MEMO PROGRAM BEFORE DECODING, NEVER AFTER.** The buyer builds this transaction, so
+ * every instruction co-located with the weld is counterparty-authored — and this mapper used to
+ * `bs58.decode` the data of EVERY unparsed instruction before anything asked which program emitted it.
+ * `bs58.decode` throws on the first character outside the base58 alphabet, and that throw is not a
+ * refusal: it escapes `parseTxView` → `SolanaReader.txView` → `recover`/`observe`/`enumerate`, so a
+ * caller auditing a genuinely welded settlement got an exception where this rail's every other answer is
+ * a `verification-failure` Refusal that says which of the three things went wrong. One unrelated
+ * instruction the binding was never going to read could deny the whole reading.
+ *
+ * The reachable path is the PORT, not a malformed node. `SolanaRpc` is public and consumer-implemented on
+ * purpose — a `@solana/web3.js` `Connection` does not satisfy it structurally, so the bridge is always
+ * someone's own two lines. A bridge that hands through base64 instruction data (`0`, `O`, `I`, `l`, `+`,
+ * `/`, `=` are all outside base58) makes the throw near-certain on any transaction carrying an unparsed
+ * instruction, while the memo itself still arrives fine as a `parsed` string — which is exactly the shape
+ * where a valid weld reads as a crash.
+ *
+ * So the `programId` test now gates the decode instead of only gating the read. A non-memo instruction
+ * still yields a view, in order, carrying its `programId` and no bytes: the mapping stays one view per
+ * instruction (the property that makes "top-level beats CPI" legible), and bytes this binding will never
+ * read are never decoded. A memo-program instruction whose data is undecodable still throws, loudly —
+ * that one IS the thing we came to read, and a silent skip there would be the false refusal above.
  */
-export function parseMemoViews(tx: ParsedTransactionWithMeta): MemoView[] {
+export function parseMemoViews(tx: ParsedTransactionShape): MemoView[] {
   const out: MemoView[] = [];
-  const push = (ins: ParsedInstruction | PartiallyDecodedInstruction): void => {
-    const programId = ins.programId.toBase58();
+  const push = (ins: ParsedInstructionShape): void => {
+    // ⭐ Already base58 on the wire; the SDK wrapped it in a `PublicKey` only for this to unwrap it.
+    const programId = ins.programId;
     if ("parsed" in ins) {
       // ParsedInstruction — the Memo program parses to a plain string (its `parsed` value).
       out.push({
@@ -106,8 +126,14 @@ export function parseMemoViews(tx: ParsedTransactionWithMeta): MemoView[] {
     } else {
       // PartiallyDecodedInstruction — the RPC did not parse this program (provider/version-dependent for
       // the Memo program). Keep the raw bytes (base58-decoded) so `recover` still finds the atrHash rather
-      // than false-refusing a genuinely welded settlement (the manifest's zeroPartyRecoverable claim).
-      out.push({ programId, data: bs58.decode(ins.data) });
+      // than false-refusing a genuinely welded settlement (the manifest's zeroPartyRecoverable claim) —
+      // but ONLY for the Memo program, because decoding a stranger's bytes is how a valid weld throws.
+      out.push({
+        programId,
+        ...(programId === MEMO_PROGRAM_ID
+          ? { data: bs58.decode(ins.data) }
+          : {}),
+      });
     }
   };
   for (const ins of tx.transaction.message.instructions) push(ins);
@@ -156,25 +182,25 @@ export function recoverAtrHashFromTxView(
 }
 
 /** Map a parsed transaction into its tx view — memo instructions plus the success field. */
-export function parseTxView(tx: ParsedTransactionWithMeta): SolanaTxView {
+export function parseTxView(tx: ParsedTransactionShape): SolanaTxView {
   return {
     memos: parseMemoViews(tx),
     ...(tx.meta === null ? {} : { err: tx.meta.err }),
   };
 }
 
-/** Reads confirmed transactions / account signatures — wraps a @solana/web3.js `Connection`. */
+/** Reads confirmed transactions / account signatures over the {@link SolanaRpc} port. */
 export interface SolanaReader {
   /** Fetch one confirmed transaction's view by signature, or `null` if the RPC has no such transaction. */
   txView(signature: string): Promise<SolanaTxView | null>;
   signaturesFor(address: string, limit?: number): Promise<string[]>;
 }
 
-/** Wrap a `@solana/web3.js` `Connection` as a {@link SolanaReader} — the one place a chain SDK reaches
- *  this package's public surface. `@solana/web3.js` is a direct dependency, so installing this package
- *  installs it; you still construct the `Connection` yourself, because the RPC endpoint is a deployment
- *  choice. Read-only: nothing here submits a transaction. */
-export function makeSolanaReader(connection: Connection): SolanaReader {
+/** Wrap a {@link SolanaRpc} as a {@link SolanaReader}. ⭐ **This package installs NO chain SDK**: the port
+ *  is two methods over the wire shapes, and any RPC client can be wired to it in a few lines — see
+ *  `test/integration.onchain.test.ts`, which does exactly that against a live devnet. You supply it,
+ *  because the endpoint is a deployment choice. Read-only: nothing here submits a transaction. */
+export function makeSolanaReader(connection: SolanaRpc): SolanaReader {
   return {
     async txView(signature: string): Promise<SolanaTxView | null> {
       const tx = await connection.getParsedTransaction(signature, {
@@ -184,7 +210,7 @@ export function makeSolanaReader(connection: Connection): SolanaReader {
     },
     async signaturesFor(address: string, limit?: number): Promise<string[]> {
       const infos = await connection.getSignaturesForAddress(
-        new PublicKey(address),
+        address,
         limit !== undefined ? { limit } : {},
       );
       return infos.map((i) => i.signature);
@@ -193,13 +219,13 @@ export function makeSolanaReader(connection: Connection): SolanaReader {
 }
 
 /** The Solana rail's surface. It is a NARROWING of the generic `WeldAdapter` port, not an implementation
- *  of it: `propose` is synchronous and returns a `TransactionInstruction` for the caller to add to its own
+ *  of it: `propose` is synchronous and returns a {@link SolanaInstruction} for the caller to add to its own
  *  transaction, and every read takes a {@link SolanaReader} rather than the generic `VerifierPorts`.
  *  `enumerate` is present but scans an account's signatures — best effort, not a native index. */
 export interface SolanaAdapter {
   manifest: BindingManifest;
   /** The Memo instruction to attach to the settlement transaction. */
-  propose(atrHash: string, encoding?: MemoEncoding): TransactionInstruction;
+  propose(atrHash: string, encoding?: MemoEncoding): SolanaInstruction;
   /** Recover the atrHash from a successful settlement, or a `verification-failure` Refusal if none binds. */
   recover(
     ref: SolanaSettlementRef,
@@ -275,7 +301,7 @@ export function createSolanaAdapter(manifest: BindingManifest): SolanaAdapter {
     propose(
       atrHash: string,
       encoding: MemoEncoding = "hex",
-    ): TransactionInstruction {
+    ): SolanaInstruction {
       return buildAtrMemoInstruction(atrHash, encoding);
     },
 

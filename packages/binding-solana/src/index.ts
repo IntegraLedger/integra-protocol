@@ -17,6 +17,7 @@ export {
 export {
   getSolanaConfig,
   MEMO_PROGRAM_ID,
+  SOLANA_COLLECTION_PATH,
   SOLANA_USDC_DECIMALS,
   type SolanaNetwork,
   type SolanaNetworkConfig,
@@ -29,3 +30,10 @@ export {
   type MemoEncoding,
   verifySplMemo,
 } from "./memo.js";
+
+export type {
+  ParsedInstructionShape,
+  ParsedTransactionShape,
+  SolanaInstruction,
+  SolanaRpc,
+} from "./rpc-shapes.js";

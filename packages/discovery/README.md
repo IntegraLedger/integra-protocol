@@ -172,7 +172,7 @@ Read against each host's live specification, never LCP's informative Appendix C.
    `extensions` is a conformant "none", because proto3 JSON omits an empty repeated field. The reader draws
    exactly that line.
 2. **`AgentExtension` has FOUR fields, not three** — `uri` (1), `description` (2), `required` (3), `params`
-   (4), proto 424–433. LCP v1.37 §C.8 listed three; **v1.38 §C.8 lists four**, so the drift note below is a
+   (4), proto 424–433. LCP §C.8 listed three; **LCP §C.8 lists four**, so the drift note below is a
    record rather than an outstanding item.
 3. `required` is a proto3 non-optional `bool` (proto 430) and `description` a non-optional `string`
    (proto 428), so **neither has presence tracking**: their defaults are `false` and `""`, and the wire omits
@@ -221,7 +221,7 @@ governance and the capability definition; profile shape cross-read against a pub
    (`dev.ucp.shopping.catalog.search`), so the template describes the naming rather than fixing a segment
    count — and `com.integraledger.legal_context` is the spelling `placement-ucp` already writes.
 
-**MCP is not here.** LCP §10 and §C.9 — unchanged on this point from v1.37 to v1.38 — put MCP's surface in
+**MCP is not here.** LCP §10 and §C.9 — put MCP's surface in
 the delivery layer, and its capability
 advertisement belongs to the MCP server package rather than to this one.
 

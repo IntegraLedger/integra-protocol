@@ -1,4 +1,5 @@
 import type { BindingManifest } from "@integraledger/lcp-binding-core";
+import { HEDERA_COLLECTION_PATH } from "./constants.js";
 
 /**
  * The Hedera transaction-memo binding manifest.
@@ -41,6 +42,6 @@ export const HEDERA_MANIFEST: BindingManifest = {
     reversible: false,
     note: "final on consensus (HTS transfer) — no on-rail reversal; recourse is the record's elected forum (PAY-3/RCS-5), never dispute resolution",
   },
-  weldGrades: { "transaction-memo": "signature" },
+  weldGrades: { [HEDERA_COLLECTION_PATH]: "signature" },
   lifecycleStates: ["proposed", "settled"],
 };

@@ -140,6 +140,12 @@ The claim is still reported, as `claimedClass`, because `verified` answers *"did
 it claimed?"* and cannot be read without it. Comparing the two is the useful act: where they agree the
 record met its own shape, and where they differ it did not.
 
+The **depth** is reported for the same reason, and it is the field that makes a `false` readable at all. A
+`verified: false` may mean impeached or merely not-attempted-mechanically, and step outcomes are
+depth-agnostic — so until the report stated its own depth, a structural walk and a mechanical one over the
+same inputs serialized to **identical bytes**, and a stranger holding the artifact instead of re-running the
+walk could not tell which had produced it. `report.schema.json` requires it.
+
 Note what `depth` does and does not touch. Step outcomes are depth-agnostic — they depend on the inputs
 supplied, not on the depth — so `depth` governs `verified` alone. That is also why a `not-attempted` rung
 never lowers the class *dishonestly*: it lowers it because nothing proved, and the step's own reason says
@@ -163,22 +169,26 @@ the chain is *one chain* before any of its bounds are considered:
 1. **Continuity.** The root is issued by the declared principal and signed by the issuer's key; every later
    link is signed by its parent's subject key and states that subject as its issuer. Without this, the
    chain is unrelated assertions and anyone can splice a link in.
-2. **Signed bytes match the presented link.** The proof must verify over the grant *as presented*, through
-   an injected `GrantProofVerifier`, so the visible grant and the signed grant cannot differ.
-3. **Leaf binding.** The leaf subject's key must be the acceptance signer.
-4. **Attenuation per hop.** The parent permitted delegation, the depth arithmetic holds, and the bounds are
+2. **Attenuation per hop.** The parent permitted delegation, the depth arithmetic holds, and the bounds are
    contained — an absent dimension on a child is *unbounded*, so the forged empty link is refused rather
    than treated as inheriting.
-5. **Lifecycle as of settlement.**
+3. **Signed bytes match the presented link.** The proof must verify over the grant *as presented*, through
+   an injected `GrantProofVerifier`, so the visible grant and the signed grant cannot differ.
+4. **Lifecycle as of settlement**, then **leaf binding** once every link has passed: the leaf subject's key
+   must be the acceptance signer.
 
 `walkChain` returns one of three readouts, and `verify` maps them without interpretation because the walk
-already draws the same line: `walked` hands over links whose every field it *stated*; `refused` is a
+already draws the same line: `verified` hands over links whose every field it *stated*; `refused` is a
 reasoned contradiction and carries its halt class through to the report; `not-attempted` is an honest gap
 whose depth passes through verbatim.
 
-### Revoked and active are stated, never defaulted
+**Only `walkChain`'s readout is accepted here.** `walkChainStructure` consults no cryptosuite — a chain
+whose only `proofValue` reads `zTOTALLYFORGED` walks clean through it — and until the two carried different
+success literals (`verified` versus `walked`) this slot took both without being able to tell them apart. It
+is now a compile error, not a runtime screen: a caller with no cryptosuite supplies `authorityChain` and
+gets an honest flattener's readout, which is what that door exists for.
 
-Both `revoked` and `active` are **required** fields on a link, and that is the whole point of them.
+### Revoked and active are stated, never defaulted — and only one of them is always statable
 
 - `active` is expiry: the grant's `validFrom`/`validUntil` evaluated at `asOf`. A grant that expired before
   settlement is exactly as unusable as one revoked at it — two independent gates, not one.
@@ -186,17 +196,27 @@ Both `revoked` and `active` are **required** fields on a link, and that is the w
   no historical query: dereferencing it live yields *today's* list. Presenting today's answer as history
   would be a different claim than the one being made.
 
-Neither field is optional, because "the caller never consulted a status list" and "the walk checked the
-pinned snapshot and the grant is unrevoked" would otherwise be the same absent value — and one of them
-proves. Requiring them makes the unstated case a compile error at the call site. A caller that walks first
-satisfies both for free; only a hand-flattener feels it, which is the intent.
+Neither may be *defaulted*, because "the caller never consulted a status list" and "the walk checked the
+pinned snapshot and the grant is unrevoked" would otherwise be the same value — and one of them proves. An
+unstated `revoked` is `not-attempted` with depth `no-revocation-stated`, an unstated `active` is
+`no-liveness-stated`, and a non-boolean in either slot is `malformed-authority-chain` — the caller's shape
+error, not the record's contradiction. The two carry separate depth tokens on purpose: a report should
+never describe an expiry gap as something about revocation. The runtime is the whole gate here, because
+the step is deliberately total over untyped input — a foreign conformance subject or an unvalidated intake
+reaches it without ever meeting the compiler.
 
-The runtime says the same thing as the type, which matters because the step is deliberately total over
-untyped input — a foreign conformance subject or an unvalidated intake reaches it without ever meeting the
-compiler. An unstated `revoked` is `not-attempted` with depth `no-revocation-stated`, an unstated `active`
-is `no-liveness-stated`, and a non-boolean in either slot is `malformed-authority-chain` — the caller's
-shape error, not the record's contradiction. The two slots carry separate depth tokens on purpose: a report
-should never describe an expiry gap as something about revocation.
+**`active` is always statable and `revoked` is not, which is why only `active` is a required field.** An
+absent validity window is a *complete statement* under VC 2.0 — unbounded — and the walk evaluates it. A
+grant carrying no `credentialStatus` names no list at all: there is nothing to consult and nothing to
+state. `walkChain` therefore **omits** `revoked` for such a grant, where it used to stamp `false` — the
+proving value, for a check that never ran. That made the walk-fed door, the one to prefer precisely because
+it removes the caller's trust, the one door that could never reach the gap the hand-flattened door has
+reached since 2026-08-08.
+
+A grant with no revocation mechanism is not a grant known to be unrevoked; it is a grant its principal
+cannot revoke. ATA-3 requires revocability and the reference producer emits a Bitstring Status List entry
+from issuance for exactly that reason, so a conformant chain states `revoked` on every link and proves the
+rung as before.
 
 Everything here is evaluated against `asOf`, the settlement's own instant. A grant that expired last week
 was valid at the moment it was used.

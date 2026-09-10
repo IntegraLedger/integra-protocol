@@ -13,15 +13,23 @@
  *
  * **WHAT MAKES THAT SOUND IS NOT UNIQUENESS, AND AN EARLIER DOCBLOCK SAID IT WAS.** It argued that MPP's
  * "Unique challenge identifier" requirement (`draft-httpauth-payment` §5.1.1) was satisfied by making each
- * ATR unique per transaction. Every citation in it was exact; the sufficiency was not. LCP v1.38 §C.1,
- * under "Id-Reuse on MPP-EVM, and its limit":
+ * ATR unique per transaction. Every citation in it was exact; the sufficiency was not, and the argument is
+ * set out here on its own terms rather than deferred to a citation:
  *
- * > **It is not simply available, and §8.3.5's uniqueness advice is not sufficient for it.** MPP requires
- * > the server to bind the challenge `id` *to the challenge parameters* … expressly to prevent a client
- * > altering the challenge it presents. **Making each ATR unique per transaction satisfies uniqueness but
- * > not that binding.** A per-transaction ATR that itself states the transaction parameters (Section 6.1)
- * > satisfies both, because the parameters are then inside the hashed document; a terms document made
- * > unique by a timestamp alone does not.
+ * MPP requires the server to bind the challenge `id` **to the challenge parameters**, expressly so that a
+ * client cannot alter the challenge it presents. Uniqueness and that binding are different properties.
+ * Making each ATR unique per transaction satisfies uniqueness and does **not** satisfy the binding — a
+ * document can be unique and say nothing about the transaction it was issued for. What satisfies both is a
+ * per-transaction ATR **that itself states the transaction parameters** (LCP §6.1), because the parameters
+ * are then inside the hashed document; a terms document made unique by a timestamp alone is not.
+ *
+ * ⚠️ **THE PUBLISHED SPECIFICATION STATES THE WEAKER FORM, AND THIS IMPLEMENTATION IS DELIBERATELY
+ * STRICTER.** LCP §C.1 reads that an Id-Reuse binding is available because the seller sets
+ * `challenge.id = atrHash`, *"satisfying the challenge-uniqueness requirement by making each ATR unique per
+ * transaction (§8.3.5)"*. That is the sufficiency claim above, and this tree does not rely on it: it
+ * requires the offer-bound property below at TC-4 instead. Where the two disagree the stricter rule is the
+ * one implemented, and the disagreement is recorded here rather than resolved silently — it is an erratum
+ * worth raising against the specification, not a licence to ship the weaker check.
  *
  * **THE REQUIREMENT IS ON THE ATR, AND THE TREE ALREADY VERIFIES IT.** This binding holds a hash, never the
  * document, so it cannot inspect what the ATR says — and it should not: where the ATR lives is the seller's
@@ -37,7 +45,7 @@
  * its challenge-binding section. §C.1 names that inconsistency rather than resolving it, and so does this.
  *
  * **Zero-party-recoverable on-chain binding on this rail still requires an Overlay Contract per §8.3.2**
- * (§C.1's own closing sentence under "Id-Reuse on MPP-EVM, and its limit"). Nothing here recovers an
+ * (LCP §C.1 states the same conclusion). Nothing here recovers an
  * atrHash, and nothing may be added that does — see the closing note.
  *
  * **`abi.encodePacked` over two strings is raw UTF-8 concatenation** — no length prefix, no padding. That was

@@ -1,5 +1,54 @@
 # @integraledger/lcp-binding-canton-x402
 
+## 0.18.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.18.0
+  - @integraledger/lcp-kernel@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.17.0
+  - @integraledger/lcp-kernel@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.1
+  - @integraledger/lcp-kernel@0.16.1
+
+## 0.16.0
+
+### Minor Changes
+
+- e4dde9b: The participant endpoint paths are configuration, not constants this package invents.
+  
+  `makeCantonX402Reader` POSTed to `/v1/updates/transfer` and `/v1/updates/transfers`. Neither names an
+  endpoint of any published Daml JSON API version — v1 defines `/v1/create`, `/v1/exercise`, `/v1/query` and
+  `/v1/fetch` and no `updates` family, and the update endpoints that do exist live under `/v2/`. Nothing here
+  could have caught it: the only assertion over those paths was a stubbed `fetch` compared against the URL
+  the code itself builds, so the test and the code restated one guess to each other.
+  
+  The fix is not a better guess. A Canton Coin `TransferFactory_Transfer` is a token-standard object, and
+  how a deployment exposes one over HTTP — stock JSON Ledger API version, scan proxy, or a facilitator's own
+  service in front of the participant — is a property of that deployment. `CantonX402ReaderConfig` therefore
+  requires `transferPath` and `transfersPath`, refuses an empty one at construction rather than POSTing to
+  the base URL, and the live harness reads them from `CANTON_X402_TRANSFER_PATH` /
+  `CANTON_X402_TRANSFERS_PATH` (mapped in `live-proofs.yml`, so `check:live-rails --check-env` names them
+  when a run cannot proceed).
+  
+  **This changes published behaviour**: `makeCantonX402Reader` now needs two more fields and throws without
+  them.
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
@@ -95,7 +144,7 @@ and a large number of documentation claims were corrected against the host speci
 First release. Welds an ATR hash into a Canton Coin settlement over x402's `exact` scheme for Canton:
 the seller advertises `PaymentRequirements.extra.memo`, the payer echoes it into the transfer metadata
 under `x402.memo`, and the facilitator rejects `invalid_exact_canton_memo_mismatch` on a mismatch
-(scheme safety check 12). A §8.3.1 Native Field binding, conforms to LCP v1.38.
+(scheme safety check 12). A §8.3.1 Native Field binding, conforms to the published LCP specification.
 
 Split out of `@integraledger/lcp-binding-canton` rather than replacing it: x402's exact-Canton scheme
 settles Canton Coin only, so the `LcpAnchor` overlay remains the carrier for every other Canton
