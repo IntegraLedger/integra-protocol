@@ -96,8 +96,36 @@ export function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
+ * The schemes a `url`-typed reference may carry — the two that RETRIEVE a document over the web.
+ *
+ * ⛔⛔ **`url` USED TO ACCEPT `javascript:` AND `file:`.** The only rule on a `url` value was non-empty, so
+ * `lcp:url:javascript:alert(1)` and `lcp:url:file:///etc/passwd` decoded to well-formed references and
+ * travelled onward as the located terms of a transaction. Meanwhile the kit's own terms-URL slot has been
+ * scheme-gated all along, and its reason applies here word for word: *"a locator a buyer must not follow
+ * — cleartext, or a scheme its fetcher refuses — is worse than none"*. The two halves of one document
+ * carried the same kind of value under two different rules, and the reference — the half a record CITES —
+ * was the ungated one. A `javascript:` reference is not a document that cannot be fetched; it is code
+ * offered to whatever renders the reference, and `file:` names a path on the reader's own machine.
+ *
+ * ⭐ **AN ALLOWLIST, BECAUSE A DENYLIST IS A FALLBACK.** Listing the schemes to refuse would admit every
+ * scheme nobody thought of — `data:`, `blob:`, `vbscript:`, the next one — which is the "anything not
+ * named passes" shape this codebase forbids. A `url` carrier is a WEB LOCATOR: content-addressed
+ * references have their own types (`ipfs`, `ar`) and do not come through here.
+ *
+ * ⛔ **`http:` IS ALLOWED HERE AND THAT IS DELIBERATE, NOT AN OVERSIGHT.** It is a real locator whose
+ * weakness — rewritable in transit — is a matter of degree, and it is already ruled on one layer up:
+ * `placement-ucp` refuses it as `ucp/insecure-terms-url` on BOTH directions as that protocol's own
+ * semantics — the conformance corpus pins that code on `place` and on `extract` — and `placement-ack`'s
+ * own docblock records, at length, the decision not to make https a kit-wide rule. This codec does not
+ * relitigate either. The line it draws is different and narrower: a value that is not a
+ * retrievable web location at all cannot be a locator, whatever a protocol thinks of the ones that are.
+ */
+const URL_CARRIER_SCHEMES: readonly string[] = ["https://", "http://"];
+
+/**
  * Assert a value is well-formed for its type. The codec validates the `sha256` value (must be an
- * atrHash, any-case); `ipfs`/`ar`/`url` values are opaque per LCP §8.2 and only required to be non-empty.
+ * atrHash, any-case) and the `url` scheme (see {@link URL_CARRIER_SCHEMES}); `ipfs`/`ar` values are opaque
+ * per LCP §8.2 and only required to be non-empty.
  */
 function assertValidValue(type: CarrierType, value: string): void {
   if (value.length === 0)
@@ -109,6 +137,19 @@ function assertValidValue(type: CarrierType, value: string): void {
     throw new CarrierError(
       "carrier/bad-sha256",
       `sha256 value must be an atrHash (0x + 64 hex): '${value}'`,
+    );
+  // Both directions, deliberately. Refusing on decode alone would let this implementation MINT the
+  // references it will not read — a round trip that fails on bytes we wrote ourselves, which is the exact
+  // asymmetry `placement-ucp` had to correct in its own https rule.
+  if (
+    type === "url" &&
+    !URL_CARRIER_SCHEMES.some((scheme) =>
+      value.toLowerCase().startsWith(scheme),
+    )
+  )
+    throw new CarrierError(
+      "carrier/bad-url",
+      `url value must locate a document over ${URL_CARRIER_SCHEMES.join(" or ")}: '${value}'`,
     );
 }
 
