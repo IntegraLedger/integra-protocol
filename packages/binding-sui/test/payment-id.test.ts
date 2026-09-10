@@ -35,6 +35,47 @@ describe("encodeAtrPaymentId / decodeAtrPaymentId", () => {
     expect(decodeAtrPaymentId([1, 2, 3])).toBeNull();
     expect(decodeAtrPaymentId(new Uint8Array(64))).toBeNull();
   });
+
+  /**
+   * ⛔⛔ `Uint8Array.from` TRUNCATES INSTEAD OF REFUSING, so an element that is not a byte does not fail —
+   * it becomes a different byte, and the caller receives a well-formed atrHash that no settlement carries.
+   * Measured before the guard existed: `300` decoded to `0x2c…`, `-1` to `0xff…`, `1.5` to `0x01…`.
+   * Each case is spelled out rather than derived, and each keeps 32 elements so it is the ELEMENT under
+   * test and not the length.
+   */
+  it("returns null for a 32-element payment_id carrying anything that is not a byte", () => {
+    const real = Array.from(encodeAtrPaymentId(ATR));
+    for (const notAByte of [256, 300, -1, 1.5, Number.NaN]) {
+      const corrupted = [...real];
+      corrupted[0] = notAByte;
+      expect(decodeAtrPaymentId(corrupted)).toBeNull();
+    }
+  });
+
+  it("accepts BOTH ends of the byte range — 0 and 255 are bytes", () => {
+    const low = Array.from(encodeAtrPaymentId(ATR));
+    low[0] = 0;
+    expect(decodeAtrPaymentId(low)).toBe(
+      "0x0083b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+    );
+    const high = Array.from(encodeAtrPaymentId(ATR));
+    high[0] = 255;
+    expect(decodeAtrPaymentId(high)).toBe(
+      "0xff83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+    );
+  });
+
+  it("verifyAtrPaymentId REFUSES the hash a truncated payment_id would have spelled", () => {
+    // The concrete false positive: `[300, 0x11 × 31]` used to decode to `0x2c1111…` and verify TRUE
+    // against it — a payment_id accepted as carrying an atrHash whose bytes it does not contain.
+    const corrupted = [300, ...new Array<number>(31).fill(0x11)];
+    expect(
+      verifyAtrPaymentId({
+        paymentId: corrupted,
+        atrHash: `0x2c${"11".repeat(31)}`,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("verifyAtrPaymentId", () => {

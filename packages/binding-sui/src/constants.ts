@@ -100,5 +100,11 @@ export const SUI_USDC_DECIMALS = 6;
  * the profile schema constrains weldGrades VALUES (`signature` | `tx`) and says nothing about keys.
  *
  * ⇒ The key is a constant, not a literal, on every rail. `check:weld-grade-keys` holds it.
+ *
+ * ⛔ AND IT HAS TO REACH THE BARREL, which is the half this rail got wrong through 0.17.0: the sentence
+ * above said "exported" while `src/index.ts` did not re-export it, so a consumer who wanted the token had
+ * to retype `"pay402"` — the literal whose absence is the whole point. A constant withheld from the entry
+ * point is a constant a consumer cannot have; `check:docblocks` measures the barrel, so the omission
+ * showed up as nothing at all.
  */
 export const SUI_COLLECTION_PATH = "pay402";

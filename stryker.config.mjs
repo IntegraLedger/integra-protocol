@@ -83,7 +83,18 @@ const RATCHET = {
   // RAISED 93 -> 97. Measured 97.40 twice on 2026-08-09 — the largest headroom in the tree, and the
   // shape the handoff warned about: a floor four points low passes on headroom rather than on kills.
   "binding-stellar": 97,
-  "binding-sui": 97,
+  // RAISED 97 -> 99. Measured 99.56 twice on 2026-09-10, identical to two decimal places, after the
+  // GraphQL transport's remediation. It had DROPPED to 90.10 when that transport landed — 26 survivors in
+  // `graphql.ts`, and reading them as a specification rather than as a list of tests to add is what found
+  // the two defects nobody had reported: an UNPAGED `effects.events` connection (the endpoint truncates at
+  // 20 and Sui allows 1024 events per transaction, so a buyer-composed PTB could bury the weld) and a
+  // nullable `Query.events` dereferenced unguarded. `graphql.ts` now sits at 100.
+  //
+  // The two survivors are EQUIVALENT rather than undesirable, and both were MEASURED by planting them and
+  // re-running the suite green, not argued: `adapter.ts`'s `atr === null` leg and `payment-id.ts`'s
+  // `decoded === null` leg both guard a call to `atrHashEquals`, and `atrHashEquals(null, valid)` is
+  // `false` — driven, not assumed — so removing either guard changes no answer any caller can see.
+  "binding-sui": 99,
   // 94.17 measured over 343 mutants; 20 unkilled = 19 SURVIVED + 1 with NO COVERAGE, and every one is
   // accounted for below. Two different reasons, and conflating them would be the dishonest part — some are
   // prose we decline to pin, the rest are equivalents nothing could kill:

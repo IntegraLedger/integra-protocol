@@ -253,16 +253,65 @@ describe("createSuiAdapter", () => {
     expect(hits.map((h) => h.digest)).toEqual(["dig1", "dig3"]);
   });
 
-  it("enumerate skips events of a different type or without a digest", async () => {
+  it("enumerate skips an event of a different type even when its payment_id matches", async () => {
     const rdr = reader({}, [
       {
         type: `${PKG}::payment::OtherEvent`,
         paymentId: Array.from(encodeAtrPaymentId(ATR)),
         digest: "digX",
       },
-      { type: EVENT_TYPE, paymentId: Array.from(encodeAtrPaymentId(ATR)) },
     ]);
     expect(await adapter.enumerate(ATR, EVENT_TYPE, rdr)).toEqual([]);
+  });
+
+  /**
+   * ⛔⛔ A MATCH THE SCAN CANNOT NAME IS NOT A NON-MATCH. This event is the right type and carries the
+   * right atrHash — the settlement exists — and the reader could not say which transaction emitted it.
+   * `continue` put that into the same empty array as "no settlement bears this atrHash", which is exactly
+   * the conflation `enumerate`'s fail-fast on a malformed atrHash exists to prevent one line earlier.
+   */
+  it("enumerate THROWS on a matching settlement whose digest the reader could not supply", async () => {
+    const rdr = reader({}, [
+      { type: EVENT_TYPE, paymentId: Array.from(encodeAtrPaymentId(ATR)) },
+    ]);
+    await expect(adapter.enumerate(ATR, EVENT_TYPE, rdr)).rejects.toThrow(
+      "arrived with no transaction digest, so the settlement it proves cannot be referenced",
+    );
+  });
+
+  /**
+   * ⭐ And the throw sits AFTER the comparison on purpose. A digest-less event bearing somebody ELSE's
+   * atrHash is none of this scan's business, and refusing over one would let an unrelated co-located
+   * settlement abort a search that had already found its answer.
+   */
+  it("enumerate ignores a digest-less event carrying a DIFFERENT atrHash", async () => {
+    const rdr = reader({}, [
+      { type: EVENT_TYPE, paymentId: Array.from(encodeAtrPaymentId(OTHER)) },
+      {
+        type: EVENT_TYPE,
+        paymentId: Array.from(encodeAtrPaymentId(ATR)),
+        digest: "dig1",
+      },
+    ]);
+    expect(
+      (await adapter.enumerate(ATR, EVENT_TYPE, rdr)).map((h) => h.digest),
+    ).toEqual(["dig1"]);
+  });
+
+  it("enumerate steps over an event whose payment_id is present but not 32 bytes", async () => {
+    // `decodeAtrPaymentId` answers null for a wrong-length payment_id, which is a non-LCP event rather
+    // than a fault — the scan must skip it rather than push a ref it cannot substantiate.
+    const rdr = reader({}, [
+      { type: EVENT_TYPE, paymentId: [1, 2, 3], digest: "digShort" },
+      {
+        type: EVENT_TYPE,
+        paymentId: Array.from(encodeAtrPaymentId(ATR)),
+        digest: "dig1",
+      },
+    ]);
+    expect(
+      (await adapter.enumerate(ATR, EVENT_TYPE, rdr)).map((h) => h.digest),
+    ).toEqual(["dig1"]);
   });
 
   it("enumerate skips a trusted-type event carrying no payment_id at all", async () => {

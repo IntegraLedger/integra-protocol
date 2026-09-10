@@ -15,6 +15,7 @@ export {
   PAY402_SETTLED_EVENT,
   pay402SettledEventType,
   pay402SettleTarget,
+  SUI_COLLECTION_PATH,
   SUI_USDC_DECIMALS,
   type SuiNetwork,
   type SuiNetworkConfig,
@@ -22,6 +23,7 @@ export {
 export {
   makeSuiGraphqlRpc,
   SUI_GRAPHQL_DEFAULT_EVENT_PAGE,
+  SUI_GRAPHQL_TIMEOUT_MS,
 } from "./graphql.js";
 export { SUI_MANIFEST } from "./manifest.js";
 export {
