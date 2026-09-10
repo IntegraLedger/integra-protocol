@@ -170,7 +170,14 @@ const RATCHET = {
   // `optionsRecord`'s key whitelist, and `Object.hasOwn` in `get`. Each of those is a behaviour a vector or
   // a package test now names, so a revert reads as a failure rather than a score drift.
   discovery: 89,
-  evidence: 86,
+  // RAISED 86 -> 88. Measured 88.80 twice on 2026-09-10 (658 killed + 8 timeout of 750), up from 86.49
+  // on the same suite the day the CAR span gate, the builder/verifier agreement and the resolver's
+  // one-budget timeout landed. Most of the rise is the refusal CODES: `ResolverError.code` is the
+  // documented contract ("compare the code, not the message") and every resolver test asserted the
+  // MESSAGE, so blanking a code to `""` survived ten times over. The survivors that remain are refusal
+  // prose literals and the two `typeof x === "string"` guards in `readEntries`'s type predicates, which
+  // exist so the `Set.has`/`RegExp.test` call typechecks and are equivalent mutants at runtime.
+  evidence: 88,
   kernel: 92,
   // 100 at 17/17, and the 17 is the point: every mutant lives in the MANIFEST, because
   // `makePlacement(A2A_PLACEMENT)` is the whole adapter and holds no literal to mutate. A2A asks for no rule
