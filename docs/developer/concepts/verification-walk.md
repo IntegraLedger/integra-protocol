@@ -163,18 +163,24 @@ the chain is *one chain* before any of its bounds are considered:
 1. **Continuity.** The root is issued by the declared principal and signed by the issuer's key; every later
    link is signed by its parent's subject key and states that subject as its issuer. Without this, the
    chain is unrelated assertions and anyone can splice a link in.
-2. **Signed bytes match the presented link.** The proof must verify over the grant *as presented*, through
-   an injected `GrantProofVerifier`, so the visible grant and the signed grant cannot differ.
-3. **Leaf binding.** The leaf subject's key must be the acceptance signer.
-4. **Attenuation per hop.** The parent permitted delegation, the depth arithmetic holds, and the bounds are
+2. **Attenuation per hop.** The parent permitted delegation, the depth arithmetic holds, and the bounds are
    contained — an absent dimension on a child is *unbounded*, so the forged empty link is refused rather
    than treated as inheriting.
-5. **Lifecycle as of settlement.**
+3. **Signed bytes match the presented link.** The proof must verify over the grant *as presented*, through
+   an injected `GrantProofVerifier`, so the visible grant and the signed grant cannot differ.
+4. **Lifecycle as of settlement**, then **leaf binding** once every link has passed: the leaf subject's key
+   must be the acceptance signer.
 
 `walkChain` returns one of three readouts, and `verify` maps them without interpretation because the walk
-already draws the same line: `walked` hands over links whose every field it *stated*; `refused` is a
+already draws the same line: `verified` hands over links whose every field it *stated*; `refused` is a
 reasoned contradiction and carries its halt class through to the report; `not-attempted` is an honest gap
 whose depth passes through verbatim.
+
+**Only `walkChain`'s readout is accepted here.** `walkChainStructure` consults no cryptosuite — a chain
+whose only `proofValue` reads `zTOTALLYFORGED` walks clean through it — and until the two carried different
+success literals (`verified` versus `walked`) this slot took both without being able to tell them apart. It
+is now a compile error, not a runtime screen: a caller with no cryptosuite supplies `authorityChain` and
+gets an honest flattener's readout, which is what that door exists for.
 
 ### Revoked and active are stated, never defaulted
 

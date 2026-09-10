@@ -7,25 +7,34 @@
  * itself: that link N+1 was SIGNED by link N's subject, that the proof covers the grant as presented, and
  * that the leaf was granted to the key that signed the acceptance. That is this walk's job.
  *
- * The checks, in walk order:
+ * The checks, PER LINK and in the order the loop applies them:
  *   1. CONTINUITY / SPLICE PREVENTION — the root is issued by the declared principal and signed by the
  *      issuer's key; every later link is signed by its parent's subject key and states that subject as
  *      its issuer. Without this the chain is unrelated assertions and anyone can splice a link in.
- *   2. SIGNED-BYTES-MATCH-PRESENTED-LINK — the proof must verify over the grant AS PRESENTED, so the
+ *   2. ATA-3 PER HOP — everything `linkAttenuates` gates at issuance, applied verbatim at verification:
+ *      the parent permitted delegation, depth arithmetic holds, bounds are contained (`isWithin`, where
+ *      an absent child dimension is UNBOUNDED — the forged `{}` link is refused, never "inherited").
+ *      The verdict IS `linkAttenuates`'s — one implementation, so producer and verifier cannot diverge;
+ *      the per-gate refusal codes only NAME which gate it was.
+ *   3. SIGNED-BYTES-MATCH-PRESENTED-LINK — the proof must verify over the grant AS PRESENTED, so the
  *      visible grant and the signed grant cannot differ. Cryptographic, therefore port-injected
  *      (`GrantProofVerifier`), the same hexagonal split as acceptance.ts's `SignatureVerifier`: the
  *      structural walk is corpus-certified (vectors/authority/chain-walk.json); the proof gate is proven
  *      in package tests against a real cryptosuite. A port REJECTION propagates — infrastructure failure
  *      is the caller's to see, never a silent verdict (the same transparency as `verifyAcceptance`).
- *   3. LEAF BINDING — the leaf subject's key must be the acceptance signer (scheme-canonical form).
- *   4. ATA-3 PER HOP — everything `linkAttenuates` gates at issuance, applied verbatim at verification:
- *      the parent permitted delegation, depth arithmetic holds, bounds are contained (`isWithin`, where
- *      an absent child dimension is UNBOUNDED — the forged `{}` link is refused, never "inherited").
- *      The verdict IS `linkAttenuates`'s — one implementation, so producer and verifier cannot diverge;
- *      the per-gate refusal codes only NAME which gate it was.
- *   5. LIFECYCLE AS-OF SETTLEMENT — validity windows and revocation are evaluated at the settlement
+ *      Only `walkChain` supplies the port; `walkChainStructure` runs the same loop with none.
+ *   4. LIFECYCLE AS-OF SETTLEMENT — validity windows and revocation are evaluated at the settlement
  *      instant, never "now" (status.ts): expiry via `isActiveAsOf`, revocation from the hash-pinned
  *      status-list snapshot captured at settlement, never a live dereference presented as history.
+ * Then, once every link has passed:
+ *   5. LEAF BINDING — the leaf subject's key must be the acceptance signer (scheme-canonical form).
+ *
+ * THE PROOF GATE IS INSIDE THE LOOP, and that is a bound rather than a refinement. It used to run as a
+ * second pass over the whole chain, so the ENTIRE structural walk — every attenuation gate, every
+ * status-list inflation — completed before a single proof was consulted. Measured on a 5000-link chain
+ * presented in 2.4 MB, each link pointing at a 1 MiB status list: 3.9 s of blocked work and 5.2 GB
+ * inflated before the port was asked about link 0, whose proof was forged. Now a forged link stops the
+ * walk where it sits, and `AUTHORITY_CHAIN_MAX_LINKS` bounds how far a chain can get in the first place.
  *
  * Outcome discipline is verify's three-way rule, and the walk is TOTAL over untrusted wire input: a
  * chain that CONTRADICTS itself is `refused` (verification-failure, with a code naming the defect); a
@@ -85,25 +94,101 @@ export interface ChainWalkInput {
   statusSnapshots?: Record<string, string>;
 }
 
-/** The three-way readout: verified custody, a reasoned refusal, or an honest gap. */
-export type ChainWalkResult =
-  | { status: "walked"; links: WalkedLink[] }
+/**
+ * How many links one walk will consider. A chain is UNTRUSTED WIRE INPUT and every link costs work the
+ * presenter does not pay for — an attenuation pass, a proof verification, a status-list inflation. 2.4 MB
+ * of presented JSON bought 5.2 GB of decompression before this ceiling existed.
+ *
+ * 64 is far past any authority anyone delegates. ATA-3's depth arithmetic already forces a stated
+ * `maxDepth` to decrease at every hop below a bounded parent, so only an UNBOUNDED root can produce a long
+ * chain at all, and the deployed shape is principal → org → officer → agent. The number is a ceiling on
+ * abuse, not a budget to spend.
+ *
+ * Over-length is a GAP, never a refusal: the chain did not contradict itself, this verifier declined to
+ * walk it. The same ruling `decodeStatusList`'s own ceiling gets (`unreadable-status-snapshot`) — a bound
+ * the verifier imposes can never impeach a record, and can never pass one either.
+ */
+export const AUTHORITY_CHAIN_MAX_LINKS = 64;
+
+/** The two halting arms both walks share. A halt says nothing about which walk produced it: a spliced link
+ *  is a spliced link whether or not a cryptosuite was available to check the proofs. */
+export type ChainWalkHalt =
   | { status: "refused"; haltClass: HaltClass; code: string; detail: string }
   | { status: "not-attempted"; depth: string };
 
+/** The STRUCTURAL walk's three-way readout: a chain walked over the presented DOCUMENTS, a reasoned
+ *  refusal, or an honest gap. `walked` is deliberately NOT `verified` — see {@link VerifiedChainWalkResult}. */
+export type ChainWalkResult =
+  | { status: "walked"; links: WalkedLink[] }
+  | ChainWalkHalt;
+
 /**
- * The STRUCTURAL walk — deterministic over the presented documents, no cryptography: continuity, leaf
- * binding, ATA-3 per hop, lifecycle as-of settlement. This is the half the conformance corpus certifies
- * cross-implementation; `walkChain` composes the proof gate on top. Exported directly so a subject with
- * no cryptosuite can still certify the portable behavior — the same split as `verifyAcceptanceStructure`.
+ * The FULL walk's three-way readout. Its success arm is `verified`, and that one literal is the whole
+ * difference — it is what makes "the documents are self-consistent" distinguishable from "and every proof
+ * covers the grant as presented".
+ *
+ * Before the split there was nowhere in the type to record that a proof had been checked, so `walkChain`
+ * returned `walkChainStructure`'s object verbatim and the two readouts were the same value. MEASURED: a
+ * chain whose only proof carried the literal `proofValue: "zTOTALLYFORGED"` read `{status:"walked"}` —
+ * hence `proved` at `verify`'s authority rung — through the structural walk, and `refused` through the
+ * full one. `verify` documents the walk as the PREFERRED authority input and could not tell them apart,
+ * so the door that removes the caller's trust was the one that silently trusted the proofs.
+ *
+ * `verify.authorityWalk` now accepts only this type, which makes handing it a structural walk a COMPILE
+ * error rather than a runtime check nobody wrote.
+ */
+export type VerifiedChainWalkResult =
+  | { status: "verified"; links: WalkedLink[] }
+  | ChainWalkHalt;
+
+/**
+ * The STRUCTURAL walk — deterministic over the presented documents, no cryptography: continuity, ATA-3
+ * per hop, lifecycle as-of settlement, leaf binding. This is the half the conformance corpus certifies
+ * cross-implementation; `walkChain` runs the same loop WITH the proof port. Exported directly so a subject
+ * with no cryptosuite can still certify the portable behavior — the same split as
+ * `verifyAcceptanceStructure`. Its success arm is `walked`, never `verified`: nothing here checked a proof.
  */
 export async function walkChainStructure(
   input: ChainWalkInput,
 ): Promise<ChainWalkResult> {
+  const links = await walkLinks(input, undefined);
+  return Array.isArray(links) ? { status: "walked", links } : links;
+}
+
+/**
+ * The full custody walk: the structural gates AND the proof gate, per link, in one pass. A proof that does
+ * not verify over the grant as presented refuses the whole chain at the link that carries it — no later
+ * link is read and no later status list is inflated. Port rejections propagate — see the header.
+ *
+ * It RE-TAGS rather than returning what the loop produced: the loop yields links, and only the two public
+ * entry points can name a status for them, so `walkChain` cannot hand back a structural readout even by
+ * accident.
+ */
+export async function walkChain(
+  input: ChainWalkInput,
+  proofs: GrantProofVerifier,
+): Promise<VerifiedChainWalkResult> {
+  const links = await walkLinks(input, proofs);
+  return Array.isArray(links) ? { status: "verified", links } : links;
+}
+
+/**
+ * The one walk both entry points run. Yields the LINKS on success and a halt otherwise — untagged, because
+ * naming the success arm is the caller's job and the entire point of the split.
+ *
+ * `proofs` is the only difference between the two walks. Supplied, each link's proof is checked as the
+ * loop reaches it; absent, the same gates run with the cryptography left out.
+ */
+async function walkLinks(
+  input: ChainWalkInput,
+  proofs: GrantProofVerifier | undefined,
+): Promise<WalkedLink[] | ChainWalkHalt> {
   const raw: Record<string, unknown> = isObject(input) ? input : {};
   const chain = raw["chain"];
   if (!Array.isArray(chain)) return gap("no-authority-chain");
   if (chain.length === 0) return gap("empty-authority-chain");
+  if (chain.length > AUTHORITY_CHAIN_MAX_LINKS)
+    return gap("authority-chain-too-long");
   const principal = raw["principal"];
   if (!nonEmptyString(principal)) return gap("no-principal");
   const signer = raw["acceptanceSigner"];
@@ -116,6 +201,12 @@ export async function walkChainStructure(
     ? (raw["statusSnapshots"] as Record<string, string>)
     : undefined;
 
+  // ONE INFLATION PER STATUS LIST, not one per link. Every link of a chain normally points at the SAME
+  // issuer status list, and each entry was decoded independently — 64 links against a list at the 1 MiB
+  // ceiling inflated 64 MiB to read 64 bits. The snapshots are hash-pinned and immutable for the walk, so
+  // a decode is a pure function of the encoded string and caching it changes no answer. Only successes are
+  // cached; a throw is re-derived, and re-derives the same way.
+  const decoded = new Map<string, Uint8Array>();
   const links: WalkedLink[] = [];
   let parent: AtaGrant | undefined;
   for (const [i, element] of chain.entries()) {
@@ -151,6 +242,16 @@ export async function walkChainStructure(
           `link ${i} does not attenuate its parent (ATA-3)`,
         );
     }
+    // THE PROOF GATE, HERE rather than in a second pass — the header's bound. It sits behind the
+    // continuity and ATA-3 gates so a link the documents already contradict is named by the gate that
+    // caught it (`walk/spliced-link`, not `walk/proof-invalid`), and in FRONT of lifecycle so a forged
+    // link never inflates a status list. Absent port ⇒ this is the structural walk and there is nothing
+    // to consult.
+    if (proofs !== undefined && !(await proofs.verify(grant)))
+      return refuse(
+        "walk/proof-invalid",
+        `link ${i}'s proof does not verify over the grant as presented`,
+      );
     if (!isActiveAsOf(grant.validFrom, grant.validUntil, asOf))
       return refuse(
         "walk/inactive-link",
@@ -160,6 +261,7 @@ export async function walkChainStructure(
       const revocation = await revocationFromSnapshot(
         grant.credentialStatus,
         snapshots,
+        decoded,
       );
       if (revocation !== "unrevoked") {
         if (revocation === "revoked")
@@ -180,35 +282,14 @@ export async function walkChainStructure(
       "walk/leaf-not-signer",
       `custody ends at ${leaf}, but the acceptance was signed by ${signer}`,
     );
-  return { status: "walked", links };
+  return links;
 }
 
-/**
- * The full custody walk: the structural walk, then the proof gate per link through the port. Anything
- * short of `walked` passes through unchanged; a proof that does not verify over the grant as presented
- * refuses the whole chain. Port rejections propagate — see the header.
- */
-export async function walkChain(
-  input: ChainWalkInput,
-  proofs: GrantProofVerifier,
-): Promise<ChainWalkResult> {
-  const structural = await walkChainStructure(input);
-  if (structural.status !== "walked") return structural;
-  for (const [i, grant] of input.chain.entries()) {
-    if (!(await proofs.verify(grant)))
-      return refuse(
-        "walk/proof-invalid",
-        `link ${i}'s proof does not verify over the grant as presented`,
-      );
-  }
-  return structural;
-}
-
-function gap(depth: string): ChainWalkResult {
+function gap(depth: string): ChainWalkHalt {
   return { status: "not-attempted", depth };
 }
 
-function refuse(code: string, detail: string): ChainWalkResult {
+function refuse(code: string, detail: string): ChainWalkHalt {
   return { status: "refused", haltClass: "verification-failure", code, detail };
 }
 
@@ -318,6 +399,7 @@ function depthFits(link: AtaGrant, parent: AtaGrant): boolean {
 async function revocationFromSnapshot(
   status: unknown,
   snapshots: Record<string, string> | undefined,
+  decoded: Map<string, Uint8Array>,
 ): Promise<"revoked" | "unrevoked" | string> {
   if (!isObject(status)) return "malformed-credential-status";
   const list = status["statusListCredential"];
@@ -335,13 +417,19 @@ async function revocationFromSnapshot(
   // walk has no semantics for. Unknown purposes therefore fail closed as a GAP, exactly as `isWithin`
   // refuses a bound dimension it cannot check: never read as revocation, and never a pass either.
   if (purpose !== "revocation") return "unsupported-status-purpose";
-  const snapshot = snapshots?.[list];
-  if (snapshot === undefined) return "no-status-snapshot";
-  let bits: Uint8Array;
-  try {
-    bits = await decodeStatusList(snapshot);
-  } catch {
-    return "unreadable-status-snapshot";
+  // THE CACHE IS CONSULTED FIRST, before the snapshot is even read out of the record. A list already
+  // decoded on an earlier link was, by that fact, present — so the `no-status-snapshot` gap below cannot
+  // be reached a second time for the same list, and the caller's map is touched exactly once per list.
+  let bits = decoded.get(list);
+  if (bits === undefined) {
+    const snapshot = snapshots?.[list];
+    if (snapshot === undefined) return "no-status-snapshot";
+    try {
+      bits = await decodeStatusList(snapshot);
+    } catch {
+      return "unreadable-status-snapshot";
+    }
+    decoded.set(list, bits);
   }
   const at = Number.parseInt(index, 10);
   if (at >= bits.length * 8) return "status-index-out-of-range";

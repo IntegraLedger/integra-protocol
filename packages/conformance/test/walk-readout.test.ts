@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import {
   type ChainWalkInput,
+  type VerifiedChainWalkResult,
   walkChainStructure,
 } from "@integraledger/lcp-authority";
 import {
@@ -48,10 +49,21 @@ describe("the walk's readout is what authorityStep proves", () => {
     // The composition exists to remove the flattening step, not to change the answer. Any vector where
     // the two disagree means the mapping is doing arithmetic of its own, which is exactly what it must
     // not do. Walked arms compare against `authorityStep`; the other two arms are pinned below.
+    //
+    // The success arm is RE-TAGGED to `verified` by hand, and that is the honest construction rather than
+    // a way round the type: `authorityStepFromWalk` accepts only `VerifiedChainWalkResult`, this corpus
+    // certifies the STRUCTURAL walk (the proof gate is port-injected and out of it by design), and what
+    // is under test here is the MAPPING — three arms in, three outcomes out. Standing up a cryptosuite to
+    // re-derive the same links would test the port, not the mapping. Same ruling as
+    // `verify/test/step-readouts.test.ts`: the result type is this function's INPUT.
     expect(V.cases.length).toBeGreaterThan(0);
     for (const c of V.cases) {
       const walk = await walkChainStructure(c.input);
-      const composed = authorityStepFromWalk(walk);
+      const asVerified: VerifiedChainWalkResult =
+        walk.status === "walked"
+          ? { status: "verified", links: walk.links }
+          : walk;
+      const composed = authorityStepFromWalk(asVerified);
       if (walk.status === "walked") {
         expect(composed).toEqual(authorityStep(walk.links));
       } else if (walk.status === "refused") {

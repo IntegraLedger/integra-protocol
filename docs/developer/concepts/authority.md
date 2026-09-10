@@ -76,31 +76,46 @@ check would pass, and the chain would extend arbitrarily deep below a parent tha
 ## The custody walk
 
 Attenuation says a chain's bounds are coherent. It says nothing about whether the links belong together.
-`walkChain` establishes that they do, in this order:
+`walkChain` establishes that they do — per link, in the order the walk applies them:
 
 1. **Continuity.** The root is issued by the declared principal and signed by the issuer's key. Every later
    link is signed by its parent's subject key and states that subject as its issuer. Without this the chain
    is unrelated assertions and anyone can splice a link in.
-2. **Signed bytes match the presented link.** The proof must verify over the grant *as presented*, through
-   an injected `GrantProofVerifier`, so the visible grant and the signed grant cannot differ.
-3. **Leaf binding.** The leaf subject's key must be the acceptance signer.
-4. **Attenuation per hop.** Everything `linkAttenuates` gates at issuance, applied verbatim at
+2. **Attenuation per hop.** Everything `linkAttenuates` gates at issuance, applied verbatim at
    verification. The verdict *is* `linkAttenuates`'s — one implementation, so a producer and a verifier
    cannot diverge; the per-gate refusal codes only name which gate it was.
-5. **Lifecycle as of settlement.**
+3. **Signed bytes match the presented link.** The proof must verify over the grant *as presented*, through
+   an injected `GrantProofVerifier`, so the visible grant and the signed grant cannot differ.
+4. **Lifecycle as of settlement.**
+
+Then, once every link has passed: **leaf binding** — the leaf subject's key must be the acceptance signer.
+
+The proof gate runs *inside* the loop rather than as a second pass, which bounds the work an untrusted
+chain can buy: a forged link stops the walk where it sits, before any later link is read or any later
+status list inflated. `AUTHORITY_CHAIN_MAX_LINKS` (64) bounds how far a chain gets in the first place, and
+a chain past it is a `not-attempted` gap — the chain did not contradict itself, this verifier declined to
+walk it.
 
 Identifier equality is exact, with one bridge: `did:pkh` is the DID method whose final `:`-segment *is* the
 account identifier, so a leaf `did:pkh:eip155:…:0xabc` binds the scheme-canonical signer `0xabc`. Producers
 of any other identifier form must grant to the signer's exact identifier.
 
-`walkChainStructure` is the deterministic half — everything above except the proof gate. It is what the
-conformance corpus certifies cross-implementation, and it is what a subject with no cryptosuite can still
-run. `walkChain` composes the port on top.
+`walkChainStructure` is the deterministic half — the same loop with the proof gate left out. It is what
+the conformance corpus certifies cross-implementation, and it is what a subject with no cryptosuite can
+still run.
+
+**The two halves are distinguishable in the type, and that is not decoration.** `walkChainStructure`
+succeeds as `walked`, `walkChain` as `verified`. Before the split both returned the same value, so a chain
+whose only `proofValue` read `zTOTALLYFORGED` came back `walked` from the structural half and `refused`
+from the full one — and `verify`, which documents the walk as its preferred authority input, could not tell
+which it had been handed. `verify.authorityWalk` now accepts `VerifiedChainWalkResult` only, so passing the
+structural readout is a compile error rather than a runtime screen nobody wrote.
 
 ### Three readouts, and none of them is a boolean
 
 ```text
-{ status: "walked",        links }              verified custody, flattened per hop
+{ status: "walked",        links }              structural custody   (walkChainStructure)
+{ status: "verified",      links }              …and every proof checked   (walkChain)
 { status: "refused",       haltClass, code, detail }
 { status: "not-attempted", depth }
 ```

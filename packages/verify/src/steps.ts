@@ -30,18 +30,19 @@
  *
  * `authorityStep` reads a FLATTENED chain, every field of which is a derived fact it must take on trust.
  * `authorityStepFromWalk` is the path that removes that trust — it consumes `authority.walkChain`'s
- * readout directly, so the caller never flattens anything. Both are exported: the flattened door stays
+ * VERIFIED readout directly, so the caller never flattens anything and cannot substitute the structural
+ * walk, whose proofs nobody checked. Both are exported: the flattened door stays
  * open because a foreign conformance subject may legitimately derive its links some other way, and this
  * module's totality rule means such a caller gets an honest readout rather than a compile wall.
  */
 import {
   type Bounds,
-  type ChainWalkResult,
   commitmentWithinLeaf,
   type IdentityResolution,
   isWithin,
   type SignatureVerifier,
   type SignedAcceptance,
+  type VerifiedChainWalkResult,
   verifyAcceptance,
 } from "@integraledger/lcp-authority";
 import { atrHashEquals, hashAtr } from "@integraledger/lcp-kernel";
@@ -360,18 +361,25 @@ export function authorityStep(chain: AuthorityLink[] | undefined): StepOutcome {
  * never checked that link N+1 was signed by link N's subject, never dereferenced a status list — yields a
  * confident `proved`. A caller that walks first constructs no link at all and cannot make that mistake.
  *
- * The mapping needs no interpretation, because `ChainWalkResult` already draws this module's own line:
+ * IT TAKES THE VERIFIED WALK ONLY, and that is a type wall rather than a preference.
+ * `authority.walkChainStructure` checks no proof at all — a chain whose only `proofValue` reads
+ * `zTOTALLYFORGED` walks clean through it — so its readout and `walkChain`'s used to be the same value and
+ * this step could not tell which one it had. `VerifiedChainWalkResult`'s success arm is `verified` rather
+ * than `walked`, so handing over the structural readout no longer compiles. There is no runtime screen for
+ * it, deliberately: a check would say the wall is bypassable, and it is not.
+ *
+ * The mapping needs no interpretation, because the readout already draws this module's own line:
  * `refused` is a reasoned CONTRADICTION (a spliced link, an issuer discontinuity, a forged widening, a
- * revoked grant) and carries the halt class with it; `not-attempted` is the walk's honest GAP, its depth
- * passed through verbatim; `walked` hands over links whose every field the walk STATED rather than
- * defaulted. Re-proving those links through `authorityStep` is deliberate rather than redundant — it is
- * what stops the custody walk and the verification step from drifting apart, and
- * `packages/conformance/the repository's walk-readout tests` pins that the walk's output is exactly what the step
- * proves. Total over untyped input like every step here: an unrecognized readout carries no links, so it
- * falls through to `authorityStep`'s own gap rather than throwing.
+ * revoked grant, a proof that does not cover the grant as presented) and carries the halt class with it;
+ * `not-attempted` is the walk's honest GAP, its depth passed through verbatim; `verified` hands over links
+ * whose every field the walk STATED rather than defaulted. Re-proving those links through `authorityStep`
+ * is deliberate rather than redundant — it is what stops the custody walk and the verification step from
+ * drifting apart, and `packages/conformance/test/walk-readout.test.ts` pins that the walk's output is
+ * exactly what the step proves. Total over untyped input like every step here: an unrecognized readout
+ * carries no links, so it falls through to `authorityStep`'s own gap rather than throwing.
  */
 export function authorityStepFromWalk(
-  walk: ChainWalkResult | undefined,
+  walk: VerifiedChainWalkResult | undefined,
 ): StepOutcome {
   if (!present(walk) || typeof walk !== "object")
     return { status: "not-attempted", depth: "no-authority-walk" };

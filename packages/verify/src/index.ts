@@ -17,9 +17,9 @@
  */
 import type {
   Bounds,
-  ChainWalkResult,
   SignatureVerifier,
   SignedAcceptance,
+  VerifiedChainWalkResult,
 } from "@integraledger/lcp-authority";
 import {
   type CompositionInput,
@@ -131,7 +131,7 @@ export interface VerifyInput {
    */
   authorityChain?: AuthorityLink[];
   /**
-   * The custody walk's readout (`authority.walkChain`) — the PREFERRED authority input.
+   * The custody walk's VERIFIED readout (`authority.walkChain`) — the PREFERRED authority input.
    *
    * `authorityChain` cannot express what the walk found: a spliced link, an issuer discontinuity, a root
    * issued by someone other than the declared principal, a leaf granted to anyone but the acceptance
@@ -140,11 +140,17 @@ export interface VerifyInput {
    * a contradictory one. Supplied here, the refusal reaches the report WITH its halt class, and the
    * walk's own gap depths pass through verbatim.
    *
+   * `VerifiedChainWalkResult`, never `ChainWalkResult`: `walkChainStructure` consults no cryptosuite, so
+   * a chain whose proofs are forged walks clean through it, and until the two readouts carried different
+   * success literals this slot accepted both without being able to tell them apart. The structural walk
+   * is now a COMPILE error here rather than a runtime screen — a caller with no cryptosuite supplies
+   * `authorityChain` and gets an honest flattener's readout, which is what that door is for.
+   *
    * Mutually exclusive with `authorityChain` — supplying both is a contradiction, not a precedence
    * question, so it throws rather than silently picking one (the same ruling `makeProposalRecord` makes
    * on its own exactly-one-of invariant).
    */
-  authorityWalk?: ChainWalkResult;
+  authorityWalk?: VerifiedChainWalkResult;
   /** The accepted commitment vs the leaf grant's bounds (ATA-4). */
   commitment?: { commitment: Bounds; leafBounds: Bounds };
   /** Both parties' resolutions, each at a stated assurance (IDN-1/IDN-3) — the record's `identity` slot. */
