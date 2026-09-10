@@ -8,6 +8,9 @@
  * appendSettlePaymentCall → real tx → makeSuiReader → recover end-to-end. The atrHash IS the LCP weld; the
  * USDC coin plumbing is operational setup, off the binding's critical path.
  *
+ * ⛔ A fifth variable, `SUI_TESTNET_RPC_URL`, is REQUIRED once the other four are set, and it has no
+ * default — see the refusal at the top of the body.
+ *
  * ⚠️ One leg is attempted rather than required, and only one: the `suix_queryEvents` forward scan behind
  * `enumerate`, which a node can refuse to serve for reasons that are not about this repo. The measurement
  * and the exact error class tolerated are stated at the assertion; everything else here is unconditional.
@@ -20,7 +23,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { describe, expect, it } from "vitest";
 import { appendSettlePaymentCall, createSuiAdapter } from "../src/adapter.js";
-import { getSuiConfig, pay402SettledEventType } from "../src/constants.js";
+import { pay402SettledEventType } from "../src/constants.js";
 import { SUI_MANIFEST } from "../src/manifest.js";
 import { makeSuiReader } from "../src/reader.js";
 
@@ -28,6 +31,7 @@ const SECRET = process.env["SUI_TESTNET_SECRET_KEY"];
 const PKG = process.env["SUI_PAY402_PACKAGE_ID"];
 const COIN_ID = process.env["SUI_USDC_COIN_ID"];
 const COIN_TYPE = process.env["SUI_USDC_COIN_TYPE"];
+const RPC_URL = process.env["SUI_TESTNET_RPC_URL"];
 const ready =
   SECRET !== undefined &&
   PKG !== undefined &&
@@ -39,9 +43,26 @@ suite(
   "binding-sui — live testnet (SUI_TESTNET_SECRET_KEY + SUI_PAY402_PACKAGE_ID set)",
   () => {
     it("welds an atrHash into a Pay402 settle tx and recovers it", async () => {
-      const cfg = getSuiConfig("testnet");
+      // ⛔⛔ NO FALLBACK, AND THAT IS THE FIX. This read was
+      // `process.env["SUI_TESTNET_RPC_URL"] ?? getSuiConfig("testnet").rpcUrl`, and the default it reached
+      // for is dead: measured 2026-09-10, `https://fullnode.testnet.sui.io` answers EVERY method with
+      // `-32601 "JSON-RPC on public fullnodes has been deprecated"`. A fallback to a public default is a
+      // degraded path only while the default works; once it is gone the `??` is not a convenience, it is
+      // the missing refusal — and it fails as a method-not-found deep inside the SDK, which reads as a
+      // code fault rather than as the missing credential it is.
+      //
+      // ⭐ It is deliberately NOT part of `ready`. `ready` answers "is this machine meant to run the live
+      // rail at all", and a machine carrying the other four credentials has already answered yes; skipping
+      // there would report the rail unrun for a reason nobody would go looking for. A misconfiguration is
+      // a refusal, thrown before a key is loaded or a faucet is called.
+      if (RPC_URL === undefined)
+        throw new Error(
+          "binding-sui live rail: REFUSING to run. SUI_TESTNET_RPC_URL is unset and there is no default " +
+            "to fall back to — Sui's public fullnode JSON-RPC is deprecated and answers -32601 to every " +
+            "method. Supply a provider JSON-RPC endpoint for this rail.",
+        );
       const client = new SuiJsonRpcClient({
-        url: process.env["SUI_TESTNET_RPC_URL"] ?? cfg.rpcUrl,
+        url: RPC_URL,
         network: "testnet",
       });
       const keypair = Ed25519Keypair.fromSecretKey(SECRET as string);

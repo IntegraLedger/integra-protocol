@@ -19,6 +19,10 @@ export {
   type SuiNetwork,
   type SuiNetworkConfig,
 } from "./constants.js";
+export {
+  makeSuiGraphqlRpc,
+  SUI_GRAPHQL_DEFAULT_EVENT_PAGE,
+} from "./graphql.js";
 export { SUI_MANIFEST } from "./manifest.js";
 export {
   decodeAtrPaymentId,

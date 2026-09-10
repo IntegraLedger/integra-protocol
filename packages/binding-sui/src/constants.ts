@@ -23,7 +23,20 @@ export type SuiNetwork = "testnet" | "mainnet";
  *  {@link pay402SettleTarget} / {@link pay402SettledEventType} rather than pinned in this file. */
 export interface SuiNetworkConfig {
   network: SuiNetwork;
+  /**
+   * The network's public fullnode JSON-RPC endpoint.
+   *
+   * ⛔ MEASURED DEAD 2026-09-10, on BOTH networks: every method answers `-32601 "JSON-RPC on public
+   * fullnodes has been deprecated. Please migrate to gRPC or GraphQL endpoints."` This is therefore not a
+   * rate-limited default to be outgrown, it is a URL that serves nothing — supply a provider endpoint, or
+   * read over {@link SuiNetworkConfig.graphqlUrl}. It stays published because a JSON-RPC endpoint is still
+   * how a provider one is addressed and how `SuiJsonRpcClient` submits a settlement; what it is no longer
+   * is a value anything may fall back to.
+   */
   rpcUrl: string;
+  /** The network's public GraphQL endpoint — served (measured 2026-09-10) and what `makeSuiGraphqlRpc`
+   *  speaks. This is the read transport the deprecation notice above points at. */
+  graphqlUrl: string;
   /** Circle-issued (or bridged) USDC `Coin<T>` type tag on this network. */
   usdcCoinType: string;
 }
@@ -31,6 +44,7 @@ export interface SuiNetworkConfig {
 const TESTNET: SuiNetworkConfig = {
   network: "testnet",
   rpcUrl: "https://fullnode.testnet.sui.io",
+  graphqlUrl: "https://graphql.testnet.sui.io/graphql",
   usdcCoinType:
     "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
 };
@@ -38,12 +52,14 @@ const TESTNET: SuiNetworkConfig = {
 const MAINNET: SuiNetworkConfig = {
   network: "mainnet",
   rpcUrl: "https://fullnode.mainnet.sui.io",
+  graphqlUrl: "https://graphql.mainnet.sui.io/graphql",
   usdcCoinType:
     "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
 };
 
-/** The constants for one network. The public fullnode endpoints are rate-limited defaults, not a
- *  production choice. */
+/** The constants for one network. ⛔ `rpcUrl` names a public fullnode whose JSON-RPC is DEPRECATED and
+ *  answers `-32601` to every method — nothing may fall back to it. `graphqlUrl` is the read transport that
+ *  answers; bind it with `makeSuiGraphqlRpc`. */
 export function getSuiConfig(network: SuiNetwork): SuiNetworkConfig {
   return network === "testnet" ? TESTNET : MAINNET;
 }
