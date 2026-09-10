@@ -126,7 +126,13 @@ const VECTORS = new URL("../../../vectors/", import.meta.url); // the repo's can
 // 859 → 861 on 2026-09-03: `placement.ucp` gains the write half of the https rule — a `place` that refuses
 // an `http:` url reference, and the https control beside it. `extract` had refused one since the rule
 // landed while `place` wrote one, so the placement could emit a document its own extractor rejects.
-const CORPUS_SIZE = 861;
+// 861 → 865 on 2026-09-10: `verify.referencePlacement` gains the CARRIER TYPE, which the step never read.
+// A `url` reference — which a conformant UCP merchant produces from the REQUIRED `links[]` entry without
+// placing any LCP capability at all — was compared as a fingerprint, never matched, and impeached an
+// otherwise-sound record to TC-0. Two of the four are the `ipfs`/`ar` pair, integrity-bearing but
+// addressing a CID this pure walk cannot re-derive; the fourth is an unregistered type, which reads as a
+// malformed extraction rather than as either carrier-class gap.
+const CORPUS_SIZE = 865;
 
 describe("conformance runner", () => {
   it("runs the WHOLE corpus green in-process, with nothing skipped", async () => {

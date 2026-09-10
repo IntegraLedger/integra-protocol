@@ -45,6 +45,7 @@ import {
   type VerifiedChainWalkResult,
   verifyAcceptance,
 } from "@integraledger/lcp-authority";
+import { isKnownCarrierType } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, hashAtr } from "@integraledger/lcp-kernel";
 import type { StepOutcome } from "./report.js";
 
@@ -526,6 +527,10 @@ export interface PlacementInput {
  * nothing to enumerate, and letting a placement stand in for a settlement rung would let a record that
  * moved no money read as classed.
  *
+ * ⚠️ Because it can ONLY pull the answer down, every arm short of a genuine contradiction has to be a gap.
+ * A `url` or a CID compared as a fingerprint never matches, so reading the value without its carrier TYPE
+ * turned "this counterparty published a terms link" into `supportedClass: TC-0`. See the type gate below.
+ *
  * Total, like every step: the shape checks stay even though the arguments are typed, because the callers
  * this exists for are untyped — a foreign conformance subject, an unvalidated intake. A malformed
  * extraction is a GAP, never a `failed`: the caller's shape error says nothing about whether the record
@@ -550,6 +555,39 @@ export function referencePlacementStep(
     typeof (ref as { value?: unknown }).value !== "string"
   )
     return { status: "not-attempted", depth: "malformed-extracted-reference" };
+  // THE CARRIER TYPE, which this step never read — and the value alone cannot be compared without it.
+  //
+  // `url` is the measured case and the serious one. UCP makes `links[]` REQUIRED on a checkout response
+  // and names `terms_of_service` as its recommended type, so a CONFORMANT merchant that placed no LCP
+  // capability at all still extracts as `{type:"url", value:"https://…/terms"}` through the declared
+  // discovery alias. Compared as a fingerprint, that URL never equals the atrHash, so this step answered
+  // `failed` and drove an otherwise-sound record to `supportedClass: TC-0` — impeaching a record because
+  // its counterparty is an ordinary UCP merchant. A url LOCATES a document and commits to nothing about
+  // its content (LCP §C.2), which is exactly why `binding-core.requireIntegrity` refuses it, and why the
+  // honest answer here is a gap rather than a contradiction.
+  //
+  // `ipfs` and `ar` ARE integrity-bearing and still cannot be compared HERE: their value is a CID, not
+  // the record fingerprint, and re-deriving one needs `evidence.cidForAtrHash`, which this pure module
+  // does not depend on. Reading a CID as a fingerprint impeaches every content-addressed reference on the
+  // wire — the same defect as the url, arriving through the carrier types that are supposed to be the
+  // strong ones. Its own token, because "the seller advertised a location instead of terms" and "this
+  // verifier cannot re-derive that address" are different findings.
+  //
+  // Impeachment is reserved for a `sha256` reference naming a DIFFERENT record. That is the only carrier
+  // whose value IS the fingerprint this step holds.
+  const carrier: unknown = (ref as { type?: unknown }).type;
+  if (!isKnownCarrierType(carrier))
+    return { status: "not-attempted", depth: "malformed-extracted-reference" };
+  if (carrier === "url")
+    return {
+      status: "not-attempted",
+      depth: "reference-not-integrity-bearing",
+    };
+  if (carrier !== "sha256")
+    return {
+      status: "not-attempted",
+      depth: "reference-not-a-record-fingerprint",
+    };
   if (typeof settledAtrHash !== "string")
     return { status: "not-attempted", depth: "no-record-fingerprint" };
 
