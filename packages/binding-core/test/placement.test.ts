@@ -524,3 +524,74 @@ describe("a malformed reference refuses on the ALIAS write path too", () => {
     });
   });
 });
+
+/**
+ * ⛔⛔ THE REFUSAL MESSAGE IS BUILT FROM THE COUNTERPARTY'S OWN VALUE.
+ *
+ * `makePlacement`'s `describe` was `JSON.stringify(raw)`, and `JSON.stringify` recurses. Every `extract`
+ * and `place` in the nine placement packages IS this one body, and `describe` is reached only on the
+ * REFUSAL path — the path taken precisely when the document is not what we expected. So a counterparty
+ * document that `JSON.parse` handles fine blew the stack inside the message builder, raising a
+ * `RangeError` out of a function whose contract is an `Outcome`. The narrowing was already correct; the
+ * reader died describing what it had correctly refused.
+ *
+ * Both bounds are pinned, because each was a separate way for the counterparty to choose the outcome:
+ * DEPTH (the crash) and LENGTH (a 50 MB carrier value became a 50 MB refusal `detail`).
+ */
+describe("makePlacement refusal details are total and bounded over counterparty input", () => {
+  // The shipped AP2 manifest, because the exposure is the SHARED body every placement package runs and a
+  // hand-rolled fixture could differ from a real one exactly where it matters (`describe` is only reached
+  // through a decoder that reports WHICH value failed).
+  const deep: PlacementManifest = {
+    protocol: "ap2",
+    pattern: "http-advisory",
+    tier: "A",
+    // reference-object, because that is the encoding whose decoder reports WHICH value failed — i.e. the
+    // one that reaches `describe`. An lcp-string field reads a non-string as simply absent and never
+    // builds a message out of it, so it could not exercise the bound.
+    encoding: "reference-object",
+    container: { kind: "object-path" },
+    field: "metadata.legalContext",
+    carrierTypes: ["sha256", "url"],
+  };
+
+  it("refuses a deeply nested carrier value instead of overflowing the stack", () => {
+    // ~240 KB, 120 000 deep. `JSON.parse` accepts it — V8 parses this iteratively — so it reaches the
+    // adapter as an ordinary value, which is what makes the message builder the whole of the exposure.
+    const doc = JSON.parse(
+      `{"metadata":{"legalContext":${"[".repeat(120000)}1${"]".repeat(120000)}}}`,
+    );
+    const out = makePlacement(deep).extract(doc);
+    expect(out).toMatchObject({
+      refused: true,
+      haltClass: "verification-failure",
+      code: "ap2/reference-malformed",
+    });
+  });
+
+  it("describes a circular or BigInt-bearing value by its shape instead of throwing", () => {
+    // The other two ways `JSON.stringify` fails on a value we did not author. Both arms of the shape
+    // word are pinned, so the message cannot call an array an object or the reverse.
+    const circularObject: Record<string, unknown> = {};
+    circularObject["self"] = circularObject;
+    const circularArray: unknown[] = [];
+    circularArray.push(circularArray);
+    const detailOf = (legalContext: unknown): string => {
+      const out = makePlacement(deep).extract({ metadata: { legalContext } });
+      return "refused" in out ? (out.detail ?? "") : "";
+    };
+    expect(detailOf(circularObject)).toContain("<undescribable object>");
+    expect(detailOf(circularArray)).toContain("<undescribable array>");
+    expect(detailOf({ n: 1n })).toContain("<undescribable object>");
+  });
+
+  it("clips a huge carrier value rather than copying it into the refusal detail", () => {
+    const out = makePlacement(deep).extract({
+      metadata: { legalContext: `lcp:${"A".repeat(5_000_000)}` },
+    });
+    const detail = "refused" in out ? (out.detail ?? "") : "";
+    expect(detail.length).toBeLessThan(1000);
+    // It must SAY it truncated — a detail that trails off silently misreports the value's size.
+    expect(detail).toContain("5000004 chars");
+  });
+});
