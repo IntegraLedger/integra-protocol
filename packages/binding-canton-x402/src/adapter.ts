@@ -66,8 +66,18 @@ export interface CantonX402Settlement {
 export interface CantonX402Reader {
   /** One settled transfer by ledger update id, or `null` if the participant has no such update. */
   transferView(updateId: string): Promise<CantonX402TransferView | null>;
-  /** Update ids of transfers visible to `party`, most recent first. A participant view, not an index. */
-  transfersFor(party: string, limit?: number): Promise<string[]>;
+  /**
+   * Update ids of transfers visible to `party`, most recent first. A participant view, not an index.
+   *
+   * ⛔ **`limit` IS REQUIRED, AND THAT IS THIS RAIL'S ANSWER TO THE SCAN QUESTION.** It used to be
+   * optional and forwarded verbatim, so an absent one handed the depth of the scan to whatever the
+   * deployment's endpoint defaults to — and a settlement past that default came back as an empty array,
+   * indistinguishable from "this party has none". This package will not invent the bound either: it does
+   * not even guess the PATH this call goes to ({@link CantonX402ReaderConfig.transfersPath}), so it has no
+   * standing to guess that endpoint's page size. The caller names the depth, and a full result is then
+   * exactly what the caller asked for rather than a truncation nobody chose.
+   */
+  transfersFor(party: string, limit: number): Promise<string[]>;
 }
 
 /** The Canton x402 rail's surface. `propose` returns an `extra` fragment for the SELLER to merge into its
@@ -91,12 +101,14 @@ export interface CantonX402Adapter {
     ref: CantonX402SettlementRef,
     reader: CantonX402Reader,
   ): Promise<Outcome<CantonX402Settlement>>;
-  /** Scan one party's visible transfers for `atrHash` — a participant view, never a global index. */
+  /** Scan one party's visible transfers for `atrHash` — a participant view, never a global index.
+   *  `limit` is the scan DEPTH and it is REQUIRED: see {@link CantonX402Reader.transfersFor} for why this
+   *  package will not pick it, and why an absent one used to mean the endpoint picked instead. */
   enumerate(
     atrHash: string,
     party: string,
     reader: CantonX402Reader,
-    limit?: number,
+    limit: number,
   ): Promise<CantonX402SettlementRef[]>;
 }
 
@@ -129,7 +141,30 @@ export interface CantonX402ReaderConfig {
    * it shipped as `/v1/updates/transfers`.
    */
   transfersPath: string;
+  /**
+   * Per-request deadline in ms; defaults to {@link CANTON_X402_DEFAULT_TIMEOUT_MS}.
+   *
+   * ⛔⛔ **`fetch` HAS NO TIMEOUT OF ITS OWN, AND NOTHING HERE SUPPLIED ONE.** A participant that accepted
+   * the connection and never answered hung `recover`, `observe` and `enumerate` FOREVER — no error, no
+   * refusal, no return. On a surface whose whole contract is to hand back an `Outcome` that is worse than
+   * a failure: a caller can retry a refusal and cannot retry a promise that never settles. It bites hardest
+   * on `enumerate`, which reads every listed update in a loop, so one unanswered transfer stalls the scan
+   * of a party's entire history. The endpoint is a counterparty's own service — this package does not even
+   * guess its PATH, so it certainly cannot assume its liveness.
+   */
+  timeoutMs?: number;
 }
+
+/**
+ * The default per-request deadline on a participant HTTP call — the same 10s `evidence`'s hardened
+ * resolver uses, because it is the same kind of budget: one round trip to a counterparty's endpoint, not
+ * a long-poll and not a stream.
+ *
+ * Deliberately generous rather than tight. A participant under load legitimately takes seconds to answer,
+ * and a deadline below what the endpoint needs turns its slow honest answers into transport faults — a
+ * different wrong answer, not a fix.
+ */
+export const CANTON_X402_DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
  * A live `CantonX402Reader` over a participant's HTTP ledger surface, PURE `fetch` — no Daml SDK.
@@ -162,6 +197,8 @@ export function makeCantonX402Reader(
       "makeCantonX402Reader: transfersPath is empty — this package does not guess your participant's update endpoint",
     );
 
+  const timeoutMs = cfg.timeoutMs ?? CANTON_X402_DEFAULT_TIMEOUT_MS;
+
   async function ledgerCall<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${cfg.jsonLedgerUrl}${path}`, {
       method: "POST",
@@ -170,6 +207,10 @@ export function makeCantonX402Reader(
         authorization: `Bearer ${cfg.bearerJwt}`,
       },
       body: JSON.stringify(body),
+      // Without this the call never comes back on a participant that accepts and does not answer — see
+      // CantonX402ReaderConfig.timeoutMs. `AbortSignal.timeout` rejects with a `TimeoutError`, a throw out
+      // of the reader port and therefore a LOUD failure, as every other transport fault here is.
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -193,13 +234,47 @@ export function makeCantonX402Reader(
       );
       return result ?? null;
     },
-    async transfersFor(party: string, limit?: number): Promise<string[]> {
-      return ledgerCall<string[]>(cfg.transfersPath, {
+    async transfersFor(party: string, limit: number): Promise<string[]> {
+      const result = await ledgerCall<unknown>(cfg.transfersPath, {
         party,
-        ...(limit !== undefined ? { limit } : {}),
+        limit,
       });
+      // ⛔⛔ **A `result: null` PASSED THE ENVELOPE CHECK AND CAME BACK AS AN ARRAY.** `ledgerCall` refuses
+      // an ABSENT `result` and `null` is present, so this returned `null` under a declared `string[]` and
+      // `enumerate`'s `for…of` threw `TypeError: updateIds is not iterable` — an exception out of a
+      // refuse-don't-throw surface, raised by the shape of a counterparty's response. The array is the
+      // check rather than not-null, and so is the ELEMENT type: a list carrying a `null` id would be
+      // POSTed straight back as `{ updateId: null }` and read as a transfer that is merely absent.
+      if (!Array.isArray(result) || result.some((id) => typeof id !== "string"))
+        throw new Error(
+          `Daml ${cfg.transfersPath} returned a result that is not an array of update ids — this endpoint is not answering the transfer-listing shape this reader was pointed at`,
+        );
+      return result as string[];
     },
   };
+}
+
+/**
+ * The asset fields a transfer view must actually carry, named — empty when the view is complete.
+ *
+ * Non-empty STRINGS, not merely present values: `receiver: ""` names no party and `amount: ""` is no
+ * quantity, and a reader that fills its required fields with blanks has answered the type checker rather
+ * than the question. `instrumentId` is checked through both of its own halves for the same reason — a
+ * `{ admin: "", id: "" }` identifies no instrument.
+ */
+function missingAssetFields(view: CantonX402TransferView): string[] {
+  const text = (v: unknown): boolean => typeof v === "string" && v.length > 0;
+  const out: string[] = [];
+  if (!text(view.receiver)) out.push("receiver");
+  if (!text(view.amount)) out.push("amount");
+  if (
+    view.instrumentId === null ||
+    typeof view.instrumentId !== "object" ||
+    !text(view.instrumentId.admin) ||
+    !text(view.instrumentId.id)
+  )
+    out.push("instrumentId");
+  return out;
 }
 
 /** Construct the Canton x402 adapter. **The manifest is injected, not baked in** — pass this package's own
@@ -241,6 +316,26 @@ export function createCantonX402Adapter(
         code: "canton/no-lcp-memo",
         detail: `the transfer at updateId ${ref.updateId} carries no well-formed atrHash under x402.memo`,
       };
+    // ⛔⛔ **THE MEMO WAS CHECKED AND THE ASSET WAS NOT, UNDER TYPES THAT SAID BOTH WERE THERE.**
+    // `CantonX402TransferView` declares `receiver`, `amount` and `instrumentId` as REQUIRED, but the view
+    // comes off a counterparty's HTTP endpoint through `JSON.parse` — a shape no type checks at runtime —
+    // so a reader that omitted them handed back `undefined` and this function copied it into a
+    // `CantonX402Settlement` whose own types promise strings. The result is a settled verdict carrying
+    // `receiver: undefined`, which a consumer then compares against the merchant it expected and finds
+    // unequal, or renders, or writes into a record.
+    //
+    // ⭐ And it is what makes `assetBinding: "carried"` in this manifest a TRUE claim rather than a hopeful
+    // one. That axis says a consumer can reach the asset the weld is attached to. Two lines above, an
+    // absent memo refuses loudly by name; the asset fields are the other half of the same promise and were
+    // not checked at all. One shape of missing evidence was a refusal and the other was a success.
+    const missing = missingAssetFields(view);
+    if (missing.length > 0)
+      return {
+        refused: true,
+        haltClass: "verification-failure",
+        code: "canton/incomplete-transfer-view",
+        detail: `the transfer at updateId ${ref.updateId} carries a well-formed atrHash but no ${missing.join(", ")} — this manifest declares assetBinding "carried", so a settlement whose asset cannot be read is not one this rail can report`,
+      };
     return {
       ok: true,
       value: {
@@ -281,13 +376,19 @@ export function createCantonX402Adapter(
       atrHash: string,
       party: string,
       reader: CantonX402Reader,
-      limit?: number,
+      limit: number,
     ): Promise<CantonX402SettlementRef[]> {
       // Fail-fast, like propose: a malformed atrHash can never match a decoded memo, and the silent []
       // it would produce is indistinguishable from "this party has no settlements".
       if (!isAtrHash(atrHash))
         throw new Error(
           `enumerate: atrHash must be a 0x-prefixed 32-byte value, got "${atrHash}"`,
+        );
+      // The same reasoning as the atrHash above, applied to the bound: a scan of zero (or of half a
+      // transfer) returns [], which is the answer that cannot be told apart from "no settlements".
+      if (!Number.isInteger(limit) || limit < 1)
+        throw new Error(
+          `enumerate: limit must be a positive integer — it is the scan DEPTH and this package will not choose it, got ${limit}`,
         );
       const updateIds = await reader.transfersFor(party, limit);
       const out: CantonX402SettlementRef[] = [];

@@ -1,5 +1,5 @@
 {
-  "$comment": "A reference placement is REPORTED, never REQUIRED. It impeaches when it FAILS (the reference found in the protocol's native field contradicts the record) and its absence never blocks, exactly as frc-non-gating does. The `ladder` block below is the executable form of that ruling: no class may list this step. Carrier values carry the canonical 0x-prefixed sha256 form — binding-core's own decoder refuses the bare-digits form as a corrupt carrier, so a vector pinning it would certify references no conformant counterparty can read. `depth` tokens are short kebab identifiers, not prose, matching verify/authority-walk.json: they are load-bearing gap reasons a foreign implementation must reproduce, which prose could not be.",
+  "$comment": "A reference placement is REPORTED, never REQUIRED. It impeaches when it FAILS (the reference found in the protocol's native field contradicts the record) and its absence never blocks, exactly as frc-non-gating does. The `ladder` block below is the executable form of that ruling: no class may list this step. Carrier values carry the canonical 0x-prefixed sha256 form — binding-core's own decoder refuses the bare-digits form as a corrupt carrier, so a vector pinning it would certify references no conformant counterparty can read. `depth` tokens are short kebab identifiers, not prose, matching verify/authority-walk.json: they are load-bearing gap reasons a foreign implementation must reproduce, which prose could not be. THE CARRIER TYPE IS PART OF THE COMPARISON, not only the value: impeachment is reserved for a `sha256` reference naming a DIFFERENT record, because only that carrier's value IS the record fingerprint. A `url` locates and attests nothing (LCP §C.2, and binding-core.requireIntegrity refuses it) and reads `reference-not-integrity-bearing`; `ipfs`/`ar` attest to a CID this pure walk cannot re-derive and read `reference-not-a-record-fingerprint`. Both are gaps: a step required by no class can only ever pull the answer down, so every arm short of a genuine contradiction has to be one.",
   "ladder": {
     "stepMustNotAppearIn": ["TC-0", "TC-1", "TC-2", "TC-3", "TC-4"]
   },
@@ -154,6 +154,90 @@
       },
       "expected": {
         "status": "proved"
+      }
+    },
+    {
+      "name": "a url-typed reference is a GAP — it locates a document, it does not attest to one",
+      "$comment": "A CONFORMANT counterparty is enough to produce this: UCP makes links[] REQUIRED on a checkout response and names terms_of_service as its recommended type, so a merchant that placed no LCP capability at all extracts as a url through the declared discovery alias. Compared as a fingerprint that url never equals the atrHash, so a step reading the VALUE without its carrier TYPE answered failed and drove an otherwise-sound record to TC-0. A url locates and commits to nothing about content (LCP §C.2), which is why binding-core's requireIntegrity refuses it — the honest answer is a gap, never an impeachment.",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "ref": {
+            "type": "url",
+            "value": "https://merchant.example/terms"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "reference-not-integrity-bearing"
+      }
+    },
+    {
+      "name": "an ipfs reference is integrity-bearing but is not THIS record's fingerprint — its own gap",
+      "$comment": "ipfs and ar ARE content-addressed, and their value is a CID rather than the atrHash. Re-deriving one needs evidence.cidForAtrHash, which the verification walk does not depend on, so comparing the CID against the fingerprint impeaches every content-addressed reference on the wire — the same defect as the url arriving through the carrier types that are supposed to be the strong ones. Its own depth token, because 'the seller advertised a location instead of terms' and 'this verifier cannot re-derive that address' are different findings. A2A's manifest permits both types, so this is reachable today.",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "ref": {
+            "type": "ipfs",
+            "value": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "reference-not-a-record-fingerprint"
+      }
+    },
+    {
+      "name": "an ar reference reads the same gap as ipfs — the token is about the FORM, not the network",
+      "$comment": "Both non-sha256 integrity carriers must read alike, or the token names one network's habit rather than the property. Impeachment stays reserved for a sha256 reference naming a DIFFERENT record.",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "ref": {
+            "type": "ar",
+            "value": "dGVzdC1hcndlYXZlLXR4LWlkLTAwMDAwMDAwMDAwMA"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "reference-not-a-record-fingerprint"
+      }
+    },
+    {
+      "name": "a reference whose type is outside the §8.2 registry is a malformed extraction",
+      "$comment": "The registry is closed. An unknown type is the caller's shape error and reads out under the token every other malformed extraction gets, never as one of the two carrier-class gaps — those name real properties of a real carrier.",
+      "input": {
+        "step": "reference-placement",
+        "extracted": {
+          "ref": {
+            "type": "sha512",
+            "value": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+          },
+          "termsUrl": {
+            "kind": "no-field-declared"
+          }
+        },
+        "atrHash": "0x3f786850e387550fdab836ed7e6dc881de23001b3f786850e387550fdab836ed"
+      },
+      "expected": {
+        "status": "not-attempted",
+        "depth": "malformed-extracted-reference"
       }
     }
   ]

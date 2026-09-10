@@ -103,10 +103,28 @@ describe("verifyInvoiceId", () => {
 
 describe("proposeInvoiceId", () => {
   it("returns the wire value when the field is ours to use", () => {
-    expect(proposeInvoiceId({ atrHash: ATR })).toBe(ON_WIRE);
     expect(
       proposeInvoiceId({ atrHash: ATR, usesX402InvoiceBinding: false }),
     ).toBe(ON_WIRE);
+  });
+
+  /**
+   * ⛔⛔ **THE FLAG WAS OPTIONAL, SO THE GUARD DEFAULTED OFF.** A seller that never passed it — which is
+   * every seller who does not know the field exists, and that is exactly the seller this guard is for —
+   * got a weld minted with no question asked. `InvoiceID` is ONE field, an x402 invoice binding spends it
+   * on `SHA-256(invoiceId)`, and nothing on-chain tells 32 opaque bytes of one from 32 of the other. A
+   * guard whose default is "do not guard" is a switch for callers who had already thought about it.
+   *
+   * ⭐ It is a TYPE requirement, so the RED for this one is `tsc`, not a runtime assertion: omitting the
+   * field is `error TS2741: Property 'usesX402InvoiceBinding' is missing`. This case pins what the type
+   * cannot — that a caller reaching past the types with `false` gets the weld and with `true` does not,
+   * so the value is read rather than merely demanded.
+   */
+  it("⛔ the answer is READ, not just required — false welds and true refuses", () => {
+    const answered = (usesX402InvoiceBinding: boolean) =>
+      proposeInvoiceId({ atrHash: ATR, usesX402InvoiceBinding });
+    expect(answered(false)).toBe(ON_WIRE);
+    expect(() => answered(true)).toThrow(/mutually exclusive/);
   });
 
   it("REFUSES when the seller also binds an x402 extra.invoiceId", () => {

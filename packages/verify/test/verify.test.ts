@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { hashAtr } from "@integraledger/lcp-kernel";
 import { describe, expect, it } from "vitest";
-import { type RecordIdentity, type VerifyInput, verify } from "../src/index.js";
+import {
+  type RecordIdentity,
+  serializeReport,
+  type VerifyInput,
+  verify,
+} from "../src/index.js";
 
 type Case = {
   name: string;
@@ -45,6 +50,37 @@ function toInput(c: Case): VerifyInput {
       : {}),
   };
 }
+
+describe("verify — the two depths are distinguishable in the artifact", () => {
+  // The defect: `depth` governs `verified` and appeared nowhere in the report, so a structural walk and a
+  // mechanical one over the SAME inputs serialized to identical bytes — and `verified: false` could not be
+  // read as "impeached" or as "never attempted mechanically" by anyone holding only the artifact. Step
+  // outcomes are deliberately depth-agnostic, so the step list could not recover it either.
+  const base: VerifyInput = {
+    asOf: "2026-07-16T00:00:00Z",
+    coverage: { ports: [], bindings: [] },
+  };
+
+  it("the report states the depth it ran at, and the default is stated rather than left absent", async () => {
+    expect((await verify({ ...base })).depth).toBe("structural");
+    expect((await verify({ ...base, depth: "structural" })).depth).toBe(
+      "structural",
+    );
+    expect((await verify({ ...base, depth: "mechanical" })).depth).toBe(
+      "mechanical",
+    );
+  });
+
+  it("the two depths no longer serialize to identical bytes", async () => {
+    const structural = serializeReport(await verify({ ...base }));
+    const mechanical = serializeReport(
+      await verify({ ...base, depth: "mechanical" }),
+    );
+    expect(new TextDecoder().decode(structural)).not.toBe(
+      new TextDecoder().decode(mechanical),
+    );
+  });
+});
 
 describe("verify — structural walk (honest class readout)", () => {
   it.each(V.cases)("$name", async (c) => {

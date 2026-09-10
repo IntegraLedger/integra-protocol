@@ -4,7 +4,10 @@
  * **per-redirect-hop re-validation** (manual redirects — each hop's host is re-checked, so a same-origin
  * first hop cannot redirect into the private range), a **unicast-only IP filter** (every resolved IP must
  * be public; loopback/private/link-local/ULA/unspecified are refused — over both families, and for a
- * bracketed IPv6 literal host as much as a resolved name), and **byte + time caps**.
+ * bracketed IPv6 literal host as much as a resolved name), and **byte + time caps**. The time cap is ONE
+ * budget for the whole `resolve()` — the name lookups included, which is where it used to leak — carried
+ * as a single `AbortSignal` through every hop; the body read is bounded by that same signal reaching the
+ * transport, so an injected `fetchImpl` that ignores it is bounded only by the byte cap.
  *
  * **HONEST LIMITATION — DNS rebinding (not yet closed):** the unicast filter validates the addresses
  * `lookupImpl` returns, but the subsequent `fetch` performs its OWN DNS resolution and nothing pins the
@@ -24,7 +27,8 @@ import type { ArtifactResolver } from "@integraledger/lcp-binding-core";
 
 /** A resolver refusal, carrying a stable `code`. Every one is a REFUSAL TO FETCH under the LCP §12 SSRF
  *  gate — a non-HTTPS scheme, a host resolving into a private range, too many redirect hops, a response
- *  over the byte cap, a timeout — never a transport hiccup. Compare the `code`, not the message. */
+ *  over the byte cap, a bodyless response, a timeout — never a transport hiccup. Compare the `code`, not
+ *  the message. */
 export class ResolverError extends Error {
   // Declared-and-assigned, not a `public readonly` constructor parameter: parameter properties are
   // TypeScript-only syntax that cannot be erased, and the workspace compiles under `erasableSyntaxOnly`.
@@ -43,7 +47,8 @@ export class ResolverError extends Error {
 export interface HardenedResolverOptions {
   /** Max response size before abort. Default 1 MiB (the raw-block ceiling — artifacts above it break CID == atrHash). */
   maxBytes?: number;
-  /** Per-request time budget in ms. Default 10s. */
+  /** Time budget in ms for the WHOLE `resolve()` call — every name lookup and every redirect hop inside
+   *  it, not one budget each. Default 10s. */
   timeoutMs?: number;
   /** Max redirect hops (each re-validated). Default 5. */
   maxRedirects?: number;
@@ -170,10 +175,45 @@ function isPublicV6(ip: string): boolean {
   return true;
 }
 
-/** Assert an HTTPS URL whose host resolves only to public unicast addresses; throws on any violation. */
+/**
+ * Settle `work` under `signal`, or refuse the moment the budget expires.
+ *
+ * ⛔ A promise cannot be cancelled, and a DNS lookup is the plainest example: `dns.lookup` takes as long
+ * as the resolver takes and accepts no signal. `AbortSignal.timeout` passed to `fetch` therefore bounds
+ * the REQUEST and nothing before it, which is how a resolver with `timeoutMs: 50` was measured still
+ * hanging at 1500 ms — the stated bound was not the real one. Racing the signal makes the caller's budget
+ * cover the wait even where the work underneath it keeps running.
+ */
+function underBudget<T>(
+  work: Promise<T>,
+  signal: AbortSignal,
+  what: string,
+  timeoutMs: number,
+): Promise<T> {
+  const expired = new ResolverError(
+    "resolver/timeout",
+    `${what} exceeded the ${timeoutMs}ms budget for the whole resolve`,
+  );
+  // An already-spent budget is the second hop of a redirect chain that used it all up on the first.
+  // `addEventListener` would never fire for an abort that has already happened.
+  if (signal.aborted) return Promise.reject(expired);
+  return new Promise<T>((resolve, reject) => {
+    // No listener teardown: the signal is created per `resolve()` and dropped with it, so at most one
+    // listener per hop exists and only for as long as the call does. Removing it would be ceremony no
+    // behaviour can distinguish, and a settled promise ignores a later `reject`.
+    signal.addEventListener("abort", () => reject(expired));
+    work.then(resolve, reject);
+  });
+}
+
+/** Assert an HTTPS URL whose host resolves only to public unicast addresses; throws on any violation.
+ *  The lookup runs under the caller's `signal` — the budget starts before the first name is resolved,
+ *  not after. */
 async function assertFetchable(
   urlStr: string,
   lookupImpl: NonNullable<HardenedResolverOptions["lookupImpl"]>,
+  signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<URL> {
   let url: URL;
   try {
@@ -191,7 +231,12 @@ async function assertFetchable(
   const addrs =
     kind !== 0
       ? [{ address: url.hostname, family: kind }]
-      : await lookupImpl(url.hostname);
+      : await underBudget(
+          lookupImpl(url.hostname),
+          signal,
+          `DNS lookup for ${url.hostname}`,
+          timeoutMs,
+        );
   if (addrs.length === 0)
     throw new ResolverError(
       "resolver/no-address",
@@ -206,12 +251,25 @@ async function assertFetchable(
   return url;
 }
 
+/**
+ * Read a response body under the byte cap, refusing the moment it is exceeded rather than after.
+ *
+ * ⛔ A successful response with NO body is refused, not read as zero bytes. A 204 says "no content";
+ * `new Uint8Array(0)` says "the artifact is empty", and the caller then hashes that into
+ * `e3b0c442…` and reports an artifact that does not match its reference — "could not read it" arriving
+ * dressed as "does not verify". A genuinely empty artifact is a different thing and still works: an empty
+ * body is a stream that ends immediately, not an absent one.
+ */
 async function readCapped(
   res: Response,
   maxBytes: number,
 ): Promise<Uint8Array> {
   const body = res.body;
-  if (body === null) return new Uint8Array(0);
+  if (body === null)
+    throw new ResolverError(
+      "resolver/no-body",
+      `${res.status} carried no body — that is an absent artifact, not an empty one`,
+    );
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -256,12 +314,17 @@ export function createHardenedResolver(
 
   return {
     async resolve(ref: string): Promise<Uint8Array | null> {
+      // ONE budget for the whole call, opened before the first name is looked up. A signal minted per
+      // fetch bounded neither the lookup ahead of it nor the chain around it: `timeoutMs` × (hops + 1)
+      // was the real ceiling, and the DNS wait sat outside even that.
+      const signal = AbortSignal.timeout(timeoutMs);
       let current = ref;
       for (let hop = 0; hop <= maxRedirects; hop++) {
-        const url = await assertFetchable(current, doLookup); // per-hop re-validation
+        // per-hop re-validation, under the one budget
+        const url = await assertFetchable(current, doLookup, signal, timeoutMs);
         const res = await doFetch(url.toString(), {
           redirect: "manual",
-          signal: AbortSignal.timeout(timeoutMs),
+          signal,
         });
         if (res.status === 404) return null;
         if (res.status >= 300 && res.status < 400) {

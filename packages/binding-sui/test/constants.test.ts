@@ -22,37 +22,51 @@ const PKG =
   "0x25c4e00d9ba281c5815c29a2851be2d5ffb10b23ce7399efd57d2a29c103508c";
 
 describe("getSuiConfig", () => {
-  it("selects the testnet endpoint and the testnet USDC coin type", () => {
+  it("selects the testnet endpoints and the testnet USDC coin type", () => {
     expect(getSuiConfig("testnet")).toEqual({
       network: "testnet",
       rpcUrl: "https://fullnode.testnet.sui.io",
+      graphqlUrl: "https://graphql.testnet.sui.io/graphql",
       usdcCoinType:
         "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
     });
   });
 
-  it("selects the mainnet endpoint and the mainnet USDC coin type", () => {
+  it("selects the mainnet endpoints and the mainnet USDC coin type", () => {
     expect(getSuiConfig("mainnet")).toEqual({
       network: "mainnet",
       rpcUrl: "https://fullnode.mainnet.sui.io",
+      graphqlUrl: "https://graphql.mainnet.sui.io/graphql",
       usdcCoinType:
         "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
     });
   });
 
-  it("never answers one network with the other's endpoint or coin type", () => {
+  it("never answers one network with the other's endpoints or coin type", () => {
     // The failure this guards is silent: querying mainnet for a testnet settlement returns an empty
     // result, which is indistinguishable from "never settled" unless the selector is pinned.
     const testnet = getSuiConfig("testnet");
     const mainnet = getSuiConfig("mainnet");
     expect(testnet.rpcUrl).not.toBe(mainnet.rpcUrl);
+    expect(testnet.graphqlUrl).not.toBe(mainnet.graphqlUrl);
     expect(testnet.usdcCoinType).not.toBe(mainnet.usdcCoinType);
     expect(testnet.network).not.toBe(mainnet.network);
   });
 
-  it("serves https endpoints only", () => {
-    for (const network of ["testnet", "mainnet"] as const)
-      expect(getSuiConfig(network).rpcUrl.startsWith("https://")).toBe(true);
+  /**
+   * ⛔ **THIS CASE CANNOT TELL A LIVE ENDPOINT FROM A DEAD ONE, AND THE ROW ABOVE IS THE PROOF.**
+   * `rpcUrl` passed a `startsWith("https://")` assertion every day of 2026 while, measured 2026-09-10,
+   * both public fullnodes answered `-32601 "JSON-RPC on public fullnodes has been deprecated"` to every
+   * method. A scheme check is a check on the STRING; liveness is a property only a live rail can assert,
+   * and `test/integration.onchain.test.ts` is where that is owed. What this pins is the one thing a unit
+   * test can: no endpoint is ever served over plaintext, on either transport.
+   */
+  it("names https endpoints only, on both transports — and proves nothing about either answering", () => {
+    for (const network of ["testnet", "mainnet"] as const) {
+      const cfg = getSuiConfig(network);
+      expect(cfg.rpcUrl.startsWith("https://")).toBe(true);
+      expect(cfg.graphqlUrl.startsWith("https://")).toBe(true);
+    }
   });
 });
 

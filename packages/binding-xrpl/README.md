@@ -31,7 +31,9 @@ declare const txHash: string;
 const adapter = createXrplAdapter(XRPL_MANIFEST);
 
 // PAYER, before signing — the value to set as Payment.InvoiceID.
-const invoiceId = adapter.propose({ atrHash });
+// `usesX402InvoiceBinding` is REQUIRED: `InvoiceID` is one field and an x402 invoice binding spends it
+// on SHA-256(invoiceId), so `propose` asks rather than assuming. `false` is a fine answer.
+const invoiceId = adapter.propose({ atrHash, usesX402InvoiceBinding: false });
 
 // VERIFIER, after settlement — the atrHash back out of a validated tesSUCCESS Payment.
 const recovered = await adapter.recover({ txHash }, reader);
@@ -70,17 +72,27 @@ leaves the field to us.
 **The cost, stated rather than guarded away.** The two uses are mutually exclusive per transaction. A seller
 already using x402 invoice binding has spent the field, and — unlike the MPP attribution memo, which carries
 a four-byte tag — nothing on-chain separates an atrHash from `SHA-256("INV-2025-001")`. Both are 32 opaque
-bytes. So `propose` **refuses** when you tell it you are also binding an `extra.invoiceId`:
+bytes. So `propose` **refuses** when you tell it you are also binding an `extra.invoiceId` — and the flag
+is **required**, because optional it defaulted the guard OFF for every seller who had not heard of it:
 
 ```ts
 declare const atrHash: string;
 declare const adapter: import("@integraledger/lcp-binding-xrpl").XrplAdapter;
 
-adapter.propose({ atrHash });                                  // -> "AB…" for Payment.InvoiceID
-adapter.propose({ atrHash, usesX402InvoiceBinding: true });     // throws — the field is already spent
+adapter.propose({ atrHash, usesX402InvoiceBinding: false }); // -> "AB…" for Payment.InvoiceID
+adapter.propose({ atrHash, usesX402InvoiceBinding: true }); // throws — the field is already spent
 ```
 
 Proposal time is the only moment that information exists; it can never be recovered from the ledger.
+
+## The account scan states its own bound
+
+`enumerate`'s `limit` is the scan depth. Omitted, it asks rippled for 200 — measured as `account_tx`'s own
+default, which is also what it returns with no `limit` at all — and **throws** if that page comes back
+full. `account_tx` continues through a `marker` that `XrplReader` does not carry, so a saturated scan
+cannot be told apart from a complete one, and a settlement past the bound would otherwise read as `[]`:
+indistinguishable from "this account never settled that ATR hash". An explicit `limit` is your own bound
+and a full result there is what you asked for.
 
 ## The legacy memo codec
 

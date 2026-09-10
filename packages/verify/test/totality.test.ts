@@ -509,6 +509,42 @@ describe("steps are total over an explicit null, not only over undefined", () =>
       expect(settlement?.outcome).toEqual(gap);
       expect(report.supportedClass).toBe("TC-0");
     });
+
+    it("the REPORT's settlements block is screened too — the step's answer was not the report's", () => {
+      // The step got its `Array.isArray` screen and the report block did not, so one report carried two
+      // answers about one input: `settlement-enumeration: no-enumeration-port` beside `found: "none"` and
+      // `multiplySettled: true`. Four characters read as four settlements. `report.schema.json` declares
+      // `found` an array, which a string quietly violated on the way out.
+      const cases: [string, unknown][] = [
+        ["a string", "none"],
+        ["a duck-typed object carrying a length", { length: 5 }],
+        ["a number", 42],
+      ];
+      return Promise.all(
+        cases.map(async ([label, settlements]) => {
+          const report = await verify({
+            asOf: "2026-07-16T00:00:00Z",
+            coverage: { ports: [], bindings: [] },
+            settlements: settlements as unknown[],
+          });
+          expect(report.settlements, label).toEqual({
+            found: [],
+            multiplySettled: false,
+          });
+        }),
+      );
+    });
+
+    it("a real pair of settlements still flags multiplySettled — the screen refuses nothing real", () => {
+      return verify({
+        asOf: "2026-07-16T00:00:00Z",
+        coverage: { ports: [], bindings: [] },
+        settlements: [{ txHash: "0xa" }, { txHash: "0xb" }],
+      }).then((report) => {
+        expect(report.settlements.multiplySettled).toBe(true);
+        expect(report.settlements.found).toHaveLength(2);
+      });
+    });
   });
 
   /**

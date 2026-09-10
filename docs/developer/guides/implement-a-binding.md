@@ -403,7 +403,7 @@ npx @integraledger/lcp-conformance --phase P3
 ```
 
 ```text
-conformance: 372 passed, 1 failed, 18 skipped (verify.authorityWalk, verify.classLadder, verify.recourse, verify.identity, vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
+conformance: 373 passed, 1 failed, 18 skipped (verify.authorityWalk, verify.classLadder, verify.recourse, verify.identity, vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
 FAIL binding.profiles / the examplechain note profile validates: expected true got false
 ```
 
@@ -422,16 +422,16 @@ Two things to know before you run any of this.
 implementation, and no flag redirects it. Driving a foreign implementation is the library API,
 `runCorpus(subject, opts)` with a `CliSubject` — see [run-conformance.md](run-conformance.md).
 
-**`runCorpus` defaults `phase` to `"P1"`, where the CLI defaults to the wired floor.** P1 is 95 cases —
-roughly an eighth of the corpus — and it contains no binding area at all, so a library caller who omits
-`phase` certifies none of the work above. State the phase, and check `report.skipped` is empty rather than
-trusting a string.
+**`runCorpus` defaults `phase` to the ladder's top — the whole corpus — where the CLI defaults to its own
+wired floor.** It used to default to `"P1"`, which is 102 cases and contains no binding area at all, so a
+library caller who omitted `phase` certified none of the work above. State the phase anyway when you mean a
+narrower run, and check `report.skipped` is empty rather than trusting a string.
 
 Then the repository's own gates, which a new package has to pass like every other:
 
 ```bash
 pnpm verify          # check:versions → check:docblocks → check:declared-imports → check:weld-grade-keys → check:live-rails → check:harness-proof → corpus-seal
-                     #   → audit → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
+                     #   → advisories → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
 pnpm mutation <pkg>  # the package's mutation ratchet, which only ever moves up
 ```
 
