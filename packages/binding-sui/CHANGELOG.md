@@ -1,5 +1,30 @@
 # @integraledger/lcp-binding-sui
 
+## 0.17.0
+
+### Minor Changes
+
+- Add `makeSuiGraphqlRpc`, a GraphQL implementation of the `SuiRpcLike` port.
+  
+  Sui's public fullnode JSON-RPC is deprecated and answers `-32601` to every method, so a reader built on it
+  cannot resolve against a public endpoint. `makeSuiReader(makeSuiGraphqlRpc(url))` is the whole migration —
+  `recover`, `observe` and `enumerate` are unchanged.
+  
+  ⛔ The transports disagree about byte encoding, and the disagreement is silent: GraphQL renders a Move
+  `vector<u8>` as base64 where JSON-RPC renders it as `number[]`. `parseSuiEvents` answers `undefined` for
+  anything that is not an array, and an absent `payment_id` makes `recover` return `sui/no-payment-id` — a
+  refusal rather than an error. A wrapper that did not decode at the transport boundary would therefore report
+  every real weld as never-anchored with nothing going red, so the decode is done there and asserted end to
+  end.
+  
+  Also: the live rail no longer falls back to a default endpoint when `SUI_TESTNET_RPC_URL` is unset. It
+  refuses loudly, because the endpoint it used to fall back to is the deprecated one.
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.17.0
+  - @integraledger/lcp-kernel@0.17.0
+
 ## 0.16.1
 
 ### Patch Changes
