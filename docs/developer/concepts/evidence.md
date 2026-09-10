@@ -28,12 +28,25 @@ what makes the bundle self-describing: nothing outside it has to be consulted to
 `verifyBundle` checks both halves of the question:
 
 - **Integrity** — every block hashes to the CID that claims it.
-- **Completeness** — every manifest reference resolves to a block that is actually present.
+- **Completeness** — the manifest and the blocks account for each other: every reference resolves to a
+  block that is actually present, and every block is named by a reference. An unlisted block is content
+  travelling inside the evidence package that the manifest — the readout a dispute reads — does not
+  account for.
 
 It **returns a value; it does not throw**. An undecodable CAR, a malformed manifest, a block that does not
-hash to its CID, a reference with no block — each comes back as `{ ok: false, reason }` naming what was
-wrong. A verification routine whose contract is "tell me what you found" must not turn an unreadable bundle
-into an exception the caller has to catch to learn anything.
+hash to its CID, a reference with no block — each comes back as `{ ok: false, fault, reason }` naming what
+was wrong. A verification routine whose contract is "tell me what you found" must not turn an unreadable
+bundle into an exception the caller has to catch to learn anything.
+
+`fault` separates the two sentences a refusal might be making. `"malformed"` means *we could not read
+these bytes as a bundle*; `"integrity"` and `"completeness"` are verdicts on a bundle that was read.
+Collapsing them lets an interrupted download arrive as an accusation — and, in the other direction, lets a
+document nobody could read pass as a bundle with nothing wrong in it.
+
+**What the builder refuses, the verifier refuses.** They are one definition of a bundle read in two
+directions, and where they disagree the wrong answer has already been given. `buildBundle` will not
+construct a bundle with no artifacts (`minItems: 1`), cannot produce a block the manifest does not
+reference, and cannot root a CAR at two manifests; `verifyBundle` refuses each of those in turn.
 
 Bundles are deterministic by construction: the manifest is serialized as compact JSON with entries in
 artifact order and a fixed key order, and blocks are written manifest-first followed by the artifacts in
@@ -137,7 +150,9 @@ console.log(good.ok);
 const tampered = Uint8Array.from(bundle.car);
 tampered.set([(tampered.at(-1) ?? 0) ^ 0x01], tampered.length - 1);
 const bad = await verifyBundle(tampered);
-console.log(bad.ok, "|", bad.reason);
+// `fault` and `reason` are readable only on the refusal arm — a caller has to establish there WAS a
+// refusal before it can read what the refusal said.
+if (!bad.ok) console.log(bad.ok, "|", bad.fault, "|", bad.reason);
 ```
 
 ```text
@@ -148,7 +163,7 @@ bafkreicojue6wbww2m4kfw5l5fwmnalfmswcs6vtxnmngzcrmqkz623vdu
 atr                  lcp:sha256:0x437a46db8485b1b3552533d415ba6290a4e7d1ff4cb01e4e6eb7ef63d10748a5
 signed acceptance    lcp:sha256:0x3d651900c509584f241e3e43084c373e7014689993915ea07b42d20a395f0b83
 true
-false | block bafkreib5mumqbrijlbhsihr6imeeynz6oakgrgmtsfpka62c2ifdsxylqm does not hash to its content (tamper)
+false | integrity | block bafkreib5mumqbrijlbhsihr6imeeynz6oakgrgmtsfpka62c2ifdsxylqm does not hash to its content (tamper)
 ```
 
 The `atr` entry's ref is the ATR hash — the same value a settlement carries and the same value
@@ -182,7 +197,9 @@ Evidence references artifacts by URL, and on the buyer's side that URL was chose
   CGNAT, ULA and multicast are refused over both address families — including an IPv6 literal in its
   bracketed form and IPv4-mapped addresses in either spelling.
 - Byte and time caps, the byte cap enforced **while streaming**. Reading a whole body and measuring
-  afterwards protects the check but not the memory.
+  afterwards protects the check but not the memory. The time cap is one budget for the whole `resolve()`,
+  opened before the first name lookup: an `AbortSignal` handed to `fetch` bounds the request and nothing
+  ahead of it, so a hanging DNS resolution used to sit outside the number the option documents.
 
 The limitation, stated here rather than left for a reader to find: the filter validates the addresses the
 injected `lookup` returns, but `fetch` performs its **own** DNS resolution and nothing pins the connection

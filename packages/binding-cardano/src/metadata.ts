@@ -129,22 +129,41 @@ export function decodeLcpMetadataValue(value: unknown): `0x${string}` | null {
   return candidate.toLowerCase() as `0x${string}`;
 }
 
-/** A single Blockfrost tx-metadata array entry (`GET /txs/{hash}/metadata`). */
+/** A single tx-metadata array entry (Blockfrost `GET /txs/{hash}/metadata`, or the same row out of
+ *  db-sync or Koios). `label` is a metadata label — a Cardano `word64` — and indexers disagree about how
+ *  to spell one on the wire; see {@link recoverAtrHashFromMetadata}. */
 export interface BlockfrostMetadataEntry {
-  label: string;
+  /** The metadata label. Blockfrost serialises it as a decimal STRING; db-sync and Koios hand back a
+   *  NUMBER. Both spellings are the same label and both are accepted. */
+  label: string | number;
   json_metadata: unknown;
 }
 
 /**
- * Extract the 0x-prefixed atrHash from a Blockfrost tx-metadata array (the recover boundary), or `null`
- * if no LCP-label entry carries a well-formed atrHash.
+ * Extract the 0x-prefixed atrHash from a tx-metadata array (the recover boundary), or `null` if no
+ * LCP-label entry carries a well-formed atrHash.
+ *
+ * ⛔⛔ **THE LABEL COMPARISON WAS `m.label === String(label)`, AND A NUMERIC LABEL LOST IT.** That is a
+ * strict comparison against a string, so an entry whose `label` is `8847` — a NUMBER — matched nothing,
+ * `find` answered `undefined`, and a genuinely welded settlement read `no-atr-metadata`: the refusal that
+ * says the transaction carries no LCP weld at all. The number is not an exotic shape. This module's own
+ * port docblock names db-sync and Koios beside Blockfrost as the indexers a reader wraps, and a numeric
+ * label is precisely what those two return; only Blockfrost's JSON quotes it. So the reading depended on
+ * which indexer the consumer happened to bridge, and the failure was a false NEGATIVE — the direction no
+ * caller can challenge, because "this transaction has no LCP metadata" looks exactly like the truth.
+ *
+ * ⭐ **NORMALISED ON BOTH SIDES, WHICH IS A TOTAL COMPARISON RATHER THAN A FALLBACK.** A Cardano metadata
+ * label is a `word64`, so its decimal spelling is unique: no two distinct labels share one, and
+ * `String(8847) === String("8847")` is exact rather than lenient. There is no second attempt here and no
+ * "try it the other way" — one comparison, over the one canonical spelling of a number.
  */
 export function recoverAtrHashFromMetadata(
   metadata: readonly BlockfrostMetadataEntry[] | null | undefined,
   label: number,
 ): `0x${string}` | null {
   if (!metadata) return null;
-  const entry = metadata.find((m) => m.label === String(label));
+  const wanted = String(label);
+  const entry = metadata.find((m) => String(m.label) === wanted);
   if (entry === undefined) return null;
   return decodeLcpMetadataValue(entry.json_metadata);
 }

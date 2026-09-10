@@ -89,6 +89,28 @@ export function recoverAtrHashFromMemoViews(
  * Order is deliberate: top-level first, then inner in the order the RPC reports them.
  * `recoverAtrHashFromMemoViews` takes the FIRST view that decodes, so a memo the payer signed directly
  * still wins over one a program emitted on their behalf.
+ *
+ * ⛔⛔ **FILTER TO THE MEMO PROGRAM BEFORE DECODING, NEVER AFTER.** The buyer builds this transaction, so
+ * every instruction co-located with the weld is counterparty-authored — and this mapper used to
+ * `bs58.decode` the data of EVERY unparsed instruction before anything asked which program emitted it.
+ * `bs58.decode` throws on the first character outside the base58 alphabet, and that throw is not a
+ * refusal: it escapes `parseTxView` → `SolanaReader.txView` → `recover`/`observe`/`enumerate`, so a
+ * caller auditing a genuinely welded settlement got an exception where this rail's every other answer is
+ * a `verification-failure` Refusal that says which of the three things went wrong. One unrelated
+ * instruction the binding was never going to read could deny the whole reading.
+ *
+ * The reachable path is the PORT, not a malformed node. `SolanaRpc` is public and consumer-implemented on
+ * purpose — a `@solana/web3.js` `Connection` does not satisfy it structurally, so the bridge is always
+ * someone's own two lines. A bridge that hands through base64 instruction data (`0`, `O`, `I`, `l`, `+`,
+ * `/`, `=` are all outside base58) makes the throw near-certain on any transaction carrying an unparsed
+ * instruction, while the memo itself still arrives fine as a `parsed` string — which is exactly the shape
+ * where a valid weld reads as a crash.
+ *
+ * So the `programId` test now gates the decode instead of only gating the read. A non-memo instruction
+ * still yields a view, in order, carrying its `programId` and no bytes: the mapping stays one view per
+ * instruction (the property that makes "top-level beats CPI" legible), and bytes this binding will never
+ * read are never decoded. A memo-program instruction whose data is undecodable still throws, loudly —
+ * that one IS the thing we came to read, and a silent skip there would be the false refusal above.
  */
 export function parseMemoViews(tx: ParsedTransactionShape): MemoView[] {
   const out: MemoView[] = [];
@@ -104,8 +126,14 @@ export function parseMemoViews(tx: ParsedTransactionShape): MemoView[] {
     } else {
       // PartiallyDecodedInstruction — the RPC did not parse this program (provider/version-dependent for
       // the Memo program). Keep the raw bytes (base58-decoded) so `recover` still finds the atrHash rather
-      // than false-refusing a genuinely welded settlement (the manifest's zeroPartyRecoverable claim).
-      out.push({ programId, data: bs58.decode(ins.data) });
+      // than false-refusing a genuinely welded settlement (the manifest's zeroPartyRecoverable claim) —
+      // but ONLY for the Memo program, because decoding a stranger's bytes is how a valid weld throws.
+      out.push({
+        programId,
+        ...(programId === MEMO_PROGRAM_ID
+          ? { data: bs58.decode(ins.data) }
+          : {}),
+      });
     }
   };
   for (const ins of tx.transaction.message.instructions) push(ins);

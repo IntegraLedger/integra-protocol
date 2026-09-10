@@ -75,8 +75,57 @@ const paymentId = encodeAtrPaymentId(atrHash); // Uint8Array(32) — all of it, 
 decodeAtrPaymentId(paymentId); // "0x…" | null
 ```
 
-Recovery reads the `PaymentSettled` event. Sui's JSON-RPC methods are deprecated in favour of gRPC and
-GraphQL, so the reader is written against a narrow surface that is straightforward to repoint.
+## Reading over GraphQL
+
+Recovery reads the `PaymentSettled` event, and **Sui's public fullnode JSON-RPC no longer serves one.**
+Measured 2026-09-10 on both networks, `https://fullnode.{testnet,mainnet}.sui.io` answers every method with
+`-32601 "JSON-RPC on public fullnodes has been deprecated. Please migrate to gRPC or GraphQL endpoints."`
+`getSuiConfig(network).rpcUrl` still names that endpoint because a provider endpoint is addressed the same
+way and a settlement is still submitted over one — but nothing may fall back to it.
+
+`makeSuiGraphqlRpc` binds Sui's GraphQL endpoint to the same narrow `SuiRpcLike` port `makeSuiReader`
+takes, so switching transports changes one line and leaves `recover`, `observe` and `enumerate` untouched.
+
+```ts
+import {
+  createSuiAdapter,
+  getSuiConfig,
+  makeSuiGraphqlRpc,
+  makeSuiReader,
+  SUI_MANIFEST,
+} from "@integraledger/lcp-binding-sui";
+
+declare const packageId: string;
+declare const digest: string;
+
+const reader = makeSuiReader(makeSuiGraphqlRpc(getSuiConfig("testnet").graphqlUrl));
+const settled = await createSuiAdapter(SUI_MANIFEST).recover({ digest, packageId }, reader);
+if (!("refused" in settled)) console.log(settled.value); // "0x…"
+```
+
+GraphQL renders a Move `vector<u8>` as a **base64 string** where JSON-RPC renders a JSON array of byte
+values, so a hand-rolled wrapper that passes `contents.json` through unchanged leaves every `payment_id`
+unreadable — and an unreadable `payment_id` is a refusal, not an error, so a real weld reads as
+never-anchored. `makeSuiGraphqlRpc` decodes it at that boundary; write your own wrapper and you own that
+conversion, along with the three things that make it correct rather than merely present:
+
+- **Which fields are bytes is asked, not guessed.** The wrapper selects `contents.type.layout` and decodes
+  exactly the fields the endpoint's own layout calls `vector<u8>` — `payment_id` and `coin_type` on
+  `PaymentSettled`. Matching on the field NAME instead breaks on a Sui PTB, which the **buyer** composes:
+  a co-located event from another package carrying a Move `String` named `payment_id` is not base64, and
+  decoding it throws recovery away for a settlement that is on chain and signed.
+- **Both event connections are paged.** `TransactionEffects.events` and `Query.events` each cap at 50 per
+  page and default to 20, and Sui allows 1024 events in one transaction — so an unpaged read answers with
+  the oldest 20 and drops the rest without an error. `SUI_GRAPHQL_DEFAULT_EVENT_PAGE` is the page this
+  wrapper asks for and the scan depth it uses when `enumerate` is given no `limit`; a larger `limit` is
+  walked a page at a time rather than refused by the endpoint.
+- **Requests carry a deadline.** `fetch` has none of its own, so an endpoint that accepts a connection and
+  never answers would hang `recover` for good. `SUI_GRAPHQL_TIMEOUT_MS` sits above the endpoint's own
+  40-second query timeout, so it never pre-empts a query that is still running.
+
+Everything the queries select is REQUIRED: an absent `status`, `events` connection, `contents`,
+`contents.json`, type `repr`, `layout` or emitting `transaction` is a throw, never an empty read. A
+refusal from this rail means the chain says no — it never means the transport could not read the answer.
 
 ## Requirement ids
 

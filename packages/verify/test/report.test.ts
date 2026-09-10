@@ -24,6 +24,7 @@ describe("RFC 8785 (JCS) report serialization — the net-new byte vector", () =
       assurance: "wallet-signature-only",
       claimedClass: "TC-2",
       supportedClass: "TC-2",
+      depth: "structural",
       asOf: "2026-07-16T00:00:00Z",
       steps: [{ name: "atr-fingerprint", outcome: { status: "proved" } }],
       coverage: { ports: [], bindings: [] },
@@ -31,7 +32,7 @@ describe("RFC 8785 (JCS) report serialization — the net-new byte vector", () =
     };
     const bytes = serializeReport(report);
     expect(new TextDecoder().decode(bytes)).toBe(jcsCanonicalize(report));
-    // keys are sorted: asOf < assurance < coverage < settlements < steps < supportedClass < verified
+    // keys are sorted: asOf < assurance < claimedClass < coverage < depth < settlements < steps < …
     expect(new TextDecoder().decode(bytes).startsWith('{"asOf":')).toBe(true);
   });
 });

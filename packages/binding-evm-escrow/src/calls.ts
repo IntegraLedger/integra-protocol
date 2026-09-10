@@ -18,7 +18,7 @@
  */
 import { encodeAbiParameters, keccak256, stringToHex } from "viem";
 import type { PaymentInfo } from "./adapter.js";
-import { AUTH_CAPTURE_ESCROW } from "./collectors.js";
+import { requireEscrowAddress } from "./collectors.js";
 
 /** The PaymentInfo tuple components, in the DEPLOYED struct's field order (98b592b). */
 const PI_COMPONENTS = {
@@ -53,13 +53,15 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
  * TYPEHASH, paymentInfo))))`. Equals the event's indexed `paymentInfoHash` (the deployed `authorize`/
  * `charge` emit `getHash(paymentInfo)` as that topic) and the settlement key. This matches
  * the on-chain view byte-for-byte (incl. the fee-bearing case).
+ *
+ * ⛔ `escrow` is REQUIRED and the address is hashed INTO the result — see {@link requireEscrowAddress}.
  */
 export function getHashOffchain(params: {
   chainId: number;
-  escrow?: `0x${string}`;
+  escrow: `0x${string}`;
   paymentInfo: PaymentInfo;
 }): `0x${string}` {
-  const escrow = params.escrow ?? AUTH_CAPTURE_ESCROW;
+  const escrow = requireEscrowAddress(params.escrow, "getHashOffchain");
   const inner = keccak256(
     encodeAbiParameters(
       [{ type: "bytes32" }, PI_COMPONENTS],
@@ -77,7 +79,7 @@ export function getHashOffchain(params: {
 /** The settlement key / event `paymentInfoHash` for a PaymentInfo (alias of `getHashOffchain`). */
 export function paymentInfoHash(params: {
   chainId: number;
-  escrow?: `0x${string}`;
+  escrow: `0x${string}`;
   paymentInfo: PaymentInfo;
 }): `0x${string}` {
   return getHashOffchain(params);
@@ -89,7 +91,7 @@ export function paymentInfoHash(params: {
  */
 export function payerAgnosticNonce(params: {
   chainId: number;
-  escrow?: `0x${string}`;
+  escrow: `0x${string}`;
   paymentInfo: PaymentInfo;
 }): `0x${string}` {
   return getHashOffchain({

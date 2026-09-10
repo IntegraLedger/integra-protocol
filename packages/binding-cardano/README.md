@@ -44,6 +44,13 @@ if (!("refused" in recovered)) console.log(recovered.value); // "0x…"
 (`metadata-label-index:8847`), which is why the label is dedicated rather than a CIP-20 piggyback. Three of
 the thirteen rails can say that; the other two are `evm:x402` and `tempo:mpp`, both indexing on a log topic.
 
+**You name the depth.** `enumerate`'s `limit` is required. The label is dedicated *and global*, so this
+index accumulates every LCP settlement on Cardano by every seller — an unbounded-looking query really
+returns the most recent page of all of them, and a settlement past it reads as `[]`, which is exactly what
+"this ATR hash never settled" looks like. This package will not pick the bound for you: the three indexers
+`CardanoReader` names (Blockfrost, db-sync, Koios) do not agree on a page size, so a number invented here
+would be a guess wearing a constant's clothes.
+
 ## The carrier
 
 The ATR hash rides Cardano's transaction-metadata facility under a dedicated LCP label — an existing

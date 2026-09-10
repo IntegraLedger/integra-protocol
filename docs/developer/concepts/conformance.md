@@ -35,7 +35,7 @@ expected output or the expected typed error **code**:
 ```
 
 Nothing in either case is executable, which is what lets the same corpus judge an implementation written in
-Rust, Go or Python. Of the 861 registered cases, **226 assert a failure rather than a value** — 95 pin a
+Rust, Go or Python. Of the 866 registered cases, **226 assert a failure rather than a value** — 95 pin a
 typed error, the way the case above does, and 131 pin a returned `Refusal`. A conformant implementation has
 to refuse the right inputs, not merely accept the right ones.
 
@@ -82,7 +82,7 @@ implementation never has to know where the corpus lives on disk, or that it live
 
 ## The count ratchets, and a green run is not the whole answer
 
-**Today the corpus is 861 cases across 44 areas.** That number is not a fact about this page; it is a fact
+**Today the corpus is 866 cases across 44 areas.** That number is not a fact about this page; it is a fact
 about the tree, and it is quoted here from a run rather than from memory. Reproduce it:
 
 ```bash
@@ -90,12 +90,12 @@ npx @integraledger/lcp-conformance
 ```
 
 ```text
-conformance: 861 passed, 0 failed, 0 skipped (none)
+conformance: 866 passed, 0 failed, 0 skipped (none)
 ```
 
 The rule that number exists to serve: **a green suite over a shrunken corpus is a regression wearing a
 disguise.** Deleting a vector removes an obligation, and the exit code cannot tell you that happened —
-`0 failed` reads identically whether 861 cases ran or six did. So the counts are what gets reported, not the
+`0 failed` reads identically whether 866 cases ran or six did. So the counts are what gets reported, not the
 exit status, and `packages/conformance/test/runner.test.ts` pins the expected size so a case that silently
 stops being registered fails the build.
 
@@ -107,7 +107,7 @@ npx @integraledger/lcp-conformance --phase P4
 ```
 
 ```text
-conformance: 471 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
+conformance: 472 passed, 0 failed, 14 skipped (vocabulary.protocolId, placement.manifestSchema, placement.acp, placement.ap2, placement.ucp, placement.a2a, placement.x402, placement.ack, placement.mpp, placement.visa-tap, placement.mastercard-vi, placement.dispatch, verify.referencePlacement, discovery.capability)
 ```
 
 That run is green and certifies roughly half of what the bare run certifies. The skips are printed by name
