@@ -137,7 +137,10 @@ suite(
       // 1 drop to a real counterparty carrying the atrHash in `InvoiceID` — the InvoiceID IS the weld; the
       // payment leg is incidental, but it must be a payment XRPL will actually accept.
       const adapter = createXrplAdapter(XRPL_MANIFEST);
-      const invoiceId = adapter.propose({ atrHash });
+      const invoiceId = adapter.propose({
+        atrHash,
+        usesX402InvoiceBinding: false,
+      });
       const tx = {
         TransactionType: "Payment",
         Account: account,
