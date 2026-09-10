@@ -8,7 +8,10 @@
  * must classify, not a transport failure.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { makeCantonX402Reader } from "../src/adapter.js";
+import {
+  CANTON_X402_DEFAULT_TIMEOUT_MS,
+  makeCantonX402Reader,
+} from "../src/adapter.js";
 
 const CFG = {
   jsonLedgerUrl: "https://participant.example",
@@ -107,27 +110,103 @@ describe("transfersFor", () => {
   it("POSTs the party and returns the update ids", async () => {
     const calls = stubFetch({ json: async () => ({ result: ["u1", "u2"] }) });
     const reader = makeCantonX402Reader(CFG);
-    expect(await reader.transfersFor("merchant::1220abc")).toEqual([
+    expect(await reader.transfersFor("merchant::1220abc", 25)).toEqual([
       "u1",
       "u2",
     ]);
     expect(calls[0]?.url).toBe(`${CFG.jsonLedgerUrl}${CFG.transfersPath}`);
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
       party: "merchant::1220abc",
+      limit: 25,
     });
   });
 
-  it("omits `limit` entirely when unset, rather than sending null", async () => {
-    // A participant reading `limit: null` may treat it as zero. Absent means absent.
+  /**
+   * ⛔⛔ **THE SCAN DEPTH IS ALWAYS SENT, BECAUSE AN OMITTED ONE HANDED IT TO THE ENDPOINT.**
+   *
+   * `limit` was optional and spread away when unset, so the deployment's own default governed how deep a
+   * party scan went — and a settlement past it came back as an empty array, which on this rail is
+   * indistinguishable from "this party has no settlements". This package refuses to guess the endpoint's
+   * PATH; guessing its page size would be the same guess one field over. The caller names the bound.
+   */
+  it("⛔ always sends the scan depth — the endpoint never picks it", async () => {
     const calls = stubFetch({ json: async () => ({ result: [] }) });
-    await makeCantonX402Reader(CFG).transfersFor("p");
-    expect("limit" in JSON.parse(String(calls[0]?.init.body))).toBe(false);
+    await makeCantonX402Reader(CFG).transfersFor("p", 7);
+    expect(JSON.parse(String(calls[0]?.init.body)).limit).toBe(7);
   });
 
-  it("passes `limit` through when given", async () => {
+  /**
+   * ⛔⛔ **A `result: null` WAS RETURNED AS A `string[]`.** `ledgerCall` refuses an ABSENT `result`, and
+   * `null` is present — so this handed `null` back under a declared array type and `enumerate`'s `for…of`
+   * threw `TypeError: updateIds is not iterable`, out of a surface whose every other answer is a value or
+   * a Refusal. The check is the ARRAY, not not-null: a `/transfers` that answers an object is exactly as
+   * unusable, and so is one that answers a list with a `null` in it.
+   */
+  it("⛔ throws on a null result instead of returning it as a list", async () => {
+    stubFetch({ json: async () => ({ result: null }) });
+    await expect(
+      makeCantonX402Reader(CFG).transfersFor("p", 5),
+    ).rejects.toThrow(/not an array of update ids/);
+  });
+
+  it("⛔ throws on a result that is an object rather than a list", async () => {
+    stubFetch({ json: async () => ({ result: { updates: ["u1"] } }) });
+    await expect(
+      makeCantonX402Reader(CFG).transfersFor("p", 5),
+    ).rejects.toThrow(/not an array of update ids/);
+  });
+
+  it("⛔ throws on a list carrying a non-string id, rather than POSTing it back", async () => {
+    // A `null` id would be sent straight back as `{ updateId: null }` and answered "no such update" —
+    // a real settlement reported as absent because a list element was junk.
+    stubFetch({ json: async () => ({ result: ["u1", null] }) });
+    await expect(
+      makeCantonX402Reader(CFG).transfersFor("p", 5),
+    ).rejects.toThrow(/not an array of update ids/);
+  });
+});
+
+/**
+ * ⛔⛔ **`fetch` HAS NO TIMEOUT AND NOTHING HERE SUPPLIED ONE.** A participant that accepted the connection
+ * and never answered hung `recover`, `observe` and `enumerate` forever — no error, no refusal, no return.
+ * That is worse than a failure on a surface contracted to hand back an `Outcome`: a refusal can be retried
+ * and a promise that never settles cannot.
+ */
+describe("every request carries a deadline", () => {
+  it("⛔ passes an AbortSignal on the transfer read", async () => {
+    const calls = stubFetch({ json: async () => ({ result: null }) });
+    await makeCantonX402Reader(CFG).transferView("u");
+    expect(calls[0]?.init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("⛔ and on the party scan", async () => {
     const calls = stubFetch({ json: async () => ({ result: [] }) });
-    await makeCantonX402Reader(CFG).transfersFor("p", 25);
-    expect(JSON.parse(String(calls[0]?.init.body)).limit).toBe(25);
+    await makeCantonX402Reader(CFG).transfersFor("p", 5);
+    expect(calls[0]?.init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("⛔⛔ a participant that never answers REJECTS rather than hanging", async () => {
+    // The property, driven rather than asserted about the signal object: a fetch that never settles is
+    // aborted by the deadline and surfaces as a throw out of the reader port.
+    vi.stubGlobal(
+      "fetch",
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new Error("The operation was aborted due to timeout")),
+          );
+        }),
+    );
+    await expect(
+      makeCantonX402Reader({ ...CFG, timeoutMs: 5 }).transferView("u"),
+    ).rejects.toThrow(/abort/i);
+  });
+
+  it("the deadline is configurable, and defaults when it is not named", async () => {
+    expect(CANTON_X402_DEFAULT_TIMEOUT_MS).toBe(10_000);
+    const calls = stubFetch({ json: async () => ({ result: null }) });
+    await makeCantonX402Reader(CFG).transferView("u");
+    expect(calls[0]?.init.signal?.aborted).toBe(false);
   });
 });
 
@@ -162,16 +241,16 @@ describe("the transport fails LOUD", () => {
     // The JSON API reports application errors inside a 200. Reading `result` without checking `errors`
     // would turn an authorization failure into an empty ledger.
     stubFetch({ json: async () => ({ errors: ["party not authorized"] }) });
-    await expect(makeCantonX402Reader(CFG).transfersFor("p")).rejects.toThrow(
-      /party not authorized/,
-    );
+    await expect(
+      makeCantonX402Reader(CFG).transfersFor("p", 5),
+    ).rejects.toThrow(/party not authorized/);
   });
 
   it("joins EVERY error, not just the first — a partial report hides the cause", async () => {
     stubFetch({ json: async () => ({ errors: ["first", "second"] }) });
-    await expect(makeCantonX402Reader(CFG).transfersFor("p")).rejects.toThrow(
-      /first; second/,
-    );
+    await expect(
+      makeCantonX402Reader(CFG).transfersFor("p", 5),
+    ).rejects.toThrow(/first; second/);
   });
 
   it("an unreadable error body yields an EMPTY body, not the string 'undefined'", async () => {
@@ -192,13 +271,15 @@ describe("the transport fails LOUD", () => {
 
   it("throws when the envelope carries neither result nor errors", async () => {
     stubFetch({ json: async () => ({}) });
-    await expect(makeCantonX402Reader(CFG).transfersFor("p")).rejects.toThrow(
-      /returned no result/,
-    );
+    await expect(
+      makeCantonX402Reader(CFG).transfersFor("p", 5),
+    ).rejects.toThrow(/returned no result/);
   });
 
   it("an EMPTY errors[] is not an error — the result still stands", async () => {
     stubFetch({ json: async () => ({ result: ["u1"], errors: [] }) });
-    expect(await makeCantonX402Reader(CFG).transfersFor("p")).toEqual(["u1"]);
+    expect(await makeCantonX402Reader(CFG).transfersFor("p", 5)).toEqual([
+      "u1",
+    ]);
   });
 });

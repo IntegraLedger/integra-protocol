@@ -118,9 +118,50 @@ describe("getHashOffchain / paymentInfoHash / payerAgnosticNonce", () => {
     );
   });
 
-  it("defaults the escrow to the canonical AuthCaptureEscrow", () => {
-    expect(getHashOffchain({ chainId, paymentInfo: info(salt) })).toBe(
-      independentGetHash(info(salt), chainId, ESCROW),
+  it("⛔ REFUSES an absent escrow rather than defaulting it — the address is hashed INTO the key", () => {
+    // It used to be `params.escrow ?? AUTH_CAPTURE_ESCROW`, which is the Base deployment and no other
+    // chain's. Silently substituting it changed `paymentInfoHash` — the settlement key a consumer joins
+    // on — and, through `payerAgnosticNonce`, the ERC-3009 nonce the buyer signs. Both come back
+    // well-formed and match nothing.
+    expect(() =>
+      getHashOffchain({
+        chainId,
+        paymentInfo: info(salt),
+      } as unknown as Parameters<typeof getHashOffchain>[0]),
+    ).toThrow(/escrow must be a 20-byte 0x address/);
+  });
+
+  it("the throw NAMES getHashOffchain, so a caller knows which derivation refused", () => {
+    // The three key derivations share one message; without the call site an operator cannot tell which
+    // of them was handed the bad address.
+    expect(() =>
+      getHashOffchain({
+        chainId,
+        paymentInfo: info(salt),
+      } as unknown as Parameters<typeof getHashOffchain>[0]),
+    ).toThrow(/getHashOffchain/);
+  });
+
+  it("⛔ and the alias and the nonce refuse it too — three entry points, one rule", () => {
+    const bad = { chainId, escrow: "0xnope", paymentInfo: info(salt) };
+    expect(() =>
+      paymentInfoHash(bad as unknown as Parameters<typeof paymentInfoHash>[0]),
+    ).toThrow(/escrow must be a 20-byte 0x address/);
+    expect(() =>
+      payerAgnosticNonce(
+        bad as unknown as Parameters<typeof payerAgnosticNonce>[0],
+      ),
+    ).toThrow(/escrow must be a 20-byte 0x address/);
+  });
+
+  it("⭐ a DIFFERENT escrow yields a different key — the address is load-bearing, not decorative", () => {
+    // The assertion the default made impossible to notice: if the address did not reach the hash, these
+    // two would agree and a wrong deployment would key correctly.
+    const other = "0x00000000000000000000000000000000000000ff" as const;
+    expect(
+      getHashOffchain({ chainId, escrow: other, paymentInfo: info(salt) }),
+    ).not.toBe(
+      getHashOffchain({ chainId, escrow: ESCROW, paymentInfo: info(salt) }),
     );
   });
 });

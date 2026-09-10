@@ -56,7 +56,17 @@ export interface CreateAnchorCommand {
  * adapter is pure and testable; a live implementation wraps a participant URL + a party bearer JWT.
  */
 export interface CantonParticipantReader {
-  /** Query active `LcpAnchor` contracts whose `atrHash` `Text` field matches (64-char lowercase hex). */
+  /**
+   * Query active `LcpAnchor` contracts whose `atrHash` `Text` field matches (64-char lowercase hex).
+   *
+   * ⭐ **THERE IS NO `limit` HERE AND THAT IS THIS RAIL'S ANSWER TO THE SCAN QUESTION.** Daml JSON Ledger
+   * API v1 `/v1/query` returns every active contract matching the query — it defines no page size, no
+   * cursor and no server-side default to be governed by — and the query is keyed on the atrHash itself
+   * rather than on a party's whole history. So "the caller asked for everything" IS what this call means
+   * and truncation has nowhere to hide: a short answer would have to come from a participant that does not
+   * implement `/v1/query`, and {@link makeCantonParticipantReader} refuses a response that is not an array
+   * at all rather than letting one through as an empty result.
+   */
   queryByAtrHash(atrHashText: string): Promise<LcpAnchorContract[]>;
   /** Fetch one `LcpAnchor` contract by its `contractId`, or `null` if it is not active. */
   fetchByContractId(contractId: string): Promise<LcpAnchorContract | null>;
@@ -116,7 +126,29 @@ export interface CantonParticipantConfig {
   lcpAnchorPackageId: string;
   /** Bearer JWT authenticating the acting/reading party on the participant. */
   bearerJwt: string;
+  /**
+   * Per-request deadline in ms; defaults to {@link CANTON_DEFAULT_TIMEOUT_MS}.
+   *
+   * ⛔⛔ **`fetch` HAS NO TIMEOUT OF ITS OWN, AND NOTHING HERE SUPPLIED ONE.** A participant that accepted
+   * the connection and never answered hung `recover`, `observe` and `enumerate` FOREVER — no error, no
+   * refusal, no return. That is worse than a failure on a surface whose entire contract is to hand back an
+   * `Outcome`: a caller can retry a refusal and cannot retry a promise that never settles, and an
+   * `enumerate` loop stalls on whichever contract the participant chose not to answer for. The participant
+   * is a counterparty's infrastructure, so "it will answer eventually" is not this package's to assume.
+   */
+  timeoutMs?: number;
 }
+
+/**
+ * The default per-request deadline on a Daml JSON Ledger API call — the same 10s
+ * `evidence`'s hardened resolver uses, because it is the same kind of budget: one HTTP round trip to a
+ * counterparty's endpoint, not a long-poll and not a stream.
+ *
+ * Deliberately generous rather than tight. A participant under load legitimately takes seconds to answer a
+ * `/v1/query`, and a deadline below what the endpoint needs turns its slow honest answers into transport
+ * faults — which is a different wrong answer, not a fix.
+ */
+export const CANTON_DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
  * A live `CantonParticipantReader` over the Daml JSON Ledger API v1 (`POST /v1/query`, `/v1/fetch`),
@@ -133,6 +165,7 @@ export function makeCantonParticipantReader(
   if (cfg.bearerJwt.length === 0)
     throw new Error("makeCantonParticipantReader: bearerJwt is empty");
   const templateId = lcpAnchorTemplateId(cfg.lcpAnchorPackageId);
+  const timeoutMs = cfg.timeoutMs ?? CANTON_DEFAULT_TIMEOUT_MS;
 
   async function ledgerCall<T>(
     path: "/v1/query" | "/v1/fetch",
@@ -145,6 +178,10 @@ export function makeCantonParticipantReader(
         authorization: `Bearer ${cfg.bearerJwt}`,
       },
       body: JSON.stringify(body),
+      // Without this the call never comes back on a participant that accepts and does not answer — see
+      // CantonParticipantConfig.timeoutMs. `AbortSignal.timeout` rejects with a `TimeoutError`, which is
+      // a throw out of the reader port and therefore a LOUD failure, as every other transport fault here is.
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -163,11 +200,21 @@ export function makeCantonParticipantReader(
 
   return {
     async queryByAtrHash(atrHashText: string): Promise<LcpAnchorContract[]> {
-      const result = await ledgerCall<LcpAnchorContract[]>("/v1/query", {
+      const result = await ledgerCall<unknown>("/v1/query", {
         templateIds: [templateId],
         query: { atrHash: atrHashText },
       });
-      return result;
+      // ⛔⛔ **A `result: null` PASSED THE ENVELOPE CHECK AND CAME BACK AS AN ARRAY.** `ledgerCall` refuses
+      // an ABSENT `result` and `null` is present, so this returned `null` under a declared
+      // `LcpAnchorContract[]` and `enumerate`'s `for…of` threw `TypeError: anchors is not iterable` — an
+      // exception out of a surface whose every other answer is a value or a Refusal, raised by the shape
+      // of a counterparty's response rather than by anything the caller did. Asserting the ARRAY is the
+      // check, not asserting not-null: a `/v1/query` that answers an object is exactly as unusable.
+      if (!Array.isArray(result))
+        throw new Error(
+          `Daml /v1/query returned a ${result === null ? "null" : typeof result} result where an array of active contracts was expected — this participant is not answering the Daml JSON Ledger API v1 query shape`,
+        );
+      return result as LcpAnchorContract[];
     },
     async fetchByContractId(
       contractId: string,
@@ -197,18 +244,38 @@ export function createCantonAdapter(manifest: BindingManifest): CantonAdapter {
       `createCantonAdapter: manifest.rail "${manifest.rail}" is not "canton"`,
     );
   // Closure helper (not `this`) so the returned methods stay destructure-safe.
+  /**
+   * ⛔⛔ **TWO DIFFERENT FACTS CAME BACK AS ONE REFUSAL.** `contract === null ? null : readAnchorAtrHash(…)`
+   * collapsed "the participant has no such contract" into "the contract is there and carries no atrHash",
+   * and both answered `canton/no-lcp-anchor`. They are not the same finding: the first says this reference
+   * points at nothing this participant can see — a wrong contract id, an archived anchor, a party that
+   * cannot see it — and the second says the anchor EXISTS and is not an LCP weld. One is about the
+   * reference, the other is a verdict about the contract, and a caller acting on them acts differently.
+   *
+   * ⭐ The sibling rail already got this right: `binding-canton-x402` splits `canton/no-such-update` from
+   * `canton/no-lcp-memo` on exactly this distinction. Two adapters over one ledger disagreeing about how
+   * many answers a failed read has is the drift this makes impossible — and every OTHER rail in the tree
+   * (hedera, xrpl, cardano, stellar) carries the same three-reason split for the same stated reason.
+   */
   async function doRecover(
     ref: CantonSettlementRef,
     reader: CantonParticipantReader,
   ): Promise<Outcome<`0x${string}`>> {
     const contract = await reader.fetchByContractId(ref.contractId);
-    const atr = contract === null ? null : readAnchorAtrHash(contract.payload);
+    if (contract === null)
+      return {
+        refused: true,
+        haltClass: "verification-failure",
+        code: "canton/no-such-contract",
+        detail: `the participant has no active contract at contractId ${ref.contractId} — nothing is anchored there, which is not the same as an anchor that carries no atrHash`,
+      };
+    const atr = readAnchorAtrHash(contract.payload);
     if (atr === null)
       return {
         refused: true,
         haltClass: "verification-failure",
         code: "canton/no-lcp-anchor",
-        detail: `no active LcpAnchor carrying an atrHash at contractId ${ref.contractId}`,
+        detail: `the active contract at contractId ${ref.contractId} carries no well-formed atrHash — it exists and it is not an LCP anchor`,
       };
     return { ok: true, value: atr };
   }

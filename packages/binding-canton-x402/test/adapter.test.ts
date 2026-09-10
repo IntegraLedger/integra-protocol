@@ -17,6 +17,9 @@ import { CANTON_X402_MANIFEST } from "../src/manifest.js";
 const ATR = `0x${"ab".repeat(32)}`;
 const OTHER = `0x${"cd".repeat(32)}`;
 const MERCHANT = "merchant::1220abc";
+/** A scan depth. `enumerate` requires one — this package will not choose the bound for a caller, because
+ *  it does not even know which endpoint the reader is pointed at. */
+const SCAN = 50;
 
 const adapter = () => createCantonX402Adapter(CANTON_X402_MANIFEST);
 
@@ -41,8 +44,7 @@ function reader(
       return updates[id] ?? null;
     },
     async transfersFor(_party, limit) {
-      const ids = Object.keys(updates);
-      return limit === undefined ? ids : ids.slice(0, limit);
+      return Object.keys(updates).slice(0, limit);
     },
   };
 }
@@ -163,6 +165,7 @@ describe("enumerate", () => {
         u3: view({ meta: {} }),
         u4: view(),
       }),
+      SCAN,
     );
     expect(refs).toEqual([{ updateId: "u1" }, { updateId: "u4" }]);
   });
@@ -172,6 +175,7 @@ describe("enumerate", () => {
       `0x${"AB".repeat(32)}`,
       MERCHANT,
       reader({ u1: view() }),
+      SCAN,
     );
     expect(refs).toEqual([{ updateId: "u1" }]);
   });
@@ -187,12 +191,12 @@ describe("enumerate", () => {
         return ["u1", "gone"];
       },
     };
-    expect(await adapter().enumerate(ATR, MERCHANT, r)).toEqual([
+    expect(await adapter().enumerate(ATR, MERCHANT, r, SCAN)).toEqual([
       { updateId: "u1" },
     ]);
   });
 
-  it("passes `limit` through to the participant", async () => {
+  it("passes the scan depth through to the participant", async () => {
     const refs = await adapter().enumerate(
       ATR,
       MERCHANT,
@@ -209,6 +213,7 @@ describe("enumerate", () => {
       ATR,
       MERCHANT,
       reader({ u1: view({ meta: { "x402.memo": OTHER } }) }),
+      SCAN,
     );
     expect(refs).toEqual([]);
   });
@@ -217,11 +222,160 @@ describe("enumerate", () => {
     // The silent [] would be indistinguishable from "this party has no settlements", which is the
     // reading a caller is least able to challenge.
     await expect(
-      adapter().enumerate("0xdead", MERCHANT, reader({})),
+      adapter().enumerate("0xdead", MERCHANT, reader({}), SCAN),
     ).rejects.toThrow(/32-byte/);
   });
 
   it("returns [] for a party with no matching transfers — a value, not an error", async () => {
-    expect(await adapter().enumerate(ATR, MERCHANT, reader({}))).toEqual([]);
+    expect(await adapter().enumerate(ATR, MERCHANT, reader({}), SCAN)).toEqual(
+      [],
+    );
+  });
+});
+
+/**
+ * ⛔⛔ **THE MEMO WAS CHECKED AND THE ASSET WAS NOT, UNDER TYPES THAT SAID BOTH WERE THERE.**
+ *
+ * `CantonX402TransferView` declares `receiver`, `amount` and `instrumentId` REQUIRED — and the view comes
+ * off a counterparty's HTTP endpoint through `JSON.parse`, which checks no type at runtime. A reader that
+ * omitted them handed back `undefined`, and `readSettlement` copied it into a `CantonX402Settlement` whose
+ * own declared types promise strings. The caller received `{ state: "settled", receiver: undefined }`:
+ * an authoritative settled verdict about an asset nobody could name.
+ *
+ * ⭐ Two lines above, an absent memo refuses loudly and by name. This manifest declares
+ * `assetBinding: "carried"`, which is the claim that a consumer can reach the asset the weld is attached
+ * to — so the asset fields are the other half of the same promise, and one half was a refusal while the
+ * other was a success.
+ */
+describe("the asset half of `assetBinding: carried` is checked too", () => {
+  /** A view with one asset field knocked out, the way a reader that skipped it would hand one over. */
+  const without = (field: keyof CantonX402TransferView) => {
+    const v = { ...view() } as Record<string, unknown>;
+    delete v[field];
+    return v as unknown as CantonX402TransferView;
+  };
+
+  it.each(["receiver", "amount", "instrumentId"] as const)(
+    "⛔ REFUSES a transfer whose %s is missing, rather than settling with undefined",
+    async (field) => {
+      const out = await adapter().observe(
+        { updateId: "u1" },
+        reader({ u1: without(field) }),
+      );
+      expect(out).toMatchObject({
+        refused: true,
+        haltClass: "verification-failure",
+        code: "canton/incomplete-transfer-view",
+      });
+      expect("refused" in out ? (out.detail ?? "") : "").toContain(field);
+    },
+  );
+
+  it("⛔ and an EMPTY string is missing too — a blank receiver names no party", async () => {
+    const out = await adapter().observe(
+      { updateId: "u1" },
+      reader({ u1: view({ receiver: "" }) }),
+    );
+    expect("refused" in out && out.code).toBe(
+      "canton/incomplete-transfer-view",
+    );
+  });
+
+  it('⛔ a NULL instrumentId refuses rather than throwing — `typeof null` is "object"', async () => {
+    // The null arm is not decoration: without it `text(view.instrumentId.admin)` dereferences null and
+    // this refuse-don't-throw surface raises a TypeError instead of naming the missing field.
+    const out = await adapter().observe(
+      { updateId: "u1" },
+      reader({
+        u1: view({
+          instrumentId:
+            null as unknown as CantonX402TransferView["instrumentId"],
+        }),
+      }),
+    );
+    expect("refused" in out && out.code).toBe(
+      "canton/incomplete-transfer-view",
+    );
+  });
+
+  it("⛔ a half-filled instrumentId is not an instrument", async () => {
+    const out = await adapter().observe(
+      { updateId: "u1" },
+      reader({ u1: view({ instrumentId: { admin: "DSO::1220", id: "" } }) }),
+    );
+    expect("refused" in out && out.code).toBe(
+      "canton/incomplete-transfer-view",
+    );
+    expect("refused" in out ? (out.detail ?? "") : "").toContain(
+      "instrumentId",
+    );
+  });
+
+  it("the refusal NAMES every missing field, not just the first", async () => {
+    // An operator handed "incomplete-transfer-view" with one field named fixes one field and comes back.
+    const out = await adapter().observe(
+      { updateId: "u1" },
+      reader({ u1: view({ receiver: "", amount: "" }) }),
+    );
+    const detail = "refused" in out ? (out.detail ?? "") : "";
+    expect(detail).toContain("receiver");
+    expect(detail).toContain("amount");
+  });
+
+  it("⛔ the memo is still read FIRST — a transfer that is not ours is not ours", async () => {
+    // Ordering matters: an ordinary Canton Coin payment with no LCP memo must read `no-lcp-memo`, which
+    // is a statement about relevance, and never as a complaint about an asset we had no business reading.
+    const out = await adapter().observe(
+      { updateId: "u1" },
+      reader({ u1: view({ meta: {}, receiver: "" }) }),
+    );
+    expect("refused" in out && out.code).toBe("canton/no-lcp-memo");
+  });
+
+  it("⛔ recover refuses it too — one reading, not two", async () => {
+    // `recover` and `observe` both go through `readSettlement`, so a settlement the asset check refuses
+    // cannot come back as a bare atrHash through the other door.
+    const out = await adapter().recover(
+      { updateId: "u1" },
+      reader({ u1: without("receiver") }),
+    );
+    expect("refused" in out && out.code).toBe(
+      "canton/incomplete-transfer-view",
+    );
+  });
+
+  it("⭐ and enumerate is UNAFFECTED — it matches on the memo, which is all it reads", async () => {
+    // The scan's job is to find candidate update ids; it never claims to report the asset, so refusing
+    // an incomplete view there would drop a real settlement from a list that never promised one.
+    const refs = await adapter().enumerate(
+      ATR,
+      MERCHANT,
+      reader({ u1: without("receiver") }),
+      SCAN,
+    );
+    expect(refs).toEqual([{ updateId: "u1" }]);
+  });
+});
+
+/**
+ * ⛔ **THE SCAN DEPTH IS THE CALLER'S, AND IT IS REQUIRED.** It was optional and forwarded verbatim, so an
+ * absent one handed the depth to whatever the deployment's endpoint defaults to — and a settlement past
+ * that default came back as `[]`, indistinguishable from "this party has no settlements". This package
+ * refuses to guess the endpoint's PATH; guessing its page size is the same guess one field over.
+ */
+describe("the party scan states its own bound", () => {
+  it("a depth of 1 is a legitimate bound — the floor is 1, not 2", async () => {
+    // `< 1` and `<= 1` differ by exactly the smallest scan a caller can ask for.
+    expect(
+      await adapter().enumerate(ATR, MERCHANT, reader({ u1: view() }), 1),
+    ).toEqual([{ updateId: "u1" }]);
+  });
+
+  it("⛔ refuses a depth that is not a positive integer rather than passing it on", async () => {
+    for (const bad of [0, -1, 1.5]) {
+      await expect(
+        adapter().enumerate(ATR, MERCHANT, reader({ u1: view() }), bad),
+      ).rejects.toThrow(/limit must be a positive integer/);
+    }
   });
 });

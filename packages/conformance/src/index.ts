@@ -1,4 +1,4 @@
-export { CliSubject } from "./adapters/cli.js";
+export { CLI_SUBJECT_TIMEOUT_MS, CliSubject } from "./adapters/cli.js";
 export { InProcessSubject } from "./adapters/inprocess.js";
 export { CORPUS_ROOT } from "./corpus-root.js";
 export { type Report, type RunOptions, runCorpus } from "./runner.js";

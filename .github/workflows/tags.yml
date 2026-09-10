@@ -15,18 +15,31 @@ name: tags
 #
 # The reconciler needs NO npm auth — provenance and the packument are public reads.
 
+# ⛔⛔ THERE WAS A `workflow_run` TRIGGER OFF `release` HERE AND IT COULD NEVER HELP, BY CONSTRUCTION.
+# `release` STAGES; it does not publish. Publication is a separate human act — a 2FA approval that happens
+# minutes or hours later, from a script or from the npm web UI. So a run chained to `release` fires at a
+# moment when the versions it exists to tag are, necessarily, still unpublished: `installable()` refuses
+# them and the run reports "staged, not published — no tag" and exits 0.
+#
+# ⚠️ MEASURED 2026-09-10, and it is the reason this comment is here rather than a tidier trigger. The
+# 0.17.0 release staged at 15:58Z; this workflow ran at 16:01:46Z off that very event and reported
+# SUCCESS; the maintainer approved afterwards; and **30 of 31 published versions then sat untagged over a
+# green run** until a person happened to check. A trigger that fires when the answer is known to be
+# "nothing to do" does not reduce latency — it manufactures a green run that means nothing, which is worse
+# than no trigger at all.
+#
+# ⭐ This file's own header states the rule it broke: *a step that runs on only one of several legitimate
+# paths is not a step, it is a coincidence.* No event in this repository correlates with an npm approval,
+# so polling is the only honest mechanism and the cadence below is the whole answer.
+
 on:
   schedule:
-    # Daily, offset off the hour. A release can be approved at any time and from anywhere, so the gap
-    # between "published" and "tagged" should be hours rather than until someone notices.
-    - cron: "23 7 * * *"
+    # ⭐ HOURLY, and it is affordable because a steady-state run is nearly free: the loop short-circuits on
+    # `remote.has(tag)` BEFORE fetching provenance or testing installability, so a fully-tagged line costs
+    # 31 packument reads and nothing else. Only genuinely untagged versions cost more. The ceiling on
+    # "published but unrecorded" is therefore an hour rather than a day.
+    - cron: "23 * * * *"
   workflow_dispatch:
-  # Also after a release is staged. `release` here is itself `workflow_run`-triggered off `ci`, so this
-  # is a chain — which GitHub allows, and which only matters for latency: the daily cron is the guarantee,
-  # this is the fast path that gets tags written the same day they are earned.
-  workflow_run:
-    workflows: [release]
-    types: [completed]
 
 # ⚠️ LEAST PRIVILEGE IS PER-JOB. A top-level block would grant `contents: write` to every job added
 # later; this one job needs it to push tags and nothing else does.
@@ -53,6 +66,22 @@ jobs:
       - name: Reconcile tags against the registry
         shell: bash # `run:` defaults to `bash -e` WITHOUT pipefail; naming the shell is the house rule
         run: |
+          # ⛔ `pipefail` because of the `tee` below: without it this step would report TEE's status and a
+          # failed reconcile would land under a green tick — the exact shape this workflow exists to stop.
+          set -o pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          node scripts/reconcile-tags.mjs --write
+          # ⛔ `|| status=$?` so `bash -e` does not abort before the summary is written. The summary is the
+          # point: a run that wrote 30 tags and a run that had nothing to do are both "success", and until
+          # now the only way to tell them apart was to open the log.
+          status=0
+          node scripts/reconcile-tags.mjs --write 2>&1 | tee /tmp/reconcile-tags.log || status=$?
+          {
+            echo "### tags"
+            echo
+            echo '```'
+            grep -E "^reconcile-tags —|^wrote and confirmed" /tmp/reconcile-tags.log \
+              || echo "(the reconciler printed no summary line — read the step log)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

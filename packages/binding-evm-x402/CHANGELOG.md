@@ -1,5 +1,82 @@
 # @integraledger/lcp-binding-evm-x402
 
+## 0.18.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-evm-common@0.18.0
+  - @integraledger/lcp-binding-core@0.18.0
+  - @integraledger/lcp-kernel@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.17.0
+  - @integraledger/lcp-binding-evm-common@0.17.0
+  - @integraledger/lcp-kernel@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.1
+  - @integraledger/lcp-binding-evm-common@0.16.1
+  - @integraledger/lcp-kernel@0.16.1
+
+## 0.16.0
+
+### Minor Changes
+
+- 62e2b3e: `weldGrades` is keyed by x402's own asset-transfer-method token, not by the escrow sibling's collector name.
+  
+  The manifest declared `weldGrades: { ERC3009: "signature" }`. Every other rail keys this map in its host's
+  vocabulary — `spl-memo`, `invoice-id`, `cap67-mux`, `tx-metadata`, `settle-payment` — and this rail's
+  vocabulary is x402's `assetTransferMethod`, which this package exports as
+  `EIP3009_TRANSFER_METHOD = "eip3009"` and which x402's exact-EVM scheme spells the same way. `ERC3009` is
+  the Commerce Payments Protocol COLLECTOR name that `binding-evm-escrow` declares, where it is correct.
+  
+  Here it named nothing, so a consumer doing `manifest.weldGrades[assetTransferMethod]` got `undefined` —
+  the grade absent rather than wrong, which reads as a rail that declares no weld grade at all. The key is
+  now the constant itself, so the manifest and the filter cannot spell it differently.
+  
+  **This changes published behaviour**: the manifest key, and the published `integra-x402-nonce-v1` profile
+  in the corpus, move from `ERC3009` to `eip3009`. Escrow's collector names are untouched. The corpus root
+  moves to `c2875add14f5f2bf…`.
+
+### Patch Changes
+
+- feab885: Five README examples that failed on their first line, and a gate that runs the examples.
+  
+  Each was the first thing a stranger runs, on the npmjs landing page:
+  
+  - `binding-evm-x402` opened with `getX402Deployment("base-sepolia-usdc")`; the keys are `base`,
+    `base-sepolia`, `avalanche`, `monad`. It threw.
+  - `discovery` told the reader to read `hashesAgree`; the field is `hashesMatch`, so the documented read is
+    `undefined` — falsy — and records a MISMATCH for a hash that matched, the exact defect the two-field
+    design exists to prevent.
+  - `placement-ucp`'s only usage example refused `ucp/terms-url-missing`: this protocol declares a terms-URL
+    slot, so an integrity-bearing reference needs one, and every sibling README passes it.
+  - `placement-ack` claimed a `url` carrier in the canonical slot "passes `requireIntegrity`". It did when
+    written; `requireIntegrity` now checks the value's type as well as the slot's declared class and returns
+    `undefined`. The narrower point that survives is stated instead.
+  - `binding-canton` documented a DAR filename, `lcp-anchor-0.9.0.dar`, that no build produces —
+    `daml.yaml` carries the package version, gated by a test. Both the README and `daml.yaml`'s own comment
+    now write the version as a glob, because a pinned number inside a copyable command goes stale at the
+    next bump and had already done so twice.
+  
+  The mechanism behind all five is that `check:docs` COMPILES fences and never runs them. `check:doc-calls`
+  runs the subset that can be run — a call of a workspace export whose every argument is a literal — and
+  refuses a throw or a returned `Refusal`. It also reads the inversion: a line the document annotates
+  `// throws` or `// refuses` must fail, so a demonstration that quietly starts succeeding is caught too.
+  Elided arguments (`"0x…"`) and calls inside a `try` are skipped as structurally not assertions. It refuses
+  an empty subject set, and it runs 30 calls across 74 fences today.
+- Updated dependencies [2fd5eb2]
+- Updated dependencies [bb48020]
+  - @integraledger/lcp-binding-evm-common@0.16.0
+  - @integraledger/lcp-binding-core@0.16.0
+  - @integraledger/lcp-kernel@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes

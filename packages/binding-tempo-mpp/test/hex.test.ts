@@ -120,12 +120,57 @@ describe("quantityToNumber", () => {
     expect(quantityToNumber(1.5)).toBeNull();
   });
 
-  it("returns null when the value is absent", () => {
-    expect(quantityToNumber(undefined)).toBeNull();
-  });
-
   it("returns null for an unparseable string", () => {
     expect(quantityToNumber("0xzz")).toBeNull();
     expect(quantityToNumber("")).toBeNull();
+  });
+
+  /**
+   * ⛔⛔ **IT READ A DECIMAL STRING AS HEX: `"16"` CAME BACK AS 22.**
+   *
+   * The body was `Number.parseInt(stripHexPrefix(value), 16)`, and stripping a prefix that is not there
+   * leaves the string alone — so every unprefixed decimal was parsed in base 16 and became a different
+   * number, silently. `settlementRefOf` is the caller, so the wrong number became a `logIndex`: a ref
+   * pinning log 22 of a transaction whose weld sits at log 16.
+   *
+   * ⛔ There is no safe reading of a bare `"16"`. As hex it is 22, as decimal it is 16, and nothing in the
+   * value says which was meant — so it is refused rather than guessed. The prefix is what a JSON-RPC
+   * quantity IS (EIP-1474).
+   */
+  it("⛔⛔ REFUSES an unprefixed decimal instead of reading it as hex", () => {
+    expect(quantityToNumber("16")).toBeNull();
+    expect(quantityToNumber("10")).toBeNull();
+  });
+
+  it("⛔ and refuses an unprefixed value that only LOOKS decimal", () => {
+    // `"22"` is the number the old body produced from `"16"`. Neither spelling is a quantity.
+    expect(quantityToNumber("22")).toBeNull();
+    expect(quantityToNumber("ff")).toBeNull();
+  });
+
+  it("⛔ anchors the pattern — `parseInt` stops at the first bad character and lies about it", () => {
+    // `Number.parseInt("1g", 16)` is 1, so a truncated quantity used to come back as a plausible
+    // smaller number. That is `toWord`'s silent-truncation failure, one type down.
+    expect(quantityToNumber("0x1g")).toBeNull();
+    expect(quantityToNumber("0x12 ")).toBeNull();
+    expect(quantityToNumber("0x")).toBeNull();
+  });
+
+  it("⛔ the prefix must be at the START — a value with junk in front is not a quantity", () => {
+    // Without the leading anchor the pattern matches the TAIL of any string, so a copy-paste that kept
+    // its label ("logIndex 0x10") would parse as 16 and pin a log the caller never named.
+    expect(quantityToNumber("logIndex 0x10")).toBeNull();
+    expect(quantityToNumber("ff0x10")).toBeNull();
+  });
+
+  it("accepts the upper-case prefix a node may spell", () => {
+    expect(quantityToNumber("0X1F")).toBe(31);
+  });
+
+  it("⛔ refuses a quantity too large to survive a `number`", () => {
+    // `parseInt` returns the nearest representable value and says nothing — the same silent-wrong-number
+    // failure this function exists to stop, arriving through a value that IS well-formed hex.
+    expect(quantityToNumber(`0x${"f".repeat(16)}`)).toBeNull();
+    expect(quantityToNumber("0x1fffffffffffff")).toBe(9007199254740991);
   });
 });
