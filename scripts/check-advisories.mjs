@@ -22,8 +22,8 @@
  * quietly does not run is worse than one that fails, because only one of them is visible.
  */
 import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 
 /**
  * ⛔⛔ **EVERY LOCKFILE IN THE TREE, DISCOVERED — NOT ONE NAMED HERE.** This gate read a single hardcoded
@@ -52,14 +52,53 @@ const SKIP_DIRS = new Set([
   ".stryker-tmp",
 ]);
 
+/**
+ * ⛔⛔ **AND THE ROSTER OF SUBMODULES COMES FROM `.gitmodules`, NOT FROM WHAT IS ON DISK** — which is the
+ * half of "discovery" that was wrong. A walk covers whatever is checked out, and what is checked out is
+ * NOT the same here as in CI: `ci.yml` uses `actions/checkout` with no `submodules:` key, so a runner
+ * never fetches `lib/commerce-payments` and never sees the four vendored lockfiles under it. Locally they
+ * are present, and one of them — permit2's copy of openzeppelin-contracts — carries 1208 packages of
+ * OpenZeppelin's own JS dev tooling, red with advisories nobody in this repository can fix.
+ *
+ * So the gate that says a walk "cannot silently narrow" was narrowing, in the one place it mattered: CI
+ * scanned a SMALLER subject set than the tree contains, and the zero-lockfile guard below never fires
+ * because two lockfiles are still found. A green run meant "green over whatever git happened to fetch".
+ *
+ * ⇒ Skipped BY NAME and SAID OUT LOUD. A submodule is another repository's dependency graph, pinned by
+ * commit and governed by that repository's own gate; this one consumes Solidity sources from it and never
+ * installs, builds or publishes its npm tree, so those advisories are unreachable from anything shipped
+ * here. Declaring ~50 third-party dev-dependency exemptions in `osv-scanner.toml` would record that as
+ * this repository's decision, which it is not.
+ *
+ * The roster is TRACKED, so the subject set is now identical in both places rather than a function of
+ * fetch depth — and the skip is printed, because a subject set that shrinks in silence is the failure
+ * this gate exists to prevent.
+ */
+const declaredSubmodules = () => {
+  try {
+    return [
+      ...readFileSync(".gitmodules", "utf8").matchAll(
+        /^\s*path\s*=\s*(\S.*?)\s*$/gm,
+      ),
+    ].map((m) => m[1]);
+  } catch {
+    return [];
+  }
+};
+const SUBMODULES = new Set(declaredSubmodules());
+
 const findLockfiles = (dir) => {
   const found = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
     if (entry.isDirectory()) {
       if (SKIP_DIRS.has(entry.name)) continue;
-      found.push(...findLockfiles(join(dir, entry.name)));
+      // `.gitmodules` writes paths with forward slashes whatever the platform separator is.
+      if (SUBMODULES.has(relative(process.cwd(), path).split(sep).join("/")))
+        continue;
+      found.push(...findLockfiles(path));
     } else if (LOCKFILE_NAMES.has(entry.name))
-      found.push(relative(process.cwd(), join(dir, entry.name)));
+      found.push(relative(process.cwd(), path));
   }
   return found;
 };
@@ -151,5 +190,14 @@ console.log(
     String(lockfiles.length) +
     " lockfile(s) discovered in this tree (" +
     inventories.join("; ") +
-    "), no known vulnerabilities.",
+    "), no known vulnerabilities." +
+    (SUBMODULES.size === 0
+      ? ""
+      : " " +
+        String(SUBMODULES.size) +
+        " declared submodule(s) NOT walked (" +
+        [...SUBMODULES].sort().join(", ") +
+        "): another repository's dependency graph, held by that repository's own gate. The roster is read " +
+        "from `.gitmodules` rather than from disk, so this subject set is the same here as on a runner, " +
+        "which fetches no submodule at all."),
 );
