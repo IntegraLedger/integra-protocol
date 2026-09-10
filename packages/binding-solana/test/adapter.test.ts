@@ -297,6 +297,64 @@ describe("parseMemoViews (SDK→pure boundary)", () => {
     expect(recoverAtrHashFromMemoViews(parseMemoViews(tx))).toBe(ATR);
   });
 
+  /**
+   * ⛔⛔ A CO-LOCATED INSTRUCTION THE BUYER AUTHORED MUST NOT BE ABLE TO DENY THE READING.
+   *
+   * The buyer builds the settlement transaction, so every instruction sitting next to the weld is
+   * counterparty-controlled. This mapper used to `bs58.decode` the data of EVERY unparsed instruction
+   * before anything asked which program emitted it, and `bs58.decode` throws on the first character
+   * outside the base58 alphabet. That throw is not a refusal: it escapes `parseTxView` →
+   * `SolanaReader.txView` → `recover`, so a caller auditing a genuinely welded settlement got an
+   * exception instead of an answer, over bytes this binding was never going to read.
+   *
+   * The reachable path is the PORT. `SolanaRpc` is public and consumer-implemented — a
+   * `@solana/web3.js` `Connection` does not satisfy it structurally — so the bridge is always someone's
+   * own. One that hands through base64 instruction data makes the throw near-certain (`0`, `O`, `I`,
+   * `l`, `+`, `/`, `=` are all outside base58) while the memo itself still arrives as a `parsed` string.
+   *
+   * Both halves are pinned: the weld still recovers, AND the mapping still reports one view per
+   * instruction in order, so the "top-level beats CPI" property is not quietly traded away for the fix.
+   */
+  it("recovers the weld even when a buyer-authored instruction carries undecodable data", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            { programId: MEMO_PROGRAM_ID, parsed: ATR, program: "spl-memo" },
+            // Not base58: 0, O, I and l are outside the alphabet. A bridge handing through base64
+            // produces this shape for any instruction the RPC did not parse.
+            { programId: TOKEN_PROGRAM_ID, accounts: [], data: "0OIl+/=" },
+          ],
+        },
+      },
+      meta: { err: null },
+    } as unknown as ParsedTransactionShape;
+    const views = parseMemoViews(tx);
+    expect(views).toEqual([
+      { programId: MEMO_PROGRAM_ID, memoUtf8: ATR },
+      { programId: TOKEN_PROGRAM_ID },
+    ]);
+    expect(recoverAtrHashFromMemoViews(views)).toBe(ATR);
+    expect(recoverAtrHashFromTxView(parseTxView(tx))).toBe(ATR);
+  });
+
+  /** The other half of the same rule: the instruction we DID come to read is not allowed to fail
+   *  silently. A Memo-program instruction whose data does not decode is the thing under audit, and a
+   *  skip there would be the false `no-atr-memo` refusal the filter exists to prevent. */
+  it("still throws when the MEMO program's own data is undecodable", () => {
+    const tx = {
+      transaction: {
+        message: {
+          instructions: [
+            { programId: MEMO_PROGRAM_ID, accounts: [], data: "0OIl+/=" },
+          ],
+        },
+      },
+      meta: { err: null },
+    } as unknown as ParsedTransactionShape;
+    expect(() => parseMemoViews(tx)).toThrow(/base58/i);
+  });
+
   it("tolerates an RPC that reports no innerInstructions at all", () => {
     const tx = {
       transaction: {

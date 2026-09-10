@@ -17,9 +17,9 @@
  */
 import type {
   Bounds,
-  ChainWalkResult,
   SignatureVerifier,
   SignedAcceptance,
+  VerifiedChainWalkResult,
 } from "@integraledger/lcp-authority";
 import {
   type CompositionInput,
@@ -74,7 +74,11 @@ export {
   type VerificationStep,
   type VerifyDepth,
 } from "./report.js";
+// `computeSupportedClass` computes the report's `supportedClass` — the FINDING half of every report — and
+// was reachable from no consumer. A reader who wants to recompute the finding over a foreign
+// implementation's steps, or over a set of their own, could name `computeVerified` and not this one.
 export {
+  computeSupportedClass,
   computeVerified,
   REQUIRED_STEPS,
   type StepName,
@@ -131,7 +135,7 @@ export interface VerifyInput {
    */
   authorityChain?: AuthorityLink[];
   /**
-   * The custody walk's readout (`authority.walkChain`) — the PREFERRED authority input.
+   * The custody walk's VERIFIED readout (`authority.walkChain`) — the PREFERRED authority input.
    *
    * `authorityChain` cannot express what the walk found: a spliced link, an issuer discontinuity, a root
    * issued by someone other than the declared principal, a leaf granted to anyone but the acceptance
@@ -140,11 +144,17 @@ export interface VerifyInput {
    * a contradictory one. Supplied here, the refusal reaches the report WITH its halt class, and the
    * walk's own gap depths pass through verbatim.
    *
+   * `VerifiedChainWalkResult`, never `ChainWalkResult`: `walkChainStructure` consults no cryptosuite, so
+   * a chain whose proofs are forged walks clean through it, and until the two readouts carried different
+   * success literals this slot accepted both without being able to tell them apart. The structural walk
+   * is now a COMPILE error here rather than a runtime screen — a caller with no cryptosuite supplies
+   * `authorityChain` and gets an honest flattener's readout, which is what that door is for.
+   *
    * Mutually exclusive with `authorityChain` — supplying both is a contradiction, not a precedence
    * question, so it throws rather than silently picking one (the same ruling `makeProposalRecord` makes
    * on its own exactly-one-of invariant).
    */
-  authorityWalk?: ChainWalkResult;
+  authorityWalk?: VerifiedChainWalkResult;
   /** The accepted commitment vs the leaf grant's bounds (ATA-4). */
   commitment?: { commitment: Bounds; leafBounds: Bounds };
   /** Both parties' resolutions, each at a stated assurance (IDN-1/IDN-3) — the record's `identity` slot. */
@@ -244,7 +254,14 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
     });
   }
 
-  const found = input.settlements ?? [];
+  // AN ENUMERATION IS AN ARRAY, and only an array. `input.settlements ?? []` handed the slot through
+  // untouched, so `settlements: "none"` reached the report as `found: "none"` with `multiplySettled: true`
+  // — four characters read as four settlements — on the same slot `settlementStep` had just reported as
+  // `no-enumeration-port`. One report, two answers about one input. `{ length: 5 }` is the sharper case:
+  // a duck-typed object that answers the only question this line asked. Same screen and same reasoning as
+  // the step's (steps.ts), so the two cannot part company again; the report's `found` is also declared an
+  // array by `report.schema.json`, which a non-array quietly violated.
+  const found = Array.isArray(input.settlements) ? input.settlements : [];
   const depth = input.depth ?? "structural";
   const claimed = input.claimedClass ?? "TC-2";
   const stepsForVerified = steps.map((s) => ({
@@ -268,6 +285,10 @@ export async function verify(input: VerifyInput): Promise<VerificationReport> {
     assurance: input.identity?.buyer?.assurance ?? "no-assurance-stated",
     claimedClass: claimed,
     supportedClass: computeSupportedClass(stepsForVerified),
+    // The effective depth, echoed for the same reason `claimedClass` is: `verified` is false at
+    // structural depth by construction, so without this the report cannot say whether a `false` is an
+    // impeachment or an unraised summary — and the two serialized to identical bytes.
+    depth,
     asOf: input.asOf,
     steps,
     coverage: input.coverage,

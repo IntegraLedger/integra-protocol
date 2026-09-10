@@ -17,6 +17,7 @@ export {
 export {
   getSolanaConfig,
   MEMO_PROGRAM_ID,
+  SOLANA_COLLECTION_PATH,
   SOLANA_USDC_DECIMALS,
   type SolanaNetwork,
   type SolanaNetworkConfig,

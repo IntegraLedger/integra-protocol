@@ -34,8 +34,18 @@ result.ok;                          // true
 ```
 
 `verifyBundle` checks both halves of the question: **integrity** (every block hashes to the CID that
-claims it) and **completeness** (every manifest reference resolves to a block that is present). Flip one
-byte anywhere in the CAR and it returns `{ ok: false, reason }` naming the block.
+claims it) and **completeness** (the manifest and the blocks account for each other — every reference
+resolves to a present block, and every block is named by a reference). Flip one byte anywhere in the CAR
+and it returns `{ ok: false, fault, reason }` naming the block.
+
+`fault` is the part worth reading. `"malformed"` says *we could not read these bytes as a bundle* — an
+undecodable CAR frame, a manifest that is not JSON, a manifest that states no entries. That is not a
+negative verdict, and reporting it as one accuses a counterparty of bad evidence when the honest finding
+may be an interrupted download. `"integrity"` and `"completeness"` are the verdicts.
+
+Every refusal `buildBundle` makes on the way out, `verifyBundle` makes on the way in: they are one
+definition of a bundle read in two directions. An entry-less bundle is the plainest case — the builder
+will not construct one (`minItems: 1`), so the verifier does not bless one.
 
 It returns a value; it does not throw. A verification routine whose contract is "tell me what you found"
 must not turn an unreadable bundle into an exception the caller has to catch to learn anything.
@@ -66,6 +76,8 @@ Evidence references artifacts by URL, and on the buyer's side that URL was chose
   bracketed form, and IPv4-mapped addresses in either dotted or hex spelling.
 - Byte and time caps, the byte cap enforced **while streaming**. Reading a whole body and measuring
   afterwards protects the check but not the memory.
+- `timeoutMs` is **one budget for the whole `resolve()`** — the name lookups included. A signal handed to
+  `fetch` bounds the request and nothing ahead of it, so a lookup that hangs is a bound that isn't one.
 
 ```ts
 import { isUnicastPublic } from "@integraledger/lcp-evidence";

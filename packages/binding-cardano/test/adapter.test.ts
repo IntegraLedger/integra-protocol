@@ -16,6 +16,9 @@ const ATR_BARE = ATR.slice(2);
 const OTHER =
   "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 const OTHER_BARE = OTHER.slice(2);
+/** A scan depth. `enumerate` requires one — this rail reads a GLOBAL label index and will not choose the
+ *  bound for a caller, because the three indexers its port names do not agree on a page size. */
+const SCAN = 100;
 
 function lcpEntry(bareHash: string): BlockfrostMetadataEntry {
   return {
@@ -107,8 +110,9 @@ describe("createCardanoAdapter", () => {
       async txView(txHash: string): Promise<CardanoTxView | null> {
         return viewsByTx[txHash] ?? null;
       },
-      async txsWithLabel(_label: number, _limit?: number): Promise<string[]> {
-        return labelIndex;
+      async txsWithLabel(_label: number, limit: number): Promise<string[]> {
+        // A faithful indexer honours the depth as a CAP, so the stub does too.
+        return labelIndex.slice(0, limit);
       },
     };
   }
@@ -205,7 +209,7 @@ describe("createCardanoAdapter", () => {
       },
       ["tx1", "tx2", "tx3"],
     );
-    const hits = await adapter.enumerate(ATR, rdr);
+    const hits = await adapter.enumerate(ATR, rdr, SCAN);
     expect(hits.map((h) => h.txHash)).toEqual(["tx1", "tx3"]);
   });
 
@@ -219,7 +223,7 @@ describe("createCardanoAdapter", () => {
       },
       ["tx1", "tx2"],
     );
-    const hits = await adapter.enumerate(ATR, rdr);
+    const hits = await adapter.enumerate(ATR, rdr, SCAN);
     expect(hits.map((h) => h.txHash)).toEqual(["tx1"]);
   });
 
@@ -230,8 +234,128 @@ describe("createCardanoAdapter", () => {
   });
 
   it("enumerate throws on a malformed atrHash — a silent [] is not an answer", async () => {
-    await expect(adapter.enumerate("not-a-hash", reader({}))).rejects.toThrow(
-      "enumerate: atrHash must be a 0x-prefixed 32-byte value",
+    await expect(
+      adapter.enumerate("not-a-hash", reader({}), SCAN),
+    ).rejects.toThrow("enumerate: atrHash must be a 0x-prefixed 32-byte value");
+  });
+});
+
+/**
+ * ⛔⛔ **A NUMERIC METADATA LABEL MADE A REAL SETTLEMENT READ `no-atr-metadata`.**
+ *
+ * `recoverAtrHashFromMetadata` compared `m.label === String(label)`, and db-sync and Koios — two of the
+ * three indexers `CardanoReader`'s own docblock names — return the label as a NUMBER. So the whole
+ * verdict depended on which indexer a consumer bridged, and it failed in the direction no caller can
+ * challenge: a settled, phase-2-valid transaction carrying the weld came back refused.
+ */
+describe("the label reads the same whichever indexer spelled it", () => {
+  const adapter = createCardanoAdapter(CARDANO_MANIFEST);
+  const reader = (
+    viewsByTx: Record<string, CardanoTxView>,
+    labelIndex: string[] = [],
+  ): CardanoReader => ({
+    async txView(txHash: string): Promise<CardanoTxView | null> {
+      return viewsByTx[txHash] ?? null;
+    },
+    async txsWithLabel(_label: number, limit: number): Promise<string[]> {
+      return labelIndex.slice(0, limit);
+    },
+  });
+
+  const numericEntry = (bare: string) => ({
+    label: LCP_METADATA_LABEL,
+    json_metadata: { v: LCP_SPEC_VERSION, atrHash: bare },
+  });
+
+  it("⛔⛔ recover returns the weld off a NUMERIC label", async () => {
+    const r = await adapter.recover(
+      { txHash: "tx1" },
+      reader({
+        tx1: { metadata: [numericEntry(ATR_BARE)], validContract: true },
+      }),
     );
+    expect(r).toEqual({ ok: true, value: ATR });
+  });
+
+  it("⛔ and observe reports it settled rather than refusing", async () => {
+    const o = await adapter.observe(
+      { txHash: "tx1" },
+      reader({
+        tx1: { metadata: [numericEntry(ATR_BARE)], validContract: true },
+      }),
+    );
+    expect(o).toEqual({ ok: true, value: { state: "settled", atrHash: ATR } });
+  });
+
+  it("⛔ and enumerate finds it — a whole indexer's settlements were invisible", async () => {
+    const rdr = reader(
+      {
+        tx1: { metadata: [numericEntry(ATR_BARE)], validContract: true },
+        tx2: { metadata: [numericEntry(OTHER_BARE)], validContract: true },
+      },
+      ["tx1", "tx2"],
+    );
+    const hits = await adapter.enumerate(ATR, rdr, SCAN);
+    expect(hits.map((h: { txHash: string }) => h.txHash)).toEqual(["tx1"]);
+  });
+});
+
+/**
+ * ⛔ **THE SCAN DEPTH IS THE CALLER'S, AND IT IS REQUIRED.** It was optional and forwarded verbatim, so an
+ * absent one handed the depth to whichever indexer the consumer bridged. This rail reads a DEDICATED,
+ * GLOBAL label index — every LCP settlement on Cardano by every seller — so an unbounded-looking query
+ * really returns the most recent page of all of them, and a settlement past it reads as `[]`.
+ */
+describe("the label scan states its own bound", () => {
+  const adapter = createCardanoAdapter(CARDANO_MANIFEST);
+  const reader = (
+    viewsByTx: Record<string, CardanoTxView>,
+    labelIndex: string[] = [],
+  ): CardanoReader => ({
+    async txView(txHash: string): Promise<CardanoTxView | null> {
+      return viewsByTx[txHash] ?? null;
+    },
+    async txsWithLabel(_label: number, limit: number): Promise<string[]> {
+      return labelIndex.slice(0, limit);
+    },
+  });
+
+  it("⛔ passes the depth to the index rather than leaving it to the indexer", async () => {
+    const asked: number[] = [];
+    const rdr: CardanoReader = {
+      async txView() {
+        return null;
+      },
+      async txsWithLabel(_label, limit) {
+        asked.push(limit);
+        return [];
+      },
+    };
+    await adapter.enumerate(ATR, rdr, 42);
+    expect(asked).toEqual([42]);
+  });
+
+  it("a depth of 1 is a legitimate bound — the floor is 1, not 2", async () => {
+    // `< 1` and `<= 1` differ by exactly the smallest scan a caller can ask for.
+    const asked: number[] = [];
+    const rdr: CardanoReader = {
+      async txView() {
+        return null;
+      },
+      async txsWithLabel(_label, limit) {
+        asked.push(limit);
+        return [];
+      },
+    };
+    await adapter.enumerate(ATR, rdr, 1);
+    expect(asked).toEqual([1]);
+  });
+
+  it("⛔ refuses a depth that is not a positive integer", async () => {
+    for (const bad of [0, -1, 1.5]) {
+      await expect(adapter.enumerate(ATR, reader({}), bad)).rejects.toThrow(
+        /limit must be a positive integer/,
+      );
+    }
   });
 });

@@ -1,5 +1,29 @@
 # @integraledger/lcp-placement-visa-tap
 
+## 0.18.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.1
+
+## 0.16.0
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes

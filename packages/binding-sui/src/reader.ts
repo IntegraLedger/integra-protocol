@@ -77,6 +77,15 @@ export function makeSuiReader(client: SuiRpcLike): SuiReaderImpl {
         digest,
         options: { showEvents: true },
       });
+      // ⚠️ THE `?? []` IS THE PORT'S OPTIONAL FIELD, NOT A FALLBACK THIS PACKAGE CHOSE, and the boundary
+      // is worth stating because everywhere else on this rail an unread answer is a throw. `SuiRpcLike`
+      // declares `events?: RawSuiEvent[] | null` because `@mysten/sui`'s own
+      // `SuiTransactionBlockResponse` does — the field is optional there since it depends on the options a
+      // caller requested — and tightening it would stop `SuiJsonRpcClient` satisfying this port
+      // structurally, which is the whole reason the port is narrow. So a JSON-RPC source that omits
+      // `events` for a SUCCESS reads as "emitted none" here. `makeSuiGraphqlRpc` never exercises this:
+      // it refuses a null events connection loudly and always hands back an array. A gRPC or provider
+      // wrapper you write owes the same, and this line cannot make it for you.
       const events = res.events ?? [];
       // getTransactionBlock does not populate event.id.txDigest per-event; stamp the caller's digest so
       // `enumerate`-style consumers of a single-tx read still have the ref (zeroPartyRecoverable holds).

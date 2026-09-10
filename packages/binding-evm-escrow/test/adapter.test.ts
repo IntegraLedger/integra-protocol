@@ -8,6 +8,7 @@ import {
   encodeEventTopics,
   type Hex,
   type Log,
+  parseAbi,
   parseAbiParameters,
 } from "viem";
 import { describe, expect, it } from "vitest";
@@ -25,7 +26,10 @@ import { AUTH_CAPTURE_ESCROW } from "../src/collectors.js";
 const CHAIN_ID = 84532;
 const ATR = `0x${"ab".repeat(32)}` as const;
 const COLLECTOR = "0x0E3dF9510de65469C4518D7843919c0b8C7A7757" as const;
-const adapter = createEscrowAdapter({ chainId: CHAIN_ID });
+const adapter = createEscrowAdapter({
+  chainId: CHAIN_ID,
+  escrow: AUTH_CAPTURE_ESCROW,
+});
 
 const PI: PaymentInfo = {
   operator: "0x1111111111111111111111111111111111111111",
@@ -452,7 +456,7 @@ describe("decodeEscrowLogs surfaces the indexed paymentInfoHash", () => {
     const [decoded] = decodeEscrowLogs(
       [authorizedLog(PI, SETTLEMENT.txHash as Hex, 0)],
       AUTH_CAPTURE_ESCROW,
-    );
+    ).events;
     expect(decoded?.paymentInfoHash).toBe(KEY);
     // The salt is still there — this adds a field, it does not move one.
     expect(decoded?.salt).toBe(saltFromAtrHash(ATR));
@@ -465,7 +469,7 @@ describe("decodeEscrowLogs surfaces the indexed paymentInfoHash", () => {
     const [decoded] = decodeEscrowLogs(
       [capturedLog(SETTLEMENT.txHash as Hex, 1)],
       AUTH_CAPTURE_ESCROW,
-    );
+    ).events;
     expect(decoded?.name).toBe("PaymentCaptured");
     expect(decoded?.salt).toBeUndefined();
     expect(decoded?.paymentInfoHash).toBe(KEY);
@@ -488,7 +492,7 @@ describe("decodeEscrowLogs surfaces the indexed paymentInfoHash", () => {
       >),
       topics,
     } as unknown as Log;
-    const [decoded] = decodeEscrowLogs([log], AUTH_CAPTURE_ESCROW);
+    const [decoded] = decodeEscrowLogs([log], AUTH_CAPTURE_ESCROW).events;
     expect(decoded?.paymentInfoHash).toBe(other);
     expect(decoded?.paymentInfoHash).not.toBe(KEY);
   });
@@ -583,5 +587,261 @@ describe("a recovery that SUCCEEDED says so, and one that refused says why", () 
     expect(() => saltFromAtrHash("0xdead" as `0x${string}`)).toThrow(
       /saltFromAtrHash/,
     );
+  });
+});
+
+/**
+ * ⛔⛔ **THE `catch {}` SAT AFTER THE ADDRESS FILTER, SO A DRIFTED ABI READ AS "NO LIFECYCLE".**
+ *
+ * Every log reaching that catch had already been narrowed to ones the ESCROW emitted, and swallowing one
+ * of those is not the same act as skipping a foreign contract's log. `observe` answered
+ * `{ok: true, value: []}` — a confident "this transaction settled nothing" about a transaction the escrow
+ * itself wrote logs for. The ABI in this package is transcribed from a PINNED deployment and the module
+ * docblock records that reading HEAD instead once shipped a bug, so drift is a failure this rail has had.
+ *
+ * ⭐ And the reason the guard cannot simply refuse every undecodable escrow log: `AuthCaptureEscrow`
+ * emits a SEVENTH event. `TokenStoreCreated` comes out of `_sendTokens`, in the same transaction as a
+ * capture or charge, the first time an operator's `TokenStore` is deployed — so "undecodable" had to be
+ * narrowed to "decodes as none of the seven" before it could mean drift at all.
+ */
+describe("an escrow log this package cannot decode is drift, not silence", () => {
+  const OTHER_CONTRACT = "0x6666666666666666666666666666666666666666" as const;
+
+  /** An escrow-emitted log whose topic0 is nothing this ABI knows — the shape a signature change makes:
+   *  add or retype a parameter and `topics[0]` moves, so our ABI matches none of the transaction's logs. */
+  function driftedLog(txHash: Hex, logIndex: number): Log {
+    return {
+      ...(authorizedLog(PI, txHash, logIndex) as unknown as Record<
+        string,
+        unknown
+      >),
+      topics: [`0x${"9e".repeat(32)}`],
+    } as unknown as Log;
+  }
+
+  /** A `TokenStoreCreated`, the escrow's one non-lifecycle event. The signature is transcribed from
+   *  base/commerce-payments @ 98b592b — the same deployment the source transcribes from, read
+   *  independently, which is the point: two transcriptions of one external fact, not one restated. */
+  function tokenStoreCreatedLog(txHash: Hex, logIndex: number): Log {
+    const abi = parseAbi([
+      "event TokenStoreCreated(address indexed operator, address tokenStore)",
+    ]);
+    return {
+      address: AUTH_CAPTURE_ESCROW,
+      topics: encodeEventTopics({
+        abi,
+        eventName: "TokenStoreCreated",
+        args: { operator: PI.operator },
+      }),
+      data: encodeAbiParameters(parseAbiParameters("address tokenStore"), [
+        "0x4444444444444444444444444444444444444444",
+      ]),
+      transactionHash: txHash,
+      logIndex,
+    } as unknown as Log;
+  }
+
+  it("⛔ observe REFUSES instead of reporting no lifecycle", async () => {
+    const out = await adapter.observe(
+      SETTLEMENT,
+      portsWith(
+        fakeChain({ txLogs: [driftedLog(SETTLEMENT.txHash as Hex, 0)] }),
+      ),
+    );
+    expect(out).toMatchObject({
+      refused: true,
+      haltClass: "verification-failure",
+      code: "escrow/unreadable-event",
+    });
+    // The detail names the PINNED deployment the ABI is transcribed from — the one thing an operator
+    // needs to act on a drift report, and the reason it is not left to prose.
+    expect("refused" in out ? (out.detail ?? "") : "").toContain("98b592b");
+  });
+
+  it("⛔ recover REFUSES with the drift code, not with no-recoverable-event", async () => {
+    // The two answers are different facts: one says the escrow emitted no salt-bearing event, the other
+    // says we could not read what it emitted. Collapsing them reports a transcription fault as a verdict.
+    const out = await adapter.recover(
+      SETTLEMENT,
+      portsWith(
+        fakeChain({ txLogs: [driftedLog(SETTLEMENT.txHash as Hex, 0)] }),
+      ),
+    );
+    expect(out).toMatchObject({ code: "escrow/unreadable-event" });
+  });
+
+  it("⛔ and it fires for recover when only a SALT-LESS event decoded beside the unreadable one", async () => {
+    // `salted` is empty here for two possible reasons at once, and the unreadable log could have been the
+    // PaymentAuthorized. `no-recoverable-event` would assert it was not.
+    const out = await adapter.recover(
+      SETTLEMENT,
+      portsWith(
+        fakeChain({
+          txLogs: [
+            capturedLog(SETTLEMENT.txHash as Hex, 0),
+            driftedLog(SETTLEMENT.txHash as Hex, 1),
+          ],
+        }),
+      ),
+    );
+    expect(out).toMatchObject({ code: "escrow/unreadable-event" });
+  });
+
+  it("a settlement with NO escrow logs at all still answers no-recoverable-event", async () => {
+    // The guard is scoped to the evidence, not to the emptiness: nothing unreadable, nothing to report.
+    const out = await adapter.recover(
+      SETTLEMENT,
+      portsWith(fakeChain({ txLogs: [] })),
+    );
+    expect(out).toMatchObject({ code: "escrow/no-recoverable-event" });
+  });
+
+  it("⛔ enumerate THROWS — a bare array has no channel to say the answer is short", async () => {
+    await expect(
+      adapter.enumerate?.(
+        ATR,
+        portsWith(
+          fakeChain({ queryLogs: [driftedLog(`0x${"22".repeat(32)}`, 0)] }),
+        ),
+      ),
+    ).rejects.toThrow(/has drifted from the deployment/);
+  });
+
+  it("a drifted log from ANOTHER contract is neither an event nor unreadable", async () => {
+    // The address filter still runs first; this guard is about the escrow's own output and nothing else.
+    const scan = decodeEscrowLogs(
+      [fromContract(driftedLog(SETTLEMENT.txHash as Hex, 0), OTHER_CONTRACT)],
+      AUTH_CAPTURE_ESCROW,
+    );
+    expect(scan).toEqual({ events: [], unreadable: [] });
+  });
+
+  it("⭐ TokenStoreCreated is KNOWN — no transition, and not drift either", async () => {
+    const scan = decodeEscrowLogs(
+      [tokenStoreCreatedLog(SETTLEMENT.txHash as Hex, 0)],
+      AUTH_CAPTURE_ESCROW,
+    );
+    expect(scan.events).toEqual([]);
+    expect(scan.unreadable).toEqual([]);
+    const out = await adapter.observe(
+      SETTLEMENT,
+      portsWith(
+        fakeChain({
+          txLogs: [tokenStoreCreatedLog(SETTLEMENT.txHash as Hex, 0)],
+        }),
+      ),
+    );
+    expect(out).toEqual({ ok: true, value: [] });
+  });
+
+  it("⭐ and beside a real capture it changes nothing — the first-capture transaction still reads", async () => {
+    // This is the live shape: an operator's very first capture deploys their TokenStore, so the escrow
+    // emits both. Had the guard keyed on "any log we could not decode", every one of those would refuse.
+    const out = await adapter.observe(
+      SETTLEMENT,
+      portsWith(
+        fakeChain({
+          txLogs: [
+            capturedLog(SETTLEMENT.txHash as Hex, 0),
+            tokenStoreCreatedLog(SETTLEMENT.txHash as Hex, 1),
+          ],
+        }),
+      ),
+    );
+    expect(out).toMatchObject({ ok: true });
+    if (!("refused" in out)) expect(out.value).toHaveLength(1);
+  });
+
+  it("a decodable lifecycle event beside an unreadable one still reports the transition", async () => {
+    // Scoped to the EMPTY answer, exactly as the two sibling EVM adapters scope theirs: an answer that
+    // names a real transition is not the answer that cannot be told apart from "nothing here".
+    const out = await adapter.observe(
+      SETTLEMENT,
+      portsWith(
+        fakeChain({
+          txLogs: [
+            authorizedLog(PI, SETTLEMENT.txHash as Hex, 0),
+            driftedLog(SETTLEMENT.txHash as Hex, 1),
+          ],
+        }),
+      ),
+    );
+    expect(out).toMatchObject({ ok: true });
+    if (!("refused" in out)) expect(out.value).toHaveLength(1);
+  });
+});
+
+/**
+ * ⛔⛔ **`config.escrow ?? AUTH_CAPTURE_ESCROW` WAS A FALLBACK, AND OFF BASE IT ANSWERED EMPTY.**
+ *
+ * That constant is the deterministic deployment on Base Mainnet and Base Sepolia and on no other chain.
+ * On any other EVM chain the default named a contract that emits nothing, `decodeEscrowLogs` discarded
+ * every log of a real settlement on the address filter, and `observe` answered `{ok: true, value: []}` —
+ * successful, empty, and about a settlement that happened. The same default sat, unlinked, in
+ * `getHashOffchain`, where the address is hashed INTO `paymentInfoHash` and `payerAgnosticNonce`.
+ */
+describe("the escrow address is required, not defaulted", () => {
+  it("⛔ createEscrowAdapter THROWS on an absent escrow", () => {
+    expect(() =>
+      createEscrowAdapter({
+        chainId: CHAIN_ID,
+      } as unknown as Parameters<typeof createEscrowAdapter>[0]),
+    ).toThrow(/escrow must be a 20-byte 0x address/);
+  });
+
+  it("⛔ and on one that is not an address", () => {
+    expect(() =>
+      createEscrowAdapter({
+        chainId: CHAIN_ID,
+        escrow: `0x${"ab".repeat(21)}` as `0x${string}`,
+      }),
+    ).toThrow(/escrow must be a 20-byte 0x address/);
+  });
+
+  it("names the constant it refuses to substitute, so the fix is obvious on Base", () => {
+    expect(() =>
+      createEscrowAdapter({
+        chainId: CHAIN_ID,
+      } as unknown as Parameters<typeof createEscrowAdapter>[0]),
+    ).toThrow(new RegExp(AUTH_CAPTURE_ESCROW));
+  });
+
+  it("⛔ REFUSES an address with junk in front of it — the pattern is ANCHORED at both ends", () => {
+    // `/0x…{40}$/` without the leading anchor matches the TAIL of any string, so a copy-paste that kept
+    // a prefix ("Contract: 0x…") would be accepted and then never match a log address.
+    expect(() =>
+      createEscrowAdapter({
+        chainId: CHAIN_ID,
+        escrow: `Contract: ${AUTH_CAPTURE_ESCROW}` as `0x${string}`,
+      }),
+    ).toThrow(/escrow must be a 20-byte 0x address/);
+  });
+
+  it.each([
+    [
+      "createEscrowAdapter",
+      () =>
+        createEscrowAdapter({ chainId: CHAIN_ID } as unknown as Parameters<
+          typeof createEscrowAdapter
+        >[0]),
+    ],
+    ["decodeEscrowLogs", () => decodeEscrowLogs([], "" as `0x${string}`)],
+  ])(
+    "the throw NAMES its call site (%s), because three entry points share one message",
+    (where, call) => {
+      // Without the context argument the operator is told an address is wrong and not which of the three
+      // places wanted it. That is instruction, not phrasing.
+      expect(call).toThrow(new RegExp(where));
+    },
+  );
+
+  it("accepts the lowercase spelling every JSON-RPC node answers with", () => {
+    // A checksum test here would refuse `eth_getLogs` output, which is the one form this always sees.
+    expect(() =>
+      createEscrowAdapter({
+        chainId: CHAIN_ID,
+        escrow: AUTH_CAPTURE_ESCROW.toLowerCase() as `0x${string}`,
+      }),
+    ).not.toThrow();
   });
 });

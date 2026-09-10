@@ -5,6 +5,7 @@ export {
   decodeEscrowLogs,
   ESCROW_EVENTS_ABI,
   type EscrowAdapterConfig,
+  type EscrowLogScan,
   type EscrowProposal,
   type EscrowProposalContext,
   type PaymentInfo,
@@ -23,6 +24,7 @@ export {
   type CollectorName,
   type EscrowCollector,
   getCollector,
+  requireEscrowAddress,
 } from "./collectors.js";
 export {
   type EscrowEventName,

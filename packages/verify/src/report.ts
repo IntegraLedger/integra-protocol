@@ -33,9 +33,11 @@ export interface VerificationStep {
 
 /** The output of a verification walk — the artifact a stranger reads instead of re-running it.
  *
- *  Read `steps` before `verified`. `verified` is a summary that is FALSE at structural depth by
- *  construction, so a `false` may mean "impeached" or merely "not attempted mechanically", and only the
- *  step list distinguishes them. `claimedClass` and `supportedClass` are the report's two halves and must
+ *  Read `depth` and `steps` before `verified`. `verified` is a summary that is FALSE at structural depth by
+ *  construction, so a `false` may mean "impeached" or merely "not attempted mechanically"; `depth` is what
+ *  separates the two, and the step list then says which rung. Step outcomes are depth-agnostic by design,
+ *  so before `depth` was stated here NOTHING in the artifact separated them and the two walks serialized
+ *  to identical bytes. `claimedClass` and `supportedClass` are the report's two halves and must
  *  never be read as one: the first is the caller's input, echoed so the walk can be interpreted; the second
  *  is the walk's own finding. Where they differ, the record did not reach what it was shaped for. Several
  *  fields are `string` rather than a union on purpose: this type has to be able to hold another
@@ -59,6 +61,21 @@ export interface VerificationReport {
    *  failed. A FINDING, computed from the steps alone: it is not capped by `claimedClass` and not lifted by
    *  it. Compare the two to learn whether the record met its own shape. */
   supportedClass: string;
+  /**
+   * The depth the walk ran at — and the field WITHOUT which `verified` cannot be read at all.
+   *
+   * `verified` is `false` at structural depth BY CONSTRUCTION, so a `false` may mean "impeached" or merely
+   * "not attempted mechanically". Step outcomes are depth-agnostic, which was the point and also the
+   * problem: a structural report and a mechanical one over the same inputs serialized to IDENTICAL BYTES,
+   * so the one thing that distinguishes an unraised summary from a refuted one was in neither the report
+   * nor its JCS form, and a stranger reading the artifact instead of re-running the walk could not recover
+   * it. Required for the same reason `claimedClass` is: a report carrying only the finding cannot say what
+   * the finding was measured against.
+   *
+   * `string` rather than the `VerifyDepth` union, on the same rule as `supportedClass` and `assurance` —
+   * this type has to be able to hold another implementation's answer, including a wrong one.
+   */
+  depth: string;
   /** The settlement's chain-anchored time every validity check is evaluated against. */
   asOf: string;
   steps: VerificationStep[];

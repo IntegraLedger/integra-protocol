@@ -25,8 +25,8 @@ npx @integraledger/lcp-conformance
 ```
 
 ```
-conformance: 861 passed, 0 failed, 0 skipped (none)
-corpus: 44/44 areas, 861/861 cases, root 4c9d2d02a36fa458… (authentic)
+conformance: 866 passed, 0 failed, 0 skipped (none)
+corpus: 44/44 areas, 866/866 cases, root 63df22e2ff059acc… (authentic)
 ```
 
 Those are the real figures for this release, not placeholders — and they cannot go stale unnoticed:
