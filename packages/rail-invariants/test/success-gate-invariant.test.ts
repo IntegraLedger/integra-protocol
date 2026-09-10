@@ -235,7 +235,10 @@ const PROBES: Readonly<Record<string, GateProbe>> = {
         await createHederaAdapter(HEDERA_MANIFEST).recover(
           { transactionId: "tx" },
           hederaReader({
-            memo: createHederaAdapter(HEDERA_MANIFEST).propose(ATR),
+            memo: {
+              encoding: "text",
+              value: createHederaAdapter(HEDERA_MANIFEST).propose(ATR),
+            },
             result: "INSUFFICIENT_ACCOUNT_BALANCE",
           }),
         ),
@@ -245,7 +248,10 @@ const PROBES: Readonly<Record<string, GateProbe>> = {
         await createHederaAdapter(HEDERA_MANIFEST).recover(
           { transactionId: "tx" },
           hederaReader({
-            memo: createHederaAdapter(HEDERA_MANIFEST).propose(ATR),
+            memo: {
+              encoding: "text",
+              value: createHederaAdapter(HEDERA_MANIFEST).propose(ATR),
+            },
           }),
         ),
       ),

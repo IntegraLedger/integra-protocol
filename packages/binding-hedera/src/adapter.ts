@@ -14,6 +14,7 @@
  */
 import type { BindingManifest, Outcome } from "@integraledger/lcp-binding-core";
 import { atrHashEquals, isAtrHash } from "@integraledger/lcp-kernel";
+import { HEDERA_MIRROR_MAX_PAGE } from "./constants.js";
 import { decodeMemoAtrHash, encodeMemoAtrHash } from "./memo.js";
 
 /** A Hedera settlement reference — a canonical transaction id, e.g. "0.0.1001@1700000000.000000000". */
@@ -22,16 +23,45 @@ export interface HederaSettlementRef {
 }
 
 /**
- * The minimal view of a settled transaction this binding cares about. A Mirror Node result may present the
- * memo either already-decoded (`memo`) OR as the raw base64 field (`memoBase64`, the Mirror `memo_base64`).
- * `recover` handles BOTH forms so a reader that passes the raw REST field straight through still recovers
- * the atrHash (rather than false-refusing a genuinely welded settlement — the zeroPartyRecoverable claim).
+ * The transaction memo as a reader supplies it — ONE field carrying its own spelling.
+ *
+ * ⛔⛔ **IT WAS TWO OPTIONAL FIELDS, `memo` AND `memoBase64`, WITH NOTHING SAYING WHICH ONE MEANT
+ * ANYTHING.** Four states were representable and only two were intelligible. `memo: ""` — the shape a
+ * reader produces the moment it writes `memo: tx.memo ?? ""` beside the raw field it also passes through —
+ * won over a `memoBase64` carrying the real weld, so `recover` refused `no-atr-memo` about a settlement
+ * that welded correctly, and the package's own test pinned that precedence under a comment claiming "a
+ * caller cannot get a different answer than the raw bytes would give". It compared `ATR` against
+ * `toMemoBase64(OTHER)`: a different answer is exactly what it got. When the two disagreed, whichever
+ * field the reader happened to fill decided the verdict, silently, and neither the reader nor the caller
+ * was told a choice had been made.
+ *
+ * ⭐ **THE FIX IS THE TYPE, NOT A TIE-BREAK RULE.** A precedence rule (or a refusal when the two disagree)
+ * would keep four states and add arbitration; one field with a declared encoding leaves two. There is
+ * nothing to arbitrate, because a reader can no longer say two things at once — and `""` now means "the
+ * memo is empty", which is a fact, rather than "I had nowhere else to put my ignorance".
+ *
+ * The discriminant earns its keep: both arms are read, `text` straight through and `base64` through
+ * {@link decodeMemoBase64}, and the two lead to different readings on the same bytes. That is what
+ * distinguishes it from the `why: "absent"` token this rail tried and withdrew — a value compared one way,
+ * which reads as tested while nothing tests it.
+ */
+export type HederaMemo =
+  /** The reader decoded the memo. `value` is the memo text as the payer set it. */
+  | { readonly encoding: "text"; readonly value: string }
+  /** The reader passed the Mirror Node `memo_base64` field through undecoded. `value` is that field —
+   *  STANDARD base64, decoded here, and refused as `malformed-memo-encoding` when it is not. */
+  | { readonly encoding: "base64"; readonly value: string };
+
+/**
+ * The minimal view of a settled transaction this binding cares about. The memo travels as one
+ * {@link HederaMemo} whichever form the reader has it in, so a reader that passes the raw Mirror REST
+ * field straight through still recovers the atrHash (rather than false-refusing a genuinely welded
+ * settlement — the zeroPartyRecoverable claim).
  */
 export interface HederaTxView {
-  /** The decoded memo text, if the reader decoded it. */
-  memo?: string;
-  /** The raw Mirror Node `memo_base64` field, if the reader passed it through undecoded. */
-  memoBase64?: string;
+  /** The transaction memo, in whichever spelling the reader holds. Absent when the Mirror Node record
+   *  carries none — which is a different fact from a memo that is present and empty. */
+  memo?: HederaMemo;
   /**
    * The transaction's consensus result (Mirror Node `result`, e.g. "SUCCESS" or "INSUFFICIENT_ACCOUNT_BALANCE").
    * ONLY "SUCCESS" is a settlement: a Hedera transaction can reach consensus — and get a Mirror record carrying
@@ -82,12 +112,6 @@ function decodeMemoBase64(memoBase64: string): string | null {
   return new TextDecoder("utf-8").decode(bytes);
 }
 
-/** The memo text a tx view carries: the decoded form if the reader decoded it, else the raw base64 field
- *  decoded here — three outcomes (text, no memo field at all, a memo field that is not base64), because
- *  collapsing the last two is the defect `decodeMemoBase64` documents. Resolved inline in `readTxView`
- *  rather than through a carrier type: a carrier needs a discriminant token, and a token that is only ever
- *  compared one way is a value no behaviour depends on — it reads as tested while nothing tests it. */
-
 /** Why a tx view yielded no settled weld — distinguished so `recover`/`observe` report WHY (mirrors
  *  binding-stellar): a transaction the Mirror Node does not have is not a failed one, and a failed one is
  *  not a missing memo. One reading shared by every surface, so they cannot disagree about what a view means. */
@@ -99,7 +123,7 @@ export type HederaSettlementReading =
         | "no-such-transaction"
         | "unsuccessful-transaction"
         | "no-atr-memo"
-        /** The view carried a `memoBase64` that is not base64 — we could not READ the memo. Distinct from
+        /** The view's memo was spelled `base64` and is not base64 — we could not READ the memo. Distinct from
          *  `no-atr-memo`, which is the memo read and found to carry no atrHash: one impeaches the reader,
          *  the other is a verdict about the settlement, and a caller must be able to tell them apart. */
         | "malformed-memo-encoding";
@@ -114,16 +138,14 @@ export function readTxView(view: HederaTxView | null): HederaSettlementReading {
   if (view === null) return { settled: false, reason: "no-such-transaction" };
   if (view.result !== "SUCCESS")
     return { settled: false, reason: "unsuccessful-transaction" };
-  let text: string;
-  if (view.memo !== undefined) text = view.memo;
-  else if (view.memoBase64 !== undefined) {
-    const decoded = decodeMemoBase64(view.memoBase64);
-    // ⛔ The reader handed over bytes it called base64 and they are not. We never READ the memo, so this
-    // is a statement about the reader; `no-atr-memo` would be a statement about the settlement.
-    if (decoded === null)
-      return { settled: false, reason: "malformed-memo-encoding" };
-    text = decoded;
-  } else return { settled: false, reason: "no-atr-memo" };
+  const memo = view.memo;
+  if (memo === undefined) return { settled: false, reason: "no-atr-memo" };
+  const text =
+    memo.encoding === "text" ? memo.value : decodeMemoBase64(memo.value);
+  // ⛔ The reader handed over bytes it called base64 and they are not. We never READ the memo, so this is
+  // a statement about the reader; `no-atr-memo` would be a statement about the settlement.
+  if (text === null)
+    return { settled: false, reason: "malformed-memo-encoding" };
   const atrHash = decodeMemoAtrHash(text);
   if (atrHash === null) return { settled: false, reason: "no-atr-memo" };
   return { settled: true, atrHash };
@@ -156,7 +178,13 @@ export interface HederaAdapter {
     ref: HederaSettlementRef,
     reader: HederaReader,
   ): Promise<Outcome<{ state: "settled"; atrHash: `0x${string}` }>>;
-  /** Best-effort account scan for settlements bearing `atrHash` (NOT a native index — see the manifest). */
+  /**
+   * Best-effort account scan for settlements bearing `atrHash` (NOT a native index — see the manifest).
+   *
+   * ⛔ `limit` is the scan DEPTH and it is yours to set. Omitted, this asks the Mirror Node for its largest
+   * page ({@link HEDERA_MIRROR_MAX_PAGE}) and THROWS if the page comes back full — see the enumerate body
+   * for why a short answer here cannot be reported any other way.
+   */
   enumerate(
     atrHash: string,
     accountId: string,
@@ -213,12 +241,12 @@ export function createHederaAdapter(manifest: BindingManifest): HederaAdapter {
           `no atrHash transactionMemo on SUCCESS transaction ${ref.transactionId}`,
         );
       case "malformed-memo-encoding":
-        // ⛔ NOT a statement about the settlement. The reader handed over a `memoBase64` that is not
-        // base64, so the memo was never read — saying `no-atr-memo` here would report a transport fault
-        // as a chain verdict, which is the collapse this rail's three-reason split exists to prevent.
+        // ⛔ NOT a statement about the settlement. The reader declared the memo `base64` and it is not,
+        // so the memo was never read — saying `no-atr-memo` here would report a transport fault as a
+        // chain verdict, which is the collapse this rail's three-reason split exists to prevent.
         return refuse(
           "malformed-memo-encoding",
-          `the reader supplied a memoBase64 for transaction ${ref.transactionId} that is not base64 — the memo could not be read, which is not the same as its carrying no atrHash`,
+          `the reader spelled the memo of transaction ${ref.transactionId} \`base64\` and it is not base64 — the memo could not be read, which is not the same as its carrying no atrHash`,
         );
     }
   }
@@ -259,7 +287,24 @@ export function createHederaAdapter(manifest: BindingManifest): HederaAdapter {
         throw new Error(
           `enumerate: atrHash must be a 0x-prefixed 32-byte value, got "${atrHash}"`,
         );
-      const ids = await reader.transactionsFor(accountId, limit);
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 1))
+        throw new Error(
+          `enumerate: limit must be a positive integer, got ${limit}`,
+        );
+      // ⛔ NOT `reader.transactionsFor(accountId, limit)`. Forwarding an absent `limit` handed the depth of
+      // this scan to the Mirror Node, whose default is 25 (measured — see HEDERA_MIRROR_MAX_PAGE), and a
+      // settlement past it came back as an empty array nobody could tell from "no settlements".
+      const depth = limit ?? HEDERA_MIRROR_MAX_PAGE;
+      const ids = await reader.transactionsFor(accountId, depth);
+      // ⛔⛔ A FULL PAGE WITH NO `limit` NAMED IS A REFUSAL, NOT AN ANSWER. An explicit `limit` is the
+      // caller's own bound and a full result is exactly what they asked for; an absent one means "every
+      // settlement on this account", and this rail cannot serve that — the reader port returns ids and no
+      // cursor, so there is nothing to page with. Answering the first `depth` would be a scan silently
+      // shorter than the question, which is the one failure a best-effort enumerate can never signal.
+      if (limit === undefined && ids.length >= depth)
+        throw new Error(
+          `enumerate: the account scan of ${accountId} came back full at ${ids.length} of ${depth} transactions, so it cannot tell a complete answer from a truncated one — this rail's reader port carries no cursor to page with, so name the depth you want with an explicit \`limit\` and take the bound as yours`,
+        );
       const out: HederaSettlementRef[] = [];
       for (const transactionId of ids) {
         const reading = readTxView(await reader.txView(transactionId));
