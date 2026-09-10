@@ -76,18 +76,24 @@ export interface AuthorityLink {
   maxDepth?: number;
   /** Revoked as-of settlement, from the hash-pinned status-list snapshot.
    *
-   *  REQUIRED, for the same reason `parentDelegable` is: "the flattener never consulted a status list"
-   *  and "the walk checked the pinned snapshot and the link is unrevoked" are otherwise the same absent
-   *  value, and one of them proves. `authority.WalkedLink` already states it always, never defaulted, so
-   *  a walk-fed caller satisfies this for free and only a hand-flattener feels it — which is the point.
+   *  ABSENT MEANS NOBODY CONSULTED A STATUS LIST, and the runtime is the whole gate: absence reads
+   *  `not-attempted` with depth `no-revocation-stated`, a `true` fails, and a non-boolean reads
+   *  `malformed-authority-chain`. "The flattener never consulted a status list" and "the pinned snapshot
+   *  says unrevoked" must not be the same value, and one of them proves — the rule this module's corpus
+   *  states, pinned cross-implementation since 2026-08-08.
    *
-   *  The compile error is not the whole gate, and must not be relied on as one — at runtime an absent value reads as
-   *  unrevoked and PROVED, on the grounds that the corpus pinned that reading cross-implementation. The
-   *  corpus was the thing to change, and on 2026-08-08 it was: absence now reads `not-attempted` with
-   *  depth `no-revocation-stated`, and a non-boolean reads `malformed-authority-chain`. Type and runtime
-   *  agree, so the untyped caller this step exists for gets the same answer a typed one is prevented from
-   *  asking. */
-  revoked: boolean;
+   *  OPTIONAL, unlike `parentDelegable` and `active` beside it, and the asymmetry is the point rather than
+   *  an oversight. Those two always have an answer: ATA-3 fixes a restrictive DEFAULT for delegability, and
+   *  an absent validity window is a complete statement (unbounded) that `isActiveAsOf` evaluates. Revocation
+   *  has a third case they do not — a grant carrying no `credentialStatus` names no list, so there is
+   *  nothing to consult and nothing to state. `authority.WalkedLink` OMITS the field for exactly that grant,
+   *  having previously stamped `false` for it, which is the proving value for a check that never ran; a
+   *  required field here would make the honest readout unassignable and force the walk back to the lie.
+   *
+   *  So the compile error is gone and the runtime gate is unchanged — which was already the ruling: this
+   *  field's own note used to say the compile error "is not the whole gate, and must not be relied on as
+   *  one". A hand-flattener that omits it gets `no-revocation-stated`, which never proves. */
+  revoked?: boolean;
   /** Temporally active as-of settlement (expiry). REQUIRED on the same grounds as `revoked` — an
    *  unstated liveness and a checked-and-live one must not be the same value. Runtime matches: absent is
    *  `not-attempted` with depth `no-liveness-stated`, its OWN token rather than revocation's, so a report

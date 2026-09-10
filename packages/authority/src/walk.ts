@@ -66,9 +66,34 @@ export interface WalkedLink {
   parentDelegable: boolean;
   parentMaxDepth?: number;
   maxDepth?: number;
-  /** Always stated, never defaulted: the walk CHECKED the pinned snapshot (or the grant carries no status entry). */
-  revoked: boolean;
-  /** Always stated: the walk evaluated the validity window as-of the settlement instant. */
+  /**
+   * Revoked as-of settlement — STATED ONLY WHERE A STATUS ENTRY WAS CONSULTED, absent otherwise.
+   *
+   * It used to be stated always, `false` where the grant carried no `credentialStatus` at all. That is the
+   * PROVING value, given for a check nobody performed: the walk had consulted no status list, because the
+   * grant named none. `verify.authorityStep` reads an absent `revoked` as `not-attempted` with depth
+   * `no-revocation-stated` and has since 2026-08-08, on the rule its own corpus states — "the flattener
+   * never consulted a status list" and "the pinned snapshot says unrevoked" must not be the same value.
+   * Stamping `false` here meant the walk-fed door, the one `verify` documents as PREFERRED precisely
+   * because it removes the caller's trust, was the one door that could never reach that gap. The strict
+   * reading bit only the hand-flattener it was written to catch.
+   *
+   * A grant that names no status entry is not a grant known to be unrevoked; it is a grant whose principal
+   * has no way to revoke it. ATA-3 requires revocability and `authority-producer-ref` emits a Bitstring
+   * Status List entry FROM ISSUANCE for exactly that reason, so a conformant LCP grant always carries one
+   * and this absence is a real deficiency rather than an ordinary shape.
+   *
+   * `true` never appears here: a revoked link refuses the whole chain before a readout exists.
+   */
+  revoked?: boolean;
+  /**
+   * Temporally active as-of settlement. Always stated, and it does NOT follow `revoked` above.
+   *
+   * The two look alike and are not. An absent `validFrom`/`validUntil` is a complete statement under VC
+   * 2.0 — an unbounded window — and `isActiveAsOf` EVALUATES it against the settlement instant, so the
+   * walk always has an answer it derived. Revocation status is not in the document at all: the credential
+   * points at a list, and with no pointer there is nothing to consult and nothing to state.
+   */
   active: boolean;
 }
 
@@ -257,6 +282,9 @@ async function walkLinks(
         "walk/inactive-link",
         `link ${i} is not temporally active as-of the settlement instant ${asOf}`,
       );
+    // `undefined` unless a status entry was actually CONSULTED. It stays that way for a grant carrying no
+    // `credentialStatus`, and that absence travels all the way into the readout — see `readout`.
+    let revoked: boolean | undefined;
     if (grant.credentialStatus !== undefined) {
       const revocation = await revocationFromSnapshot(
         grant.credentialStatus,
@@ -271,8 +299,9 @@ async function walkLinks(
           );
         return gap(revocation);
       }
+      revoked = false; // the pinned snapshot was read as-of settlement and the bit is clear
     }
-    links.push(readout(grant, parent));
+    links.push(readout(grant, parent, revoked));
     parent = grant;
   }
   // `parent` is the leaf here — the loop ran at least once (empty chains returned above).
@@ -437,8 +466,16 @@ async function revocationFromSnapshot(
 }
 
 /** One verified hop, flattened. The root's synthesized parent is the principal's own authority:
- *  unbounded (`{}` restricts nothing as a parent) and inherently delegable — see the header. */
-function readout(grant: AtaGrant, parent: AtaGrant | undefined): WalkedLink {
+ *  unbounded (`{}` restricts nothing as a parent) and inherently delegable — see the header.
+ *
+ *  `revoked` is THREADED IN rather than re-derived from `grant.credentialStatus`: the loop is where the
+ *  snapshot was consulted, and a second reading of the same slot here would be a copy that can drift from
+ *  what actually happened. Absent ⇒ no status entry was consulted, which is not the same fact as clean. */
+function readout(
+  grant: AtaGrant,
+  parent: AtaGrant | undefined,
+  revoked: boolean | undefined,
+): WalkedLink {
   const subject = grant.credentialSubject;
   const parentMaxDepth = parent?.credentialSubject.maxDepth;
   return {
@@ -450,7 +487,7 @@ function readout(grant: AtaGrant, parent: AtaGrant | undefined): WalkedLink {
     parentDelegable: true,
     ...(parentMaxDepth !== undefined ? { parentMaxDepth } : {}),
     ...(subject.maxDepth !== undefined ? { maxDepth: subject.maxDepth } : {}),
-    revoked: false,
+    ...(revoked !== undefined ? { revoked } : {}),
     active: true,
   };
 }

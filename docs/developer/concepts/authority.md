@@ -135,7 +135,7 @@ refusal: the caller's shape error says nothing about whether the chain is self-c
 
 ## Revoked and active are stated, never defaulted
 
-Both are **required** fields on a walked link, and the requirement is the whole point.
+Neither may be *defaulted* on a walked link, and that is the whole point of them.
 
 - **`active`** is expiry — `validFrom` ≤ `asOf` < `validUntil`, evaluated at the settlement instant. A
   grant that expired before settlement is exactly as unusable as one revoked at it. Two independent gates,
@@ -153,20 +153,26 @@ index past the end of the bitstring (`status-index-out-of-range`), a malformed s
 as one would refuse a chain over a state this walk has no semantics for. None of those can pass, and none
 of them can impeach.
 
-Which is why a link that reaches the readout always states `revoked: false` and `active: true`: a revoked
-or expired link was refused before any readout existed, and a grant carrying no `credentialStatus` at all
-has no status entry to check. The readout is a statement of what the walk *did*, not a default.
+So a link that reaches the readout always states `active: true` — a link that expired was refused before
+any readout existed — and it states `revoked: false` **only where a status entry was actually consulted**.
+A grant carrying no `credentialStatus` names no list at all: nothing was consulted, so nothing is stated
+and the field is omitted. It used to be stamped `false`, which is the value that proves, given for a check
+that never ran.
+
+That asymmetry is deliberate and it is the difference between the two facts. An absent validity window is a
+*complete statement* under VC 2.0 — unbounded — which `isActiveAsOf` evaluates against the settlement
+instant; revocation status is not in the document at all, and a credential with no pointer to a list gives
+a verifier no way to learn it was revoked. A grant with no revocation mechanism is not a grant known to be
+unrevoked. ATA-3 requires revocability and the reference producer emits a status entry from issuance for
+exactly that reason, so a conformant chain states the field on every link.
 
 Downstream, `verify`'s authority step reads exactly those two fields and treats `revoked === true` and
-`active === false` as impeaching. Requiring them on the type is what makes the unstated case a **compile
-error at the call site**: "the caller never consulted a status list" and "the walk checked the pinned
-snapshot and the grant is unrevoked" would otherwise be the same absent value, and one of them proves. A
-caller that walks first satisfies both for free; only a hand-flattener feels it, which is the intent. The
-runtime agrees with the type rather than quietly forgiving it: the step stays total over untyped input, and
-an absent `revoked` reads `not-attempted` with depth `no-revocation-stated`, an absent `active`
-`no-liveness-stated`, and a non-boolean in either slot `malformed-authority-chain`. A contradiction still
-outranks a gap — a link that both widens its parent and states no status fails, because attenuation is
-checked first. See
+`active === false` as impeaching, while an absent `revoked` reads `not-attempted` with depth
+`no-revocation-stated`, an absent `active` `no-liveness-stated`, and a non-boolean in either slot
+`malformed-authority-chain`. That runtime is the whole gate: "the caller never consulted a status list" and
+"the walk checked the pinned snapshot and the grant is unrevoked" must not be the same value, and one of
+them proves. A contradiction still outranks a gap — a link that both widens its parent and states no status
+fails, because attenuation is checked first. See
 [verification-walk.md § Authority chain custody](verification-walk.md#authority-chain-custody).
 
 ## A chain that walks, and one that does not

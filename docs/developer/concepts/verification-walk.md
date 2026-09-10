@@ -188,9 +188,7 @@ success literals (`verified` versus `walked`) this slot took both without being 
 is now a compile error, not a runtime screen: a caller with no cryptosuite supplies `authorityChain` and
 gets an honest flattener's readout, which is what that door exists for.
 
-### Revoked and active are stated, never defaulted
-
-Both `revoked` and `active` are **required** fields on a link, and that is the whole point of them.
+### Revoked and active are stated, never defaulted — and only one of them is always statable
 
 - `active` is expiry: the grant's `validFrom`/`validUntil` evaluated at `asOf`. A grant that expired before
   settlement is exactly as unusable as one revoked at it — two independent gates, not one.
@@ -198,17 +196,27 @@ Both `revoked` and `active` are **required** fields on a link, and that is the w
   no historical query: dereferencing it live yields *today's* list. Presenting today's answer as history
   would be a different claim than the one being made.
 
-Neither field is optional, because "the caller never consulted a status list" and "the walk checked the
-pinned snapshot and the grant is unrevoked" would otherwise be the same absent value — and one of them
-proves. Requiring them makes the unstated case a compile error at the call site. A caller that walks first
-satisfies both for free; only a hand-flattener feels it, which is the intent.
+Neither may be *defaulted*, because "the caller never consulted a status list" and "the walk checked the
+pinned snapshot and the grant is unrevoked" would otherwise be the same value — and one of them proves. An
+unstated `revoked` is `not-attempted` with depth `no-revocation-stated`, an unstated `active` is
+`no-liveness-stated`, and a non-boolean in either slot is `malformed-authority-chain` — the caller's shape
+error, not the record's contradiction. The two carry separate depth tokens on purpose: a report should
+never describe an expiry gap as something about revocation. The runtime is the whole gate here, because
+the step is deliberately total over untyped input — a foreign conformance subject or an unvalidated intake
+reaches it without ever meeting the compiler.
 
-The runtime says the same thing as the type, which matters because the step is deliberately total over
-untyped input — a foreign conformance subject or an unvalidated intake reaches it without ever meeting the
-compiler. An unstated `revoked` is `not-attempted` with depth `no-revocation-stated`, an unstated `active`
-is `no-liveness-stated`, and a non-boolean in either slot is `malformed-authority-chain` — the caller's
-shape error, not the record's contradiction. The two slots carry separate depth tokens on purpose: a report
-should never describe an expiry gap as something about revocation.
+**`active` is always statable and `revoked` is not, which is why only `active` is a required field.** An
+absent validity window is a *complete statement* under VC 2.0 — unbounded — and the walk evaluates it. A
+grant carrying no `credentialStatus` names no list at all: there is nothing to consult and nothing to
+state. `walkChain` therefore **omits** `revoked` for such a grant, where it used to stamp `false` — the
+proving value, for a check that never ran. That made the walk-fed door, the one to prefer precisely because
+it removes the caller's trust, the one door that could never reach the gap the hand-flattened door has
+reached since 2026-08-08.
+
+A grant with no revocation mechanism is not a grant known to be unrevoked; it is a grant its principal
+cannot revoke. ATA-3 requires revocability and the reference producer emits a Bitstring Status List entry
+from issuance for exactly that reason, so a conformant chain states `revoked` on every link and proves the
+rung as before.
 
 Everything here is evaluated against `asOf`, the settlement's own instant. A grant that expired last week
 was valid at the moment it was used.

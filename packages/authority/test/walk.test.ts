@@ -1005,7 +1005,46 @@ describe("walkChainStructure — the readout, exactly", () => {
     if (walk.status !== "walked")
       throw new Error(`expected walked, got ${walk.status}`);
     // toStrictEqual: a `parentMaxDepth: undefined` key is NOT the same readout as an absent one —
-    // JSON round-trips differ, and the conformance door compares serialized bytes.
+    // JSON round-trips differ, and the conformance door compares serialized bytes. `revoked` is absent
+    // for the same reason and it is the load-bearing absence here: this grant names no status list, so
+    // the walk consulted none. It used to be stamped `false`, which is the value that PROVES.
+    expect(walk.links).toStrictEqual([
+      {
+        bounds: { caps: { USDC: "5" } },
+        parentBounds: {},
+        parentDelegable: true,
+        active: true,
+      },
+    ]);
+  });
+
+  it("a grant that DOES name a status list states `revoked`, having actually read the snapshot", async () => {
+    // The control beside the absence above. Without it, "omit the field" and "never state the field"
+    // would be the same test, and the walk could stop consulting status lists entirely without a failure.
+    const walk = await walkChainStructure({
+      principal: PRINCIPAL,
+      chain: [
+        grant(
+          PRINCIPAL,
+          AGENT_DID,
+          { caps: { USDC: "5" } },
+          {},
+          {
+            credentialStatus: {
+              type: "BitstringStatusListEntry",
+              statusListCredential: LIST,
+              statusListIndex: "12",
+              statusPurpose: "revocation",
+            },
+          },
+        ),
+      ],
+      acceptanceSigner: AGENT,
+      asOf: AS_OF,
+      statusSnapshots: { [LIST]: SNAPSHOT },
+    });
+    if (walk.status !== "walked")
+      throw new Error(`expected walked, got ${walk.status}`);
     expect(walk.links).toStrictEqual([
       {
         bounds: { caps: { USDC: "5" } },

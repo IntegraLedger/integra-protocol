@@ -13,8 +13,9 @@ import { describe, expect, it } from "vitest";
 /**
  * `WalkedLink` is only STRUCTURALLY compatible with `verify.AuthorityLink` — the named type cannot live
  * in verify (verify imports authority), so nothing in the type system ties the two shapes together.
- * This test does: every readout the walk emits must re-prove under `authorityStep`, or the flattener and
- * the step have diverged. It lives HERE because conformance is the one package that imports both sides.
+ * This test does: every readout the walk emits must read out under `authorityStep` as the walk's own work
+ * warrants, or the flattener and the step have diverged. It lives HERE because conformance is the one
+ * package that imports both sides.
  *
  * It also pins `authorityStepFromWalk`, the composition that lets a caller skip flattening entirely. That
  * function is only worth having if it agrees with the hand-flattened path on every walked vector and maps
@@ -34,15 +35,39 @@ const V = JSON.parse(
 };
 
 describe("the walk's readout is what authorityStep proves", () => {
-  it("every walked vector's links re-prove under verify.authorityStep", async () => {
+  it("every walked vector's links re-prove — or read the ONE gap the walk honestly left", async () => {
+    // The walked vectors split, and the split is the contract rather than a wrinkle in the test. A grant
+    // that names a `credentialStatus` had its pinned snapshot read, so its readout STATES `revoked` and
+    // the step proves. A grant that names none had no list to consult, so the readout omits the field and
+    // the step answers `no-revocation-stated` — the token `verify` has emitted for a hand-flattened link
+    // since 2026-08-08, and which the walk-fed door could not reach while the walk stamped `false` for a
+    // check that never ran. Asserted BY THE INPUT DOCUMENT, so a walk that simply stopped consulting
+    // status lists would flip a case into the wrong bucket and fail here.
     const walked = V.cases.filter((c) => c.expected.status === "walked");
     expect(walked.length).toBeGreaterThan(0); // a silent filter-to-zero would certify nothing
+    let proved = 0;
+    let gapped = 0;
     for (const c of walked) {
       const walk = await walkChainStructure(c.input);
       if (walk.status !== "walked")
         throw new Error(`${c.name}: expected walked, got ${walk.status}`);
-      expect(authorityStep(walk.links)).toEqual({ status: "proved" });
+      const everyLinkStatesStatus = c.input.chain.every(
+        (g) => g.credentialStatus !== undefined,
+      );
+      if (everyLinkStatesStatus) {
+        expect(authorityStep(walk.links), c.name).toEqual({ status: "proved" });
+        proved++;
+      } else {
+        expect(authorityStep(walk.links), c.name).toEqual({
+          status: "not-attempted",
+          depth: "no-revocation-stated",
+        });
+        gapped++;
+      }
     }
+    // Both buckets are non-empty, or one arm of the contract went uncertified behind a green.
+    expect(proved).toBeGreaterThan(0);
+    expect(gapped).toBeGreaterThan(0);
   });
 
   it("authorityStepFromWalk agrees with the hand-flattened path on EVERY vector", async () => {
