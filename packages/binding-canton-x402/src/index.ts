@@ -1,4 +1,5 @@
 export {
+  CANTON_X402_DEFAULT_TIMEOUT_MS,
   type CantonX402Adapter,
   type CantonX402Reader,
   type CantonX402ReaderConfig,
