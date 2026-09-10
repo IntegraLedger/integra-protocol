@@ -28,6 +28,7 @@ export {
 export {
   createHardenedResolver,
   type HardenedResolverOptions,
+  ipKind,
   isUnicastPublic,
   ResolverError,
 } from "./resolver.js";
