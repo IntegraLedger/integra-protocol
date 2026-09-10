@@ -231,6 +231,48 @@ describe("createHederaAdapter", () => {
     expect(hits.map((h) => h.transactionId)).toEqual(["tx1", "tx3"]);
   });
 
+  /**
+   * ⛔⛔ THE BUYER CHOOSES THE MEMO BYTES, SO THEY MUST NOT BE ABLE TO DENY THE READING.
+   *
+   * `atob` throws a `DOMException` on anything outside the standard base64 alphabet, and nothing on this
+   * rail caught it — so the throw escaped `readTxView` → `recover`/`observe`/`enumerate`, surfaces whose
+   * whole contract is a Refusal naming WHICH reading applies. On `enumerate` it was worst: the scan reads
+   * every transaction on the account in one loop, so a single unreadable memo threw away the whole result
+   * set, the settlements that genuinely welded included.
+   *
+   * The reachable path is a normalising hop, not a dishonest node. A faithful Mirror Node emits standard
+   * base64, and the buyer decides whether their 100 memo bytes encode to one containing `+` or `/`; any
+   * transport that base64url-normalises turns that choice into `-`/`_`, which `atob` rejects. So the buyer
+   * picks, byte by byte, whether the account scan survives.
+   */
+  it("enumerate survives a buyer-authored memo the reader cannot base64-decode", async () => {
+    const rdr = reader(
+      {
+        // `_` and `-` are base64URL, not base64: what a normalising hop makes of memo bytes the buyer
+        // chose so their standard-base64 form contains `+` or `/`.
+        "tx-hostile": { memoBase64: "_---Pj_7774", result: "SUCCESS" },
+        "tx-good": { memoBase64: toMemoBase64(ATR), result: "SUCCESS" },
+      },
+      ["tx-hostile", "tx-good"],
+    );
+    const hits = await adapter.enumerate(ATR, "0.0.5001", rdr);
+    expect(hits.map((h) => h.transactionId)).toEqual(["tx-good"]);
+  });
+
+  /** And the single-reference read reports the transport fault AS one — never as a verdict about the
+   *  settlement. `no-atr-memo` would claim the memo was read and found wanting; it was never read. */
+  it("recover refuses an undecodable memoBase64 as a reader fault, not as a missing atrHash", async () => {
+    const r = await adapter.recover(
+      { transactionId: "tx-hostile" },
+      reader({ "tx-hostile": { memoBase64: "!!!!", result: "SUCCESS" } }),
+    );
+    expect(r).toMatchObject({
+      refused: true,
+      haltClass: "verification-failure",
+      code: "hedera/malformed-memo-encoding",
+    });
+  });
+
   it("enumerate skips an id the mirror listed but cannot return a view for", async () => {
     // The account listing and the per-transaction fetch are two separate Mirror Node reads, so a id
     // can be listed and then come back empty (pruned, or a window boundary). That must skip, not throw

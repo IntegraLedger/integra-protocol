@@ -50,20 +50,43 @@ export interface HederaReader {
   transactionsFor(accountId: string, limit?: number): Promise<string[]>;
 }
 
-/** Base64-decode a Mirror Node `memo_base64` value to its UTF-8 string. Pure; runtime-agnostic. */
-function decodeMemoBase64(memoBase64: string): string {
-  const bin = atob(memoBase64);
+/**
+ * Base64-decode a Mirror Node `memo_base64` value to its UTF-8 string, or `null` if it is not base64.
+ *
+ * ⛔⛔ **`atob` THROWS, AND THE BUYER CHOOSES THESE BYTES.** The memo is the payer's own 100 bytes, so
+ * `memo_base64` is counterparty-derived, and `atob` raises a `DOMException` on any character outside the
+ * standard base64 alphabet or on a length that is not a valid quantum. Nothing on this rail caught it, so
+ * the throw escaped `readTxView` → `recover`/`observe`/`enumerate` — surfaces whose whole contract is to
+ * return a Refusal saying WHICH of the readings applies. Worst on `enumerate`: the scan reads every
+ * transaction on the account in one loop, so ONE unreadable memo threw away the entire result set,
+ * genuine settlements included, and the caller got an exception instead of the settlements that did weld.
+ *
+ * The reachable path is a normalising hop in front of the reader, not a dishonest node: a faithful Mirror
+ * Node emits STANDARD base64, and the buyer decides whether their 100 memo bytes encode to one containing
+ * `+` or `/`. Any transport that base64url-normalises turns that buyer choice into `-`/`_`, which `atob`
+ * rejects — so the buyer picks, byte by byte, whether the reading survives.
+ *
+ * ⭐ Returning `null` here is NOT "no memo": the caller lifts it to its own `malformed-memo-encoding`
+ * reading, which is a statement about the READER, not about the chain. A memo we could not decode and a
+ * memo that carries no atrHash must not be the same answer.
+ */
+function decodeMemoBase64(memoBase64: string): string | null {
+  let bin: string;
+  try {
+    bin = atob(memoBase64);
+  } catch {
+    return null;
+  }
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new TextDecoder("utf-8").decode(bytes);
 }
 
-/** Resolve the memo text from a tx view, preferring the decoded form, else decoding the raw base64. */
-function memoTextOf(view: HederaTxView): string | null {
-  if (view.memo !== undefined) return view.memo;
-  if (view.memoBase64 !== undefined) return decodeMemoBase64(view.memoBase64);
-  return null;
-}
+/** The memo text a tx view carries: the decoded form if the reader decoded it, else the raw base64 field
+ *  decoded here — three outcomes (text, no memo field at all, a memo field that is not base64), because
+ *  collapsing the last two is the defect `decodeMemoBase64` documents. Resolved inline in `readTxView`
+ *  rather than through a carrier type: a carrier needs a discriminant token, and a token that is only ever
+ *  compared one way is a value no behaviour depends on — it reads as tested while nothing tests it. */
 
 /** Why a tx view yielded no settled weld — distinguished so `recover`/`observe` report WHY (mirrors
  *  binding-stellar): a transaction the Mirror Node does not have is not a failed one, and a failed one is
@@ -75,7 +98,11 @@ export type HederaSettlementReading =
       reason:
         | "no-such-transaction"
         | "unsuccessful-transaction"
-        | "no-atr-memo";
+        | "no-atr-memo"
+        /** The view carried a `memoBase64` that is not base64 — we could not READ the memo. Distinct from
+         *  `no-atr-memo`, which is the memo read and found to carry no atrHash: one impeaches the reader,
+         *  the other is a verdict about the settlement, and a caller must be able to tell them apart. */
+        | "malformed-memo-encoding";
     };
 
 /**
@@ -87,8 +114,17 @@ export function readTxView(view: HederaTxView | null): HederaSettlementReading {
   if (view === null) return { settled: false, reason: "no-such-transaction" };
   if (view.result !== "SUCCESS")
     return { settled: false, reason: "unsuccessful-transaction" };
-  const text = memoTextOf(view);
-  const atrHash = text === null ? null : decodeMemoAtrHash(text);
+  let text: string;
+  if (view.memo !== undefined) text = view.memo;
+  else if (view.memoBase64 !== undefined) {
+    const decoded = decodeMemoBase64(view.memoBase64);
+    // ⛔ The reader handed over bytes it called base64 and they are not. We never READ the memo, so this
+    // is a statement about the reader; `no-atr-memo` would be a statement about the settlement.
+    if (decoded === null)
+      return { settled: false, reason: "malformed-memo-encoding" };
+    text = decoded;
+  } else return { settled: false, reason: "no-atr-memo" };
+  const atrHash = decodeMemoAtrHash(text);
   if (atrHash === null) return { settled: false, reason: "no-atr-memo" };
   return { settled: true, atrHash };
 }
@@ -175,6 +211,14 @@ export function createHederaAdapter(manifest: BindingManifest): HederaAdapter {
         return refuse(
           "no-atr-memo",
           `no atrHash transactionMemo on SUCCESS transaction ${ref.transactionId}`,
+        );
+      case "malformed-memo-encoding":
+        // ⛔ NOT a statement about the settlement. The reader handed over a `memoBase64` that is not
+        // base64, so the memo was never read — saying `no-atr-memo` here would report a transport fault
+        // as a chain verdict, which is the collapse this rail's three-reason split exists to prevent.
+        return refuse(
+          "malformed-memo-encoding",
+          `the reader supplied a memoBase64 for transaction ${ref.transactionId} that is not base64 — the memo could not be read, which is not the same as its carrying no atrHash`,
         );
     }
   }
