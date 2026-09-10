@@ -11,8 +11,10 @@ export {
 } from "./car.js";
 export {
   type Artifact,
+  type BundleFault,
   type BundleVerification,
   buildBundle,
+  EVIDENCE_ROLES,
   type EvidenceBundle,
   type EvidenceRole,
   type ManifestEntry,
