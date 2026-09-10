@@ -42,7 +42,17 @@ const RATCHET = {
   // RAISED 89 -> 91. Measured 91.81 twice on 2026-08-09, identical to two decimal places.
   "binding-aptos": 91,
   // RAISED 94 -> 95. Measured 95.48 twice on 2026-08-09.
-  "binding-canton": 95,
+  //
+  // RAISED 95 -> 97. Measured 97.46 at 1dc7f14 and 97.63 on 2026-09-10 after the request deadline, the
+  // array-shape check on `/v1/query` and the split of `no-such-contract` from `no-lcp-anchor` — two
+  // readings of two different trees, both more than two points clear of the floor seeded in August, and
+  // ZERO timeouts in each, so this package's score is not clock-dependent the way `conformance`'s is.
+  //
+  // All five survivors predate this change and none is a hole: two `x !== null` guards standing in front
+  // of a call that already answers correctly for null (`atrHashEquals`, `verifyAnchorAtrHash`), the `^`
+  // and `$` anchors on `stripHexPrefix`'s and `ISO_UTC`'s patterns, and `propose`'s conditional spread of
+  // an absent `paymentRef`, which `buildAnchorPayload` defaults to the same "" either way.
+  "binding-canton": 97,
   // RAISED 94 -> 96. Measured 96.58 twice on 2026-08-09. The floor was seeded at the sibling overlay
   // rail's number when this package split out, and had never been measured against its own suite.
   "binding-canton-x402": 96,
@@ -61,7 +71,16 @@ const RATCHET = {
   // RAISED 90 -> 97. Measured 97.22 on 2026-08-08 after the recover ambiguity work. The floor had been
   // seven points below the real score, which is the shape the handoff warned about: a ratchet that passes
   // on headroom rather than on kills reports green for a suite that has stopped covering something.
-  "binding-evm-escrow": 97,
+  //
+  // RAISED 97 -> 99. Measured 99.63 on 2026-09-10 (270 mutants, 269 killed, ZERO timeouts) after the
+  // required escrow address and the ABI-drift guard landed — and the same package measured 100.00 at
+  // 1dc7f14 before either. So 97 was three points low and had gone back to passing on headroom, which is
+  // exactly what the note above says to watch for; two readings of two trees, both clear of 99.
+  //
+  // The single survivor is a true EQUIVALENT, not a gap: `catch { return undefined; }` -> `catch {}` in
+  // `decodeKnownEscrowEvent`. A bare catch block falls through to the end of the function and returns
+  // `undefined`, so the mutant computes the identical value and no test can tell them apart.
+  "binding-evm-escrow": 99,
   // RAISED 96 -> 99. Measured 99.32 twice on 2026-08-09, up from the 96.53 the floor was set at: the
   // §8.3.5 id-reuse work landed with tests. The surviving mutants are refusal `detail` prose literals,
   // left alive deliberately — pinning them would encode one implementation's phrasing as the standard.
