@@ -41,7 +41,7 @@ catalog:
   "@aptos-labs/ts-sdk": "7.3.0" # Aptos lcp_payment Move-module overlay-contract binding — isolated to binding-aptos
   ripple-binary-codec: "2.10.0" # XRPL memo hex codec — dev-only, the opt-in integration test signs with it (binding-xrpl)
   ripple-keypairs: "3.0.0" # XRPL test-wallet keys — dev-only, same opt-in integration lane (binding-xrpl)
-  vitest: "4.1.11"
+  vitest: "5.0.0" # 5 changed the full-test-name separator to " > "; see patchedDependencies below
   fast-check: "4.9.0"
   "@cfworker/json-schema": "4.1.1" # 2020-12 validator for the conformance schema class (ESM, runtime-agnostic)
   "@types/node": "24.13.3" # FLOOR-pinned to engines (>=24) — types never exceed the oldest supported runtime
@@ -97,3 +97,43 @@ overrides:
   # against an unchanged tree.
   fast-uri: ">=4.1.3"
 
+# ⛔⛔ A PATCHED TEST TOOL, AND THE ALTERNATIVE WAS A MUTATION GATE THAT LIES.
+#
+# `@stryker-mutator/vitest-runner` builds its per-mutant test filter by joining a test's suite names and
+# its own name with a SINGLE SPACE (`collectTestName`, `nameParts.join(' ')`), turns that into a regex, and
+# hands it to vitest as `testNamePattern`. vitest 5 composes the name it MATCHES that pattern against with
+# `" > "` instead (`createTaskName(names, separator = " > ")`, matched against `t.fullTestName`). The two
+# spellings are not the same string, so the pattern matches nothing.
+#
+# ⛔ AND THE FAILURE IS SILENT IN THE DANGEROUS DIRECTION. vitest does not error on a pattern that matches
+# nothing — it SKIPS every test and exits 0. Measured here, in `packages/placements`, against vitest 5.0.0:
+#
+#     vitest run -t "the placement registry returns an adapter for a protocol that has one"
+#         -> Test Files  1 skipped (1) / Tests  19 skipped (19)
+#     vitest run -t "the placement registry > returns an adapter for a protocol that has one"
+#         -> Test Files  1 passed (1)  / Tests  1 passed | 18 skipped (19)
+#
+# Stryker sees a run in which nothing failed and records the mutant SURVIVED. `placements` scored 35.19
+# against its ratchet of 100 — 19 killed, 35 survived — and the 19 it did kill are EXACTLY its 19 static
+# mutants, which are the only ones Stryker runs unfiltered. With the patch: 100.00, 54 killed, 0 survived.
+#
+# ⛔ IT IS NOT FIXABLE FROM CONFIGURATION. `coverageAnalysis` was measured at all three settings —
+# `perTest`, `all` and `off` — and every one produced the identical 35.19, so there is no setting that
+# steps around the filter. vitest exposes the separator as a default parameter, not as an option.
+#
+# ⚠️ AND IT WOULD HAVE GONE THE OTHER WAY SOMEWHERE ELSE. A package whose ratchet sits below the score its
+# static mutants alone produce would have stayed GREEN over a suite that ran no tests at all. This gate's
+# whole purpose is to be the thing that cannot quietly become vacuous, so a red here is the good outcome
+# and the reason this is patched rather than waited out.
+#
+# ⭐ FOUR SITES, NOT ONE. `collectTestName` is duplicated in the package — `test-helpers` builds the ids
+# the runner reports, `stryker-setup` builds the ids the in-test-environment hook reports, and both ship as
+# `dist/` JavaScript and as `src/` TypeScript. The filter is built from the ids the SETUP hook produced, so
+# patching the helper alone leaves the two halves spelling the same test differently. All four move together.
+#
+# ⛔ THE REMOVAL CONDITION, because a patch nobody retires is a fork. `10.0.0` is the newest release and it
+# predates vitest 5 by three weeks (runner 2026-08-14, vitest 5.0.0 2026-09-03) — there is no published
+# version that supports vitest 5. When one exists, DELETE this patch and this block rather than rebasing
+# it: pnpm refuses a patch whose target version moved, so the bump cannot silently carry it forward.
+patchedDependencies:
+  '@stryker-mutator/vitest-runner@10.0.0': patches/@stryker-mutator__vitest-runner@10.0.0.patch
