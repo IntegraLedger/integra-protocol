@@ -154,21 +154,38 @@ describe("conformance runner", () => {
 
   // Spawns one node subprocess PER case (each loading the full InProcessSubject) — inherently slow, and
   // slower on CI runners, so it gets a generous timeout rather than the 5s default.
-  it("runs the WHOLE corpus green over the CLI/stdio door a foreign subject uses", async () => {
-    // This door is the reason the corpus is language-neutral, so it must see every area — not just P1.
-    // Left at the default P1 it would never exercise a single P3, P4 or P8 class, which would mean
-    // the ATA-3, carrier, discovery, verify and placement areas were certified only through the
-    // in-process path.
-    const fixture = new URL("./fixtures/subject-stdio.mjs", import.meta.url)
-      .pathname;
-    const report = await runCorpus(new CliSubject("node", [fixture]), {
-      vectors: VECTORS,
-      phase: "P8",
-    });
-    expect(report.failed).toEqual([]);
-    expect(report.skipped).toEqual([]);
-    expect(report.passed).toBe(CORPUS_SIZE);
-  }, 180_000);
+  //
+  // ⛔⛔ THE BUDGET IS DERIVED FROM THE CORPUS, NOT A ROUND NUMBER. It was `180_000` from this package's
+  // first commit (2026-08-09), chosen against a corpus of 812 on one author's machine and never
+  // re-measured while the corpus grew to 866. `M` 2026-09-11 on a shared 32-core host: the corpus itself
+  // is GREEN — 866 passed, 0 failed, 0 skipped — at 226.0s, 245.1s and 250.3s under load 23-30, so
+  // ~260-290ms per case. It passed earlier the same day when the box was quiet, which is the signature
+  // of a budget with no headroom rather than of a defect.
+  //
+  // ⛔ A wall-clock cap calibrated on an idle machine turns intermittent the moment the host does what
+  // it was bought for — running several fleets at once — and the red then blames whichever commit is in
+  // flight rather than the clock. ⇒ One second per case, which is ~3.5x the worst measured rate and
+  // grows with the corpus instead of being overtaken by it. The cap is a ceiling, not a sleep: a healthy
+  // run still finishes in the time it takes.
+  it(
+    "runs the WHOLE corpus green over the CLI/stdio door a foreign subject uses",
+    async () => {
+      // This door is the reason the corpus is language-neutral, so it must see every area — not just P1.
+      // Left at the default P1 it would never exercise a single P3, P4 or P8 class, which would mean
+      // the ATA-3, carrier, discovery, verify and placement areas were certified only through the
+      // in-process path.
+      const fixture = new URL("./fixtures/subject-stdio.mjs", import.meta.url)
+        .pathname;
+      const report = await runCorpus(new CliSubject("node", [fixture]), {
+        vectors: VECTORS,
+        phase: "P8",
+      });
+      expect(report.failed).toEqual([]);
+      expect(report.skipped).toEqual([]);
+      expect(report.passed).toBe(CORPUS_SIZE);
+    },
+    CORPUS_SIZE * 1_000,
+  );
 
   it("the ladder is CUMULATIVE — running at P3 skips the later-phase areas, never fails them", async () => {
     const report = await runCorpus(new InProcessSubject(), {
