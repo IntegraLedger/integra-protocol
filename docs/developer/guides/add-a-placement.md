@@ -371,7 +371,7 @@ a narrower run, and check `report.skipped` is empty rather than trusting a strin
 Then the repository's own gates, which a new package passes like every other:
 
 ```bash
-pnpm verify          # check:versions → check:docblocks → check:declared-imports → check:weld-grade-keys → check:live-rails → check:harness-proof → corpus-seal
+pnpm verify          # check:floor-provenance → check:versions → check:docblocks → check:declared-imports → check:weld-grade-keys → check:live-rails → check:harness-proof → corpus-seal
                      #   → advisories → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
 pnpm mutation <pkg>  # the package's mutation ratchet, which only ever moves up
 ```

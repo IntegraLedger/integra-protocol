@@ -72,7 +72,7 @@ v2.5.1 verified by checksum. Exemptions live in `osv-scanner.toml`, and every on
 `ignoreUntil` — an exemption with no expiry is a suppression that outlives whoever understood it.
 
 ```bash
-pnpm verify          # check:versions → check:docblocks → check:declared-imports → check:weld-grade-keys → check:live-rails → check:harness-proof → corpus-seal
+pnpm verify          # check:floor-provenance → check:versions → check:docblocks → check:declared-imports → check:weld-grade-keys → check:live-rails → check:harness-proof → corpus-seal
                      #   → advisories → build → check:dist → lint → depcruise → typecheck → check:docs → check:doc-calls → test
 pnpm mutation <pkg>  # mutation score against that package's ratchet
 pnpm conformance            # the whole corpus, no --phase
