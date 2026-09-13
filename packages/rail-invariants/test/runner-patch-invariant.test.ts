@@ -29,6 +29,9 @@
  * sibling repository.
  */
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -159,6 +162,22 @@ describe("⛔ failing closed, which is the half that reads as success when it br
     expect(error).toBeUndefined();
     expect(version).toMatch(/^[0-9]+\.[0-9]+\.[0-9]+/);
   });
+});
+
+it("⛔⛔ PLANT: spawned through a SYMLINK it must still run — the naive entry guard exits 0 silently", () => {
+  // Node's ESM loader RESOLVES symlinks, so `import.meta.url` is the real path while `process.argv[1]` is
+  // the spelling that invoked it. A guard comparing them directly does not run `main()` here: the gate
+  // prints nothing and exits 0, having examined nothing, while looking exactly like a pass.
+  // ★ Not hypothetical — this corpus records a macOS path class where `/tmp` symlinks to `/private/tmp`.
+  const dir = mkdtempSync(join(tmpdir(), "runner-patch-symlink-"));
+  try {
+    const link = join(dir, "gate.mjs");
+    symlinkSync(GATE, link);
+    const out = execFileSync(process.execPath, [link], { encoding: "utf8" });
+    expect(out).toMatch(/check:runner-patch — catalog vitest/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 it("★ spawned over this tree as `pnpm verify` spawns it, the gate exits 0 and names both sites", () => {
