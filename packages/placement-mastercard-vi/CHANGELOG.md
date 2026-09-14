@@ -1,5 +1,11 @@
 # @integraledger/lcp-placement-mastercard-vi
 
+## 0.18.2
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.18.2
+
 ## 0.18.1
 
 ### Patch Changes
