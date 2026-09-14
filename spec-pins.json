@@ -104,7 +104,7 @@
         }
       ],
       "citedBy": ["placement-a2a", "discovery"],
-      "note": "AgentExtension has four fields — uri, description, required, params — which v1.38 §C.8 now states too."
+      "note": "AgentExtension has four fields — uri, description, required, params — which LCP §C.8 now states too."
     },
     {
       "id": "ack",
@@ -133,7 +133,7 @@
       "readOn": "2026-07-28",
       "status": "current",
       "citedBy": ["placement-acp"],
-      "note": "CheckoutSessionBase is additionalProperties:false and CheckoutSession a bare allOf over it, which is why v1.38 §C.2 withdrew the top-level carrier."
+      "note": "CheckoutSessionBase is additionalProperties:false and CheckoutSession a bare allOf over it, which is why LCP §C.2 withdrew the top-level carrier."
     },
     {
       "id": "commerce-payments",
