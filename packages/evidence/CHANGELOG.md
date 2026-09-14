@@ -34,7 +34,7 @@
   ⛔ **The range judgement was never the thing at risk.** `isUnicastPublic` — which addresses are
   public — has always been exported and is imported by every consumer that needs it. What a consumer
   could not reach is the far weaker question of whether a string is an IP literal at all, which
-  decides only whether to consult a resolver. `integra-agentic-commerce` wrote its own
+  decides only whether to consult a resolver. A private downstream consumer wrote its own
   `isAddressLiteral` for exactly that reason and said so in a docblock.
   
   ⇒ The reason to close it is not the duplication that happened but the one invited next: a barrel

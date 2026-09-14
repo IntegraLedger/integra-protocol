@@ -24,7 +24,7 @@
   all — turning a dependency convergence into a breaking-change sweep across two repositories. Nothing in
   the public surface changed; only the versions these packages ask their host to supply.
   
-  ⛔ **WHY IT HAD TO BE RELEASED RATHER THAN LEFT.** `integra-agentic-commerce` runs `check:shared-pins`,
+  ⛔ **WHY IT HAD TO BE RELEASED RATHER THAN LEFT.** A private downstream consumer runs a shared-pin gate,
   which compares its catalogue against what the **published** `@integraledger/*` tarballs declare, read out
   of `node_modules`. With the catalogue moved here and nothing published, that gate reported the line at two
   versions of each name and its `protocol-integration` job went red **with no commit landing in that

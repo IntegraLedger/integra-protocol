@@ -118,6 +118,12 @@ const PUBLIC_PLAN_TOKENS = new Set([
 const PRIVATE_PHRASES: readonly RegExp[] = [
   /\bthe completion plan\b/gi,
   /\bgate finding \d+/gi,
+  // ★ The two PRIVATE repositories, by name. A stranger holding the tarball cannot open either, so naming
+  // one asks for a lookup that returns 404 and discloses that the repository exists — the defect
+  // `IntegraLedger/agent-commerce-plan#125` records. Eight occurrences of the first were already inside
+  // published tarballs when this entry was added; see `#196`.
+  /\bintegra-agentic-commerce\b/gi,
+  /\bagent-commerce-plan\b/gi,
 ];
 
 /**
@@ -171,6 +177,12 @@ describe("shipped source carries no private referents", () => {
     expect(
       prose.filter((p) => p.where.startsWith("vectors/")).length,
     ).toBeGreaterThan(300);
+    // ★ The CHANGELOG half, counted separately for the same reason the vector tree is: it was added in
+    // 2026-09 after eight private-repository names were found in published tarballs, and a walker that
+    // silently stopped reading CHANGELOGs would report clean forever. 31 of 32 packages pack one.
+    expect(
+      prose.filter((p) => p.where.endsWith("/CHANGELOG.md")).length,
+    ).toBeGreaterThan(25);
   });
 
   it("cites no audit finding id, plan section or session token", () => {
