@@ -1,5 +1,40 @@
 # @integraledger/lcp-binding-evm-common
 
+## 0.18.2
+
+### Patch Changes
+
+- Eight published CHANGELOGs name a private repository; this supersedes them
+  
+  `0.18.1` is on the registry carrying the name of a private repository in eight packages' `CHANGELOG.md`.
+  Measured against the published tarballs rather than the tree — one occurrence each in
+  `binding-evm-common`, `binding-evm-escrow`, `binding-evm-mpp`, `binding-evm-x402`, `binding-stellar`,
+  `binding-sui`, `discovery` and `evidence`, against a control of **0** in `lcp-kernel`, which is not among
+  the eight. The query discriminates; the eight is a measurement.
+  
+  `CHANGELOG.md` is in every one of those packages' `files`, so npm packs it. A consumer holding the
+  tarball meets a repository they cannot open — a reference that cannot be followed, and a disclosure that
+  the repository exists.
+  
+  ⛔ **A published version cannot be recalled, only superseded.** The text is corrected in the tree, but
+  `0.18.1` keeps what it shipped: anyone pinning that version still gets it. This bump is the only thing
+  that puts a clean CHANGELOG where `latest` resolves.
+  
+  ⭐ **No gate could have caught this, and the reason is worth stating.** `check:published-parity` compares
+  only files under a declared SOURCE directory — `CHANGELOG.md` is outside its subject set by design, since
+  comparing build output and generated prose would make it noisy rather than sharper. So parity reports
+  `31 of 31, byte for byte` and is *correct* while the disclosure sits in the artifact. `no-private-referents`
+  now sweeps CHANGELOGs in the tree, which stops the next one; neither gate reads a published tarball.
+  
+  ⇒ The class that remains open: **a disclosure that exists only in a published artifact is measured by
+  nothing here.** The tree is clean, parity is green, and the registry is not.
+  
+  Patch, and the whole `@integraledger/lcp-*` line moves with it — that is what the `fixed` group is for.
+  Nothing in any package's behaviour, exports or types changes.
+- @integraledger/lcp-authority@0.18.2
+  - @integraledger/lcp-binding-core@0.18.2
+  - @integraledger/lcp-kernel@0.18.2
+
 ## 0.18.1
 
 ### Patch Changes
