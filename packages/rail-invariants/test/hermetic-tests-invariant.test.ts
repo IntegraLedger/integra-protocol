@@ -175,4 +175,111 @@ describe("check:hermetic-tests", () => {
     const r = run(root);
     expect(r.status, r.output).toBe(0);
   });
+  // ⛔⛔ THE HOST-EXTRACTION CASES. Each was driven against this gate at `a59607a` before being fixed;
+  // the comments on `hostOf` carry what each one reported then. They are grouped because they are one
+  // change to one function, and because two of them fail OPEN rather than merely noisily.
+
+  it("⛔⛔ a host behind USERINFO is named as the HOST, never as the username", () => {
+    // At a59607a this reported `user`. It still went red — what was poisoned is the DECLARATION path.
+    const root = tree(
+      {
+        "test/a.test.ts":
+          'import { it } from "vitest";\nconst h = "https://user@api.blockcypher.com/v1";\nit("x", () => h);\n',
+      },
+      { namedNotCalled: {}, imports: VITEST },
+    );
+    const r = run(root);
+    expect(r.status).toBe(1);
+    expect(r.output).toContain("api.blockcypher.com");
+    // The refusal lists a finding's host alone on its line; `user` must not be that line.
+    expect(
+      r.output.split("\n").some((line) => line.trim() === "user"),
+      r.output,
+    ).toBe(false);
+  });
+
+  it("⛔⛔ declaring the USERINFO does not exempt the host behind it", () => {
+    // This is the whole consequence: one plausible entry, and every credentialed URL to every third
+    // party is exempt. Driven at a59607a, this exact fixture exited 0.
+    const root = tree(
+      {
+        "test/a.test.ts":
+          'import { it } from "vitest";\nconst a = "https://user@api.blockcypher.com/v1";\nconst b = "https://user@cardanoscan.io/x";\nit("x", () => [a, b]);\n',
+      },
+      {
+        namedNotCalled: { user: "a placeholder in a credential fixture" },
+        imports: VITEST,
+      },
+    );
+    const r = run(root);
+    expect(r.status, r.output).toBe(1);
+    expect(r.output).toContain("api.blockcypher.com");
+  });
+
+  it("⛔⛔ an IPv6 LITERAL is seen — the same destination by name and by address", () => {
+    // ⭐ This one failed OPEN with no declaration needed: `[` was outside the old character class, so the
+    // pattern matched nothing at all. At a59607a the literal exited 0 while the NAME was refused.
+    const byName = run(
+      tree(
+        {
+          "test/a.test.ts":
+            'import { it } from "vitest";\nconst h = "https://one.one.one.one/dns-query";\nit("x", () => h);\n',
+        },
+        { namedNotCalled: {}, imports: VITEST },
+      ),
+    );
+    const byAddress = run(
+      tree(
+        {
+          "test/a.test.ts":
+            'import { it } from "vitest";\nconst h = "https://[2606:4700:4700::1111]/dns-query";\nit("x", () => h);\n',
+        },
+        { namedNotCalled: {}, imports: VITEST },
+      ),
+    );
+    expect(byName.status, byName.output).toBe(1);
+    expect(byAddress.status, byAddress.output).toBe(1);
+    expect(byAddress.output).toContain("[2606:4700:4700::1111]");
+  });
+
+  it("⭐ …and LOOPBACK as an IPv6 literal stays hermetic", () => {
+    // A test that binds its own socket and talks to it is hermetic — RESERVED already covers `[::1]`.
+    const root = tree(
+      {
+        "test/a.test.ts":
+          'import { it } from "vitest";\nconst h = "https://[::1]/x";\nit("x", () => h);\n',
+      },
+      { namedNotCalled: {}, imports: VITEST },
+    );
+    expect(run(root).status).toBe(0);
+  });
+
+  it("⛔ an INTERPOLATED authority names no host — and reports no fragment of one", () => {
+    // At a59607a this reported `u`, the userinfo, because the trailing-`$` check cannot see a `$` that
+    // is not at the end of the match.
+    const root = tree(
+      {
+        "test/a.test.ts":
+          'import { it } from "vitest";\nconst H = process.env["H"] ?? "";\nconst h = `https://u:p@${H}/x`;\nit("x", () => h);\n',
+      },
+      { namedNotCalled: {}, imports: VITEST },
+    );
+    const r = run(root);
+    expect(r.status, r.output).toBe(0);
+  });
+
+  it("⭐⭐ a LITERAL host with an interpolated PATH is still named — the other direction", () => {
+    // ⛔ The regression a blanket skip on `${` would have caused: the host here is literal and real, and
+    // only the path is interpolated. Truncating at `${` keeps what was actually written.
+    const root = tree(
+      {
+        "test/a.test.ts":
+          'import { it } from "vitest";\nconst p = "v1";\nconst h = `https://api.blockcypher.com${p}`;\nit("x", () => h);\n',
+      },
+      { namedNotCalled: {}, imports: VITEST },
+    );
+    const r = run(root);
+    expect(r.status, r.output).toBe(1);
+    expect(r.output).toContain("api.blockcypher.com");
+  });
 });

