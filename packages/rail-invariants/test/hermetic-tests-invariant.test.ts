@@ -276,8 +276,7 @@ describe("check:hermetic-tests", () => {
     const dollar = "$";
     const root = tree(
       {
-        "test/a.test.ts":
-          `import { it } from "vitest";\nconst h = "https://seam${dollar}{i}.example";\nconst g = "https://u:p@${dollar}{h}/x";\nit("x", () => [h, g]);\n`,
+        "test/a.test.ts": `import { it } from "vitest";\nconst h = "https://seam${dollar}{i}.example";\nconst g = "https://u:p@${dollar}{h}/x";\nit("x", () => [h, g]);\n`,
       },
       { namedNotCalled: {}, imports: VITEST },
     );
