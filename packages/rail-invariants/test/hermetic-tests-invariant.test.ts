@@ -268,18 +268,21 @@ describe("check:hermetic-tests", () => {
     expect(r.status, r.output).toBe(0);
   });
 
-  it("⭐⭐ a LITERAL host with an interpolated PATH is still named — the other direction", () => {
-    // ⛔ The regression a blanket skip on `${` would have caused: the host here is literal and real, and
-    // only the path is interpolated. Truncating at `${` keeps what was actually written.
+  it("⛔⛔ an interpolation INSIDE the host names nothing — the shape that disproved truncating", () => {
+    // ⭐ From `integra-agentic-commerce`'s tree, where this was driven: `https://seam${i}.example` has the
+    // interpolation inside the HOST, and the real host is reserved. A draft of this fix truncated at the
+    // `${` and reported `seam` — and declaring that would exempt `https://seam${anything}` to any host,
+    // which is the poisoned-declaration shape this change removes, one line over.
+    const dollar = "$";
     const root = tree(
       {
         "test/a.test.ts":
-          'import { it } from "vitest";\nconst p = "v1";\nconst h = `https://api.blockcypher.com${p}`;\nit("x", () => h);\n',
+          `import { it } from "vitest";\nconst h = "https://seam${dollar}{i}.example";\nconst g = "https://u:p@${dollar}{h}/x";\nit("x", () => [h, g]);\n`,
       },
       { namedNotCalled: {}, imports: VITEST },
     );
     const r = run(root);
-    expect(r.status, r.output).toBe(1);
-    expect(r.output).toContain("api.blockcypher.com");
+    expect(r.status, r.output).toBe(0);
+    expect(r.output).not.toContain("seam");
   });
 });
