@@ -336,9 +336,8 @@ const URL_AUTHORITY = /https?:\/\/([^/?#\s"'`]*)/g;
  *
  * **3 · AN INTERPOLATED AUTHORITY YIELDED A FRAGMENT OF THE USERINFO.** `https://u:p@${HOST}/x` names no
  * host, and the old trailing-`$` check could not see it because the `$` is not at the end of the match —
- * it reported `u`. ⚠️ A blanket skip on `${` would be wrong the other way: `https://real.example.com${path}`
- * DOES name its host. So the authority is truncated at the first `${` and whatever is literally written
- * before it still counts.
+ * it reported `u`. ⇒ An authority carrying an interpolation names nothing at all; see the note on that
+ * line for the draft that truncated to the literal prefix instead, and what disproved it.
  *
  * ⚠️ **And one thing that is NOT a defect in the old pattern, recorded so nobody hunts for it:** the host
  * CHARSET check below. `[A-Za-z0-9._-]+` got that for free by construction; capturing the authority loses
@@ -351,10 +350,18 @@ const URL_AUTHORITY = /https?:\/\/([^/?#\s"'`]*)/g;
  * @returns {string | null} the lowercased host, or null if the occurrence names none.
  */
 const hostOf = (authority) => {
-  // Only what is LITERALLY written can be judged.
-  const literal = authority.split("${")[0];
-  const at = literal.lastIndexOf("@");
-  const hostPort = at === -1 ? literal : literal.slice(at + 1);
+  // ⛔⛔ AN INTERPOLATED AUTHORITY NAMES NOTHING, AND `integra-agentic-commerce`'s TREE SETTLED THIS. A
+  // first draft truncated at the `${` and reported whatever came before it, which reads as the safer
+  // choice and is not: that repository's `seller-console/test/file-credentials.test.ts:57` builds
+  // `https://seam${i}.example`, where the interpolation is INSIDE the host and the real host is
+  // `seam<N>.example` — reserved. Truncating reported a third-party host named `seam`, and declaring THAT
+  // would exempt `https://seam${anything}` to any host at all: exactly the poisoned-declaration shape
+  // this change exists to remove, reintroduced one line over. ⇒ A host that is not wholly literal is not
+  // one this gate can judge. ⚠️ Nothing in THIS tree exercised the difference — it is fixed here because
+  // the two copies must answer the same question the same way, not because this repository was bitten.
+  if (authority.includes("${")) return null;
+  const at = authority.lastIndexOf("@");
+  const hostPort = at === -1 ? authority : authority.slice(at + 1);
   if (hostPort === "") return null;
   if (hostPort.startsWith("[")) {
     const close = hostPort.indexOf("]");

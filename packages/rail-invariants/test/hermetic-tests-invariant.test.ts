@@ -78,6 +78,17 @@ function tree(
   return root;
 }
 
+/**
+ * Does the refusal list this host as a FINDING, on its own line?
+ *
+ * ⭐ Line EQUALITY rather than `output.includes(host)`: `includes` also passes on the host appearing
+ * inside a `named by:` path, inside the remedy sentence, or as a SUFFIX of a longer host — and a bare
+ * `.includes()` over a hostname-shaped constant is the `url.includes("example.com")` antipattern CodeQL
+ * flags. The gate prints a finding's host alone on its line.
+ */
+const namesHost = (output: string, host: string): boolean =>
+  output.split("\n").some((line) => line.trim() === host);
+
 const VITEST = { vitest: { kind: "inert", why: "the runner" } };
 
 describe("check:hermetic-tests", () => {
@@ -213,7 +224,22 @@ describe("check:hermetic-tests", () => {
     );
     const r = run(root);
     expect(r.status, r.output).toBe(1);
-    expect(r.output).toContain("api.blockcypher.com");
+
+    // ⭐⭐ THREE PROPERTIES, AND THE THIRD IS WHAT MAKES THE FIX DURABLE RATHER THAN MERELY CORRECT. A
+    // peer session ran this fixture against the merged half and named their COMPOSITION; they were
+    // asserted here only in pieces.
+    //
+    // 1 · the scan reads PAST the `@`, so the real host is named;
+    expect(namesHost(r.output, "api.blockcypher.com"), r.output).toBe(true);
+    // 2 · and does not stop at the FIRST — which is what says the old behaviour collapsed an unbounded
+    //     set of destinations onto a single entry;
+    expect(namesHost(r.output, "cardanoscan.io"), r.output).toBe(true);
+    // 3 · ⛔ and because the table is closed in BOTH directions, the `user` entry — the declaration that
+    //     WAS the exploit — is itself reported as excluding nothing. The artifact of the hole cannot
+    //     quietly survive its repair: whoever cleans up cannot leave the door propped.
+    expect(r.output, r.output).toMatch(
+      /\buser\n\s+is listed in NAMED_NOT_CALLED and appears in no non-live test/,
+    );
   });
 
   it("⛔⛔ an IPv6 LITERAL is seen — the same destination by name and by address", () => {
@@ -268,18 +294,20 @@ describe("check:hermetic-tests", () => {
     expect(r.status, r.output).toBe(0);
   });
 
-  it("⭐⭐ a LITERAL host with an interpolated PATH is still named — the other direction", () => {
-    // ⛔ The regression a blanket skip on `${` would have caused: the host here is literal and real, and
-    // only the path is interpolated. Truncating at `${` keeps what was actually written.
+  it("⛔⛔ an interpolation INSIDE the host names nothing — the shape that disproved truncating", () => {
+    // ⭐ From `integra-agentic-commerce`'s tree, where this was driven: `https://seam${i}.example` has the
+    // interpolation inside the HOST, and the real host is reserved. A draft of this fix truncated at the
+    // `${` and reported `seam` — and declaring that would exempt `https://seam${anything}` to any host,
+    // which is the poisoned-declaration shape this change removes, one line over.
+    const dollar = "$";
     const root = tree(
       {
-        "test/a.test.ts":
-          'import { it } from "vitest";\nconst p = "v1";\nconst h = `https://api.blockcypher.com${p}`;\nit("x", () => h);\n',
+        "test/a.test.ts": `import { it } from "vitest";\nconst h = "https://seam${dollar}{i}.example";\nconst g = "https://u:p@${dollar}{h}/x";\nit("x", () => [h, g]);\n`,
       },
       { namedNotCalled: {}, imports: VITEST },
     );
     const r = run(root);
-    expect(r.status, r.output).toBe(1);
-    expect(r.output).toContain("api.blockcypher.com");
+    expect(r.status, r.output).toBe(0);
+    expect(r.output).not.toContain("seam");
   });
 });
