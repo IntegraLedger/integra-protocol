@@ -44,7 +44,7 @@ catalog:
   vitest: "5.0.0" # 5 changed the full-test-name separator to " > "; see patchedDependencies below
   fast-check: "4.9.0"
   "@cfworker/json-schema": "4.1.1" # 2020-12 validator for the conformance schema class (ESM, runtime-agnostic)
-  "@types/node": "24.13.3" # FLOOR-pinned to engines (>=24) — types never exceed the oldest supported runtime
+  "@types/node": "24.13.4" # FLOOR-pinned to engines (>=24) — types never exceed the oldest supported runtime
 minimumReleaseAge: 1440 # supply-chain default: 24h quarantine on new releases
 
 # pnpm ≥ 11's exotic-subdependency blocking (§3's other supply-chain default) ships on by default — no override.

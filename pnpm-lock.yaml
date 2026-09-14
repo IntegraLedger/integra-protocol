@@ -25,8 +25,8 @@ catalogs:
       specifier: 7.0.15
       version: 7.0.15
     '@types/node':
-      specifier: 24.13.3
-      version: 24.13.3
+      specifier: 24.13.4
+      version: 24.13.4
     bs58:
       specifier: 6.0.0
       version: 6.0.0
@@ -172,16 +172,16 @@ importers:
         version: link:packages/verify
       '@stryker-mutator/core':
         specifier: 10.0.0
-        version: 10.0.0(@types/node@24.13.3)
+        version: 10.0.0(@types/node@24.13.4)
       '@stryker-mutator/vitest-runner':
         specifier: 10.0.0
-        version: 10.0.0(patch_hash=36c9b516fe6410a70e375fa5358fde084e45157ef850fa04ba1fb041ee6810be)(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0)))
+        version: 10.0.0(patch_hash=36c9b516fe6410a70e375fa5358fde084e45157ef850fa04ba1fb041ee6810be)(@stryker-mutator/core@10.0.0(@types/node@24.13.4))(vitest@5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0)))
       '@swc/core':
         specifier: 1.16.1
         version: 1.16.1(@swc/helpers@0.5.23)
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       dependency-cruiser:
         specifier: 18.2.0
         version: 18.2.0
@@ -193,7 +193,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/authority:
     dependencies:
@@ -206,10 +206,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-aptos:
     dependencies:
@@ -225,10 +225,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-canton:
     dependencies:
@@ -241,10 +241,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-canton-x402:
     dependencies:
@@ -257,10 +257,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-cardano:
     dependencies:
@@ -273,10 +273,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-core:
     dependencies:
@@ -286,10 +286,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-evm-common:
     dependencies:
@@ -308,13 +308,13 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       fast-check:
         specifier: 'catalog:'
         version: 4.9.0
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-evm-escrow:
     dependencies:
@@ -333,10 +333,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-evm-mpp:
     dependencies:
@@ -355,10 +355,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-evm-x402:
     dependencies:
@@ -377,10 +377,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-hedera:
     dependencies:
@@ -393,10 +393,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-solana:
     dependencies:
@@ -415,10 +415,10 @@ importers:
         version: 8.2.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-stellar:
     dependencies:
@@ -437,10 +437,10 @@ importers:
         version: 7.0.15
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-sui:
     dependencies:
@@ -456,10 +456,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-tempo-mpp:
     dependencies:
@@ -472,10 +472,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/binding-xrpl:
     dependencies:
@@ -488,7 +488,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       ripple-binary-codec:
         specifier: 'catalog:'
         version: 2.10.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -497,7 +497,7 @@ importers:
         version: 3.0.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/conformance:
     dependencies:
@@ -531,10 +531,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/discovery:
     dependencies:
@@ -550,10 +550,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/evidence:
     dependencies:
@@ -569,22 +569,22 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/kernel:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       fast-check:
         specifier: 'catalog:'
         version: 4.9.0
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-a2a:
     dependencies:
@@ -597,10 +597,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-ack:
     dependencies:
@@ -613,10 +613,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-acp:
     dependencies:
@@ -629,10 +629,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-ap2:
     dependencies:
@@ -645,10 +645,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-mastercard-vi:
     dependencies:
@@ -661,10 +661,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-mpp:
     dependencies:
@@ -677,10 +677,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-ucp:
     dependencies:
@@ -693,10 +693,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-visa-tap:
     dependencies:
@@ -709,10 +709,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placement-x402:
     dependencies:
@@ -725,10 +725,10 @@ importers:
         version: 4.1.1
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/placements:
     dependencies:
@@ -765,10 +765,10 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/rail-invariants:
     devDependencies:
@@ -819,10 +819,10 @@ importers:
         version: link:../placement-x402
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   packages/verify:
     dependencies:
@@ -838,13 +838,13 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.13.3
+        version: 24.13.4
       fast-check:
         specifier: 'catalog:'
         version: 4.9.0
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+        version: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
 packages:
 
@@ -2175,8 +2175,8 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
-  '@types/node@24.13.3':
-    resolution: {integrity: sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==}
+  '@types/node@24.13.4':
+    resolution: {integrity: sha512-YJ7EqCstVTzIr0fMr7qul/977en+pQHrfmuKIo6Zr9i75Be21dr3MovcfvGtyvi2HAUrRerWps5sMO9I7WaxDw==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -4062,122 +4062,122 @@ snapshots:
 
   '@inquirer/ansi@2.0.7': {}
 
-  '@inquirer/checkbox@5.2.1(@types/node@24.13.3)':
+  '@inquirer/checkbox@5.2.1(@types/node@24.13.4)':
     dependencies:
       '@inquirer/ansi': 2.0.7
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
       '@inquirer/figures': 2.0.7
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/confirm@6.1.1(@types/node@24.13.3)':
+  '@inquirer/confirm@6.1.1(@types/node@24.13.4)':
     dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/core@11.2.1(@types/node@24.13.3)':
+  '@inquirer/core@11.2.1(@types/node@24.13.4)':
     dependencies:
       '@inquirer/ansi': 2.0.7
       '@inquirer/figures': 2.0.7
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
       cli-width: 4.1.0
       fast-wrap-ansi: 0.2.2
       mute-stream: 3.0.0
       signal-exit: 4.1.0
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/editor@5.2.2(@types/node@24.13.3)':
+  '@inquirer/editor@5.2.2(@types/node@24.13.4)':
     dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/external-editor': 3.0.3(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/external-editor': 3.0.3(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/expand@5.1.1(@types/node@24.13.3)':
+  '@inquirer/expand@5.1.1(@types/node@24.13.4)':
     dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/external-editor@3.0.3(@types/node@24.13.3)':
+  '@inquirer/external-editor@3.0.3(@types/node@24.13.4)':
     dependencies:
       chardet: 2.2.0
       iconv-lite: 0.7.3
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
   '@inquirer/figures@2.0.7': {}
 
-  '@inquirer/input@5.1.2(@types/node@24.13.3)':
+  '@inquirer/input@5.1.2(@types/node@24.13.4)':
     dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/number@4.1.1(@types/node@24.13.3)':
+  '@inquirer/number@4.1.1(@types/node@24.13.4)':
     dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/password@5.1.1(@types/node@24.13.3)':
-    dependencies:
-      '@inquirer/ansi': 2.0.7
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
-    optionalDependencies:
-      '@types/node': 24.13.3
-
-  '@inquirer/prompts@8.5.2(@types/node@24.13.3)':
-    dependencies:
-      '@inquirer/checkbox': 5.2.1(@types/node@24.13.3)
-      '@inquirer/confirm': 6.1.1(@types/node@24.13.3)
-      '@inquirer/editor': 5.2.2(@types/node@24.13.3)
-      '@inquirer/expand': 5.1.1(@types/node@24.13.3)
-      '@inquirer/input': 5.1.2(@types/node@24.13.3)
-      '@inquirer/number': 4.1.1(@types/node@24.13.3)
-      '@inquirer/password': 5.1.1(@types/node@24.13.3)
-      '@inquirer/rawlist': 5.3.1(@types/node@24.13.3)
-      '@inquirer/search': 4.2.1(@types/node@24.13.3)
-      '@inquirer/select': 5.2.1(@types/node@24.13.3)
-    optionalDependencies:
-      '@types/node': 24.13.3
-
-  '@inquirer/rawlist@5.3.1(@types/node@24.13.3)':
-    dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
-    optionalDependencies:
-      '@types/node': 24.13.3
-
-  '@inquirer/search@4.2.1(@types/node@24.13.3)':
-    dependencies:
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/figures': 2.0.7
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
-    optionalDependencies:
-      '@types/node': 24.13.3
-
-  '@inquirer/select@5.2.1(@types/node@24.13.3)':
+  '@inquirer/password@5.1.1(@types/node@24.13.4)':
     dependencies:
       '@inquirer/ansi': 2.0.7
-      '@inquirer/core': 11.2.1(@types/node@24.13.3)
-      '@inquirer/figures': 2.0.7
-      '@inquirer/type': 4.0.7(@types/node@24.13.3)
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
 
-  '@inquirer/type@4.0.7(@types/node@24.13.3)':
+  '@inquirer/prompts@8.5.2(@types/node@24.13.4)':
+    dependencies:
+      '@inquirer/checkbox': 5.2.1(@types/node@24.13.4)
+      '@inquirer/confirm': 6.1.1(@types/node@24.13.4)
+      '@inquirer/editor': 5.2.2(@types/node@24.13.4)
+      '@inquirer/expand': 5.1.1(@types/node@24.13.4)
+      '@inquirer/input': 5.1.2(@types/node@24.13.4)
+      '@inquirer/number': 4.1.1(@types/node@24.13.4)
+      '@inquirer/password': 5.1.1(@types/node@24.13.4)
+      '@inquirer/rawlist': 5.3.1(@types/node@24.13.4)
+      '@inquirer/search': 4.2.1(@types/node@24.13.4)
+      '@inquirer/select': 5.2.1(@types/node@24.13.4)
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
+
+  '@inquirer/rawlist@5.3.1(@types/node@24.13.4)':
+    dependencies:
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
+    optionalDependencies:
+      '@types/node': 24.13.4
+
+  '@inquirer/search@4.2.1(@types/node@24.13.4)':
+    dependencies:
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/figures': 2.0.7
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
+    optionalDependencies:
+      '@types/node': 24.13.4
+
+  '@inquirer/select@5.2.1(@types/node@24.13.4)':
+    dependencies:
+      '@inquirer/ansi': 2.0.7
+      '@inquirer/core': 11.2.1(@types/node@24.13.4)
+      '@inquirer/figures': 2.0.7
+      '@inquirer/type': 4.0.7(@types/node@24.13.4)
+    optionalDependencies:
+      '@types/node': 24.13.4
+
+  '@inquirer/type@4.0.7(@types/node@24.13.4)':
+    optionalDependencies:
+      '@types/node': 24.13.4
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -4911,9 +4911,9 @@ snapshots:
       tslib: 2.8.1
       typed-inject: 5.0.0
 
-  '@stryker-mutator/core@10.0.0(@types/node@24.13.3)':
+  '@stryker-mutator/core@10.0.0(@types/node@24.13.4)':
     dependencies:
-      '@inquirer/prompts': 8.5.2(@types/node@24.13.3)
+      '@inquirer/prompts': 8.5.2(@types/node@24.13.4)
       '@stryker-mutator/api': 10.0.0
       '@stryker-mutator/instrumenter': 10.0.0
       '@stryker-mutator/util': 10.0.0
@@ -4961,14 +4961,14 @@ snapshots:
 
   '@stryker-mutator/util@10.0.0': {}
 
-  '@stryker-mutator/vitest-runner@10.0.0(patch_hash=36c9b516fe6410a70e375fa5358fde084e45157ef850fa04ba1fb041ee6810be)(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0)))':
+  '@stryker-mutator/vitest-runner@10.0.0(patch_hash=36c9b516fe6410a70e375fa5358fde084e45157ef850fa04ba1fb041ee6810be)(@stryker-mutator/core@10.0.0(@types/node@24.13.4))(vitest@5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0)))':
     dependencies:
       '@stryker-mutator/api': 10.0.0
-      '@stryker-mutator/core': 10.0.0(@types/node@24.13.3)
+      '@stryker-mutator/core': 10.0.0(@types/node@24.13.4)
       '@stryker-mutator/util': 10.0.0
       semver: 7.8.5
       tslib: 2.8.1
-      vitest: 5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+      vitest: 5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
 
   '@swc/core-darwin-arm64@1.16.1':
     optional: true
@@ -5058,7 +5058,7 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/node@24.13.3':
+  '@types/node@24.13.4':
     dependencies:
       undici-types: 7.18.2
 
@@ -5122,14 +5122,14 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@vitest/mocker@5.0.0(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))':
+  '@vitest/mocker@5.0.0(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.3.1
     optionalDependencies:
-      vite: 8.1.4(@types/node@24.13.3)(yaml@2.9.0)
+      vite: 8.1.4(@types/node@24.13.4)(yaml@2.9.0)
 
   '@vitest/spy@5.0.0': {}
 
@@ -6174,7 +6174,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0):
+  vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.7
@@ -6182,14 +6182,14 @@ snapshots:
       rolldown: 1.1.5
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
       fsevents: 2.3.3
       yaml: 2.9.0
 
-  vitest@5.0.0(@types/node@24.13.3)(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0)):
+  vitest@5.0.0(@types/node@24.13.4)(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.1.4(@types/node@24.13.3)(yaml@2.9.0))
+      '@vitest/mocker': 5.0.0(vite@8.1.4(@types/node@24.13.4)(yaml@2.9.0))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -6200,10 +6200,10 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.1.4(@types/node@24.13.3)(yaml@2.9.0)
+      vite: 8.1.4(@types/node@24.13.4)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 24.13.4
     transitivePeerDependencies:
       - msw
 
