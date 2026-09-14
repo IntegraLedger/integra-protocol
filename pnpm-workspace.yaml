@@ -33,7 +33,7 @@ catalog:
   zod: "4.6.2" # trust boundaries only — never the kernel
   viem: "2.56.3" # EVM client / typed-data + 1271/6492 verify — the EVM bindings, and the escrow drift guard
   multiformats: "14.0.5" # raw-CIDv1 content addressing (CID == atrHash) — evidence bundles
-  "@solana/kit": "8.2.0" # Solana devnet integration test only — binding-solana ships NO chain SDK
+  "@solana/kit": "8.3.0" # Solana devnet integration test only — binding-solana ships NO chain SDK
   bs58: "6.0.0" # base58 decode for a memo instruction the RPC returns partially-decoded (binding-solana)
   "@mysten/sui": "2.29.0" # Sui Pay402 payment_id native-field binding — isolated to binding-sui
   "@stellar/stellar-sdk": "17.0.1" # Stellar CAP-67 muxed-address native-field binding — StrKey/MuxedAccount; isolated to binding-stellar
