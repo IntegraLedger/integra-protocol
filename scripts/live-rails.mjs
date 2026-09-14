@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 /**
  * The live-rail harness inventory: which packages carry an opt-in on-chain suite, and what each one
  * REQUIRES before that suite will do anything.
@@ -34,8 +36,7 @@
  *   node scripts/live-rails.mjs --requires <rail>   the vars ONE rail needs, one per line
  *   node scripts/live-rails.mjs --check-env <rail>  exit 1 naming any of that rail's vars unset here
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { harnessFilesIn } from "./live-harness-files.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 
@@ -69,13 +70,15 @@ const GATES_ON_ENV = /describe\.skip/;
 const ENV_READ =
   /process\.env\[\s*["']([A-Z0-9_]+)["']\s*\]|process\.env\.([A-Z0-9_]+)/g;
 
-/** Every `integration*.test.ts` under a package's `test/`, whatever it is called. */
+/**
+ * Every `integration*.test.ts` under a package's `test/`, whatever it is called.
+ *
+ * ⭐ The predicate moved to `live-harness-files.mjs` so `check:hermetic-tests` can ask the same question
+ * rather than restate it — it needs the same set for the opposite reason, to EXCLUDE these from
+ * hermeticity. The `.onchain.`-only glob recorded in this file's head note is why one definition matters.
+ */
 function harnessFiles(pkgDir) {
-  const testDir = join(root, "packages", pkgDir, "test");
-  if (!existsSync(testDir)) return [];
-  return readdirSync(testDir)
-    .filter((f) => f.startsWith("integration") && f.endsWith(".test.ts"))
-    .map((f) => join(testDir, f));
+  return harnessFilesIn(join(root, "packages"), pkgDir);
 }
 
 const rails = [];

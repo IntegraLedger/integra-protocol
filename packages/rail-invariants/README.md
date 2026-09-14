@@ -23,5 +23,6 @@ others sat beside it, and `docs-match-the-tree` now requires every `test/*.test.
 | `public-surface-invariant.test.ts` | One name meaning two things across the published `@integraledger/lcp-*` scope |
 | `offchain-slot-invariant.test.ts` | A rail that says "fetch the rest off-chain" naming a slot nothing writes |
 | `runner-patch-invariant.test.ts` | The Stryker runner and the catalog's vitest major disagreeing, which makes every filtered mutant SURVIVE in silence |
+| `hermetic-tests-invariant.test.ts` | A non-live test — or a helper one imports — reaching a third party, and the live-rail-harness exclusion widening to swallow real tests |
 | `no-private-referents.test.ts` | Shipped source or a shipped README naming a referent only a private tree has |
 | `published-parity-invariant.test.ts` | A published version whose bytes no longer match the source that carries its number |
