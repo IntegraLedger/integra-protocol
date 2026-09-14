@@ -310,4 +310,40 @@ describe("check:hermetic-tests", () => {
     expect(r.status, r.output).toBe(0);
     expect(r.output).not.toContain("seam");
   });
+
+  // ⚠️⚠️ THE BOUNDARY, ASSERTED SO IT CANNOT BE "FIXED" BACK INTO THE DEFECT IT REPLACED. An interpolated
+  // authority is unjudgeable and therefore EVADABLE. This states that as INTENDED, with the reason:
+  // truncating to the literal prefix instead fails accidentally — a good-faith declaration of a reported
+  // `seam` silently exempts `https://seam${anything}` — while this fails only deliberately, and a `${""}`
+  // between scheme and host is visible in review in a way a declarations entry is not.
+  // ⛔ If you are here because you found the evasion: closing it by truncating reintroduces the defect this
+  // replaced. The claim a green supports is "no test NAMES a literal third-party host".
+  it("⚠️ KNOWN AND INTENDED: a no-op interpolation evades the scan, while the literal URL does not", () => {
+    const dollar = "$";
+    const root = tree(
+      {
+        "test/a.test.ts": `import { it } from "vitest";\nit("x", async () => { await fetch(\`https://api.blockcypher.com${dollar}{""}/x\`); });\n`,
+      },
+      { namedNotCalled: {}, imports: VITEST },
+    );
+    const r = run(root);
+    expect(r.status, r.output).toBe(0);
+  });
+
+  // ⭐⭐ THE CONTROL THAT MAKES THE CASE ABOVE A BOUNDARY RATHER THAN BLINDNESS — and note what it does
+  // NOT do: it passes under BOTH implementations. It is not sensitive to the skip, it is sensitive to the
+  // gate being blind. A control that went red alongside its subject would be a second assertion of the
+  // same thing and could not tell you the subject was there at all.
+  it("⭐ CONTROL: the same host written literally IS refused — so the case above is a boundary", () => {
+    const root = tree(
+      {
+        "test/a.test.ts":
+          'import { it } from "vitest";\nit("x", async () => { await fetch("https://api.blockcypher.com/x"); });\n',
+      },
+      { namedNotCalled: {}, imports: VITEST },
+    );
+    const r = run(root);
+    expect(r.status, r.output).toBe(1);
+    expect(namesHost(r.output, "api.blockcypher.com"), r.output).toBe(true);
+  });
 });
