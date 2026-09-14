@@ -19,6 +19,7 @@
     "check:harness-proof": "node scripts/check-harness-proof.mjs",
     "check:live-rails": "node scripts/live-rails.mjs",
     "check:versions": "node scripts/check-versions.mjs",
+    "check:published-parity": "node scripts/check-published-parity.mjs",
     "corpus:seal": "node scripts/corpus-seal.mjs",
     "depcruise": "node scripts/depcruise-gate.mjs",
     "docs:build": "npm --prefix website run build",
