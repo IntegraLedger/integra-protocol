@@ -24,7 +24,30 @@ import { join } from "node:path";
 /** One piece of shipped prose: where it came from, and what it says. */
 export type Prose = { readonly where: string; readonly text: string };
 
-/** `src/**\/*.ts` and the README of every package — the TypeScript half of the tarball's prose. */
+/** Does this package's `files` field put its CHANGELOG in the tarball? npm does not pack one by default. */
+function packsChangelog(pkgDir: string): boolean {
+  const manifest = join(pkgDir, "package.json");
+  if (!existsSync(manifest)) return false;
+  const files: unknown = (
+    JSON.parse(readFileSync(manifest, "utf8")) as { files?: unknown }
+  ).files;
+  return Array.isArray(files) && files.includes("CHANGELOG.md");
+}
+
+/**
+ * `src/**\/*.ts`, the README and the CHANGELOG of every package — the TypeScript half of the tarball's prose.
+ *
+ * ★ WHY THE CHANGELOG IS GATED ON `files` AND THE README IS NOT. npm ALWAYS packs a README, whatever `files`
+ * says, so reading every one of them is right. A CHANGELOG is packed only when the package asks for it —
+ * 31 of these 32 packages list it, and `rail-invariants` (`private: true`, no `files`) does not. Walking a
+ * CHANGELOG that never ships would report a defect nobody can reach; skipping one that does ships the
+ * defect. So the question asked here is the one that decides it: is this file in the tarball.
+ *
+ * ★ THE CHANGELOG WAS THE NEXT SURFACE ALONG FROM THE README, AND THE HOLE WAS THE SAME ONE TWICE. This
+ * walker was `src/`-only until READMEs leaked 21 occurrences; READMEs were added and CHANGELOGs were not.
+ * `IntegraLedger/agent-commerce-plan#196` measured eight occurrences of a private repository's name across
+ * eight package CHANGELOGs, every one of them already inside a published tarball.
+ */
 export function packageProse(packagesDir: string): Prose[] {
   const out: Prose[] = [];
   const walk = (dir: string, rel: string): void => {
@@ -43,6 +66,12 @@ export function packageProse(packagesDir: string): Prose[] {
       out.push({
         where: `${pkg}/README.md`,
         text: readFileSync(readme, "utf8"),
+      });
+    const changelog = join(packagesDir, pkg, "CHANGELOG.md");
+    if (existsSync(changelog) && packsChangelog(join(packagesDir, pkg)))
+      out.push({
+        where: `${pkg}/CHANGELOG.md`,
+        text: readFileSync(changelog, "utf8"),
       });
   }
   return out;
