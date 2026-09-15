@@ -1,5 +1,30 @@
 # @integraledger/lcp-binding-sui
 
+## 0.18.3
+
+### Patch Changes
+
+- Converge the published line onto the dependency versions this repository already carries.
+  
+  Two dependency bumps landed after `0.18.2` was published and are therefore declared nowhere a consumer
+  can install:
+  
+  - `@mysten/sui` `2.29.0` → `2.30.0` (`133da6c`), a runtime dependency of `lcp-binding-sui`
+  - `zod` `4.5.4` → `4.6.2` (`c47a148`), a runtime dependency of `lcp-discovery`
+  
+  The published `0.18.2` tarballs declare the older versions, so the version string `0.18.2` identifies two
+  different dependency sets: the one on the registry and the one in this tree. A published version cannot be
+  recalled, only superseded — `0.18.2` keeps what it shipped, and anyone pinning it still gets it.
+  
+  A consumer that pins the older versions to agree with the registry cannot also agree with this source, and
+  has no version to move to until one exists carrying both bumps. That is what this release provides.
+  
+  No `packages/*/src` file changed with either bump — every commit since `0.18.2` touched manifests,
+  catalogs, workflows or documentation only. What moves here is what the version string identifies, not what
+  the code does, which is why this is a patch.
+- @integraledger/lcp-binding-core@0.18.3
+  - @integraledger/lcp-kernel@0.18.3
+
 ## 0.18.2
 
 ### Patch Changes
