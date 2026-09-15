@@ -25,4 +25,5 @@ others sat beside it, and `docs-match-the-tree` now requires every `test/*.test.
 | `runner-patch-invariant.test.ts` | The Stryker runner and the catalog's vitest major disagreeing, which makes every filtered mutant SURVIVE in silence |
 | `hermetic-tests-invariant.test.ts` | A non-live test — or a helper one imports — reaching a third party, and the live-rail-harness exclusion widening to swallow real tests |
 | `no-private-referents.test.ts` | Shipped source or a shipped README naming a referent only a private tree has |
+| `forbidden-literals-invariant.test.ts` | A private referent reaching any world-readable file rather than only the subset npm packs, and the repository-wide gate reporting clean over a subject set it never read |
 | `published-parity-invariant.test.ts` | A published version whose bytes no longer match the source that carries its number |

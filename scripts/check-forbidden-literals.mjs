@@ -14,7 +14,11 @@
  * `forbidden-literals.mjs`. What is private is stated once; where it may not appear is stated twice, on
  * purpose, because the answers genuinely differ.
  *
- * ⛔ **THE SUBJECT SET IS `git ls-files`, DERIVED AND NEVER LISTED.** A hand-maintained roster of files to
+ * ⛔ **THE SUBJECT SET IS `git ls-files` UNDER {@link root}, DERIVED AND NEVER LISTED.** It is TRACKED
+ * files, not every file on disk: an ignored build artifact is not something a reader meets on github.com.
+ * ⇒ A fixture tree must therefore be a real repository with its files added, which the drive does, because
+ * a fixture that is not one would exercise semantics this gate does not have.
+ A hand-maintained roster of files to
  * scan is a roster that goes stale the first time someone adds a directory. The one exclusion is
  * {@link SELF_NAMING}: two files that must spell the markers in order to ban them, enumerated rather than
  * matched by pattern.
@@ -36,9 +40,15 @@ import {
   SELF_NAMING,
 } from "./forbidden-literals.mjs";
 
-const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-  encoding: "utf8",
-}).trim();
+/**
+ * ⛔ **Resolved from THIS FILE, never from the process cwd** — the convention every other gate here
+ * follows. A `git rev-parse --show-toplevel` answers about wherever the caller happens to stand, so the
+ * gate would scan a different tree than the one it lives in, and die outright when invoked from outside a
+ * repository. `INTEGRA_GATE_ROOT` is the same override `check:hermetic-tests` and `check:floor-provenance`
+ * take, and it is what lets this gate have a DRIVE rather than only a hand-run plant.
+ */
+const root =
+  process.env.INTEGRA_GATE_ROOT ?? new URL("..", import.meta.url).pathname;
 
 const problems = [];
 
