@@ -27,3 +27,4 @@ others sat beside it, and `docs-match-the-tree` now requires every `test/*.test.
 | `no-private-referents.test.ts` | Shipped source or a shipped README naming a referent only a private tree has |
 | `forbidden-literals-invariant.test.ts` | A private referent reaching any world-readable file rather than only the subset npm packs, and the repository-wide gate reporting clean over a subject set it never read |
 | `published-parity-invariant.test.ts` | A published version whose bytes no longer match the source that carries its number |
+| `published-dist-parity-invariant.test.ts` | A published `dist/` that is not what its own source emits — the consumed surface, which the parity gate above cannot reach because `dist/` is untracked and so has nothing in the tree to be held against |

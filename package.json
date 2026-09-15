@@ -38,7 +38,8 @@
     "test": "pnpm -r --workspace-concurrency=3 test",
     "typecheck": "pnpm -r typecheck",
     "verify": "pnpm check:floor-provenance && pnpm check:runner-patch && pnpm check:forbidden-literals && pnpm check:versions && pnpm check:docblocks && pnpm check:declared-imports && pnpm check:hermetic-tests && pnpm check:weld-grade-keys && pnpm check:live-rails && pnpm check:harness-proof && node scripts/corpus-seal.mjs --check && pnpm check:advisories && pnpm -r build && pnpm check:dist && pnpm lint && pnpm depcruise && pnpm -r typecheck && pnpm check:docs && pnpm check:doc-calls && pnpm test",
-    "check:forbidden-literals": "node scripts/check-forbidden-literals.mjs"
+    "check:forbidden-literals": "node scripts/check-forbidden-literals.mjs",
+    "check:published-dist-parity": "node scripts/check-published-dist-parity.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
