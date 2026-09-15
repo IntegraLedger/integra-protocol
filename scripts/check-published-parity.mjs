@@ -62,11 +62,75 @@ export const REGISTRY_ORIGIN = "https://registry.npmjs.org";
 const SOURCE_DIRS = new Set(["src"]);
 
 /**
- * ⛔ THE FLOOR: how many packages a healthy run COMPARES. Raise it as packages publish; ⛔ never lower it to
- * make a package that dropped out of the subject set pass. `M` 2026-09-14: 32 manifests, 31 publishable —
- * `lcp-rail-invariants` is `private: true` and correctly excluded — and all 31 compared.
+ * ⛔ THE FLOOR: how many packages this repository declares comparable. `M` 2026-09-15: 32 manifests, 31
+ * publishable — `lcp-rail-invariants` is `private: true` and correctly excluded — and 31 comparable.
+ *
+ * ⛔⛔ **IT IS A DECLARATION HELD EQUAL TO THE TREE, NOT A FLOOR TO CLEAR.** See {@link floorRefusal}.
+ * Written as a one-sided floor, it went stale by construction: a number a human must remember to raise at
+ * exactly the moment they are thinking about something else, which is a release. A package that JOINS the
+ * comparable set and is not counted here leaves exactly one package's worth of slack — so the next package
+ * to LEAVE the set is absorbed silently, and the run prints a tick over a subject that walked away.
  */
 export const COMPARABLE_FLOOR = 31;
+
+/**
+ * The packages this gate's floor is a declaration ABOUT — derived from the TREE, never from the registry.
+ *
+ * ⛔⛔ **AND THAT DISTINCTION IS THE WHOLE OF WHY THIS IS NOT `checked`.** `parityReport`'s `checked` counts
+ * what a run actually compared, and it legitimately drops: a package whose source version is not on the
+ * registry yet is skipped with a note, which is the ORDINARY state of every package between a version bump
+ * and the publish that follows it. Holding a declaration equal to THAT would refuse on a healthy tree every
+ * time somebody bumped a version — a control whose failure mode is "the release you are preparing is the
+ * red", which has moved the work rather than removed it.
+ *
+ * ⇒ Membership here is two tree facts and no network: the package publishes, and it ships source. Dropping
+ * `src` from a `files` field — an ordinary "stop shipping source" cleanup — changes this count, which is
+ * precisely the silent departure the floor exists to catch.
+ */
+export function comparableSubjects(manifests) {
+  return publishableManifests(manifests).filter(
+    ({ path, pkg }) =>
+      declaredSourceFiles(join(path, ".."), pkg.files).comparable,
+  );
+}
+
+/**
+ * Whether {@link COMPARABLE_FLOOR} still agrees with the tree. `null` when it does.
+ *
+ * ⛔⛔ **BOTH DIRECTIONS, BECAUSE A GATE THAT REFUSES ONE IS REFUSING HALF THE QUERY.**
+ *
+ *   fewer than the floor — a subject LEFT the set, and lowering the number to match would delete the
+ *                          coverage rather than notice it
+ *   more than the floor  — a subject JOINED and the declaration is behind the tree. ⭐ THIS is the
+ *                          direction that was silent, and it is the one that matters: the slack it leaves
+ *                          is exactly what lets the NEXT departure pass unnoticed
+ *
+ * ⭐ The `>` refusal fires on the first run after a package becomes comparable, which is the run whose
+ * author is already holding that package in mind. The number is raised in the change that created the
+ * subject rather than years later by somebody auditing.
+ *
+ * ⚠️ **Reported as a FAULT rather than as UNMEASURED, deliberately.** `unmeasured` means the registry side
+ * could not answer. This is the gate's own declaration disagreeing with the tree it is pointed at — the
+ * instrument is misdeclared, and that must never read as a statement about the product.
+ */
+export function floorRefusal({ manifests, floor = COMPARABLE_FLOOR }) {
+  const subjects = comparableSubjects(manifests);
+  if (subjects.length === floor) return null;
+  const names = subjects
+    .map(({ pkg }) => pkg.name)
+    .sort()
+    .join(", ");
+  return subjects.length > floor
+    ? `COMPARABLE_FLOOR is ${floor}; the tree now holds ${subjects.length} comparable package(s). ` +
+        "A package JOINED the comparable set and the declaration was not raised with it. ⛔ Raise it in " +
+        "the change that added the package: every unraised subject is one silent departure this gate " +
+        `would go on to absorb. The ${subjects.length} are: ${names}.`
+    : `COMPARABLE_FLOOR is ${floor}; the tree now holds only ${subjects.length} comparable package(s). ` +
+        "A package LEFT the comparable set — it stopped publishing, or stopped shipping source. ⛔ Do not " +
+        "lower this number to match: that deletes the coverage instead of noticing it. Restore the " +
+        `package's source in \`files\`, or remove it deliberately and say so. The ${subjects.length} ` +
+        `remaining are: ${names}.`;
+}
 
 /**
  * Read every package manifest under `packages/`.
@@ -450,6 +514,37 @@ async function main() {
   const root =
     env["INTEGRA_PARITY_ROOT"] ?? new URL("..", import.meta.url).pathname;
   const manifests = readManifests(root);
+
+  /**
+   * ⛔ The floor is INJECTABLE for the reason every port in this repository is: so a drive can point the
+   * whole process at a fixture. ⚠️ A malformed value is refused rather than coerced — `Number("x")` is
+   * `NaN`, every comparison against it is false, and the refusal below would then report the wrong
+   * direction with complete confidence.
+   */
+  const declared = env["INTEGRA_PARITY_FLOOR"];
+  let floor = COMPARABLE_FLOOR;
+  if (declared !== undefined) {
+    floor = Number(declared);
+    if (!Number.isInteger(floor) || floor < 0) {
+      console.error(
+        `\n✕ check:published-parity — INTEGRA_PARITY_FLOOR is ${JSON.stringify(declared)}, ` +
+          "which is not a whole number. Nothing was compared.\n",
+      );
+      exit(3);
+    }
+  }
+
+  // ⛔ BEFORE THE NETWORK. This asks a question about the tree, so it must answer whether or not the
+  // registry is reachable — and a run that cannot reach the registry is exactly when a stale declaration
+  // would otherwise go another cycle unnoticed.
+  const staleFloor = floorRefusal({ manifests, floor });
+  if (staleFloor !== null) {
+    console.error(
+      `\n✕ check:published-parity — THE FLOOR NO LONGER DESCRIBES THIS TREE\n\n  • ${staleFloor}\n`,
+    );
+    exit(3);
+  }
+
   const { drift, faults, notes, checked } = await parityReport({
     manifests,
     registry: NetworkRegistry(),
@@ -457,26 +552,37 @@ async function main() {
 
   for (const n of notes) console.log(`  · ${n}\n`);
 
-  const v = verdict({ drift, faults, checked });
+  const v = verdict({ drift, faults, checked, floor });
 
-  if (v.kind === "drift") {
-    console.error("\n✕ check:published-parity — DRIFT\n");
-    for (const d of drift) console.error(`  • ${d}\n`);
-    exit(1);
-  }
-  if (v.kind === "fault") {
-    console.error("\n✕ check:published-parity — THE INSTRUMENT FAILED\n");
-    for (const f of faults) console.error(`  • ${f}\n`);
-    exit(3);
-  }
-  if (v.kind === "unmeasured") {
-    console.error(`\n⚠ check:published-parity — ${v.message}\n`);
-    exit(2);
+  // ⛔⛔ **GUARDED ON THE POSITIVE CONDITION, AND THAT IS THE CONTROL RATHER THAN ANOTHER ARM.**
+  //
+  // This tested three kinds BY NAME and let anything else fall through to the success line below. The
+  // function was correct and the process that reads it was blind: a verdict added later — any fifth kind,
+  // for any reason — would have printed a tick and exited 0. ⛔ Nothing that drives `verdict()` can see
+  // that, by construction, which is why 23 green unit cases in the sibling repository sat over exactly
+  // this shape until the gate was run as a PROCESS.
+  //
+  // ⇒ Inverting the guard makes the hazard impossible rather than handled: the worst a missing arm can now
+  // do is print less detail. A kind nobody wrote an arm for still refuses, still carries its own exit
+  // code, and cannot reach the tick.
+  if (v.kind !== "parity") {
+    if (v.kind === "drift") {
+      console.error("\n✕ check:published-parity — DRIFT\n");
+      for (const d of drift) console.error(`  • ${d}\n`);
+    } else if (v.kind === "fault") {
+      console.error("\n✕ check:published-parity — THE INSTRUMENT FAILED\n");
+      for (const f of faults) console.error(`  • ${f}\n`);
+    } else {
+      console.error(
+        `\n⚠ check:published-parity — ${v.message ?? `refused as \`${v.kind}\``}\n`,
+      );
+    }
+    exit(v.code);
   }
 
   console.log(
     `✓ every published version matches the source it was cut from, byte for byte ` +
-      `(${checked} package(s) compared, floor ${COMPARABLE_FLOOR}).`,
+      `(${checked} package(s) compared, floor ${floor}).`,
   );
 }
 
