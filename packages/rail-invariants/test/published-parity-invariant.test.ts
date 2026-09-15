@@ -36,11 +36,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   COMPARABLE_FLOOR,
+  comparableSubjects,
   declaredSourceFiles,
+  floorRefusal,
   hashTarEntries,
   NetworkRegistry,
   parityReport,
   publishableManifests,
+  readManifests,
   verdict,
   // @ts-expect-error — the gate is plain ESM JavaScript with JSDoc types, not part of a package's build
 } from "../../../scripts/check-published-parity.mjs";
@@ -201,6 +204,85 @@ describe("check:published-parity — the verdict logic, on injected answers", ()
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  /**
+   * ⛔⛔ THE FLOOR IS A DECLARATION HELD EQUAL TO THE TREE, AND THE `>` DIRECTION WAS SILENT.
+   *
+   * The case above proves a package LEAVING the comparable set cannot leave a green behind. ⭐ Nothing
+   * proved the other direction, and it is the one that makes the first possible: a package that JOINS and
+   * is not counted leaves exactly one package's worth of slack, so the NEXT departure is absorbed and the
+   * run prints a tick over a subject that walked away.
+   *
+   * ⚠️ The subject is derived from the TREE, not from what a run compared. `checked` legitimately drops
+   * between a version bump and the publish that follows it, so a declaration held equal to THAT would
+   * refuse on every healthy tree somebody was preparing a release in.
+   */
+  describe("⛔⛔ the floor and the tree must agree, in BOTH directions", () => {
+    it("⭐ THE CONTROL — a tree whose comparable count equals the floor is silent", () => {
+      const { root, manifests } = fixture({ extra: 2 });
+      try {
+        expect(comparableSubjects(manifests)).toHaveLength(3);
+        expect(floorRefusal({ manifests, floor: 3 })).toBeNull();
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("⛔ a package JOINS and the floor is not raised: REFUSED, naming the subjects", () => {
+      const { root, manifests } = fixture({ extra: 2 });
+      try {
+        const refusal = floorRefusal({ manifests, floor: 2 });
+        expect(refusal).not.toBeNull();
+        expect(refusal).toMatch(/JOINED the comparable set/);
+        // ⛔ It names them, so the reader raising the number can see WHAT they are raising it over.
+        expect(refusal).toMatch(/@integraledger\/extra-0/);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("⛔ a package LEAVES by dropping `src` from `files`: REFUSED, and told not to lower the number", () => {
+      // `dist` only — the ordinary "stop shipping source" cleanup, which takes the package out of the
+      // comparable set without any other visible change.
+      const { root, manifests } = fixture({ files: ["dist"], extra: 2 });
+      try {
+        expect(comparableSubjects(manifests)).toHaveLength(2);
+        const refusal = floorRefusal({ manifests, floor: 3 });
+        expect(refusal).toMatch(/LEFT the comparable set/);
+        expect(refusal).toMatch(/Do not lower this number/);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("⛔ a package going `private` also LEAVES — publishing is half the predicate", () => {
+      const { root, manifests } = fixture({ extra: 2 });
+      try {
+        // ⛔ Asserted rather than indexed blindly: a fixture that stopped producing three manifests would
+        // otherwise make this case pass over the wrong subject, which is the shape it exists to catch.
+        expect(manifests).toHaveLength(3);
+        const leaving = manifests[1];
+        if (leaving === undefined)
+          throw new Error("fixture produced no second manifest");
+        (leaving.pkg as { private?: boolean }).private = true;
+        expect(comparableSubjects(manifests)).toHaveLength(2);
+        expect(floorRefusal({ manifests, floor: 3 })).toMatch(
+          /LEFT the comparable set/,
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("⭐⭐ and THIS repository's own declaration still describes THIS tree", () => {
+      // ⛔ The case that makes the four above worth having. They are driven over fixtures; this one is
+      // driven over the tree that ships, and it is what goes red on the next publish that forgets.
+      const root = fileURLToPath(new URL("../../..", import.meta.url));
+      const manifests = readManifests(root);
+      expect(comparableSubjects(manifests)).toHaveLength(COMPARABLE_FLOOR);
+      expect(floorRefusal({ manifests })).toBeNull();
+    });
   });
 
   it("a version not yet published is a note, and leaves the run unmeasured rather than green", async () => {
@@ -467,20 +549,45 @@ function startRegistry({
 
 /** ⛔ async `spawn`, never `spawnSync`: the fixture registry is a server in THIS process, and a synchronous
  * spawn blocks the event loop that would answer the child — both sides then wait for each other. */
-function runGate({ root, origin }: { root: string; origin: string }) {
-  return new Promise<{ status: number | null; stderr: string }>((resolve) => {
+/**
+ * ⛔ `floor` defaults to 1 because a fixture holds one publishable package, and the gate now refuses when
+ * its declared floor disagrees with the tree it is pointed at. Without this every spawned case would exit
+ * 3 saying the floor does not describe the tree — which would be TRUE of the fixture and useless as a
+ * drive of anything else.
+ */
+function runGate({
+  root,
+  origin,
+  floor = 1,
+}: {
+  root: string;
+  origin: string;
+  floor?: number;
+}) {
+  return new Promise<{
+    status: number | null;
+    stderr: string;
+    stdout: string;
+  }>((resolve) => {
     const child = spawn(process.execPath, [GATE], {
       env: {
         ...process.env,
         INTEGRA_PARITY_ROOT: root,
         INTEGRA_PARITY_ORIGIN: origin,
+        INTEGRA_PARITY_FLOOR: String(floor),
       },
     });
     let stderr = "";
+    let stdout = "";
     child.stderr.on("data", (d) => {
       stderr += d;
     });
-    child.on("close", (status) => resolve({ status, stderr }));
+    // ⛔ STDOUT IS CAPTURED because the exit code is only half the question. A non-zero exit printed
+    // BESIDE the success tick is how a red gate gets reported green by a human reading a log.
+    child.stdout.on("data", (d) => {
+      stdout += d;
+    });
+    child.on("close", (status) => resolve({ status, stderr, stdout }));
   });
 }
 
@@ -520,6 +627,91 @@ describe("check:published-parity — the real seam and the process exit codes", 
       ).rejects.toThrow(/answered 503/);
     } finally {
       broken.stop();
+    }
+  });
+
+  /**
+   * ⛔⛔ THE TICK IS PRINTED ONLY ON PARITY — DRIVEN AS A PROCESS, WHICH IS THE ONLY PLACE IT IS VISIBLE.
+   *
+   * `main()` tested three verdict kinds by name and fell through to the success line. The function was
+   * correct; the process that reads it was blind, and nothing that drives `verdict()` can see that. ⭐ The
+   * guard is now inverted — anything that is not `parity` refuses — so a kind nobody wrote an arm for
+   * cannot reach the tick. These cases hold that at the boundary a workflow actually reads.
+   */
+  it("⭐ THE CONTROL — a parity run DOES print the tick, so the refusals above are not vacuous", async () => {
+    // Without this, every "no tick" assertion beside it would pass on a gate that never printed one.
+    const f = fixture();
+    const reg = await startRegistry({ srcFiles: SRC });
+    try {
+      const out = await runGate({ root: f.root, origin: reg.origin });
+      expect(out.status, out.stderr).toBe(0);
+      expect(out.stdout).toMatch(/every published version matches/);
+    } finally {
+      reg.stop();
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it("⛔⛔ a refused run prints NO success tick, on stdout, whatever its kind", async () => {
+    // A version not on the registry leaves the run UNMEASURED — a refusal that is not drift and not a
+    // fault, and the one whose arm is least likely to be written for a future sibling.
+    const f = fixture({ version: "9.9.9" });
+    const reg = await startRegistry({ srcFiles: SRC });
+    try {
+      const out = await runGate({ root: f.root, origin: reg.origin });
+      expect(out.status, out.stderr).toBe(2);
+      // ⛔ THE HALF THE EXIT CODE DOES NOT CARRY.
+      expect(out.stdout).not.toMatch(/every published version matches/);
+      expect(out.stdout).not.toMatch(/✓/);
+    } finally {
+      reg.stop();
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it("⛔ and a stale FLOOR refuses as a process too, with no tick beside it", async () => {
+    const f = fixture({ extra: 2 });
+    const reg = await startRegistry({ srcFiles: SRC });
+    try {
+      // Three comparable packages, a floor that still says one: the declaration is behind the tree.
+      const out = await runGate({ root: f.root, origin: reg.origin, floor: 1 });
+      expect(out.status, out.stderr).toBe(3);
+      expect(out.stderr).toMatch(/JOINED the comparable set/);
+      expect(out.stdout).not.toMatch(/every published version matches/);
+    } finally {
+      reg.stop();
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it("⛔ an INJECTED floor that is not a whole number is refused, never coerced", async () => {
+    // `Number("x")` is NaN, every comparison against it is false, and the floor refusal would then report
+    // a direction with complete confidence. A port that can be handed nonsense must say so.
+    const f = fixture();
+    const reg = await startRegistry({ srcFiles: SRC });
+    try {
+      const out = await new Promise<{ status: number | null; stderr: string }>(
+        (resolve) => {
+          const child = spawn(process.execPath, [GATE], {
+            env: {
+              ...process.env,
+              INTEGRA_PARITY_ROOT: f.root,
+              INTEGRA_PARITY_ORIGIN: reg.origin,
+              INTEGRA_PARITY_FLOOR: "not-a-number",
+            },
+          });
+          let stderr = "";
+          child.stderr.on("data", (d) => {
+            stderr += d;
+          });
+          child.on("close", (status) => resolve({ status, stderr }));
+        },
+      );
+      expect(out.status, out.stderr).toBe(3);
+      expect(out.stderr).toMatch(/is not a whole number/);
+    } finally {
+      reg.stop();
+      rmSync(f.root, { recursive: true, force: true });
     }
   });
 
