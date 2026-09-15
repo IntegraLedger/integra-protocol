@@ -2,7 +2,7 @@
 /**
  * ⭐⭐ `check:floor-provenance` — **EVERY RATCHET FLOOR SAYS WHERE IT CAME FROM, AND THE ARITHMETIC IS CHECKED.**
  *
- * `agent-commerce-plan#119` was filed because floors were set at the measured mean, so seven packages passed
+ * Floors were once set at the measured mean, so seven packages passed
  * by nought or one mutant and flapped. All 25 were re-derived on 2026-09-12 from ONE cold uncontended run on
  * `integra-dev-host` at the pinned concurrency, with a **derived** margin: `1` where the package recorded
  * timeouts, `0` where it did not, because a timeout counted as a kill is the only mechanism that moves a
@@ -40,7 +40,7 @@ const PROVENANCE =
 const ENTRY = /^\s*"?([A-Za-z][A-Za-z0-9-]*)"?:\s*(\d+)\s*,/;
 
 /** ⛔ Brace-matched, never regexed: the entries are written both quoted and bare, and a key regex that
- *  assumes quoting under-counts. `agent-commerce-plan/CLAUDE.md` records that exact failure — 48 floors
+ *  assumes quoting under-counts. That exact failure has been measured here — 48 floors
  *  where the tree holds 56. */
 function ratchetBlock(text) {
   const at = text.indexOf("const RATCHET");
@@ -136,7 +136,7 @@ if (examined === 0)
 
 // ── appended to check-floor-provenance.mjs ──────────────────────────────────────────────────────────
 /**
- * ⭐⭐ THE FLOORS NAME THE RUNNER THEY WERE MEASURED UNDER. `agent-commerce-plan#108` clause 2.
+ * ⭐⭐ THE FLOORS NAME THE RUNNER THEY WERE MEASURED UNDER.
  *
  * ⛔⛔ A MUTATION SCORE IS A FRACTION OVER A POPULATION THE TOOL CHOSE, and a major Stryker release moves
  * that population without a line of product code changing. `M` 10.0.0 did exactly that: `integra-protocol`'s

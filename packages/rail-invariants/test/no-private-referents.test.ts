@@ -50,6 +50,10 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+// @ts-expect-error — plain ESM JavaScript with JSDoc types, shared with
+// `check-forbidden-literals.mjs` so the repository-wide gate and this shipped-prose gate cannot
+// disagree about WHICH names are private while differing, deliberately, about WHERE they may appear.
+import { PRIVATE_REPOSITORIES } from "../../../scripts/forbidden-literals.mjs";
 import { type Prose, packageProse, vectorProse } from "./shipped-prose.js";
 
 const PACKAGES = new URL("../../", import.meta.url).pathname;
@@ -118,12 +122,15 @@ const PUBLIC_PLAN_TOKENS = new Set([
 const PRIVATE_PHRASES: readonly RegExp[] = [
   /\bthe completion plan\b/gi,
   /\bgate finding \d+/gi,
-  // ★ The two PRIVATE repositories, by name. A stranger holding the tarball cannot open either, so naming
-  // one asks for a lookup that returns 404 and discloses that the repository exists — the defect
-  // `IntegraLedger/agent-commerce-plan#125` records. Eight occurrences of the first were already inside
-  // published tarballs when this entry was added; see `#196`.
-  /\bintegra-agentic-commerce\b/gi,
-  /\bagent-commerce-plan\b/gi,
+  // ★ The private repositories, by name — IMPORTED rather than restated. A stranger holding the tarball
+  // cannot open one, so naming it asks for a lookup that returns 404 and discloses that the repository
+  // exists; eight occurrences were already inside published tarballs when this entry was added.
+  //
+  // ⛔ The list is single-sourced deliberately. `scripts/forbidden-literals.mjs` bans these names ANYWHERE
+  // in this repository, because github.com serves the whole tree to strangers who install nothing; this
+  // gate bans them in the subset npm packs, under the stricter resolvability standard above. One list,
+  // two standards, and no way for them to disagree about WHAT is private while differing about WHERE.
+  ...PRIVATE_REPOSITORIES,
 ];
 
 /**

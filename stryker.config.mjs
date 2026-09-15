@@ -38,7 +38,7 @@
  * suite stands, not targets to be satisfied with.
  */
 /**
- * ⭐⭐ THE RUNNER THE FLOORS BELOW WERE DERIVED UNDER. `agent-commerce-plan#108`.
+ * ⭐⭐ THE RUNNER THE FLOORS BELOW WERE DERIVED UNDER.
  *
  * ⛔ A mutation score is a fraction over a population the TOOL chose, and a major Stryker release moves that
  * population without a line of product code changing. `M` 10.0.0 did exactly that here: `conformance` has
@@ -56,7 +56,7 @@ const RATCHET = {
   // ⚠️ DATED NOTES BELOW FROM 2026-08 AND EARLIER DESCRIBE A DIFFERENT INSTRUMENT — a 2-core hosted runner,
   // under contention, before Stryker 10.0.0 moved every mutant population. Their REASONING is kept because
   // it is about the code; their NUMBERS are superseded by the `M` line above each entry and a delta against
-  // them means nothing. agent-commerce-plan#108.
+  // them means nothing.
   //
   // ⭐ `check:floor-provenance` recomputes each floor from the line above it and refuses a disagreement, so
   // a floor edited without re-deriving is red at the next verify rather than at review time.  // `M` 98.47 over 653 mutants, 3 timeout(s); margin 1 — timeouts are the only thing that moves a score between runs on an unchanged tree, and this package has them.
