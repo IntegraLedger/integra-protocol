@@ -355,6 +355,15 @@ export async function parityReport({ manifests, registry }) {
   const faults = [];
   const notes = [];
   let checked = 0;
+  /**
+   * ⭐ Packages whose SOURCE version is not on the registry yet — counted, not merely noted.
+   *
+   * ⛔⛔ This is the ONE reason a publishable, source-shipping package may be absent from `checked` without
+   * a subject having been lost, and it is the ORDINARY state of `main` between a version bump landing and
+   * the publish that follows it. Counting it is what lets the floor ask "did a subject go missing?" instead
+   * of "is a release in progress?" — see {@link verdict}.
+   */
+  let ahead = 0;
 
   const subjects = publishableManifests(manifests);
   if (subjects.length === 0)
@@ -396,6 +405,7 @@ export async function parityReport({ manifests, registry }) {
 
     const published = versions[pkg.version];
     if (published === undefined) {
+      ahead += 1;
       notes.push(
         `${label} — this version is not on the registry yet, so there is nothing to be out of parity with. ` +
           `Published: ${Object.keys(versions).sort().join(", ")}.`,
@@ -479,7 +489,7 @@ export async function parityReport({ manifests, registry }) {
     }
   }
 
-  return { drift, faults, notes, checked };
+  return { drift, faults, notes, checked, ahead };
 }
 
 /**
@@ -492,16 +502,58 @@ export async function parityReport({ manifests, registry }) {
  *   2  UNMEASURED — fewer than `floor` packages were comparable. No opinion is available.
  *   3  FAULT — the instrument failed. ⛔ Never reported as drift.
  */
-export function verdict({ drift, faults, checked, floor = COMPARABLE_FLOOR }) {
+export function verdict({
+  drift,
+  faults,
+  checked,
+  ahead = 0,
+  floor = COMPARABLE_FLOOR,
+}) {
   if (drift.length > 0) return { code: 1, kind: "drift" };
   if (faults.length > 0) return { code: 3, kind: "fault" };
-  if (checked < floor)
+  // ⛔⛔ **`ahead` IS ACCOUNTED FOR, NOT EXCUSED AWAY — AND THE DIFFERENCE IS THE WHOLE FIX.**
+  //
+  // Comparing `checked` alone to the floor asks a question polluted by the registry: a package whose
+  // source version is not published YET is absent from `checked`, which is the ordinary state of `main`
+  // between a version bump and its publish. ⇒ This gate reddened every release in progress — and a gate
+  // that reds on every release is a gate that gets ignored, taking the genuine refusal it exists for with
+  // it. Measured on `9181c30`: one package bumped to an unpublished version gave
+  // "only 30 package(s) were compared, below the floor of 31", exit 2, on a healthy tree.
+  //
+  // ⚠️ **It excuses exactly ONE thing.** A package never published, 404, unpublished or renamed is NOT
+  // `ahead` — it is a subject that went missing, and it still lands here. The sibling public repository
+  // reached the same conclusion independently from the other direction; two implementations agreeing is
+  // the evidence, and it is not available from one shared package.
+  // ⛔⛔ **AND ZERO COMPARED IS NEVER PARITY, however well accounted for.**
+  //
+  // This is not a corner in THIS repository — it is the ordinary release. All 31 packages carry one fixed
+  // version group, so a real release moves them together and every one of them is `ahead` at once:
+  // `checked` 0, `ahead` 31, floor 31. Excusing `ahead` and stopping there would print
+  // "✓ every published version matches the source it was cut from" over a run that opened no tarball at
+  // all — the empty-subject-set defect this gate exists to prevent one level down, and the exact shape
+  // `parityReport` already refuses when the SUBJECT set is zero.
+  //
+  // ⇒ It is UNMEASURED, which is what that verdict is for: not drift, not a fault, and not a tick. ⚠️ The
+  // sibling public repository excuses `ahead` without this arm, which is safe there because its packages
+  // do not move as one group. Same requirement, different tree — and the divergence is deliberate.
+  if (checked === 0)
     return {
       code: 2,
       kind: "unmeasured",
       message:
-        `only ${checked} package(s) were compared, below the floor of ${floor}. Every other publishable ` +
-        "package was ahead of the registry, never published, or not comparable on this axis. ⛔ A package " +
+        `no package was compared: all ${ahead} publishable package(s) carry a version that is not on the ` +
+        "registry yet, which is what a release in progress looks like. ⛔ This is not parity — nothing " +
+        "was opened and nothing was checked — and it is not drift. The next run after the publish lands " +
+        "measures them.",
+    };
+  if (checked + ahead < floor)
+    return {
+      code: 2,
+      kind: "unmeasured",
+      message:
+        `only ${checked} package(s) were compared and ${ahead} were ahead of the registry, which is ` +
+        `${checked + ahead} accounted for against a floor of ${floor}. The rest were never published, ` +
+        "answered 404, or are not comparable on this axis. ⛔ A package " +
         "that LEAVES the comparable set takes its own coverage with it, and a run over what remains must " +
         "not print a tick. This is not a pass, it is not drift, and the instrument did not fail.",
     };
@@ -545,14 +597,14 @@ async function main() {
     exit(3);
   }
 
-  const { drift, faults, notes, checked } = await parityReport({
+  const { drift, faults, notes, checked, ahead } = await parityReport({
     manifests,
     registry: NetworkRegistry(),
   });
 
   for (const n of notes) console.log(`  · ${n}\n`);
 
-  const v = verdict({ drift, faults, checked, floor });
+  const v = verdict({ drift, faults, checked, ahead, floor });
 
   // ⛔⛔ **GUARDED ON THE POSITIVE CONDITION, AND THAT IS THE CONTROL RATHER THAN ANOTHER ARM.**
   //

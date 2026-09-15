@@ -285,6 +285,63 @@ describe("check:published-parity — the verdict logic, on injected answers", ()
     });
   });
 
+  /**
+   * ⛔⛔ A RELEASE IN PROGRESS IS NOT A LOST SUBJECT — AND THIS GATE REDDENED EVERY ONE OF THEM.
+   *
+   * `checked` is registry-dependent: a package whose SOURCE version is not published yet is absent from it,
+   * which is the ordinary state of `main` between a version bump landing and the publish that follows.
+   * Comparing `checked` alone to the floor therefore refused on a healthy tree — and a gate that reds on
+   * every release is a gate that gets ignored, taking the genuine refusal it exists for with it.
+   *
+   * ⚠️ The window here is not minutes. This repository's release STAGES only; nothing is installable until
+   * a person runs the approval with 2FA, so the six-hourly job sits red until somebody is available.
+   *
+   * ⭐ `ahead` is ACCOUNTED FOR, never excused away: a package that never published, answered 404, or left
+   * the registry is not ahead — it is missing, and it must keep refusing.
+   */
+  describe("⛔⛔ ahead of the registry is accounted for; missing is not", () => {
+    it("⭐ THE CONTROL — a clean tree is parity", () => {
+      expect(
+        verdict({ drift: [], faults: [], checked: 31, ahead: 0, floor: 31 }),
+      ).toMatchObject({ kind: "parity", code: 0 });
+    });
+
+    it("⛔ a release in progress — one package bumped and not yet published — is PARITY, not a refusal", () => {
+      expect(
+        verdict({ drift: [], faults: [], checked: 30, ahead: 1, floor: 31 }),
+      ).toMatchObject({ kind: "parity", code: 0 });
+    });
+
+    it("⛔⛔ THE DISCRIMINATOR — a subject that went MISSING still refuses", () => {
+      // 29 compared, 1 ahead: one package is accounted for by neither, which is the defect this floor
+      // exists for. Without this case the change above would read as "the floor was weakened".
+      const v = verdict({
+        drift: [],
+        faults: [],
+        checked: 29,
+        ahead: 1,
+        floor: 31,
+      });
+      expect(v.kind).toBe("unmeasured");
+      expect(v.message).toMatch(/never published, answered 404/);
+    });
+
+    it("⛔⛔ and a FULL release — every package ahead, nothing compared — is UNMEASURED, never a tick", () => {
+      // ⛔ The case that makes excusing `ahead` safe HERE rather than dangerous. All 31 packages carry one
+      // fixed version group, so a real release moves them together and `checked` is 0. Excusing `ahead`
+      // and stopping would print a success line over a run that opened no tarball at all.
+      const v = verdict({
+        drift: [],
+        faults: [],
+        checked: 0,
+        ahead: 31,
+        floor: 31,
+      });
+      expect(v.kind).toBe("unmeasured");
+      expect(v.message).toMatch(/nothing was opened and nothing was checked/);
+    });
+  });
+
   it("a version not yet published is a note, and leaves the run unmeasured rather than green", async () => {
     const { root, manifests } = fixture({ version: "0.19.0" });
     try {
