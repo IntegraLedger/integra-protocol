@@ -45,7 +45,7 @@ function packsChangelog(pkgDir: string): boolean {
  *
  * ★ THE CHANGELOG WAS THE NEXT SURFACE ALONG FROM THE README, AND THE HOLE WAS THE SAME ONE TWICE. This
  * walker was `src/`-only until READMEs leaked 21 occurrences; READMEs were added and CHANGELOGs were not.
- * `IntegraLedger/agent-commerce-plan#196` measured eight occurrences of a private repository's name across
+ * Eight occurrences of a private repository's name were measured across
  * eight package CHANGELOGs, every one of them already inside a published tarball.
  */
 export function packageProse(packagesDir: string): Prose[] {

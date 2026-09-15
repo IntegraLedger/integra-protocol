@@ -295,7 +295,7 @@ describe("check:hermetic-tests", () => {
   });
 
   it("⛔⛔ an interpolation INSIDE the host names nothing — the shape that disproved truncating", () => {
-    // ⭐ From `integra-agentic-commerce`'s tree, where this was driven: `https://seam${i}.example` has the
+    // ⭐ From the private seller-side tree, where this was driven: `https://seam${i}.example` has the
     // interpolation inside the HOST, and the real host is reserved. A draft of this fix truncated at the
     // `${` and reported `seam` — and declaring that would exempt `https://seam${anything}` to any host,
     // which is the poisoned-declaration shape this change removes, one line over.

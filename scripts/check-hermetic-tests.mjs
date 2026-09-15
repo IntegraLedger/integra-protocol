@@ -2,7 +2,7 @@
 /**
  * `check:hermetic-tests` — a test that is not a LIVE RAIL HARNESS must not reach a third party.
  *
- * ⛔⛔ **PORTED FROM `integra-agentic-commerce`, WHERE THE DEFECT THIS PREVENTS ACTUALLY SHIPPED.** That
+ * ⛔⛔ **PORTED FROM THE PRIVATE SELLER-SIDE REPOSITORY, WHERE THE DEFECT THIS PREVENTS ACTUALLY SHIPPED.** That
  * repository committed a plain `.test.ts` whose second case read a chain tip and an account's UTXOs from
  * **Koios** — no env gate, no skip rule — so every `pnpm verify` in every environment made a live HTTP
  * call to a third-party indexer. ⚠️ **That measurement is COMMERCE'S, not this repository's, and it is
@@ -13,7 +13,7 @@
  * 11 live rail harnesses, and the one test naming a `/tmp` path
  * (`packages/conformance/test/runner-verdicts.test.ts`) passes it as a **string argument to
  * `parseCliArgs`** — nothing is opened. ⇒ **This gate closes no live defect. It notices the next one**,
- * which is the whole of its value: `agent-commerce-plan#87` is the record that the class does not stay
+ * which is the whole of its value: the class does not stay
  * clean on its own, and it did not — in the repository that already had the gate, one `import` outside
  * its subject set.
  *
@@ -344,13 +344,13 @@ const URL_AUTHORITY = /https?:\/\/([^/?#\s"'`]*)/g;
  * it, and without it a bare `https://…` in a comment reads as a third-party host named `…`. It is a
  * companion to this change, not a fault in what came before.
  *
- * ⚠️ `integra-agentic-commerce` carries the original line — agent-commerce-plan#147.
+ * ⚠️ The private seller-side repository carries the original line.
  *
  * @param {string} authority the captured authority.
  * @returns {string | null} the lowercased host, or null if the occurrence names none.
  */
 const hostOf = (authority) => {
-  // ⛔⛔ AN INTERPOLATED AUTHORITY NAMES NOTHING, AND `integra-agentic-commerce`'s TREE SETTLED THIS. A
+  // ⛔⛔ AN INTERPOLATED AUTHORITY NAMES NOTHING, AND THE PRIVATE SELLER-SIDE TREE SETTLED THIS. A
   // first draft truncated at the `${` and reported whatever came before it, which reads as the safer
   // choice and is not: that repository's `seller-console/test/file-credentials.test.ts:57` builds
   // `https://seam${i}.example`, where the interpolation is INSIDE the host and the real host is
@@ -394,8 +394,8 @@ for (const file of scanned) {
     // `https://Seller.Example/Terms/AbC.md`, in `discovery/test/discovery.test.ts`, was reported as an
     // undeclared third-party host despite `.example` being RFC 2606 reserved. Declaring it would have
     // written a permanent exception for a host that does not exist, to work around a case-sensitive
-    // regex. ⚠️ The same line is in `integra-agentic-commerce`'s copy and is latent there only because
-    // nothing in that tree spells a reserved host in mixed case — agent-commerce-plan#147.
+    // regex. ⚠️ The same line is in the private seller-side copy and is latent there only because
+    // nothing in that tree spells a reserved host in mixed case.
     const host = hostOf(match[1]);
     if (host === null) continue;
     if (RESERVED.test(host)) continue;
