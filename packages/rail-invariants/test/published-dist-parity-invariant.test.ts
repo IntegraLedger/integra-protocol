@@ -24,8 +24,25 @@
  *   `compared` is 30 while the gate itself exits 0 (`compared + skipped.length === floor` → `parity`).
  *   The test asserted a STRICTER rule than the gate it drives, satisfiable only on a tree byte-identical
  *   to the last release. Measured 2026-09-16 on the first branch after this file landed to touch a
- *   publishable `src/`, and reproduced on two CI runners at the same line. A version bump does not help:
- *   an unpublished version is skipped for a different reason and `compared` is still 30.
+ *   publishable `src/`, and reproduced on two CI runners at the same line.
+ *
+ * ⛔⛔ A VERSION BUMP DOES NOT HELP EITHER, AND WHAT IT DOES INSTEAD IS WORSE THAN THIS — it is a release
+ * deadlock, it is PRE-EXISTING, and it is NOT fixed here. `.changeset/config.json` declares one fixed
+ * group, `@integraledger/lcp-*`, and all 31 publishable packages match it at a single version (0.18.3,
+ * measured). So `changeset version` moves ALL THIRTY-ONE at once; every one is then unpublished, every one
+ * is skipped as "is not published", and `compared` is **0** — driven against the live registry with the
+ * manifests bumped in memory: `compared = 0, skipped = 31`, `verdict() -> unmeasured`
+ * (check-published-dist-parity.mjs:257). ⇒ The live control fails at the `compared > 0` guard and at the
+ * parity assertion, and the `compared + skipped === floor` line PASSES — the empty-subject guard is
+ * working exactly as intended, because a bump commit genuinely measures nothing.
+ *
+ *   ⚠️ The deadlock is the WORKFLOW ORDER, not this assertion. `release.yml` fires only off a green `ci`
+ *   (`workflow_run`), and its manual entry point checks the API for a green `ci` on the same commit
+ *   rather than trusting the trigger — so both paths are gated. `ci` runs `pnpm verify`, whose last stage
+ *   is this suite. The bump commit is therefore red until the packages are published, and they cannot be
+ *   published until the release runs. ⭐ The old `compared === DIST_FLOOR` fails identically at 0, so this
+ *   is not something the fix above introduced; it was simply never reached, because the last releases
+ *   predate this file. Filed as register row 281 (protocol, release path) and answered there, not here.
  *
  * ⇒ The live control asserts THE GATE'S OWN RULE — `compared + skipped.length === DIST_FLOOR`, which a
  * package joining or leaving still moves — plus `compared > 0` SEPARATELY, so the empty-subject-set guard
@@ -33,7 +50,7 @@
  *
  * ⭐ AND EVERY SKIP IS READ RATHER THAN COUNTED. A number that admits skips is only honest if each one is
  * accounted for, so the control requires a note NAMING each skipped package and giving one of the two
- * reasons the gate defines, and prints them. ⛔ Closed in both directions on purpose: a third skip path
+ * reasons the gate defines, and logs it. ⛔ Closed in both directions on purpose: a third skip path
  * added later, or one that pushes no note, fails here until somebody states what it is — a new way to be
  * excused from a measurement is a decision, never a default.
  *
@@ -318,9 +335,7 @@ describe("published-dist-parity", () => {
     ]);
   });
 
-  it("⭐⭐ THE LIVE CONTROL — the REAL registry, REAL tarballs, a REAL root build, and it is PARITY", async ({
-    annotate,
-  }) => {
+  it("⭐⭐ THE LIVE CONTROL — the REAL registry, REAL tarballs, a REAL root build, and it is PARITY", async () => {
     const r = await distParityReport({
       manifests: manifests(),
       registry: NetworkRegistry({}),
@@ -340,19 +355,26 @@ describe("published-dist-parity", () => {
       const note = (r.notes as string[]).find((n) => n.startsWith(`${name}@`));
       expect(note, `${name} was skipped and no note says why`).toBeDefined();
       expect(note).toMatch(SKIP_REASONS);
-      // ⛔ AN ANNOTATION RATHER THAN `console.log`, and the difference was MEASURED: this runner prints
-      // nothing at all from a PASSING test — a probe `console.log` in a green case produced no output —
-      // so a skip list written that way is one nobody reads until the run is already red. An annotation
-      // is reporter output rather than intercepted stdout. ⚠️ Exactly what that buys, stated honestly:
-      // CI renders it (`::notice file=…::<message>`, driven against this file with `GITHUB_ACTIONS=true`),
-      // and the local default reporter does not render annotations on a pass either. The assertion above
-      // is what makes an unaccounted skip impossible; this is what makes an accounted one legible where
-      // the run that gates a merge is read.
-      await annotate(`skipped — ${note}`, "notice");
+      // ⛔⛔ THE ASSERTIONS ABOVE ARE THE GUARD; THIS LINE IS ONLY LEGIBILITY, and where it is legible was
+      // measured rather than assumed — the first version of this comment got it backwards.
+      //
+      // A probe test that logs and annotates from a PASSING case, run three ways:
+      //   vitest's own default pick under an agent shell (`minimal`) — neither the log nor the annotation
+      //   `--reporter=default`, what a human and CI's log get — the LOG prints, the annotation does not
+      //   `--reporter=verbose`                                      — both print
+      // ⇒ `console.log` is at least as visible as an annotation under every reporter and strictly more
+      // visible under the one that matters, which is the opposite of what this comment used to claim.
+      //
+      // ⚠️ AND THE ANNOTATION ROUTE IS DEFEATED HERE ANYWAY. Vitest emits `::notice …` in CI, but `pnpm -r`
+      // prefixes every line with `packages/rail-invariants test: ` and the runner's command parser only
+      // takes a line that BEGINS with `::`. Measured on this file's own green run: both `verify` matrix
+      // check-runs report `annotations_count=0` while the `::notice` sits, prefixed, in the raw log.
+      // ⇒ What a reader actually sees on a pass: nothing under an agent shell, this line under the
+      // default reporter and in CI's raw log, and nothing in GitHub's annotations panel.
+      console.log(`  dist-parity — skipped: ${note}`);
     }
-    await annotate(
-      `${r.compared} compared, ${r.skipped.length} skipped, floor ${DIST_FLOOR}`,
-      "notice",
+    console.log(
+      `  dist-parity — ${r.compared} compared, ${r.skipped.length} skipped, floor ${DIST_FLOOR}`,
     );
     expect(verdict(r).kind).toBe("parity");
   }, 180_000);
