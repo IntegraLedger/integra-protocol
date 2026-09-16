@@ -13,9 +13,11 @@ name: published-dist-parity
 #
 # ⛔⛔ AND SINCE 2026-09-16 THIS WORKFLOW IS THE *ONLY* LIVE DRIVER OF THIS GATE. `published-dist-parity-invariant.test.ts`
 # used to carry a live control — the real registry, real tarballs, a real root build — inside `pnpm verify`.
-# It reddened the one commit a release is made of: all 31 publishable packages are ONE fixed group in
-# `.changeset/config.json`, so `changeset version` leaves every one of them unpublished at once, the gate
-# skips all 31, `compared` is 0 and the verdict is `unmeasured`. `ci` reds, and `release.yml` fires only off
+# It reddened the one commit a release is made of: every publishable package is ONE fixed group in
+# `.changeset/config.json`, so `changeset version` leaves all of them unpublished at once, the gate skips
+# every one, `compared` is 0 and the verdict is `unmeasured`. ⛔ The count is deliberately not written here:
+# `DIST_FLOOR` in `scripts/check-published-dist-parity.mjs` is the source of truth and the gate prints what
+# it compared, so a number copied into a comment is one more thing to go stale the day a package joins. `ci` reds, and `release.yml` fires only off
 # a green `ci` on both of its entry points — so the packages could not be published until the release ran
 # and the release could not run until they were published. Ruled 2026-09-16; tracked on the planning
 # register as row 281. The test file keeps every INJECTED case and is now hermetic end to end.
@@ -70,10 +72,11 @@ jobs:
 
       - name: Rebuild each published version's dist and compare it to what shipped
         id: parity
-        # ⛔⛔ THE EXIT CODE IS CAPTURED RATHER THAN ALLOWED TO FAIL THE STEP — this gate has four answers
-        # and three of them are not "pass": 1 drift, 2 nothing compared, 3 the instrument failed, 4 a stale
-        # floor. Letting the step fail collapses them into one red and the reporting below would file
-        # "the published dist is wrong" over a run that measured nothing.
+        # ⛔⛔ THE EXIT CODE IS CAPTURED RATHER THAN ALLOWED TO FAIL THE STEP — this gate has FIVE answers
+        # and FOUR of them are not "pass": 1 drift, 2 nothing compared, 3 the instrument failed, 4 a stale
+        # floor, 0 parity. Letting the step fail collapses them into one red and the reporting below would
+        # file "the published dist is wrong" over a run that measured nothing. ⚠️ This read "four answers
+        # and three of them", while listing four non-pass codes — the sentence contradicted its own list.
         #
         # ⚠️ `shell: bash` is not for pipefail — this step cannot fail. `PIPESTATUS` does not exist in `sh`,
         # which is what a bare `run:` may fall back to, and `PIPESTATUS[0]` is the whole mechanism.
@@ -162,7 +165,7 @@ jobs:
           case "$CODE" in
             0) LINE="✓ parity — every published dist/ was rebuilt from its own source and matched byte for byte." ; FAIL=0 ;;
             1) LINE="✕ DRIFT — the dist/ a consumer loads is not what this source emits. The issue this run opened names the files. The remedy is a version bump and a release, never an adjustment to the gate." ; FAIL=1 ;;
-            2) LINE="⚠ UNMEASURED — this run opened no published dist/, so it has no parity claim to make. REPORTED, not red: all 31 packages are one fixed group, so a release bump leaves every one unpublished until the staged versions are approved, and this is what that commit looks like from here. ⛔ Still unmeasured after a release has been approved and gone live is a finding — read the issue." ; FAIL=0 ;;
+            2) LINE="⚠ UNMEASURED — this run opened no published dist/, so it has no parity claim to make. REPORTED, not red: the publishable packages are one fixed group, so a release bump leaves every one of them unpublished until the staged versions are approved, and this is what that commit looks like from here — the counts for this run are in the gate output above. ⛔ Still unmeasured after a release has been approved and gone live is a finding — read the issue." ; FAIL=0 ;;
             3) LINE="✕ THE INSTRUMENT FAILED — the registry, a tarball or the rebuild failed. Nothing is being claimed about any published artifact; this is not a product finding." ; FAIL=1 ;;
             4) LINE="✕ STALE FLOOR — a package joined or left the publishable set and DIST_FLOOR did not move with it. Raise it when one joins; never lower it to quieten one that left." ; FAIL=1 ;;
             "") LINE="✕ the gate never ran — an earlier step failed, so there is no verdict. No verdict is not parity." ; FAIL=1 ;;

@@ -40,12 +40,23 @@
  * opened no published dist is telling the truth and must not stand between a release and its own gate.
  *
  * ⛔ THE LIVE DRIVER IS THE GATE SCRIPT, NOT A TEST FILE THAT ONLY THAT WORKFLOW RUNS, and the reason is
- * measurable rather than aesthetic: `check-hermetic-tests.mjs` enumerates FILES ON DISK under `packages/`
- * and knows nothing about which command ran them. A registry-reaching `.test.ts` parked here "for the
- * workflow only" would sit in that gate's subject set exactly as the live control did, and would need the
- * same declaration defect to stay green. `scripts/` is outside that walk. ⚠️ THE COST, STATED: `main()`
- * asserts the verdict and not per-skip accountability, so that rule is asserted below against the gate's
- * CODE — which is where the rule lives — rather than against a live report.
+ * measurable rather than aesthetic: `check-hermetic-tests.mjs` ENUMERATES its test subjects by walking
+ * `packages/` on disk (`:166`) and knows nothing about which command ran them. A registry-reaching
+ * `.test.ts` parked here "for the workflow only" would be enumerated as a non-live test exactly as the live
+ * control was, and would need the same declaration defect to stay green. A `scripts/` module is not
+ * enumerated as a test at all.
+ *
+ *   ⚠️ THE DISTINCTION IS THE ENUMERATION AND NOT THE REACH, and the first cut of this note said "walk",
+ *   which reads as the second. That gate's HOST SCAN does follow relative imports transitively with no root
+ *   bound (`supportReachedBy`, `:239-263`), so it reaches `scripts/` and always has — the tree's own
+ *   `registry.npmjs.org` entry attributes the host to `check-published-parity.mjs`'s `REGISTRY_ORIGIN`,
+ *   which is a `scripts/` file, and is the proof. What moving the control changes is not what the gate can
+ *   SEE: it is that no test calls the host any more, so the entry's claim — "named, not called" — is true
+ *   again.
+ *
+ * ⚠️ THE COST, STATED: `main()` asserts the verdict and not per-skip accountability, so that rule is
+ * asserted below against the gate's CODE — which is where the rule lives — rather than against a live
+ * report.
  *
  * ⛔⛔ THE MOTIVATING FAILURE CANNOT BE PLANTED AGAINST THE LIVE REGISTRY, and that is a property of the
  * subject rather than a gap in the drive: a published version is immutable, so nothing can make npmjs serve
@@ -71,10 +82,16 @@
  *   publishable `src/`, and reproduced on two CI runners at the same line.
  *
  * ⭐ AND EVERY SKIP IS READ RATHER THAN COUNTED. A number that admits skips is only honest if each one is
- * accounted for, so the drive requires a note NAMING each skipped package and giving one of the two reasons
- * the gate defines, and exercises BOTH of those paths in one report. ⛔ Closed in both directions on
- * purpose: a third skip path added later, or one that pushes no note, fails here until somebody states what
- * it is — a new way to be excused from a measurement is a decision, never a default.
+ * accounted for, so the drive asserts, over EVERY skip the report carries, that a note names that package
+ * and gives one of the two reasons the gate defines — and it plants both of those paths in one report so
+ * the assertion is never vacuous.
+ *
+ *   ⚠️ WHAT THAT IS AND IS NOT, because the first cut of this note claimed more. It holds a REPORT
+ *   accountable: no skip in it goes unexplained, and a path that stopped pushing a note fails the moment a
+ *   fixture reaches it. It does NOT close the SET of skip paths — a third one added later is caught only
+ *   if some fixture happens to trigger it, and nobody is obliged to write that fixture. ⭐ The live control
+ *   this replaced was conditional in exactly the same way, on whatever the registry offered that day, so
+ *   nothing was lost in the move; the difference is that this one is stated.
  *
  * ⚠️ WHAT THIS DOES NOT CATCH, stated rather than discovered later: nothing in `verify` now opens a
  * published tarball, so a `dist/` that shipped stale is invisible to every gate in `verify` and is caught
