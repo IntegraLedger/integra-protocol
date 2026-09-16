@@ -29,6 +29,12 @@
  * Then, once every link has passed:
  *   5. LEAF BINDING — the leaf subject's key must be the acceptance signer (scheme-canonical form).
  *
+ * And ONE thing the walk records rather than checks: profiled attestations the presenter addressed to a
+ * link's subject (attestation-profile.ts). They are read as envelopes, carried onto the readout, and
+ * examined no further — no substrate cryptography is verified here and no set of acceptable substrates
+ * exists to compare one against. A recorded attestation can never refuse a chain and can never pass one;
+ * it makes the artifact reachable and says, in the readout's own structure, that nobody here checked it.
+ *
  * THE PROOF GATE IS INSIDE THE LOOP, and that is a bound rather than a refinement. It used to run as a
  * second pass over the whole chain, so the ENTIRE structural walk — every attenuation gate, every
  * status-list inflation — completed before a single proof was consulted. Measured on a 5000-link chain
@@ -55,6 +61,11 @@
  * as an empty (unprovable) chain.
  */
 import type { HaltClass } from "@integraledger/lcp-binding-core";
+import {
+  type ProfiledAttestation,
+  type RecordedAttestation,
+  recordAttestation,
+} from "./attestation-profile.js";
 import type { Bounds } from "./bounds.js";
 import { type AtaGrant, linkAttenuates } from "./grant.js";
 import { decodeStatusList, isActiveAsOf, statusBit } from "./status.js";
@@ -95,6 +106,21 @@ export interface WalkedLink {
    * points at a list, and with no pointer there is nothing to consult and nothing to state.
    */
   active: boolean;
+  /**
+   * The attestations the presenter addressed to THIS link's subject, each recorded as an envelope this
+   * walk read and did not check (attestation-profile.ts).
+   *
+   * PRESENT ONLY WHERE THE PRESENTER ADDRESSED THIS SUBJECT, absent otherwise — the same discipline as
+   * `revoked` above: an empty list means "addressed, and it was empty", and absence means "nothing was
+   * addressed here", which are different facts and must not be the same value.
+   *
+   * ⛔ Nothing in this list can refuse a chain. A substrate this build has never heard of, a profile it
+   * cannot interpret and an element it could not read at all all travel through to the readout, because
+   * refusing one would make this implementation the arbiter of which roots of trust count. The walk's
+   * verdict is about CUSTODY; what an attestation is worth is the reader's question, and the `ref` in each
+   * envelope is how they reach the artifact to answer it.
+   */
+  attestations?: RecordedAttestation[];
 }
 
 /** The proof-verification port: does the proof verify over the grant AS PRESENTED (signed bytes = visible
@@ -117,6 +143,26 @@ export interface ChainWalkInput {
   /** The settlement instant (RFC 3339) every window and revocation is evaluated as-of. */
   asOf: string;
   statusSnapshots?: Record<string, string>;
+  /**
+   * Profiled attestations presented ALONGSIDE the chain, keyed by the subject identifier they are
+   * addressed to — the same shape as `statusSnapshots`, and for the same reason: the presenter says what
+   * each artifact is about, rather than the walk inferring it.
+   *
+   * Keyed rather than a flat list deliberately. An element nobody can interpret still has an address, so
+   * it lands on a link's readout as a stated gap instead of vanishing; a flat list matched on each
+   * element's own `subject` could only drop the ones whose subject was the unreadable part.
+   *
+   * ⚠️ An attestation is recorded on the link it is ADDRESSED to, and it also states the subject it claims
+   * to vouch for. Where those disagree the walk records both and refuses nothing: the disagreement is
+   * visible in the readout, which is the honest answer, and refusing over it would be this walk ruling on
+   * evidence it has not checked.
+   *
+   * ⛔ A key naming no walked link — the declared PRINCIPAL above all, which is an issuer and never a
+   * subject — still reaches the record, as {@link UnwalkedAttestation} on the result. It used to reach
+   * nothing, and a readout identical to one that was given nothing is a record that misreports its input.
+   * The walk still neither refuses over such a key nor invents a link to hang it on.
+   */
+  attestations?: Record<string, ProfiledAttestation[]>;
 }
 
 /**
@@ -141,10 +187,61 @@ export type ChainWalkHalt =
   | { status: "refused"; haltClass: HaltClass; code: string; detail: string }
   | { status: "not-attempted"; depth: string };
 
+/**
+ * One presented attestation that NO WALKED LINK could carry, recorded on the result rather than dropped.
+ *
+ * ⛔⛔ THIS FIELD EXISTS BECAUSE THREE PRESENTER INPUTS USED TO VANISH BYTE-IDENTICALLY TO "NOTHING WAS
+ * PRESENTED", which is a readout quieter than its input and therefore the exact defect a recorder must not
+ * have: an attestation addressed to the declared principal, one addressed to an identifier the chain never
+ * reached, and a whole `attestations` slot that was not a keyed object. Each is legitimate wire input, none
+ * of them is a reason to refuse anything, and a record that shows none of them tells a reader the presenter
+ * supplied less than they did.
+ *
+ * ⭐ THE PRINCIPAL IS NOT A LINK, AND THAT IS THE COMMONEST CASE HERE RATHER THAN A DEFECT. A `WalkedLink`
+ * is keyed on `credentialSubject.id` — who a grant was issued TO. The principal is the root grant's
+ * `issuer`, the party the chain hangs FROM, and its own authority is synthesized as the root's parent
+ * (unbounded, inherently delegable — see the file header) rather than walked. It therefore has no readout
+ * of its own to carry anything, and an attestation about the principal — exactly what a counterparty
+ * vouching for the org at the top of the chain would present — lands here, keyed as such.
+ *
+ * ⚠️ Two boundaries, stated rather than left to be found. A HALT carries none of this: a refused or
+ * not-attempted walk has no readout at all and the halt is the whole answer. And an EMPTY list addressed
+ * to an unwalked identifier contributes no entry, because there was no attestation to carry — that is a
+ * distinction this flat list cannot express, and nothing is lost by it.
+ *
+ * ⛔ A THIRD, AND IT IS THE EXACT-IDENTIFIER RULE RATHER THAN AN OVERSIGHT. The match is against
+ * `credentialSubject.id` forms alone, so an attestation addressed by the leaf's SCHEME-CANONICAL SIGNER —
+ * `0xabc` where the leaf subject is `did:pkh:eip155:…:0xabc` — reads `addressed-to-no-walked-link`, even
+ * though `bindsSigner` binds that very pair one gate earlier. Widening the match with that bridge would
+ * put a second, silent identifier equivalence in a walk whose header says equality is EXACT and names the
+ * `did:pkh` bridge as the ONE exception, defined for leaf binding; and `bindsSigner` is one-way, so the
+ * answer would depend on which form the presenter happened to use. ⇒ Address to the exact identifier, as
+ * a producer must GRANT to the exact identifier. The record stays honest either way: the attestation is
+ * recorded, with `addressedTo` naming the form the presenter used, so a reader who knows the bridge can
+ * see what happened.
+ */
+export interface UnwalkedAttestation {
+  /** Why no link carried it — the principal is distinguished from an identifier the chain never reached. */
+  depth:
+    | "addressed-to-the-declared-principal"
+    | "addressed-to-no-walked-link"
+    | "attestations-slot-not-keyed";
+  /** The identifier the presenter addressed it to, where the slot was keyed at all. */
+  addressedTo?: string;
+  /** Read exactly as a link-carried attestation is — the same envelope, the same stated gaps. */
+  recorded: RecordedAttestation;
+}
+
 /** The STRUCTURAL walk's three-way readout: a chain walked over the presented DOCUMENTS, a reasoned
- *  refusal, or an honest gap. `walked` is deliberately NOT `verified` — see {@link VerifiedChainWalkResult}. */
+ *  refusal, or an honest gap. `walked` is deliberately NOT `verified` — see {@link VerifiedChainWalkResult}.
+ *  `unwalkedAttestations` is present only when there were any, so a walk over a chain that presented none
+ *  reads out exactly as it always has — which is what keeps every conformance vector byte-identical. */
 export type ChainWalkResult =
-  | { status: "walked"; links: WalkedLink[] }
+  | {
+      status: "walked";
+      links: WalkedLink[];
+      unwalkedAttestations?: UnwalkedAttestation[];
+    }
   | ChainWalkHalt;
 
 /**
@@ -163,7 +260,11 @@ export type ChainWalkResult =
  * error rather than a runtime check nobody wrote.
  */
 export type VerifiedChainWalkResult =
-  | { status: "verified"; links: WalkedLink[] }
+  | {
+      status: "verified";
+      links: WalkedLink[];
+      unwalkedAttestations?: UnwalkedAttestation[];
+    }
   | ChainWalkHalt;
 
 /**
@@ -176,8 +277,8 @@ export type VerifiedChainWalkResult =
 export async function walkChainStructure(
   input: ChainWalkInput,
 ): Promise<ChainWalkResult> {
-  const links = await walkLinks(input, undefined);
-  return Array.isArray(links) ? { status: "walked", links } : links;
+  const out = await walkLinks(input, undefined);
+  return "links" in out ? { status: "walked", ...out } : out;
 }
 
 /**
@@ -193,8 +294,8 @@ export async function walkChain(
   input: ChainWalkInput,
   proofs: GrantProofVerifier,
 ): Promise<VerifiedChainWalkResult> {
-  const links = await walkLinks(input, proofs);
-  return Array.isArray(links) ? { status: "verified", links } : links;
+  const out = await walkLinks(input, proofs);
+  return "links" in out ? { status: "verified", ...out } : out;
 }
 
 /**
@@ -207,7 +308,10 @@ export async function walkChain(
 async function walkLinks(
   input: ChainWalkInput,
   proofs: GrantProofVerifier | undefined,
-): Promise<WalkedLink[] | ChainWalkHalt> {
+): Promise<
+  | { links: WalkedLink[]; unwalkedAttestations?: UnwalkedAttestation[] }
+  | ChainWalkHalt
+> {
   const raw: Record<string, unknown> = isObject(input) ? input : {};
   const chain = raw["chain"];
   if (!Array.isArray(chain)) return gap("no-authority-chain");
@@ -225,6 +329,14 @@ async function walkLinks(
   const snapshots = isObject(raw["statusSnapshots"])
     ? (raw["statusSnapshots"] as Record<string, string>)
     : undefined;
+  // A presented `attestations` slot that is not a keyed object addresses nobody, so nothing can hang on a
+  // link — but it is not therefore ABSENT, and reading it that way was a defect: the presenter put
+  // something there, and a readout identical to one that was given nothing is a record that misreports its
+  // own input. It can still never impeach a chain; it is carried out to `unwalkedAttestations` below.
+  const attestationSlot = raw["attestations"];
+  const attestations = isObject(attestationSlot)
+    ? (attestationSlot as Record<string, unknown>)
+    : undefined;
 
   // ONE INFLATION PER STATUS LIST, not one per link. Every link of a chain normally points at the SAME
   // issuer status list, and each entry was decoded independently — 64 links against a list at the 1 MiB
@@ -233,6 +345,9 @@ async function walkLinks(
   // cached; a throw is re-derived, and re-derives the same way.
   const decoded = new Map<string, Uint8Array>();
   const links: WalkedLink[] = [];
+  // The identifiers a readout EXISTS for. Collected rather than re-derived from `links`, which carries
+  // bounds and not subjects, and it is what decides whether a presented key had anywhere to land.
+  const walkedSubjects = new Set<string>();
   let parent: AtaGrant | undefined;
   for (const [i, element] of chain.entries()) {
     const grant = walkableGrant(element);
@@ -301,7 +416,17 @@ async function walkLinks(
       }
       revoked = false; // the pinned snapshot was read as-of settlement and the bit is clear
     }
-    links.push(readout(grant, parent, revoked));
+    // AFTER every gate above, and deliberately: recording is the last thing the loop does for a link, so
+    // no presented attestation can be reached before the walk has already decided the link is sound.
+    links.push(
+      readout(
+        grant,
+        parent,
+        revoked,
+        addressedAttestations(attestations, grant.credentialSubject.id),
+      ),
+    );
+    walkedSubjects.add(grant.credentialSubject.id);
     parent = grant;
   }
   // `parent` is the leaf here — the loop ran at least once (empty chains returned above).
@@ -311,7 +436,69 @@ async function walkLinks(
       "walk/leaf-not-signer",
       `custody ends at ${leaf}, but the acceptance was signed by ${signer}`,
     );
-  return links;
+  const unwalkedAttestations = unwalked(
+    attestationSlot,
+    attestations,
+    walkedSubjects,
+    principal,
+  );
+  return {
+    links,
+    // OMITTED WHEN EMPTY, never `[]`. The key's presence is itself the statement that something was
+    // presented and could not be carried, and an empty array would add a key to every readout in the
+    // conformance corpus — which compares the whole object.
+    ...(unwalkedAttestations.length > 0 ? { unwalkedAttestations } : {}),
+  };
+}
+
+/**
+ * Everything the presenter supplied that no walked link could carry — see {@link UnwalkedAttestation}.
+ *
+ * ⛔ Total and refusal-free, like every other reader on this path. The unkeyed slot is read through
+ * `recordAttestation` exactly as a keyed element is, so a flat list of attestations reads out as its
+ * elements rather than as one opaque "that was not an object", and a scalar reads out as the stated gap
+ * `attestation-not-an-object`. Nothing here can change the chain's verdict.
+ */
+function unwalked(
+  slot: unknown,
+  attestations: Record<string, unknown> | undefined,
+  walkedSubjects: Set<string>,
+  principal: string,
+): UnwalkedAttestation[] {
+  const out: UnwalkedAttestation[] = [];
+  if (slot !== undefined && attestations === undefined)
+    for (const item of Array.isArray(slot) ? slot : [slot])
+      out.push({
+        depth: "attestations-slot-not-keyed",
+        recorded: recordAttestation(item),
+      });
+  if (attestations !== undefined)
+    for (const key of Object.keys(attestations)) {
+      if (walkedSubjects.has(key)) continue;
+      const depth =
+        key === principal
+          ? "addressed-to-the-declared-principal"
+          : "addressed-to-no-walked-link";
+      const addressed = attestations[key];
+      if (!Array.isArray(addressed)) {
+        out.push({
+          depth,
+          addressedTo: key,
+          recorded: {
+            status: "not-attempted",
+            depth: "attestations-not-a-list",
+          },
+        });
+        continue;
+      }
+      for (const item of addressed)
+        out.push({
+          depth,
+          addressedTo: key,
+          recorded: recordAttestation(item),
+        });
+    }
+  return out;
 }
 
 function gap(depth: string): ChainWalkHalt {
@@ -475,6 +662,7 @@ function readout(
   grant: AtaGrant,
   parent: AtaGrant | undefined,
   revoked: boolean | undefined,
+  attestations: RecordedAttestation[] | undefined,
 ): WalkedLink {
   const subject = grant.credentialSubject;
   const parentMaxDepth = parent?.credentialSubject.maxDepth;
@@ -489,5 +677,26 @@ function readout(
     ...(subject.maxDepth !== undefined ? { maxDepth: subject.maxDepth } : {}),
     ...(revoked !== undefined ? { revoked } : {}),
     active: true,
+    ...(attestations !== undefined ? { attestations } : {}),
   };
+}
+
+/**
+ * What the presenter addressed to one WALKED subject, recorded. `undefined` where they addressed it nothing
+ * at all — the readout then omits the field, and an empty list stays an empty list.
+ *
+ * A slot addressed to a subject but holding something that is not a list is itself a stated gap rather than
+ * a discarded one: the presenter put SOMETHING there, and a readout that showed nothing would be reporting
+ * that they did not. Keys this never sees — because no link carries them — are {@link unwalked}'s.
+ */
+function addressedAttestations(
+  attestations: Record<string, unknown> | undefined,
+  subject: string,
+): RecordedAttestation[] | undefined {
+  if (attestations === undefined) return undefined;
+  if (!Object.hasOwn(attestations, subject)) return undefined;
+  const addressed = attestations[subject];
+  if (!Array.isArray(addressed))
+    return [{ status: "not-attempted", depth: "attestations-not-a-list" }];
+  return addressed.map(recordAttestation);
 }
