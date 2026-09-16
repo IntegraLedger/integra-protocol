@@ -11,6 +11,25 @@ name: published-dist-parity
 # `check-hermetic-tests.mjs` states the consequence — "a gate that reaches a third party fails red for a
 # reason that is not in the tree."
 #
+# ⛔⛔ AND SINCE 2026-09-16 THIS WORKFLOW IS THE *ONLY* LIVE DRIVER OF THIS GATE. `published-dist-parity-invariant.test.ts`
+# used to carry a live control — the real registry, real tarballs, a real root build — inside `pnpm verify`.
+# It reddened the one commit a release is made of: all 31 publishable packages are ONE fixed group in
+# `.changeset/config.json`, so `changeset version` leaves every one of them unpublished at once, the gate
+# skips all 31, `compared` is 0 and the verdict is `unmeasured`. `ci` reds, and `release.yml` fires only off
+# a green `ci` on both of its entry points — so the packages could not be published until the release ran
+# and the release could not run until they were published. Ruled 2026-09-16; tracked on the planning
+# register as row 281. The test file keeps every INJECTED case and is now hermetic end to end.
+#
+# ⇒ THE CONSEQUENCE FOR THIS FILE: `unmeasured` is a REPORTED state here and not a red, because at a bump
+# commit a run that opened no published dist is telling the truth. Everything else the gate can answer reds
+# the job — see the verdict step at the bottom, which is what keeps "reported" from meaning "silent".
+#
+# ⛔ WHY THERE IS NO `workflow_run` OFF `release.yml`, which is the obvious thing to reach for. That
+# workflow only STAGES: nothing is installable until a human approves the staged bytes with 2FA, so a run
+# triggered by it would ask the registry about versions that are not there yet and answer `unmeasured` a
+# second time. The read that matters is the first SCHEDULED run after approval — within six hours — or a
+# `workflow_dispatch` by whoever approved.
+#
 # The minute is offset off the hour and off this repository's sibling (:23). A
 # published version is immutable, so an overlap could not make any of them ambiguous about what it saw;
 # the offset is only to avoid queueing behind everything GitHub runs at :00.
@@ -58,6 +77,10 @@ jobs:
         #
         # ⚠️ `shell: bash` is not for pipefail — this step cannot fail. `PIPESTATUS` does not exist in `sh`,
         # which is what a bare `run:` may fall back to, and `PIPESTATUS[0]` is the whole mechanism.
+        #
+        # ⛔ CAPTURING IS NOT SWALLOWING. The code is read back by the verdict step at the bottom, which is
+        # where this job decides whether it is red. Before that step existed every outcome — drift included
+        # — left a GREEN tick with an issue beside it, so the job's own status distinguished nothing.
         shell: bash
         run: |
           set +e
@@ -118,3 +141,32 @@ jobs:
             "$RUN_URL" "$(cat /tmp/dist-parity.log)")
           EXISTING=$(gh issue list --state open --search "$FAULT_TITLE in:title" --json number --jq '.[0].number // empty')
           if [ -n "$EXISTING" ]; then gh issue comment "$EXISTING" --body "$BODY"; else gh issue create --title "$FAULT_TITLE" --body "$BODY"; fi
+
+      # ⛔⛔ THE JOB'S STATUS IS THE VERDICT, AND EXACTLY ONE ANSWER IS DELIBERATELY GREEN WITHOUT BEING A
+      # PASS. `unmeasured` (2) is what a release bump commit looks like from here and is REPORTED — a
+      # summary line and an issue — because a red would be this gate standing between a release and its own
+      # subject. Drift (1), an instrument fault (3) and a stale floor (4) are findings and RED the job.
+      #
+      # ⛔ AND AN UNMAPPED OR MISSING CODE IS RED, never a pass. An earlier step that failed leaves this
+      # output empty, and a gate that grew a sixth verdict would otherwise fall through to a green tick —
+      # which is the empty-subject-set defect wearing a case statement.
+      #
+      # ⚠️ `if: always()` so this runs when an earlier step failed: a job whose gate never ran has no
+      # verdict, and no verdict is not parity.
+      - name: The verdict — a job status and a summary line for every answer this gate can give
+        if: always()
+        shell: bash
+        env:
+          CODE: ${{ steps.parity.outputs.code }}
+        run: |
+          case "$CODE" in
+            0) LINE="✓ parity — every published dist/ was rebuilt from its own source and matched byte for byte." ; FAIL=0 ;;
+            1) LINE="✕ DRIFT — the dist/ a consumer loads is not what this source emits. The issue this run opened names the files. The remedy is a version bump and a release, never an adjustment to the gate." ; FAIL=1 ;;
+            2) LINE="⚠ UNMEASURED — this run opened no published dist/, so it has no parity claim to make. REPORTED, not red: all 31 packages are one fixed group, so a release bump leaves every one unpublished until the staged versions are approved, and this is what that commit looks like from here. ⛔ Still unmeasured after a release has been approved and gone live is a finding — read the issue." ; FAIL=0 ;;
+            3) LINE="✕ THE INSTRUMENT FAILED — the registry, a tarball or the rebuild failed. Nothing is being claimed about any published artifact; this is not a product finding." ; FAIL=1 ;;
+            4) LINE="✕ STALE FLOOR — a package joined or left the publishable set and DIST_FLOOR did not move with it. Raise it when one joins; never lower it to quieten one that left." ; FAIL=1 ;;
+            "") LINE="✕ the gate never ran — an earlier step failed, so there is no verdict. No verdict is not parity." ; FAIL=1 ;;
+            *) LINE="✕ check:published-dist-parity exited $CODE, which this workflow has no mapping for. An unmapped exit is a fault, never a pass." ; FAIL=1 ;;
+          esac
+          echo "$LINE" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$FAIL"

@@ -1,22 +1,66 @@
 /**
  * The drive for `check:published-dist-parity`.
  *
+ * ⛔⛔ THE LIVE CONTROL IS NOT IN THIS FILE ANY MORE. It runs from
+ * `.github/workflows/published-dist-parity.yml`, and everything left here injects its registry, so `pnpm
+ * verify` now reaches no third party from this file at all. Ruled 2026-09-16; tracked on the planning
+ * register as row 281. The two reasons are below, and the first one is a release deadlock rather than a
+ * preference.
+ *
+ *   ⛔⛔ A BUMP COMMIT REDS A LIVE CONTROL, AND THE BUMP COMMIT IS THE RELEASE. `.changeset/config.json`
+ *   declares ONE fixed group, `@integraledger/lcp-*`, and all 31 publishable packages match it at a single
+ *   version (0.18.3, measured 2026-09-16). `changeset version` therefore moves ALL THIRTY-ONE at once;
+ *   every one is then unpublished, every one is skipped as "is not published", and `compared` is 0 —
+ *   driven against the live registry with the manifests bumped in memory: `compared = 0, skipped = 31,
+ *   verdict() -> unmeasured` (check-published-dist-parity.mjs:257). ⇒ A live control inside `verify` fails
+ *   at `compared > 0`, `pnpm test` reds, `ci` reds, and `release.yml` fires only off a GREEN `ci` —
+ *   `workflow_run` on one path and an API read of this commit's `ci` conclusion on the manual one, so both
+ *   entry points are gated. The packages could not be published until the release ran, and the release
+ *   could not run until they were published.
+ *
+ *   ⭐ The other half of that deadlock was measured rather than assumed, on a tree with NO bump: the
+ *   release run for this file's own landing commit completed, found all 31 versions already live and
+ *   reported `staged 0; already staged 0; live on the registry 31 — nothing to release`. ⇒ The release path
+ *   is exercised on every green `ci` on `main` and is a green no-op; a version bump is the only thing that
+ *   turns it into a release, and that is precisely the commit a live control refuses.
+ *
+ *   ⛔ AND IT WAS NEVER ADMISSIBLE IN `verify` ON THIS REPOSITORY'S OWN RULE. `check:hermetic-tests`
+ *   (stage 7 of 20) refuses a non-live test that reaches a third party, and `NetworkRegistry({})` defaults
+ *   to the real registry origin (`check-published-parity.mjs:304`). The live control passed that gate only
+ *   because `registry.npmjs.org` carries a `namedNotCalled` declaration — a claim that the host "is never
+ *   fetched" — written for the SIBLING gate's drive, which injects a local `node:http` server. That gate
+ *   declares by HOST over the whole tree and not by file, so the claim covered this file by coincidence.
+ *   ⇒ Stage 7 was green over a declaration this file had falsified. It is true again now, and the
+ *   declaration says so in as many words.
+ *
+ * ⇒ WHERE THE LIVE MEASUREMENT LIVES NOW. `published-dist-parity.yml` runs `check-published-dist-parity.mjs`
+ * itself — every six hours and on dispatch, with an install, a `--frozen-lockfile` toolchain and a real
+ * build — and maps the gate's five verdicts onto a job status and a summary line: drift, a stale floor and
+ * an instrument fault RED the job; `unmeasured` is REPORTED and green, because at a bump commit a run that
+ * opened no published dist is telling the truth and must not stand between a release and its own gate.
+ *
+ * ⛔ THE LIVE DRIVER IS THE GATE SCRIPT, NOT A TEST FILE THAT ONLY THAT WORKFLOW RUNS, and the reason is
+ * measurable rather than aesthetic: `check-hermetic-tests.mjs` enumerates FILES ON DISK under `packages/`
+ * and knows nothing about which command ran them. A registry-reaching `.test.ts` parked here "for the
+ * workflow only" would sit in that gate's subject set exactly as the live control did, and would need the
+ * same declaration defect to stay green. `scripts/` is outside that walk. ⚠️ THE COST, STATED: `main()`
+ * asserts the verdict and not per-skip accountability, so that rule is asserted below against the gate's
+ * CODE — which is where the rule lives — rather than against a live report.
+ *
  * ⛔⛔ THE MOTIVATING FAILURE CANNOT BE PLANTED AGAINST THE LIVE REGISTRY, and that is a property of the
  * subject rather than a gap in the drive: a published version is immutable, so nothing can make npmjs serve
- * a stale `dist/` beside a correct `src/`. Every case needing a defective artifact injects one.
+ * a stale `dist/` beside a correct `src/`. Every case needing a defective artifact injects one — which is
+ * also why moving the live control out costs no injected coverage: it never carried any.
  *
- * ⭐ The live registry is driven once, as a control, because a suite of injected fixtures proves only that
- * the gate agrees with fixtures. ⚠️ That case rebuilds all 31 packages and is therefore the slow one.
+ * ⛔ THE BUILD IS STUBBED IN EVERY CASE. The gate's subject is the COMPARISON, not the compiler, and a
+ * drive that rebuilt 31 packages per case would measure `tsc` thirty-one times over to assert something
+ * about a Map. The real build is the workflow's, once every six hours.
  *
- * ⛔ THE BUILD IS STUBBED IN EVERY INJECTED CASE. The gate's subject is the COMPARISON, not the compiler,
- * and a drive that rebuilds 31 packages per case would measure `tsc` thirty-one times over to assert
- * something about a Map.
- *
- * ⛔⛔ THE TWO CONTROLS ASSERT DIFFERENT THINGS ABOUT THE FLOOR, AND THAT IS THE FIX RATHER THAN A
- * WEAKENING. The injected control keeps `compared === DIST_FLOOR` exactly, because `faithful()` builds its
- * fixtures FROM THE TREE — published src equals tree src by construction, so nothing can legitimately be
- * skipped and a package joining or leaving moves that number the same day it happens. ⚠️ The LIVE control
- * cannot assert it, and asserting it was a real defect that reddened a real branch:
+ * ⛔⛔ THE INJECTED CONTROL KEEPS `compared === DIST_FLOOR` EXACTLY, and that is now the only place the
+ * floor is asserted by equality. `faithful()` builds its fixtures FROM THE TREE — published src equals tree
+ * src by construction, so nothing can legitimately be skipped and a package joining or leaving moves that
+ * number the same day it happens. ⚠️ The live control could NOT assert it, and asserting it was a real
+ * defect that reddened a real branch:
  *
  *   `distParityReport` SKIPS a package whose published src differs from the tree — by design, with a note,
  *   because rebuilding the wrong source gives a dist verdict that is a true red with a false diagnosis.
@@ -26,38 +70,17 @@
  *   to the last release. Measured 2026-09-16 on the first branch after this file landed to touch a
  *   publishable `src/`, and reproduced on two CI runners at the same line.
  *
- * ⛔⛔ A VERSION BUMP DOES NOT HELP EITHER, AND WHAT IT DOES INSTEAD IS WORSE THAN THIS — it is a release
- * deadlock, it is PRE-EXISTING, and it is NOT fixed here. `.changeset/config.json` declares one fixed
- * group, `@integraledger/lcp-*`, and all 31 publishable packages match it at a single version (0.18.3,
- * measured). So `changeset version` moves ALL THIRTY-ONE at once; every one is then unpublished, every one
- * is skipped as "is not published", and `compared` is **0** — driven against the live registry with the
- * manifests bumped in memory: `compared = 0, skipped = 31`, `verdict() -> unmeasured`
- * (check-published-dist-parity.mjs:257). ⇒ The live control fails at the `compared > 0` guard and at the
- * parity assertion, and the `compared + skipped === floor` line PASSES — the empty-subject guard is
- * working exactly as intended, because a bump commit genuinely measures nothing.
- *
- *   ⚠️ The deadlock is the WORKFLOW ORDER, not this assertion. `release.yml` fires only off a green `ci`
- *   (`workflow_run`), and its manual entry point checks the API for a green `ci` on the same commit
- *   rather than trusting the trigger — so both paths are gated. `ci` runs `pnpm verify`, whose last stage
- *   is this suite. The bump commit is therefore red until the packages are published, and they cannot be
- *   published until the release runs. ⭐ The old `compared === DIST_FLOOR` fails identically at 0, so this
- *   is not something the fix above introduced; it was simply never reached, because the last releases
- *   predate this file. Filed as register row 281 (protocol, release path) and answered there, not here.
- *
- * ⇒ The live control asserts THE GATE'S OWN RULE — `compared + skipped.length === DIST_FLOOR`, which a
- * package joining or leaving still moves — plus `compared > 0` SEPARATELY, so the empty-subject-set guard
- * survives the relaxation and a run that skipped everything can never read as a tick.
- *
  * ⭐ AND EVERY SKIP IS READ RATHER THAN COUNTED. A number that admits skips is only honest if each one is
- * accounted for, so the control requires a note NAMING each skipped package and giving one of the two
- * reasons the gate defines, and logs it. ⛔ Closed in both directions on purpose: a third skip path
- * added later, or one that pushes no note, fails here until somebody states what it is — a new way to be
- * excused from a measurement is a decision, never a default.
+ * accounted for, so the drive requires a note NAMING each skipped package and giving one of the two reasons
+ * the gate defines, and exercises BOTH of those paths in one report. ⛔ Closed in both directions on
+ * purpose: a third skip path added later, or one that pushes no note, fails here until somebody states what
+ * it is — a new way to be excused from a measurement is a decision, never a default.
  *
- * ⚠️ WHAT THIS DOES NOT CATCH, stated rather than discovered later: a run in which 30 of the 31 packages
- * are legitimately skipped passes on ONE comparison. There is no honest numeric bound above zero — the
- * skip set is "packages whose src has moved since their last release", which is unbounded by nothing but
- * release cadence — so the guarantee here is per-skip accountability, not a quorum.
+ * ⚠️ WHAT THIS DOES NOT CATCH, stated rather than discovered later: nothing in `verify` now opens a
+ * published tarball, so a `dist/` that shipped stale is invisible to every gate in `verify` and is caught
+ * only by the parity workflow's next run — within six hours, and reported as an issue that names the files.
+ * That is the price of the move and it is the right way round: a release that cannot happen is worse than a
+ * finding that arrives six hours after it could have.
  */
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -71,7 +94,6 @@ import {
   // @ts-expect-error — the gate is plain ESM JavaScript with JSDoc types, not part of a package's build
 } from "../../../scripts/check-published-dist-parity.mjs";
 import {
-  NetworkRegistry,
   publishableManifests,
   readManifests,
   // @ts-expect-error — as above
@@ -223,6 +245,55 @@ describe("published-dist-parity", () => {
     ).toBe(true);
   });
 
+  it("⭐ EVERY SKIP IS ACCOUNTED FOR — both skip paths in one report, each named by a note that says WHY", async () => {
+    // ⛔⛔ THIS RULE IS THE ONE THING THE LIVE CONTROL ASSERTED THAT THE GATE SCRIPT DOES NOT, so it is
+    // asserted here rather than lost when the live control left — see the head note. It belongs here on
+    // its merits anyway: the skip notes are written by `distParityReport`, so the rule is a property of
+    // the gate's CODE, and fixtures drive both paths in one run where a live registry offers whichever it
+    // happens to offer that day.
+    const fx = faithful();
+    const [gone, differing] = Object.keys(fx) as [string, string];
+    // Path 1 — "is not published": no fixture at all, so `metadata()` answers with no such version. This
+    // is the shape a release bump puts EVERY package into, thirty-one at a time.
+    delete fx[gone];
+    // Path 2 — "the published src differs from the tree".
+    const e = new Map(fx[differing]);
+    e.set(
+      [...e.keys()].find((k) => k.startsWith("src/")) as string,
+      "3".repeat(64),
+    );
+    fx[differing] = e;
+
+    const r = await distParityReport({
+      manifests: manifests(),
+      registry: stubRegistry(fx),
+      root: ROOT,
+      build: noBuild,
+    });
+
+    expect(r.skipped).toHaveLength(2);
+    for (const name of r.skipped as string[]) {
+      const note = (r.notes as string[]).find((n) => n.startsWith(`${name}@`));
+      expect(note, `${name} was skipped and no note says why`).toBeDefined();
+      expect(note).toMatch(SKIP_REASONS);
+    }
+    // ⛔ BOTH REASONS, not merely two notes: a run in which one path pushed both notes would satisfy the
+    // loop above and would mean the gate had stopped telling the two apart.
+    expect(
+      (r.notes as string[]).filter((n) => /is not published/.test(n)),
+    ).toHaveLength(1);
+    expect(
+      (r.notes as string[]).filter((n) =>
+        /the published src differs from the tree/.test(n),
+      ),
+    ).toHaveLength(1);
+    // ⭐ And a skip is never counted as a comparison, while the gate's own rule still accounts for it.
+    expect(r.compared).toBe(DIST_FLOOR - 2);
+    expect(r.drift).toEqual([]);
+    expect(r.faults).toEqual([]);
+    expect(verdict(r).kind).toBe("parity");
+  });
+
   it("⛔⛔ ZERO COMPARED IS UNMEASURED, and never a tick", async () => {
     const r = await distParityReport({
       manifests: manifests(),
@@ -334,48 +405,4 @@ describe("published-dist-parity", () => {
       "real.js",
     ]);
   });
-
-  it("⭐⭐ THE LIVE CONTROL — the REAL registry, REAL tarballs, a REAL root build, and it is PARITY", async () => {
-    const r = await distParityReport({
-      manifests: manifests(),
-      registry: NetworkRegistry({}),
-      root: ROOT,
-    });
-    expect(r.faults).toEqual([]);
-    expect(r.drift).toEqual([]);
-    // THE GATE'S OWN RULE, which a package joining or leaving still moves — and which a legitimate skip
-    // does not. `compared` alone is not the subject set; `compared + skipped` is.
-    expect(r.compared + r.skipped.length).toBe(DIST_FLOOR);
-    // ⛔ SEPARATELY, and never folded into the line above: a run that opened no published dist has no
-    // opinion to give, and the sum would be satisfied by skipping all 31.
-    expect(r.compared).toBeGreaterThan(0);
-    // ⭐ EVERY SKIP READ RATHER THAN COUNTED. Each one must be named by a note giving one of the two
-    // reasons the gate defines; a third path, or one that pushes no note, fails here.
-    for (const name of r.skipped as string[]) {
-      const note = (r.notes as string[]).find((n) => n.startsWith(`${name}@`));
-      expect(note, `${name} was skipped and no note says why`).toBeDefined();
-      expect(note).toMatch(SKIP_REASONS);
-      // ⛔⛔ THE ASSERTIONS ABOVE ARE THE GUARD; THIS LINE IS ONLY LEGIBILITY, and where it is legible was
-      // measured rather than assumed — the first version of this comment got it backwards.
-      //
-      // A probe test that logs and annotates from a PASSING case, run three ways:
-      //   vitest's own default pick under an agent shell (`minimal`) — neither the log nor the annotation
-      //   `--reporter=default`, what a human and CI's log get — the LOG prints, the annotation does not
-      //   `--reporter=verbose`                                      — both print
-      // ⇒ `console.log` is at least as visible as an annotation under every reporter and strictly more
-      // visible under the one that matters, which is the opposite of what this comment used to claim.
-      //
-      // ⚠️ AND THE ANNOTATION ROUTE IS DEFEATED HERE ANYWAY. Vitest emits `::notice …` in CI, but `pnpm -r`
-      // prefixes every line with `packages/rail-invariants test: ` and the runner's command parser only
-      // takes a line that BEGINS with `::`. Measured on this file's own green run: both `verify` matrix
-      // check-runs report `annotations_count=0` while the `::notice` sits, prefixed, in the raw log.
-      // ⇒ What a reader actually sees on a pass: nothing under an agent shell, this line under the
-      // default reporter and in CI's raw log, and nothing in GitHub's annotations panel.
-      console.log(`  dist-parity — skipped: ${note}`);
-    }
-    console.log(
-      `  dist-parity — ${r.compared} compared, ${r.skipped.length} skipped, floor ${DIST_FLOOR}`,
-    );
-    expect(verdict(r).kind).toBe("parity");
-  }, 180_000);
 });
