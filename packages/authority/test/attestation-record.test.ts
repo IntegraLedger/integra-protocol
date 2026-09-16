@@ -315,6 +315,20 @@ describe("nothing a presenter supplies vanishes from the record", () => {
     expect(JSON.stringify(walk)).not.toBe(await baseline());
   });
 
+  it("the leaf's SCHEME-CANONICAL SIGNER is not the leaf's subject, and is not matched as one", async () => {
+    // ⛔ The exact-identifier rule, pinned so the behaviour is intended rather than incidental. The leaf
+    // subject is `did:pkh:…:0x3c44…` and the acceptance signer is `0x3c44…`; `bindsSigner` binds that pair
+    // one gate earlier, and the address match deliberately does NOT reuse the bridge. It is recorded, and
+    // `addressedTo` names the form the presenter used.
+    const walk = await walkChainStructure(directChain({ [AGENT]: [STRANGER] }));
+    if (walk.status !== "walked") throw new Error("expected a walked chain");
+    expect(walk.links[0] && "attestations" in walk.links[0]).toBe(false);
+    expect(walk.unwalkedAttestations?.[0]).toMatchObject({
+      depth: "addressed-to-no-walked-link",
+      addressedTo: AGENT,
+    });
+  });
+
   it("omits the field entirely where every presented key found a link", async () => {
     // ⛔ THE COMPATIBILITY HALF. An empty array here would add a key to every readout the conformance
     // corpus compares, and the corpus compares the whole object.

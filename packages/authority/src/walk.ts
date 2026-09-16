@@ -208,6 +208,17 @@ export type ChainWalkHalt =
  * not-attempted walk has no readout at all and the halt is the whole answer. And an EMPTY list addressed
  * to an unwalked identifier contributes no entry, because there was no attestation to carry — that is a
  * distinction this flat list cannot express, and nothing is lost by it.
+ *
+ * ⛔ A THIRD, AND IT IS THE EXACT-IDENTIFIER RULE RATHER THAN AN OVERSIGHT. The match is against
+ * `credentialSubject.id` forms alone, so an attestation addressed by the leaf's SCHEME-CANONICAL SIGNER —
+ * `0xabc` where the leaf subject is `did:pkh:eip155:…:0xabc` — reads `addressed-to-no-walked-link`, even
+ * though `bindsSigner` binds that very pair one gate earlier. Widening the match with that bridge would
+ * put a second, silent identifier equivalence in a walk whose header says equality is EXACT and names the
+ * `did:pkh` bridge as the ONE exception, defined for leaf binding; and `bindsSigner` is one-way, so the
+ * answer would depend on which form the presenter happened to use. ⇒ Address to the exact identifier, as
+ * a producer must GRANT to the exact identifier. The record stays honest either way: the attestation is
+ * recorded, with `addressedTo` naming the form the presenter used, so a reader who knows the bridge can
+ * see what happened.
  */
 export interface UnwalkedAttestation {
   /** Why no link carried it — the principal is distinguished from an identifier the chain never reached. */

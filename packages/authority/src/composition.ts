@@ -107,9 +107,13 @@ export function isConsequentialConformant(
  * Read out every attestation hop of a resolution chain, in chain order — one
  * {@link RecordedAttestation} per `via: "attestation"` step, and none for any other via.
  *
- * TOTAL over untrusted input and it refuses nothing: an unreadable envelope, an unknown profile and a
- * substrate no implementation has heard of all read back, the first two as a stated gap and the third as
- * an ordinary envelope. A hop that carries no attestation at all reads back as the gap
+ * TOTAL OVER ANY INPUT OF THE DECLARED SHAPE — not over untrusted input, and the distinction is the one
+ * the comment in the body draws. It never throws and never refuses for any `IdentityResolution`-shaped
+ * value, including one whose `chain` is absent, is not an array, or holds elements that are not objects;
+ * it does NOT survive a `resolution` that is not an object at all, exactly as the two predicates above it
+ * do not. An unreadable envelope, an unknown profile and a substrate no implementation has heard of all
+ * read back, the first two as a stated gap and the third as an ordinary envelope. A hop that carries no
+ * attestation at all reads back as the gap
  * `attestation-hop-carries-no-profile` — which is not a defect this function repairs but the one it makes
  * visible, because `terminatesInAccountableParty` counts such a hop as accountable and a reader looking at
  * the resolution alone cannot see that it rests on nothing they can fetch.
