@@ -9,9 +9,14 @@ export {
   verifyAcceptanceStructure,
 } from "./acceptance.js";
 export {
+  ATTESTATION_SUBSTRATE_NOT_CHECKED,
+  type AttestationEnvelope,
   type AttestationProfile,
+  type AttestationSubstrateCheck,
   type ProfiledAttestation,
+  type RecordedAttestation,
   readAttestationProfile,
+  recordAttestation,
 } from "./attestation-profile.js";
 export { type Bounds, isWithin } from "./bounds.js";
 export {
@@ -20,6 +25,7 @@ export {
   isConsequentialConformant,
   type ResolutionStep,
   type ResolutionVia,
+  recordResolutionAttestations,
   terminatesInAccountableParty,
 } from "./composition.js";
 export {

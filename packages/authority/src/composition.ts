@@ -4,7 +4,26 @@
  * A resolution chain walks from the signing key through attestations/grants/domain control to a named
  * accountable party; `terminatesInAccountableParty` is the IDN-2 floor a consequential transaction needs.
  * The chain is substrate-open (CMP-5) — a step names HOW it resolves, not a specific attestation format.
+ *
+ * ⭐ **SUBSTRATE-OPEN IS NOT THE SAME AS SUBSTRATE-SILENT, AND A STEP USED TO BE BOTH.** A hop reading
+ * `{via: "attestation", ref: "lcp:sha256:…"}` states that an attestation carried this hop and states
+ * nothing a reader can act on: not the profile, not the substrate, not the assurance the attestation
+ * claims to confer. `terminatesInAccountableParty` then counts that hop as reaching an accountable party
+ * on the strength of the word `attestation` alone. The artifact is an opaque blob at exactly the point
+ * where a reader needs to inspect it. {@link ResolutionStep.attestation} carries the envelope, and
+ * {@link recordResolutionAttestations} reads out what every attestation hop stated — including the hops
+ * that state nothing, which is the deficiency made visible rather than repaired.
+ *
+ * ⛔ **THE PREDICATES BELOW STAY SUBSTRATE-BLIND.** Neither consults a profile or a substrate, and neither
+ * may be made to: a resolution that fails because its attestation lives somewhere this build does not
+ * recognise is this implementation deciding which roots of trust count. The package tests pin an
+ * accountable terminus on a substrate no implementation has ever heard of.
  */
+import {
+  type ProfiledAttestation,
+  type RecordedAttestation,
+  recordAttestation,
+} from "./attestation-profile.js";
 
 /** How one resolution step links to the next accountable layer. */
 export type ResolutionVia =
@@ -27,6 +46,14 @@ export interface ResolutionStep {
   via: ResolutionVia;
   /** An `lcp:sha256:` reference or identifier for the artifact backing this step, where one exists. */
   ref?: string;
+  /**
+   * The profiled attestation this hop resolves BY, where `via` is `"attestation"` — the profile and the
+   * substrate it lives on, so a reader can reach the artifact and check what this package did not.
+   *
+   * Optional because the hop shape predates it and a chain that omits it is not malformed; it is a hop
+   * that named no artifact, and {@link recordResolutionAttestations} says so rather than inventing one.
+   */
+  attestation?: ProfiledAttestation;
 }
 
 /** Who a settlement's signing key resolves to, and how far that resolution actually got. `assurance` is
@@ -63,4 +90,40 @@ export function isConsequentialConformant(
     resolution.assurance !== "wallet-signature-only" &&
     terminatesInAccountableParty(resolution)
   );
+}
+
+/**
+ * Read out every attestation hop of a resolution chain, in chain order — one
+ * {@link RecordedAttestation} per `via: "attestation"` step, and none for any other via.
+ *
+ * TOTAL over untrusted input and it refuses nothing: an unreadable envelope, an unknown profile and a
+ * substrate no implementation has heard of all read back, the first two as a stated gap and the third as
+ * an ordinary envelope. A hop that carries no attestation at all reads back as the gap
+ * `attestation-hop-carries-no-profile` — which is not a defect this function repairs but the one it makes
+ * visible, because `terminatesInAccountableParty` counts such a hop as accountable and a reader looking at
+ * the resolution alone cannot see that it rests on nothing they can fetch.
+ *
+ * ⛔ It states no verdict, and there is no arm of {@link RecordedAttestation} in which it could.
+ */
+export function recordResolutionAttestations(
+  resolution: IdentityResolution,
+): RecordedAttestation[] {
+  const chain: unknown = (resolution as { chain?: unknown } | undefined)?.chain;
+  if (!Array.isArray(chain)) return [];
+  const out: RecordedAttestation[] = [];
+  for (const step of chain) {
+    const via: unknown = (step as { via?: unknown } | undefined)?.via;
+    if (via !== "attestation") continue;
+    const attestation: unknown = (step as { attestation?: unknown })
+      .attestation;
+    out.push(
+      attestation === undefined
+        ? {
+            status: "not-attempted",
+            depth: "attestation-hop-carries-no-profile",
+          }
+        : recordAttestation(attestation),
+    );
+  }
+  return out;
 }
