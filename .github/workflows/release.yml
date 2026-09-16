@@ -24,6 +24,35 @@ on:
   # this path — the staging step decides what to stage by asking the registry, not by trusting the trigger.
   workflow_dispatch:
 
+# ⛔⛔ THE ORDER A RELEASE HAPPENS IN — and why the gate that reads the registry is not in `ci`.
+#
+#   1. a BUMP COMMIT lands on main       `changeset version` moves all 31 publishable packages at once:
+#                                        `.changeset/config.json` declares them one fixed group.
+#   2. `ci` GOES GREEN on that commit    and it must be ABLE to — nothing in `pnpm verify` may ask the
+#                                        registry whether these versions exist, because at this commit
+#                                        they do not.
+#   3. THIS WORKFLOW STAGES them         off that green `ci`, and a human approves the staged bytes with
+#                                        2FA (`pnpm release:approve`). Nothing is installable before that.
+#   4. `published-dist-parity` GOES      the first scheduled run after approval, or a dispatch by whoever
+#      GREEN                             approved — the first moment there is a published `dist/` to
+#                                        compare at all.
+#
+# ⚠️ Step 2 is the one that had to be repaired. A LIVE registry control inside `verify` reads a bump commit
+# as `unmeasured` — 31 packages skipped as unpublished, 0 compared — and reds `ci`; and this workflow fires
+# only off a GREEN `ci` on BOTH entry points (`workflow_run` above, and the API read at "Require a green ci
+# for this commit" below). ⇒ The packages could not be published until the release ran, and the release
+# could not run until they were published. That control moved to `published-dist-parity.yml` on 2026-09-16,
+# where "nothing was compared" is a REPORTED state rather than a red. Tracked on the planning register as
+# row 281.
+#
+# ⛔ NOTHING IN THIS FILE CHANGED FOR IT, deliberately — the repair is where the control runs, not what the
+# release does. ⇒ THE FIRST RELEASE AFTER THAT CHANGE IS THE PROOF and it is read PER JOB: `ci` green on the
+# bump commit, this workflow reaching "Stage the publishable set" with a non-zero `staged`, and the parity
+# workflow green on its first run after approval. Measured on a tree with NO bump, 2026-09-16: this workflow
+# ran off a green `ci`, found all 31 versions already live and reported `staged 0; already staged 0; live on
+# the registry 31 — nothing to release`. That is the green no-op every green `ci` on main produces; a bump is
+# the only thing that makes it a release.
+
 # PUBLISHING MODEL — ruled 2026-08-08 (DS-4). Read this before changing any step below.
 #
 # Steady state is STAGE-ONLY TRUSTED PUBLISHING, and it has three properties worth stating because each
