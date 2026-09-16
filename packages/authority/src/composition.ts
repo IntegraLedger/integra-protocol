@@ -50,8 +50,19 @@ export interface ResolutionStep {
    * The profiled attestation this hop resolves BY, where `via` is `"attestation"` — the profile and the
    * substrate it lives on, so a reader can reach the artifact and check what this package did not.
    *
-   * Optional because the hop shape predates it and a chain that omits it is not malformed; it is a hop
-   * that named no artifact, and {@link recordResolutionAttestations} says so rather than inventing one.
+   * ⛔ OPTIONAL BECAUSE THE TREE MEASURED THAT WAY, not as a compatibility shim — this repository does not
+   * keep those, so the question was put to the three repositories rather than assumed. `via: "attestation"`
+   * hops that carry no artifact: **16, all in ONE consuming repository** — 4 in production `src/` across
+   * three modules, 11 in tests, 1 in a gate fixture — against **0 anywhere that supply one**. Those
+   * modules import `ResolutionStep` from this package by name, so requiring the field is a compile break
+   * at every one of them, and the two repositories with no such hop cannot carry the decision for the one
+   * that has them all. ⇒ It stays optional, and a hop that omits it reads out as the stated gap
+   * `attestation-hop-carries-no-profile` — the deficiency made visible rather than papered over.
+   *
+   * ⚠️ Re-measure before changing this. The number is a fact about another repository on a given day; the
+   * query is `git grep -n 'via: "attestation"'` over every package's source and test trees and the gate
+   * scripts, and it is the count of hops WITHOUT an `attestation` beside them that decides. (Spelling the
+   * pathspec here is not possible: a glob for every package's source directory closes this comment.)
    */
   attestation?: ProfiledAttestation;
 }
@@ -108,7 +119,12 @@ export function isConsequentialConformant(
 export function recordResolutionAttestations(
   resolution: IdentityResolution,
 ): RecordedAttestation[] {
-  const chain: unknown = (resolution as { chain?: unknown } | undefined)?.chain;
+  // NOT `resolution?.chain`. The optional chain there guarded a caller the declared parameter cannot
+  // produce, and no test reached it; `terminatesInAccountableParty` and `isConsequentialConformant` in
+  // this same file dereference `resolution` unguarded, so a null-guard here alone would be a totality this
+  // file does not otherwise offer. The SHAPE guard below stays — `chain` absent or non-array is ordinary
+  // wire data, and two tests reach it.
+  const chain: unknown = (resolution as { chain?: unknown }).chain;
   if (!Array.isArray(chain)) return [];
   const out: RecordedAttestation[] = [];
   for (const step of chain) {

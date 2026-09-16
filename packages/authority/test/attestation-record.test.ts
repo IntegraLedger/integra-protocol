@@ -45,6 +45,19 @@ const STRANGER: ProfiledAttestation = {
   assurance: "seal-of-the-bureau",
   ref: "lcp:sha256:0xfeed",
 };
+/** {@link STRANGER} as the walk records it — the envelope half, stated by the presenter. */
+const STRANGER_ENVELOPE = {
+  profile: "bureau-of-seals:2031",
+  substrate: "wax-and-ribbon",
+  subject: AGENT_DID,
+  assurance: "seal-of-the-bureau",
+  ref: "lcp:sha256:0xfeed",
+};
+/** The standing statement beside every envelope: nobody here checked the substrate. */
+const NOT_CHECKED = {
+  status: "not-attempted",
+  depth: ATTESTATION_SUBSTRATE_NOT_CHECKED,
+};
 
 function grant(
   issuer: string,
@@ -170,16 +183,162 @@ describe("addressed, empty and absent are three different facts", () => {
     ]);
   });
 
-  it("reads an attestations slot that is not an object as absent, never as a refusal", async () => {
+  it("an attestations slot that is not keyed hangs on no link — and is not therefore absent", async () => {
+    // It used to read as absent, which made a presented flat list indistinguishable from an empty input.
     const walk = await walkChainStructure(
-      directChain(["not keyed to anyone"] as unknown as Record<
-        string,
-        unknown
-      >),
+      directChain([STRANGER] as unknown as Record<string, unknown>),
     );
     expect(walk.status).toBe("walked");
     if (walk.status !== "walked") return;
     expect(walk.links[0] && "attestations" in walk.links[0]).toBe(false);
+    expect(walk.unwalkedAttestations).toEqual([
+      {
+        depth: "attestations-slot-not-keyed",
+        recorded: {
+          status: "envelope-read",
+          envelope: STRANGER_ENVELOPE,
+          substrateCheck: NOT_CHECKED,
+        },
+      },
+    ]);
+  });
+});
+
+/**
+ * ⛔⛔ A READOUT QUIETER THAN ITS INPUT IS THE DEFECT THIS ROW EXISTS TO REMOVE, and three presenter
+ * inputs used to be exactly that — identical, byte for byte, to a walk that was handed no attestations at
+ * all. Each of the three is ordinary wire input and none of them is a reason to refuse anything.
+ *
+ * ★ THE PRINCIPAL IS THE ONE THAT MATTERS AND THE ONE THAT LOOKS LIKE A MISTAKE. A link is keyed on
+ * `credentialSubject.id` — who a grant was issued TO. The principal is the root's `issuer`, the party the
+ * chain hangs FROM, whose own authority is synthesized as the root's parent rather than walked. So an
+ * attestation about the organisation at the top of the chain — the single most obvious thing a
+ * counterparty would present — addressed the one identifier with no readout to land on.
+ *
+ * ★ Each case below asserts BOTH halves: the entry is present and says what it is, and the result is
+ * NOT equal to the same walk with no attestations. The second half is the plant — restore the old
+ * behaviour and it is the assertion that goes red, because the first half would still find nothing.
+ */
+describe("nothing a presenter supplies vanishes from the record", () => {
+  /** The same walk, given nothing. Every case below must differ from this. */
+  const baseline = async () =>
+    JSON.stringify(await walkChainStructure(directChain()));
+
+  it("an attestation about the DECLARED PRINCIPAL is recorded, keyed as such", async () => {
+    const aboutPrincipal: ProfiledAttestation = {
+      ...STRANGER,
+      subject: PRINCIPAL,
+    };
+    const walk = await walkChainStructure(
+      directChain({ [PRINCIPAL]: [aboutPrincipal] }),
+    );
+    expect(walk.status).toBe("walked");
+    if (walk.status !== "walked") return;
+    expect(walk.unwalkedAttestations).toEqual([
+      {
+        depth: "addressed-to-the-declared-principal",
+        addressedTo: PRINCIPAL,
+        recorded: {
+          status: "envelope-read",
+          envelope: { ...STRANGER_ENVELOPE, subject: PRINCIPAL },
+          substrateCheck: NOT_CHECKED,
+        },
+      },
+    ]);
+    expect(JSON.stringify(walk)).not.toBe(await baseline());
+  });
+
+  it("an attestation addressed to an identifier the chain never reached is recorded", async () => {
+    const walk = await walkChainStructure(
+      directChain({ "did:web:nobody.example": [STRANGER] }),
+    );
+    expect(walk.status).toBe("walked");
+    if (walk.status !== "walked") return;
+    expect(walk.unwalkedAttestations).toEqual([
+      {
+        depth: "addressed-to-no-walked-link",
+        addressedTo: "did:web:nobody.example",
+        recorded: {
+          status: "envelope-read",
+          envelope: STRANGER_ENVELOPE,
+          substrateCheck: NOT_CHECKED,
+        },
+      },
+    ]);
+    expect(JSON.stringify(walk)).not.toBe(await baseline());
+  });
+
+  it("a flat list is recorded element by element, not as one opaque refusal to read", async () => {
+    const walk = await walkChainStructure(
+      directChain([STRANGER, 42] as unknown as Record<string, unknown>),
+    );
+    if (walk.status !== "walked") throw new Error("expected a walked chain");
+    expect(walk.unwalkedAttestations?.map((u) => u.recorded.status)).toEqual([
+      "envelope-read",
+      "not-attempted",
+    ]);
+    expect(JSON.stringify(walk)).not.toBe(await baseline());
+  });
+
+  it("a scalar slot is a stated gap, read through the same reader", async () => {
+    const walk = await walkChainStructure(
+      directChain("a seal, honest" as unknown as Record<string, unknown>),
+    );
+    if (walk.status !== "walked") throw new Error("expected a walked chain");
+    expect(walk.unwalkedAttestations).toEqual([
+      {
+        depth: "attestations-slot-not-keyed",
+        recorded: {
+          status: "not-attempted",
+          depth: "attestation-not-an-object",
+        },
+      },
+    ]);
+    expect(JSON.stringify(walk)).not.toBe(await baseline());
+  });
+
+  it("a non-list addressed to an unwalked identifier is a stated gap, not silence", async () => {
+    const walk = await walkChainStructure(
+      directChain({ "did:web:nobody.example": "a seal" }),
+    );
+    if (walk.status !== "walked") throw new Error("expected a walked chain");
+    expect(walk.unwalkedAttestations).toEqual([
+      {
+        depth: "addressed-to-no-walked-link",
+        addressedTo: "did:web:nobody.example",
+        recorded: {
+          status: "not-attempted",
+          depth: "attestations-not-a-list",
+        },
+      },
+    ]);
+    expect(JSON.stringify(walk)).not.toBe(await baseline());
+  });
+
+  it("omits the field entirely where every presented key found a link", async () => {
+    // ⛔ THE COMPATIBILITY HALF. An empty array here would add a key to every readout the conformance
+    // corpus compares, and the corpus compares the whole object.
+    const walk = await walkChainStructure(
+      directChain({ [AGENT_DID]: [STRANGER] }),
+    );
+    if (walk.status !== "walked") throw new Error("expected a walked chain");
+    expect("unwalkedAttestations" in walk).toBe(false);
+  });
+
+  it("a HALT carries none of it — the halt is the whole answer", async () => {
+    // Stated rather than left to be found: a refused walk has no readout to be quieter than.
+    const walk = await walkChainStructure({
+      principal: PRINCIPAL,
+      chain: [grant("did:web:someone-else.example", AGENT_DID, CAPS)],
+      acceptanceSigner: AGENT,
+      asOf: AS_OF,
+      attestations: { [PRINCIPAL]: [STRANGER] },
+    });
+    expect(walk).toMatchObject({
+      status: "refused",
+      code: "walk/root-not-principal",
+    });
+    expect("unwalkedAttestations" in walk).toBe(false);
   });
 });
 
@@ -240,6 +399,47 @@ describe("recordAttestation — total over wire input, and never a refusal", () 
         subject: "x",
         ref: "r",
         assurance: { level: 3 },
+      },
+      "attestation-assurance-unreadable",
+    ],
+    // ⛔ `profile: null` REACHES A DIFFERENT ARM FROM `profile` ABSENT, and nothing held it: `typeof null`
+    // is "object", so with the null half of the guard mutated away this input dereferences null and
+    // THROWS — which would make "never throws" false for an input a presenter can trivially send.
+    [
+      'a null profile — `typeof null` is "object", so it reaches the guard the absent case never does',
+      { profile: null, subject: "s", ref: "r" },
+      "attestation-profile-not-stated",
+    ],
+    // ⛔ THE EMPTY STRING IS PRESENT AND STATES NOTHING, and no case above distinguished it from a value.
+    // Four fields, four arms: each is `typeof v === "string"` AND `v.length > 0`, and only the second half
+    // of that conjunction refuses these.
+    [
+      "an empty profile id",
+      { profile: { profile: "", substrate: "s" }, subject: "x", ref: "r" },
+      "attestation-profile-not-stated",
+    ],
+    [
+      "an empty substrate",
+      { profile: { profile: "p", substrate: "" }, subject: "x", ref: "r" },
+      "attestation-substrate-not-stated",
+    ],
+    [
+      "an empty subject",
+      { profile: { profile: "p", substrate: "s" }, subject: "", ref: "r" },
+      "attestation-subject-not-stated",
+    ],
+    [
+      "an empty ref — a handle that fetches nothing",
+      { profile: { profile: "p", substrate: "s" }, subject: "x", ref: "" },
+      "attestation-ref-not-stated",
+    ],
+    [
+      "an empty assurance — stated, and saying nothing",
+      {
+        profile: { profile: "p", substrate: "s" },
+        subject: "x",
+        ref: "r",
+        assurance: "",
       },
       "attestation-assurance-unreadable",
     ],

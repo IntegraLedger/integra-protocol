@@ -2,8 +2,16 @@
  * Profiled attestations interpreted GENERICALLY — the CMP-5 "stranger" reads an attestation by its
  * declared profile without the verifier hardcoding a substrate (EAS, a VC, a notarization). The profile
  * names the substrate + the claim shape; the walk stays substrate-open. This package does not verify any
- * one substrate's cryptography (that is the substrate adapter's, pure over a port) — it interprets the
- * envelope so an unknown-but-profiled attestation is a first-class, inspectable input, not an opaque blob.
+ * one substrate's cryptography, and NO PORT HERE DOES EITHER — checking an attestation is the reader's
+ * act, and this repository offers no seam through which it could be delegated back to the appliance. What
+ * this package does is interpret the envelope, so an unknown-but-profiled attestation is a first-class,
+ * inspectable input rather than an opaque blob, and carry the reference the reader needs to do the rest.
+ *
+ * ⚠️ The two sentences above used to promise a substrate-adapter port, "pure over a port", as though the
+ * verification were merely elsewhere. It is not elsewhere: no such port exists in any package's `src/`,
+ * and one is not coming, because a verifier this package owned would be the thing whose word makes a
+ * record meaningful. The promise read as a forward reference and was a description of something nobody
+ * was going to build.
  *
  * ⛔ **NOTHING HERE MAY CONSULT THE VALUE OF `substrate`.** A verifier that keeps a set of substrates it
  * accepts has converted an open vocabulary into a roster, and a roster makes this implementation the judge
@@ -35,7 +43,9 @@ export interface ProfiledAttestation {
   subject: string;
   /** The stated assurance this attestation confers, if any. */
   assurance?: string;
-  /** An `lcp:sha256:` reference to the attestation artifact (verified by a substrate adapter over a port). */
+  /** An `lcp:sha256:` reference to the attestation artifact — the handle a READER fetches it by, so they
+   *  can check what nothing in this package checked. Not verified here and not verified anywhere in this
+   *  repository. */
   ref: string;
 }
 

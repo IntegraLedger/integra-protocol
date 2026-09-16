@@ -47,6 +47,7 @@ export {
   type ChainWalkInput,
   type ChainWalkResult,
   type GrantProofVerifier,
+  type UnwalkedAttestation,
   type VerifiedChainWalkResult,
   type WalkedLink,
   walkChain,
