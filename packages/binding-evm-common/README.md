@@ -61,7 +61,8 @@ the one case it exists for.
 
 EAS (Ethereum Attestation Service) attestations turn up as the substrate behind a profiled attestation in
 an authority chain. This package ships what such an attestation **means** and nothing that goes and fetches
-one: `EAS_GET_ATTESTATION_ABI` (the call to make), `RawEasAttestation` (the struct a node returns),
+one: `EAS_GET_ATTESTATION_ABI` (the call to make), `RawEasAttestation` (the shape viem decodes the
+node's tuple into),
 `decodeEasAttestation` (normalize it, and flag a zero uid as `exists: false` rather than as a valid
 attestation with empty fields) and `isEasValidAsOf`.
 
