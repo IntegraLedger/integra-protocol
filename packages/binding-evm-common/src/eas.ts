@@ -1,8 +1,10 @@
 /**
  * EAS (Ethereum Attestation Service) semantics — what an EAS attestation MEANS, and nothing that goes and
  * reads one. The on-chain struct's shape, the normalization of what a node returns, and the as-of validity
- * predicate live here; the `getAttestation` call itself is the reader's, over the reader's own client, and
- * `docs/developer/guides/verify-a-settlement.md` carries it as eight lines a verifier can copy.
+ * predicate live here; the `getAttestation` call itself is the reader's, over the reader's own client.
+ * `docs/developer/guides/verify-a-settlement.md` Step 5 is the worked example, and it is TWO hops: the
+ * envelope's `ref` is a content address for the attestation artifact, never the uid, and the uid comes
+ * out of the artifact the digest resolves to.
  *
  * ⛔ **The split is deliberate and it is the whole point of this file.** Integra records; the parties
  * verify. A chain read is a verifier's act, so this package ships the ABI, the struct, the decoder and the

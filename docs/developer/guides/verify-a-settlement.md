@@ -373,11 +373,21 @@ straight to `getAttestation(bytes32)` fails **quietly**: a content digest is not
 its zero-filled struct, and `exists: false` is byte-identical to *nobody ever minted it*. You would read a
 real attestation as an absence and never know.
 
+⛔ **And `ref` is a CONTENT address, so it does not resolve over a locator.** `ArtifactResolver` fetches
+`ipfs:`/`ar:`/`https:` and says so — the shipped `createHardenedResolver` refuses an `lcp:sha256:` handle
+outright (`resolver/not-https`). A content digest resolves where content is stored by its digest: the
+**evidence bundle** you already hold. Its manifest names every artifact inside the CAR by exactly this
+`lcp:sha256:0x…` reference, which is what makes the handle usable at all — see
+[concepts/evidence.md](../concepts/evidence.md). A content-addressed store of your own works identically;
+what does not work is a URL fetcher.
+
 ```ts
-import type {
-  ArtifactResolver,
-  ChainReader,
-} from "@integraledger/lcp-binding-core";
+import {
+  cidForAtrHash,
+  decodeCar,
+  type EvidenceBundle,
+} from "@integraledger/lcp-evidence";
+import type { ChainReader } from "@integraledger/lcp-binding-core";
 import {
   decodeEasAttestation,
   EAS_GET_ATTESTATION_ABI,
@@ -391,19 +401,22 @@ import {
 // substrate is EAS and says nothing about a chain, and the same uid on the wrong chain reads back
 // `exists: false`, which is the same quiet absence again.
 declare const chain: ChainReader;
-declare const artifacts: ArtifactResolver;
+declare const bundle: EvidenceBundle; // verified already — `verifyBundle` before you trust a block
 declare const easContract: string; // the EAS registry on the chain the artifact names
-declare const ref: string; // the envelope's `ref` — `lcp:sha256:0x…`, the ARTIFACT's handle
+declare const ref: string; // the envelope's `ref` — `lcp:sha256:0x…`, the ARTIFACT's content address
 declare const settledAtUnixSeconds: bigint; // the settlement's chain time, not now
 
 // How the artifact encodes its uid is what `profile` names — `eas:v1` here — and it is the profile's
 // business, not this repository's. Nothing in this tree parses it, which is the point.
 declare function easUidFromArtifact(bytes: Uint8Array): string;
 
-// Hop 1 — the reference, to the artifact.
-const artifact = await artifacts.resolve(ref);
-if (artifact === null) throw new Error(`attestation artifact not retrievable: ${ref}`);
-const uid = easUidFromArtifact(artifact);
+// Hop 1 — the content address, to the bytes. The digest frames as a raw CIDv1 and that is the block's
+// name inside the CAR; no network, no locator, nothing to trust that the bundle has not already proved.
+const wanted = cidForAtrHash(ref.replace("lcp:sha256:", ""));
+const block = decodeCar(bundle.car).blocks.find((b) => b.cid === wanted);
+if (block === undefined)
+  throw new Error(`attestation artifact not in the bundle: ${ref}`);
+const uid = easUidFromArtifact(block.bytes);
 
 // Hop 2 — the uid, to the chain.
 const raw = (await chain.readContract({
@@ -417,10 +430,12 @@ const attestation = decodeEasAttestation(raw);
 const heldAtSettlement = isEasValidAsOf(attestation, settledAtUnixSeconds);
 ```
 
-⚠️ **`artifacts.resolve` returning `null` is a gap, not a failure, and the walk already treats it that
-way** — an absent input never proves. Throwing above is this example being short; a verifier recording the
-outcome distinguishes *could not retrieve* from *retrieved and did not hold*, exactly as the walk's four
-statuses do.
+⚠️ **A ref the bundle does not carry is a gap, not a failure.** The presenter named an artifact they did
+not supply, and an absent input never proves — the same discipline as the walk's four statuses. Throwing
+above is this example being short; a verifier recording the outcome keeps *not supplied* apart from
+*supplied and did not hold*. ⛔ And verify the bundle before reading a block out of it: `verifyBundle`
+recomputes every CID, so an unverified CAR is a counterparty's bytes wearing a content address.
+
 
 `decodeEasAttestation` flags a zero-uid struct as `exists: false` rather than letting it read as a valid
 attestation with empty fields, which is what EAS returns for a uid nobody ever minted.

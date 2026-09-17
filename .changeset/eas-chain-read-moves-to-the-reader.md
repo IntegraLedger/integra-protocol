@@ -14,9 +14,11 @@ shipped from inside the recorder's tree.
 
 ⭐ **Nothing about the check moved out of reach, which is why this is a split rather than a deletion.** The
 ABI to call with, the struct the node returns, the normalization and the two-sided as-of predicate are all
-still exported — everything needed to write the read, minus the performing of it. The replacement is eight
-lines over the `ChainReader` port the caller already holds, and it is a worked, compiled example in
-`docs/developer/guides/verify-a-settlement.md` Step 5 rather than prose.
+still exported — everything needed to write the read, minus the performing of it. The replacement runs over
+the `ChainReader` port the caller already holds and is a worked, compiled example in
+`docs/developer/guides/verify-a-settlement.md` Step 5 rather than prose — **two hops**, because the
+envelope's `ref` is a content address for the attestation artifact rather than the EAS uid, and passing it
+to the chain reads a real attestation back as an absence.
 
 ⚠️ **Measured before removing it: zero callers.** Across all three repositories of this estate,
 `readEasAttestation` appeared in exactly three places — its own definition, its barrel export and its own

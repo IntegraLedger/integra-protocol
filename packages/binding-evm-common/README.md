@@ -93,18 +93,21 @@ attestation.exists; // true
 // Valid AS OF the settlement, never as of now. The bound is two-sided: an attestation minted AFTER the
 // as-of second is not valid as of it, which is the direction backdating goes. The first call below is
 // `true`; the second is `false`, because the attestation was minted one second after the as-of instant.
-// The annotations sit above rather than trailing the calls on purpose: `check:doc-calls` attributes a
-// call to a line by a byte offset taken from the parse's END, so bytes after the fence's last token
-// shift every attribution — a `// throws` comment on the last line is read against the wrong line.
 isEasValidAsOf(attestation, 1700000000n);
 isEasValidAsOf(attestation, 1699999999n);
 ```
 
 ⛔ **There is deliberately no `readEasAttestation` here, and there was until 2026-09-17.** A chain read is a
-verifier's act: Integra records, and the parties verify. The read is eight lines over the `ChainReader` you
-already hold — `makeChainReader(yourViemClient)`, then `readContract` with the ABI above — and
+verifier's act: Integra records, and the parties verify.
+
+⚠️ **And reading one is two hops, not one.** The envelope's `ref` is an `lcp:sha256:` content address for
+the attestation *artifact*, never the EAS uid: you resolve the artifact where content is stored by its
+digest — the evidence bundle's manifest names it — and take the uid from inside it, then call
+`getAttestation` with that. Handing `ref` to the chain reads a real attestation back as `exists: false`,
+which is indistinguishable from one nobody minted.
 [verify-a-settlement.md](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/developer/guides/verify-a-settlement.md)
-Step 5 is the worked example. Nothing about the check moved out of reach; what moved is who performs it.
+Step 5 is the worked example, both hops. Nothing about the check moved out of reach; what moved is who
+performs it.
 
 ## Requirement ids
 
