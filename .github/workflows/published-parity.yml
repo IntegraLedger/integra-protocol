@@ -69,9 +69,14 @@ jobs:
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           exit 0
 
-      # ⛔ THE FOUR ANSWERS STAY FOUR ANSWERS, all the way to what a reader sees. This repository files no
-      # issues from any workflow — `drift-guard` simply fails — so the distinction lives in the annotation
-      # rather than in an issue title. A job that reds is the signal; WHICH red it is must survive.
+      # ⛔ THE FOUR ANSWERS STAY FOUR ANSWERS, all the way to what a reader sees. THIS workflow files no
+      # issues — `drift-guard` simply fails too — so the distinction lives in the annotation rather than in
+      # an issue title. A job that reds is the signal; WHICH red it is must survive.
+      #
+      # ⚠️ `M` 2026-09-17: this note read *"this repository files no issues from any workflow"*, which was
+      # true when it was written and stopped being true on 2026-09-16, when `published-dist-parity.yml`
+      # landed with three issue types and a close loop. ⛔ It was then read from the outside as a statement
+      # about the repository and repeated as one. A sentence about a file must say which file.
       #
       # ⛔⛔ AND THE PARTITION IS EXHAUSTIVE BY CONSTRUCTION. 127 (node missing), 137 (OOM) or any code a
       # future edit adds falls to the final arm. Without it those are a GREEN, SILENT job — and because the
