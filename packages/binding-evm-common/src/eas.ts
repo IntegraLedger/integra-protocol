@@ -9,10 +9,15 @@
  * predicate — everything needed to write the read — and performs none of it. `readEasAttestation` lived
  * here until 2026-09-17 with zero callers in any repository.
  *
- * ⚠️ This header used to name `authority`'s `attestation-profile.ts` as "the generic half" of a
- * per-substrate port whose EVM end lived here. Both halves of that sentence were false: `attestation-profile.ts`
- * stopped promising a substrate-adapter port when none was built and none was coming, and this file was
- * never registered through one — nothing dispatched on a substrate identifier anywhere. A record of an
+ * ⚠️ This header used to describe a division of labour with `authority`'s `attestation-profile.ts`: that
+ * file interpreting attestations generically, "the per-substrate on-chain read" living here, "pure over the
+ * injected viem client". That file no longer states its half. Its own header now records that no such port
+ * exists in any package's `src/` and that none is coming, and its `AttestationSubstrateCheck` has exactly
+ * one inhabitant — `not-attempted`, the arm that would claim a substrate was checked does not exist.
+ *
+ * ⛔ The port was never BUILT, not removed, and the distinction matters to anyone looking for it: nothing
+ * in any package dispatches on a substrate identifier, and nothing ever wired these two ends together —
+ * the read this file used to carry had no caller outside its own test in any repository. A recorded
  * attestation is an inspectable input the walk carries, never an implementation the walk selects.
  *
  * Validity is a state read (attester, expiration, revocation), evaluated AS OF a settlement time exactly

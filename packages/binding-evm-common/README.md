@@ -96,7 +96,7 @@ isEasValidAsOf(attestation, 1699999999n); // false — attested one second later
 ```
 
 ⛔ **There is deliberately no `readEasAttestation` here, and there was until 2026-09-17.** A chain read is a
-verifier's act: Integra records, and the parties verify. The read is four lines over the `ChainReader` you
+verifier's act: Integra records, and the parties verify. The read is eight lines over the `ChainReader` you
 already hold — `makeChainReader(yourViemClient)`, then `readContract` with the ABI above — and
 [verify-a-settlement.md](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/developer/guides/verify-a-settlement.md)
 Step 5 is the worked example. Nothing about the check moved out of reach; what moved is who performs it.
