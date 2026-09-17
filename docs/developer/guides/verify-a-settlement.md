@@ -355,6 +355,59 @@ impeached to `TC-0`, because a walk reports each rung on its own evidence and le
 Prefer `authorityWalk` over `authorityChain` in real use: a flattened chain hides what the custody walk
 found, and [concepts/authority.md](../concepts/authority.md) says why that matters.
 
+## Step 5 — Check what the record says nobody checked
+
+A record can carry a **profiled attestation**: a presenter's statement that some third party vouched for a
+link in the authority chain. `@integraledger/lcp-authority` records one with `recordAttestation`, and every
+envelope it emits carries `substrateCheck: { status: "not-attempted", depth: … }`. That is not a gap in the
+implementation — it is the implementation being honest. Integra records; the parties verify. The envelope
+carries `substrate` and `ref` precisely so **you** can go and check it, and the check is the step below.
+
+None of the chain access here is Integra's. `binding-evm-common` ships the EAS *semantics* — the ABI to
+call with, the shape the node returns, the normalization, and the as-of predicate — and performs no read.
+The read is eight lines over the `ChainReader` you already built for Step 1.
+
+```ts
+import type { ChainReader } from "@integraledger/lcp-binding-core";
+import {
+  decodeEasAttestation,
+  EAS_GET_ATTESTATION_ABI,
+  isEasValidAsOf,
+  type RawEasAttestation,
+} from "@integraledger/lcp-binding-evm-common";
+
+// The same reader Step 1 used: `makeChainReader(yourViemPublicClient)`, on the chain the envelope's
+// `substrate` names. Read the envelope's substrate before choosing the client — an EAS uid on one chain
+// says nothing about the same uid on another.
+declare const chain: ChainReader;
+declare const easContract: string; // the EAS registry on that chain
+declare const uid: string; // the envelope's `ref`, as a bytes32 uid
+declare const settledAtUnixSeconds: bigint; // the settlement's chain time, not now
+
+const raw = (await chain.readContract({
+  address: easContract,
+  abi: EAS_GET_ATTESTATION_ABI,
+  functionName: "getAttestation",
+  args: [uid],
+})) as RawEasAttestation;
+
+const attestation = decodeEasAttestation(raw);
+const heldAtSettlement = isEasValidAsOf(attestation, settledAtUnixSeconds);
+```
+
+`decodeEasAttestation` flags a zero-uid struct as `exists: false` rather than letting it read as a valid
+attestation with empty fields, which is what EAS returns for a uid nobody ever minted.
+
+⛔ **`asOf` is the settlement's time, never yours.** EAS has no historical query: a read today returns
+today's `revocationTime`, and `isEasValidAsOf` is what turns that live struct into an answer about the
+past. The predicate bounds the interval from **both** ends — an attestation minted the day *after* the
+settlement is not valid as of it, which is the one direction an attester can exploit after the fact.
+
+⚠️ **The answer is yours, not the record's.** `heldAtSettlement` is your finding about somebody else's
+substrate; nothing puts it back into the walk, and no step of the report changes colour because of it. A
+verifier who wants it in their own evidence records it beside the report, with the chain and the block they
+read at.
+
 ## Not every rail hands back a hash
 
 `recover` is not uniform across the thirteen rails, and a verifier that assumes it is will misread two of
