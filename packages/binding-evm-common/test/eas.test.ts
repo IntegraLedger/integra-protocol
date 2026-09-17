@@ -165,7 +165,8 @@ describe("isEasValidAsOf (as-of-settlement, not as-of-now)", () => {
 });
 
 /**
- * ⛔ THE PIN ON THE SPLIT — `#169` item 2, ruled (c) on 2026-09-17.
+ * ⛔ THE PIN ON THE SPLIT. Tracked on the planning register as row 169; the disposition ruled on
+ * 2026-09-17 was the split below rather than deleting the read or moving this whole module.
  *
  * `decodeEasAttestation` and `isEasValidAsOf` are the pure semantics of somebody else's substrate and stay
  * in this package; the chain read is a verifier's act and left it. What this pins is the SPLIT, not a

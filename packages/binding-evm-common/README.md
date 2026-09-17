@@ -91,9 +91,13 @@ attestation.attester; // "0xdef0000000000000000000000000000000000002" — lowerc
 attestation.exists; // true
 
 // Valid AS OF the settlement, never as of now. The bound is two-sided: an attestation minted AFTER the
-// as-of second is not valid as of it, which is the direction backdating goes.
-isEasValidAsOf(attestation, 1700000000n); // true
-isEasValidAsOf(attestation, 1699999999n); // false — attested one second later
+// as-of second is not valid as of it, which is the direction backdating goes. The first call below is
+// `true`; the second is `false`, because the attestation was minted one second after the as-of instant.
+// The annotations sit above rather than trailing the calls on purpose: `check:doc-calls` attributes a
+// call to a line by a byte offset taken from the parse's END, so bytes after the fence's last token
+// shift every attribution — a `// throws` comment on the last line is read against the wrong line.
+isEasValidAsOf(attestation, 1700000000n);
+isEasValidAsOf(attestation, 1699999999n);
 ```
 
 ⛔ **There is deliberately no `readEasAttestation` here, and there was until 2026-09-17.** A chain read is a

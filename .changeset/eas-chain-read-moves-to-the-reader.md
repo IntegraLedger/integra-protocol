@@ -14,7 +14,7 @@ shipped from inside the recorder's tree.
 
 ⭐ **Nothing about the check moved out of reach, which is why this is a split rather than a deletion.** The
 ABI to call with, the struct the node returns, the normalization and the two-sided as-of predicate are all
-still exported — everything needed to write the read, minus the performing of it. The replacement is four
+still exported — everything needed to write the read, minus the performing of it. The replacement is eight
 lines over the `ChainReader` port the caller already holds, and it is a worked, compiled example in
 `docs/developer/guides/verify-a-settlement.md` Step 5 rather than prose.
 

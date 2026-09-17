@@ -365,10 +365,19 @@ carries `substrate` and `ref` precisely so **you** can go and check it, and the 
 
 None of the chain access here is Integra's. `binding-evm-common` ships the EAS *semantics* — the ABI to
 call with, the shape the node returns, the normalization, and the as-of predicate — and performs no read.
-The read is eight lines over the `ChainReader` you already built for Step 1.
+
+⛔ **It is two hops, and collapsing them into one is the mistake this step exists to prevent.**
+`ref` is an **`lcp:sha256:` reference to the attestation artifact** — the handle you fetch the document
+by — and it is *not* the EAS uid. The uid lives inside the artifact the reference names. Passing `ref`
+straight to `getAttestation(bytes32)` fails **quietly**: a content digest is not a uid, EAS answers with
+its zero-filled struct, and `exists: false` is byte-identical to *nobody ever minted it*. You would read a
+real attestation as an absence and never know.
 
 ```ts
-import type { ChainReader } from "@integraledger/lcp-binding-core";
+import type {
+  ArtifactResolver,
+  ChainReader,
+} from "@integraledger/lcp-binding-core";
 import {
   decodeEasAttestation,
   EAS_GET_ATTESTATION_ABI,
@@ -376,15 +385,27 @@ import {
   type RawEasAttestation,
 } from "@integraledger/lcp-binding-evm-common";
 
-// The same reader Step 1 used: `makeChainReader(yourViemPublicClient)`. The envelope tells you the
-// substrate is EAS; it does NOT tell you which chain, and `ref` does not either — `AttestationEnvelope`
-// has no such field. Establish the chain from the record before you pick a client: the same uid on the
-// wrong chain reads back `exists: false`, which is indistinguishable from an attestation nobody minted.
+// `makeChainReader(yourViemPublicClient)`, from binding-evm-common. ⛔ NOT the `ports.chain` literal
+// Step 1 built: that one's `readContract` throws on purpose, because recovery reads logs and never
+// contract state. Which chain to point it at is the artifact's business too — the envelope says the
+// substrate is EAS and says nothing about a chain, and the same uid on the wrong chain reads back
+// `exists: false`, which is the same quiet absence again.
 declare const chain: ChainReader;
-declare const easContract: string; // the EAS registry on that chain
-declare const uid: string; // the envelope's `ref`, as a bytes32 uid
+declare const artifacts: ArtifactResolver;
+declare const easContract: string; // the EAS registry on the chain the artifact names
+declare const ref: string; // the envelope's `ref` — `lcp:sha256:0x…`, the ARTIFACT's handle
 declare const settledAtUnixSeconds: bigint; // the settlement's chain time, not now
 
+// How the artifact encodes its uid is what `profile` names — `eas:v1` here — and it is the profile's
+// business, not this repository's. Nothing in this tree parses it, which is the point.
+declare function easUidFromArtifact(bytes: Uint8Array): string;
+
+// Hop 1 — the reference, to the artifact.
+const artifact = await artifacts.resolve(ref);
+if (artifact === null) throw new Error(`attestation artifact not retrievable: ${ref}`);
+const uid = easUidFromArtifact(artifact);
+
+// Hop 2 — the uid, to the chain.
 const raw = (await chain.readContract({
   address: easContract,
   abi: EAS_GET_ATTESTATION_ABI,
@@ -395,6 +416,11 @@ const raw = (await chain.readContract({
 const attestation = decodeEasAttestation(raw);
 const heldAtSettlement = isEasValidAsOf(attestation, settledAtUnixSeconds);
 ```
+
+⚠️ **`artifacts.resolve` returning `null` is a gap, not a failure, and the walk already treats it that
+way** — an absent input never proves. Throwing above is this example being short; a verifier recording the
+outcome distinguishes *could not retrieve* from *retrieved and did not hold*, exactly as the walk's four
+statuses do.
 
 `decodeEasAttestation` flags a zero-uid struct as `exists: false` rather than letting it read as a valid
 attestation with empty fields, which is what EAS returns for a uid nobody ever minted.
