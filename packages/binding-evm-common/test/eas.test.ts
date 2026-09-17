@@ -1,16 +1,13 @@
-import {
-  decodeFunctionResult,
-  encodeFunctionResult,
-  type PublicClient,
-} from "viem";
-import { describe, expect, it, vi } from "vitest";
+import { decodeFunctionResult, encodeFunctionResult } from "viem";
+import { describe, expect, it } from "vitest";
+import * as eas from "../src/eas.js";
 import {
   decodeEasAttestation,
   EAS_GET_ATTESTATION_ABI,
   isEasValidAsOf,
   type RawEasAttestation,
-  readEasAttestation,
 } from "../src/eas.js";
+import * as pkg from "../src/index.js";
 
 const UID =
   "0x1111111111111111111111111111111111111111111111111111111111111111";
@@ -167,35 +164,51 @@ describe("isEasValidAsOf (as-of-settlement, not as-of-now)", () => {
   });
 });
 
-describe("readEasAttestation (the imperative shell over the injected client)", () => {
-  const EAS = "0x4200000000000000000000000000000000000021";
-
-  it("calls getAttestation with the uid and normalizes what the chain returns", async () => {
-    const readContract = vi.fn(async () =>
-      raw({ attester: "0xDeF0000000000000000000000000000000000002" }),
-    );
-    const client = { readContract } as unknown as PublicClient;
-    const att = await readEasAttestation(client, { eas: EAS, uid: UID });
-    expect(readContract).toHaveBeenCalledWith({
-      address: EAS,
-      abi: EAS_GET_ATTESTATION_ABI,
-      functionName: "getAttestation",
-      args: [UID],
-    });
-    expect(att.attester).toBe("0xdef0000000000000000000000000000000000002");
-    expect(att.exists).toBe(true);
+/**
+ * ⛔ THE PIN ON THE SPLIT. Tracked on the planning register as row 169; the disposition ruled on
+ * 2026-09-17 was the split below rather than deleting the read or moving this whole module.
+ *
+ * `decodeEasAttestation` and `isEasValidAsOf` are the pure semantics of somebody else's substrate and stay
+ * in this package; the chain read is a verifier's act and left it. What this pins is the SPLIT, not a
+ * name — restoring `readEasAttestation`, or adding any other chain read to this module under any name,
+ * reds it.
+ *
+ * The predicate is structural rather than a spelling. A chain read is I/O, so it is `async` and returns a
+ * promise; a decoder over a struct the caller already holds is not. An exported `AsyncFunction` in this
+ * module therefore IS a chain read, whatever it is called. The name list beside it is the second half:
+ * `AsyncFunction` catches a read added under a new name, the list catches one added as a thenable or as a
+ * value. Neither alone is enough, which is why both are here.
+ */
+describe("the EAS surface is decode-only (the chain read is the reader's)", () => {
+  it("exports no asynchronous function — a chain read cannot be synchronous", () => {
+    const asyncExports = Object.entries(eas)
+      .filter(
+        ([, v]) =>
+          typeof v === "function" && v.constructor.name === "AsyncFunction",
+      )
+      .map(([k]) => k);
+    expect(asyncExports).toEqual([]);
   });
 
-  it("reports a zero-uid read as non-existent rather than as a valid attestation", async () => {
-    const client = {
-      readContract: vi.fn(async () =>
-        raw({
-          uid: "0x0000000000000000000000000000000000000000000000000000000000000000",
-        }),
-      ),
-    } as unknown as PublicClient;
-    const att = await readEasAttestation(client, { eas: EAS, uid: UID });
-    expect(att.exists).toBe(false);
-    expect(isEasValidAsOf(att, 1_700_000_000n)).toBe(false);
+  it("exports exactly the ABI, the decoder and the as-of predicate", () => {
+    expect(Object.keys(eas).sort()).toEqual([
+      "EAS_GET_ATTESTATION_ABI",
+      "decodeEasAttestation",
+      "isEasValidAsOf",
+    ]);
+  });
+
+  it("re-exports no EAS chain read from the package barrel either", () => {
+    // The barrel is the surface a consumer installs. A read reachable only from `./eas.js` would still be
+    // unreachable for them; a read re-exported here would be shipped, which is the thing that moved.
+    expect(
+      Object.keys(pkg)
+        .filter((k) => /eas/i.test(k))
+        .sort(),
+    ).toEqual([
+      "EAS_GET_ATTESTATION_ABI",
+      "decodeEasAttestation",
+      "isEasValidAsOf",
+    ]);
   });
 });

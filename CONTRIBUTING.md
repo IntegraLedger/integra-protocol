@@ -93,6 +93,14 @@ does not tell the two apart.
 Changes that affect a published package need a changeset (`pnpm changeset`). Write it as part of the
 work, in prose that explains the reasoning and not just the diff.
 
+⚠️ **When you write a documentation fence, put annotations ABOVE the calls rather than trailing them on
+the last line.** `check:doc-calls` reads a `// throws` / `// refuses` comment on a call's own line and
+inverts its expectation, so a demonstration that quietly starts succeeding fails too. It locates that line
+by a byte offset derived from the parse's END, so any bytes after a fence's last token — a trailing
+comment, trailing blank lines — shift every attribution in that fence and the inversion is read against
+the wrong line. Nothing goes red when that happens; the arm is simply disarmed for that fence, which is
+the failure mode the gate exists to prevent. Keeping the last token last is a workaround, not a fix.
+
 ## House rules
 
 These are absolute in this codebase and a change that violates one will not land regardless of merit:

@@ -1,13 +1,33 @@
 /**
- * EAS (Ethereum Attestation Service) read — the EVM substrate adapter for a profiled attestation
- * (`authority`'s attestation-profile.ts interprets attestations generically; the per-substrate on-chain
- * read lives here, pure over the injected viem client). This reads `getAttestation(uid)` and
- * normalizes the on-chain `Attestation` struct into a typed, as-of-checkable value. It verifies nothing
- * cryptographically beyond the chain's own state — EAS attestations are on-chain records, so their
- * validity is a state read (attester, expiration, revocation), evaluated AS OF a settlement time exactly
- * like `authority`'s status-list discipline (never "is it valid now" — "was it valid at settlement").
+ * EAS (Ethereum Attestation Service) semantics — what an EAS attestation MEANS, and nothing that goes and
+ * reads one. The on-chain struct's shape, the normalization of what a node returns, and the as-of validity
+ * predicate live here; the `getAttestation` call itself is the reader's, over the reader's own client.
+ * `docs/developer/guides/verify-a-settlement.md` Step 5 is the worked example, and it is TWO hops: the
+ * envelope's `ref` is a content address for the attestation artifact, never the uid, and the uid comes
+ * out of the artifact the digest resolves to.
+ *
+ * ⛔ **The split is deliberate and it is the whole point of this file.** Integra records; the parties
+ * verify. A chain read is a verifier's act, so this package ships the ABI, the struct, the decoder and the
+ * predicate — everything needed to write the read — and performs none of it. `readEasAttestation` lived
+ * here until 2026-09-17 with zero callers in any repository.
+ *
+ * ⚠️ This header used to describe a division of labour with `authority`'s `attestation-profile.ts`: that
+ * file interpreting attestations generically, "the per-substrate on-chain read" living here, "pure over the
+ * injected viem client". That file no longer states its half. Its own header now records that no such port
+ * exists in any package's `src/` and that none is coming, and its `AttestationSubstrateCheck` has exactly
+ * one inhabitant — `not-attempted`, the arm that would claim a substrate was checked does not exist.
+ *
+ * ⛔ The port was never BUILT, not removed, and the distinction matters to anyone looking for it: nothing
+ * in any package dispatches on a substrate identifier, and nothing ever wired these two ends together —
+ * the read this file used to carry had no caller outside its own test in any repository. A recorded
+ * attestation is an inspectable input the walk carries, never an implementation the walk selects.
+ *
+ * Validity is a state read (attester, expiration, revocation), evaluated AS OF a settlement time exactly
+ * like `authority`'s status-list discipline — never "is it valid now", always "was it valid at settlement".
+ * Nothing here verifies cryptography: an EAS attestation is an on-chain record, and its authenticity is the
+ * chain's, not ours.
  */
-import type { Hex, PublicClient } from "viem";
+import type { Hex } from "viem";
 
 /** EAS `getAttestation(bytes32) returns (Attestation)` — the canonical struct (EAS v0.26+ field order). */
 export const EAS_GET_ATTESTATION_ABI = [
@@ -113,18 +133,4 @@ export function isEasValidAsOf(
   if (att.expirationTime !== 0n && att.expirationTime <= asOfUnixSeconds)
     return false;
   return true;
-}
-
-/** Read + normalize an EAS attestation by uid, over the injected viem client (imperative shell). */
-export async function readEasAttestation(
-  client: PublicClient,
-  params: { eas: string; uid: string },
-): Promise<EasAttestation> {
-  const raw = (await client.readContract({
-    address: params.eas as Hex,
-    abi: EAS_GET_ATTESTATION_ABI,
-    functionName: "getAttestation",
-    args: [params.uid as Hex],
-  })) as RawEasAttestation;
-  return decodeEasAttestation(raw);
 }

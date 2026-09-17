@@ -355,6 +355,101 @@ impeached to `TC-0`, because a walk reports each rung on its own evidence and le
 Prefer `authorityWalk` over `authorityChain` in real use: a flattened chain hides what the custody walk
 found, and [concepts/authority.md](../concepts/authority.md) says why that matters.
 
+## Step 5 — Check what the record says nobody checked
+
+A record can carry a **profiled attestation**: a presenter's statement that some third party vouched for a
+link in the authority chain. `@integraledger/lcp-authority` records one with `recordAttestation`, and every
+envelope it emits carries `substrateCheck: { status: "not-attempted", depth: … }`. That is not a gap in the
+implementation — it is the implementation being honest. Integra records; the parties verify. The envelope
+carries `substrate` and `ref` precisely so **you** can go and check it, and the check is the step below.
+
+None of the chain access here is Integra's. `binding-evm-common` ships the EAS *semantics* — the ABI to
+call with, the shape the node returns, the normalization, and the as-of predicate — and performs no read.
+
+⛔ **It is two hops, and collapsing them into one is the mistake this step exists to prevent.**
+`ref` is an **`lcp:sha256:` reference to the attestation artifact** — the handle you fetch the document
+by — and it is *not* the EAS uid. The uid lives inside the artifact the reference names. Passing `ref`
+straight to `getAttestation(bytes32)` fails **quietly**: a content digest is not a uid, EAS answers with
+its zero-filled struct, and `exists: false` is byte-identical to *nobody ever minted it*. You would read a
+real attestation as an absence and never know.
+
+⛔ **And `ref` is a CONTENT address, so it does not resolve over a locator.** `ArtifactResolver` fetches
+`ipfs:`/`ar:`/`https:` and says so — the shipped `createHardenedResolver` refuses an `lcp:sha256:` handle
+outright (`resolver/not-https`). A content digest resolves where content is stored by its digest: the
+**evidence bundle** you already hold. Its manifest names every artifact inside the CAR by exactly this
+`lcp:sha256:0x…` reference, which is what makes the handle usable at all — see
+[concepts/evidence.md](../concepts/evidence.md). A content-addressed store of your own works identically;
+what does not work is a URL fetcher.
+
+```ts
+import {
+  cidForAtrHash,
+  decodeCar,
+  type EvidenceBundle,
+} from "@integraledger/lcp-evidence";
+import type { ChainReader } from "@integraledger/lcp-binding-core";
+import {
+  decodeEasAttestation,
+  EAS_GET_ATTESTATION_ABI,
+  isEasValidAsOf,
+  type RawEasAttestation,
+} from "@integraledger/lcp-binding-evm-common";
+
+// `makeChainReader(yourViemPublicClient)`, from binding-evm-common. ⛔ NOT the `ports.chain` literal
+// Step 1 built: that one's `readContract` throws on purpose, because recovery reads logs and never
+// contract state. Which chain to point it at is the artifact's business too — the envelope says the
+// substrate is EAS and says nothing about a chain, and the same uid on the wrong chain reads back
+// `exists: false`, which is the same quiet absence again.
+declare const chain: ChainReader;
+declare const bundle: EvidenceBundle; // verified already — `verifyBundle` before you trust a block
+declare const easContract: string; // the EAS registry on the chain the artifact names
+declare const ref: string; // the envelope's `ref` — `lcp:sha256:0x…`, the ARTIFACT's content address
+declare const settledAtUnixSeconds: bigint; // the settlement's chain time, not now
+
+// How the artifact encodes its uid is what `profile` names — `eas:v1` here — and it is the profile's
+// business, not this repository's. Nothing in this tree parses it, which is the point.
+declare function easUidFromArtifact(bytes: Uint8Array): string;
+
+// Hop 1 — the content address, to the bytes. The digest frames as a raw CIDv1 and that is the block's
+// name inside the CAR; no network, no locator, nothing to trust that the bundle has not already proved.
+const wanted = cidForAtrHash(ref.replace("lcp:sha256:", ""));
+const block = decodeCar(bundle.car).blocks.find((b) => b.cid === wanted);
+if (block === undefined)
+  throw new Error(`attestation artifact not in the bundle: ${ref}`);
+const uid = easUidFromArtifact(block.bytes);
+
+// Hop 2 — the uid, to the chain.
+const raw = (await chain.readContract({
+  address: easContract,
+  abi: EAS_GET_ATTESTATION_ABI,
+  functionName: "getAttestation",
+  args: [uid],
+})) as RawEasAttestation;
+
+const attestation = decodeEasAttestation(raw);
+const heldAtSettlement = isEasValidAsOf(attestation, settledAtUnixSeconds);
+```
+
+⚠️ **A ref the bundle does not carry is a gap, not a failure.** The presenter named an artifact they did
+not supply, and an absent input never proves — the same discipline as the walk's four statuses. Throwing
+above is this example being short; a verifier recording the outcome keeps *not supplied* apart from
+*supplied and did not hold*. ⛔ And verify the bundle before reading a block out of it: `verifyBundle`
+recomputes every CID, so an unverified CAR is a counterparty's bytes wearing a content address.
+
+
+`decodeEasAttestation` flags a zero-uid struct as `exists: false` rather than letting it read as a valid
+attestation with empty fields, which is what EAS returns for a uid nobody ever minted.
+
+⛔ **`asOf` is the settlement's time, never yours.** EAS has no historical query: a read today returns
+today's `revocationTime`, and `isEasValidAsOf` is what turns that live struct into an answer about the
+past. The predicate bounds the interval from **both** ends — an attestation minted the day *after* the
+settlement is not valid as of it, which is the one direction an attester can exploit after the fact.
+
+⚠️ **The answer is yours, not the record's.** `heldAtSettlement` is your finding about somebody else's
+substrate; nothing puts it back into the walk, and no step of the report changes colour because of it. A
+verifier who wants it in their own evidence records it beside the report, with the chain and the block they
+read at.
+
 ## Not every rail hands back a hash
 
 `recover` is not uniform across the thirteen rails, and a verifier that assumes it is will misread two of

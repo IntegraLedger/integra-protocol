@@ -1,7 +1,7 @@
 # @integraledger/lcp-binding-evm-common
 
-Shared EVM machinery for the rail bindings: typed-data construction, signature verification, and
-event decoding. This is not itself a rail binding — it is what [`@integraledger/lcp-binding-evm-x402`](../binding-evm-x402#readme),
+Shared EVM machinery for the rail bindings: typed-data construction, signature verification, event
+decoding, and attestation semantics. This is not itself a rail binding — it is what [`@integraledger/lcp-binding-evm-x402`](../binding-evm-x402#readme),
 [`@integraledger/lcp-binding-evm-escrow`](../binding-evm-escrow#readme) and [`@integraledger/lcp-binding-evm-mpp`](../binding-evm-mpp#readme) are built from.
 
 ```bash
@@ -56,6 +56,58 @@ reached.
 
 Collapsing any two of those into one another is how a verifier ends up reporting the wrong thing about
 the one case it exists for.
+
+## Attestations — the semantics, never the read
+
+EAS (Ethereum Attestation Service) attestations turn up as the substrate behind a profiled attestation in
+an authority chain. This package ships what such an attestation **means** and nothing that goes and fetches
+one: `EAS_GET_ATTESTATION_ABI` (the call to make), `RawEasAttestation` (the shape viem decodes the
+node's tuple into),
+`decodeEasAttestation` (normalize it, and flag a zero uid as `exists: false` rather than as a valid
+attestation with empty fields) and `isEasValidAsOf`.
+
+```ts
+import {
+  decodeEasAttestation,
+  isEasValidAsOf,
+} from "@integraledger/lcp-binding-evm-common";
+
+const attestation = decodeEasAttestation({
+  uid: "0x1111111111111111111111111111111111111111111111111111111111111111",
+  schema:
+    "0x2222222222222222222222222222222222222222222222222222222222222222",
+  time: 1700000000n,
+  expirationTime: 0n,
+  revocationTime: 0n,
+  refUID:
+    "0x0000000000000000000000000000000000000000000000000000000000000000",
+  recipient: "0xAbC0000000000000000000000000000000000001",
+  attester: "0xDeF0000000000000000000000000000000000002",
+  revocable: true,
+  data: "0xcafe",
+});
+
+attestation.attester; // "0xdef0000000000000000000000000000000000002" — lowercased
+attestation.exists; // true
+
+// Valid AS OF the settlement, never as of now. The bound is two-sided: an attestation minted AFTER the
+// as-of second is not valid as of it, which is the direction backdating goes. The first call below is
+// `true`; the second is `false`, because the attestation was minted one second after the as-of instant.
+isEasValidAsOf(attestation, 1700000000n);
+isEasValidAsOf(attestation, 1699999999n);
+```
+
+⛔ **There is deliberately no `readEasAttestation` here, and there was until 2026-09-17.** A chain read is a
+verifier's act: Integra records, and the parties verify.
+
+⚠️ **And reading one is two hops, not one.** The envelope's `ref` is an `lcp:sha256:` content address for
+the attestation *artifact*, never the EAS uid: you resolve the artifact where content is stored by its
+digest — the evidence bundle's manifest names it — and take the uid from inside it, then call
+`getAttestation` with that. Handing `ref` to the chain reads a real attestation back as `exists: false`,
+which is indistinguishable from one nobody minted.
+[verify-a-settlement.md](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/developer/guides/verify-a-settlement.md)
+Step 5 is the worked example, both hops. Nothing about the check moved out of reach; what moved is who
+performs it.
 
 ## Requirement ids
 

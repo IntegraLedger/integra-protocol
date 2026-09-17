@@ -5,7 +5,6 @@ export {
   type EasAttestation,
   isEasValidAsOf,
   type RawEasAttestation,
-  readEasAttestation,
 } from "./eas.js";
 export { hashEip712 } from "./eip712.js";
 export {
