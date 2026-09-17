@@ -376,9 +376,10 @@ import {
   type RawEasAttestation,
 } from "@integraledger/lcp-binding-evm-common";
 
-// The same reader Step 1 used: `makeChainReader(yourViemPublicClient)`, on the chain the envelope's
-// `substrate` names. Read the envelope's substrate before choosing the client — an EAS uid on one chain
-// says nothing about the same uid on another.
+// The same reader Step 1 used: `makeChainReader(yourViemPublicClient)`. The envelope tells you the
+// substrate is EAS; it does NOT tell you which chain, and `ref` does not either — `AttestationEnvelope`
+// has no such field. Establish the chain from the record before you pick a client: the same uid on the
+// wrong chain reads back `exists: false`, which is indistinguishable from an attestation nobody minted.
 declare const chain: ChainReader;
 declare const easContract: string; // the EAS registry on that chain
 declare const uid: string; // the envelope's `ref`, as a bytes32 uid
