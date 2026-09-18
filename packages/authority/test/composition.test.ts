@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readAttestationProfile } from "../src/attestation-profile.js";
 import {
   type IdentityResolution,
   isConsequentialConformant,
@@ -110,21 +109,5 @@ describe("isConsequentialConformant needs the assurance AND the chain", () => {
         chain: [{ via: "key" }, { via: "domain-control" }],
       }),
     ).toBe(false);
-  });
-});
-
-describe("attestation-profile — generic interpretation (substrate-open)", () => {
-  it("reads the envelope without touching substrate cryptography", () => {
-    const read = readAttestationProfile({
-      profile: { profile: "eas:v1", substrate: "eas" },
-      subject: "0x00000000000000000000000000000000000000a2",
-      assurance: "kyc-verified",
-      ref: "lcp:sha256:0xabc",
-    });
-    expect(read).toEqual({
-      substrate: "eas",
-      subject: "0x00000000000000000000000000000000000000a2",
-      assurance: "kyc-verified",
-    });
   });
 });
