@@ -1,5 +1,48 @@
 # @integraledger/lcp-authority
 
+## 0.19.0
+
+### Minor Changes
+
+- d4f95bc: The authority package records presented attestations as inspectable envelopes
+  
+  `recordAttestation` reads one presented attestation, from untrusted wire input, into a
+  `RecordedAttestation`. It is total — it never throws and never refuses — and the type has two arms.
+  `envelope-read` carries an `AttestationEnvelope`: the profile, substrate, subject, assurance and artifact
+  `ref` exactly as the presenter stated them, beside an `AttestationSubstrateCheck` whose single inhabitant
+  `{ status: "not-attempted", depth: ATTESTATION_SUBSTRATE_NOT_CHECKED }` records that no substrate
+  cryptography was checked here. `not-attempted` carries a `depth` naming what could not be read, so an
+  element nobody could interpret is recorded as having been presented rather than dropped. `recordAttestation`
+  itself emits one of six — `attestation-not-an-object`, `attestation-profile-not-stated`,
+  `attestation-substrate-not-stated`, `attestation-subject-not-stated`, `attestation-ref-not-stated` or
+  `attestation-assurance-unreadable`. `depth` is a plain string rather than a closed union, and the other
+  producers below contribute their own. The profile id, substrate, subject and `ref` are each a stated gap
+  when absent and when present as an empty string, and an `assurance` that is present but unreadable is a
+  stated gap rather than a silently omitted field. The substrate is required to be a non-empty string and is
+  compared with nothing, so an attestation on a substrate this package has never heard of is recorded rather
+  than refused.
+  
+  `recordResolutionAttestations` reads the attestation hops of an `IdentityResolution` the same way,
+  returning one `RecordedAttestation` per hop in chain order; a hop that carries no attestation reads out as
+  the stated gap `attestation-hop-carries-no-profile`. It is total over a resolution carrying no chain and
+  over hops that are not objects.
+  
+  `walkChainStructure` carries the results onto its readout. Each `WalkedLink` gains the attestations the
+  presenter addressed to that link's subject, and attestations no link carried are returned as
+  `UnwalkedAttestation[]`, each naming why in its own `depth` — `addressed-to-the-declared-principal`,
+  `addressed-to-no-walked-link` or `attestations-slot-not-keyed` — with the identifier it was addressed to
+  where the slot was keyed, and none otherwise, beside the same `RecordedAttestation` a link-carried
+  attestation receives. A slot addressed to a subject that is not a list is recorded as
+  `attestations-not-a-list`. An attestation can never make a walk refuse a record.
+  
+  `readAttestationProfile` is no longer exported from `@integraledger/lcp-authority`. `AttestationProfile`
+  and `ProfiledAttestation` stay, unchanged.
+
+### Patch Changes
+
+- @integraledger/lcp-binding-core@0.19.0
+  - @integraledger/lcp-kernel@0.19.0
+
 ## 0.18.3
 
 ### Patch Changes
