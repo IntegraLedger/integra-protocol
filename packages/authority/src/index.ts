@@ -15,7 +15,6 @@ export {
   type AttestationSubstrateCheck,
   type ProfiledAttestation,
   type RecordedAttestation,
-  readAttestationProfile,
   recordAttestation,
 } from "./attestation-profile.js";
 export { type Bounds, isWithin } from "./bounds.js";

@@ -49,19 +49,6 @@ export interface ProfiledAttestation {
   ref: string;
 }
 
-/** Interpret the envelope of a profiled attestation without touching its substrate cryptography. */
-export function readAttestationProfile(a: ProfiledAttestation): {
-  substrate: string;
-  subject: string;
-  assurance: string | undefined;
-} {
-  return {
-    substrate: a.profile.substrate,
-    subject: a.subject,
-    assurance: a.assurance,
-  };
-}
-
 /**
  * The one thing this package can honestly say about an attestation's substrate: it did not look.
  *
