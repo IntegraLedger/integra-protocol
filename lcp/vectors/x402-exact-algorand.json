@@ -1,0 +1,370 @@
+{
+ "about": "Vectors for the x402/exact/algorand pairing of @integraledger/lcp's avm entry point. H is SHA-256(\"abc\") from FIPS 180-2. The values were computed with py-algorand-sdk 2.12.0 and PyNaCl 1.6.2 on Python 3.12.3, with hashlib's sha512_256 as a second path, 2026-09-25; the seeds are not recorded here. Rounds are decimal strings.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+  "O": {
+   "scheme": "exact",
+   "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+   "amount": "10000",
+   "asset": "10458941",
+   "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+   }
+  },
+  "OStandalone": {
+   "scheme": "exact",
+   "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+   "amount": "10000",
+   "asset": "10458941",
+   "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+   "maxTimeoutSeconds": 60,
+   "extra": {}
+  },
+  "payer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "params": {
+   "firstValid": "67634736",
+   "genesisHash": "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+   "genesisId": "testnet-v1.0",
+   "minFee": "1000",
+   "feePerByte": "0"
+  },
+  "signature": "9d88d79856c38e139261daba7af1e5cb23659f8a1241fd83b04b902056d5b1d79cb0a13351d7c999b5f55b6f04da3a12dc31ab549c125d86fc3a020f35345809"
+ },
+ "V1": {
+  "case": "standalone: the axfer with fee 1000 and no group",
+  "expectEncodedLength": 268,
+  "expectTxid": "4WTATDB4U2MJQCJC4FPCG2RTAQ4T5LMEC3FLMQFD4YTTHED4OH6A"
+ },
+ "V2": {
+  "case": "with the fee payer: F = 2000, the group id, the two txids, and complete(signature)'s two entries",
+  "expectGroupId": "W1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/II=",
+  "expectPaymentTxid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+  "expectFeePayerTxid": "JE6IDW5O4ISNQSDVBQBB73HYXDEXP6XWEGX527UTCPUELDIK2H7Q",
+  "expectBytesToSign": "54588ba461616d74cd2710a461726376c420ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1a26676ce04080630a367656eac746573746e65742d76312e30a26768c4204863b518a4b3c84ec810f22d4f1081cb0f71f059a7ac20dec62f7f70e5093a22a3677270c4205b5fd9091af8a479827bffaeeb98772eb6120cedd961fe64ba6b64e92948fc82a26c76ce0408066ca46e6f7465c44d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164a3736e64c4208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5ca474797065a56178666572a478616964ce009f973d",
+  "expectPaymentGroup": [
+   "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+   "gqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+  ],
+  "expectPaymentIndex": 1
+ },
+ "V3": {
+  "case": "bound and reference of V2's payload, and the refusals",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+   "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+   "lastValid": "67634796"
+  },
+  "refusals": [
+   {
+    "case": "the steward client's note",
+    "paymentGroup": [
+     "gqNzaWfEQE+lT+Jj1/oKDZe9gltC9a0EhWD21q3dlKKCh8zOVmeBYLeOfDs1ctOZNRft2AhY6my8t6D6PlIjMOKOvJKmIAajdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRo2ZlZc0D6KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToiomx2zgQIBmykbm90ZcQdeDQwMi1wYXltZW50LXYyLTE3OTAwMDAwMDAwMDCjc25kxCCKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXKR0eXBlpWF4ZmVypHhhaWTOAJ+XPQ=="
+    ],
+    "paymentIndex": 0,
+    "expect": "avm/note-not-lcp"
+   },
+   {
+    "case": "paymentIndex 2",
+    "paymentGroup": [
+     "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+     "gqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+    ],
+    "paymentIndex": 2,
+    "expect": "avm/index-out-of-range"
+   },
+   {
+    "case": "a pay at paymentIndex",
+    "paymentGroup": [
+     "gqNzaWfEQCXrtJp9SVadjXojqCwbYgPFTuvzI6ilG61ZuNHaK7kdCzyEDSZTXNF6E1Fk5kdMXQ2hAAe3Bsl5ElB2STaKVgajdHhuiqNhbXTNJxCjZmVlzQPoomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKibHbOBAgGbKRub3RlxE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZKNyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRo3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaNwYXk="
+    ],
+    "paymentIndex": 0,
+    "expect": "avm/not-axfer"
+   },
+   {
+    "case": "17 entries",
+    "paymentGroup": [
+     "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"
+    ],
+    "paymentIndex": 0,
+    "expect": "avm/group-too-large"
+   }
+  ]
+ },
+ "V4": {
+  "case": "status and recover on reader fixtures",
+  "reference": {
+   "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+   "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+   "lastValid": "67634796"
+  },
+  "readerNetwork": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+  "note": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+  "rows": [
+   {
+    "answer": {
+     "currentRound": "67634741",
+     "found": {
+      "confirmedRound": "67634740"
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "final",
+     "round": "67634740"
+    }
+   },
+   {
+    "answer": {
+     "currentRound": "67634796",
+     "found": null
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "answer": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "answer": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": {
+   "answer": {
+    "currentRound": "67634741",
+    "found": {
+     "confirmedRound": "67634740"
+    }
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  }
+ },
+ "plant": {
+  "case": "another txid whose note is L is found; the claimed txid is absent at currentRound 67634796: never settled",
+  "otherTxid": "4WTATDB4U2MJQCJC4FPCG2RTAQ4T5LMEC3FLMQFD4YTTHED4OH6A",
+  "otherAnswer": {
+   "currentRound": "67634796",
+   "found": {
+    "confirmedRound": "67634740"
+   }
+  },
+  "claimedAnswer": {
+   "currentRound": "67634796",
+   "found": null
+  },
+  "expect": {
+   "state": "pending",
+   "why": "not-found"
+  }
+ },
+ "options": [
+  {
+   "case": "assetTransferMethod present",
+   "option": {
+    "scheme": "exact",
+    "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+    "amount": "10000",
+    "asset": "10458941",
+    "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "assetTransferMethod": "eip3009"
+    }
+   },
+   "expect": "avm/option-malformed"
+  },
+  {
+   "case": "a network reference that is not 32 characters",
+   "option": {
+    "scheme": "exact",
+    "network": "algorand:testnet",
+    "amount": "10000",
+    "asset": "10458941",
+    "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+    }
+   },
+   "expect": "avm/network-malformed"
+  },
+  {
+   "case": "a payTo with a bad checksum",
+   "option": {
+    "scheme": "exact",
+    "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+    "amount": "10000",
+    "asset": "10458941",
+    "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4A",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+    }
+   },
+   "expect": "avm/option-malformed"
+  }
+ ],
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/algorand",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+        "amount": "10000",
+        "asset": "10458941",
+        "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe:RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "inputs": {
+      "params": {
+       "firstValid": "67634736",
+       "genesisHash": "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+       "genesisId": "testnet-v1.0",
+       "minFee": "1000",
+       "feePerByte": "0"
+      }
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/algorand",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+       "amount": "10000",
+       "asset": "10458941",
+       "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+       }
+      },
+      "payload": {
+       "paymentIndex": 1,
+       "paymentGroup": [
+        "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+        "gqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+       ]
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

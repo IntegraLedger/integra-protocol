@@ -1,0 +1,745 @@
+{
+ "about": "Vectors for mpp/session/hedera, mpp/session/solana and mpp/session/xrpl. Where a value is shortened, the row holds its prefix and suffix. HS4's receipts are live testnet reads from testnet.hashio.io (eth_getTransactionReceipt) at 2026-09-25T09:02Z. The placed challenges are computed with Python 3 json and base64url.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "payee": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
+  "token": "0x0000000000000000000000000000000000001549",
+  "escrow": "0x8Aaf6690C2a6397d595F97E224fC19759De6fdaE"
+ },
+ "SS1": {
+  "hedera": {
+   "challenge": {
+    "realm": "api.seller.example",
+    "method": "hedera",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+    "expires": "2026-09-21T14:14:20Z"
+   },
+   "placed": {
+    "realm": "api.seller.example",
+    "method": "hedera",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+    "expires": "2026-09-21T14:14:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+   },
+   "expectIssuedDigest": "0xd9d4c76b47773fffca0cb5de957d56aadde39045e61eb359d8a3cabf0f98c3dc"
+  },
+  "solana": {
+   "challenge": {
+    "realm": "api.seller.example",
+    "method": "solana",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJtZXRob2REZXRhaWxzIjp7ImNoYW5uZWxQcm9ncmFtIjoiQ0hOTHhZdlZBMjhNSlA5UHJGdURYY2N1b0dYQXg3akJhY2ZMRWthaHlHc1giLCJkZWNpbWFscyI6NiwiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyS2V5IjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJncmFjZVBlcmlvZFNlY29uZHMiOjkwMCwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjM1MjExNDA5MyJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+    "expires": "2026-09-21T14:14:20Z"
+   },
+   "placed": {
+    "realm": "api.seller.example",
+    "method": "solana",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJtZXRob2REZXRhaWxzIjp7ImNoYW5uZWxQcm9ncmFtIjoiQ0hOTHhZdlZBMjhNSlA5UHJGdURYY2N1b0dYQXg3akJhY2ZMRWthaHlHc1giLCJkZWNpbWFscyI6NiwiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyS2V5IjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJncmFjZVBlcmlvZFNlY29uZHMiOjkwMCwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjM1MjExNDA5MyJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+    "expires": "2026-09-21T14:14:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+   },
+   "expectIssuedDigest": "0x56c1f487076d5a011a45d047be746ff7fd537f8a4a69f7bd67326eac6c8445ee"
+  },
+  "xrpl": {
+   "challenge": {
+    "realm": "api.seller.example",
+    "method": "xrpl",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+    "expires": "2026-09-21T14:14:20Z"
+   },
+   "placed": {
+    "realm": "api.seller.example",
+    "method": "xrpl",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+    "expires": "2026-09-21T14:14:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+   },
+   "expectIssuedDigest": "0xc735a386e2c338fe40ec7e198b43ed163eea9c5f072e91c802fd59e0e3ef5448"
+  }
+ },
+ "SS1refusals": [
+  {
+   "case": "hedera with methodDetails.channelId",
+   "method": "hedera",
+   "request": {
+    "amount": "25",
+    "currency": "0x0000000000000000000000000000000000001549",
+    "methodDetails": {
+     "chainId": 296,
+     "escrowContract": "0x8Aaf6690C2a6397d595F97E224fC19759De6fdaE",
+     "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815"
+    },
+    "recipient": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
+    "suggestedDeposit": "10000000",
+    "unitType": "llm_token"
+   },
+   "expect": "mpp/channel-named"
+  },
+  {
+   "case": "solana with methodDetails.channelId",
+   "method": "solana",
+   "request": {
+    "amount": "25",
+    "currency": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "methodDetails": {
+     "channelProgram": "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",
+     "decimals": 6,
+     "feePayer": true,
+     "feePayerKey": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "gracePeriodSeconds": 900,
+     "network": "devnet",
+     "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+     "recentSlot": "352114093",
+     "channelId": "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH"
+    },
+    "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+   },
+   "expect": "mpp/channel-named"
+  },
+  {
+   "case": "xrpl with a non-empty channelId",
+   "method": "xrpl",
+   "request": {
+    "amount": "100",
+    "channelId": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/channel-named"
+  },
+  {
+   "case": "no expires",
+   "method": "hedera",
+   "request": {
+    "amount": "25",
+    "currency": "0x0000000000000000000000000000000000001549",
+    "methodDetails": {
+     "chainId": 296,
+     "escrowContract": "0x8Aaf6690C2a6397d595F97E224fC19759De6fdaE"
+    },
+    "recipient": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
+    "suggestedDeposit": "10000000",
+    "unitType": "llm_token"
+   },
+   "noExpires": true,
+   "expect": "mpp/expires-required"
+  }
+ ],
+ "HS1": {
+  "expectChannelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+  "expectChannelIdH2Prefix": "0xcc607d18",
+  "expectChannelIdH2Suffix": "a9d1"
+ },
+ "HS2": {
+  "deposit": "10000000",
+  "expectApproveLength": 68,
+  "expectApprovePrefix": "0x095ea7b3",
+  "expectApproveSuffix": "989680",
+  "expectApproveContains": "8aaf6690",
+  "expectOpenLength": 164,
+  "expectOpenSelector": "0xc79ea485",
+  "expectOpenSaltBytes": [
+   100,
+   132
+  ],
+  "expectVoucherDigest": "0x50cfeeafe6c419798b2bbaee65874dff8d02d47c48e682d56d45178501e16815"
+ },
+ "HS3": {
+  "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+  "log": {
+   "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+   "topics": [
+    "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+    "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+    "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+   ],
+   "data": "0x00000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000000000ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000989680"
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectRef": {
+   "network": "hedera:testnet",
+   "channel": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815"
+  }
+ },
+ "HS4": {
+  "openTx": "0x109d8a611ce3a54019be191c7992faf5798b498af0904cf185282cca5f806f66",
+  "closeTx": "0x6e1b68acd0ae78b0f92dab65e25f44cf2bc590d6d71f20c0121081a6f10c86ed",
+  "openReceipt": {
+   "status": 1,
+   "blockNumber": "40845556",
+   "logs": [
+    {
+     "address": "0x0000000000000000000000000000000000001549",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+      "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+    },
+    {
+     "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+     "topics": [
+      "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+      "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000001549000000000000000000000000000000000000000000000000000000000000000074149ff9c871fcfe58844600a2de78eeea94a2da90ab2c0a6d2eb26a3ef31cae0000000000000000000000000000000000000000000000000000000000002710"
+    }
+   ]
+  },
+  "closeReceipt": {
+   "status": 1,
+   "blockNumber": "40845559",
+   "logs": [
+    {
+     "address": "0x0000000000000000000000000000000000001549",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000000fa0"
+    },
+    {
+     "address": "0x0000000000000000000000000000000000001549",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000001770"
+    },
+    {
+     "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+     "topics": [
+      "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
+      "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+      "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000000fa00000000000000000000000000000000000000000000000000000000000001770"
+    }
+   ]
+  },
+  "challengeId": "dBSf-chx_P5YhEYAot547uqUotqQqywKbS6yaj7zHK4.0",
+  "salt": "0x74149ff9c871fcfe58844600a2de78eeea94a2da90ab2c0a6d2eb26a3ef31cae",
+  "channel": "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+  "expectSaltPrefix": "0x74149ff9",
+  "expectSaltSuffix": "1cae",
+  "expectChannelPrefix": "0x6d0dc29f",
+  "expectChannelSuffix": "cba7",
+  "expectBlock": "40845556",
+  "expectCloseRef": {
+   "phase": "close",
+   "network": "hedera:testnet",
+   "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+   "channel": "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+   "search": {
+    "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+    "topics": [
+     "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
+     "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7"
+    ]
+   }
+  }
+ },
+ "HS5": {
+  "kinds": [
+   [
+    "open",
+    "open"
+   ],
+   [
+    "topUp",
+    "within"
+   ],
+   [
+    "voucher",
+    "within"
+   ],
+   [
+    "close",
+    "close"
+   ]
+  ],
+  "badAction": "pay",
+  "expectBad": "mpp/session-action"
+ },
+ "SV1": {
+  "expectSalt": "16919744041952114874",
+  "expectSaltHex": "0xeacf018fbf1678ba"
+ },
+ "SV2": {
+  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHepu6Dl28Sc+H12jfd9JFQLnPZeiHRMa+xPXPRRWKq/dSquiRSjhK6cT3siKTUQWx03g+qkvOrjaHDQnsFRoOgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cv2Q4GeONEFNuI/pcllypAMKvV5K+T2SRxXCSMvu5FavUVfkeC1Z8MvZo26+2QNOZw4AUYhIgasifcg1XZ79Avu3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAANDgEACQoBAwQCCAUHDAsNIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAA=",
+  "wireLength": 686,
+  "expectMessageSha256": "0x9003d0ba67959d699361dcaf75323c2e021e3e457139f3325e27f24eafb22661",
+  "expectOpenData": "01ba7816bf8f01cfea809698000000000084030000add5fc140000000000000000",
+  "channel": "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "digest": "0x9003d0ba67959d699361dcaf75323c2e021e3e457139f3325e27f24eafb22661",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "channel": "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH"
+  }
+ },
+ "SV3": {
+  "expectVoucher": "5601d455f91e0b567c32f668dbafb640d399c380146212206ac89f720d5767bf40be64000000000000000000000000000000",
+  "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "expectProofText": "{\"channelId\":\"FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH\",\"domain\":\"mpp-session-auth-v1\",\"payer\":\"AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9\",\"sessionChallengeId\":\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\"}",
+  "expectProofSha256Prefix": "dfa0f03d",
+  "expectProofSha256Suffix": "56d6",
+  "expectProofSignaturePrefix": "551ccc98",
+  "expectProofSignatureSuffix": "b0490e"
+ },
+ "SV4": {
+  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] → settled; data 02 → failed not-a-close"
+ },
+ "SV5": {
+  "about": "Operator mode's opening (draft-solana-session-00, Session Bearer Proof): SS1's C_S with methodDetails.voucherSigner \"operator\" and methodDetails.operator set (the operator key here is SS1's feePayerKey, as a test value). The channel client answers SV2's open; the payer (seed 01) then signs SV3's proof text as ed25519-raw, and the open payload gains authentication = {type: \"proof\", challengeId, payer, signature}, the signature in base58. Its hex is SV3's proof signature.",
+  "methodDetails": {
+   "voucherSigner": "operator",
+   "operator": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu"
+  },
+  "expectRequestKinds": [
+   "solana-session-open",
+   "ed25519-raw"
+  ],
+  "expectAuthentication": {
+   "type": "proof",
+   "challengeId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
+  },
+  "expectAuthenticationKeys": [
+   "type",
+   "challengeId",
+   "payer",
+   "signature"
+  ]
+ },
+ "XS1": {
+  "account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "destination": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+  "sequence": 382,
+  "expect": "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7"
+ },
+ "XS2": {
+  "blob": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+  "expectLength": 306,
+  "expectHash": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectChannel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+  "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+  "deposit": "1000000",
+  "settleDelay": 3600,
+  "fee": "12",
+  "sequence": 7,
+  "lastLedgerSequence": 1000,
+  "cancelAfter": 533171558,
+  "expectUntil": 1479856358
+ },
+ "XS3": {
+  "drops": "100",
+  "expect": "434C4D007FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F1670000000000000064"
+ },
+ "XS4": {
+  "rows": [
+   {
+    "case": "validated tesSUCCESS PaymentChannelCreate at 990",
+    "landed": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 990,
+     "transactionType": "PaymentChannelCreate"
+    },
+    "expect": {
+     "state": "settled",
+     "ledgerIndex": 990
+    }
+   },
+   {
+    "case": "tecNO_DST",
+    "landed": {
+     "validated": true,
+     "result": "tecNO_DST",
+     "ledgerIndex": 990,
+     "transactionType": "PaymentChannelCreate"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "claimed-fee"
+    }
+   },
+   {
+    "case": "type Payment",
+    "landed": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 990,
+     "transactionType": "Payment"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    }
+   }
+  ],
+  "closeRows": [
+   {
+    "case": "validated with deletedChannels [channel]",
+    "landed": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 995,
+     "transactionType": "PaymentChannelClaim",
+     "deletedChannels": [
+      "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167"
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "ledgerIndex": 995
+    }
+   },
+   {
+    "case": "validated without it",
+    "landed": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 995,
+     "transactionType": "PaymentChannelClaim",
+     "deletedChannels": []
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-a-close"
+    }
+   }
+  ]
+ },
+ "plants": {
+  "hedera": {
+   "case": "HS4's real receipt against SS1's placed C_H (H): the channel's salt is another agreement's hash",
+   "expect": "mpp/carrier-not-challenge",
+   "otherEmitter": "0x0000000000000000000000000000000000001549",
+   "expectOtherEmitter": "hedera/channel-log-not-found"
+  },
+  "solana": {
+   "case": "SV2 built with salt = sessionSalt(H2)",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACA18Z3IS48AuE23F+8RIcNDiGXn8DyOAKgv9bfrplt64yZeCbS1meQ/yQiAjqf1T/R+/h5QxZkQYy2P1KUepkEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cKK6vp6ecn91fb9HSa7FvMZQVjbXnKxqFH6aVWzJs07Cj2U7ZkQvKEfxcjA23Y3poAeLfJov38OEbryk39xcW8O3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAANDgEACQoBAwQCCAUHDAsNIQHjsMRCmPwcFICWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAA=",
+   "expectWireSha256Prefix": "66b598e4",
+   "expectWireSha256Suffix": "c030",
+   "channel": "C2beJBW1reYrCRtMtrk1nszBLY7SQCfDTaUQR7JauRAw",
+   "expectSaltH2": "1449310910991872227",
+   "expect": "mpp/carrier-not-challenge",
+   "useWrongChallengeId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.1",
+   "expectUse": "svm/proof-not-challenge"
+  },
+  "xrpl": {
+   "case": "XS2 with the memo of H2, and with no memo",
+   "expectH2": "mpp/carrier-not-challenge",
+   "expectNoMemo": "xrpl/no-memo"
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation.",
+  "rows": [
+   {
+    "case": "a hedera session request whose currency, recipient or escrowContract is not an address",
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "a solana session request whose network is absent or not one of MPP's three names",
+    "expect": "svm/network-malformed"
+   },
+   {
+    "case": "an xrpl session request whose recipient is not a classic address",
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "bound of a hedera opening before fetchPresented added the landed logs",
+    "expect": "hedera/read-first"
+   },
+   {
+    "case": "fetchPresented or recover with a reader for another hedera network",
+    "expect": "hedera/unreadable"
+   },
+   {
+    "case": "an xrpl opening with more than 8 memos",
+    "expect": "xrpl/memo-count"
+   },
+   {
+    "case": "xrplChannelId with a malformed address or sequence, or xrplClaim with a malformed id or drops",
+    "expect": "xrpl/not-channel-create"
+   },
+   {
+    "case": "solanaVoucher with a malformed channel id or an out-of-range number",
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "bound of a credential whose action is not open",
+    "expect": "mpp/session-action"
+   },
+   {
+    "case": "build with a malformed from, deposit or XRPL channel terms",
+    "expect": "mpp/input-malformed"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/session/hedera",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "hedera",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "hedera:testnet:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "deposit": "10000000"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/session/hedera",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "hedera",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "action": "open",
+       "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+       "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+       "cumulativeAmount": "0",
+       "signature": "0x00"
+      },
+      "landed": {
+       "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+       "blockNumber": "40000000",
+       "logs": [
+        {
+         "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+         "topics": [
+          "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+          "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+          "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+          "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+         ],
+         "data": "0x00000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000000000ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000989680"
+        }
+       ]
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's HS3 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "mpp/session/solana",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJtZXRob2REZXRhaWxzIjp7ImNoYW5uZWxQcm9ncmFtIjoiQ0hOTHhZdlZBMjhNSlA5UHJGdURYY2N1b0dYQXg3akJhY2ZMRWthaHlHc1giLCJkZWNpbWFscyI6NiwiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyS2V5IjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJncmFjZVBlcmlvZFNlY29uZHMiOjkwMCwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjM1MjExNDA5MyJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/session/solana",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJtZXRob2REZXRhaWxzIjp7ImNoYW5uZWxQcm9ncmFtIjoiQ0hOTHhZdlZBMjhNSlA5UHJGdURYY2N1b0dYQXg3akJhY2ZMRWthaHlHc1giLCJkZWNpbWFscyI6NiwiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyS2V5IjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJncmFjZVBlcmlvZFNlY29uZHMiOjkwMCwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjM1MjExNDA5MyJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "action": "open",
+       "channelId": "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH",
+       "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHepu6Dl28Sc+H12jfd9JFQLnPZeiHRMa+xPXPRRWKq/dSquiRSjhK6cT3siKTUQWx03g+qkvOrjaHDQnsFRoOgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cv2Q4GeONEFNuI/pcllypAMKvV5K+T2SRxXCSMvu5FavUVfkeC1Z8MvZo26+2QNOZw4AUYhIgasifcg1XZ79Avu3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAANDgEACQoBAwQCCAUHDAsNIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAA="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's SV2 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "mpp/session/xrpl",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "xrpl",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "xrpl:1:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "inputs": {
+      "deposit": "1000000",
+      "xrpl": {
+       "publicKey": "0xED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
+       "settleDelay": 3600,
+       "fee": "12",
+       "sequence": 7,
+       "lastLedgerSequence": 1000
+      }
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/session/xrpl",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "xrpl",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "action": "open",
+       "transaction": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+       "amount": "100",
+       "signature": "00"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's XS2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

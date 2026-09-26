@@ -1,0 +1,387 @@
+{
+ "about": "Vectors for the x402/exact/hedera pairing of @integraledger/lcp's hedera entry point. H is SHA-256(\"abc\") from FIPS 180-2. The bytes were computed with hiero-sdk-python 0.2.10's generated protobufs and protobuf 7.36.2 (SerializeToString(deterministic=True)) and cryptography's Ed25519 on Python 3.12.3, 2026-09-25; the signing seed is not recorded here. Byte strings are hex unless named base64.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "Lbytes": 77,
+  "O": {
+   "scheme": "exact",
+   "network": "hedera:testnet",
+   "amount": "1000",
+   "asset": "0.0.0",
+   "payTo": "0.0.1234",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "0.0.1235"
+   }
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "payer": "0.0.5555",
+  "node": "0.0.3",
+  "validStart": {
+   "seconds": "1700000000",
+   "nanos": 0
+  },
+  "maxFee": "100000000",
+  "publicKey": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
+  "signature": "828e94fa9b9be1525f71b1d2094d3abfeaa4c8adcef0ac4e18ebcd0e02fa6ef79c3598e14f0fa3d966c1c51f3d356f325b5a6c89c1095908bec78f3e1960c401"
+ },
+ "V1": {
+  "case": "toLcpString(H) and its Mirror Node memo_base64",
+  "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectMemoBase64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ="
+ },
+ "V2": {
+  "case": "build, complete(ed25519 publicKey, signature), bound, reference, txIdText",
+  "expectBodyBytes": "0a0d0a060880e2cfaa06120318d309120218031880c2d72f22020878324d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616472160a140a080a0318b32b10cf0f0a080a0318d20910d00f",
+  "expectBodyLength": 131,
+  "expectTransactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+  "expectTransactionLength": 241,
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "hedera:testnet",
+   "transactionId": "0.0.1235-1700000000-000000000",
+   "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "validUntil": 1700000120
+  },
+  "expectTxIdText": "0.0.1235@1700000000.000000000"
+ },
+ "V3": {
+  "case": "the one-entry TransactionList form gives H; a list whose second entry has another memo is refused",
+  "listBase64": "CvEBKu4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "inconsistentListBase64": "CvEBKu4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQrxASruAQqDAQoNCgYIgOLPqgYSAxjTCRICGAMYgMLXLyICCHgyTWxjcDpzaGEyNTY6MHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwchYKFAoICgMYsysQzw8KCAoDGNIJENAPEmYKZAog7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EaQAg2RRiEg7VCrZF3h5ylw3drdeMKyhDLMNSTOaOweYxVrjPdl5NqWUBKgVmh/COQf+f/WHWaN6S6Sez4E+quKg0=",
+  "expectInconsistent": "hedera/list-inconsistent"
+ },
+ "V4x": {
+  "case": "under x402, a transaction whose memo is V4's attribution memo is refused",
+  "transactionBase64": "KuIBCngKDQoGCIDiz6oGEgMY0wkSAhgDGIDC1y8iAgh4MkIweGVmMWVkNzEyMDE3YjQzNjQ0NDlkMWRjMTlhOGE3YjAwMDAwMDAwMDAwMDAwMDAwMDAwMTEyOGZiMjY1ZTc2MGRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpACxe+NhJHMf7rcIxdAONXsaE5QbZHz1ilZXV3h0/OJ3w/D56IdyNTGbFfeg42Oea/uFylXT8zuJ1U01qqJVEJBA==",
+  "expectRefusal": "hedera/memo-not-lcp"
+ },
+ "V5": {
+  "case": "status for V2's reference, and recover",
+  "reference": {
+   "network": "hedera:testnet",
+   "transactionId": "0.0.1235-1700000000-000000000",
+   "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "validUntil": 1700000120
+  },
+  "readerNetwork": "hedera:testnet",
+  "rows": [
+   {
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1700000003.000000001"
+    }
+   },
+   {
+    "entries": [
+     {
+      "result": "INSUFFICIENT_ACCOUNT_BALANCE",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "result:INSUFFICIENT_ACCOUNT_BALANCE"
+    }
+   },
+   {
+    "entries": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "MHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMDExMjhmYjI2NWU3NjBk",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    }
+   },
+   {
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "entries": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "source": "a failed read is pending"
+   }
+  ],
+  "recover": {
+   "entries": [
+    {
+     "result": "SUCCESS",
+     "nonce": 0,
+     "scheduled": false,
+     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+     "consensus_timestamp": "1700000003.000000001"
+    }
+   ],
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  }
+ },
+ "plants": {
+  "duplicateFirst": {
+   "case": "the duplicate entry first, then the SUCCESS entry: settled, never pending or failed",
+   "entries": [
+    {
+     "result": "DUPLICATE_TRANSACTION",
+     "nonce": 0,
+     "scheduled": false,
+     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+     "consensus_timestamp": "1700000003.000000001"
+    },
+    {
+     "result": "SUCCESS",
+     "nonce": 0,
+     "scheduled": false,
+     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+     "consensus_timestamp": "1700000003.000000001"
+    }
+   ],
+   "expect": {
+    "state": "settled",
+    "consensus": "1700000003.000000001"
+   }
+  },
+  "noMemo": {
+   "case": "V2's transfer with no memo, presented under x402: bound refuses",
+   "transactionBase64": "Kp4BCjQKDQoGCIDiz6oGEgMY0wkSAhgDGIDC1y8iAgh4chYKFAoICgMYsysQzw8KCAoDGNIJENAPEmYKZAog7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EaQN4FwRBA8ktbha5LT/mYYvyuUjzBlwtfQdTmcpAu79gYX0pLcdh+jds47WyvSgWwI2KLM98lS6pz1nKCsCjZkg0=",
+   "expectRefusal": "hedera/no-memo"
+  }
+ },
+ "refusals": [
+  {
+   "case": "a Transaction that also sets the deprecated bodyBytes field",
+   "transactionBase64": "IoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8q7gEKgwEKDQoGCIDiz6oGEgMY0wkSAhgDGIDC1y8iAgh4Mk1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZHIWChQKCAoDGLMrEM8PCggKAxjSCRDQDxJmCmQKIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRGkCCjpT6m5vhUl9xsdIJTTq/6qTIrc7wrE4Y680OAvpu95w1mOFPD6PZZsHFHz01bzJbWmyJwQlZCL7Hjz4ZYMQB",
+   "expect": "hedera/deprecated-fields"
+  },
+  {
+   "case": "an option with assetTransferMethod approve",
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "1000",
+    "asset": "0.0.0",
+    "payTo": "0.0.1234",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "0.0.1235",
+     "assetTransferMethod": "approve"
+    }
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "an option whose payTo is an EVM-address alias",
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "1000",
+    "asset": "0.0.0",
+    "payTo": "0.0.00000000000000000000000000000000000004d2",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "0.0.1235"
+    }
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "an option with no feePayer",
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "1000",
+    "asset": "0.0.0",
+    "payTo": "0.0.1234",
+    "maxTimeoutSeconds": 60,
+    "extra": {}
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "a network outside the four",
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:localnet",
+    "amount": "1000",
+    "asset": "0.0.0",
+    "payTo": "0.0.1234",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "0.0.1235"
+    }
+   },
+   "expect": "hedera/option-malformed"
+  }
+ ],
+ "tokenBuild": {
+  "case": "build for token 0.0.5449 with decimals 6 and 0 (TokenTransferList with expected_decimals)",
+  "asset": "0.0.5449",
+  "expectBodyBytesDecimals6": "0a0d0a060880e2cfaa06120318d309120218031880c2d72f22020878324d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164721f121d0a0318c92a12080a0318b32b10cf0f12080a0318d20910d00f22020806",
+  "expectBodyBytesDecimals0": "0a0d0a060880e2cfaa06120318d309120218031880c2d72f22020878324d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164721d121b0a0318c92a12080a0318b32b10cf0f12080a0318d20910d00f2200"
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/hedera",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "hedera:testnet",
+        "amount": "1000",
+        "asset": "0.0.0",
+        "payTo": "0.0.1234",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "feePayer": "0.0.1235"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "hedera:testnet:0.0.5555",
+     "inputs": {
+      "node": "0.0.3",
+      "validStart": {
+       "seconds": "1700000000",
+       "nanos": 0
+      },
+      "maxFee": "100000000"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/hedera",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "hedera:testnet",
+       "amount": "1000",
+       "asset": "0.0.0",
+       "payTo": "0.0.1234",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "feePayer": "0.0.1235"
+       }
+      },
+      "payload": {
+       "transaction": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ=="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

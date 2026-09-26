@@ -1,0 +1,86 @@
+{
+ "about": "Vectors for mpp/charge/evm/transaction. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "fixed": {
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "R_ENoTypes": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+  "R_ESplitsCallTypes": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"transaction\",\"hash\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\",\"splits\":[{\"amount\":\"500\",\"recipient\":\"0x8Ba1f109551bD432803012645Ac136ddd64DBA72\"}]},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}"
+ },
+ "MV11": {
+  "case": "pairingsOf, build's calldata, the Anvil key's EIP-1559 transaction of it, bound",
+  "expectPairings": [
+   "mpp/charge/evm/transaction",
+   "mpp/charge/evm/hash"
+  ],
+  "expectSplitsCallTypes": {
+   "refused": true,
+   "code": "mpp/credential-types"
+  },
+  "expectCalldata": "0xa9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000000000000000000000000000000000000000002710",
+  "transaction": {
+   "chainId": 84532,
+   "nonce": 0,
+   "maxPriorityFeePerGas": "1000000000",
+   "maxFeePerGas": "2000000000",
+   "gas": 60000,
+   "to": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+  },
+  "expectRawLength": 181,
+  "expectRawSha256": "0x53f13d81507fe829928ff628fd492882ff1e7b8ac7816fc52eba5ea1085be1e3",
+  "expectTxHash": "0xbd39ed4f289dde35adf490855f950b9ea337d5eeb4c1cf941c76c228e36ee29d",
+  "expectHOccurrences": 0,
+  "expectBound": {
+   "refused": true,
+   "code": "mpp/no-signed-place"
+  },
+  "expectClaims": false
+ },
+ "pattern": {
+  "pattern": "opaque-challenge",
+  "canonical": true,
+  "buyerSigns": false,
+  "claims": false,
+  "onChain": false,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": false,
+  "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/evm/transaction",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "evm",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwicGVybWl0MkFkZHJlc3MiOiIweDAwMDAwMDAwMDAyMkQ0NzMwMzBGMTE2ZERFRTlGNkI0M2FDNzhCQTMifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "mpp/charge/evm/transaction": "The credential has no signed place for H (publicProof false): the file holds no payment that carries H."
+  }
+ }
+}

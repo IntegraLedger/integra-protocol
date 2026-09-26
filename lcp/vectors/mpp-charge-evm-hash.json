@@ -1,0 +1,76 @@
+{
+ "about": "Vectors for mpp/charge/evm/hash. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "fixed": {
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000
+ },
+ "MV12": {
+  "case": "the hash credential, reference({challenge: C_E}), and transferPresent on fixture receipts with finalized 100",
+  "hash": "0xbd39ed4f289dde35adf490855f950b9ea337d5eeb4c1cf941c76c228e36ee29d",
+  "expectReference": {
+   "network": "eip155:84532",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+  },
+  "expectSettled": {
+   "state": "settled",
+   "finality": "finalized",
+   "blockNumber": "100"
+  },
+  "expectOtherEmitter": {
+   "state": "failed",
+   "why": "transfer-not-found"
+  },
+  "expectReverted": {
+   "state": "failed",
+   "why": "reverted"
+  }
+ },
+ "pattern": {
+  "pattern": "opaque-challenge",
+  "canonical": true,
+  "buyerSigns": false,
+  "claims": false,
+  "onChain": false,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": false,
+  "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/evm/hash",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "evm",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwicGVybWl0MkFkZHJlc3MiOiIweDAwMDAwMDAwMDAyMkQ0NzMwMzBGMTE2ZERFRTlGNkI0M2FDNzhCQTMifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "mpp/charge/evm/hash": "The credential has no signed place for H (publicProof false): the file holds no payment that carries H."
+  }
+ }
+}

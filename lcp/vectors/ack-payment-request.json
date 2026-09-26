@@ -1,0 +1,749 @@
+{
+ "about": "Vectors for the ack/payment-request pairing: the ack entry point of @integraledger/lcp. Every expected value is fixed by the pairing, with H, L and the JWS conventions of card.json: H = SHA-256(\"abc\") (FIPS 180-2), L = https://atr.seller.example/<H>, and each token base64url(JSON(header)).base64url(JSON(payload)).base64url(r||s), JSON compact with members in the order written. T and the plant's token were built from that recipe with GNU coreutils basenc; their ES256 signatures verify over those signing inputs (cryptography 41.0.7). read verifies no signature. A token whose third segment is c2ln carries no signature at all.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "ID": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "O": {
+   "id": "opt-usdc-base",
+   "currency": "USDC",
+   "network": "eip155:8453",
+   "amount": "10000",
+   "decimals": 6,
+   "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+  },
+  "T": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+  "otherH": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+ },
+ "K1": {
+  "advertise": {
+   "doc": {},
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "offer": {
+    "id": "opt-usdc-base",
+    "currency": "USDC",
+    "network": "eip155:8453",
+    "amount": "10000",
+    "decimals": 6,
+    "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+   }
+  },
+  "expect": {
+   "paymentRequestId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "legalContext": {
+    "type": "sha256",
+    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "emptyOption": {
+   "offer": {},
+   "expect": {
+    "refused": true,
+    "code": "ack/option-malformed"
+   }
+  },
+  "expectSlot": [
+   "ack",
+   {
+    "paymentOptions": [
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ]
+   }
+  ],
+  "digestOfO": "0xd2abd1b01a7e1e7b2287809bc90534fe6d8cfef47f03c0fcf4211304cddd513e"
+ },
+ "K2": {
+  "body": {
+   "paymentRequest": {
+    "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "paymentOptions": [
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ]
+   },
+   "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+   "legalContext": {
+    "type": "sha256",
+    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "expect": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "offer": {
+    "options": [
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ]
+   }
+  },
+  "twoSegmentToken": {
+   "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ",
+   "expect": {
+    "refused": true,
+    "code": "ack/token-malformed"
+   }
+  }
+ },
+ "K3": {
+  "case": "the body's unsigned paymentRequest.id and legalContext carry H, but the token's signed id is lcp:sha256:<otherH>; read must refuse, never return H",
+  "body": {
+   "paymentRequest": {
+    "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "paymentOptions": [
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ]
+   },
+   "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.H0TnArvtfx0IDSKHxikIvPH-tgGCcVfoMPTgsKN9IRawI_9_u0qEc45iNie4bOsv41nB1gqq20Q70pm628tbGw",
+   "legalContext": {
+    "type": "sha256",
+    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "expect": {
+   "refused": true,
+   "code": "ack/legal-context-conflict"
+  }
+ },
+ "K4": {
+  "credentialSubject": {
+   "id": "did:web:buyer.example",
+   "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+   "paymentOptionId": "opt-usdc-base"
+  },
+  "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "badToken": {
+   "credentialSubject": {
+    "id": "did:web:buyer.example",
+    "paymentRequestToken": "x",
+    "paymentOptionId": "opt-usdc-base"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ack/receipt-malformed"
+   }
+  }
+ },
+ "K5": {
+  "inputs": [
+   null,
+   {
+    "paymentRequest": {
+     "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "paymentOptions": [
+      {
+       "id": "opt-usdc-base",
+       "currency": "USDC",
+       "network": "eip155:8453",
+       "amount": "10000",
+       "decimals": 6,
+       "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+      }
+     ]
+    },
+    "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   {
+    "payload": {
+     "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg"
+  ],
+  "expect": {
+   "refused": true,
+   "code": "ack/no-signed-place"
+  },
+  "pattern": {
+   "pattern": "native-field",
+   "canonical": true,
+   "buyerSigns": false,
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "claims": false
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation, as this package applies them. call names the function; args are its arguments.",
+  "rows": [
+   {
+    "case": "advertise with a hash that is not 0x and 64 hex digits",
+    "call": "paymentRequest.advertise",
+    "args": [
+     {},
+     "0x1234",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/legal-context-malformed"
+    }
+   },
+   {
+    "case": "advertise with an http link",
+    "call": "paymentRequest.advertise",
+    "args": [
+     {},
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/link-not-https"
+    }
+   },
+   {
+    "case": "advertise with an option whose id is not a string",
+    "call": "paymentRequest.advertise",
+    "args": [
+     {},
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     {
+      "id": 7,
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/option-malformed"
+    }
+   },
+   {
+    "case": "read of a body that is not a JSON object",
+    "call": "paymentRequest.read",
+    "args": [
+     [
+      "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg"
+     ]
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/token-malformed"
+    }
+   },
+   {
+    "case": "read of a body over 64 KiB",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      },
+      "pad": {
+       "$repeat": [
+        "a",
+        65536
+       ]
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/too-large"
+    }
+   },
+   {
+    "case": "read of a token over 16 KiB",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": {
+       "$repeat": [
+        "a",
+        16385
+       ]
+      },
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/too-large"
+    }
+   },
+   {
+    "case": "read of a token whose payload segment is not base64url",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJ.e+J9.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/token-malformed"
+    }
+   },
+   {
+    "case": "read of a token whose payload is not a JSON object",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.WyJub3QiLCJhbiIsIm9iamVjdCJd.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/token-malformed"
+    }
+   },
+   {
+    "case": "read of a token whose payload is not UTF-8",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Iv8ifQ.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/token-malformed"
+    }
+   },
+   {
+    "case": "read of a token whose id is the bare hash, not lcp:sha256:",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsInBheW1lbnRPcHRpb25zIjpbeyJpZCI6Im9wdC11c2RjLWJhc2UiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifV0sInN1YiI6IjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImlzcyI6ImRpZDp3ZWI6c2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAwMDB9.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/id-not-lcp"
+    }
+   },
+   {
+    "case": "read of a body with no legalContext",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/no-legal-context"
+    }
+   },
+   {
+    "case": "read of a legalContext whose value is not a hash",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0x1234",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/legal-context-malformed"
+    }
+   },
+   {
+    "case": "read of a well-formed legalContext with an http link",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/link-not-https"
+    }
+   },
+   {
+    "case": "read of a token whose payload has no paymentOptions list",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQ.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/token-malformed"
+    }
+   },
+   {
+    "case": "read of a token with 17 payment options",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LTAiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTEiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTIiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTMiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTQiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTUiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTYiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTciLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTgiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTkiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTEwIiwiY3VycmVuY3kiOiJVU0RDIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiYW1vdW50IjoiMTAwMDAiLCJkZWNpbWFscyI6NiwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0seyJpZCI6Im9wdC0xMSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9LHsiaWQiOiJvcHQtMTIiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTEzIiwiY3VycmVuY3kiOiJVU0RDIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiYW1vdW50IjoiMTAwMDAiLCJkZWNpbWFscyI6NiwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0seyJpZCI6Im9wdC0xNCIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9LHsiaWQiOiJvcHQtMTUiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifSx7ImlkIjoib3B0LTE2IiwiY3VycmVuY3kiOiJVU0RDIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiYW1vdW50IjoiMTAwMDAiLCJkZWNpbWFscyI6NiwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn1dLCJzdWIiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImlzcyI6ImRpZDp3ZWI6c2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAwMDB9.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/too-large"
+    }
+   },
+   {
+    "case": "read with the token id's hex in upper case gives lowercase H",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFEIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweEJBNzgxNkJGOEYwMUNGRUE0MTQxNDBERTVEQUUyMjIzQjAwMzYxQTM5NjE3N0E5Q0I0MTBGRjYxRjIwMDE1QUQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.c2ln",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    ],
+    "expect": {
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "offer": {
+      "options": [
+       {
+        "id": "opt-usdc-base",
+        "currency": "USDC",
+        "network": "eip155:8453",
+        "amount": "10000",
+        "decimals": 6,
+        "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "case": "fromReceipt of a credentialSubject that is not an object",
+    "call": "fromReceipt",
+    "args": [
+     "x"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/receipt-malformed"
+    }
+   },
+   {
+    "case": "fromReceipt of a credentialSubject over 64 KiB",
+    "call": "fromReceipt",
+    "args": [
+     {
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "pad": {
+       "$repeat": [
+        "a",
+        65536
+       ]
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/too-large"
+    }
+   },
+   {
+    "case": "fromReceipt of a token whose id is not lcp:sha256:",
+    "call": "fromReceipt",
+    "args": [
+     {
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsInBheW1lbnRPcHRpb25zIjpbeyJpZCI6Im9wdC11c2RjLWJhc2UiLCJjdXJyZW5jeSI6IlVTREMiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJhbW91bnQiOiIxMDAwMCIsImRlY2ltYWxzIjo2LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifV0sInN1YiI6IjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImlzcyI6ImRpZDp3ZWI6c2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAwMDB9.c2ln"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/receipt-malformed"
+    }
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "ack/payment-request",
+    "plant": true,
+    "input": {
+     "doc": {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:8453:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "ack/payment-request": "ACK defines no payer signature: the file holds no payment that carries H."
+  }
+ }
+}

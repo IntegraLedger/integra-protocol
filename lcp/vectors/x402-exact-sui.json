@@ -1,0 +1,379 @@
+{
+ "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.31.3. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+  "payTo": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+  "O": {
+   "scheme": "exact",
+   "network": "sui:testnet",
+   "amount": "10000",
+   "asset": "0x2::sui::SUI",
+   "payTo": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+   "maxTimeoutSeconds": 60
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V1": {
+  "case": "the real rail: every input is used by settle_payment",
+  "tx": {
+   "transactionBase64": "AAAHAQAow2edSfDsSsxbRrtHsZOY7ClUO7Z5PWtt1GD+vsTyVTMg+CEAAAAAIJNSwIi0EMFVacSsk9tN8l8GCr5DeNWvGEINpvU5llTQACAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAIoIYBAAAAAAAAIL+MUKhduxnersWpcShpoDlZyB7B66QyI96uWUr6WoJIAAgQJwAAAAAAAAAaGTE3NzA0NDU0MDgwODktN2IzZWR2dzljdmUBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAQAAAAAAAAAAAQApmTMh+8VHI9/KPtONfOOxjsLfl6fhBIwpMrAi5HGT6wdwYXltZW50DnNldHRsZV9wYXltZW50AQeh7H/ACm9A25aTrRQV0MGTrTkGSUQozyUmIQN71xF+KQR1c2RjBFVTREMABwEAAAEBAAECAAEDAAEEAAEFAAEGAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNobAVY+01mu/HzWfQAR3A3huSkHgPwdZGC5QrJLH0z+6PjrTSD4IQAAAAAgmKTXnuE6K4uPTJqQw7LihhT1wzi/64DdCHXzy+qiKhAmFs8UGrGbndZXrGUvvNplp8vUN8HrfLfyjVxPWFnmGOgDAAAAAAAAgJaYAAAAAAAA",
+   "bytes": 516,
+   "blake2b": "0xc85b369498844dee88d3c57837e4f4c23195ea4e26f99168885674e93634cee7",
+   "digest": "EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE"
+  },
+  "expectBound": "sui/hash-not-carried",
+  "expectUntilEpoch": null
+ },
+ "V2": {
+  "case": "recipe R: bound gives H; reference gives the digest and epoch 1234",
+  "tx": {
+   "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB0gQAAAAAAAA=",
+   "bytes": 188,
+   "blake2b": "0xd57c743286f5f4c3420e1d4c429346008e4edb1f398c60ee277885b5e19d39ba",
+   "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu"
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "sui:testnet",
+   "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+   "untilEpoch": "1234"
+  }
+ },
+ "V3": [
+  {
+   "case": "a second unused pure input (the SHA-256 of the empty string)",
+   "tx": {
+    "transactionBase64": "AAAEACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAg47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFUACBAnAAAAAAAAACAglpO8avwMUyi6NvrwPFFO8xIofCCWk7xq/AxTKLo2+gICAAEBAgABAQMAAAAAAQMALroxn2FxMg4q8Rb8jyGYG2fnLKfwwGABQ2RyDxOU2hsALroxn2FxMg4q8Rb8jyGYG2fnLKfwwGABQ2RyDxOU2hvoAwAAAAAAAEBLTAAAAAAAAdIEAAAAAAAA",
+    "bytes": 222,
+    "blake2b": "0xa60832bd708cb1ca04ae2dbbfa40be8d9821477604994a77ef28c29b2c41b47f",
+    "digest": "CB7vr1Ktue6UaiZuzgiHZSCbnKc9KnLkP9cj7sehWYx6"
+   },
+   "expectBound": "sui/ambiguous"
+  },
+  {
+   "case": "no pure(H), and pure(H) as the recipient",
+   "tx": {
+    "transactionBase64": "AAACAAgQJwAAAAAAAAAgungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0CAgABAQAAAQEDAAAAAAEBAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNobAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNob6AMAAAAAAABAS0wAAAAAAAHSBAAAAAAAAA==",
+    "bytes": 154,
+    "blake2b": "0x367bc171ad3311fca0c551b87d5c1b34d3b9ac53ee23b776d7019a0b4301fb75",
+    "digest": "4fgU1wEdbRn7E19YLvnCGxVfAW5Uh5qNj9hhQhYeqMc8"
+   },
+   "expectBound": "sui/hash-not-carried"
+  },
+  {
+   "case": "setExpiration({None: true})",
+   "tx": {
+    "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAA",
+    "bytes": 180,
+    "blake2b": "0x84fb6b19438b286eef89f00f48e3d461bcde4804c83bbb4f5811b75f975404af",
+    "digest": "9x7AxqgfG1R1RCp4zJszPrVx8rKxPSStuGomPTtGWeai"
+   },
+   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReference": "sui/expiration-unbounded"
+  },
+  {
+   "case": "a transaction of 131073 bytes",
+   "zeroBytes": 131073,
+   "expectBound": "sui/tx-too-large"
+  }
+ ],
+ "V4": {
+  "ref": {
+   "network": "sui:testnet",
+   "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+   "untilEpoch": "1234",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "status": [
+   {
+    "case": "SUCCESS, checkpoint 7",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": "7"
+    },
+    "epoch": "1234",
+    "expect": {
+     "state": "settled",
+     "checkpoint": "7"
+    }
+   },
+   {
+    "case": "no transaction, epoch 1234",
+    "answer": null,
+    "epoch": "1234",
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "no transaction, epoch 1235",
+    "answer": null,
+    "epoch": "1235",
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "a ReaderError",
+    "readerError": true,
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "V1's bytes under V2's digest",
+    "answer": {
+     "tx": "V1",
+     "status": "SUCCESS",
+     "checkpoint": "7"
+    },
+    "epoch": "1234",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "a reader for sui:testnet on a sui:mainnet ref",
+    "readerNetwork": "sui:testnet",
+    "refNetwork": "sui:mainnet",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": "7"
+    },
+    "epoch": "1234",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": [
+   {
+    "case": "the SUCCESS answer",
+    "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": "7"
+    },
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "V1's answer",
+    "digest": "EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE",
+    "answer": {
+     "tx": "V1",
+     "status": "SUCCESS",
+     "checkpoint": "294620190"
+    },
+    "expect": "sui/hash-not-carried"
+   }
+  ]
+ },
+ "plant": {
+  "case": "V2's digest and bytes with status FAILURE: an aborted transaction is final and moved nothing",
+  "answer": {
+   "tx": "V2",
+   "status": "FAILURE",
+   "checkpoint": "7"
+  },
+  "epoch": "1234",
+  "expect": {
+   "state": "failed",
+   "why": "aborted"
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation.",
+  "rows": [
+   {
+    "case": "one unused Pure input that is not exactly 32 bytes",
+    "expect": "sui/hash-not-carried"
+   },
+   {
+    "case": "bytes that parse as TransactionData but do not serialise back to themselves (trailing or non-canonical bytes)",
+    "expect": "sui/tx-malformed"
+   },
+   {
+    "case": "a transaction that is not padded standard base64",
+    "expect": "sui/tx-malformed"
+   },
+   {
+    "case": "an option with scheme exact and a sui: network other than mainnet, testnet or devnet",
+    "expect": "sui/network-malformed"
+   },
+   {
+    "case": "payload.signature not a string, empty, or over 8192 characters",
+    "expect": "x402/signature-malformed"
+   },
+   {
+    "case": "payload.transaction not a string",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "the expiration is ValidDuring without maxEpoch, or Validity: untilEpoch is null",
+    "expect": "sui/expiration-unbounded"
+   },
+   {
+    "case": "recover on an answer for another digest, even one that failed",
+    "expect": "sui/unreadable"
+   },
+   {
+    "case": "complete with a payload whose bound is not the built hash, or whose reference refuses",
+    "expect": "x402/signed-not-bound"
+   },
+   {
+    "case": "@mysten/sui is not installed: decoding, recover and build refuse, and status reads as pending unreadable ()",
+    "expect": "sui/peer-missing"
+   }
+  ]
+ },
+ "validity": {
+  "about": "@mysten/sui 2.31.3's TransactionExpiration has a fourth variant, Validity (ValidDuring's fields plus allowedProposers), bounded by maxEpoch as ValidDuring is. Recipe R with setExpiration({Validity: {minEpoch: null, maxEpoch, minTimestamp: null, maxTimestamp: null, chain: \"69WiPg3DAQiwdxfncX6wYQ2siKwAe6L9BZthQea3JNMD\", nonce: 7, allowedProposers: null}}), built with @mysten/sui 2.31.3 on Node 26.10.0 on 2026-09-25. Each transaction's tail after V2's common prefix was read by hand in Python as variant 3, the options, the 32-byte chain digest and nonce 7; the digests are Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58.",
+  "rows": [
+   {
+    "case": "Validity with maxEpoch 1234",
+    "tx": {
+     "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAADAAHSBAAAAAAAAAAAIEx4razyovWtgPJ+19VKpp06ePHKZ/3vns9XVPW4u3ewBwAAAAA=",
+     "bytes": 230,
+     "blake2b": "0x724350e42c03533f342eb8dd29eae2930fa31f4c1890fe93e1cc742d3e0ff7b9",
+     "digest": "8h31hqhLmgQKquKtuqVEMvWVP7SaMJLMVhcMrXgNpK1i"
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "sui:testnet",
+     "digest": "8h31hqhLmgQKquKtuqVEMvWVP7SaMJLMVhcMrXgNpK1i",
+     "untilEpoch": "1234"
+    }
+   },
+   {
+    "case": "Validity with no maxEpoch",
+    "tx": {
+     "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAADAAAAACBMeK2s8qL1rYDyftfVSqadOnjxymf9757PV1T1uLt3sAcAAAAA",
+     "bytes": 222,
+     "blake2b": "0x10d283e8cccbc55185c0fd92e238b722a459aa114a1769d7eca59fef76e7388b",
+     "digest": "28fhq3ZbGct7K31dSgPoU7DJsVpbwh3cTpr3hb9BYXFp"
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": "sui/expiration-unbounded"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/sui",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "sui:testnet",
+        "amount": "10000",
+        "asset": "0x2::sui::SUI",
+        "payTo": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+        "maxTimeoutSeconds": 60
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "sui:testnet:0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/sui",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "exact",
+       "network": "sui:testnet",
+       "amount": "10000",
+       "asset": "0x2::sui::SUI",
+       "payTo": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "maxTimeoutSeconds": 60
+      },
+      "payload": {
+       "signature": "AAAA",
+       "transaction": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB0gQAAAAAAAA="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

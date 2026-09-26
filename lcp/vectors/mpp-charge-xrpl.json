@@ -1,0 +1,204 @@
+{
+ "about": "Vectors for mpp/charge/xrpl. Fixtures are payer r3sN…6dTC, destination rpjf…EyN, and x402-exact-xrpl.json's V2 x402 blob, V3 MPP blob and the plant's memo blob. The placed request is computed with Python 3 json and base64url.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "MV3opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9",
+  "request": {
+   "amount": "1000000",
+   "currency": "XRP",
+   "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+   "methodDetails": {
+    "network": "testnet"
+   }
+  },
+  "invoiceId": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+  "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC"
+ },
+ "challenge": {
+  "realm": "api.seller.example",
+  "method": "xrpl",
+  "intent": "charge",
+  "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJYUlAiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+  "expires": "2026-09-21T14:14:20Z"
+ },
+ "place": {
+  "case": "advertise sets id MV1, opaque MV3 and methodDetails.invoiceId",
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "xrpl",
+   "intent": "charge",
+   "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJYUlAiLCJtZXRob2REZXRhaWxzIjp7Imludm9pY2VJZCI6IkJBNzgxNkJGOEYwMUNGRUE0MTQxNDBERTVEQUUyMjIzQjAwMzYxQTM5NjE3N0E5Q0I0MTBGRjYxRjIwMDE1QUQiLCJuZXR3b3JrIjoidGVzdG5ldCJ9LCJyZWNpcGllbnQiOiJycGpmQWVFM0RlZUhQRm5OMlBnR0ZXNVl4blpGQWpyRXlOIn0",
+   "expires": "2026-09-21T14:14:20Z",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+  }
+ },
+ "occupied": {
+  "case": "advertise on a request whose invoiceId is another value",
+  "request": {
+   "amount": "1000000",
+   "currency": "XRP",
+   "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+   "methodDetails": {
+    "network": "testnet",
+    "invoiceId": "08B1F8BA199231AB7BEF24E5E3AFC3DB0BE5B75095CCCB6EEF0EC077F9F20AC1"
+   }
+  },
+  "expect": "xrpl/carrier-occupied"
+ },
+ "V3": {
+  "case": "V3's MPP blob in a type=transaction credential",
+  "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "xrpl:1",
+   "transaction": "49FBB1A497E694900A368096BC7F136EC37B870D81EDD9D1D667F91F3794CFFA",
+   "expect": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+   "lastLedgerSequence": 1000
+  }
+ },
+ "V4": {
+  "case": "V2's x402 blob (InvoiceID = SHA-256 of L) under MPP",
+  "blob": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+  "expect": "xrpl/carrier-mismatch"
+ },
+ "plant": {
+  "case": "the plant's blob: a Payment with no InvoiceID and one memo carrying L; bound must refuse xrpl/no-invoice-id, never H",
+  "blob": "12000022000000002400000007201B000003E86140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440909AC8254C390DA0C61565641C6C5A7D4EB321BE1960E68B6889421CED98AAAE533F6CB8525D4F81355F5C977634247E7240E69CB8C57A193F2CE5F1B04D380F81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+  "expect": "xrpl/no-invoice-id"
+ },
+ "build": {
+  "case": "build gives V3's decoded fields other than SigningPubKey and TxnSignature",
+  "fee": "12",
+  "sequence": 7,
+  "lastLedgerSequence": 1000
+ },
+ "refusals": [
+  {
+   "case": "type=hash not yet fetched",
+   "payload": {
+    "type": "hash",
+    "hash": "49FBB1A497E694900A368096BC7F136EC37B870D81EDD9D1D667F91F3794CFFA"
+   },
+   "expect": "xrpl/read-first"
+  },
+  {
+   "case": "build on a request with methodDetails.memos",
+   "expect": "xrpl/memos-not-carried"
+  },
+  {
+   "case": "pairingsOf with no methodDetails.network",
+   "expect": "xrpl/network-missing"
+  }
+ ],
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation.",
+  "rows": [
+   {
+    "case": "pairingsOf with methodDetails.network other than mainnet, testnet or devnet",
+    "expect": "xrpl/network-malformed"
+   },
+   {
+    "case": "pairingsOf with a recipient not a classic address, a currency neither XRP nor an issued currency nor an MPT, an amount not a positive decimal (whole drops for XRP), an invoiceId not 64 hex digits, or a tag not uint32",
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "fetchPresented when the reader fails",
+    "expect": "xrpl/unreadable"
+   },
+   {
+    "case": "fetchPresented when the blob is not found",
+    "expect": "xrpl/not-found"
+   },
+   {
+    "case": "a signed InvoiceID that is the request's invoiceId but not the echoed challenge's hash",
+    "expect": "mpp/carrier-not-challenge"
+   },
+   {
+    "case": "build with a malformed account, fee, sequence or lastLedgerSequence",
+    "expect": "mpp/input-malformed"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/xrpl",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "xrpl",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJYUlAiLCJtZXRob2REZXRhaWxzIjp7Imludm9pY2VJZCI6IkJBNzgxNkJGOEYwMUNGRUE0MTQxNDBERTVEQUUyMjIzQjAwMzYxQTM5NjE3N0E5Q0I0MTBGRjYxRjIwMDE1QUQiLCJuZXR3b3JrIjoidGVzdG5ldCJ9LCJyZWNpcGllbnQiOiJycGpmQWVFM0RlZUhQRm5OMlBnR0ZXNVl4blpGQWpyRXlOIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "xrpl:1:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "inputs": {
+      "fee": "12",
+      "sequence": 7,
+      "lastLedgerSequence": 1000
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/xrpl",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "xrpl",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJYUlAiLCJtZXRob2REZXRhaWxzIjp7Imludm9pY2VJZCI6IkJBNzgxNkJGOEYwMUNGRUE0MTQxNDBERTVEQUUyMjIzQjAwMzYxQTM5NjE3N0E5Q0I0MTBGRjYxRjIwMDE1QUQiLCJuZXR3b3JrIjoidGVzdG5ldCJ9LCJyZWNpcGllbnQiOiJycGpmQWVFM0RlZUhQRm5OMlBnR0ZXNVl4blpGQWpyRXlOIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "type": "transaction",
+       "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

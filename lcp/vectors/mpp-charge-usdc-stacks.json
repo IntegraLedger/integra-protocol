@@ -1,0 +1,350 @@
+{
+ "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "request": {
+   "amount": "1000000",
+   "currency": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx::usdcx-token",
+   "recipient": "ST3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8NQXMNRQ",
+   "methodDetails": {
+    "type": "stacks",
+    "stacks": {
+     "network": "testnet",
+     "chainId": "2147483648",
+     "contractAddress": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM",
+     "contractName": "usdcx",
+     "assetName": "usdcx-token",
+     "functionName": "transfer",
+     "decimals": 6
+    }
+   }
+  },
+  "contract": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+  "asset": "usdcx-token",
+  "sender": "ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+  "recipient": "ST3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8NQXMNRQ",
+  "amount": "1000000",
+  "fee": "1000",
+  "nonce": "0",
+  "network": "stacks:2147483648"
+ },
+ "M4": {
+  "case": "the signed transfer's bytes and txid; bound and reference of its credential; the memo none and the v2 format",
+  "expectLength": 326,
+  "expectPrefix": "0x808000000004",
+  "expectSigner": "0x751e76e8199196d454941c45d1b3a323f1433bd6",
+  "expectSuffix": "0x0a0200000020ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectSignature": {
+   "offset": 44,
+   "length": 65,
+   "prefix": "0x00f0648e9e",
+   "suffix": "e0ca3c"
+  },
+  "expectTxid": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "memoNoneLength": 289,
+  "expectMemoNone": {
+   "refused": true,
+   "code": "mpp/stacks-memo-not-h"
+  },
+  "otherFormat": "v2",
+  "expectOtherFormat": {
+   "refused": true,
+   "code": "mpp/stacks-tx-malformed"
+  },
+  "expectReference": {
+   "network": "stacks:2147483648",
+   "contract": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+   "origin": "ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+   "nonce": "0",
+   "transaction": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa"
+  },
+  "wireHex": "0x80800000000400751e76e8199196d454941c45d1b3a323f1433bd6000000000000000000000000000003e80000f0648e9ea0216b4603e41c41ff38edbee7d1af46a5429207104301d6e535cad2064914e9b208c7ab8e67fa6a94bd6ec0ec2667eedeb2803ed95a9d31e7e0ca3c01020000000101021a751e76e8199196d454941c45d1b3a323f1433bd61a6d78de7b0625dfbfc16c3a8a5735f6dc3dc3f2ce0575736463780b75736463782d746f6b656e0100000000000f4240021a6d78de7b0625dfbfc16c3a8a5735f6dc3dc3f2ce057573646378087472616e736665720000000401000000000000000000000000000f4240051a751e76e8199196d454941c45d1b3a323f1433bd6051adebc095099629badb11b9d5335e874d12f1f1d450a0200000020ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "M4b": {
+  "case": "status and recover on fixture reader answers",
+  "L": {
+   "mined": true,
+   "status": "success",
+   "sender": {
+    "address": "ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+    "nonce": "0"
+   },
+   "blockHeight": "9021832",
+   "call": {
+    "contractId": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+    "functionName": "transfer",
+    "args": [
+     "0x01000000000000000000000000000f4240",
+     "0x051a751e76e8199196d454941c45d1b3a323f1433bd6",
+     "0x051adebc095099629badb11b9d5335e874d12f1f1d45",
+     "0x0a0200000020ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ]
+   }
+  },
+  "blockTenure": "256356",
+  "rows": [
+   {
+    "case": "L, tip tenure 256358",
+    "tip": "256358",
+    "expect": {
+     "state": "settled",
+     "finality": "bitcoin",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L, tip tenure 256357",
+    "tip": "256357",
+    "expect": {
+     "state": "settled",
+     "finality": "block",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L, tip tenure read rejects",
+    "tip": "reader-error",
+    "expect": {
+     "state": "settled",
+     "finality": "block",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L with abort_by_response",
+    "status": "abort_by_response",
+    "expect": {
+     "state": "failed",
+     "why": "abort-by-response",
+     "finality": "block",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L with abort_by_response, tip tenure 256358",
+    "status": "abort_by_response",
+    "tip": "256358",
+    "expect": {
+     "state": "failed",
+     "why": "abort-by-response",
+     "finality": "bitcoin",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L with problematic_skipped",
+    "status": "problematic_skipped",
+    "expect": {
+     "state": "failed",
+     "why": "skipped",
+     "finality": "block",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L with sender nonce 1",
+    "senderNonce": "1",
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument",
+     "finality": "block",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "L with memo SHA-256(abd)",
+    "memo": "0x0a0200000020a52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument",
+     "finality": "block",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "mempool pending",
+    "tx": {
+     "mined": false,
+     "status": "pending"
+    },
+    "expect": {
+     "state": "pending",
+     "why": "mempool"
+    }
+   },
+   {
+    "case": "dropped_stale_garbage_collect, confirmed nonce null",
+    "tx": {
+     "mined": false,
+     "status": "dropped_stale_garbage_collect"
+    },
+    "confirmedNonce": null,
+    "expect": {
+     "state": "pending",
+     "why": "dropped"
+    }
+   },
+   {
+    "case": "not found, confirmed nonce 0",
+    "tx": null,
+    "confirmedNonce": "0",
+    "expect": {
+     "state": "failed",
+     "why": "nonce-used",
+     "finality": "block"
+    }
+   },
+   {
+    "case": "not found, confirmed nonce null",
+    "tx": null,
+    "confirmedNonce": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "the transaction read rejects with ReaderError",
+    "tx": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "a reader for stacks:1",
+    "readerNetwork": "stacks:1",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": [
+   {
+    "case": "L",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "L with abort_by_response",
+    "status": "abort_by_response",
+    "expect": {
+     "refused": true,
+     "code": "stacks/not-success"
+    }
+   },
+   {
+    "case": "L with memo none",
+    "memo": "0x09",
+    "expect": {
+     "refused": true,
+     "code": "stacks/no-memo"
+    }
+   }
+  ]
+ },
+ "plant": {
+  "case": "L with status abort_by_post_condition, everything else unchanged: the shape of mainnet 0xf976626b…c4bf, whose memo is in the mined transaction and whose tx_result reads (ok true), but which moved nothing",
+  "status": "abort_by_post_condition",
+  "tip": "256358",
+  "expectStatus": {
+   "state": "failed",
+   "why": "abort-by-post-condition",
+   "finality": "bitcoin",
+   "blockHeight": "9021832"
+  },
+  "expectRecover": {
+   "refused": true,
+   "code": "stacks/not-success"
+  }
+ },
+ "pattern": {
+  "pattern": "native-field",
+  "canonical": false,
+  "profile": "mpp/charge/usdc/stacks",
+  "buyerSigns": true,
+  "claims": true,
+  "onChain": true,
+  "zeroPartyRecoverable": true,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "proves": "The payer signed a Stacks transaction whose SIP-010 transfer carries this ATR's hash as its memo argument. The chain verified the signature, the transaction executed with status success, and the memo is in the mined transaction on chain. This does not show that amount, payee, asset or timing match the ATR's content."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/usdc/stacks",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "usdc",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJTVDFQUUhRS1YwUkpYWkZZMURHWDhNTlNOWVZFM1ZHWkpTUlRQR1pHTS51c2RjeDo6dXNkY3gtdG9rZW4iLCJyZWNpcGllbnQiOiJTVDNGQlIyQUdLNUg5UUJESDNFRU42REY4RUs4Slk3Ulg4TlFYTU5SUSIsIm1ldGhvZERldGFpbHMiOnsidHlwZSI6InN0YWNrcyIsInN0YWNrcyI6eyJuZXR3b3JrIjoidGVzdG5ldCIsImNoYWluSWQiOiIyMTQ3NDgzNjQ4IiwiY29udHJhY3RBZGRyZXNzIjoiU1QxUFFIUUtWMFJKWFpGWTFER1g4TU5TTllWRTNWR1pKU1JUUEdaR00iLCJjb250cmFjdE5hbWUiOiJ1c2RjeCIsImFzc2V0TmFtZSI6InVzZGN4LXRva2VuIiwiZnVuY3Rpb25OYW1lIjoidHJhbnNmZXIiLCJkZWNpbWFscyI6Nn19fQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "stacks:2147483648:ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/usdc/stacks",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "usdc",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJTVDFQUUhRS1YwUkpYWkZZMURHWDhNTlNOWVZFM1ZHWkpTUlRQR1pHTS51c2RjeDo6dXNkY3gtdG9rZW4iLCJyZWNpcGllbnQiOiJTVDNGQlIyQUdLNUg5UUJESDNFRU42REY4RUs4Slk3Ulg4TlFYTU5SUSIsIm1ldGhvZERldGFpbHMiOnsidHlwZSI6InN0YWNrcyIsInN0YWNrcyI6eyJuZXR3b3JrIjoidGVzdG5ldCIsImNoYWluSWQiOiIyMTQ3NDgzNjQ4IiwiY29udHJhY3RBZGRyZXNzIjoiU1QxUFFIUUtWMFJKWFpGWTFER1g4TU5TTllWRTNWR1pKU1JUUEdaR00iLCJjb250cmFjdE5hbWUiOiJ1c2RjeCIsImFzc2V0TmFtZSI6InVzZGN4LXRva2VuIiwiZnVuY3Rpb25OYW1lIjoidHJhbnNmZXIiLCJkZWNpbWFscyI6Nn19fQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "stacks:2147483648:ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+      "payload": {
+       "type": "transaction",
+       "transaction": "gIAAAAAEAHUedugZkZbUVJQcRdGzoyPxQzvWAAAAAAAAAAAAAAAAAAAD6AAA8GSOnqAha0YD5BxB/zjtvufRr0alQpIHEEMB1uU1ytIGSRTpsgjHq45n+mqUvW7A7CZn7t6ygD7ZWp0x5+DKPAECAAAAAQECGnUedugZkZbUVJQcRdGzoyPxQzvWGm143nsGJd+/wWw6ilc19tw9w/LOBXVzZGN4C3VzZGN4LXRva2VuAQAAAAAAD0JAAhpteN57BiXfv8FsOopXNfbcPcPyzgV1c2RjeAh0cmFuc2ZlcgAAAAQBAAAAAAAAAAAAAAAAAA9CQAUadR526BmRltRUlBxF0bOjI/FDO9YFGt68CVCZYputsRudUzXodNEvHx1FCgIAAAAgungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=",
+       "transactionFormat": "stacks_transaction_v1"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's M4 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

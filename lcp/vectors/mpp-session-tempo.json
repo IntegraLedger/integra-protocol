@@ -1,0 +1,272 @@
+{
+ "about": "Vectors for mpp/session/tempo and the tempo entry point's channel pieces. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and its ox 0.14.45 on Node 24.21.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L1 is a live v2 open on Tempo Moderato (eip155:42431), transaction 0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H2": "0x88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
+  "H2Preimage": "abcd",
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "chainId": 42431,
+  "pathUSD": "0x20c0000000000000000000000000000000000000",
+  "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+  "escrowV2": "0x4D50500000000000000000000000000000000000",
+  "escrowV1": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+  "deposit": "10000000",
+  "requestV2": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"escrowContract\":\"0x4D50500000000000000000000000000000000000\",\"sessionProtocol\":\"v2\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+  "requestV1": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"escrowContract\":\"0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70\",\"sessionProtocol\":\"v1\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
+ },
+ "constants": {
+  "OPEN_V2": "open(address,address,address,uint96,bytes32,address)",
+  "OPEN_V1": "open(address,address,uint128,bytes32,address)",
+  "CHANNEL_OPENED_V2": "ChannelOpened(bytes32,address,address,address,address,address,bytes32,bytes32,uint96)",
+  "CHANNEL_OPENED_V1": "ChannelOpened(bytes32,address,address,address,address,uint256)",
+  "CHANNEL_CLOSED_V2": "ChannelClosed(bytes32,address,address,uint96,uint96)",
+  "CHANNEL_CLOSED_V1": "ChannelClosed(bytes32,address,address,uint256,uint256)",
+  "KEY_AUTHORIZATION_WITNESS": "KeyAuthorizationWitness(address,bytes32)",
+  "KEY_REVOKED": "KeyRevoked(address,address)",
+  "expectTip20ChannelReserve": "0x4d50500000000000000000000000000000000000",
+  "expectAccountKeychain": "0xaaaaaaaa00000000000000000000000000000000"
+ },
+ "TS1": {
+  "expectLength": 196,
+  "expectSelector": "0xedc53b00"
+ },
+ "TS2": {
+  "wire": "0x76 ‖ rlp([42431, 1, 2, 200000, [[escrow, 0, TS1]], [], 2^256−1, 0, 1790000060, \"\", pathUSD, \"\", [], signature]), the signature r ‖ s ‖ v with v 27 or 28",
+  "expectLength": 368,
+  "expectSha256": "0x880ae0a5b18737e3e7193c9ae6ba2ad7a509d961a33fb049e80ac3c2522a07bd",
+  "expectNonceHash": "0xc45798887d0138f0993aa32f8e964e1de230e1e12f54f2bfe562e743851f68f1"
+ },
+ "TS3": {
+  "expectChannelId": "0xe2f1917fc8ce8e37f178a1af084fe81a9e26212c968af355bd22ce04bb250035",
+  "expectCloseRef": {
+   "network": "eip155:42431",
+   "bindingLog": {
+    "address": "0x4D50500000000000000000000000000000000000",
+    "topic0": "0x5613aed96d5bf39f928408dbe1d4143490b9bb5957eac2dd8e69b5dc4b2206e6",
+    "index": 1,
+    "value": "0xe2f1917fc8ce8e37f178a1af084fe81a9e26212c968af355bd22ce04bb250035"
+   },
+   "search": {
+    "address": "0x4D50500000000000000000000000000000000000",
+    "topics": [
+     "0x5613aed96d5bf39f928408dbe1d4143490b9bb5957eac2dd8e69b5dc4b2206e6",
+     "0xe2f1917fc8ce8e37f178a1af084fe81a9e26212c968af355bd22ce04bb250035"
+    ]
+   }
+  }
+ },
+ "TS4": {
+  "expectVoucher0": "0xb2a79d8389daa604f7cf9db4f30ad62d09deef119dcb69507ce9616c9fd96627",
+  "expectVoucher250": {
+   "prefix": "0x5468cba3",
+   "suffix": "ecffa2"
+  },
+  "expectChannelIdH2": {
+   "prefix": "0xc54bb01f",
+   "suffix": "803a8c"
+  },
+  "expectMismatch": {
+   "refused": true,
+   "code": "tempo/descriptor-mismatch"
+  }
+ },
+ "TS5": {
+  "expectChannelId": "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84",
+  "expectVoucher": {
+   "prefix": "0x6032c3bd",
+   "suffix": "8fafde"
+  },
+  "expectCloseRef": {
+   "network": "eip155:42431",
+   "bindingLog": {
+    "address": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+    "topic0": "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
+    "index": 1,
+    "value": "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84"
+   },
+   "search": {
+    "address": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+    "topics": [
+     "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
+     "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84"
+    ]
+   }
+  }
+ },
+ "TS6": {
+  "expectSettled": {
+   "state": "settled",
+   "finality": "finalized",
+   "blockNumber": "100"
+  },
+  "expectNotFound": {
+   "state": "failed",
+   "why": "binding-log-not-found"
+  }
+ },
+ "L1": {
+  "raw": "0x76f9017882a5bf84095f98e08461142c408304d351f8def8dc944d5050000000000000000000000000000000000080b8c4edc53b0000000000000000000000000050ea328a7e98a90720f8690211f700b55d1847f6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f4240cf79c695acef660c51d90fb935040dea7ca3c1d5b66bc285c9f0560c9347f56f000000000000000000000000d48be2def38cc9f3d9361f826e1a2b4a85f46583c0a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80846ab518058412ff803c9420c000000000000000000000000000000000000080c0b841d2aa1ae3d60b6e680fe17c19e7beaf1f11cfb3fa3507d2c5098833309d20b9843747e46fb289a85a100cc0e1224edb762ba54079780627b13fa5e8ff38b210971b",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "36699652",
+   "logs": [
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000d48be2def38cc9f3d9361f826e1a2b4a85f46583",
+      "0x0000000000000000000000004d50500000000000000000000000000000000000"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    {
+     "address": "0x4d50500000000000000000000000000000000000",
+     "topics": [
+      "0xdebaba36f0e9c7978f536fed432d9360b1f9646d7ca88531c34c3eae43f154a7",
+      "0x19be1e259fa7e92a1c2be2991ace6b4617237e2fc4f2d71bdf11343cc4e3a44a",
+      "0x000000000000000000000000d48be2def38cc9f3d9361f826e1a2b4a85f46583",
+      "0x00000000000000000000000050ea328a7e98a90720f8690211f700b55d1847f6"
+     ],
+     "data": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020c0000000000000000000000000000000000000000000000000000000000000d48be2def38cc9f3d9361f826e1a2b4a85f46583cf79c695acef660c51d90fb935040dea7ca3c1d5b66bc285c9f0560c9347f56faf27f1f2a3472837c2728274ef8dd7aac0dd3282dc1a659f074b23d75bb571ef00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000d48be2def38cc9f3d9361f826e1a2b4a85f46583",
+      "0x000000000000000000000000feec000000000000000000000000000000000000"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000000e8"
+    }
+   ]
+  },
+  "expectLength": 380,
+  "expectSha256": {
+   "prefix": "0xda7c5e62",
+   "suffix": "37dfaf"
+  },
+  "expectSalt": {
+   "prefix": "0xcf79c695",
+   "suffix": "9347f56f"
+  },
+  "sender": "0xd48be2def38cc9f3d9361f826e1a2b4a85f46583",
+  "expectNonceHash": {
+   "prefix": "0xaf27f1f2",
+   "suffix": "bb571ef"
+  },
+  "expectChannelId": {
+   "prefix": "0x19be1e25",
+   "suffix": "c4e3a44a"
+  }
+ },
+ "plant1": {
+  "case": "T with its salt word replaced by H′ and re-signed, against the challenge whose id carries H",
+  "expect": {
+   "refused": true,
+   "code": "tempo/salt-not-bound"
+  }
+ },
+ "pattern": {
+  "pattern": "native-field",
+  "canonical": false,
+  "profile": "mpp/session/evm-tempo",
+  "buyerSigns": true,
+  "claims": true,
+  "onChain": true,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "proves": "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer signed a Tempo transaction whose one call to the channel escrow opens a channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The escrow's ChannelOpened event names the channel, whose id commits to the salt; on the TIP-1034 escrow the event also carries the salt itself. This does not show that amount, payee, asset or timing match the ATR's content. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each voucher signs a commitment to this ATR's hash."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/session/tempo",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "tempo",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MjBjMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6NDI0MzEsImVzY3Jvd0NvbnRyYWN0IjoiMHg0RDUwNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwic2Vzc2lvblByb3RvY29sIjoidjIifSwicmVjaXBpZW50IjoiMHg3NDJkMzVDYzY2MzRDMDUzMjkyNWEzYjg0NEJjOWU3NTk1ZjhmRTAwIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:42431:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "deposit": "10000000"
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/session/tempo",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "tempo",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MjBjMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6NDI0MzEsImVzY3Jvd0NvbnRyYWN0IjoiMHg0RDUwNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwic2Vzc2lvblByb3RvY29sIjoidjIifSwicmVjaXBpZW50IjoiMHg3NDJkMzVDYzY2MzRDMDUzMjkyNWEzYjg0NEJjOWU3NTk1ZjhmRTAwIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "did:pkh:eip155:42431:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payload": {
+       "action": "open",
+       "type": "transaction",
+       "channelId": "0xe2f1917fc8ce8e37f178a1af084fe81a9e26212c968af355bd22ce04bb250035",
+       "transaction": "0x76f9016c82a5bf010283030d40f8def8dc944d5050000000000000000000000000000000000080b8c4edc53b00000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000c0a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80846ab13bbc809420c000000000000000000000000000000000000080c0b841dcc44c03d3eb3ea261ee87a5b69afec487f054d744d62f4a29f689c4469fe63f31784144fed5e2c14016f69f7033e0621df781f6e61b3c192d2a391f0ffb4e4b1b",
+       "authorizedSigner": "0x0000000000000000000000000000000000000000",
+       "descriptor": {
+        "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "payee": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+        "operator": "0x0000000000000000000000000000000000000000",
+        "token": "0x20c0000000000000000000000000000000000000",
+        "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "authorizedSigner": "0x0000000000000000000000000000000000000000",
+        "expiringNonceHash": "0xc45798887d0138f0993aa32f8e964e1de230e1e12f54f2bfe562e743851f68f1"
+       },
+       "cumulativeAmount": "0",
+       "signature": "0xe3dd9df48dc59019a6ba84e165eb0f1f07f317201250b7087fd684a187eef5ba4da17e1f9cbd44eab67b1cdbaf360dc6340ed402f18d99fe9b882571787c99fd1c"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is the v2 open, built from fixed.payerKey and TS1 to TS4: its transaction is TS2's wire, of length TS2.expectLength and SHA-256 TS2.expectSha256, and its signature signs the zero voucher, whose EIP-712 digest is TS4.expectVoucher0."
+   }
+  ]
+ }
+}

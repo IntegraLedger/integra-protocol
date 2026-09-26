@@ -1,0 +1,190 @@
+{
+ "about": "Vectors for the mpp/charge/lightning pairing: the lightning entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. L2 has p = x402's payment hash, s, h = H, x = 300 and features 8 and 14; it was made by an encoder that reproduced BOLT11's published h example byte for byte (@scure/base, @noble/curves and @noble/hashes 2.4.0) and decoded by light-bolt11-decoder 3.2.0 and bolt11 1.4.1. A challenge's request is given decoded; it is sent as base64url (no padding) of its JCS form. The issued digest is GNU coreutils sha256sum over the sorted JSON without the invoice; Python's json.dumps(sort_keys=True, separators=(\",\",\":\")) agrees.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+  "preimage": "0001020304050607080900010203040506070809000102030405060708090102",
+  "payee": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L1": "lnbc20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqs9qrsgq7ea976txfraylvgzuxs8kgcw23ezlrszfnh8r6qtfpr6cxga50aj6txm9rxrydzd06dfeawfk6swupvz4erwnyutnjq7x39ymw6j38gp7ynn44",
+  "L4": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu"
+ },
+ "L2": {
+  "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9qrsgq00s4xjxtrutvzp7yzmdyyqpykvvnnxg6vacmn44nqlqqsepw6vy8kjvq5s8jrxq8ayy3pa7xrwz0zx8angk20ttn0awxumjskmaxf0qqczhkhm",
+  "expect": {
+   "currency": "bc",
+   "amountMsat": "25000",
+   "timestamp": 1790000000,
+   "expiry": 300,
+   "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+   "descriptionHash": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "metadata": null
+  },
+  "expectPayee": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+ },
+ "L3": {
+  "challenge": {
+   "realm": "api.seller.example",
+   "method": "lightning",
+   "intent": "charge",
+   "expires": "2026-09-21T14:18:20Z"
+  },
+  "request": {
+   "amount": "25",
+   "currency": "sat",
+   "methodDetails": {
+    "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9qrsgq00s4xjxtrutvzp7yzmdyyqpykvvnnxg6vacmn44nqlqqsepw6vy8kjvq5s8jrxq8ayy3pa7xrwz0zx8angk20ttn0awxumjskmaxf0qqczhkhm",
+    "network": "mainnet",
+    "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+   }
+  },
+  "expectId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "expectIssuedDigest": "0x1c4a5da83f717312c9bd6ea405796c74bedd8e99f6785d0df9808af49f6b298a",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "mainnet",
+   "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+   "settleBy": 1790000300
+  },
+  "refusals": [
+   {
+    "case": "a request description Weather",
+    "requestSet": {
+     "description": "Weather"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ln/description-present"
+    }
+   },
+   {
+    "case": "paymentHash of 64 zeros",
+    "requestSet": {
+     "methodDetails.paymentHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ln/payment-hash-mismatch"
+    }
+   },
+   {
+    "case": "BOLT11's own L1 invoice in its place",
+    "requestSet": {
+     "methodDetails.invoice": "lnbc20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqs9qrsgq7ea976txfraylvgzuxs8kgcw23ezlrszfnh8r6qtfpr6cxga50aj6txm9rxrydzd06dfeawfk6swupvz4erwnyutnjq7x39ymw6j38gp7ynn44"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/carrier-not-challenge"
+    }
+   },
+   {
+    "case": "no paymentHash",
+    "requestSet": {
+     "methodDetails.paymentHash": null
+    },
+    "expect": {
+     "refused": true,
+     "code": "ln/payment-hash-required"
+    }
+   },
+   {
+    "case": "network signet for a bc invoice",
+    "requestSet": {
+     "methodDetails.network": "signet"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ln/currency-network"
+    }
+   },
+   {
+    "case": "expires one second after the invoice's expiry",
+    "challengeSet": {
+     "expires": "2026-09-21T14:18:21Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ln/expires-after-invoice"
+    }
+   }
+  ]
+ },
+ "plant": {
+  "case": "the echoed challenge carries L2's id and opaque (H), but its request's invoice is L4, whose h is x402's request hash",
+  "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu",
+  "expect": {
+   "refused": true,
+   "code": "mpp/carrier-not-challenge"
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/lightning",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "lightning",
+       "intent": "charge",
+       "expires": "2026-09-21T14:18:20Z",
+       "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5Ijoic2F0IiwibWV0aG9kRGV0YWlscyI6eyJpbnZvaWNlIjoibG5iYzI1MG4xcDR0end1cXBwNTR5M3U5czh5bGVtc3Y4bDNld3l6enUwa2xodWp2dXZta2w2bGxjaHEyM3Z5OHJ6anNmMHFzcDV6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWdzaHA1aGZ1cGQwdTBxODg3NXMycGdyMDltdDN6eXdjcXhjZHJqY3RoNDg5NXpybGtydXNxemtrc3hxemZ2OXFyc2dxMDBzNHhqeHRydXR2enA3eXptZHl5cXB5a3Z2bm54ZzZ2YWNtbjQ0bnFscXFzZXB3NnZ5OGtqdnE1czhqcnhxOGF5eTNwYTd4cnd6MHp4OGFuZ2syMHR0bjBhd3h1bWpza21heGYwcXFjemhraG0iLCJuZXR3b3JrIjoibWFpbm5ldCIsInBheW1lbnRIYXNoIjoiYTkyM2MyYzBlNGZlNzcwNjFmZjFjYjg4MjE3MWY2ZmRmOTI2NzE5YmI3ZjVmZmUyZTA1NDU4NDM4YzUyODI1ZSJ9fQ",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "lnbtc:000000000019d6689c085ae165831e93:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/lightning",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "lightning",
+       "intent": "charge",
+       "expires": "2026-09-21T14:18:20Z",
+       "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5Ijoic2F0IiwibWV0aG9kRGV0YWlscyI6eyJpbnZvaWNlIjoibG5iYzI1MG4xcDR0end1cXBwNTR5M3U5czh5bGVtc3Y4bDNld3l6enUwa2xodWp2dXZta2w2bGxjaHEyM3Z5OHJ6anNmMHFzcDV6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWdzaHA1aGZ1cGQwdTBxODg3NXMycGdyMDltdDN6eXdjcXhjZHJqY3RoNDg5NXpybGtydXNxemtrc3hxemZ2OXFyc2dxMDBzNHhqeHRydXR2enA3eXptZHl5cXB5a3Z2bm54ZzZ2YWNtbjQ0bnFscXFzZXB3NnZ5OGtqdnE1czhqcnhxOGF5eTNwYTd4cnd6MHp4OGFuZ2syMHR0bjBhd3h1bWpza21heGYwcXFjemhraG0iLCJuZXR3b3JrIjoibWFpbm5ldCIsInBheW1lbnRIYXNoIjoiYTkyM2MyYzBlNGZlNzcwNjFmZjFjYjg4MjE3MWY2ZmRmOTI2NzE5YmI3ZjVmZmUyZTA1NDU4NDM4YzUyODI1ZSJ9fQ",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "preimage": "0001020304050607080900010203040506070809000102030405060708090102"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's L3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

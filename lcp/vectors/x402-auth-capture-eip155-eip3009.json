@@ -1,0 +1,320 @@
+{
+ "about": "Vectors for x402/auth-capture/eip155/eip3009 on the commerce-payments escrow v1.1. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes the specification leaves to the implementation are marked implementationCode. captureAuthorizer F is Anvil account 2, receiverAuthorizer R Anvil account 3, feeRecipient Anvil account 4; policy zero.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "option": {
+   "scheme": "auth-capture",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "name": "USDC",
+    "version": "2",
+    "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "captureDeadline": 1790003600,
+    "refundDeadline": 1790086400,
+    "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+    "minFeeBps": 0,
+    "maxFeeBps": 100
+   }
+  },
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "EV3": {
+  "escrow": "0xf96815976523E00e65Be8f34cA5e64b4f41EB19c",
+  "expectBindSalt": "0x4a7ddc17918c33f6ce173013c74426aed304994db838af82acb19aec125d1be2",
+  "bound": {
+   "expectSignatureNonce": "0x1cd00894a1a6148fd21c97d4a90a8e8a5f99e6160af7a4e3b78132271e6d4928",
+   "expectPaymentHash": "0x21a0acc1bbeb5c7e1c4259865dc5bcdb7867f4c07c99440e731d48141d8da556"
+  },
+  "unbound": {
+   "expectSignatureNonce": {
+    "prefix": "0xeb939539",
+    "suffix": "1d3a"
+   },
+   "expectPaymentHash": {
+    "prefix": "0xb878f92c",
+    "suffix": "9092"
+   }
+  },
+  "expectPaymentInfoTypeHash": "0xae68ac7ce30c86ece8196b61a7c486d8f0061f575037fbd34e7fe4e2820c6591"
+ },
+ "EV4": {
+  "case": "build(choice, H), bound mode: ReceiveWithAuthorization to the v1.1 ERC-3009 collector, nonce signatureNonce, validBefore preApprovalExpiry",
+  "expectTo": "0x8612dfdc421f80336cd14E8EF9cb1E765dB5ab88",
+  "expectDigest": "0xfa63e28e7467f80dd5f5daac7311cad0aef5c3501c1a97fc74b1c217b77a9781",
+  "expectTypeHash": {
+   "prefix": "0xd099cc98",
+   "suffix": "3de8"
+  },
+  "expectSignature": "0xc226dbb563846eb71acbca77c82bf54edfb47c80bc817c6b16a95da85a71f6fb6f77e45a61f9e38feaa60345178b683bff1a6b6a82eae3566f0e83803fbed5f81b",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectTransferDigest": "0x0b80f2ee3042acae3570a49bf553c9615e9707a4ca644d80acc408b79e155f36"
+ },
+ "EV5": {
+  "paymentAuthorized": "0x1c81fb2e3bab27f6bb09bee9a0dddf61600b7cbaf2c12683e4864e0cbdb9d284",
+  "paymentChargedV11": "0x137b0e73e4453f43c2e1ad2552980a0e0c7e988764619974ca26d37a7159940c",
+  "paymentChargedV10": "0x943ae4341dd799d7aeedc501f616cd26b134639e0bc2ec059581ba3ebbf1e7d0",
+  "signatures": {
+   "paymentAuthorized": "PaymentAuthorized(bytes32,(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256),uint256,address)",
+   "paymentChargedV11": "PaymentCharged(bytes32,(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256),uint256,address,uint256,address)",
+   "paymentChargedV10": "PaymentCharged(bytes32,(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256),uint256,address,uint16,address)"
+  }
+ },
+ "EV6": {
+  "reader": {
+   "network": "eip155:84532",
+   "finalized": "100",
+   "safe": "105"
+  },
+  "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
+  "authorizedAndTransfer": {
+   "logs": [
+    {
+     "address": "0xf96815976523E00e65Be8f34cA5e64b4f41EB19c",
+     "topics": [
+      "0x1c81fb2e3bab27f6bb09bee9a0dddf61600b7cbaf2c12683e4864e0cbdb9d284",
+      "0x21a0acc1bbeb5c7e1c4259865dc5bcdb7867f4c07c99440e731d48141d8da556"
+     ],
+     "data": "0x"
+    },
+    {
+     "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x0000000000000000000000008612dfdc421f80336cd14e8ef9cb1e765db5ab88"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+    }
+   ],
+   "expect": {
+    "state": "settled",
+    "finality": "finalized",
+    "blockNumber": "100"
+   }
+  },
+  "authorizationFlowOnlyAuthorized": {
+   "paymentFlow": "authorization",
+   "expect": {
+    "state": "failed",
+    "why": "binding-log-not-found"
+   }
+  }
+ },
+ "plantNonceNotPayment": {
+  "case": "bound payload with saltNonce H and salt bindSalt(R, 0, H), whose authorization.nonce is the unbound signatureNonce: bound must return x402/nonce-not-payment, never H",
+  "expect": {
+   "refused": true,
+   "code": "x402/nonce-not-payment"
+  }
+ },
+ "saltNotBound": {
+  "case": "bound payload whose salt is not bindSalt(R, 0, saltNonce)",
+  "expect": {
+   "refused": true,
+   "code": "x402/salt-not-bound"
+  }
+ },
+ "escrowNotCanonical": {
+  "authCaptureEscrow": "0x1111111111111111111111111111111111111111",
+  "expect": {
+   "refused": true,
+   "code": "x402/escrow-not-canonical"
+  }
+ },
+ "autoCapture": {
+  "expect": {
+   "refused": true,
+   "code": "x402/flow-not-carried"
+  }
+ },
+ "saltMalformed": {
+  "salt": "0x12",
+  "expect": {
+   "refused": true,
+   "code": "x402/salt-malformed"
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "auth-capture",
+        "network": "eip155:84532",
+        "amount": "10000",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "name": "USDC",
+         "version": "2",
+         "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+         "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+         "captureDeadline": 1790003600,
+         "refundDeadline": 1790086400,
+         "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+         "minFeeBps": 0,
+         "maxFeeBps": 100
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "auth-capture",
+       "network": "eip155:84532",
+       "amount": "10000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "name": "USDC",
+        "version": "2",
+        "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+        "captureDeadline": 1790003600,
+        "refundDeadline": 1790086400,
+        "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+        "minFeeBps": 0,
+        "maxFeeBps": 100
+       }
+      },
+      "payload": {
+       "signature": "0xc226dbb563846eb71acbca77c82bf54edfb47c80bc817c6b16a95da85a71f6fb6f77e45a61f9e38feaa60345178b683bff1a6b6a82eae3566f0e83803fbed5f81b",
+       "authorization": {
+        "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "to": "0x8612dfdc421f80336cd14E8EF9cb1E765dB5ab88",
+        "value": "10000",
+        "validAfter": "0",
+        "validBefore": "1790000060",
+        "nonce": "0x1cd00894a1a6148fd21c97d4a90a8e8a5f99e6160af7a4e3b78132271e6d4928"
+       },
+       "salt": "0x4a7ddc17918c33f6ce173013c74426aed304994db838af82acb19aec125d1be2",
+       "saltNonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's EV4 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

@@ -1,0 +1,365 @@
+{
+ "about": "Vectors for the a2a entry point of @integraledger/lcp, the LCP A2A extension. Every expected value is fixed by the extension and its URI list, with H and L as in ack-payment-request.json. A value {\"$repeat\": [s, n]} in args stands for the string s repeated n times.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "URI": "https://integraledger.com/lcp/a2a/legal-context/v1",
+  "uris": [
+   "https://integraledger.com/lcp/a2a/legal-context/v1"
+  ],
+  "otherH": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+ },
+ "A1": {
+  "expectAgentExtension": [
+   {
+    "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+    "description": "Delivers the ATR hash and the link to the seller's copy in task metadata, keyed by this URI. Delivery only: A2A signs nothing per transaction.",
+    "required": false
+   }
+  ],
+  "requested": [
+   {
+    "value": "https://example.com/ext/other/v1, https://integraledger.com/lcp/a2a/legal-context/v1",
+    "expect": true
+   },
+   {
+    "value": "https://integraledger.com/lcp/a2a/legal-context/v2",
+    "expect": false
+   },
+   {
+    "value": null,
+    "expect": false
+   },
+   {
+    "value": "HTTPS://INTEGRALEDGER.COM/LCP/A2A/LEGAL-CONTEXT/V1",
+    "expect": false
+   }
+  ]
+ },
+ "A2": {
+  "task": {
+   "id": "task-1",
+   "contextId": "ctx-1",
+   "metadata": {
+    "other": "kept"
+   }
+  },
+  "expectPlaced": {
+   "id": "task-1",
+   "contextId": "ctx-1",
+   "metadata": {
+    "other": "kept",
+    "https://integraledger.com/lcp/a2a/legal-context/v1": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   }
+  },
+  "expectRead": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "placeOther": {
+   "h": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "expect": {
+    "refused": true,
+    "code": "a2a/legal-context-conflict"
+   }
+  },
+  "httpLink": {
+   "link": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "refused": true,
+    "code": "a2a/link-not-https"
+   }
+  }
+ },
+ "A3": {
+  "case": "a bare legalContext key in metadata is not the extension's; read must refuse, never return H",
+  "task": {
+   "metadata": {
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   }
+  },
+  "expect": {
+   "refused": true,
+   "code": "a2a/no-legal-context"
+  }
+ },
+ "binding": {
+  "refused": true,
+  "code": "a2a/no-signed-place"
+ },
+ "deliveryProves": "Delivered in A2A task metadata under the LCP extension's URI, protected only by the transport and the request's authentication. A2A signs nothing per transaction, so this proves nothing about the payment; the payment's own pairing states what its record proves.",
+ "agreedRefusals": {
+  "about": "Results the specification leaves to the implementation, as this package applies them. call names the function; args are its arguments.",
+  "rows": [
+   {
+    "case": "agentExtension with required true",
+    "call": "agentExtension",
+    "args": [
+     {
+      "required": true
+     }
+    ],
+    "expect": [
+     {
+      "uri": "https://integraledger.com/lcp/a2a/legal-context/v1",
+      "description": "Delivers the ATR hash and the link to the seller's copy in task metadata, keyed by this URI. Delivery only: A2A signs nothing per transaction.",
+      "required": true
+     }
+    ]
+   },
+   {
+    "case": "requested with the URI between tabs and spaces",
+    "call": "requested",
+    "args": [
+     "\t https://integraledger.com/lcp/a2a/legal-context/v1 \t,x"
+    ],
+    "expect": true
+   },
+   {
+    "case": "requested of a value over 8 KiB",
+    "call": "requested",
+    "args": [
+     {
+      "$repeat": [
+       "https://integraledger.com/lcp/a2a/legal-context/v1,",
+       160
+      ]
+     }
+    ],
+    "expect": false
+   },
+   {
+    "case": "requested of a value with 65 elements",
+    "call": "requested",
+    "args": [
+     ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,https://integraledger.com/lcp/a2a/legal-context/v1"
+    ],
+    "expect": false
+   },
+   {
+    "case": "place with the extension activated writes under its URI",
+    "call": "place",
+    "args": [
+     {
+      "id": "task-1",
+      "contextId": "ctx-1",
+      "metadata": {
+       "other": "kept"
+      }
+     },
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://integraledger.com/lcp/a2a/legal-context/v1"
+    ],
+    "expect": {
+     "id": "task-1",
+     "contextId": "ctx-1",
+     "metadata": {
+      "other": "kept",
+      "https://integraledger.com/lcp/a2a/legal-context/v1": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    }
+   },
+   {
+    "case": "place over its own result gives an equal task",
+    "call": "place",
+    "args": [
+     {
+      "id": "task-1",
+      "contextId": "ctx-1",
+      "metadata": {
+       "other": "kept",
+       "https://integraledger.com/lcp/a2a/legal-context/v1": {
+        "type": "sha256",
+        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      }
+     },
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": {
+     "id": "task-1",
+     "contextId": "ctx-1",
+     "metadata": {
+      "other": "kept",
+      "https://integraledger.com/lcp/a2a/legal-context/v1": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     }
+    }
+   },
+   {
+    "case": "place on a task that is not an object",
+    "call": "place",
+    "args": [
+     [
+      "task"
+     ],
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/legal-context-malformed"
+    }
+   },
+   {
+    "case": "place on a task whose metadata is not an object",
+    "call": "place",
+    "args": [
+     {
+      "id": "task-1",
+      "metadata": "x"
+     },
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/legal-context-malformed"
+    }
+   },
+   {
+    "case": "place with a hash that is not 0x and 64 hex digits",
+    "call": "place",
+    "args": [
+     {
+      "id": "task-1",
+      "contextId": "ctx-1",
+      "metadata": {
+       "other": "kept"
+      }
+     },
+     "0x1234",
+     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/legal-context-malformed"
+    }
+   },
+   {
+    "case": "place with a value over 4 KiB: a link of 1427 characters whose UTF-8 is 4227 bytes",
+    "call": "place",
+    "args": [
+     {
+      "id": "task-1",
+      "contextId": "ctx-1",
+      "metadata": {
+       "other": "kept"
+      }
+     },
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042\u3042"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/too-large"
+    }
+   },
+   {
+    "case": "read of a value over 4 KiB",
+    "call": "read",
+    "args": [
+     {
+      "metadata": {
+       "https://integraledger.com/lcp/a2a/legal-context/v1": {
+        "type": "sha256",
+        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "pad": {
+         "$repeat": [
+          "a",
+          4096
+         ]
+        }
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/too-large"
+    }
+   },
+   {
+    "case": "read of a value whose type is not sha256",
+    "call": "read",
+    "args": [
+     {
+      "metadata": {
+       "https://integraledger.com/lcp/a2a/legal-context/v1": {
+        "type": "sha512",
+        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/legal-context-malformed"
+    }
+   },
+   {
+    "case": "read of a well-formed value with an http link",
+    "call": "read",
+    "args": [
+     {
+      "metadata": {
+       "https://integraledger.com/lcp/a2a/legal-context/v1": {
+        "type": "sha256",
+        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "legalContextUrl": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/link-not-https"
+    }
+   },
+   {
+    "case": "read of a task that is not an object",
+    "call": "read",
+    "args": [
+     "task-1"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/no-legal-context"
+    }
+   },
+   {
+    "case": "read of a task with no metadata",
+    "call": "read",
+    "args": [
+     {
+      "id": "task-1"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "a2a/no-legal-context"
+    }
+   }
+  ]
+ }
+}

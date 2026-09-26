@@ -1,0 +1,558 @@
+{
+ "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e\u2026ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.3.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. Ledger times are microseconds.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "O": {
+   "scheme": "exact",
+   "network": "aptos:1",
+   "amount": "99900000",
+   "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+   "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+   "maxTimeoutSeconds": 60
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "committed": {
+   "type": "user_transaction",
+   "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+   "version": "7351075186",
+   "success": true,
+   "vm_status": "Executed successfully",
+   "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "sequence_number": "218",
+   "expiration_timestamp_secs": "1790300895",
+   "payload": {
+    "function": "0x1::primary_fungible_store::transfer",
+    "type_arguments": [
+     "0x1::fungible_asset::Metadata"
+    ],
+    "arguments": [
+     {
+      "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+     },
+     "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "99900000"
+    ],
+    "type": "entry_function_payload"
+   }
+  },
+  "fixtureF": {
+   "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "sequenceNumber": "218",
+   "maxGasAmount": "15000",
+   "gasUnitPrice": "100",
+   "expiresAt": "1790300895",
+   "chainId": 1,
+   "function": "0x1::primary_fungible_store::transfer",
+   "typeArgument": "0x1::fungible_asset::Metadata",
+   "metadata": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+   "recipient": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+   "amount": "99900000",
+   "feePayer": "0xabcdef0000000000000000000000000000000000000000000000000000007890",
+   "rawTransactionBytes": 265,
+   "rawTransactionSha256": "0xd3c4f4c798d70039d9b2a14e5a5e3ec0c9e6e7243ecc190ac681b960b2c34891"
+  }
+ },
+ "V1": {
+  "case": "committedInstrument of the real answer, then aptosIdDigest",
+  "expectNormalForm": {
+   "arguments": [
+    "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+    "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+    "99900000"
+   ],
+   "function": "0x0000000000000000000000000000000000000000000000000000000000000001::primary_fungible_store::transfer",
+   "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "sequenceNumber": "218",
+   "typeArguments": [
+    "0x0000000000000000000000000000000000000000000000000000000000000001::fungible_asset::Metadata"
+   ]
+  },
+  "expectCanonical": "{\"arguments\":[\"0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b\",\"0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea\",\"99900000\"],\"function\":\"0x0000000000000000000000000000000000000000000000000000000000000001::primary_fungible_store::transfer\",\"sender\":\"0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a\",\"sequenceNumber\":\"218\",\"typeArguments\":[\"0x0000000000000000000000000000000000000000000000000000000000000001::fungible_asset::Metadata\"]}",
+  "expectIdDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+ },
+ "V2": {
+  "case": "reference of a payload whose transaction is fixture F, in x402's reference form and as a raw SignedTransaction",
+  "expectReference": {
+   "network": "aptos:1",
+   "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "sequenceNumber": "218",
+   "expiresAt": "1790300895",
+   "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+  },
+  "chainMismatch": {
+   "case": "chain_id 2 on aptos:1",
+   "expect": "aptos/chain-mismatch"
+  },
+  "script": {
+   "case": "the payload as a script (variant 0)",
+   "expect": "aptos/not-entry-function"
+  }
+ },
+ "V3": {
+  "echoedInfo": {
+   "type": "sha256",
+   "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "clientNote": "x"
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "noLegalContext": "x402/no-legal-context"
+ },
+ "V4": {
+  "status": [
+   {
+    "case": "the real answer by hash",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "bySequence": null,
+    "expect": {
+     "state": "settled",
+     "version": "7351075186",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    }
+   },
+   {
+    "case": "the same with success false",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": false,
+     "vm_status": "Move abort in 0x1::fungible_asset: EINSUFFICIENT_BALANCE(0x10004)",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "bySequence": null,
+    "expect": {
+     "state": "failed",
+     "why": "aborted"
+    }
+   },
+   {
+    "case": "pending_transaction",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "pending_transaction"
+    },
+    "bySequence": null,
+    "expect": {
+     "state": "pending",
+     "why": "in-mempool"
+    }
+   },
+   {
+    "case": "byHash null, bySequence the real answer",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "version": "7351075186",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    }
+   },
+   {
+    "case": "byHash an answer for another instrument, bySequence the real answer",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+     "version": "7351075999",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "219",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "version": "7351075186",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    }
+   },
+   {
+    "case": "bySequence an answer with sequence 218 and recipient 0x\u202601",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0x1",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "expect": {
+     "state": "failed",
+     "why": "superseded"
+    }
+   },
+   {
+    "case": "both null, ledger time 1790300895 s",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790300895000000",
+    "byHash": null,
+    "bySequence": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "both null, ledger time 1790300896 s",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790300896000000",
+    "byHash": null,
+    "bySequence": null,
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "a ReaderError",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "readerError": true,
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ]
+ },
+ "plant": {
+  "case": "the real answer with vm_status rewritten to 'Executed successfully (v2)' and success true: a committed, successful payment is settled",
+  "ref": {
+   "network": "aptos:1",
+   "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "sequenceNumber": "218",
+   "expiresAt": "1790300895",
+   "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+   "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+  },
+  "ledgerUsecs": "1790301538000000",
+  "byHash": {
+   "type": "user_transaction",
+   "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+   "version": "7351075186",
+   "success": true,
+   "vm_status": "Executed successfully (v2)",
+   "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "sequence_number": "218",
+   "expiration_timestamp_secs": "1790300895",
+   "payload": {
+    "function": "0x1::primary_fungible_store::transfer",
+    "type_arguments": [
+     "0x1::fungible_asset::Metadata"
+    ],
+    "arguments": [
+     {
+      "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+     },
+     "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "99900000"
+    ],
+    "type": "entry_function_payload"
+   }
+  },
+  "bySequence": null,
+  "expect": {
+   "state": "settled",
+   "version": "7351075186",
+   "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation.",
+  "rows": [
+   {
+    "case": "a transaction that is not padded standard base64",
+    "expect": "aptos/tx-malformed"
+   },
+   {
+    "case": "a RawTransaction prefix that ends early, or a ULEB128 that is over 2^32-1 or not in its shortest form",
+    "expect": "aptos/tx-malformed"
+   },
+   {
+    "case": "a type argument that is not a struct, or a struct with type arguments",
+    "expect": "aptos/not-an-x402-transfer"
+   },
+   {
+    "case": "an option with scheme exact and an aptos: network whose chain id is not 1 to 255 without a leading zero",
+    "expect": "aptos/network-malformed"
+   },
+   {
+    "case": "payload.transaction not a string",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "complete with a transaction whose reference refuses",
+    "expect": "x402/signed-not-bound"
+   },
+   {
+    "case": "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number",
+    "expect": "pending unreadable"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/aptos",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "aptos:1",
+        "amount": "99900000",
+        "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+        "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+        "maxTimeoutSeconds": 60
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "aptos:1:0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "x402/exact/aptos": "The file records the transaction's fields; its signature is made by a key generated at each test run."
+  }
+ }
+}

@@ -1,0 +1,317 @@
+{
+ "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes the specification leaves to the implementation are marked implementationCode.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "option": {
+   "scheme": "exact",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "name": "USDC",
+    "version": "2",
+    "assetTransferMethod": "permit2"
+   }
+  },
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "EV1": {
+  "case": "build(choice, H): Permit2 PermitWitnessTransferFrom, spender the exact proxy, nonce H as uint256, deadline now + maxTimeoutSeconds, witness {to: payTo, validAfter: 0}",
+  "expectDigest": "0x772f51bb814f65c350f4126ca8bb098dfdd536627d886e32e8e8ce9f352fa7bb",
+  "expectSpender": "0x402085c248EeA27D92E8b30b2C58ed07f9E20001",
+  "expectNonceDecimal": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
+  "expectDeadline": "1790000060",
+  "witnessTypeString": "Witness witness)TokenPermissions(address token,uint256 amount)Witness(address to,uint256 validAfter)",
+  "expectTypeHash": {
+   "prefix": "0xebc156cd",
+   "suffix": "21c7"
+  },
+  "expectWitnessTypeHash": {
+   "prefix": "0xd97b3239",
+   "suffix": "2c37"
+  },
+  "expectSignature": "0x198054b2ff7bdaab96da2d7c1f68abce92cb30dafa475392a44c942fb37f03f922f6a26ad3c3bb243aab0d38184d7eec8d63fa3f7c934f3c7c90b0ef1bb2053f1c",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "boundOfHexNonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "uptoProxyAsSpender": {
+   "spender": "0x4020A4f3b7b90ccA423B9fabCc0CE57C6C240002",
+   "expect": {
+    "refused": true,
+    "code": "x402/spender-not-proxy"
+   }
+  },
+  "nonceMalformed": {
+   "nonce": "0x12",
+   "expect": {
+    "refused": true,
+    "code": "x402/nonce-malformed"
+   },
+   "implementationCode": false
+  },
+  "expectReferenceDigest": "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f"
+ },
+ "EV6": {
+  "case": "evmStatus of EV1's reference on fixture receipts; the reader answers finalized 100, safe 105",
+  "reader": {
+   "network": "eip155:84532",
+   "finalized": "100",
+   "safe": "105"
+  },
+  "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+  "transferAt100": {
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+      ],
+      "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+     }
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "finality": "finalized",
+    "blockNumber": "100"
+   }
+  },
+  "value9999": {
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+      ],
+      "data": "0x000000000000000000000000000000000000000000000000000000000000270f"
+     }
+    ]
+   },
+   "expect": {
+    "state": "failed",
+    "why": "transfer-not-found"
+   }
+  },
+  "reverted": {
+   "receipt": {
+    "status": 0,
+    "blockNumber": "100",
+    "logs": []
+   },
+   "expect": {
+    "state": "failed",
+    "why": "reverted"
+   }
+  },
+  "none": {
+   "receipt": null,
+   "expect": {
+    "state": "pending",
+    "why": "not-found"
+   }
+  }
+ },
+ "plantEmitter": {
+  "case": "EV6's Transfer emitted by a contract other than USDC must be failed transfer-not-found, never settled",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "100",
+   "logs": [
+    {
+     "address": "0x1111111111111111111111111111111111111111",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+    }
+   ]
+  },
+  "expect": {
+   "state": "failed",
+   "why": "transfer-not-found"
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/eip155/permit2",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "eip155:84532",
+        "amount": "10000",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "name": "USDC",
+         "version": "2",
+         "assetTransferMethod": "permit2"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/eip155/permit2",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "eip155:84532",
+       "amount": "10000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "name": "USDC",
+        "version": "2",
+        "assetTransferMethod": "permit2"
+       }
+      },
+      "payload": {
+       "signature": "0x198054b2ff7bdaab96da2d7c1f68abce92cb30dafa475392a44c942fb37f03f922f6a26ad3c3bb243aab0d38184d7eec8d63fa3f7c934f3c7c90b0ef1bb2053f1c",
+       "permit2Authorization": {
+        "permitted": {
+         "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+         "amount": "10000"
+        },
+        "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "spender": "0x402085c248EeA27D92E8b30b2C58ed07f9E20001",
+        "nonce": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
+        "deadline": "1790000060",
+        "witness": {
+         "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+         "validAfter": "0"
+        }
+       }
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's EV1 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

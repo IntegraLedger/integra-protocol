@@ -1,0 +1,216 @@
+{
+ "about": "Vectors for MPP's challenge pieces in the mpp entry point of @integraledger/lcp, shared by every MPP pairing. H is SHA-256(\"abc\") from FIPS 180-2. C_E and C_T are fixed challenges; their request values are JSON, base64url without padding. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. MV9's field values are MPP's own example (draft-httpauth-payment-01 at 08e7dd87, lines 1427-1430).",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "expiresUnix": 1790000060,
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "R_E": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"permit2\",\"authorization\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+  "R_T": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"supportedModes\":[\"pull\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
+ },
+ "MV1": {
+  "case": "challengeId(H, 0), and challengeH of it and of two ids that are not ours",
+  "expectId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "notOurs": [
+   "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.32"
+  ],
+  "expectNotOurs": { "refused": true, "code": "mpp/id-not-ours" }
+ },
+ "MV2": {
+  "case": "challengeHash(MV1, realm)",
+  "expect": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477"
+ },
+ "MV3": {
+  "case": "place([C_E], H, link, C_E) and place([C_T], H, link, C_T); read of each",
+  "expectId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "expectOpaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+ },
+ "MV4": {
+  "case": "issuedDigest of C_E, of MV3's echoed challenge, of C_E with header, and of C_T and its echo",
+  "expectE": "0x287e16b6d4424f7d078ac0fbb78936f961d59f2fb5cf3b623d72f96ed8c0ebd4",
+  "header": "Payment-Authorization",
+  "expectEWithHeader": "0x0eae0841102b20e7f740852687de3d042ee32963393d63d7264775e526df571a",
+  "expectT": "0x7f4fe533cb40d63829c2234826b381a3ac1df9da234aed7e2b84eb285d7b367c"
+ },
+ "MV9": {
+  "case": "parseChallenges of MPP's two-challenge example, as two field values and joined with \", \"",
+  "fieldValues": [
+   "Payment id=\"pT7yHnKmQ2wErXsZ5vCbNl\", realm=\"api.example.com\", method=\"invoice\", intent=\"charge\", request=\"...\"",
+   "Payment id=\"mF8uJkLpO3qRtYsA6wDcVb\", realm=\"api.example.com\", method=\"signed\", intent=\"charge\", request=\"...\""
+  ],
+  "expectIds": ["pT7yHnKmQ2wErXsZ5vCbNl", "mF8uJkLpO3qRtYsA6wDcVb"]
+ },
+ "MV10": {
+  "case": "problem(code) for each refusal code",
+  "rows": [
+   { "code": "mpp/credential-malformed", "expect": { "status": 402, "type": "https://paymentauth.org/problems/malformed-credential" } },
+   { "code": "mpp/request-malformed", "expect": { "status": 402, "type": "https://paymentauth.org/problems/malformed-credential" } },
+   { "code": "mpp/opaque-malformed", "expect": { "status": 402, "type": "https://paymentauth.org/problems/malformed-credential" } },
+   { "code": "mpp/id-not-ours", "expect": { "status": 402, "type": "https://paymentauth.org/problems/invalid-challenge" } },
+   { "code": "claim/unknown", "expect": { "status": 402, "type": "https://paymentauth.org/problems/invalid-challenge" } },
+   { "code": "claim/in-progress", "expect": { "status": 402, "type": "https://paymentauth.org/problems/invalid-challenge" } },
+   { "code": "claim/paid", "expect": { "status": 402, "type": "https://paymentauth.org/problems/invalid-challenge" } },
+   { "code": "claim/not-this-request", "expect": { "status": 402, "type": "https://paymentauth.org/problems/invalid-challenge" } },
+   { "code": "claim/lapsed", "expect": { "status": 402, "type": "https://paymentauth.org/problems/payment-expired" } },
+   { "code": "claim/store-unavailable", "expect": { "status": 500, "type": "https://paymentauth.org/problems/internal-payment-error" } },
+   { "code": "mpp/nonce-not-challenge-hash", "expect": { "status": 402, "type": "https://paymentauth.org/problems/verification-failed" } },
+   { "code": "tempo/memo-not-bound", "expect": { "status": 402, "type": "https://paymentauth.org/problems/verification-failed" } }
+  ]
+ },
+ "MV14": {
+  "case": "place([C_E], H, link, C_E, agreementUrl); issuedDigest of the echo; read",
+  "expectOpaqueLength": 458,
+  "expectOpaqueSha256": "0xe3c34522ded279e1a1df02ce64f5aaf33be5f975826e124486fb678c2083518b",
+  "expectIssuedDigest": "0x287e16b6d4424f7d078ac0fbb78936f961d59f2fb5cf3b623d72f96ed8c0ebd4"
+ },
+ "S1": {
+  "case": "S1: a Tempo subscription challenge's id is the bare base64url of H, and challengeH of it is H",
+  "expectBareId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0"
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation, as this implementation applies them.",
+  "rows": [
+   { "case": "pairingsOf with an EVM charge chainId, currency, recipient or amount malformed, or externalId not a string", "expect": "mpp/request-malformed" },
+   { "case": "pairingsOf with a Tempo charge supportedModes that is not a list of \"pull\" and \"push\"", "expect": "mpp/request-malformed" },
+   { "case": "pairingsOf with an opaque that does not decode to a flat string map", "expect": "mpp/opaque-malformed" },
+   { "case": "pairingsOf with an intent and method this entry point does not serve", "expect": "mpp/not-this-pairing" },
+   { "case": "pairingsOf with a duplicate credentialTypes entry: the entry counts once", "expect": "no refusal" },
+   { "case": "a Tempo charge challenge with more than one call carrying this challenge's attribution memo", "expect": "tempo/ambiguous" },
+   { "case": "an EVM session challenge whose chainId is absent or not a positive integer", "expect": "mpp/chain-id-required" },
+   { "case": "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed", "expect": "mpp/request-malformed" },
+   { "case": "challengeId, place or build with an H that is not 0x and 64 hex digits, or a position outside 0-31", "expect": "mpp/challenge-malformed" },
+   { "case": "build with a malformed from, a missing tokenDomain or spender, or a clientId that is not a string", "expect": "mpp/input-malformed" },
+   { "case": "complete with a signature outside 65 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction over 64 KiB", "expect": "mpp/credential-malformed" },
+   { "case": "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects", "expect": "mpp/credential-malformed" },
+   { "case": "bound with a payload type other than the pairing's", "expect": "mpp/credential-type" },
+   { "case": "a WWW-Authenticate value over 8 KiB, not following RFC 9110's grammar, or over 32 Payment challenges", "expect": "mpp/header-malformed" },
+   { "case": "a Payment challenge with a duplicate parameter, or a required parameter missing or empty", "expect": "mpp/challenge-malformed" },
+   { "case": "memoCalldata, tempoChannelId or expiringNonceHash with a malformed address, amount or hash", "expect": "tempo/tx-malformed or tempo/descriptor-mismatch" },
+   { "case": "read with two challenges whose links or agreement URLs differ", "expect": "mpp/legal-context-conflict" },
+   { "case": "read with a legalContextAgreementUrl of at most 2048 characters that parses as an absolute URL whose scheme is not https", "expect": "mpp/link-not-https" },
+   { "case": "read with a legalContextAgreementUrl that is not a string, does not parse as an absolute URL (the empty string, https:// alone), is an https URL the link rule refuses, or is over 2048 characters", "expect": "mpp/legal-context-malformed" },
+   { "case": "place with a link, or read with no challenge read and a legalContextUrl in a challenge whose id derives from its legalContext, of at most 2048 characters that parses as an absolute URL whose scheme is not https: the same split as the agreement URL", "expect": "mpp/link-not-https" },
+   { "case": "place with a link, or read with no challenge read, no legalContextUrl of another scheme and one that is absent, does not parse as an absolute URL, is an https URL the link rule refuses, or is over 2048 characters, in a challenge whose id derives from its legalContext", "expect": "mpp/legal-context-malformed" },
+   { "case": "sessionResume of a challenge that is not a session challenge naming channelId", "expect": "mpp/not-this-pairing" }
+  ],
+  "inputs": {
+   "requestMalformed": "{\"amount\":\"10000\",\"currency\":\"0x036C\",\"methodDetails\":{\"chainId\":84532},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+   "modesMalformed": "{\"amount\":\"1\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"supportedModes\":[\"pull\",\"fetch\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+   "opaqueNotFlat": "{\"k\":{\"nested\":\"v\"}}",
+   "duplicateTypes": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"permit2\",\"permit2\"]},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+   "headerDuplicate": "Payment id=\"a\", realm=\"r\", method=\"evm\", intent=\"charge\", request=\"e30\", realm=\"s\"",
+   "headerEmptyId": "Payment id=\"\", realm=\"r\", method=\"evm\", intent=\"charge\", request=\"e30\"",
+   "headerBroken": "Payment id=\"a, realm=\"r\""
+  }
+ },
+ "network": {
+  "about": "network(challenge): the CAIP-2 network each MPP challenge pays on, as its method defines it, with the method's default. Each row is one challenge with this file's realm and expires.",
+  "rows": [
+   {
+    "case": "C_E: an EVM charge on chain 84532",
+    "method": "evm",
+    "intent": "charge",
+    "request": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"permit2\",\"authorization\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+    "expect": "eip155:84532",
+    "source": "C_E"
+   },
+   {
+    "case": "C_T: a Tempo charge on chain 42431",
+    "method": "tempo",
+    "intent": "charge",
+    "request": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"supportedModes\":[\"pull\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+    "expect": "eip155:42431",
+    "source": "C_T"
+   },
+   {
+    "case": "C_T without chainId: the Tempo charge's default",
+    "method": "tempo",
+    "intent": "charge",
+    "request": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"supportedModes\":[\"pull\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+    "expect": "eip155:42431",
+    "source": "MPP's Tempo charge draft: chainId, Tempo chain ID (default: 42431)"
+   },
+   {
+    "case": "a Tempo v1 session without chainId: v1's default",
+    "method": "tempo",
+    "intent": "session",
+    "request": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"escrowContract\":\"0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70\",\"sessionProtocol\":\"v1\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+    "expect": "eip155:4217",
+    "source": "MPP's Tempo session draft: v1's chainId defaults to 4217"
+   },
+   {
+    "case": "a Tempo subscription without chainId",
+    "method": "tempo",
+    "intent": "subscription",
+    "request": "{\"amount\":\"10000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"accessKey\":{\"accessKeyAddress\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"keyType\":\"secp256k1\"}},\"periodCount\":\"30\",\"periodUnit\":\"day\",\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\",\"subscriptionExpires\":\"2026-12-20T00:00:00Z\"}",
+    "expect": {
+     "refused": true,
+     "code": "mpp/chain-id-required"
+    },
+    "source": "this package: a Tempo subscription's chainId is required"
+   },
+   {
+    "case": "a Solana charge on devnet",
+    "method": "solana",
+    "intent": "charge",
+    "request": "{\"amount\":\"1000\",\"currency\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"recipient\":\"2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4\",\"methodDetails\":{\"network\":\"devnet\",\"decimals\":6,\"tokenProgram\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"feePayer\":true,\"feePayerKey\":\"9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu\",\"recentBlockhash\":\"EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k\"}}",
+    "expect": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "source": "MPP's Solana draft: devnet is solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+   },
+   {
+    "case": "a Solana charge naming no network: mainnet",
+    "method": "solana",
+    "intent": "charge",
+    "request": "{\"amount\":\"1000\",\"currency\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"recipient\":\"2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4\",\"methodDetails\":{\"decimals\":6,\"tokenProgram\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"feePayer\":true,\"feePayerKey\":\"9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu\",\"recentBlockhash\":\"EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k\"}}",
+    "expect": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "source": "MPP's Solana draft: methodDetails.network defaults to mainnet"
+   },
+   {
+    "case": "an XRPL charge on testnet",
+    "method": "xrpl",
+    "intent": "charge",
+    "request": "{\"amount\":\"1000000\",\"currency\":\"XRP\",\"recipient\":\"rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN\",\"methodDetails\":{\"network\":\"testnet\"}}",
+    "expect": "xrpl:1",
+    "source": "MPP's XRPL draft, Networks: MPP testnet is xrpl:1"
+   },
+   {
+    "case": "a Hedera charge on chain 296",
+    "method": "hedera",
+    "intent": "charge",
+    "request": "{\"amount\":\"1050000\",\"currency\":\"0.0.5449\",\"recipient\":\"0.0.1234\",\"splits\":[{\"recipient\":\"0.0.67890\",\"amount\":\"50000\"}],\"methodDetails\":{\"chainId\":296}}",
+    "expect": "hedera:testnet",
+    "source": "MPP's Hedera draft: methodDetails.chainId 296 is hedera:testnet"
+   },
+   {
+    "case": "a Stellar charge on stellar:testnet",
+    "method": "stellar",
+    "intent": "charge",
+    "request": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"feePayer\":true}}",
+    "expect": "stellar:testnet",
+    "source": "methodDetails.network is a CAIP-2 id"
+   },
+   {
+    "case": "a NEAR Intents charge whose deposit is on Arbitrum One",
+    "method": "nearintents",
+    "intent": "charge",
+    "request": "{\"amount\":\"1005000\",\"currency\":\"eip155:42161/erc20:0xaf88d065e77c8cC2239327C5EDb3A432268e5831\",\"recipient\":\"0x76b4c56085ED136a8744D52bE956396624a730E8\",\"description\":\"Cross-chain premium data access\",\"methodDetails\":{\"originNetwork\":\"eip155:42161\",\"destinationNetwork\":\"near:mainnet\",\"destinationAsset\":\"near:mainnet/nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1\",\"destinationRecipient\":\"merchant.near\",\"amountOut\":\"1000000\",\"minAmountIn\":\"1000000\",\"depositMemo\":null,\"slippageTolerance\":100,\"timeEstimate\":120,\"refundTo\":\"0x2527D02599Ba641c19FEa793cD0F9a6e8457C317\",\"settlementBackend\":\"near-intents\",\"credentialTypes\":[\"hash\"]}}",
+    "expect": "eip155:42161",
+    "source": "MPP NEAR Intents: methodDetails.originNetwork, a CAIP-2 id, is where the buyer deposits"
+   },
+   {
+    "case": "a Lightning charge, whose challenge names no network",
+    "method": "lightning",
+    "intent": "charge",
+    "request": "{\"amount\":\"100\",\"currency\":\"sat\",\"methodDetails\":{\"paymentHash\":\"a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e\"}}",
+    "expect": {
+     "refused": true,
+     "code": "mpp/network-unnamed"
+    },
+    "source": "this package's refusal code"
+   }
+  ]
+ }
+}

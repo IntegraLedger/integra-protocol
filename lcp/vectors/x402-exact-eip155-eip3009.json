@@ -1,0 +1,921 @@
+{
+ "about": "Vectors for the x402/exact/eip155/eip3009 pairing: the x402 and evm entry points of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; O is the x402 specification's example option (section 5.2.1); the payer is the published Anvil development key. The EIP-712 values were computed with eth-account 0.14.0, eth-abi 6.0.0 and eth-utils 6.0.0 on Python 3.12.3; every SHA-256 with GNU coreutils sha256sum. Byte strings are hex; uint256 values are decimal strings.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "O": {
+   "scheme": "exact",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "name": "USDC",
+    "version": "2"
+   }
+  },
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "legalContextSchema": {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "type": "object",
+   "properties": {
+    "type": {
+     "const": "sha256"
+    },
+    "value": {
+     "type": "string",
+     "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "legalContextUrl": {
+     "type": "string",
+     "pattern": "^https://"
+    }
+   },
+   "required": [
+    "type",
+    "value",
+    "legalContextUrl"
+   ]
+  }
+ },
+ "V1": {
+  "case": "build({required: {x402Version: 2, resource, accepts: [O]}, accepted: O, from: payer, now}, H), then EIP-712",
+  "expectDomain": {
+   "name": "USDC",
+   "version": "2",
+   "chainId": 84532,
+   "verifyingContract": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+  },
+  "expectMessage": {
+   "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+   "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "value": "10000",
+   "validAfter": "0",
+   "validBefore": "1790000060",
+   "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "expectTypeHash": "0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267",
+  "expectDomainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818",
+  "expectStructHash": "0xf1b86f117731eb916a2f20b008e21bf04ccbd7bc83827c06787756631e1fc450",
+  "expectDigest": "0xb9aac018ad9f1b48572085f195664ae44df86190db9d0d6191f53cc374eff528",
+  "expectSignature": "0xd51cabca403ce9ee24ab0442df41928ef61c1c117bc211a2cac7c5b11c0084832e0cf7beda17ce863cec05d47b776dc24cecf0255b48b274cdf60f05129fe5771b",
+  "expectRecovers": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "expectAuthorizationUsedTopic": "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5"
+ },
+ "V2": {
+  "case": "complete(V1 signature), then bound",
+  "expectPayload": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "payload": {
+    "signature": "0xd51cabca403ce9ee24ab0442df41928ef61c1c117bc211a2cac7c5b11c0084832e0cf7beda17ce863cec05d47b776dc24cecf0255b48b274cdf60f05129fe5771b",
+    "authorization": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   }
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "boundOfUpperCaseNonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "permit2": {
+   "case": "the payload with accepted.extra.assetTransferMethod = \"permit2\"",
+   "expect": {
+    "refused": true,
+    "code": "x402/option-not-this-pairing"
+   }
+  }
+ },
+ "V3": [
+  {
+   "method": "POST",
+   "target": "/v1/quote?symbol=ETH&size=2",
+   "bodyUtf8": "{\"side\":\"buy\",\"qty\":\"2\"}",
+   "expectCommitment": {
+    "method": "POST",
+    "path": "/v1/quote",
+    "query": "symbol=ETH&size=2",
+    "bodyDigest": "0x1974ed74c4b07a90af58a2e387aa1625aa666a7a245b1308879f04bf66142961"
+   },
+   "expectIssuedDigest": "0x78e63d10013bb5b8f1290361fb31a9217ebc74d78c8103be31883a0bbbc08e1a"
+  },
+  {
+   "method": "GET",
+   "target": "/v1/report",
+   "bodyUtf8": "",
+   "expectCommitment": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "expectIssuedDigest": "0x4f12d0075d3e63361bdeeac695015e16184bcd567c15f78c37333232c3d9933d"
+  },
+  {
+   "method": "POST",
+   "target": "/v1/quote?symbol=ETH&size=2",
+   "bodyUtf8": "{\"qty\":\"2\",\"side\":\"buy\"}",
+   "expectCommitment": {
+    "method": "POST",
+    "path": "/v1/quote",
+    "query": "symbol=ETH&size=2",
+    "bodyDigest": "0x8d5bc8c472ea91fbafd5761318d5546fab5fb95c4573d981dfd8d03400fcfe85"
+   },
+   "expectIssuedDigestNot": "0x78e63d10013bb5b8f1290361fb31a9217ebc74d78c8103be31883a0bbbc08e1a"
+  }
+ ],
+ "V4": {
+  "option": {
+   "scheme": "exact",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "name": "USDC",
+    "version": "2"
+   }
+  },
+  "reordered": {
+   "extra": {
+    "version": "2",
+    "name": "USDC"
+   },
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 60,
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "scheme": "exact"
+  },
+  "expectIssuedDigest": "0xcfe6c196f3349d47f51598551a066e8a9661534eb89af6ed3b359e09acd1a256"
+ },
+ "V5": {
+  "advertise": {
+   "doc": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepts": [
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     }
+    ]
+   },
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "offer": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2"
+    }
+   }
+  },
+  "expectDocument": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepts": [
+    {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    }
+   ],
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "expectRead": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "options": [
+    {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    }
+   ]
+  },
+  "httpLink": {
+   "link": "http://atr.seller.example/x",
+   "expect": {
+    "refused": true,
+    "code": "x402/link-not-https"
+   }
+  },
+  "conflict": {
+   "case": "advertise over a document whose legalContext carries another link",
+   "expect": {
+    "refused": true,
+    "code": "x402/legal-context-conflict"
+   }
+  },
+  "readHttpLink": {
+   "case": "read of the V5 document whose legalContextUrl is http://",
+   "doc": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepts": [
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     }
+    ],
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/link-not-https"
+   }
+  },
+  "readMalformed": {
+   "case": "read of the V5 document whose legalContext value is not a 32-byte hash",
+   "valueOverride": "0x1234",
+   "expect": {
+    "refused": true,
+    "code": "x402/legal-context-malformed"
+   }
+  }
+ },
+ "V6": {
+  "reader": {
+   "network": "eip155:84532",
+   "finalized": "100",
+   "safe": "105"
+  },
+  "ref": {
+   "network": "eip155:84532",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "status": [
+   {
+    "receipt": {
+     "status": 0,
+     "blockNumber": "100",
+     "logs": []
+    },
+    "expect": {
+     "state": "failed",
+     "why": "reverted"
+    }
+   },
+   {
+    "receipt": {
+     "status": 1,
+     "blockNumber": "100",
+     "logs": [
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000002"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000003"
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "finalized",
+     "blockNumber": "100"
+    }
+   },
+   {
+    "receipt": {
+     "status": 1,
+     "blockNumber": "104",
+     "logs": [
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000002"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000003"
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "safe",
+     "blockNumber": "104"
+    }
+   },
+   {
+    "receipt": {
+     "status": 1,
+     "blockNumber": "110",
+     "logs": [
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000002"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000003"
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "latest",
+     "blockNumber": "110"
+    }
+   },
+   {
+    "receipt": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "receipt": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": [
+   {
+    "receipt": {
+     "status": 1,
+     "blockNumber": "100",
+     "logs": [
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000002"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x0000000000000000000000000000000000000000000000000000000000000003"
+       ]
+      }
+     ]
+    },
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "receipt": {
+     "status": 1,
+     "blockNumber": "100",
+     "logs": [
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0x2222222222222222222222222222222222222222222222222222222222222222"
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "refused": true,
+     "code": "evm/ambiguous"
+    }
+   }
+  ]
+ },
+ "plant": {
+  "case": "a successful receipt whose only AuthorizationUsed log with topics[2] = H came from a contract other than the option's asset",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "100",
+   "logs": [
+    {
+     "address": "0x000000000000000000000000000000000000dEaD",
+     "topics": [
+      "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     ]
+    }
+   ]
+  },
+  "expect": {
+   "state": "failed",
+   "why": "authorization-not-used"
+  }
+ },
+ "MX": {
+  "about": "A challenge mixing an offer whose pairing is a public proof (x402/exact/eip155/eip3009) with one that is not (x402/exact/eip155/erc7710, the unsigned level; its option is x402-exact-eip155-erc7710.json's fixed option). The legal context is one per document: each offer's pairing advertises it with the agreement URL, in either order, and the document carries the URL once, after legalContextUrl. Either pairing's read returns it. A buyer paying through the public-proof pairing does not pay the agreement (buyer.json BA6).",
+  "advertise": {
+   "doc": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepts": [
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     },
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2",
+       "assetTransferMethod": "erc7710"
+      }
+     }
+    ]
+   },
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "offers": [
+    {
+     "pairing": "x402/exact/eip155/eip3009",
+     "option": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     }
+    },
+    {
+     "pairing": "x402/exact/eip155/erc7710",
+     "option": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2",
+       "assetTransferMethod": "erc7710"
+      }
+     }
+    }
+   ]
+  },
+  "expectDocument": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepts": [
+    {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    }
+   ],
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextAgreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "expectRead": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "agreement": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "conflicts": [
+   {
+    "case": "the second pairing advertises another agreement URL",
+    "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad?other",
+    "expect": "x402/legal-context-conflict"
+   },
+   {
+    "case": "the second pairing advertises no agreement URL where the first placed one",
+    "agreementUrl": null,
+    "expect": "x402/legal-context-conflict"
+   }
+  ]
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "rows": [
+   {
+    "case": "read or build with accepts not a list, or over 32 options",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "read with a legalContext link over 2048 characters",
+    "expect": "x402/legal-context-malformed"
+   },
+   {
+    "case": "read with legalContextUrl and legal_context_url present and different",
+    "expect": "x402/legal-context-malformed"
+   },
+   {
+    "case": "build with a malformed from, asset, payTo, maxTimeoutSeconds or now, or an amount of 2^256 or more",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with a nonce that is not 0x and 64 hex digits",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "complete with a signature outside 65 to 8192 decoded bytes",
+    "expect": "x402/signature-malformed"
+   },
+   {
+    "case": "bound with a signature over 8192 decoded bytes, or not 0x and an even number of hex digits",
+    "expect": "x402/signature-malformed"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/eip155/eip3009",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "eip155:84532",
+        "amount": "10000",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "name": "USDC",
+         "version": "2"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/eip155/eip3009",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "eip155:84532",
+       "amount": "10000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "name": "USDC",
+        "version": "2"
+       }
+      },
+      "payload": {
+       "signature": "0xd51cabca403ce9ee24ab0442df41928ef61c1c117bc211a2cac7c5b11c0084832e0cf7beda17ce863cec05d47b776dc24cecf0255b48b274cdf60f05129fe5771b",
+       "authorization": {
+        "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "value": "10000",
+        "validAfter": "0",
+        "validBefore": "1790000060",
+        "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2.expectPayload payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

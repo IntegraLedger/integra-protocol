@@ -1,0 +1,256 @@
+{
+  "name": "@integraledger/lcp",
+  "version": "0.1.0",
+  "description": "Assemble and hash an Agentic Transaction Record (ATR), and carry the hash in x402, MPP, AP2, ACP, UCP, ACK and card payments across chains and rails, and in A2A task metadata.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IntegraLedger/integra-protocol.git",
+    "directory": "lcp"
+  },
+  "homepage": "https://github.com/IntegraLedger/integra-protocol/tree/main/lcp#readme",
+  "bugs": "https://github.com/IntegraLedger/integra-protocol/issues",
+  "keywords": [
+    "legal-context-protocol",
+    "lcp",
+    "agentic-transaction-record",
+    "agentic-commerce",
+    "ai-agents",
+    "x402",
+    "mpp",
+    "acp",
+    "ucp",
+    "ap2",
+    "payments",
+    "stablecoin"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=26.10.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./a2a": {
+      "types": "./dist/a2a.d.ts",
+      "default": "./dist/a2a.js"
+    },
+    "./ack": {
+      "types": "./dist/ack.d.ts",
+      "default": "./dist/ack.js"
+    },
+    "./acp": {
+      "types": "./dist/acp.d.ts",
+      "default": "./dist/acp.js"
+    },
+    "./ap2": {
+      "types": "./dist/ap2.d.ts",
+      "default": "./dist/ap2.js"
+    },
+    "./aptos": {
+      "types": "./dist/aptos.d.ts",
+      "default": "./dist/aptos.js"
+    },
+    "./avm": {
+      "types": "./dist/avm.d.ts",
+      "default": "./dist/avm.js"
+    },
+    "./card": {
+      "types": "./dist/card.d.ts",
+      "default": "./dist/card.js"
+    },
+    "./cardano": {
+      "types": "./dist/cardano.d.ts",
+      "default": "./dist/cardano.js"
+    },
+    "./casper": {
+      "types": "./dist/casper.d.ts",
+      "default": "./dist/casper.js"
+    },
+    "./ccd": {
+      "types": "./dist/ccd.d.ts",
+      "default": "./dist/ccd.js"
+    },
+    "./discovery": {
+      "types": "./dist/discovery.d.ts",
+      "default": "./dist/discovery.js"
+    },
+    "./evm": {
+      "types": "./dist/evm.d.ts",
+      "default": "./dist/evm.js"
+    },
+    "./hedera": {
+      "types": "./dist/hedera.d.ts",
+      "default": "./dist/hedera.js"
+    },
+    "./lightning": {
+      "types": "./dist/lightning.d.ts",
+      "default": "./dist/lightning.js"
+    },
+    "./mpp": {
+      "types": "./dist/mpp.d.ts",
+      "default": "./dist/mpp.js"
+    },
+    "./near": {
+      "types": "./dist/near.d.ts",
+      "default": "./dist/near.js"
+    },
+    "./polkadot": {
+      "types": "./dist/polkadot.d.ts",
+      "default": "./dist/polkadot.js"
+    },
+    "./stacks": {
+      "types": "./dist/stacks.d.ts",
+      "default": "./dist/stacks.js"
+    },
+    "./starknet": {
+      "types": "./dist/starknet.d.ts",
+      "default": "./dist/starknet.js"
+    },
+    "./stellar": {
+      "types": "./dist/stellar.d.ts",
+      "default": "./dist/stellar.js"
+    },
+    "./sui": {
+      "types": "./dist/sui.d.ts",
+      "default": "./dist/sui.js"
+    },
+    "./svm": {
+      "types": "./dist/svm.d.ts",
+      "default": "./dist/svm.js"
+    },
+    "./tempo": {
+      "types": "./dist/tempo.d.ts",
+      "default": "./dist/tempo.js"
+    },
+    "./tron": {
+      "types": "./dist/tron.d.ts",
+      "default": "./dist/tron.js"
+    },
+    "./tvm": {
+      "types": "./dist/tvm.d.ts",
+      "default": "./dist/tvm.js"
+    },
+    "./ucp": {
+      "types": "./dist/ucp.d.ts",
+      "default": "./dist/ucp.js"
+    },
+    "./x402": {
+      "types": "./dist/x402.d.ts",
+      "default": "./dist/x402.js"
+    },
+    "./x402-batch-settlement": {
+      "types": "./dist/x402-batch-settlement.d.ts",
+      "default": "./dist/x402-batch-settlement.js"
+    },
+    "./x402-exact-solana": {
+      "types": "./dist/x402-exact-solana.d.ts",
+      "default": "./dist/x402-exact-solana.js"
+    },
+    "./x402-exact-stellar": {
+      "types": "./dist/x402-exact-stellar.d.ts",
+      "default": "./dist/x402-exact-stellar.js"
+    },
+    "./x402-exact-xrpl": {
+      "types": "./dist/x402-exact-xrpl.d.ts",
+      "default": "./dist/x402-exact-xrpl.js"
+    },
+    "./x402-upto-solana": {
+      "types": "./dist/x402-upto-solana.d.ts",
+      "default": "./dist/x402-upto-solana.js"
+    },
+    "./xrpl": {
+      "types": "./dist/xrpl.d.ts",
+      "default": "./dist/xrpl.js"
+    }
+  },
+  "files": [
+    "dist",
+    "profiles",
+    "vectors",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@scure/base": "2.4.0"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "2.31.3",
+    "@near-js/crypto": "2.5.1",
+    "@near-js/transactions": "2.5.1",
+    "@solana/kit": "8.3.0",
+    "@stacks/transactions": "7.6.0",
+    "@stellar/stellar-sdk": "17.1.0",
+    "@ton/core": "0.63.1",
+    "algosdk": "3.8.0",
+    "borsh": "1.0.0",
+    "ripple-binary-codec": "2.11.0"
+  },
+  "peerDependenciesMeta": {
+    "@mysten/sui": {
+      "optional": true
+    },
+    "@near-js/crypto": {
+      "optional": true
+    },
+    "@near-js/transactions": {
+      "optional": true
+    },
+    "@solana/kit": {
+      "optional": true
+    },
+    "@stacks/transactions": {
+      "optional": true
+    },
+    "@stellar/stellar-sdk": {
+      "optional": true
+    },
+    "@ton/core": {
+      "optional": true
+    },
+    "algosdk": {
+      "optional": true
+    },
+    "borsh": {
+      "optional": true
+    },
+    "ripple-binary-codec": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@aptos-labs/ts-sdk": "7.3.0",
+    "@casper-ecosystem/casper-eip-712": "1.2.1",
+    "@mysten/sui": "2.31.3",
+    "@near-js/crypto": "2.5.1",
+    "@near-js/transactions": "2.5.1",
+    "@solana/kit": "8.3.0",
+    "@stacks/transactions": "7.6.0",
+    "@stellar/stellar-sdk": "17.1.0",
+    "@ton/core": "0.63.1",
+    "@ton/crypto": "3.3.0",
+    "algosdk": "3.8.0",
+    "bolt11": "1.4.1",
+    "borsh": "1.0.0",
+    "bs58check": "4.0.0",
+    "canonicalize": "5.1.0",
+    "cborg": "6.1.2",
+    "esbuild": "0.28.2",
+    "js-sha3": "0.13.0",
+    "light-bolt11-decoder": "3.2.0",
+    "ripple-binary-codec": "2.11.0",
+    "starknet": "10.7.6",
+    "viem": "2.56.8"
+  }
+}

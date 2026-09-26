@@ -1,0 +1,100 @@
+{
+ "about": "Vectors for mpp/charge/card. H is SHA-256(\"abc\"); fixed.MV1 is the MPP challenge id derived from H. The request is the M1 request, its JSON written in the order given here and encoded as base64url without padding. The issued digest is SHA-256 of the sorted JSON (printf of the sorted JSON piped to sha256sum). The proves text is the pairing's record, opening with the agreement transaction's sentence.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "expiresUnix": 1790000060,
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0"
+ },
+ "M1": {
+  "case": "advertise sets id, opaque and externalId = L; the issued digest of unplaced, and of the echo carrying externalId; build and bound",
+  "request": {
+   "amount": "4999",
+   "currency": "usd",
+   "recipient": "merch_abc123",
+   "methodDetails": {
+    "acceptedNetworks": [
+     "visa",
+     "mastercard"
+    ],
+    "merchantName": "Seller Example",
+    "jwksUri": "https://api.seller.example/.well-known/jwks.json",
+    "kid": "enc-2026-01"
+   }
+  },
+  "expectExternalId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectExternalIdLength": 77,
+  "expectDigest": "0x22704e12ca76e74e59799ea435a299fefa831ea744936bbc5bfa621b9e96ab19",
+  "expectBuild": {
+   "refused": true,
+   "code": "mpp/no-signed-place"
+  },
+  "expectBound": {
+   "refused": true,
+   "code": "mpp/no-signed-place"
+  }
+ },
+ "refusals": {
+  "about": "A present carrier with another value is mpp/carrier-occupied.",
+  "rows": [
+   {
+    "case": "externalId already order_12345",
+    "externalId": "order_12345",
+    "expect": {
+     "refused": true,
+     "code": "mpp/carrier-occupied"
+    }
+   }
+  ]
+ },
+ "pattern": {
+  "pattern": "opaque-challenge",
+  "canonical": true,
+  "buyerSigns": false,
+  "claims": false,
+  "onChain": false,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": false,
+  "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was in the seller's storage before payment. The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the challenge by the seller's own server, and the buyer's credential echoed that challenge. The seller also placed the hash in the method's reference field (externalId for card; the PaymentIntent's metadata for Stripe). Nothing the buyer or its card or Stripe token signed carries the hash, and the seller checked nothing the buyer signed. Settlement is the seller's report. This record does not show that the buyer's approval carried the hash."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/card",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "card",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiI0OTk5IiwiY3VycmVuY3kiOiJ1c2QiLCJleHRlcm5hbElkIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJtZXRob2REZXRhaWxzIjp7ImFjY2VwdGVkTmV0d29ya3MiOlsidmlzYSIsIm1hc3RlcmNhcmQiXSwiandrc1VyaSI6Imh0dHBzOi8vYXBpLnNlbGxlci5leGFtcGxlLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImtpZCI6ImVuYy0yMDI2LTAxIiwibWVyY2hhbnROYW1lIjoiU2VsbGVyIEV4YW1wbGUifSwicmVjaXBpZW50IjoibWVyY2hfYWJjMTIzIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "mpp/charge/card": "The buyer signs nothing (buyerSigns false): the file holds no payment that carries H."
+  }
+ }
+}

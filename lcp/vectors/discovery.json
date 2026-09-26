@@ -1,0 +1,309 @@
+{
+ "about": "The discovery document (LCP §2): what emit writes and what parse reads or refuses. 'bytes' is UTF-8 text; 'bytesHex' is used where the bytes are not valid UTF-8 text. The LCP §2.7 examples are cut from LCP §2.7 byte for byte. Expected emitted bytes were written by Python's json.dumps with separators (',', ':') over members in LCP §2.4-§2.5's table order; digests with hashlib.sha256, agreeing with GNU coreutils sha256sum 9.4. The ETag is '\"' + the digest's hex + '\"'. 'inputRepeat' sets that member of 'input' to 'char' repeated 'count' times. 'padTo' is the bytes '{\"terms\":\"https://seller.example/t.md\",\"x-pad\":\"' + 'a' repeated + '\"}', exactly that many bytes long.",
+ "emit": [
+  {
+   "name": "a reference document",
+   "source": "LCP §2.4-§2.5 table order, atrHash lowercase (LCP §2.5); 220 bytes; the atrHash is SHA-256 of 'abc' (FIPS 180-2)",
+   "input": {
+    "terms": "https://seller.example/terms/v3.md",
+    "termsFormat": "markdown",
+    "atrHash": "0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+    "acceptanceRequired": false,
+    "contact": {
+     "legal": "legal@seller.example"
+    }
+   },
+   "bytes": "{\"terms\":\"https://seller.example/terms/v3.md\",\"termsFormat\":\"markdown\",\"atrHash\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\",\"acceptanceRequired\":false,\"contact\":{\"legal\":\"legal@seller.example\"}}",
+   "sha256": "027d93681365deb2f485c4c34f7b0da7de8741db90a9fa6ea2437aa70bebd31a",
+   "etag": "\"027d93681365deb2f485c4c34f7b0da7de8741db90a9fa6ea2437aa70bebd31a\""
+  },
+  {
+   "name": "full, members given out of order",
+   "source": "LCP §2.4-§2.5 table order; LCP §2.7's Full example with a real clauseId",
+   "input": {
+    "api": "https://api.example.com/legal-context/v1",
+    "contact": {
+     "technical": "api-support@example.com",
+     "legal": "legal@example.com"
+    },
+    "returns": "https://example.com/api/returns",
+    "disputeResolution": {
+     "catalog": "https://www.{dispute_resolution_service}.org/.well-known/dispute-services.json",
+     "source": "https://www.{dispute_resolution_service}.org/clauses/commercial-arbitration",
+     "clauseId": "sha256:0x9d96e17fd46eb91085fe8e47f714bd58f95300e1a6eb7792fb30d3efdf85446c",
+     "contact": "disputes@example.com",
+     "jurisdiction": "New York, USA",
+     "method": "Dispute Resolution Service Rules"
+    },
+    "acceptanceRequired": true,
+    "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+    "termsFormat": "json",
+    "terms": "https://example.com/terms/v3.json"
+   },
+   "bytes": "{\"terms\":\"https://example.com/terms/v3.json\",\"termsFormat\":\"json\",\"atrHash\":\"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\"acceptanceRequired\":true,\"disputeResolution\":{\"method\":\"Dispute Resolution Service Rules\",\"jurisdiction\":\"New York, USA\",\"contact\":\"disputes@example.com\",\"clauseId\":\"sha256:0x9d96e17fd46eb91085fe8e47f714bd58f95300e1a6eb7792fb30d3efdf85446c\",\"source\":\"https://www.{dispute_resolution_service}.org/clauses/commercial-arbitration\",\"catalog\":\"https://www.{dispute_resolution_service}.org/.well-known/dispute-services.json\"},\"returns\":\"https://example.com/api/returns\",\"contact\":{\"legal\":\"legal@example.com\",\"technical\":\"api-support@example.com\"},\"api\":\"https://api.example.com/legal-context/v1\"}",
+   "sha256": "2551df0f7242e97e2cd6864c36355625ba15133135572ca566910bc42267a604"
+  },
+  {
+   "name": "strings escaped as JSON.stringify escapes them, UTF-8",
+   "source": "ECMA-262 JSON.stringify; RFC 8259 §8.1",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "termsFormat": "café \"q\" \\ —"
+   },
+   "bytes": "{\"terms\":\"https://seller.example/t.md\",\"termsFormat\":\"café \\\"q\\\" \\\\ —\"}",
+   "sha256": "debf8526a3aba366b324be7ecb91424b6e30df7f7d9f6ec189b99064c2cfec3e"
+  },
+  {
+   "name": "an unknown member is not written",
+   "source": "only LCP §2.4-§2.5's members are written",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "mcp": "https://seller.example/mcp"
+   },
+   "bytes": "{\"terms\":\"https://seller.example/t.md\"}"
+  },
+  {
+   "name": "terms over http",
+   "source": "LCP §2.4 'Absolute HTTPS URL'",
+   "input": {
+    "terms": "http://seller.example/terms/v3.md"
+   },
+   "refused": "discovery/terms-not-https"
+  },
+  {
+   "name": "terms relative",
+   "source": "LCP §2.4 'Absolute HTTPS URL'",
+   "input": {
+    "terms": "/terms/v3.md"
+   },
+   "refused": "discovery/terms-not-https"
+  },
+  {
+   "name": "terms absent",
+   "source": "LCP §2.4 REQUIRED",
+   "input": {
+    "termsFormat": "markdown"
+   },
+   "refused": "discovery/terms-missing"
+  },
+  {
+   "name": "terms not a string",
+   "source": "LCP §2.4 string; a known member of the wrong type is refused by name",
+   "input": {
+    "terms": 7
+   },
+   "refused": "discovery/member-malformed/terms"
+  },
+  {
+   "name": "atrHash short",
+   "source": "LCP §2.5 '66 characters'",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "atrHash": "0x1234"
+   },
+   "refused": "discovery/atr-hash-malformed"
+  },
+  {
+   "name": "clauseId placeholder",
+   "source": "LCP §2.5 'Format: sha256:0x<hex>'",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "disputeResolution": {
+     "clauseId": "sha256:0x<hex>"
+    }
+   },
+   "refused": "discovery/clause-id-malformed"
+  },
+  {
+   "name": "acceptanceRequired a string",
+   "source": "LCP §2.5 boolean",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "acceptanceRequired": "false"
+   },
+   "refused": "discovery/member-malformed/acceptanceRequired"
+  },
+  {
+   "name": "contact.legal empty",
+   "source": "LCP §2.5 string; every string member is non-empty",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "contact": {
+     "legal": ""
+    }
+   },
+   "refused": "discovery/member-malformed/contact.legal"
+  },
+  {
+   "name": "contact an array",
+   "source": "LCP §2.5 object",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "contact": [
+     "x"
+    ]
+   },
+   "refused": "discovery/member-malformed/contact"
+  },
+  {
+   "name": "termsFormat null",
+   "source": "LCP §2.5 string; an absent member is omitted, never null",
+   "input": {
+    "terms": "https://seller.example/t.md",
+    "termsFormat": null
+   },
+   "refused": "discovery/member-malformed/termsFormat"
+  },
+  {
+   "name": "over 65,536 bytes",
+   "source": "a document is at most 65,536 bytes",
+   "input": {
+    "terms": "https://seller.example/t.md"
+   },
+   "inputRepeat": {
+    "member": "returns",
+    "char": "r",
+    "count": 65536
+   },
+   "refused": "discovery/too-large"
+  }
+ ],
+ "parse": [
+  {
+   "name": "LCP §2.7 Minimal",
+   "source": "LCP §2.7",
+   "bytes": "{\n  \"terms\": \"https://example.com/terms/v3.md\"\n}\n",
+   "document": {
+    "terms": "https://example.com/terms/v3.md"
+   },
+   "ignored": []
+  },
+  {
+   "name": "LCP §2.7 With ATR hash",
+   "source": "LCP §2.7",
+   "bytes": "{\n  \"terms\": \"https://example.com/terms/v3.md\",\n  \"atrHash\": \"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\"\n}\n",
+   "document": {
+    "terms": "https://example.com/terms/v3.md",
+    "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+   },
+   "ignored": []
+  },
+  {
+   "name": "LCP §2.7 With signed acceptance",
+   "source": "LCP §2.7",
+   "bytes": "{\n  \"terms\": \"https://example.com/terms/v3.md\",\n  \"atrHash\": \"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\n  \"acceptanceRequired\": true\n}\n",
+   "document": {
+    "terms": "https://example.com/terms/v3.md",
+    "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+    "acceptanceRequired": true
+   },
+   "ignored": []
+  },
+  {
+   "name": "LCP §2.7 Full: its clauseId is a placeholder",
+   "source": "LCP §2.5 'Format: sha256:0x<hex>'",
+   "bytes": "{\n  \"terms\": \"https://example.com/terms/v3.json\",\n  \"termsFormat\": \"json\",\n  \"atrHash\": \"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\n  \"acceptanceRequired\": true,\n  \"disputeResolution\": {\n    \"method\": \"Dispute Resolution Service Rules\",\n    \"jurisdiction\": \"New York, USA\",\n    \"contact\": \"disputes@example.com\",\n    \"clauseId\": \"sha256:0x<hex>\",\n    \"source\": \"https://www.{dispute_resolution_service}.org/clauses/commercial-arbitration\",\n    \"catalog\": \"https://www.{dispute_resolution_service}.org/.well-known/dispute-services.json\"\n  },\n  \"returns\": \"https://example.com/api/returns\",\n  \"contact\": {\n    \"legal\": \"legal@example.com\",\n    \"technical\": \"api-support@example.com\"\n  },\n  \"api\": \"https://api.example.com/legal-context/v1\"\n}\n",
+   "refused": "discovery/clause-id-malformed"
+  },
+  {
+   "name": "an unknown member",
+   "source": "LCP §2.5 'SHOULD ignore fields they do not recognize'",
+   "bytes": "{\"terms\":\"https://seller.example/t.md\",\"x-custom\":1}",
+   "document": {
+    "terms": "https://seller.example/t.md"
+   },
+   "ignored": [
+    "x-custom"
+   ]
+  },
+  {
+   "name": "unknown members nested, by dotted path, in order",
+   "source": "LCP §2.5 'SHOULD ignore fields they do not recognize'",
+   "bytes": "{\"a\":1,\"terms\":\"https://seller.example/t.md\",\"contact\":{\"phone\":\"1\",\"legal\":\"l@s.example\"},\"disputeResolution\":{\"x\":{}}}",
+   "document": {
+    "terms": "https://seller.example/t.md",
+    "disputeResolution": {},
+    "contact": {
+     "legal": "l@s.example"
+    }
+   },
+   "ignored": [
+    "a",
+    "contact.phone",
+    "disputeResolution.x"
+   ]
+  },
+  {
+   "name": "atrHash in upper case comes back lowercase",
+   "source": "LCP §2.5: decoded bytes compared; lowercase for emission",
+   "bytes": "{\"terms\":\"https://seller.example/t.md\",\"atrHash\":\"0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD\"}",
+   "document": {
+    "terms": "https://seller.example/t.md",
+    "atrHash": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   "ignored": []
+  },
+  {
+   "name": "atrHash 0x1234",
+   "source": "LCP §2.5 '66 characters'",
+   "bytes": "{\"terms\":\"https://seller.example/t.md\",\"atrHash\":\"0x1234\"}",
+   "refused": "discovery/atr-hash-malformed"
+  },
+  {
+   "name": "terms over http",
+   "source": "LCP §2.4 'Absolute HTTPS URL'",
+   "bytes": "{\"terms\":\"http://seller.example/terms/v3.md\"}",
+   "refused": "discovery/terms-not-https"
+  },
+  {
+   "name": "exactly 65,536 bytes",
+   "source": "a document is at most 65,536 bytes",
+   "padTo": 65536,
+   "document": {
+    "terms": "https://seller.example/t.md"
+   },
+   "ignored": [
+    "x-pad"
+   ]
+  },
+  {
+   "name": "65,537 bytes",
+   "source": "a document is at most 65,536 bytes",
+   "padTo": 65537,
+   "refused": "discovery/too-large"
+  },
+  {
+   "name": "a JSON array",
+   "source": "LCP §2.2: one JSON object",
+   "bytes": "[{\"terms\":\"https://seller.example/t.md\"}]",
+   "refused": "discovery/not-json-object"
+  },
+  {
+   "name": "not JSON",
+   "source": "LCP §2.2 'MUST be valid JSON'",
+   "bytes": "{\"terms\":",
+   "refused": "discovery/not-json-object"
+  },
+  {
+   "name": "a byte order mark",
+   "source": "RFC 8259 §8.1: implementations MUST NOT add a BOM; it is refused as not one JSON object",
+   "bytesHex": "efbbbf7b227465726d73223a2268747470733a2f2f73656c6c65722e6578616d706c652f742e6d64227d",
+   "refused": "discovery/not-json-object"
+  },
+  {
+   "name": "invalid UTF-8",
+   "source": "LCP §2.2; RFC 8259 §8.1: UTF-8",
+   "bytesHex": "7b227465726d73223a2268747470733a2f2f73656c6c65722e6578616d706c652f742e6d64222c2278223a22ff227d",
+   "refused": "discovery/not-json-object"
+  },
+  {
+   "name": "a duplicated member: the last one is read, as JSON.parse and Python's json read it",
+   "source": "RFC 8259 §4 leaves duplicate names to the receiver; this file fixes the reading for the TypeScript and Python implementations",
+   "bytes": "{\"terms\":\"http://seller.example/a.md\",\"terms\":\"https://seller.example/b.md\"}",
+   "document": {
+    "terms": "https://seller.example/b.md"
+   },
+   "ignored": []
+  }
+ ]
+}

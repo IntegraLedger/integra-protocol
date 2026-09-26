@@ -1,0 +1,260 @@
+{
+ "about": "Vectors for mpp/charge/tempo/memo and the tempo entry point's memo pieces. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "fixed": {
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "pathUSD": "0x20c0000000000000000000000000000000000000",
+  "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+  "otherRealm": "api.other.example"
+ },
+ "MV7": {
+  "case": "attributionMemo, checkAttribution, memoCalldata, the wire T, bound and reference",
+  "expectMemo": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a",
+  "expectMemoPosition1": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000494da423201d8a",
+  "memoMalformed": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db95",
+  "expectMismatch": {
+   "refused": true,
+   "code": "mpp/attribution-mismatch"
+  },
+  "expectMalformed": {
+   "refused": true,
+   "code": "mpp/attribution-malformed"
+  },
+  "expectCalldata": "0x95777d59000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000f4240ef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a",
+  "selectorSignature": "transferWithMemo(address,uint256,bytes32)",
+  "expectSelector": "0x95777d59",
+  "topicSignature": "TransferWithMemo(address,address,uint256,bytes32)",
+  "wire": "0x76 ‖ rlp([42431, 1, 2, 100000, [[pathUSD, 0, calldata]], [], 0, 0, 1790000060, \"\", pathUSD, \"\", [], 0x11 × 65])",
+  "expectWireLength": 239,
+  "expectWireSha256": "0xad29605928dbeb9936c7c92280b51d380079aa75f0a1b03f155ba897b6d8a833",
+  "expectReferenceDigest": "0x2125318d12de23ffa1e27bca7517988def94ae614f43f3ca5507a0a28d382c5f"
+ },
+ "MV8": {
+  "case": "status on fixture receipts, finalized 100",
+  "expectSettled": {
+   "state": "settled",
+   "finality": "finalized",
+   "blockNumber": "100"
+  },
+  "expectOtherEmitter": {
+   "state": "failed",
+   "why": "binding-log-not-found"
+  },
+  "guard": "0xb10c000000000000000000000000000000000000",
+  "expectBlocked": {
+   "state": "failed",
+   "why": "receive-policy-blocked"
+  }
+ },
+ "plant": {
+  "case": "T with its memo word replaced by A_T1, the attribution memo of the challenge ….1, presented against MV3's challenge ….0",
+  "expect": {
+   "refused": true,
+   "code": "tempo/memo-not-bound"
+  }
+ },
+ "pattern": {
+  "pattern": "opaque-challenge",
+  "canonical": true,
+  "buyerSigns": false,
+  "claims": true,
+  "onChain": false,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "proves": "The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event. It ties the payment to the challenge instance, and does not exclude another challenge with the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content."
+ },
+ "splits": {
+  "about": "Tempo split payments, built by the buyer gate as several calls in one Tempo transaction. The splits and their amounts are the Tempo charge draft's own example (draft-tempo-charge-00 at 08e7dd87, L276-305); the rules are its L223-318: the primary recipient receives amount minus the sum of the splits (L233), each split with a memo uses transferWithMemo (L313-315), calls in array order (L273), and a client rejects a request whose splits sum to amount or more (L255-258). The calldata is hand-encoded: selector, the address left-padded to 32 bytes, the amount as a 32-byte word, then the memo.",
+  "request": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"supportedModes\":[\"pull\"],\"splits\":[{\"amount\":\"50000\",\"recipient\":\"0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2\"},{\"amount\":\"10000\",\"memo\":\"0x00000000000000000000000000000000000000000000000000000000deadbeef\",\"recipient\":\"0xC4D5E6F7A8B9C4D5E6F7A8B9C4D5E6F7A8B9C4D5\"}]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+  "expectPrimaryAmount": "940000",
+  "expectCalls": [
+   {
+    "to": "0x20c0000000000000000000000000000000000000",
+    "data": "0x95777d59000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000e57e0ef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a"
+   },
+   {
+    "to": "0x20c0000000000000000000000000000000000000",
+    "data": "0xa9059cbb000000000000000000000000a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2000000000000000000000000000000000000000000000000000000000000c350"
+   },
+   {
+    "to": "0x20c0000000000000000000000000000000000000",
+    "data": "0x95777d59000000000000000000000000c4d5e6f7a8b9c4d5e6f7a8b9c4d5e6f7a8b9c4d5000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000deadbeef"
+   }
+  ],
+  "agreedRefusals": {
+   "about": "Refusal codes the specification leaves to the implementation, as the buyer gate applies them to a Tempo challenge's splits.",
+   "rows": [
+    {
+     "case": "splits summing to amount (1000000)",
+     "splits": [
+      {
+       "amount": "1000000",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      }
+     ],
+     "expect": "mpp/input-malformed"
+    },
+    {
+     "case": "an empty splits list",
+     "splits": [],
+     "expect": "mpp/splits-malformed"
+    },
+    {
+     "case": "eleven splits",
+     "splits": [
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      },
+      {
+       "amount": "1",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      }
+     ],
+     "expect": "mpp/splits-malformed"
+    },
+    {
+     "case": "a split of amount 0",
+     "splits": [
+      {
+       "amount": "0",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      }
+     ],
+     "expect": "mpp/splits-malformed"
+    },
+    {
+     "case": "a split whose recipient is not an address",
+     "splits": [
+      {
+       "amount": "1",
+       "recipient": "0xA1B2"
+      }
+     ],
+     "expect": "mpp/splits-malformed"
+    },
+    {
+     "case": "a split whose memo is not 32 bytes of hex",
+     "splits": [
+      {
+       "amount": "1",
+       "memo": "0xdeadbeef",
+       "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
+      }
+     ],
+     "expect": "mpp/splits-malformed"
+    }
+   ]
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/tempo/memo",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "tempo",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiIweDIwYzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjQyNDMxLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIweDc0MmQzNUNjNjYzNEMwNTMyOTI1YTNiODQ0QmM5ZTc1OTVmOGZFMDAifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:42431:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/tempo/memo",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "tempo",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiIweDIwYzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjQyNDMxLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIweDc0MmQzNUNjNjYzNEMwNTMyOTI1YTNiODQ0QmM5ZTc1OTVmOGZFMDAifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "did:pkh:eip155:42431:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payload": {
+       "type": "transaction",
+       "signature": "0x76f8ec82a5bf0102830186a0f87ef87c9420c000000000000000000000000000000000000080b86495777d59000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000f4240ef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955ac08080846ab13bbc809420c000000000000000000000000000000000000080c0b8411111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented carries MV7's wire T, built from MV7.wire's fields: its length is MV7.expectWireLength and its SHA-256 is MV7.expectWireSha256. Its signature field is MV7.wire's 0x11 × 65."
+   }
+  ]
+ }
+}

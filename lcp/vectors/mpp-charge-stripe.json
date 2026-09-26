@@ -1,0 +1,135 @@
+{
+ "about": "Vectors for mpp/charge/stripe, on MPP's own example request (draft-stripe-charge-00). Stripe metadata allows up to 50 keys, key names up to 40 characters and values up to 500; the legal_context key has no square brackets. The refusal rows apply those bounds.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "expiresUnix": 1790000060,
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "metadataKey": "legal_context"
+ },
+ "M2": {
+  "case": "advertise sets methodDetails.metadata.legal_context = L; the issued digest of the request as issued and of the echo",
+  "request": {
+   "amount": "5000",
+   "currency": "usd",
+   "methodDetails": {
+    "networkId": "profile_1MqDcVKA5fEO2tZvKQm9g8Yj",
+    "paymentMethodTypes": [
+     "card",
+     "link"
+    ]
+   }
+  },
+  "expectDigest": "0xff8f1124954ee81aa60e4c56417c19fcccbae237a865b12a704d3bb2b038fc57",
+  "expectBuild": {
+   "refused": true,
+   "code": "mpp/no-signed-place"
+  },
+  "expectBound": {
+   "refused": true,
+   "code": "mpp/no-signed-place"
+  }
+ },
+ "refusals": {
+  "rows": [
+   {
+    "case": "metadata.legal_context already order_12345",
+    "metadata": {
+     "legal_context": "order_12345"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/carrier-occupied"
+    }
+   },
+   {
+    "case": "50 seller keys leave no room for legal_context",
+    "metadataKeys": 50,
+    "expect": {
+     "refused": true,
+     "code": "mpp/metadata-malformed"
+    }
+   },
+   {
+    "case": "a key with square brackets",
+    "metadata": {
+     "order[id]": "1"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/metadata-malformed"
+    }
+   },
+   {
+    "case": "a key of 41 characters",
+    "metadata": {
+     "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": "1"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/metadata-malformed"
+    }
+   },
+   {
+    "case": "a value of 501 characters",
+    "metadata": {
+     "note": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/metadata-malformed"
+    }
+   }
+  ]
+ },
+ "pattern": {
+  "pattern": "opaque-challenge",
+  "canonical": true,
+  "buyerSigns": false,
+  "claims": false,
+  "onChain": false,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": false,
+  "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was in the seller's storage before payment. The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the challenge by the seller's own server, and the buyer's credential echoed that challenge. The seller also placed the hash in the method's reference field (externalId for card; the PaymentIntent's metadata for Stripe). Nothing the buyer or its card or Stripe token signed carries the hash, and the seller checked nothing the buyer signed. Settlement is the seller's report. This record does not show that the buyer's approval carried the hash."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/stripe",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "stripe",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiI1MDAwIiwiY3VycmVuY3kiOiJ1c2QiLCJtZXRob2REZXRhaWxzIjp7Im1ldGFkYXRhIjp7ImxlZ2FsX2NvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9LCJuZXR3b3JrSWQiOiJwcm9maWxlXzFNcURjVktBNWZFTzJ0WnZLUW05ZzhZaiIsInBheW1lbnRNZXRob2RUeXBlcyI6WyJjYXJkIiwibGluayJdfX0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "mpp/charge/stripe": "The buyer signs nothing (buyerSigns false): the file holds no payment that carries H."
+  }
+ }
+}

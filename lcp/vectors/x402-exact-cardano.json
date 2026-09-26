@@ -1,0 +1,304 @@
+{
+ "about": "Vectors for the x402/exact/cardano pairing: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29\u2026c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "O": {
+   "scheme": "exact",
+   "network": "cardano:preprod",
+   "amount": "2000000",
+   "asset": "lovelace",
+   "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+   "maxTimeoutSeconds": 60
+  },
+  "nonce": "1111111111111111111111111111111111111111111111111111111111111111#0",
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V1": {
+  "auxiliaryDataHex": "d90103a100a11902a2a1636d7367826d6c63703a7368613235363a3078784062613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+  "bytes": 95,
+  "blake2b": "0x975482a8810b92bc8fa12ecee0826b936ef584e8af3b5abd4530b9f40e69f8fb"
+ },
+ "V2": {
+  "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk",
+  "bytes": 363,
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "cardano:preprod",
+   "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+   "ttlSlot": "134620000"
+  }
+ },
+ "V3": {
+  "transactionBase64": "hKQA2QEChYJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2BYJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2AIJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2AYJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2BIJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2AwGGogBYHWDjKhMKOIcvneAqWYOG2pCukVIJGM48WanayD+WARoJf5r6ogBYHWDzXXJK4GGa9TM4LRBiryOGa+2SFDPYt0mp2sDsARoqIvhDogBYOQAAt4R8idVyFZL8DMiTL1Co+CWLObk4YRQKG5n7wvRaFqZoVhblZsAPwIH+Wfi9erZ57hXpziA0RgGCGgBMS0ChWBzmdbRuTSJCyZGokyqZ2zBE6AUVrhS0xMz2s/TJoUkAFN8QdFVTRE0aO5rKAKIAWB1wXqseErqa9Rql/fFvf5H77AwKFUu2dYq94ffR/AGCGgAQgdKhWBzmdbRuTSJCyZGokyqZ2zBE6AUVrhS0xMz2s/TJoUkAFN8QdFVTRE0bAAAI0nUN6ACiAFgdcF6rHhK6mvUapf3xb3+R++wMChVLtnWKveH30fwBGwAAAA7xty2OogBYHWBg0KcPo1u1FDY38GfJx4LLbycQMPz4lHLh7AVVARoQvRbiAhoAAx/5B1gg08j9Shq66ANLmUDl7S3r9EkBp1B+dc5NkhieM9A9p96iANkBAoSCWCCCAWuI/ClHePw4d4nior6cgU72KWTBgq18AaF6rt0w7lhA518A7H6UHgUNjMwb4sDNKg/VvidFnlDOLPF0Lly5IoiD7LKT3Jhfe67kEYD/vAD8sneCNOkan05BrlkjD1QGCIJYIE0f9EGuK60F85qKJBm+uJrXDepVXBfQ1boRqeHatqChWECT1zobAK7X5XbEmjfi/VMhrnO7JILnYwkXO2dokIJOcKnRq239AQkIvv0ZATs21rr/hQEu8syJTdQ9XSeg6wEKglggE+X5p6+WhW7gJheqVDbrs2L78zgaBskyrTeStdhd/oNYQB5+HvtkJ00LeBvDzS7Zd6IbgI0wR254FRMRCvc0OP8+xYJwHJE6nCYwICqXNhb0qRSQ1VYFkvCYcBUR6JrSSQmCWCAz8ep4FhUYm6L29VEyjNXjzqzCrA0p+d3Hsm/Or3M0g1hA7AgbnEmXRyDdC9oDC5/f62SZpAaiRVPJOiqDP7uDGcozWylSdo5RQ/o3X1SKTcHvCSzs/BkgL3CabncRFoHKCwHZAQKBggGCggBYHGDQpw+jW7UUNjfwZ8nHgstvJxAw/PiUcuHsBVWCAFgcASa4t+4lyxG1gRfQLZfrKawpVPt4PLsn5pJNBfXZAQOhAKEZAqKhY21zZ4F4G2h0dHBzOi8vdHVzZG0ubW9uZXRhLmdsb2JhbA==",
+  "bytes": 1123,
+  "txId": "0x628eca2962e60d5666e84718d708a1789b73b673a39175af2f4af43bc73ef4be",
+  "auxHash": "0xd3c8fd4a1abae8034b9940e5ed2debf44901a7507e75ce4d92189e33d03da7de",
+  "expectBound": "cardano/hash-not-carried",
+  "expectReference": "cardano/ttl-missing"
+ },
+ "V4": [
+  {
+   "case": "two marker pairs",
+   "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCBlrlJVIN6qMzFxTvtIb0TS3lbOwKMzdgtV2Xw0z3cLgKEAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWED5THZaviX+HRomtX4qMt5Jh9dvkQg96npqCAsYOq8tAeVw3Zenb36dZkkzBZaHFGp/okKBHWNqhce/TwbEUlgF9dkBA6EAoRkCoqFjbXNnhG1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkbWxjcDpzaGEyNTY6MHh4QGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+   "expectBound": "cardano/ambiguous"
+  },
+  {
+   "case": "the marker followed by upper-case hex",
+   "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCBTXjsd1jgB9MoS7ts7mB7nKKxc886v54DbGRQGo9maKqEAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEDnyY15EzhFgOewIpPZLQeP1YYqhK0Qu6INh1S00LVzeVFBoT2/EP0+7+1AEIZ3vXB6gU9gNAefzP0bv3Th/MsJ9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFE",
+   "expectBound": "cardano/hash-not-carried"
+  },
+  {
+   "case": "no auxiliary data and no key 7",
+   "transactionBase64": "hKQAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2ChAIGCWCBIg68tFkkaiRjjGVW6GAW4qkOBUDVKMOJbBuMf/D3hWlhAs8WRH6hO3BloaHeOCol6s2scf24d57C1v/W58FmteZGNtpCSN2c0ZJttWYqHFaCfu93ojc/xQGI69s9weJYRC/X2",
+   "expectBound": "cardano/aux-missing"
+  },
+  {
+   "case": "a trailing byte after the array",
+   "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+   "expectBound": "cardano/tx-malformed"
+  },
+  {
+   "case": "network cardano:sanchonet",
+   "network": "cardano:sanchonet",
+   "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk",
+   "expectBound": "cardano/network-malformed"
+  }
+ ],
+ "V5": {
+  "ref": {
+   "network": "cardano:preprod",
+   "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+   "ttlSlot": "134620000"
+  },
+  "tip": {
+   "blockHeight": "5216538",
+   "slot": "134617495"
+  },
+  "status": [
+   {
+    "case": "in block 5216518, valid",
+    "tx": {
+     "blockHeight": "5216518",
+     "slot": "134617000",
+     "valid": true
+    },
+    "expect": {
+     "state": "settled",
+     "confirmations": "20",
+     "blockHeight": "5216518"
+    }
+   },
+   {
+    "case": "valid false",
+    "tx": {
+     "blockHeight": "5216518",
+     "slot": "134617000",
+     "valid": false
+    },
+    "expect": {
+     "state": "failed",
+     "why": "phase-2-invalid"
+    }
+   },
+   {
+    "case": "null",
+    "tx": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "null with tip slot 134620001",
+    "tip": {
+     "blockHeight": "5216538",
+     "slot": "134620001"
+    },
+    "tx": null,
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "a ReaderError",
+    "readerError": true,
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": [
+   {
+    "case": "V2's bytes as cbor",
+    "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+    "cbor": "V2",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "V3's bytes under V3's id",
+    "txId": "0x628eca2962e60d5666e84718d708a1789b73b673a39175af2f4af43bc73ef4be",
+    "cbor": "V3",
+    "expect": "cardano/hash-not-carried"
+   }
+  ]
+ },
+ "plant": {
+  "case": "V2 with the auxiliary data's last byte changed from 64 to 63 and the body untouched",
+  "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFj",
+  "alteredAuxBlake2b": "0x6fcf0e7ec6ff255dc887241530f2660f377087f834deec93f86331297434e25a",
+  "expectBound": "cardano/aux-hash-mismatch"
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation.",
+  "rows": [
+   {
+    "case": "a transaction that is not padded standard base64",
+    "expect": "cardano/tx-malformed"
+   },
+   {
+    "case": "a body that is not a map, duplicate or non-integer body keys, a non-integer key 3, key 7 not 32 bytes, or the third item not a bool",
+    "expect": "cardano/tx-malformed"
+   },
+   {
+    "case": "key 7 present with nil auxiliary data",
+    "expect": "cardano/aux-missing"
+   },
+   {
+    "case": "auxiliary data in none of the three metadata forms, or without label 674",
+    "expect": "cardano/hash-not-carried"
+   },
+   {
+    "case": "an option with scheme exact and a cardano: or cip34: network outside the named set",
+    "expect": "cardano/network-malformed"
+   },
+   {
+    "case": "payload.transaction not a string, or payload.nonce not a string of at most 256 characters",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "recover on included bytes whose body does not hash to the id, or with no cbor",
+    "expect": "cardano/unreadable"
+   },
+   {
+    "case": "status: an inclusion read above the tip read before it",
+    "expect": "settled with 0 confirmations"
+   },
+   {
+    "case": "complete with a payload whose bound is not the built hash, or whose reference refuses",
+    "expect": "x402/signed-not-bound"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/cardano",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "cardano:preprod",
+        "amount": "2000000",
+        "asset": "lovelace",
+        "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+        "maxTimeoutSeconds": 60
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "cardano:preprod:addr%5Ftest1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/cardano",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "exact",
+       "network": "cardano:preprod",
+       "amount": "2000000",
+       "asset": "lovelace",
+       "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+       "maxTimeoutSeconds": 60
+      },
+      "payload": {
+       "transaction": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk",
+       "nonce": "1111111111111111111111111111111111111111111111111111111111111111#0"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

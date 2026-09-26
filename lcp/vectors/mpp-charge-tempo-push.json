@@ -1,0 +1,173 @@
+{
+ "about": "Vectors for mpp/charge/tempo/push. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges. The log layout (from, to and memo as topics 1-3, the amount as data word 0) is that of a live TransferWithMemo on Tempo Moderato.",
+ "fixed": {
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "pathUSD": "0x20c0000000000000000000000000000000000000",
+  "otherTip20": "0x20c0000000000000000000000000000000000001",
+  "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+  "R_TNoModes": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+  "R_TFeePayer": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"feePayer\":true},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
+ },
+ "MV13": {
+  "case": "pairingsOf, build, fetchPresented on a fixture receipt, bound, reference",
+  "expectPairings": [
+   "mpp/charge/tempo/memo",
+   "mpp/charge/tempo/push"
+  ],
+  "expectFeePayer": [
+   "mpp/charge/tempo/memo"
+  ],
+  "T_P": "0x1111111111111111111111111111111111111111111111111111111111111111",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "100",
+   "logs": [
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0x57bc7354aa85aed339e000bccffabbc529466af35f0772c8f8ee1145927de7f0",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00",
+      "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+    }
+   ]
+  },
+  "expectReferenceDigest": "0x2125318d12de23ffa1e27bca7517988def94ae614f43f3ca5507a0a28d382c5f",
+  "expectNotFound": {
+   "refused": true,
+   "code": "tempo/not-found"
+  },
+  "expectReverted": {
+   "refused": true,
+   "code": "tempo/reverted"
+  }
+ },
+ "plant": {
+  "case": "MV13's receipt with its TransferWithMemo emitted by 0x20c0…0001, another TIP-20, and no memo log from pathUSD",
+  "expect": {
+   "refused": true,
+   "code": "tempo/memo-not-bound"
+  }
+ },
+ "pattern": {
+  "pattern": "opaque-challenge",
+  "canonical": true,
+  "buyerSigns": false,
+  "claims": true,
+  "onChain": false,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "provesRule": "as tempo/memo, with \"signed and broadcast\" and \"read after the money had moved\""
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/tempo/push",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "tempo",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiIweDIwYzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjQyNDMxfSwicmVjaXBpZW50IjoiMHg3NDJkMzVDYzY2MzRDMDUzMjkyNWEzYjg0NEJjOWU3NTk1ZjhmRTAwIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:42431:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/tempo/push",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "tempo",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiIweDIwYzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjQyNDMxfSwicmVjaXBpZW50IjoiMHg3NDJkMzVDYzY2MzRDMDUzMjkyNWEzYjg0NEJjOWU3NTk1ZjhmRTAwIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "did:pkh:eip155:42431:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payload": {
+       "type": "hash",
+       "hash": "0x1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "landed": {
+       "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+       "blockNumber": "100",
+       "logs": [
+        {
+         "address": "0x20c0000000000000000000000000000000000000",
+         "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+          "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+         ],
+         "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+        },
+        {
+         "address": "0x20c0000000000000000000000000000000000000",
+         "topics": [
+          "0x57bc7354aa85aed339e000bccffabbc529466af35f0772c8f8ee1145927de7f0",
+          "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+          "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00",
+          "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a"
+         ],
+         "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+        }
+       ]
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's MV13 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

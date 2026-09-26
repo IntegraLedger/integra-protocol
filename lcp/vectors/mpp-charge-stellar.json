@@ -1,0 +1,188 @@
+{
+ "about": "Vectors for mpp/charge/stellar. Fixtures are seller seed 04, payer seed 05, an asset of 06×32, and x402-exact-stellar.json's V1 muxed address, V2 preimage hash and V3 envelope. The placed request is computed with Python 3 json and base64url.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "MV3opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9",
+  "request": {
+   "amount": "10000000",
+   "currency": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+   "recipient": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+   "methodDetails": {
+    "network": "stellar:testnet",
+    "feePayer": true
+   }
+  },
+  "muxed": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO"
+ },
+ "challenge": {
+  "realm": "api.seller.example",
+  "method": "stellar",
+  "intent": "charge",
+  "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0In0sInJlY2lwaWVudCI6IkdERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haRFFQIn0",
+  "expires": "2026-09-21T14:14:20Z"
+ },
+ "place": {
+  "case": "advertise sets id MV1, opaque MV3 and recipient = V1's muxed address",
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "stellar",
+   "intent": "charge",
+   "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0In0sInJlY2lwaWVudCI6Ik1ERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haT1RZQzI3WTZBT1A1TEpRTyJ9",
+   "expires": "2026-09-21T14:14:20Z",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+  }
+ },
+ "occupied": {
+  "case": "advertise on a request whose recipient is already V1's M",
+  "request": {
+   "amount": "10000000",
+   "currency": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+   "recipient": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+   "methodDetails": {
+    "network": "stellar:testnet",
+    "feePayer": true
+   }
+  },
+  "expect": "stellar/carrier-occupied"
+ },
+ "V3": {
+  "case": "V3's envelope in a type=transaction credential on the placed challenge",
+  "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "stellar:testnet",
+   "authDigest": "0x26a00b3f3ce20604108b34ee3d49eae2195622b5b372b83a37db4e3e90f9f2a9",
+   "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+   "toBase": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+   "toId": "13436514500253700074",
+   "expiration": 1000,
+   "fromLedger": 0
+  }
+ },
+ "plant": {
+  "case": "V4's envelope whose to is the plain seller G: bound must refuse stellar/no-carrier, never H",
+  "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAAA",
+  "expect": "stellar/no-carrier"
+ },
+ "refusals": [
+  {
+   "case": "type=hash not yet fetched",
+   "payload": {
+    "type": "hash",
+    "hash": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+   },
+   "expect": "stellar/read-first"
+  },
+  {
+   "case": "the echoed challenge names H2 (id and opaque), with V3's envelope carrying H's 8 bytes",
+   "expect": "stellar/carrier-mismatch"
+  }
+ ],
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation.",
+  "rows": [
+   {
+    "case": "pairingsOf with a network other than stellar:pubnet or stellar:testnet, a currency not a C strkey, a recipient neither G nor M, or amount not decimal",
+    "expect": "stellar/option-malformed"
+   },
+   {
+    "case": "advertise on a recipient that is not a valid G strkey",
+    "expect": "stellar/option-malformed"
+   },
+   {
+    "case": "fetchPresented when the reader fails",
+    "expect": "stellar/unreadable"
+   },
+   {
+    "case": "fetchPresented when the transaction is not found or has no envelope",
+    "expect": "stellar/not-found"
+   },
+   {
+    "case": "a payload type other than transaction or hash",
+    "expect": "mpp/credential-type"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/stellar",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "stellar",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0In0sInJlY2lwaWVudCI6Ik1ERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haT1RZQzI3WTZBT1A1TEpRTyJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "stellar:testnet:GBXHUHG5FGYLPD6RHL2MKWMP572O6KUXCZXDZJXS4T57ZTMAKBN7DWXN",
+     "inputs": {
+      "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+      "currentLedger": 988
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/stellar",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "stellar",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0In0sInJlY2lwaWVudCI6Ik1ERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haT1RZQzI3WTZBT1A1TEpRTyJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "type": "transaction",
+       "transaction": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

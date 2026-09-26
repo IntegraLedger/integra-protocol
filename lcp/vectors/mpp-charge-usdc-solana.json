@@ -1,0 +1,196 @@
+{
+ "about": "Vectors for mpp/charge/usdc/solana: the Solana charge with method usdc, its details read from methodDetails.solana, whose network is required (draft-usdc-charge-00, Solana profile). The request, the wire and the expected reference are mpp-charge-solana.json's, so the expected values are that file's. The usdc profile rule is the draft's: methodDetails.type names exactly one profile details object.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "expiresUnix": 1790000060,
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "request": {
+   "amount": "1000",
+   "currency": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "methodDetails": {
+    "type": "solana",
+    "solana": {
+     "network": "devnet",
+     "decimals": 6,
+     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+     "feePayer": true,
+     "feePayerKey": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+    }
+   }
+  }
+ },
+ "V2": {
+  "case": "mpp-charge-solana.json's V2 wire in a type=transaction credential for the usdc challenge whose externalId is L",
+  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+  }
+ },
+ "refusals": {
+  "rows": [
+   {
+    "case": "externalId already order_12345",
+    "externalId": "order_12345",
+    "expect": {
+     "refused": true,
+     "code": "mpp/carrier-occupied"
+    }
+   },
+   {
+    "case": "methodDetails.type solana with an evm details object beside",
+    "extra": {
+     "evm": {
+      "chainId": 84532
+     }
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/usdc-profile"
+    }
+   },
+   {
+    "case": "methodDetails.type tron",
+    "type": "tron",
+    "expect": {
+     "refused": true,
+     "code": "mpp/usdc-profile"
+    }
+   },
+   {
+    "case": "methodDetails.solana without network",
+    "dropNetwork": true,
+    "expect": {
+     "refused": true,
+     "code": "svm/network-malformed"
+    }
+   }
+  ],
+  "credentials": {
+   "about": "The usdc draft's Solana profile: credentials MUST use payload.type=\"transaction\" (pull mode). bound and reference of any other type, against the placed challenge, refuse with the code given; no landed payment is read.",
+   "rows": [
+    {
+     "case": "type=bundle ending in V2's wire",
+     "payload": {
+      "type": "bundle",
+      "transactions": [
+       "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+      ]
+     },
+     "expect": {
+      "refused": true,
+      "code": "mpp/credential-type"
+     }
+    },
+    {
+     "case": "type=signature not fetched",
+     "payload": {
+      "type": "signature",
+      "signature": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z"
+     },
+     "expect": {
+      "refused": true,
+      "code": "mpp/credential-type"
+     }
+    },
+    {
+     "case": "type=signature carrying V2's wire as transaction",
+     "payload": {
+      "type": "signature",
+      "signature": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+      "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+     },
+     "expect": {
+      "refused": true,
+      "code": "mpp/credential-type"
+     }
+    }
+   ]
+  }
+ },
+ "patternAs": "mpp/charge/solana",
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/usdc/solana",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "usdc",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsic29sYW5hIjp7ImRlY2ltYWxzIjo2LCJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJLZXkiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwidHlwZSI6InNvbGFuYSJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {
+      "computeUnitLimit": 20000,
+      "computeUnitPrice": "1"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/usdc/solana",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "usdc",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsic29sYW5hIjp7ImRlY2ltYWxzIjo2LCJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJLZXkiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwidHlwZSI6InNvbGFuYSJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "type": "transaction",
+       "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

@@ -1,0 +1,473 @@
+{
+ "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is printf '%s' '0.0.5001,0.0.4001,100000000' | sha256sum, and Python hashlib printed the same.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "O": {
+   "scheme": "exact",
+   "network": "hedera:testnet",
+   "amount": "100000000",
+   "asset": "0.0.0",
+   "payTo": "0.0.4001",
+   "maxTimeoutSeconds": 120,
+   "extra": {
+    "assetTransferMethod": "transferExecutor",
+    "executors": [
+     "0.0.7000"
+    ]
+   }
+  },
+  "payload": {
+   "payer": "0.0.5001",
+   "executor": "0.0.7000",
+   "authorization": "0x0f2c9d1a"
+  },
+  "resource": {
+   "url": "https://example.com/weather"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "now": 1755500000
+ },
+ "pairingOf": [
+  {
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "100000000",
+    "asset": "0.0.0",
+    "payTo": "0.0.4001",
+    "maxTimeoutSeconds": 120,
+    "extra": {
+     "assetTransferMethod": "transferExecutor",
+     "executors": [
+      "0.0.7000"
+     ]
+    }
+   },
+   "expect": "x402/exact/hedera/transfer-executor"
+  },
+  {
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "100000000",
+    "asset": "0.0.0",
+    "payTo": "0.0.4001",
+    "maxTimeoutSeconds": 120,
+    "extra": {
+     "assetTransferMethod": "cryptoTransfer",
+     "feePayer": "0.0.1235"
+    }
+   },
+   "expect": "x402/exact/hedera"
+  },
+  {
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "100000000",
+    "asset": "0.0.0",
+    "payTo": "0.0.4001",
+    "maxTimeoutSeconds": 120,
+    "extra": {
+     "assetTransferMethod": "approve",
+     "executors": [
+      "0.0.7000"
+     ]
+    }
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "100000000",
+    "asset": "0.0.0",
+    "payTo": "0.0.4001",
+    "maxTimeoutSeconds": 120,
+    "extra": {
+     "assetTransferMethod": "transferExecutor"
+    }
+   },
+   "expect": "hedera/option-malformed",
+   "source": "a quote that omits executors cannot be paid"
+  },
+  {
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "100000000",
+    "asset": "0.0.0",
+    "payTo": "0.0.4001",
+    "maxTimeoutSeconds": 120,
+    "extra": {
+     "assetTransferMethod": "transferExecutor",
+     "executors": [
+      "*"
+     ]
+    }
+   },
+   "expect": "hedera/option-malformed",
+   "source": "shard.realm.num ids are required"
+  }
+ ],
+ "build": {
+  "expectRequest": {
+   "kind": "hedera-executor",
+   "network": "hedera:testnet",
+   "executors": [
+    "0.0.7000"
+   ],
+   "asset": "0.0.0",
+   "payTo": "0.0.4001",
+   "amount": "100000000",
+   "validBefore": 1755500120
+  }
+ },
+ "complete": [
+  {
+   "executor": "0.0.7001",
+   "expect": "hedera/executor-not-offered"
+  },
+  {
+   "authorization": "0f2c",
+   "expect": "hedera/executor-malformed",
+   "source": "implementation"
+  },
+  {
+   "payer": "alice",
+   "expect": "hedera/executor-malformed",
+   "source": "implementation"
+  }
+ ],
+ "bound": {
+  "expectWithExtension": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectWithoutExtension": "hedera/no-legal-context"
+ },
+ "reference": {
+  "expectIdDigest": "0xe3c70ca164e2edb9392b9914239c506f3d4e6bcbcbe701819c7c3b2721c935c3"
+ },
+ "status": {
+  "reference": {
+   "network": "hedera:testnet",
+   "asset": "0.0.0",
+   "idDigest": "0xe3c70ca164e2edb9392b9914239c506f3d4e6bcbcbe701819c7c3b2721c935c3",
+   "transaction": "0.0.9000-1755500000-000000000"
+  },
+  "readerNetwork": "hedera:testnet",
+  "rows": [
+   {
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    }
+   },
+   {
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    }
+   },
+   {
+    "entries": [
+     {
+      "result": "CONTRACT_REVERT_EXECUTED",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "result:CONTRACT_REVERT_EXECUTED"
+    }
+   },
+   {
+    "entries": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   }
+  ]
+ },
+ "plant": {
+  "case": "the child credits 0.0.4002 instead of 0.0.4001: never settled",
+  "entries": [
+   {
+    "result": "SUCCESS",
+    "nonce": 0,
+    "scheduled": false,
+    "memo_base64": null,
+    "consensus_timestamp": "1755500003.000000001",
+    "transfers": [
+     {
+      "account": "0.0.9000",
+      "amount": -5000000
+     },
+     {
+      "account": "0.0.3",
+      "amount": 250000
+     },
+     {
+      "account": "0.0.98",
+      "amount": 4750000
+     }
+    ]
+   },
+   {
+    "result": "SUCCESS",
+    "nonce": 1,
+    "scheduled": false,
+    "memo_base64": null,
+    "consensus_timestamp": "1755500003.000000002",
+    "transfers": [
+     {
+      "account": "0.0.5001",
+      "amount": -100000000
+     },
+     {
+      "account": "0.0.4002",
+      "amount": 100000000
+     }
+    ]
+   }
+  ],
+  "expect": {
+   "state": "failed",
+   "why": "not-this-instrument"
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/hedera/transfer-executor",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://example.com/weather"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "hedera:testnet",
+        "amount": "100000000",
+        "asset": "0.0.0",
+        "payTo": "0.0.4001",
+        "maxTimeoutSeconds": 120,
+        "extra": {
+         "assetTransferMethod": "transferExecutor",
+         "executors": [
+          "0.0.7000"
+         ]
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "hedera:testnet:0.0.5001",
+     "now": 1755500000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/hedera/transfer-executor",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://example.com/weather"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "hedera:testnet",
+       "amount": "100000000",
+       "asset": "0.0.0",
+       "payTo": "0.0.4001",
+       "maxTimeoutSeconds": 120,
+       "extra": {
+        "assetTransferMethod": "transferExecutor",
+        "executors": [
+         "0.0.7000"
+        ]
+       }
+      },
+      "payload": {
+       "payer": "0.0.5001",
+       "executor": "0.0.7000",
+       "authorization": "0x0f2c9d1a"
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's bound payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

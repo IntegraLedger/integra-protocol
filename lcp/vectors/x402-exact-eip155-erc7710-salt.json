@@ -1,0 +1,258 @@
+{
+ "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes the specification leaves to the implementation are marked implementationCode. The leaf L's caveat is arbitrary: bound never reads caveats.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "option": {
+   "scheme": "exact",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "name": "USDC",
+    "version": "2",
+    "assetTransferMethod": "erc7710"
+   }
+  },
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+  "leaf": {
+   "delegate": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+   "delegator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+   "authority": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "caveats": [
+    {
+     "enforcer": "0x1111111111111111111111111111111111111111",
+     "terms": "0x1234",
+     "args": "0x"
+    }
+   ],
+   "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "delegationDomain": {
+   "name": "DelegationManager",
+   "version": "1",
+   "chainId": 84532,
+   "verifyingContract": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3"
+  }
+ },
+ "EV8": {
+  "expectStructHash": "0x90bc4f98b9392ad0df5869392105fe08c2b77a240d5fddbe90218a96d38bf713",
+  "expectDigest": "0x415c6d6f65ccfc76554028406baeb0ead387f8e6e3c55d91340280ef61963bf9",
+  "expectDomainHash": "0xe71b8491d8c286677a45fed98624307811de12477341393c8399d0e58648242f",
+  "expectSignature": "0x52e21ce507e7f91787a40856cd0e81947c930fe966198c6834022db264856285463115b864d12bc5b7c7309fa09de3c48fcdbf2c7e766cd2f8bf4e39570e2cce1b",
+  "expectContextBytes": 672,
+  "expectContextSha256": "0x3d44adc8a3f3149ac55f8c5dde055ff296299d5dcb96dec4a81528faa8c3dd03",
+  "expectPairingOfPayment": "x402/exact/eip155/erc7710-salt",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "otherManager": {
+   "manager": "0x1111111111111111111111111111111111111111",
+   "expectPairingOfPayment": "x402/exact/eip155/erc7710",
+   "expectSaltBound": {
+    "refused": true,
+    "code": "x402/manager-not-reference"
+   }
+  },
+  "emptyContext": {
+   "context": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",
+   "expect": {
+    "refused": true,
+    "code": "x402/delegation-empty"
+   }
+  },
+  "malformedContext": {
+   "cases": [
+    "0x",
+    "0x1234",
+    "0x00000000000000000000000000000000000000000000000000000000000000210000000000000000000000000000000000000000000000000000000000000000"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/permission-context-malformed"
+   },
+   "implementationCode": false
+  }
+ },
+ "EV9": {
+  "expectTopic": "0x40dadaa36c6c2e3d7317e24757451ffb2d603d875f0ad5e92c5dd156573b1873",
+  "eventSignature": "RedeemedDelegation(address,address,(address,address,bytes32,(address,bytes,bytes)[],uint256,bytes))",
+  "expectDataWords": [
+   "0x0000000000000000000000000000000000000000000000000000000000000020",
+   "0x0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+   "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+   "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "0x00000000000000000000000000000000000000000000000000000000000000c0",
+   "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  ],
+  "expectStatus": {
+   "state": "settled",
+   "finality": "finalized",
+   "blockNumber": "100"
+  },
+  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "plantLeafNotRoot": {
+  "case": "a two-delegation context whose root carries salt H and whose leaf (delegate F) carries SHA-256(abd): bound must return the leaf's salt, never H. The test builds the two-delegation context itself",
+  "leafSalt": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+  "expectBound": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/eip155/erc7710-salt",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "eip155:84532",
+        "amount": "10000",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "name": "USDC",
+         "version": "2",
+         "assetTransferMethod": "erc7710"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/eip155/erc7710-salt",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "eip155:84532",
+       "amount": "10000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "name": "USDC",
+        "version": "2",
+        "assetTransferMethod": "erc7710"
+       }
+      },
+      "payload": {
+       "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+       "permissionContext": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000c0ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00000000000000000000000000000000000000000000000000000000000001c0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000001111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000212340000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004152e21ce507e7f91787a40856cd0e81947c930fe966198c6834022db264856285463115b864d12bc5b7c7309fa09de3c48fcdbf2c7e766cd2f8bf4e39570e2cce1b00000000000000000000000000000000000000000000000000000000000000",
+       "delegator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's EV8 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

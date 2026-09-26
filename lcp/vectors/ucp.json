@@ -1,0 +1,1522 @@
+{
+ "about": "Vectors for the ucp/checkout/{ap2-mandate,unsigned} and ucp/booking/{ap2-mandate,unsigned} pairings (the ucp entry point of @integraledger/lcp). SHA-256 values were computed with GNU coreutils sha256sum and basenc and agree with OpenSSL. The tests build J, D and M from the fixed strings, J from V2's checkout written compactly in member order; 'built' holds the same strings as written by Python 3's base64, hashlib and json. V5 uses ap2-checkout-mandate.json's V6 token. The 'implementation' rows fix refusals that UCP does not name; their inputs were built with Python 3.",
+ "fixed": {
+  "A": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e60\",\"ucp\":{\"options\":[{\"checkout\":\"chk_1\"}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
+  "H": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+  "L": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+  "C0": {
+   "ucp": {
+    "version": "2026-08-25"
+   },
+   "id": "chk_1",
+   "status": "ready_for_complete",
+   "currency": "USD",
+   "totals": [
+    {
+     "type": "total",
+     "amount": 19900
+    }
+   ],
+   "links": [
+    {
+     "type": "terms_of_service",
+     "url": "https://seller.example/tos"
+    }
+   ]
+  },
+  "jwtHeader": "{\"alg\":\"ES256\",\"typ\":\"JWT\",\"kid\":\"merchant-key-1\"}",
+  "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "mandateHeader": "{\"alg\":\"ES256\",\"typ\":\"dc+sd-jwt\",\"kid\":\"platform-key-1\"}",
+  "disclosureTemplate": "[\"2GLC42sKQveCfGfryNRN9w\", \"checkout_jwt\", \"<J>\"]",
+  "mandatePayload": "{\"vct\":\"mandate.checkout.1\",\"checkout_hash\":\"OeuY9U-yZrBnjHtQA1gwaHDuprRe9V8Mxp11NY922TM\",\"_sd\":[\"Yx2NjdPJxKLYZIN8XHEsWVRQRVT6kgjfmTKZKh7ttrw\"],\"_sd_alg\":\"sha-256\",\"iat\":1790000000,\"exp\":1790000600}",
+  "merchantAuthorization": "eyJhbGciOiJFUzI1NiJ9..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+ },
+ "built": {
+  "J": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4NjBkNTNlZTJhNGI1MzE0NjA2NmQwOTk1MDI5YzFmYjMzZDlhNjlkNjkzMGMxMmVjNTlhMzNjYzExNzg0YjE3ZSIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "D": "WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd",
+  "M": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiT2V1WTlVLXlackJuakh0UUExZ3dhSER1cHJSZTlWOE14cDExTlk5MjJUTSIsIl9zZCI6WyJZeDJOamRQSnhLTFlaSU44WEhFc1dWUlFSVlQ2a2dqZm1US1pLaDd0dHJ3Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd~"
+ },
+ "V1": {
+  "options": [
+   {
+    "checkout": "chk_1"
+   }
+  ],
+  "expectSlotName": "ucp",
+  "expectSlotBytes": "{\"options\":[{\"checkout\":\"chk_1\"}]}"
+ },
+ "V2": {
+  "advertise": {
+   "doc": {
+    "ucp": {
+     "version": "2026-08-25"
+    },
+    "id": "chk_1",
+    "status": "ready_for_complete",
+    "currency": "USD",
+    "totals": [
+     {
+      "type": "total",
+      "amount": 19900
+     }
+    ],
+    "links": [
+     {
+      "type": "terms_of_service",
+      "url": "https://seller.example/tos"
+     }
+    ]
+   },
+   "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "offer": {
+    "checkout": "chk_1"
+   }
+  },
+  "expectCheckout": {
+   "ucp": {
+    "version": "2026-08-25"
+   },
+   "id": "chk_1",
+   "status": "ready_for_complete",
+   "currency": "USD",
+   "totals": [
+    {
+     "type": "total",
+     "amount": 19900
+    }
+   ],
+   "links": [
+    {
+     "type": "terms_of_service",
+     "url": "https://seller.example/tos"
+    },
+    {
+     "type": "legal_context",
+     "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+    }
+   ]
+  },
+  "expectRead": {
+   "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+  },
+  "expectAp2Read": {
+   "refused": true,
+   "code": "ucp/ap2-not-active"
+  },
+  "expectAlreadySigned": {
+   "refused": true,
+   "code": "ucp/already-signed"
+  },
+  "otherH": "0x7d51bac1e09288ddd10f0fccd54e7ee342c5b7500c5983efbfbea88880dfef1f",
+  "expectConflict": {
+   "refused": true,
+   "code": "ucp/legal-context-conflict"
+  },
+  "expectJLength": 719
+ },
+ "V2b": {
+  "B0": {
+   "ucp": {
+    "version": "2026-08-25"
+   },
+   "id": "bkg_1",
+   "status": "ready_for_complete",
+   "currency": "USD",
+   "totals": [
+    {
+     "type": "total",
+     "amount": 19900
+    }
+   ],
+   "links": [
+    {
+     "type": "terms_of_service",
+     "url": "https://seller.example/tos"
+    }
+   ]
+  },
+  "advertise": {
+   "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "offer": {
+    "booking": "bkg_1"
+   }
+  },
+  "expectBooking": {
+   "ucp": {
+    "version": "2026-08-25"
+   },
+   "id": "bkg_1",
+   "status": "ready_for_complete",
+   "currency": "USD",
+   "totals": [
+    {
+     "type": "total",
+     "amount": 19900
+    }
+   ],
+   "links": [
+    {
+     "type": "terms_of_service",
+     "url": "https://seller.example/tos"
+    },
+    {
+     "type": "legal_context",
+     "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+    }
+   ]
+  },
+  "expectRead": {
+   "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+  },
+  "otherBooking": {
+   "offer": {
+    "booking": "bkg_2"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/option-not-this-checkout"
+   }
+  }
+ },
+ "V3": {
+  "option": {
+   "checkout": "chk_1"
+  },
+  "expectIssuedDigest": "0xd7a79e4d067c153c6e1f58243674307b670d27fe49b25e3c2e8ac5ec2fac911f"
+ },
+ "V3b": {
+  "option": {
+   "booking": "bkg_1"
+  },
+  "expectIssuedDigest": "0x3213565426c731cb3a0a6e851fbaef41b33ed0c01a936429cf96e5e3a92d0d9d"
+ },
+ "V4": {
+  "expectCheckoutHash": "OeuY9U-yZrBnjHtQA1gwaHDuprRe9V8Mxp11NY922TM",
+  "expectDisclosureDigest": "Yx2NjdPJxKLYZIN8XHEsWVRQRVT6kgjfmTKZKh7ttrw",
+  "expectBound": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+  "expectUnsignedBound": {
+   "refused": true,
+   "code": "ucp/not-buyer-signed"
+  },
+  "expectUnsignedBuild": {
+   "refused": true,
+   "code": "ucp/nothing-to-sign"
+  }
+ },
+ "V5": {
+  "expectCheckoutHash": "NivWhuqfzcvZNapvIEJ2-3tsdQLkiuIcye2g46WVgX8",
+  "expectBound": {
+   "refused": true,
+   "code": "ucp/no-legal-context"
+  }
+ },
+ "V6": {
+  "policies": {
+   "ucp": {
+    "version": "2026-08-25"
+   },
+   "id": "chk_1",
+   "status": "ready_for_complete",
+   "currency": "USD",
+   "totals": [
+    {
+     "type": "total",
+     "amount": 19900
+    }
+   ],
+   "links": [
+    {
+     "type": "terms_of_service",
+     "url": "https://seller.example/tos"
+    }
+   ],
+   "policies": [
+    {
+     "type": "com.integraledger.policy.legal_context",
+     "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+    }
+   ]
+  },
+  "presentation": {
+   "ucp": {
+    "version": "2026-08-25"
+   },
+   "id": "chk_1",
+   "status": "ready_for_complete",
+   "currency": "USD",
+   "totals": [
+    {
+     "type": "total",
+     "amount": 19900
+    }
+   ],
+   "links": [
+    {
+     "type": "terms_of_service",
+     "url": "https://seller.example/tos"
+    }
+   ],
+   "lcp_presentation": {
+    "type": "sha256",
+    "value": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "legalContextUrl": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+   }
+  },
+  "expect": {
+   "refused": true,
+   "code": "ucp/no-legal-context"
+  }
+ },
+ "plant": {
+  "case": "the seller re-issued for a changed cart: J2 is J built from C0 with amount 39800 and the link of A2, and M still commits to J",
+  "A2": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e61\",\"ucp\":{\"options\":[{\"checkout\":\"chk_1\"}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":2}],\"totals\":[{\"type\":\"total\",\"amount\":39800}]}",
+  "H2": "0x7d51bac1e09288ddd10f0fccd54e7ee342c5b7500c5983efbfbea88880dfef1f",
+  "checkoutJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjM5ODAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4N2Q1MWJhYzFlMDkyODhkZGQxMGYwZmNjZDU0ZTdlZTM0MmM1Yjc1MDBjNTk4M2VmYmZiZWE4ODg4MGRmZWYxZiIsInRpdGxlIjoibGNwOnNoYTI1NjoweDdkNTFiYWMxZTA5Mjg4ZGRkMTBmMGZjY2Q1NGU3ZWUzNDJjNWI3NTAwYzU5ODNlZmJmYmVhODg4ODBkZmVmMWYifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "expectJ2Hash": "mUgKEKHXX_NDsegPFCZSlCTEv5z2zofnDTaqtM7ucl8",
+  "expect": {
+   "refused": true,
+   "code": "ap2/checkout-not-latest"
+  }
+ },
+ "implementation": [
+  {
+   "name": "advertise-empty-links",
+   "case": "C0 without links gets links[] holding only the entry",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "ucp": {
+     "version": "2026-08-25"
+    },
+    "id": "chk_1",
+    "status": "ready_for_complete",
+    "currency": "USD",
+    "totals": [
+     {
+      "type": "total",
+      "amount": 19900
+     }
+    ],
+    "links": [
+     {
+      "type": "legal_context",
+      "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+      "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+     }
+    ]
+   }
+  },
+  {
+   "name": "advertise-same-values",
+   "case": "V2 advertised again with the same values",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "ucp": {
+     "version": "2026-08-25"
+    },
+    "id": "chk_1",
+    "status": "ready_for_complete",
+    "currency": "USD",
+    "totals": [
+     {
+      "type": "total",
+      "amount": 19900
+     }
+    ],
+    "links": [
+     {
+      "type": "terms_of_service",
+      "url": "https://seller.example/tos"
+     },
+     {
+      "type": "legal_context",
+      "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+      "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+     }
+    ]
+   }
+  },
+  {
+   "name": "advertise-option-malformed",
+   "case": "offer {checkout: \"\"}",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": ""
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/option-malformed"
+   }
+  },
+  {
+   "name": "advertise-booking-option-on-checkout",
+   "case": "a booking option on a checkout pairing",
+   "pairing": "ucp/checkout/ap2-mandate",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "booking": "chk_1"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/option-malformed"
+   }
+  },
+  {
+   "name": "advertise-http-link",
+   "case": "an http link",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "http://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/link-not-https"
+   }
+  },
+  {
+   "name": "advertise-no-id",
+   "case": "a checkout without id",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/checkout-malformed"
+   }
+  },
+  {
+   "name": "advertise-links-not-array",
+   "case": "links is an object",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": {
+      "type": "x"
+     }
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/checkout-malformed"
+   }
+  },
+  {
+   "name": "advertise-64-links",
+   "case": "a checkout already holding 64 links",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "t0",
+       "url": "https://seller.example/0"
+      },
+      {
+       "type": "t1",
+       "url": "https://seller.example/1"
+      },
+      {
+       "type": "t2",
+       "url": "https://seller.example/2"
+      },
+      {
+       "type": "t3",
+       "url": "https://seller.example/3"
+      },
+      {
+       "type": "t4",
+       "url": "https://seller.example/4"
+      },
+      {
+       "type": "t5",
+       "url": "https://seller.example/5"
+      },
+      {
+       "type": "t6",
+       "url": "https://seller.example/6"
+      },
+      {
+       "type": "t7",
+       "url": "https://seller.example/7"
+      },
+      {
+       "type": "t8",
+       "url": "https://seller.example/8"
+      },
+      {
+       "type": "t9",
+       "url": "https://seller.example/9"
+      },
+      {
+       "type": "t10",
+       "url": "https://seller.example/10"
+      },
+      {
+       "type": "t11",
+       "url": "https://seller.example/11"
+      },
+      {
+       "type": "t12",
+       "url": "https://seller.example/12"
+      },
+      {
+       "type": "t13",
+       "url": "https://seller.example/13"
+      },
+      {
+       "type": "t14",
+       "url": "https://seller.example/14"
+      },
+      {
+       "type": "t15",
+       "url": "https://seller.example/15"
+      },
+      {
+       "type": "t16",
+       "url": "https://seller.example/16"
+      },
+      {
+       "type": "t17",
+       "url": "https://seller.example/17"
+      },
+      {
+       "type": "t18",
+       "url": "https://seller.example/18"
+      },
+      {
+       "type": "t19",
+       "url": "https://seller.example/19"
+      },
+      {
+       "type": "t20",
+       "url": "https://seller.example/20"
+      },
+      {
+       "type": "t21",
+       "url": "https://seller.example/21"
+      },
+      {
+       "type": "t22",
+       "url": "https://seller.example/22"
+      },
+      {
+       "type": "t23",
+       "url": "https://seller.example/23"
+      },
+      {
+       "type": "t24",
+       "url": "https://seller.example/24"
+      },
+      {
+       "type": "t25",
+       "url": "https://seller.example/25"
+      },
+      {
+       "type": "t26",
+       "url": "https://seller.example/26"
+      },
+      {
+       "type": "t27",
+       "url": "https://seller.example/27"
+      },
+      {
+       "type": "t28",
+       "url": "https://seller.example/28"
+      },
+      {
+       "type": "t29",
+       "url": "https://seller.example/29"
+      },
+      {
+       "type": "t30",
+       "url": "https://seller.example/30"
+      },
+      {
+       "type": "t31",
+       "url": "https://seller.example/31"
+      },
+      {
+       "type": "t32",
+       "url": "https://seller.example/32"
+      },
+      {
+       "type": "t33",
+       "url": "https://seller.example/33"
+      },
+      {
+       "type": "t34",
+       "url": "https://seller.example/34"
+      },
+      {
+       "type": "t35",
+       "url": "https://seller.example/35"
+      },
+      {
+       "type": "t36",
+       "url": "https://seller.example/36"
+      },
+      {
+       "type": "t37",
+       "url": "https://seller.example/37"
+      },
+      {
+       "type": "t38",
+       "url": "https://seller.example/38"
+      },
+      {
+       "type": "t39",
+       "url": "https://seller.example/39"
+      },
+      {
+       "type": "t40",
+       "url": "https://seller.example/40"
+      },
+      {
+       "type": "t41",
+       "url": "https://seller.example/41"
+      },
+      {
+       "type": "t42",
+       "url": "https://seller.example/42"
+      },
+      {
+       "type": "t43",
+       "url": "https://seller.example/43"
+      },
+      {
+       "type": "t44",
+       "url": "https://seller.example/44"
+      },
+      {
+       "type": "t45",
+       "url": "https://seller.example/45"
+      },
+      {
+       "type": "t46",
+       "url": "https://seller.example/46"
+      },
+      {
+       "type": "t47",
+       "url": "https://seller.example/47"
+      },
+      {
+       "type": "t48",
+       "url": "https://seller.example/48"
+      },
+      {
+       "type": "t49",
+       "url": "https://seller.example/49"
+      },
+      {
+       "type": "t50",
+       "url": "https://seller.example/50"
+      },
+      {
+       "type": "t51",
+       "url": "https://seller.example/51"
+      },
+      {
+       "type": "t52",
+       "url": "https://seller.example/52"
+      },
+      {
+       "type": "t53",
+       "url": "https://seller.example/53"
+      },
+      {
+       "type": "t54",
+       "url": "https://seller.example/54"
+      },
+      {
+       "type": "t55",
+       "url": "https://seller.example/55"
+      },
+      {
+       "type": "t56",
+       "url": "https://seller.example/56"
+      },
+      {
+       "type": "t57",
+       "url": "https://seller.example/57"
+      },
+      {
+       "type": "t58",
+       "url": "https://seller.example/58"
+      },
+      {
+       "type": "t59",
+       "url": "https://seller.example/59"
+      },
+      {
+       "type": "t60",
+       "url": "https://seller.example/60"
+      },
+      {
+       "type": "t61",
+       "url": "https://seller.example/61"
+      },
+      {
+       "type": "t62",
+       "url": "https://seller.example/62"
+      },
+      {
+       "type": "t63",
+       "url": "https://seller.example/63"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/too-large"
+   }
+  },
+  {
+   "name": "advertise-long-link",
+   "case": "an https link of 2,049 characters",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "advertise",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "offer": {
+     "checkout": "chk_1"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/legal-context-malformed"
+   }
+  },
+  {
+   "name": "read-two-entries",
+   "case": "two legal_context links",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/legal-context-conflict"
+   }
+  },
+  {
+   "name": "read-title-malformed",
+   "case": "a title that is H without the lcp:sha256: prefix",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/legal-context-malformed"
+   }
+  },
+  {
+   "name": "read-no-title",
+   "case": "a legal_context link without title",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/legal-context-malformed"
+   }
+  },
+  {
+   "name": "read-http-url",
+   "case": "a legal_context link whose url is http",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "http://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/link-not-https"
+   }
+  },
+  {
+   "name": "read-no-links",
+   "case": "C0 without links",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/no-legal-context"
+   }
+  },
+  {
+   "name": "read-upper-title",
+   "case": "a title whose hex is upper case",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60D53EE2A4B53146066D0995029C1FB33D9A69D6930C12EC59A33CC11784B17E"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+   }
+  },
+  {
+   "name": "read-ap2-malformed-authorization",
+   "case": "ap2.merchant_authorization that is not a detached JWS",
+   "pairing": "ucp/checkout/ap2-mandate",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ],
+     "ap2": {
+      "merchant_authorization": "a.b.c"
+     }
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/ap2-not-active"
+   }
+  },
+  {
+   "name": "build-other-hash",
+   "case": "ap2Mandate.build with another hash",
+   "pairing": "ucp/checkout/ap2-mandate",
+   "fn": "build",
+   "input": {
+    "checkout": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ],
+     "ap2": {
+      "merchant_authorization": "eyJhbGciOiJFUzI1NiJ9..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+     }
+    },
+    "h": "0x7d51bac1e09288ddd10f0fccd54e7ee342c5b7500c5983efbfbea88880dfef1f"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/hash-not-in-checkout"
+   }
+  },
+  {
+   "name": "build-unsigned-checkout",
+   "case": "ap2Mandate.build of a checkout without merchant_authorization",
+   "pairing": "ucp/checkout/ap2-mandate",
+   "fn": "build",
+   "input": {
+    "checkout": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ]
+    },
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/ap2-not-active"
+   }
+  }
+ ],
+ "pattern": {
+  "case": "the record statements",
+  "ucp/checkout/ap2-mandate": {
+   "canonical": true,
+   "profile": "ucp/checkout/legal-context",
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "pattern": "opaque-challenge",
+   "buyerSigns": true,
+   "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The checkout response carried this ATR's hash and link as its legal_context link before the business signed it (ap2.merchant_authorization, the seller's signature). The buyer's checkout mandate, issued by the platform or the user's credential under UCP's AP2 Mandates extension, carries checkout_hash, the SHA-256 of that signed checkout, and the seller read the hash from the checkout inside it. The seller did not verify the mandate's signature; the PSP verifies the payment mandate over the same checkout hash. The seller reported the payment. This does not show that amount, payee or timing match the ATR's content."
+  },
+  "ucp/booking/ap2-mandate": {
+   "canonical": true,
+   "profile": "ucp/checkout/legal-context",
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "pattern": "opaque-challenge",
+   "buyerSigns": true,
+   "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The booking response carried this ATR's hash and link as its legal_context link before the business signed it (ap2.merchant_authorization, the seller's signature). The buyer's checkout mandate, issued by the platform or the user's credential under UCP's AP2 Mandates extension, carries checkout_hash, the SHA-256 of that signed booking, and the seller read the hash from the booking inside it. The seller did not verify the mandate's signature; the PSP verifies the payment mandate over the same booking hash. The seller reported the payment. This does not show that amount, payee or timing match the ATR's content."
+  },
+  "ucp/checkout/unsigned": {
+   "canonical": true,
+   "profile": "ucp/checkout/legal-context",
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "pattern": "http-advisory",
+   "buyerSigns": false,
+   "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The checkout response the platform received carried this ATR's hash and link as its legal_context link before the buyer completed the checkout, and the ATR was in the seller's storage before that. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval, given in the platform's interface, did not sign the hash. The seller tied the payment to the hash in its report."
+  },
+  "ucp/booking/unsigned": {
+   "canonical": true,
+   "profile": "ucp/checkout/legal-context",
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "pattern": "http-advisory",
+   "buyerSigns": false,
+   "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The booking response the platform received carried this ATR's hash and link as its legal_context link before the buyer completed the booking, and the ATR was in the seller's storage before that. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval, given in the platform's interface, did not sign the hash. The seller tied the payment to the hash in its report."
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "ucp/booking/ap2-mandate",
+    "plant": true,
+    "input": {
+     "doc": {
+      "ucp": {
+       "version": "2026-08-25"
+      },
+      "id": "bkg_1",
+      "status": "ready_for_complete",
+      "currency": "USD",
+      "totals": [
+       {
+        "type": "total",
+        "amount": 19900
+       }
+      ],
+      "links": [
+       {
+        "type": "terms_of_service",
+        "url": "https://seller.example/tos"
+       },
+       {
+        "type": "legal_context",
+        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+       }
+      ],
+      "ap2": {
+       "merchant_authorization": "eyJhbGciOiJFUzI1NiJ9..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "servedHash": "0xd54d28b73ba779a51e11b5c03799c9790e34131340cff01a491a963aa4049972",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "ucp/booking/ap2-mandate",
+    "input": {
+     "presented": {
+      "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiT2V1WTlVLXlackJuakh0UUExZ3dhSER1cHJSZTlWOE14cDExTlk5MjJUTSIsIl9zZCI6WyJZeDJOamRQSnhLTFlaSU44WEhFc1dWUlFSVlQ2a2dqZm1US1pLaDd0dHJ3Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd~",
+      "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4NjBkNTNlZTJhNGI1MzE0NjA2NmQwOTk1MDI5YzFmYjMzZDlhNjlkNjkzMGMxMmVjNTlhMzNjYzExNzg0YjE3ZSIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+     },
+     "check": [
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930307d5d7d"
+      },
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V4 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "ucp/booking/unsigned",
+    "plant": true,
+    "input": {
+     "doc": {
+      "ucp": {
+       "version": "2026-08-25"
+      },
+      "id": "bkg_1",
+      "status": "ready_for_complete",
+      "currency": "USD",
+      "totals": [
+       {
+        "type": "total",
+        "amount": 19900
+       }
+      ],
+      "links": [
+       {
+        "type": "terms_of_service",
+        "url": "https://seller.example/tos"
+       },
+       {
+        "type": "legal_context",
+        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+       }
+      ]
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "servedHash": "0xd54d28b73ba779a51e11b5c03799c9790e34131340cff01a491a963aa4049972",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B2",
+    "pairing": "ucp/checkout/ap2-mandate",
+    "plant": true,
+    "input": {
+     "doc": {
+      "ucp": {
+       "version": "2026-08-25"
+      },
+      "id": "chk_1",
+      "status": "ready_for_complete",
+      "currency": "USD",
+      "totals": [
+       {
+        "type": "total",
+        "amount": 19900
+       }
+      ],
+      "links": [
+       {
+        "type": "terms_of_service",
+        "url": "https://seller.example/tos"
+       },
+       {
+        "type": "legal_context",
+        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+       }
+      ],
+      "ap2": {
+       "merchant_authorization": "eyJhbGciOiJFUzI1NiJ9..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "servedHash": "0xd54d28b73ba779a51e11b5c03799c9790e34131340cff01a491a963aa4049972",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "ucp/checkout/ap2-mandate",
+    "input": {
+     "presented": {
+      "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiT2V1WTlVLXlackJuakh0UUExZ3dhSER1cHJSZTlWOE14cDExTlk5MjJUTSIsIl9zZCI6WyJZeDJOamRQSnhLTFlaSU44WEhFc1dWUlFSVlQ2a2dqZm1US1pLaDd0dHJ3Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd~",
+      "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4NjBkNTNlZTJhNGI1MzE0NjA2NmQwOTk1MDI5YzFmYjMzZDlhNjlkNjkzMGMxMmVjNTlhMzNjYzExNzg0YjE3ZSIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+     },
+     "check": [
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930307d5d7d"
+      },
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V4 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "ucp/checkout/unsigned",
+    "plant": true,
+    "input": {
+     "doc": {
+      "ucp": {
+       "version": "2026-08-25"
+      },
+      "id": "chk_1",
+      "status": "ready_for_complete",
+      "currency": "USD",
+      "totals": [
+       {
+        "type": "total",
+        "amount": 19900
+       }
+      ],
+      "links": [
+       {
+        "type": "terms_of_service",
+        "url": "https://seller.example/tos"
+       },
+       {
+        "type": "legal_context",
+        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+       }
+      ]
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653630222c22756370223a7b226f7074696f6e73223a5b7b22636865636b6f7574223a2263686b5f31227d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "servedHash": "0xd54d28b73ba779a51e11b5c03799c9790e34131340cff01a491a963aa4049972",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "ucp/booking/unsigned": "The buyer signs nothing (buyerSigns false): the file holds no payment that carries H.",
+   "ucp/checkout/unsigned": "The buyer signs nothing (buyerSigns false): the file holds no payment that carries H."
+  }
+ }
+}

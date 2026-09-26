@@ -1,0 +1,704 @@
+{
+ "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A). The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour.",
+ "fixed": {
+  "A": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033302064c3ad617320e29c93227d7d",
+  "C": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033312064c3ad617320e29c93227d7d",
+  "hashC": "0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec",
+  "D": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepts": [
+    {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    }
+   ],
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+      "legalContextUrl": "https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "agreement": {
+   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says; the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.56.8 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree.",
+   "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "required": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "accepts": [
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "1",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     }
+    ],
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+       "legalContextUrl": "https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   },
+   "requiredOtherHash": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "accepts": [
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "1",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     }
+    ],
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec",
+       "legalContextUrl": "https://atr.seller.example/0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   },
+   "receipt": {
+    "atrHash": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+    "agreed": true,
+    "network": "eip155:84532",
+    "transaction": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "receiptOtherHash": {
+    "atrHash": "0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec",
+    "agreed": true,
+    "network": "eip155:84532",
+    "transaction": "0xabababababababababababababababababababababababababababababababab"
+   }
+  }
+ },
+ "rows": [
+  {
+   "name": "B1",
+   "input": {
+    "hashOf": "A"
+   },
+   "expect": {
+    "h": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+   }
+  },
+  {
+   "name": "B2",
+   "plant": true,
+   "input": {
+    "doc": "D",
+    "serves": "C",
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "hash-mismatch",
+    "signCalls": 0
+   }
+  },
+  {
+   "name": "B2b",
+   "plant": true,
+   "input": {
+    "doc": {
+     "x402Version": 2,
+     "resource": {
+      "url": "https://api.seller.example/v1/quote"
+     },
+     "accepts": [
+      {
+       "scheme": "exact",
+       "network": "eip155:84532",
+       "amount": "10000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "name": "USDC",
+        "version": "2"
+       }
+      }
+     ],
+     "extensions": {
+      "legalContext": {
+       "info": {
+        "type": "sha256",
+        "value": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f",
+        "legalContextUrl": "https://atr.seller.example/0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f"
+       },
+       "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+         "type": {
+          "const": "sha256"
+         },
+         "value": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$"
+         },
+         "legalContextUrl": {
+          "type": "string",
+          "pattern": "^https://"
+         }
+        },
+        "required": [
+         "type",
+         "value",
+         "legalContextUrl"
+        ]
+       }
+      }
+     }
+    },
+    "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653430222c2262696e64223a7b226b223a2276222c226e223a372c226c697374223a5b2261222c2262225d7d2c227465726d73223a22506179203130303030206261736520756e697473206f66205553444320666f72206f6e65207265706f72742e222c2273656c6c6572223a7b226e616d65223a2241636d65205265706f727473227d5d",
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "hash-mismatch",
+    "signCalls": 0
+   },
+   "note": "D2b advertises the core's V1 hash; the bytes are the core's V6 plant, whose hash is 0x994384c875ba6f693a1f8e6f75b06df2005b48955b56ec4fc2d65dd36cdd0773"
+  },
+  {
+   "name": "B3",
+   "input": {
+    "doc": "D",
+    "servesHex": "7b2261747256657273696f6e223a202231222c20226964223a202230663866616435622d643963622d343639662d613136352d373038363737323839353065222c202278343032223a207b227a223a20312e302c202261223a20226361665c7530306539227d2c202273656c6c6572223a207b226e6f7465223a20224361665c7530306539205c753230313420333020645c75303065646173205c7532373133227d7d"
+   },
+   "expect": {
+    "decline": "hash-mismatch",
+    "signCalls": 0
+   },
+   "servedHash": "0x8a2bce441c386843194517f854c5bc7d00ad115f9731feb00e0a7e4268028e76",
+   "note": "the body is Python 3.12.3 json.dumps(json.loads(A))"
+  },
+  {
+   "name": "B4",
+   "input": {
+    "doc": "D",
+    "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312c2261223a22636166c3a9227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033302064c3ad617320e29c93227d7d"
+   },
+   "expect": {
+    "decline": "hash-mismatch",
+    "signCalls": 0
+   },
+   "servedHash": "0x49b9e38ae6c0ec93c0cea46f6ab1a1707052fe4d5ad2313c5d630617eb889e3b",
+   "note": "the body is Node JSON.stringify(JSON.parse(A))"
+  },
+  {
+   "name": "B5",
+   "input": {
+    "stubRead": {
+     "h": "0x8B1E122580AE3F6A8C3D36A24294E1260A87BDE70F597279B973E39310072938"
+    },
+    "serves": "A"
+   },
+   "expect": {
+    "match": true,
+    "h": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+    "buildReceives": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+   }
+  },
+  {
+   "name": "B6",
+   "input": {
+    "confirm": "D",
+    "serves": "A",
+    "then": {
+     "finish": {
+      "bytes": "A",
+      "signature": "0x869980b0b9b699f21f8d046eff160d85e8e7812642257644f2f858f0174dd3265439e4832d1b69c87d57e861b4713b54b0135da49662b3387d41f1a5f294a8541b"
+     }
+    }
+   },
+   "expect": {
+    "message": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "digest": "0xdad0b88d8ef8db0b684b08c645a51350a2b25c6d43a241a33f349357170c6ac4",
+    "signature": "0x869980b0b9b699f21f8d046eff160d85e8e7812642257644f2f858f0174dd3265439e4832d1b69c87d57e861b4713b54b0135da49662b3387d41f1a5f294a8541b",
+    "signedNonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+    "recovers": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+   }
+  },
+  {
+   "name": "B7",
+   "input": {
+    "check": [
+     {
+      "bytes": "A",
+      "presented": "B6 signed"
+     },
+     {
+      "bytes": "C",
+      "presented": "B6 signed"
+     }
+    ]
+   },
+   "expect": [
+    {
+     "h": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    {
+     "decline": "signed-not-bound"
+    }
+   ]
+  },
+  {
+   "name": "B8",
+   "input": {
+    "doc": "D with extensions[\"payment-identifier\"] = {info: {}, schema: {}}",
+    "as": "B6",
+    "runs": 2
+   },
+   "expect": {
+    "paymentIdentifierPattern": "^[A-Za-z0-9_-]{32}$",
+    "differsBetweenRuns": true,
+    "withoutAdvertisement": "no payment-identifier in signed"
+   }
+  },
+  {
+   "name": "B9",
+   "input": {
+    "stubBound": "hashC"
+   },
+   "expect": {
+    "decline": "signed-not-bound",
+    "signCalls": 1,
+    "signed": null
+   }
+  },
+  {
+   "name": "B10",
+   "input": [
+    {
+     "doc": "D with an http:// link"
+    },
+    {
+     "stubRead": {
+      "link": "http://atr.seller.example/x"
+     }
+    }
+   ],
+   "expect": [
+    {
+     "decline": "offer-unreadable",
+     "detail": "x402/link-not-https",
+     "fetches": 0
+    },
+    {
+     "decline": "link-not-https",
+     "fetches": 0
+    }
+   ]
+  },
+  {
+   "name": "B11",
+   "input": {
+    "fetch": [
+     {
+      "status": 302
+     },
+     {
+      "status": 404
+     },
+     {
+      "rejects": true
+     }
+    ]
+   },
+   "expect": {
+    "decline": "atr-unfetchable",
+    "signCalls": 0
+   }
+  },
+  {
+   "name": "B12",
+   "input": {
+    "doc": "D",
+    "bodyLength": 1048576
+   },
+   "expect": {
+    "decline": "hash-mismatch"
+   }
+  },
+  {
+   "name": "B13",
+   "input": [
+    {
+     "bodyLength": 1048577,
+     "contentLength": null,
+     "streamed": true
+    },
+    {
+     "contentLength": 1048577
+    }
+   ],
+   "expect": {
+    "decline": "atr-too-large",
+    "streamCancelled": true,
+    "signCalls": 0
+   }
+  },
+  {
+   "name": "B14",
+   "input": {
+    "fetch": "never-answers",
+    "advanceMs": 10000
+   },
+   "expect": {
+    "decline": "atr-unfetchable"
+   }
+  },
+  {
+   "name": "B15",
+   "input": {
+    "signer": "rejects"
+   },
+   "expect": {
+    "decline": "signer-failed"
+   }
+  },
+  {
+   "name": "B16",
+   "input": {
+    "accounts": [
+     "eip155:1:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:x"
+    ]
+   },
+   "expect": {
+    "decline": "no-payable-option",
+    "fetches": 0
+   }
+  },
+  {
+   "name": "B17",
+   "input": {
+    "stubBindingId": "x/y"
+   },
+   "expect": {
+    "decline": "pairing-not-supported"
+   }
+  },
+  {
+   "name": "B18",
+   "input": {
+    "doc": "D with extensions[\"payment-identifier\"] set to each case; the link serves A; a counting signer",
+    "cases": [
+     {
+      "case": "an info that already holds id",
+      "extension": {
+       "info": {
+        "id": "seller-chosen-id-0001"
+       },
+       "schema": {}
+      }
+     },
+     {
+      "case": "an info that is not an object",
+      "extension": {
+       "info": "x",
+       "schema": {}
+      }
+     },
+     {
+      "case": "an extension with no info",
+      "extension": {
+       "schema": {}
+      }
+     }
+    ]
+   },
+   "expect": {
+    "decline": "signed-not-bound",
+    "detail": "x402/payment-identifier-unwritable",
+    "signCalls": 1,
+    "signed": null
+   },
+   "note": "x402: a client may append additional info but cannot delete or overwrite existing info, so the identifier cannot be written"
+  },
+  {
+   "name": "BA1",
+   "input": {
+    "doc": "D, through a stub of the pairing whose pattern has publicProof false and whose read also gives agreement = fixed.agreement.url; the link serves A",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "required"
+     },
+     {
+      "status": 202,
+      "retryAfter": "2"
+     },
+     {
+      "status": 200,
+      "body": "receipt"
+     }
+    ],
+    "signer": "counting"
+   },
+   "expect": {
+    "signCalls": 2,
+    "order": [
+     "agreement",
+     "payment"
+    ],
+    "agreementMessage": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "1",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "agreementDigest": "0x0e8f9e383c80f341bbdbfc7c3168c5945225b764256771e81cd680a547262ba0",
+    "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
+    "paidRequests": 2,
+    "paymentSignature": "B6",
+    "receipt": "receipt"
+   },
+   "note": "One agreement signature, then the full payment's one signature. Both paid requests carry the same PAYMENT-SIGNATURE."
+  },
+  {
+   "name": "BA2",
+   "plant": true,
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "requiredOtherHash"
+     }
+    ],
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "hash-mismatch",
+    "signCalls": 0,
+    "paidRequests": 0
+   },
+   "note": "The agreement resource advertises hash(C), another ATR's hash: nothing is signed."
+  },
+  {
+   "name": "BA3",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "required"
+     },
+     {
+      "status": 202,
+      "retryAfter": "2",
+      "repeats": true
+     }
+    ],
+    "signer": "counting",
+    "advanceMs": 240000
+   },
+   "expect": {
+    "decline": "agreement-pending",
+    "signCalls": 1,
+    "paidRequests": 120
+   },
+   "note": "A 202 that never becomes 200 within the agreement option's maxTimeoutSeconds plus 180 s, 240 s: the result is agreement-pending and the full payment is never signed. Paid requests go at 0, 2, ..., 238 s."
+  },
+  {
+   "name": "BA4",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "required"
+     },
+     {
+      "status": 200,
+      "body": "receiptOtherHash"
+     }
+    ],
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "agreement-failed",
+    "signCalls": 1
+   },
+   "note": "A 200 receipt whose atrHash is hash(C): the full payment is never signed."
+  },
+  {
+   "name": "BA5",
+   "input": {
+    "agreementUrl": "http://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "link-not-https",
+    "agreementFetches": 0,
+    "signCalls": 0
+   }
+  },
+  {
+   "name": "BA6",
+   "input": {
+    "doc": "D whose extensions.legalContext.info also carries legalContextAgreementUrl = fixed.agreement.url after legalContextUrl, as a challenge mixing offers with and without a public proof carries it (x402-exact-eip155-eip3009.json MX), read through x402/exact/eip155/eip3009 itself, whose pattern has publicProof true; the link serves A",
+    "signer": "counting"
+   },
+   "expect": {
+    "agreementFetches": 0,
+    "signCalls": 1,
+    "paymentSignature": "B6"
+   },
+   "note": "The pairing's payment is itself a public proof of the hash: the buyer does not pay the agreement URL, and pays as B6."
+  },
+  {
+   "name": "BA7",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "required"
+     },
+     {
+      "status": 202,
+      "retryAfter": "2"
+     },
+     {
+      "status": 200,
+      "body": "receipt"
+     }
+    ],
+    "signer": "counting"
+   },
+   "expect": {
+    "signed": "B6",
+    "agreement": "receipt"
+   },
+   "note": "transact returns the agreement's receipt beside the payment. A transact that paid no agreement (B6, BA6) returns no agreement."
+  }
+ ]
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "lib": ["es2024", "dom"],
+    "types": ["node"]
+  },
+  "include": [".samples/*.ts"]
+}

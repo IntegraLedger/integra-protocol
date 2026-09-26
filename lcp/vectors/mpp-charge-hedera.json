@@ -1,0 +1,359 @@
+{
+ "about": "Vectors for the mpp/charge/hedera pairing of @integraledger/lcp's hedera entry point. The attribution memos were computed with pycryptodome 3.23.0's keccak and the bodies with hiero-sdk-python 0.2.10's generated protobufs (protobuf 7.36.2, deterministic) and cryptography's Ed25519 on Python 3.12.3, 2026-09-25; the seed is not recorded. The request follows MPP's Hedera draft (git blob 414b52a85a): the payer's debit of amount, the recipient's remainder and each split, in currency.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "challengeId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "request": {
+   "amount": "1050000",
+   "currency": "0.0.5449",
+   "recipient": "0.0.1234",
+   "splits": [
+    {
+     "recipient": "0.0.67890",
+     "amount": "50000"
+    }
+   ],
+   "methodDetails": {
+    "chainId": 296
+   }
+  },
+  "expires": "2026-09-25T12:05:00Z",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "payer": "0.0.5555",
+  "node": "0.0.3",
+  "validStart": {
+   "seconds": "1700000000",
+   "nanos": 0
+  },
+  "maxFee": "100000000",
+  "publicKey": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
+  "signature": "8b0b83f4693cd5c28b3a8789a2b3c2ed1b6f677345e98aec032e958ac2d6fa10f7d1a27278fa03efef8819abff6ec1b31e18cf0551f811d2ac8ae1d251713602"
+ },
+ "V4": {
+  "case": "attributionMemo and checkAttribution",
+  "realm": "api.seller.example",
+  "id": "kM9xPqWvT2nJrHsY4aDfEb",
+  "expectMemo": "0xef1ed712017b4364449d1dc19a8a7b000000000000000000001128fb265e760d",
+  "otherId": "kM9xPqWvT2nJrHsY4aDfEc",
+  "expectOther": "mpp/attribution-mismatch",
+  "clientId": "agent-7",
+  "expectMemoWithClient": "0xef1ed712017b4364449d1dc19a8a7b2fc7e051965c2733416b1128fb265e760d",
+  "source": "the client row is this file's"
+ },
+ "build": {
+  "case": "build for the challenge whose id derives from H, with one split",
+  "expectMemo": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a",
+  "expectBodyBytes": "0a0d0a060880e2cfaa06120318b32b120218031880c2d72f220208783242307865663165643731323031376234333634343439643164633139613861376230303030303030303030303030303030303030306436363837336131646239353561722a12280a0318c92a120a0a0318b32b109f96800112090a0318d2091080897a120a0a0418b2920410a08d06",
+  "expectTransactionBase64": "KvcBCowBCg0KBgiA4s+qBhIDGLMrEgIYAxiAwtcvIgIIeDJCMHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVhcioSKAoDGMkqEgoKAxizKxCfloABEgkKAxjSCRCAiXoSCgoEGLKSBBCgjQYSZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAiwuD9Gk81cKLOoeJorPC7RtvZ3NF6YrsAy6VisLW+hD30aJyePoD7++IGav/bsGzHhjPBVH4EdKsiuHSUXE2Ag==",
+  "push": {
+   "case": "build with the buyer's credentialType hash: the same body, handed to the payer as a push its signer signs and broadcasts; credentialType transaction, or none, hands it over with no broadcast member",
+   "credentialType": "hash",
+   "expectRequest": {
+    "kind": "hedera-body",
+    "bodyBytes": "0a0d0a060880e2cfaa06120318b32b120218031880c2d72f220208783242307865663165643731323031376234333634343439643164633139613861376230303030303030303030303030303030303030306436363837336131646239353561722a12280a0318c92a120a0a0318b32b109f96800112090a0318d2091080897a120a0a0418b2920410a08d06",
+    "broadcast": true
+   },
+   "expectPullRequest": {
+    "kind": "hedera-body",
+    "bodyBytes": "0a0d0a060880e2cfaa06120318b32b120218031880c2d72f220208783242307865663165643731323031376234333634343439643164633139613861376230303030303030303030303030303030303030306436363837336131646239353561722a12280a0318c92a120a0a0318b32b109f96800112090a0318d2091080897a120a0a0418b2920410a08d06"
+   },
+   "otherCredentialType": "signed",
+   "expectOther": "hedera/option-malformed"
+  }
+ },
+ "bound": {
+  "case": "bound and reference of the pull credential; another challenge's memo is refused",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "hedera:testnet",
+   "transactionId": "0.0.5555-1700000000-000000000",
+   "expectMemo": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a",
+   "validUntil": 1700000120
+  },
+  "otherTransactionBase64": "KvcBCowBCg0KBgiA4s+qBhIDGLMrEgIYAxiAwtcvIgIIeDJCMHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMDJmYzM4Mzg1MzZkNjI1cioSKAoDGMkqEgoKAxizKxCfloABEgkKAxjSCRCAiXoSCgoEGLKSBBCgjQYSZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpA40mROI9qFpFKrcoKjTJvMvXQsu8z3HFe4SCS8gDSqvieLlxipWHtYNln55OeS5ezOZTwAC9WrwxU5O9sOshxBQ==",
+  "expectOther": "mpp/attribution-mismatch"
+ },
+ "push": {
+  "case": "a push credential needs the landed memo",
+  "transactionId": "0.0.5555@1700000000.000000000",
+  "expectWithout": "hedera/read-first",
+  "expectReference": {
+   "network": "hedera:testnet",
+   "transactionId": "0.0.5555-1700000000-000000000",
+   "expectMemo": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a",
+   "validUntil": 1700000180
+  }
+ },
+ "fetchPresented": {
+  "case": "fetchPresented is read before bound and reference; it writes the network, and a push credential's landed memo. Which read gives which code is the implementation's.",
+  "reader": "hedera:testnet",
+  "entries": [
+   {
+    "result": "SUCCESS",
+    "nonce": 0,
+    "scheduled": false,
+    "memo_base64": "MHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVh",
+    "consensus_timestamp": "1700000003.000000001"
+   }
+  ],
+  "expectLanded": {
+   "network": "hedera:testnet",
+   "memo": "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a"
+  },
+  "rows": [
+   {
+    "case": "a reader of another network",
+    "readerNetwork": "hedera:mainnet",
+    "expect": "hedera/wrong-reader"
+   },
+   {
+    "case": "the mirror node holds no such transaction",
+    "entries": null,
+    "expect": "hedera/not-found"
+   },
+   {
+    "case": "the read fails",
+    "throws": true,
+    "expect": "hedera/unreadable"
+   },
+   {
+    "case": "no SUCCESS entry",
+    "entries": [
+     {
+      "result": "INSUFFICIENT_PAYER_BALANCE",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "MHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVh",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": "hedera/not-found"
+   }
+  ],
+  "defaults": [
+   {
+    "case": "the request names no chainId; a default network is given",
+    "defaultNetwork": "hedera:testnet",
+    "expectNetwork": "hedera:testnet"
+   },
+   {
+    "case": "the request names no chainId and no default is given",
+    "expect": "hedera/chain-id-unnamed"
+   },
+   {
+    "case": "the request names chainId 296; a default of mainnet is not used",
+    "chainId": 296,
+    "defaultNetwork": "hedera:mainnet",
+    "expectNetwork": "hedera:testnet"
+   }
+  ]
+ },
+ "network": [
+  {
+   "chainId": 296,
+   "expect": "hedera:testnet"
+  },
+  {
+   "chainId": 295,
+   "expect": "hedera:mainnet"
+  },
+  {
+   "chainId": 297,
+   "expect": "hedera/chain-id-unnamed"
+  },
+  {
+   "default": "hedera:mainnet",
+   "expect": "hedera:mainnet"
+  },
+  {
+   "expect": "hedera/chain-id-unnamed"
+  }
+ ],
+ "status": {
+  "case": "status of the pull reference",
+  "entries": [
+   {
+    "result": "SUCCESS",
+    "nonce": 0,
+    "scheduled": false,
+    "memo_base64": "MHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVh",
+    "consensus_timestamp": "1700000003.000000001"
+   }
+  ],
+  "expect": {
+   "state": "settled",
+   "consensus": "1700000003.000000001"
+  }
+ },
+ "requests": [
+  {
+   "case": "splits that consume the whole amount",
+   "request": {
+    "amount": "1050000",
+    "currency": "0.0.5449",
+    "recipient": "0.0.1234",
+    "splits": [
+     {
+      "recipient": "0.0.67890",
+      "amount": "1050000"
+     }
+    ],
+    "methodDetails": {
+     "chainId": 296
+    }
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "a split to the recipient itself",
+   "request": {
+    "amount": "1050000",
+    "currency": "0.0.5449",
+    "recipient": "0.0.1234",
+    "splits": [
+     {
+      "recipient": "0.0.1234",
+      "amount": "1"
+     }
+    ],
+    "methodDetails": {
+     "chainId": 296
+    }
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "ten splits",
+   "request": {
+    "amount": "1050000",
+    "currency": "0.0.5449",
+    "recipient": "0.0.1234",
+    "splits": [
+     {
+      "recipient": "0.0.70000",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70001",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70002",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70003",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70004",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70005",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70006",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70007",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70008",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70009",
+      "amount": "1"
+     }
+    ],
+    "methodDetails": {
+     "chainId": 296
+    }
+   },
+   "expect": "hedera/option-malformed"
+  }
+ ],
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/hedera",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "hedera",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDUwMDAwIiwiY3VycmVuY3kiOiIwLjAuNTQ0OSIsInJlY2lwaWVudCI6IjAuMC4xMjM0Iiwic3BsaXRzIjpbeyJyZWNpcGllbnQiOiIwLjAuNjc4OTAiLCJhbW91bnQiOiI1MDAwMCJ9XSwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTZ9fQ",
+       "expires": "2026-09-25T12:05:00Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "hedera:testnet:0.0.5555",
+     "inputs": {
+      "node": "0.0.3",
+      "validStart": {
+       "seconds": "1700000000",
+       "nanos": 0
+      },
+      "maxFee": "100000000"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/hedera",
+    "input": {
+     "presented": {
+      "challenge": {
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "realm": "api.seller.example",
+       "method": "hedera",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDUwMDAwIiwiY3VycmVuY3kiOiIwLjAuNTQ0OSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6Mjk2fSwicmVjaXBpZW50IjoiMC4wLjEyMzQiLCJzcGxpdHMiOlt7ImFtb3VudCI6IjUwMDAwIiwicmVjaXBpZW50IjoiMC4wLjY3ODkwIn1dfQ",
+       "expires": "2026-09-25T12:05:00Z",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "type": "transaction",
+       "transaction": "KvcBCowBCg0KBgiA4s+qBhIDGLMrEgIYAxiAwtcvIgIIeDJCMHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVhcioSKAoDGMkqEgoKAxizKxCfloABEgkKAxjSCRCAiXoSCgoEGLKSBBCgjQYSZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAiwuD9Gk81cKLOoeJorPC7RtvZ3NF6YrsAy6VisLW+hD30aJyePoD7++IGav/bsGzHhjPBVH4EdKsiuHSUXE2Ag=="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V4 and the pull credential's signature payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

@@ -1,0 +1,494 @@
+{
+ "about": "Reads of Westend Asset Hub (polkadot:67f9723393ef76214df0118c34bbbd3d) from Parity's public Sidecar, https://westend-asset-hub-public-sidecar.parity-chains.parity.io, after two blocks named by a facilitator left the canonical chain. 'moved' was read at 2026-09-25T23:45:02Z: the named block and the canonical block at the same height hold the same extrinsic at index 2. 'gone' was read at 2026-09-25T23:52:51Z: the canonical block at the named height has two extrinsics, and the payment is canonical at another height. A null body is Sidecar's 400 'Requested extrinsicIndex does not exist'.",
+ "moved": {
+  "transaction": "0xdce9bc66a6b35422d0ae6fb26197111c89844431b56ab2231957f21e999587b7-2",
+  "extrinsicHash": "0x9fccb452a1e6bf0ac6ef7d1f66f03f1cdc8be6baef35887ffa5728ccc2422358",
+  "assetId": 31337,
+  "h": "0x16943e4f03fa52e66e8415892cdf19e9a3fad9d0a1a3b27fe6a350ff727aa14a",
+  "reads": {
+   "/blocks/0xdce9bc66a6b35422d0ae6fb26197111c89844431b56ab2231957f21e999587b7/extrinsics/2": {
+    "at": {
+     "height": "17735701",
+     "hash": "0xdce9bc66a6b35422d0ae6fb26197111c89844431b56ab2231957f21e999587b7"
+    },
+    "extrinsics": {
+     "method": {
+      "pallet": "utility",
+      "method": "batchAll"
+     },
+     "signature": {
+      "signature": "0xc64d04444fde12d4cafaa15b346c324ea3e6a57ddaff55f3da0250b03c51febf8654f47b139037f171a2062001c9f241dd21f9cd22f89c6d9b12e53da2ae660b",
+      "signer": {
+       "id": "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr"
+      }
+     },
+     "nonce": "14",
+     "args": {
+      "calls": [
+       {
+        "method": {
+         "pallet": "assets",
+         "method": "transferKeepAlive"
+        },
+        "args": {
+         "id": "31337",
+         "target": {
+          "id": "5EWph9YD17vSurudZd5jbn9iHdpJK8kFUCa7Nda5AkP88rMc"
+         },
+         "amount": "10000"
+        }
+       },
+       {
+        "method": {
+         "pallet": "system",
+         "method": "remarkWithEvent"
+        },
+        "args": {
+         "remark": "0x6c63703a7368613235363a307831363934336534663033666135326536366538343135383932636466313965396133666164396430613161336232376665366133353066663732376161313461"
+        }
+       }
+      ]
+     },
+     "tip": "0",
+     "hash": "0x9fccb452a1e6bf0ac6ef7d1f66f03f1cdc8be6baef35887ffa5728ccc2422358",
+     "info": {
+      "weight": {
+       "refTime": "650464699",
+       "proofSize": "10541"
+      },
+      "class": "Normal",
+      "partialFee": "2664094848",
+      "kind": "fromEvent"
+     },
+     "era": {
+      "mortalEra": [
+       "64",
+       "7"
+      ]
+     },
+     "events": [
+      {
+       "method": {
+        "pallet": "balances",
+        "method": "Withdraw"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "2664094848"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "assets",
+        "method": "Transferred"
+       },
+       "data": [
+        "31337",
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "5EWph9YD17vSurudZd5jbn9iHdpJK8kFUCa7Nda5AkP88rMc",
+        "10000"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "ItemCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "system",
+        "method": "Remarked"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "0x4b302439bf0a2142a56dffffa47df1b850d5713fcc0f4cfd827e35424434264b"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "ItemCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "BatchCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "balances",
+        "method": "Deposit"
+       },
+       "data": [
+        "5EYCAe5gKBMwLZyq5dw41Hw3V68nsCVTZQ2d4AYfbMb4kF29",
+        "2664094848"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "transactionPayment",
+        "method": "TransactionFeePaid"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "2664094848",
+        "0"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "system",
+        "method": "ExtrinsicSuccess"
+       },
+       "data": [
+        {
+         "weight": {
+          "refTime": "650464699",
+          "proofSize": "10541"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ],
+     "success": true,
+     "paysFee": true
+    }
+   },
+   "/blocks/head/header": {
+    "number": "17735945"
+   },
+   "/blocks/17735701/extrinsics/2": {
+    "at": {
+     "height": "17735701",
+     "hash": "0x669e1f8d67457055c7d4516aeebec824922c1829001ed5264f4061a9ddef529f"
+    },
+    "extrinsics": {
+     "method": {
+      "pallet": "utility",
+      "method": "batchAll"
+     },
+     "signature": {
+      "signature": "0xc64d04444fde12d4cafaa15b346c324ea3e6a57ddaff55f3da0250b03c51febf8654f47b139037f171a2062001c9f241dd21f9cd22f89c6d9b12e53da2ae660b",
+      "signer": {
+       "id": "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr"
+      }
+     },
+     "nonce": "14",
+     "args": {
+      "calls": [
+       {
+        "method": {
+         "pallet": "assets",
+         "method": "transferKeepAlive"
+        },
+        "args": {
+         "id": "31337",
+         "target": {
+          "id": "5EWph9YD17vSurudZd5jbn9iHdpJK8kFUCa7Nda5AkP88rMc"
+         },
+         "amount": "10000"
+        }
+       },
+       {
+        "method": {
+         "pallet": "system",
+         "method": "remarkWithEvent"
+        },
+        "args": {
+         "remark": "0x6c63703a7368613235363a307831363934336534663033666135326536366538343135383932636466313965396133666164396430613161336232376665366133353066663732376161313461"
+        }
+       }
+      ]
+     },
+     "tip": "0",
+     "hash": "0x9fccb452a1e6bf0ac6ef7d1f66f03f1cdc8be6baef35887ffa5728ccc2422358",
+     "info": {
+      "weight": {
+       "refTime": "650464699",
+       "proofSize": "10300"
+      },
+      "class": "Normal",
+      "partialFee": "2664094848",
+      "kind": "fromEvent"
+     },
+     "era": {
+      "mortalEra": [
+       "64",
+       "7"
+      ]
+     },
+     "events": [
+      {
+       "method": {
+        "pallet": "balances",
+        "method": "Withdraw"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "2664094848"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "assets",
+        "method": "Transferred"
+       },
+       "data": [
+        "31337",
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "5EWph9YD17vSurudZd5jbn9iHdpJK8kFUCa7Nda5AkP88rMc",
+        "10000"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "ItemCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "system",
+        "method": "Remarked"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "0x4b302439bf0a2142a56dffffa47df1b850d5713fcc0f4cfd827e35424434264b"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "ItemCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "BatchCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "balances",
+        "method": "Deposit"
+       },
+       "data": [
+        "5EYCAe5gKBMwLZyq5dw41Hw3V68nsCVTZQ2d4AYfbMb4kF29",
+        "2664094848"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "transactionPayment",
+        "method": "TransactionFeePaid"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "2664094848",
+        "0"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "system",
+        "method": "ExtrinsicSuccess"
+       },
+       "data": [
+        {
+         "weight": {
+          "refTime": "650464699",
+          "proofSize": "10300"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ],
+     "success": true,
+     "paysFee": true
+    }
+   }
+  }
+ },
+ "gone": {
+  "transaction": "0x887d8d9886bd4894120df40370c5b4a3b1514a4139371614503789bd66be83a7-2",
+  "extrinsicHash": "0x785e820718c2302faf2f555b0c6e6cd0ccecdadda5f4ead7e0dbf7d26630f196",
+  "assetId": 31337,
+  "h": "0x7d9505704327970a3df209636048311c1a854e6a4570bd832a5e68b5a74974ab",
+  "reads": {
+   "/blocks/0x887d8d9886bd4894120df40370c5b4a3b1514a4139371614503789bd66be83a7/extrinsics/2": {
+    "at": {
+     "height": "17735544",
+     "hash": "0x887d8d9886bd4894120df40370c5b4a3b1514a4139371614503789bd66be83a7"
+    },
+    "extrinsics": {
+     "method": {
+      "pallet": "utility",
+      "method": "batchAll"
+     },
+     "signature": {
+      "signature": "0xe23e4c114cf40a3fe83b0c18109ceb461afad406efb26c35408b9b0b0888e7781b1fa6382723db32411e84e2b3a3686010bac842adddea65a4030013f47dbe00",
+      "signer": {
+       "id": "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr"
+      }
+     },
+     "nonce": "12",
+     "args": {
+      "calls": [
+       {
+        "method": {
+         "pallet": "assets",
+         "method": "transferKeepAlive"
+        },
+        "args": {
+         "id": "31337",
+         "target": {
+          "id": "5EWph9YD17vSurudZd5jbn9iHdpJK8kFUCa7Nda5AkP88rMc"
+         },
+         "amount": "10000"
+        }
+       },
+       {
+        "method": {
+         "pallet": "system",
+         "method": "remarkWithEvent"
+        },
+        "args": {
+         "remark": "0x6c63703a7368613235363a307837643935303537303433323739373061336466323039363336303438333131633161383534653661343537306264383332613565363862356137343937346162"
+        }
+       }
+      ]
+     },
+     "tip": "0",
+     "hash": "0x785e820718c2302faf2f555b0c6e6cd0ccecdadda5f4ead7e0dbf7d26630f196",
+     "info": {
+      "weight": {
+       "refTime": "650464699",
+       "proofSize": "10541"
+      },
+      "class": "Normal",
+      "partialFee": "2664094848",
+      "kind": "fromEvent"
+     },
+     "era": {
+      "mortalEra": [
+       "64",
+       "40"
+      ]
+     },
+     "events": [
+      {
+       "method": {
+        "pallet": "balances",
+        "method": "Withdraw"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "2664094848"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "assets",
+        "method": "Transferred"
+       },
+       "data": [
+        "31337",
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "5EWph9YD17vSurudZd5jbn9iHdpJK8kFUCa7Nda5AkP88rMc",
+        "10000"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "ItemCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "system",
+        "method": "Remarked"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "0xdb5d0ab3682cf555822874681fbf149153861817be7a04adb33ffd35d5be4aaa"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "ItemCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "utility",
+        "method": "BatchCompleted"
+       },
+       "data": []
+      },
+      {
+       "method": {
+        "pallet": "balances",
+        "method": "Deposit"
+       },
+       "data": [
+        "5EYCAe5gKBMwLZyq5dw41Hw3V68nsCVTZQ2d4AYfbMb4kF29",
+        "2664094848"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "transactionPayment",
+        "method": "TransactionFeePaid"
+       },
+       "data": [
+        "5HWrk4vwFUFPUM7mAPXR7WnKa8gREte8rxtCP96BqGwXPXVr",
+        "2664094848",
+        "0"
+       ]
+      },
+      {
+       "method": {
+        "pallet": "system",
+        "method": "ExtrinsicSuccess"
+       },
+       "data": [
+        {
+         "weight": {
+          "refTime": "650464699",
+          "proofSize": "10541"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ],
+     "success": true,
+     "paysFee": true
+    }
+   },
+   "/blocks/head/header": {
+    "number": "17736013"
+   },
+   "/blocks/17735544/extrinsics/2": null
+  }
+ }
+}

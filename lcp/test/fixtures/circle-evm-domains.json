@@ -1,0 +1,685 @@
+{
+ "about": "One row per EVM token deployment read live on 2026-09-25 (02:39:04Z-02:41:32Z): name(), version() and DOMAIN_SEPARATOR() by read-only eth_call; standard is true where the separator equals keccak256 of EIP712Domain(name, version, chainId, asset). Sonic Blaze Testnet was not read and has no row.",
+ "rows": [
+  {
+   "chain": "Arbitrum",
+   "caip2": "eip155:42161",
+   "token": "USDC",
+   "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0x08d11903f8419e68b1b8721bcbe2e9fc68569122a77ef18c216f10b3b5112c78",
+   "standard": true
+  },
+  {
+   "chain": "Arc",
+   "caip2": "eip155:5042",
+   "token": "USDC",
+   "asset": "0x3600000000000000000000000000000000000000",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x940506929bba468048a19b567f4f0d534714bc06604b5c3017e5d16785ccdf84",
+   "standard": true
+  },
+  {
+   "chain": "Avalanche C-Chain",
+   "caip2": "eip155:43114",
+   "token": "USDC",
+   "asset": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3",
+   "standard": true
+  },
+  {
+   "chain": "Base",
+   "caip2": "eip155:8453",
+   "token": "USDC",
+   "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f",
+   "standard": true
+  },
+  {
+   "chain": "Codex",
+   "caip2": "eip155:81224",
+   "token": "USDC",
+   "asset": "0xd996633a415985DBd7D6D12f4A4343E31f5037cf",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x7216e8bb2125b5b2951e29049edfd4e9a03a7e9f9e916529056564c1740c01a6",
+   "standard": true
+  },
+  {
+   "chain": "Celo",
+   "caip2": "eip155:42220",
+   "token": "USDC",
+   "asset": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xb2ce31d2838445fa765a491f550e7c78ac7280ab0f3bc9d6063a86df9c3fb578",
+   "standard": true
+  },
+  {
+   "chain": "Cronos",
+   "caip2": "eip155:25",
+   "token": "USDC",
+   "asset": "0x3D7F2C478aAfdB65542BCB44bCeeC05849999d2D",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xdc920f27f78b02ee063db3e32126151a4cbc26af0cc69fc4dae670e0531f22c1",
+   "standard": true
+  },
+  {
+   "chain": "EDGE",
+   "caip2": "eip155:3343",
+   "token": "USDC",
+   "asset": "0x98d2919b9A214E6Fa5384AC81E6864bA686Ad74c",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xa29567b2f40078a0fc4acc55ecf6382c3062a00ddb1fa95dce1dc9f45e23633d",
+   "standard": true
+  },
+  {
+   "chain": "Ethereum",
+   "caip2": "eip155:1",
+   "token": "USDC",
+   "asset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0x06c37168a7db5138defc7866392bb87a741f9b3d104deb5094588ce041cae335",
+   "standard": true
+  },
+  {
+   "chain": "HyperEVM",
+   "caip2": "eip155:999",
+   "token": "USDC",
+   "asset": "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x70a72998ad787d1a9152a8f88ccfe0766b1cb293b6b4011b34523035da10b0a3",
+   "standard": true
+  },
+  {
+   "chain": "Injective",
+   "caip2": "eip155:1776",
+   "token": "USDC",
+   "asset": "0xa00C59fF5a080D2b954d0c75e46E22a0c371235a",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x95a1470c743949357795250dd5fe182b90d3a00e1a6eec8bc0cac69d42ae4113",
+   "standard": true
+  },
+  {
+   "chain": "Ink",
+   "caip2": "eip155:57073",
+   "token": "USDC",
+   "asset": "0x2D270e6886d130D724215A266106e6832161EAEd",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xf519297f2d44354cc4501c0409de6f010d00751a8bae0722beac00aeb58b0217",
+   "standard": true
+  },
+  {
+   "chain": "Linea",
+   "caip2": "eip155:59144",
+   "token": "USDC",
+   "asset": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x175b79ed2b358e1a27efa17563a81216a922ec7265bbb33e190840dc9e09c633",
+   "standard": true
+  },
+  {
+   "chain": "Monad",
+   "caip2": "eip155:143",
+   "token": "USDC",
+   "asset": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xfe22123edc0dd4aeb912eb7948c5f0e531592c2053b3067612f427db342c93c6",
+   "standard": true
+  },
+  {
+   "chain": "Morph",
+   "caip2": "eip155:2818",
+   "token": "USDC",
+   "asset": "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x160b84354139e5cd6e3d828fd0899bda6c038f25d8c5abb94dcf2fb390e378c0",
+   "standard": true
+  },
+  {
+   "chain": "OP Mainnet",
+   "caip2": "eip155:10",
+   "token": "USDC",
+   "asset": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0x26d9c34bb1a1c312f69c53b2d93b8be20faafba63af2438c6811713c9b1f933f",
+   "standard": true
+  },
+  {
+   "chain": "Pharos",
+   "caip2": "eip155:1672",
+   "token": "USDC",
+   "asset": "0xC879C018dB60520F4355C26eD1a6D572cdAC1815",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x6ffe34d160f3b60b5ec680c84efc558f4ae78067d11d292a535aaf7fb0155232",
+   "standard": true
+  },
+  {
+   "chain": "Plasma",
+   "caip2": "eip155:9745",
+   "token": "USDC",
+   "asset": "0x2d661C89D812261039AF9764eceaAee884f5F67F",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xfa3461fed5cca77ddd7b8ea106c7bd3a0364ce57dbd7ba69e70ace21d77a56c2",
+   "standard": true
+  },
+  {
+   "chain": "Plume",
+   "caip2": "eip155:98866",
+   "token": "USDC",
+   "asset": "0x222365EF19F7947e5484218551B56bb3965Aa7aF",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x2518d7d2cb33ed37eaf13d3957bf62c26d622704689a36175665d5b657ce5677",
+   "standard": true
+  },
+  {
+   "chain": "Polygon PoS",
+   "caip2": "eip155:137",
+   "token": "USDC",
+   "asset": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0xcaa2ce1a5703ccbe253a34eb3166df60a705c561b44b192061e28f2a985be2ca",
+   "standard": true
+  },
+  {
+   "chain": "Sei",
+   "caip2": "eip155:1329",
+   "token": "USDC",
+   "asset": "0xe15fC38F6D8c56aF07bbCBe3BAf5708A2Bf42392",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x0a19136106ae98d2c245cbbd451f3cb2bbbb1670e1ee191abacb5a5e255c0255",
+   "standard": true
+  },
+  {
+   "chain": "Sonic",
+   "caip2": "eip155:146",
+   "token": "USDC",
+   "asset": "0x29219dd400f2Bf60E5a23d13Be72B486D4038894",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x47ff53f4cb866f027068ac56dedd98f6818c3ea4f1f60a1850d746944543ac12",
+   "standard": true
+  },
+  {
+   "chain": "Unichain",
+   "caip2": "eip155:130",
+   "token": "USDC",
+   "asset": "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x565b4c4095d739dada6adeb9a89bc6dc4d102500ebd4a88bef1ec1d0f69d83b8",
+   "standard": true
+  },
+  {
+   "chain": "World Chain",
+   "caip2": "eip155:480",
+   "token": "USDC",
+   "asset": "0x79A02482A880bCe3F13E09da970dC34dB4cD24D1",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x936533d5f85622a8261854e20bb87f4e849dde486f429bc1fb66202b7cde09ec",
+   "standard": true
+  },
+  {
+   "chain": "X Layer",
+   "caip2": "eip155:196",
+   "token": "USDC",
+   "asset": "0xB6CEceAB302E2E4948951eE7843FC24E92933061",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xc139aad82c94d0c30c92d2422f0805afad2a7b3e0c183678f5d96239acddc605",
+   "standard": true
+  },
+  {
+   "chain": "XDC",
+   "caip2": "eip155:50",
+   "token": "USDC",
+   "asset": "0xfA2958CB79b0491CC627c1557F441eF849Ca8eb1",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xe3bb44ae105af7e23bb39b117e22bbcbf435066554f45b3a9bbcba42c80fe56d",
+   "standard": true
+  },
+  {
+   "chain": "ZKsync Era",
+   "caip2": "eip155:324",
+   "token": "USDC",
+   "asset": "0x1d17CBcF0D6D143135aE902365D2E5e2A16538D4",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xd9e272e79c93b6cd9ea1c49ca7650944094be6dda16adbb68986420bde637dcc",
+   "standard": true
+  },
+  {
+   "chain": "Arbitrum Sepolia",
+   "caip2": "eip155:421614",
+   "token": "USDC",
+   "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0x85944e1292d007732838d6eadfa67589b78ffcededbd4df60488d0af251308bb",
+   "standard": true
+  },
+  {
+   "chain": "Arc Testnet",
+   "caip2": "eip155:5042002",
+   "token": "USDC",
+   "asset": "0x3600000000000000000000000000000000000000",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x361191522483d32a83e70ae7183b4b9629442c13a78bc9921d6f707911c8c6b0",
+   "standard": true
+  },
+  {
+   "chain": "Avalanche Fuji",
+   "caip2": "eip155:43113",
+   "token": "USDC",
+   "asset": "0x5425890298aed601595a70AB815c96711a31Bc65",
+   "name": "USD Coin",
+   "version": "2",
+   "separator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3",
+   "standard": true
+  },
+  {
+   "chain": "Base Sepolia",
+   "caip2": "eip155:84532",
+   "token": "USDC",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818",
+   "standard": true
+  },
+  {
+   "chain": "Celo Sepolia",
+   "caip2": "eip155:11142220",
+   "token": "USDC",
+   "asset": "0x01C5C0122039549AD1493B8220cABEdD739BC44E",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x23f491197bb8c5ea4fe8dd4c2293b600f073553f9814015e7a5eb57724df9578",
+   "standard": true
+  },
+  {
+   "chain": "Codex Testnet",
+   "caip2": "eip155:812242",
+   "token": "USDC",
+   "asset": "0x6d7f141b6819C2c9CC2f818e6ad549E7Ca090F8f",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xc1b35888ffe38ff5e2b3e0032c487a7a36027c07e40045432b356bc36de46262",
+   "standard": true
+  },
+  {
+   "chain": "Cronos Testnet",
+   "caip2": "eip155:338",
+   "token": "USDC",
+   "asset": "0xEb33dc5fac03833e132593659e1dE7256aB59794",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xe8fa05a5c2f00d2c995d44f86e3c4c8fe04a4e820bb3d67c7f6762a7d886dfd2",
+   "standard": true
+  },
+  {
+   "chain": "Ethereum Sepolia",
+   "caip2": "eip155:11155111",
+   "token": "USDC",
+   "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xb90e5057db141a932946e64d09ccb7ffc9b00bd79fec26f698d29af0c83320a6",
+   "standard": true
+  },
+  {
+   "chain": "EDGE Testnet",
+   "caip2": "eip155:33431",
+   "token": "USDC",
+   "asset": "0x2d9F7CAD728051AA35Ecdc472a14cf8cDF5CFD6B",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xe4321ecf096ed8b41704430c27d069f5541494c226ae1ec93ac5e322b86db78f",
+   "standard": true
+  },
+  {
+   "chain": "HyperEVM Testnet",
+   "caip2": "eip155:998",
+   "token": "USDC",
+   "asset": "0x2B3370eE501B4a559b57D449569354196457D8Ab",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xf26c39ac3b2040472381fddbd35212755a23586ffb86e608e151af6caa1d465e",
+   "standard": true
+  },
+  {
+   "chain": "Injective Testnet",
+   "caip2": "eip155:1439",
+   "token": "USDC",
+   "asset": "0x0C382e685bbeeFE5d3d9C29e29E341fEE8E84C5d",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x1be608619e63c5c161c99fc0aa20e10608108d4afbe66a75fed7a9428cf07bf5",
+   "standard": true
+  },
+  {
+   "chain": "Ink Testnet",
+   "caip2": "eip155:763373",
+   "token": "USDC",
+   "asset": "0xFabab97dCE620294D2B0b0e46C68964e326300Ac",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x1116af707d948e6a3c3e5904ad9eabb4243087bfa0230c8e5607f34fe30a3b75",
+   "standard": true
+  },
+  {
+   "chain": "Linea Sepolia",
+   "caip2": "eip155:59141",
+   "token": "USDC",
+   "asset": "0xFEce4462D57bD51A6A552365A011b95f0E16d9B7",
+   "name": "USD//C",
+   "version": "2",
+   "separator": "0x0000000000000000000000000000000000000000000000000000000000000000",
+   "standard": false
+  },
+  {
+   "chain": "Monad Testnet",
+   "caip2": "eip155:10143",
+   "token": "USDC",
+   "asset": "0x534b2f3A21130d7a60830c2Df862319e593943A3",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xf1090f5a61ddee19528cecc447be0f91c7205fc2b34dd271fc0de87809a0a48d",
+   "standard": true
+  },
+  {
+   "chain": "Morph Hoodi Testnet",
+   "caip2": "eip155:2910",
+   "token": "USDC",
+   "asset": "0x7433b41C6c5e1d58D4Da99483609520255ab661B",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x606926c06e3b3189a6598aeeaceca055736b59f77cc05fecf772ee8690e99bf7",
+   "standard": true
+  },
+  {
+   "chain": "OP Sepolia",
+   "caip2": "eip155:11155420",
+   "token": "USDC",
+   "asset": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x09d038a3e46040fc37eb01174dbbcdb7981fbd8eafd9e1a857b1c67805dfb29e",
+   "standard": true
+  },
+  {
+   "chain": "Pharos Testnet",
+   "caip2": "eip155:688689",
+   "token": "USDC",
+   "asset": "0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x29a275a05374772bbc16618b5855b2e9317f36399c0d925e4deea5646c572afd",
+   "standard": true
+  },
+  {
+   "chain": "Plasma Testnet",
+   "caip2": "eip155:9746",
+   "token": "USDC",
+   "asset": "0xE67Fb267022cBA8064Dd388CC2FED724F3120D9D",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x5a34b72e8e64402d944480afda5e386f7dae7fe70578d7a1f5891c2891cacea1",
+   "standard": true
+  },
+  {
+   "chain": "Plume Testnet",
+   "caip2": "eip155:98867",
+   "token": "USDC",
+   "asset": "0xcB5f30e335672893c7eb944B374c196392C19D18",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x80cb41f9e54bab3a19193bfe0fede70779cdabe8437973dd5e57e49ff8ab660a",
+   "standard": true
+  },
+  {
+   "chain": "Polygon PoS Amoy",
+   "caip2": "eip155:80002",
+   "token": "USDC",
+   "asset": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x5cddc98319864e897e4469bd1d13c2288c677047b54b8cca12bd342adb6be9eb",
+   "standard": true
+  },
+  {
+   "chain": "Sei Testnet",
+   "caip2": "eip155:1328",
+   "token": "USDC",
+   "asset": "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x154bb5980ce1d584a1067dc67730720e6046d0364a2ade0b692dd488e71fe653",
+   "standard": true
+  },
+  {
+   "chain": "Sonic Testnet",
+   "caip2": "eip155:14601",
+   "token": "USDC",
+   "asset": "0x0BA304580ee7c9a980CF72e55f5Ed2E9fd30Bc51",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0xdfa106a4e2574a6f3d7aeec9fb108ede8b529a7e443a968e0c467ab2dbc1cb18",
+   "standard": true
+  },
+  {
+   "chain": "Unichain Sepolia",
+   "caip2": "eip155:1301",
+   "token": "USDC",
+   "asset": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x2a1fda83efdd0b06cf1a15e7ee9aa85aa7a1612ae5af0c599ecc6609e6afafa1",
+   "standard": true
+  },
+  {
+   "chain": "World Chain Sepolia",
+   "caip2": "eip155:4801",
+   "token": "USDC",
+   "asset": "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x098a2a995bf22e1ff883e9a586257a4a7de39135c9f62b98bf4060d6b8de8058",
+   "standard": true
+  },
+  {
+   "chain": "X Layer Testnet",
+   "caip2": "eip155:1952",
+   "token": "USDC",
+   "asset": "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x0c1e5ad297403c9eb03225f1a56e02bad850d8a268722362a5a1ad00cb6eb140",
+   "standard": true
+  },
+  {
+   "chain": "XDC Apothem",
+   "caip2": "eip155:51",
+   "token": "USDC",
+   "asset": "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x3835afe643ce123f3bc71a8e3123e24651d2d4309bbf3ba58329a1db60b9b2c3",
+   "standard": true
+  },
+  {
+   "chain": "ZKsync Era Testnet",
+   "caip2": "eip155:300",
+   "token": "USDC",
+   "asset": "0xAe045DE5638162fa134807Cb558E15A3F5A7F853",
+   "name": "USDC",
+   "version": "2",
+   "separator": "0x879bdfad9ac4db4e49fd1ed36661512f6adf1b4db93c2e899f3d24ba9a6aa376",
+   "standard": true
+  },
+  {
+   "chain": "Arc",
+   "caip2": "eip155:5042",
+   "token": "EURC",
+   "asset": "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0x25fe3beaae16ef5c1cb9757c6efc1bf33f81ecd4c7dae191320372013b7d2175",
+   "standard": true
+  },
+  {
+   "chain": "Avalanche C-Chain",
+   "caip2": "eip155:43114",
+   "token": "EURC",
+   "asset": "0xC891EB4cbdEFf6e073e859e987815Ed1505c2ACD",
+   "name": "Euro Coin",
+   "version": "2",
+   "separator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1",
+   "standard": true
+  },
+  {
+   "chain": "Base",
+   "caip2": "eip155:8453",
+   "token": "EURC",
+   "asset": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb",
+   "standard": true
+  },
+  {
+   "chain": "Cronos",
+   "caip2": "eip155:25",
+   "token": "EURC",
+   "asset": "0xA6dE01a2d62C6B5f3525d768f34d276652C554c8",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0x2e003558eeca85203587db54cfa95e671153e979919f49338dd68b2efcbb232d",
+   "standard": true
+  },
+  {
+   "chain": "Ethereum",
+   "caip2": "eip155:1",
+   "token": "EURC",
+   "asset": "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
+   "name": "Euro Coin",
+   "version": "2",
+   "separator": "0x99f188f447f0c6eaf68589359cd2ead8c2faaaaee984ab926fdb734d0040073b",
+   "standard": true
+  },
+  {
+   "chain": "Plasma",
+   "caip2": "eip155:9745",
+   "token": "EURC",
+   "asset": "0x3EE196E78d4d4248b849B8E1C7F44C5457FAFD2C",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0xdec8fbc4ce4e70c564374811d85d4d5222fc9dfca97b02eef1014df1f2778a40",
+   "standard": true
+  },
+  {
+   "chain": "World Chain",
+   "caip2": "eip155:480",
+   "token": "EURC",
+   "asset": "0x1C60ba0A0eD1019e8Eb035E6daF4155A5cE2380B",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0xb37c0093d90177d6cd31d2d13d126d322e6845b2404696c7ff3a30fbdd0fce1f",
+   "standard": true
+  },
+  {
+   "chain": "Arc Testnet",
+   "caip2": "eip155:5042002",
+   "token": "EURC",
+   "asset": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0x649ec6b0634bd74f28684781d2c9ae49dff14ba3d5f9bb5d70c1e1f0e1ebf160",
+   "standard": true
+  },
+  {
+   "chain": "Avalanche Fuji",
+   "caip2": "eip155:43113",
+   "token": "EURC",
+   "asset": "0x5E44db7996c682E92a960b65AC713a54AD815c6B",
+   "name": "EUR Coin",
+   "version": "2",
+   "separator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e",
+   "standard": true
+  },
+  {
+   "chain": "Base Sepolia",
+   "caip2": "eip155:84532",
+   "token": "EURC",
+   "asset": "0x808456652fdb597867f38412077A9182bf77359F",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e",
+   "standard": true
+  },
+  {
+   "chain": "Cronos Testnet",
+   "caip2": "eip155:338",
+   "token": "EURC",
+   "asset": "0x31f7538adb53cF16350e6B0c89d03D91b7D12c46",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0xc3f4be4982fbea3a10cf72f74962b9510e58400642cb9646286c153843d84466",
+   "standard": true
+  },
+  {
+   "chain": "Ethereum Sepolia",
+   "caip2": "eip155:11155111",
+   "token": "EURC",
+   "asset": "0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0x94cfe799c9cae17cac3300418a4fc1764866b921f66f762b61d5e523fef9e5b6",
+   "standard": true
+  },
+  {
+   "chain": "Plasma Testnet",
+   "caip2": "eip155:9746",
+   "token": "EURC",
+   "asset": "0x98AfA0F93Dd993B736399f9074eDcEBD1985A330",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0x44c3e4811fc6ceadb6bd2822bce283e2ac6183f49dc21fdb9deba9621e0d7128",
+   "standard": true
+  },
+  {
+   "chain": "World Chain Sepolia",
+   "caip2": "eip155:4801",
+   "token": "EURC",
+   "asset": "0xe479EcA5740Ac65d6E1823bea2f1C08Bc14e954F",
+   "name": "EURC",
+   "version": "2",
+   "separator": "0xba9222a783358ae4bbf06432a8c848ecfd2a5e90feb89558ecbd60cefdf5e4fe",
+   "standard": true
+  }
+ ]
+}

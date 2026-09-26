@@ -1,0 +1,459 @@
+{
+ "about": "Vectors for the x402/upto/solana pairing (the x402-upto-solana entry point of @integraledger/lcp). Expected values use x402-exact-solana.json's fixed inputs (receiverAuthorizer from seed 03x32; nonce 7; openSlot 341000000; amount 10000; withdrawDelay 3600), computed with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The fixtures (EU5's landed wire, the no-channel transaction, the plants' wires) were built with solders 0.26.0 on Python 3.11; the same script reproduces EU1, EU3 and EU5's txid. The no-channel message's digest, d4e6becc...1c47, is recorded here in full.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "payerSeed": "0101010101010101010101010101010101010101010101010101010101010101",
+  "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+  "nonce": "7",
+  "openSlot": "341000000",
+  "now": 1790000000,
+  "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "option": {
+   "scheme": "upto",
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "amount": "10000",
+   "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "withdrawDelay": 3600,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "paymentFlow": "escrow"
+   }
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "EU1": {
+  "channelPda": "SPNTgty1ym2T5aqSruw12qdTP566sznW3E2gW7RowSh",
+  "bump": 255
+ },
+ "EU2": {
+  "openInstructionData": "0107000000000000001027000000000000100e0000403f531400000000010000001cc66ed43751115a42b5905132c4f668328611e5e8deb7d862585d2a3551d0011027",
+  "length": 67
+ },
+ "EU3": {
+  "messageLength": 703,
+  "messageSha256": "9ccec9c3d1637c36cc020f2554aa1a81762f0cbe924613ff90e36e9309212473",
+  "payerSignaturePrefix": "203856cd",
+  "payerSignatureSuffix": "a65b03",
+  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgOFbNN1mZa8NqWGFEh0mUWAso937yWxCaO+GHE+ft1sn2/v1WW2tID1/FSntu7d/v88f4hOBvJEOzdrxJplsDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQGAAUCQA0DAAYACQMBAAAAAAAAAA0OAQAACg4CBAMJBQgMCw1DAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJwcATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "wireLength": 832,
+  "wireSha256Prefix": "9e41bbec",
+  "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+  "instructions": [
+   {
+    "program": "ComputeBudget111111111111111111111111111111",
+    "accounts": [],
+    "data": "02400d0300"
+   },
+   {
+    "program": "ComputeBudget111111111111111111111111111111",
+    "accounts": [],
+    "data": "030100000000000000"
+   },
+   {
+    "program": "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",
+    "accounts": [
+     [
+      "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      true,
+      true
+     ],
+     [
+      "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      true,
+      true
+     ],
+     [
+      "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      true,
+      true
+     ],
+     [
+      "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      false,
+      false
+     ],
+     [
+      "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      false,
+      false
+     ],
+     [
+      "SPNTgty1ym2T5aqSruw12qdTP566sznW3E2gW7RowSh",
+      false,
+      true
+     ],
+     [
+      "H1AviagU5Y17z77v1F9qZPJ9kCbCsL4ewiZABNfGYoRs",
+      false,
+      true
+     ],
+     [
+      "3xjBbxiN2XhHXXCANfne2gTEoYNuZwB3PsPz1X36nrPk",
+      false,
+      true
+     ],
+     [
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      false,
+      false
+     ],
+     [
+      "11111111111111111111111111111111",
+      false,
+      false
+     ],
+     [
+      "SysvarRent111111111111111111111111111111111",
+      false,
+      false
+     ],
+     [
+      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      false,
+      false
+     ],
+     [
+      "75c2huVzDW1Eq4kD86by5392sjdJzuAT195XNgP2f2tX",
+      false,
+      false
+     ],
+     [
+      "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",
+      false,
+      false
+     ]
+    ],
+    "data": "0107000000000000001027000000000000100e0000403f531400000000010000001cc66ed43751115a42b5905132c4f668328611e5e8deb7d862585d2a3551d0011027"
+   },
+   {
+    "program": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
+    "accounts": [],
+    "data": "6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+   }
+  ],
+  "accountsAbout": "each account is [address, signer, writable] as the compiled message gives them: the fee payer's three uses merge into one writable signer key"
+ },
+ "EU4": {
+  "accepted": {
+   "scheme": "upto",
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "amount": "10000",
+   "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "withdrawDelay": 3600,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "paymentFlow": "escrow",
+    "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "channelId": "SPNTgty1ym2T5aqSruw12qdTP566sznW3E2gW7RowSh",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "digest": "0x9ccec9c3d1637c36cc020f2554aa1a81762f0cbe924613ff90e36e9309212473",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+  },
+  "noFlowOption": {
+   "scheme": "upto",
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "amount": "10000",
+   "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "withdrawDelay": 3600,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+   }
+  },
+  "noFlowAdvertise": "x402/flow-missing"
+ },
+ "EU5": {
+  "landedWireBase64": "AnL/0t8oEYXAp3SJ+v8PVmRcvgKEPohCdzGIpcg7HQC34jDwtb+2+DzBnCNgG0ncZYctT165YRJ7MqwuhG355wwgOFbNN1mZa8NqWGFEh0mUWAso937yWxCaO+GHE+ft1sn2/v1WW2tID1/FSntu7d/v88f4hOBvJEOzdrxJplsDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQGAAUCQA0DAAYACQMBAAAAAAAAAA0OAQAACg4CBAMJBQgMCw1DAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJwcATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "txid": "3JMXQMK9Z4BFZDcVTBbt8mb8gsKwREQUjpriMa3tFge2BZhbWE84EpW5TH4tJXtyXhvia9QdZsieJxz3g8N8dH2b",
+  "ref": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "transaction": "3JMXQMK9Z4BFZDcVTBbt8mb8gsKwREQUjpriMa3tFge2BZhbWE84EpW5TH4tJXtyXhvia9QdZsieJxz3g8N8dH2b",
+   "digest": "0x9ccec9c3d1637c36cc020f2554aa1a81762f0cbe924613ff90e36e9309212473",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "fromSlot": "0"
+  },
+  "rows": [
+   {
+    "at": "finalized",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "finalized"
+    }
+   },
+   {
+    "at": "confirmed",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "confirmed"
+    }
+   },
+   {
+    "at": "finalized",
+    "err": {
+     "InstructionError": [
+      2,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "err"
+    }
+   },
+   {
+    "at": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "at": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "noChannel": {
+   "landedWireBase64": "ApdCzdWrOy/W+1VybpEY68cXZkN+5IcfGO9ore6UXm/vvG4oBgB7QMejWmqXPmqokuHuiq56n0kPzmL7qUvTBQTPW1kHKSkU4CIhivYFbg9e/zdrpIYej8/2guOdFmXp8TwTd5M7ub7ophcxF/tq6ozm7q+W2tbJ50Ptw5ecyHMIgAIBAgSBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwIABQJADQMAAgAJAwEAAAAAAAAAAwEBTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+   "digest": "0xd4e6becc2ad3543f47353380bde577aecb1cddecc77ed9580d0be2113c2a1c47",
+   "expect": {
+    "state": "failed",
+    "why": "no-channel-instruction"
+   }
+  }
+ },
+ "plant": [
+  {
+   "case": "EU3's instructions with x402's random-nonce memo",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABL9sN+Lyng+CQBSoisoEMML/trATOudr/Cbq2jsV83Q3QiMD0k/qbmgRBGXI2DefVJzJp5CcIj45JNLJm5MOwKgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQGAAUCQA0DAAYACQMBAAAAAAAAAA0OAQAACg4CBAMJBQgMCw1DAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJwcAIDAwMTEyMjMzNDQ1NTY2Nzc4ODk5YWFiYmNjZGRlZWZmAA==",
+   "messageSha256": "25c9812e7b69d4894ec05aeb113aa09118d8af070ef55ce52dcd09179108b987",
+   "accepted": {
+    "scheme": "upto",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "10000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+     "withdrawDelay": 3600,
+     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+     "paymentFlow": "escrow",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "expect": "svm/memo-not-lcp"
+  },
+  {
+   "case": "EU3's instructions with no memo",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACm+8y6IxXm/GfTWQewBlH/k6kLRu40aB9iX8AyMR+JOMJQknFOIkrEgUQdgSaTNIXUQcd6FG/h2PqN2MKSbDIAgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKk7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAup1pUDXtrHisrtRdSGcmj8GAQkkHKjE8XDMHKLUju6vnQjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+Fmnofuk6ysJCZP30t/WK4niuHIHemOf19dHqOmfY9QVru1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAAMDgEAAAkNAgQDCAUHCwoMQwEHAAAAAAAAABAnAAAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcA",
+   "messageSha256": "4b427b35f97e5a41da08f4f4b97d869ab7a5ebf95e84659160642cc9655e0c77",
+   "accepted": {
+    "scheme": "upto",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "10000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+     "withdrawDelay": 3600,
+     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+     "paymentFlow": "escrow",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "expect": "svm/memo-count"
+  }
+ ],
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation.",
+  "rows": [
+   {
+    "case": "bound when the transaction's one payment-channels instruction is not an open, or there is none",
+    "expect": "x402/not-an-opening"
+   },
+   {
+    "case": "build when the choice's tokenProgram differs from extra.tokenProgram, or now is not a non-negative integer",
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "advertise or build with an amount that is not a u64 in decimal or a non-positive maxTimeoutSeconds",
+    "expect": "x402/option-malformed"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/upto/solana",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "upto",
+        "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        "amount": "10000",
+        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+         "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+         "withdrawDelay": 3600,
+         "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+         "paymentFlow": "escrow",
+         "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {
+      "nonce": "7",
+      "openSlot": "341000000",
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/upto/solana",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "upto",
+       "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+       "amount": "10000",
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+        "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+        "withdrawDelay": 3600,
+        "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "paymentFlow": "escrow",
+        "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      },
+      "payload": {
+       "from": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "maxAmount": "10000",
+       "expiresAt": 1790000060,
+       "validAfter": 1790000000,
+       "nonce": "7",
+       "openSlot": 341000000,
+       "channelId": "SPNTgty1ym2T5aqSruw12qdTP566sznW3E2gW7RowSh",
+       "deposit": "10000",
+       "authorizedSigner": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+       "openTransaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgOFbNN1mZa8NqWGFEh0mUWAso937yWxCaO+GHE+ft1sn2/v1WW2tID1/FSntu7d/v88f4hOBvJEOzdrxJplsDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQGAAUCQA0DAAYACQMBAAAAAAAAAA0OAQAACg4CBAMJBQgMCw1DAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJwcATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's EU4 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

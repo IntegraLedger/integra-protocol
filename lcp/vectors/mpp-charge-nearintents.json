@@ -1,0 +1,188 @@
+{
+ "about": "Vectors for mpp/charge/nearintents, on MPP's own example request (draft-nearintents-charge-01, blob 6a389faa6b) without its externalId. The placed request is computed with Python 3 json and base64url.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "MV3opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9",
+  "request": {
+   "amount": "1005000",
+   "currency": "eip155:42161/erc20:0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+   "recipient": "0x76b4c56085ED136a8744D52bE956396624a730E8",
+   "description": "Cross-chain premium data access",
+   "methodDetails": {
+    "originNetwork": "eip155:42161",
+    "destinationNetwork": "near:mainnet",
+    "destinationAsset": "near:mainnet/nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destinationRecipient": "merchant.near",
+    "amountOut": "1000000",
+    "minAmountIn": "1000000",
+    "depositMemo": null,
+    "slippageTolerance": 100,
+    "timeEstimate": 120,
+    "refundTo": "0x2527D02599Ba641c19FEa793cD0F9a6e8457C317",
+    "settlementBackend": "near-intents",
+    "credentialTypes": [
+     "hash"
+    ]
+   }
+  }
+ },
+ "challenge": {
+  "realm": "api.seller.example",
+  "method": "nearintents",
+  "intent": "charge",
+  "request": "eyJhbW91bnQiOiIxMDA1MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOm51bGwsImRlc3RpbmF0aW9uQXNzZXQiOiJuZWFyOm1haW5uZXQvbmVwMTQxOjE3MjA4NjI4Zjg0ZjVkNmFkMzNmMGRhM2JiYmViMjdmZmNiMzk4ZWFjNTAxYTMxYmQ2YWQyMDExZTM2MTMzYTEiLCJkZXN0aW5hdGlvbk5ldHdvcmsiOiJuZWFyOm1haW5uZXQiLCJkZXN0aW5hdGlvblJlY2lwaWVudCI6Im1lcmNoYW50Lm5lYXIiLCJtaW5BbW91bnRJbiI6IjEwMDAwMDAiLCJvcmlnaW5OZXR3b3JrIjoiZWlwMTU1OjQyMTYxIiwicmVmdW5kVG8iOiIweDI1MjdEMDI1OTlCYTY0MWMxOUZFYTc5M2NEMEY5YTZlODQ1N0MzMTciLCJzZXR0bGVtZW50QmFja2VuZCI6Im5lYXItaW50ZW50cyIsInNsaXBwYWdlVG9sZXJhbmNlIjoxMDAsInRpbWVFc3RpbWF0ZSI6MTIwfSwicmVjaXBpZW50IjoiMHg3NmI0YzU2MDg1RUQxMzZhODc0NEQ1MmJFOTU2Mzk2NjI0YTczMEU4In0",
+  "expires": "2026-09-21T14:14:20Z"
+ },
+ "place": {
+  "case": "advertise sets id MV1, opaque MV3 and externalId = L",
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "nearintents",
+   "intent": "charge",
+   "request": "eyJhbW91bnQiOiIxMDA1MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOm51bGwsImRlc3RpbmF0aW9uQXNzZXQiOiJuZWFyOm1haW5uZXQvbmVwMTQxOjE3MjA4NjI4Zjg0ZjVkNmFkMzNmMGRhM2JiYmViMjdmZmNiMzk4ZWFjNTAxYTMxYmQ2YWQyMDExZTM2MTMzYTEiLCJkZXN0aW5hdGlvbk5ldHdvcmsiOiJuZWFyOm1haW5uZXQiLCJkZXN0aW5hdGlvblJlY2lwaWVudCI6Im1lcmNoYW50Lm5lYXIiLCJtaW5BbW91bnRJbiI6IjEwMDAwMDAiLCJvcmlnaW5OZXR3b3JrIjoiZWlwMTU1OjQyMTYxIiwicmVmdW5kVG8iOiIweDI1MjdEMDI1OTlCYTY0MWMxOUZFYTc5M2NEMEY5YTZlODQ1N0MzMTciLCJzZXR0bGVtZW50QmFja2VuZCI6Im5lYXItaW50ZW50cyIsInNsaXBwYWdlVG9sZXJhbmNlIjoxMDAsInRpbWVFc3RpbWF0ZSI6MTIwfSwicmVjaXBpZW50IjoiMHg3NmI0YzU2MDg1RUQxMzZhODc0NEQ1MmJFOTU2Mzk2NjI0YTczMEU4In0",
+   "expires": "2026-09-21T14:14:20Z",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+  }
+ },
+ "occupied": {
+  "case": "advertise on the example request with its externalId order_12345",
+  "request": {
+   "amount": "1005000",
+   "currency": "eip155:42161/erc20:0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+   "recipient": "0x76b4c56085ED136a8744D52bE956396624a730E8",
+   "description": "Cross-chain premium data access",
+   "methodDetails": {
+    "originNetwork": "eip155:42161",
+    "destinationNetwork": "near:mainnet",
+    "destinationAsset": "near:mainnet/nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destinationRecipient": "merchant.near",
+    "amountOut": "1000000",
+    "minAmountIn": "1000000",
+    "depositMemo": null,
+    "slippageTolerance": 100,
+    "timeEstimate": 120,
+    "refundTo": "0x2527D02599Ba641c19FEa793cD0F9a6e8457C317",
+    "settlementBackend": "near-intents",
+    "credentialTypes": [
+     "hash"
+    ]
+   },
+   "externalId": "order_12345"
+  },
+  "expect": "near/carrier-occupied"
+ },
+ "bound": {
+  "case": "a hash credential echoing the placed challenge",
+  "payload": {
+   "type": "hash",
+   "hash": "0xabababababababababababababababababababababababababababababababab"
+  },
+  "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "plant": {
+  "case": "a type=transaction payload: bound must refuse near/not-hash-credential, never H",
+  "payload": {
+   "type": "transaction",
+   "transaction": "0x00"
+  },
+  "expect": "near/not-hash-credential"
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation.",
+  "rows": [
+   {
+    "case": "pairingsOf with a required field missing or not a string, a network not CAIP-2, or an amount not decimal",
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "pairingsOf with credentialTypes other than exactly [\"hash\"]",
+    "expect": "mpp/credential-types"
+   },
+   {
+    "case": "bound when the echoed externalId is not an LCP string",
+    "expect": "near/memo-not-lcp"
+   },
+   {
+    "case": "bound when the echoed externalId names another hash than the challenge id",
+    "expect": "mpp/carrier-not-challenge"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/nearintents",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "nearintents",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDA1MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOm51bGwsImRlc3RpbmF0aW9uQXNzZXQiOiJuZWFyOm1haW5uZXQvbmVwMTQxOjE3MjA4NjI4Zjg0ZjVkNmFkMzNmMGRhM2JiYmViMjdmZmNiMzk4ZWFjNTAxYTMxYmQ2YWQyMDExZTM2MTMzYTEiLCJkZXN0aW5hdGlvbk5ldHdvcmsiOiJuZWFyOm1haW5uZXQiLCJkZXN0aW5hdGlvblJlY2lwaWVudCI6Im1lcmNoYW50Lm5lYXIiLCJtaW5BbW91bnRJbiI6IjEwMDAwMDAiLCJvcmlnaW5OZXR3b3JrIjoiZWlwMTU1OjQyMTYxIiwicmVmdW5kVG8iOiIweDI1MjdEMDI1OTlCYTY0MWMxOUZFYTc5M2NEMEY5YTZlODQ1N0MzMTciLCJzZXR0bGVtZW50QmFja2VuZCI6Im5lYXItaW50ZW50cyIsInNsaXBwYWdlVG9sZXJhbmNlIjoxMDAsInRpbWVFc3RpbWF0ZSI6MTIwfSwicmVjaXBpZW50IjoiMHg3NmI0YzU2MDg1RUQxMzZhODc0NEQ1MmJFOTU2Mzk2NjI0YTczMEU4In0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:42161:0x2527D02599Ba641c19FEa793cD0F9a6e8457C317",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/nearintents",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "nearintents",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDA1MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOm51bGwsImRlc3RpbmF0aW9uQXNzZXQiOiJuZWFyOm1haW5uZXQvbmVwMTQxOjE3MjA4NjI4Zjg0ZjVkNmFkMzNmMGRhM2JiYmViMjdmZmNiMzk4ZWFjNTAxYTMxYmQ2YWQyMDExZTM2MTMzYTEiLCJkZXN0aW5hdGlvbk5ldHdvcmsiOiJuZWFyOm1haW5uZXQiLCJkZXN0aW5hdGlvblJlY2lwaWVudCI6Im1lcmNoYW50Lm5lYXIiLCJtaW5BbW91bnRJbiI6IjEwMDAwMDAiLCJvcmlnaW5OZXR3b3JrIjoiZWlwMTU1OjQyMTYxIiwicmVmdW5kVG8iOiIweDI1MjdEMDI1OTlCYTY0MWMxOUZFYTc5M2NEMEY5YTZlODQ1N0MzMTciLCJzZXR0bGVtZW50QmFja2VuZCI6Im5lYXItaW50ZW50cyIsInNsaXBwYWdlVG9sZXJhbmNlIjoxMDAsInRpbWVFc3RpbWF0ZSI6MTIwfSwicmVjaXBpZW50IjoiMHg3NmI0YzU2MDg1RUQxMzZhODc0NEQ1MmJFOTU2Mzk2NjI0YTczMEU4In0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "payload": {
+       "type": "hash",
+       "hash": "0xabababababababababababababababababababababababababababababababab"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's the hash credential payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

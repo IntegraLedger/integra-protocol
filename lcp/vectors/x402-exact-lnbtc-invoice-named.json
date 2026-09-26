@@ -1,0 +1,264 @@
+{
+ "about": "Vectors for the x402/exact/lnbtc/invoice-named pairing: the lightning entry point of @integraledger/lcp. N has p = x402's payment hash, h = x402's request hash, x = 300 and no m; it was made by the encoder that reproduced BOLT11's L1 and decoded by light-bolt11-decoder 3.2.0 and bolt11 1.4.1. O_N is x402's lnbtc example with N as its invoice. A_N is the core's bytes for the id, the x402 slot {accepts: [O_N], request} with members in that order, and no party slots; Python wrote them and Node's JSON.stringify(JSON.parse(bytes)) returns them unchanged. Digests are GNU coreutils sha256sum.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+  "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+  "preimage": "0001020304050607080900010203040506070809000102030405060708090102",
+  "payee": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+  "resource": {
+   "url": "https://api.example.com/article/A"
+  },
+  "O_N": {
+   "scheme": "exact",
+   "network": "lnbtc:000000000019d6689c085ae165831e93",
+   "amount": "25000",
+   "asset": "BTC",
+   "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+   "maxTimeoutSeconds": 300,
+   "extra": {
+    "assetTransferMethod": "bolt11",
+    "paymentFlow": "upfront",
+    "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+    "requestBindingProfile": "http:1",
+    "requestBindingParams": {
+     "headers": []
+    },
+    "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k"
+   }
+  },
+  "atrId": "1b4e28ba-2fa1-41d2-883f-0016d3cca427",
+  "request": {
+   "method": "GET",
+   "path": "/article/A",
+   "query": "",
+   "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "L4": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu"
+ },
+ "L6": {
+  "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k",
+  "expectDecoded": {
+   "currency": "bc",
+   "amountMsat": "25000",
+   "expiry": 300,
+   "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+   "descriptionHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+   "metadata": null
+  },
+  "expectIssuedDigestOfO_N": "0xcda52451bbbeb3d02f67460efce2420ade5c62eddcb5d7b1cf15cbf06d577172",
+  "expectAtrLength": 957,
+  "expectH_N": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
+  "expectAtrNamesInvoice": true,
+  "expectBuild": {
+   "kind": "bolt11-pay",
+   "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k"
+  },
+  "payment": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.example.com/article/A"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "lnbtc:000000000019d6689c085ae165831e93",
+    "amount": "25000",
+    "asset": "BTC",
+    "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "maxTimeoutSeconds": 300,
+    "extra": {
+     "assetTransferMethod": "bolt11",
+     "paymentFlow": "upfront",
+     "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+     "requestBindingProfile": "http:1",
+     "requestBindingParams": {
+      "headers": []
+     },
+     "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k"
+    }
+   },
+   "payload": {
+    "preimage": "0001020304050607080900010203040506070809000102030405060708090102"
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
+      "legalContextUrl": "https://atr.seller.example/0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+     }
+    }
+   }
+  },
+  "expectBound": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
+  "withL4": {
+   "expect": {
+    "refused": true,
+    "code": "ln/not-this-pairing"
+   }
+  },
+  "withoutExtensions": {
+   "expect": {
+    "refused": true,
+    "code": "ln/no-legal-context"
+   }
+  },
+  "expectReference": {
+   "network": "lnbtc:000000000019d6689c085ae165831e93",
+   "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+   "settleBy": 1790000360
+  }
+ },
+ "plant2": {
+  "case": "the 402 offers O_N with invoice N2 (the same terms under payment hash 00..01); the ATR at the link is A_N, which names N",
+  "invoice": "lnbc250n1p4tzwuqpp5qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqssp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqmc88ulmmehm5t3jnp472zlh6axw77gtgcwjdf6jl6awp4vs2tf2xyj96m9w9pdgh3za92el9xz0a732h8cq0jppmdwallwkufxx6vjcp76rqvu",
+  "expect": {
+   "refused": true,
+   "code": "ln/invoice-not-named"
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why. The B2 inputs carry the buyer's own request, which x402's lnbtc buyer hashes under the option's request binding profile: x402's published example, GET https://api.example.com/article/A with an empty body, whose http:1 canonical description hashes to the option's requestHash.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/lnbtc/invoice-named",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.example.com/article/A"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "lnbtc:000000000019d6689c085ae165831e93",
+        "amount": "25000",
+        "asset": "BTC",
+        "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+         "assetTransferMethod": "bolt11",
+         "paymentFlow": "upfront",
+         "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+         "requestBindingProfile": "http:1",
+         "requestBindingParams": {
+          "headers": []
+         },
+         "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
+         "legalContextUrl": "https://atr.seller.example/0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2231623465323862612d326661312d343164322d383833662d303031366433636361343237222c2278343032223a7b2261636365707473223a5b7b22736368656d65223a226578616374222c226e6574776f726b223a226c6e6274633a3030303030303030303031396436363839633038356165313635383331653933222c22616d6f756e74223a223235303031222c226173736574223a22425443222c22706179546f223a22303237396265363637656639646362626163353561303632393563653837306230373032396266636462326463653238643935396632383135623136663831373938222c226d617854696d656f75745365636f6e6473223a3330302c226578747261223a7b2261737365745472616e736665724d6574686f64223a22626f6c743131222c227061796d656e74466c6f77223a22757066726f6e74222c227265717565737448617368223a2230643636323366373735653032353530316661376630613330623534646132356161643632623663636665333563383564613338303136373131653663303138222c227265717565737442696e64696e6750726f66696c65223a22687474703a31222c227265717565737442696e64696e67506172616d73223a7b2268656164657273223a5b5d7d2c22696e766f696365223a226c6e62633235306e317034747a77757170703534793375397338796c656d7376386c336577797a7a75306b6c68756a7675766d6b6c366c6c6368713233767938727a6a736630717370357a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a79677368703570346e7a38616d3475716a3471386138377a33736b347836796b346476326d76656c3334657077363871716b777930786371767178717a66763971727371717471397979767063356667756a37676d326776646a346b6561786a6c36756a30756837637837366d36656a32636566716d30676b7968643878666636717561787a6574383873617776717973686571746766667670347772773768337730746863737539756871717339686e306b227d7d5d2c2272657175657374223a7b226d6574686f64223a22474554222c2270617468223a222f61727469636c652f41222c227175657279223a22222c22626f6479446967657374223a22307865336230633434323938666331633134396166626634633839393666623932343237616534316534363439623933346361343935393931623738353262383535227d7d7d",
+     "account": "lnbtc:000000000019d6689c085ae165831e93:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "inputs": {
+      "request": {
+       "method": "GET",
+       "url": "https://api.example.com/article/A"
+      }
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
+    "servedHash": "0xdf2f9d857b412568e21b2bd39b8858ff0dc380d0f38dba92415c1f1b9c4199b8",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/lnbtc/invoice-named",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.example.com/article/A"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "lnbtc:000000000019d6689c085ae165831e93",
+       "amount": "25000",
+       "asset": "BTC",
+       "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+       "maxTimeoutSeconds": 300,
+       "extra": {
+        "assetTransferMethod": "bolt11",
+        "paymentFlow": "upfront",
+        "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+        "requestBindingProfile": "http:1",
+        "requestBindingParams": {
+         "headers": []
+        },
+        "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k"
+       }
+      },
+      "payload": {
+       "preimage": "0001020304050607080900010203040506070809000102030405060708090102"
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
+         "legalContextUrl": "https://atr.seller.example/0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2231623465323862612d326661312d343164322d383833662d303031366433636361343237222c2278343032223a7b2261636365707473223a5b7b22736368656d65223a226578616374222c226e6574776f726b223a226c6e6274633a3030303030303030303031396436363839633038356165313635383331653933222c22616d6f756e74223a223235303030222c226173736574223a22425443222c22706179546f223a22303237396265363637656639646362626163353561303632393563653837306230373032396266636462326463653238643935396632383135623136663831373938222c226d617854696d656f75745365636f6e6473223a3330302c226578747261223a7b2261737365745472616e736665724d6574686f64223a22626f6c743131222c227061796d656e74466c6f77223a22757066726f6e74222c227265717565737448617368223a2230643636323366373735653032353530316661376630613330623534646132356161643632623663636665333563383564613338303136373131653663303138222c227265717565737442696e64696e6750726f66696c65223a22687474703a31222c227265717565737442696e64696e67506172616d73223a7b2268656164657273223a5b5d7d2c22696e766f696365223a226c6e62633235306e317034747a77757170703534793375397338796c656d7376386c336577797a7a75306b6c68756a7675766d6b6c366c6c6368713233767938727a6a736630717370357a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a79677368703570346e7a38616d3475716a3471386138377a33736b347836796b346476326d76656c3334657077363871716b777930786371767178717a66763971727371717471397979767063356667756a37676d326776646a346b6561786a6c36756a30756837637837366d36656a32636566716d30676b7968643878666636717561787a6574383873617776717973686571746766667670347772773768337730746863737539756871717339686e306b227d7d5d2c2272657175657374223a7b226d6574686f64223a22474554222c2270617468223a222f61727469636c652f41222c227175657279223a22222c22626f6479446967657374223a22307865336230633434323938666331633134396166626634633839393666623932343237616534316534363439623933346361343935393931623738353262383535227d7d7d"
+      },
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2231623465323862612d326661312d343164322d383833662d303031366433636361343237222c2278343032223a7b2261636365707473223a5b7b22736368656d65223a226578616374222c226e6574776f726b223a226c6e6274633a3030303030303030303031396436363839633038356165313635383331653933222c22616d6f756e74223a223235303031222c226173736574223a22425443222c22706179546f223a22303237396265363637656639646362626163353561303632393563653837306230373032396266636462326463653238643935396632383135623136663831373938222c226d617854696d656f75745365636f6e6473223a3330302c226578747261223a7b2261737365745472616e736665724d6574686f64223a22626f6c743131222c227061796d656e74466c6f77223a22757066726f6e74222c227265717565737448617368223a2230643636323366373735653032353530316661376630613330623534646132356161643632623663636665333563383564613338303136373131653663303138222c227265717565737442696e64696e6750726f66696c65223a22687474703a31222c227265717565737442696e64696e67506172616d73223a7b2268656164657273223a5b5d7d2c22696e766f696365223a226c6e62633235306e317034747a77757170703534793375397338796c656d7376386c336577797a7a75306b6c68756a7675766d6b6c366c6c6368713233767938727a6a736630717370357a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a7967337a79677368703570346e7a38616d3475716a3471386138377a33736b347836796b346476326d76656c3334657077363871716b777930786371767178717a66763971727371717471397979767063356667756a37676d326776646a346b6561786a6c36756a30756837637837366d36656a32636566716d30676b7968643878666636717561787a6574383873617776717973686571746766667670347772773768337730746863737539756871717339686e306b227d7d5d2c2272657175657374223a7b226d6574686f64223a22474554222c2270617468223a222f61727469636c652f41222c227175657279223a22222c22626f6479446967657374223a22307865336230633434323938666331633134396166626634633839393666623932343237616534316534363439623933346361343935393931623738353262383535227d7d7d"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's L6.payment payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

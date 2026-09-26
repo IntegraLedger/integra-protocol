@@ -1,0 +1,301 @@
+{
+ "about": "Core vectors for assemble, hash and hashEquals. Expected values were computed 2026-09-25 with sha256sum, openssl dgst -sha256, Python 3 json and Node v24.21.0 JSON.stringify. Content bytes are given as hex so that they are exact.",
+ "vectors": [
+  {
+   "name": "V1",
+   "id": "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40",
+   "binding": [
+    "bind",
+    {
+     "k": "v",
+     "n": 7,
+     "list": [
+      "a",
+      "b"
+     ]
+    }
+   ],
+   "content": [
+    [
+     "terms",
+     "22506179203130303030206261736520756e697473206f66205553444320666f72206f6e65207265706f72742e22"
+    ],
+    [
+     "seller",
+     "7b226e616d65223a2241636d65205265706f727473227d"
+    ]
+   ],
+   "expectBytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653430222c2262696e64223a7b226b223a2276222c226e223a372c226c697374223a5b2261222c2262225d7d2c227465726d73223a22506179203130303030206261736520756e697473206f66205553444320666f72206f6e65207265706f72742e222c2273656c6c6572223a7b226e616d65223a2241636d65205265706f727473227d7d",
+   "expectHash": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f"
+  },
+  {
+   "name": "V2",
+   "id": "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e41",
+   "binding": [
+    "bind",
+    {}
+   ],
+   "content": [
+    [
+     "offer",
+     "207b20226e223a2031323334353637383930313233343536373839302c20226b223a2276222c20226b223a227722207d"
+    ]
+   ],
+   "expectBytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653431222c2262696e64223a7b7d2c226f66666572223a207b20226e223a2031323334353637383930313233343536373839302c20226b223a2276222c20226b223a227722207d7d",
+   "expectHash": "0x6cf87866ec6e5b91c840409eefd3a03716ada242ffae18a90de48b98d9a32394"
+  },
+  {
+   "name": "V3",
+   "id": "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e42",
+   "binding": [
+    "bind",
+    {
+     "s": "é –   \"q\" \\ /"
+    }
+   ],
+   "content": [
+    [
+     "note",
+     "226361665c753030653922"
+    ]
+   ],
+   "expectBytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653432222c2262696e64223a7b2273223a22c3a920e2809320e280a8205c22715c22205c5c202f227d2c226e6f7465223a226361665c7530306539227d",
+   "expectHash": "0xf49950d533a1759e5bf48a6bcf93e9a2d71b77f47c5510d567eff81326b145b5"
+  },
+  {
+   "name": "V6-plant",
+   "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653430222c2262696e64223a7b226b223a2276222c226e223a372c226c697374223a5b2261222c2262225d7d2c227465726d73223a22506179203130303030206261736520756e697473206f66205553444320666f72206f6e65207265706f72742e222c2273656c6c6572223a7b226e616d65223a2241636d65205265706f727473227d5d",
+   "expectHash": "0x994384c875ba6f693a1f8e6f75b06df2005b48955b56ec4fc2d65dd36cdd0773",
+   "mustNotEqual": "V1"
+  }
+ ],
+ "refusals": [
+  {
+   "name": "V5a",
+   "case": "party slot named id",
+   "expect": "core/slot-reserved"
+  },
+  {
+   "name": "V5b",
+   "case": "content bytes {\"a\":1} {\"b\":2}",
+   "contentHex": "7b2261223a317d207b2262223a327d",
+   "expect": "core/content-not-json"
+  },
+  {
+   "name": "V5c",
+   "case": "content bytes not UTF-8",
+   "contentHex": "c328",
+   "expect": "core/content-not-json"
+  },
+  {
+   "name": "V5d",
+   "case": "binding contains 1.5",
+   "expect": "core/binding-not-json"
+  },
+  {
+   "name": "V5e",
+   "case": "assembled ATR over maxBytes",
+   "expect": "core/too-large"
+  }
+ ],
+ "links": {
+  "about": "The one https-link rule every pairing's link check uses: the raw string holds no whitespace (Unicode White_Space), control character (Unicode Cc) or backslash; it parses as an absolute URL; its scheme is https, compared case-insensitively (RFC 3986 §3.1); it has a host, a DNS name (RFC 1123 labels) or an IP literal (RFC 3986 §3.2.2), and no userinfo (RFC 3986 §3.2.1). Each row gives the link and whether the rule accepts it. 'refusedAs' is what a pairing's placement and reading give the same value as the legalContextUrl and as the agreement URL, alike, so that one value has one meaning everywhere: link-not-https only for a string of at most 2048 characters that parses as an absolute URL whose scheme is not https, and legal-context-malformed for every other value the rule refuses (not a string, empty, unparseable, no host, over 2048 characters, or an https URL the rule refuses).",
+  "rows": [
+   {
+    "name": "LK1",
+    "case": "a plain https link",
+    "link": "https://atr.seller.example/0xab",
+    "accept": true,
+    "refusedAs": "accepted"
+   },
+   {
+    "name": "LK2",
+    "case": "a space inside the path",
+    "link": "https://atr.seller.example/a b",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK3",
+    "case": "a trailing space",
+    "link": "https://atr.seller.example/ ",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK4",
+    "case": "a tab inside the host",
+    "link": "https://atr.seller\t.example/",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK5",
+    "case": "a backslash after the host",
+    "link": "https://atr.seller.example\\0xab",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK6",
+    "case": "an upper-case scheme",
+    "link": "HTTPS://atr.seller.example/0xab",
+    "accept": true,
+    "refusedAs": "accepted"
+   },
+   {
+    "name": "LK7",
+    "case": "a numeric IPv4 host",
+    "link": "https://192.0.2.1/0xab",
+    "accept": true,
+    "refusedAs": "accepted"
+   },
+   {
+    "name": "LK8",
+    "case": "userinfo before the host",
+    "link": "https://user@atr.seller.example/0xab",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK9",
+    "case": "no host: the authority is empty",
+    "link": "https:///0xab",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK10",
+    "case": "no authority at all",
+    "link": "https:atr.seller.example/0xab",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK11",
+    "case": "an IPv6 literal host with a port",
+    "link": "https://[2001:db8::1]:8443/0xab",
+    "accept": true,
+    "refusedAs": "accepted"
+   },
+   {
+    "name": "LK12",
+    "case": "the http scheme",
+    "link": "http://atr.seller.example/0xab",
+    "accept": false,
+    "refusedAs": "link-not-https"
+   },
+   {
+    "name": "LK13",
+    "case": "a no-break space (U+00A0) in the path",
+    "link": "https://atr.seller.example/a b",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK14",
+    "case": "a C1 control (U+0085) in the path",
+    "link": "https://atr.seller.example/ab",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK15",
+    "case": "userinfo with a password",
+    "link": "https://u:p@atr.seller.example/",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK16",
+    "case": "the empty string",
+    "link": "",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK17",
+    "case": "the https scheme and nothing else",
+    "link": "https://",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK18",
+    "case": "no scheme: a relative reference",
+    "link": "atr.seller.example/0xab",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   },
+   {
+    "name": "LK19",
+    "case": "another scheme, ftp",
+    "link": "ftp://atr.seller.example/0xab",
+    "accept": false,
+    "refusedAs": "link-not-https"
+   },
+   {
+    "name": "LK20",
+    "case": "the http scheme at exactly 2048 characters",
+    "link": "http://atr.seller.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "accept": false,
+    "refusedAs": "link-not-https"
+   },
+   {
+    "name": "LK21",
+    "case": "the http scheme at 2049 characters",
+    "link": "http://atr.seller.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "accept": false,
+    "refusedAs": "legal-context-malformed"
+   }
+  ]
+ },
+ "jsonDepth": {
+  "about": "The one JSON nesting cap for every read of JSON text by a binding: at most 64 levels of arrays and objects. Each row's text is valid JSON (checked with Python 3 json.loads, whose depth count agrees); 'accept' says whether the cap admits it.",
+  "max": 64,
+  "rows": [
+   {
+    "name": "JD1",
+    "case": "64 nested arrays",
+    "text": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+    "accept": true
+   },
+   {
+    "name": "JD2",
+    "case": "65 nested arrays",
+    "text": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+    "accept": false
+   },
+   {
+    "name": "JD3",
+    "case": "64 nested objects",
+    "text": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":0}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+    "accept": true
+   },
+   {
+    "name": "JD4",
+    "case": "65 nested objects",
+    "text": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":0}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+    "accept": false
+   },
+   {
+    "name": "JD5",
+    "case": "an object holding 63 nested arrays: 64 levels",
+    "text": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+    "accept": true
+   },
+   {
+    "name": "JD6",
+    "case": "100 brackets inside a string, one level deep",
+    "text": "[\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"]",
+    "accept": true
+   },
+   {
+    "name": "JD7",
+    "case": "an escaped quote does not end the string",
+    "text": "[\"\\\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"]",
+    "accept": true
+   }
+  ]
+ }
+}

@@ -1,0 +1,928 @@
+{
+ "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.56.8 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "evm": {
+   "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+   "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+   "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+   "payerAuthorizerKey": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+   "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+   "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "withdrawDelay": 900,
+   "chainId": 84532,
+   "deposit": "100000",
+   "authSalt": "0x0000000000000000000000000000000000000000000000000000000000000001",
+   "now": 1790000000,
+   "validBefore": "1790003600",
+   "config": {
+    "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "withdrawDelay": 900,
+    "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   "option": {
+    "scheme": "batch-settlement",
+    "network": "eip155:84532",
+    "amount": "1000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 3600,
+    "extra": {
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "withdrawDelay": 900,
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "channelConfigType": "ChannelConfig(address payer,address payerAuthorizer,address receiver,address receiverAuthorizer,address token,uint40 withdrawDelay,bytes32 salt)"
+  },
+  "svm": {
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "payerSeed": "0101010101010101010101010101010101010101010101010101010101010101",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "salt": "42",
+   "openSlot": "341000000",
+   "deposit": "100000",
+   "withdrawDelay": 3600,
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+   "option": {
+    "scheme": "batch-settlement",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 300,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "withdrawDelay": 3600,
+     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    }
+   },
+   "config": {
+    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "withdrawDelay": 3600,
+    "salt": "42",
+    "openSlot": 341000000
+   }
+  }
+ },
+ "EB1": {
+  "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+  "domainSeparator": "0xfdef80764086b1e0fc6ba99f0cb9aa1d59109fda7c23d60334c89d2de44dffce",
+  "structHash": "0x6f404f524c581e745e0d4ec9b1c0c3694402328e650a57f1961d48ee5d3a3ee8",
+  "onBase8453": "0x9cd5e8d3bcdb71e6f08954da8d33427bf47bbafc9fc48e6dbe8e804003f6c736",
+  "withHprime": "0xe86beca0bedc5bc55580fbbc3bcd49b100d96adaf426d13ed5c9994067e76fa1"
+ },
+ "EB2": {
+  "maxClaimableAmount": "1000",
+  "digest": "0xcf0857af0cb50db050ba75ebc637e8869213a15c6f3603a3ed92c0b7d4a70f7e",
+  "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+ },
+ "EB3": {
+  "depositNonce": "0x20154736b3902f9c5659386a3b8ae1d67bc0ef3e80951b76af04d6ec8334f374",
+  "digest": "0xfe3ff6463decb30707ff2d9f86b6fbe9817ebe94e9af23d82306a3a6b79f2859",
+  "signature": "0x1a8c019f1b4b29fb865d8aa3378cda488a550220180f8e16a65f430ec37888f741e7457488332d9b1560cc73bbab13e39ab0e320c92305847b07146d0e8cd0271c"
+ },
+ "EB4": {
+  "digest": "0x8042cffa510741cf8e5a3d0d9fb4460368d9ff6e3f5baf9fa55c7e9e3e933d0d",
+  "nonce": "1",
+  "deadline": "1790003600"
+ },
+ "EB5": {
+  "channelCreatedDeclaration": "ChannelCreated(bytes32,(address,address,address,address,address,uint40,bytes32))",
+  "channelCreatedTopic": "0x69d8248d5566bdb2ebc4d218970710d8378a2ff9b709a999e052b71970f808fa",
+  "depositedTopic": "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+  "configData": "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e0000000000000000000000000000000000000000000000000000000000000384ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "configDataSha256": "f3252249fde8167e4a5c40003f469f0cf74d6070ee7e763e48cb4b94635b973c"
+ },
+ "EB6": {
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectKindDeposit": "open",
+  "expectRef": {
+   "network": "eip155:84532",
+   "channel": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482"
+  },
+  "expectKindVoucher": "within",
+  "expectBoundWithin": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectKindRefund": "close",
+  "refundAmount": "1500",
+  "expectKindPartialRefund": "within",
+  "plant": {
+   "case": "a voucher payload whose voucher.channelId is EB1 but whose channelConfig.salt is H'",
+   "expect": "x402/channel-id-mismatch",
+   "matchedChannelId": "0xe86beca0bedc5bc55580fbbc3bcd49b100d96adaf426d13ed5c9994067e76fa1",
+   "expectBoundWithinMatched": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+  }
+ },
+ "EB7": {
+  "reader": {
+   "finalized": "100",
+   "safe": "105"
+  },
+  "transferDigest": "0xbb43eabb8b28f3d00c6a8e876fd15bb3eb23c8ce0534a4f62d45eae6b1c286a0",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "100",
+   "logs": [
+    {
+     "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+     "topics": [
+      "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+      "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+    },
+    {
+     "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+    }
+   ]
+  },
+  "expect": {
+   "state": "settled",
+   "finality": "finalized",
+   "blockNumber": "100"
+  },
+  "plantGift": {
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "topics": [
+       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+       "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     },
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000000000000000000000000000000000000000dead",
+       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     }
+    ]
+   },
+   "expect": {
+    "state": "failed",
+    "why": "transfer-not-found"
+   }
+  },
+  "plantOtherContract": {
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x000000000000000000000000000000000000bEEF",
+      "topics": [
+       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+       "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     },
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     }
+    ]
+   },
+   "expect": {
+    "state": "failed",
+    "why": "binding-log-not-found"
+   }
+  }
+ },
+ "EB8": {
+  "log": {
+   "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+   "topics": [
+    "0x69d8248d5566bdb2ebc4d218970710d8378a2ff9b709a999e052b71970f808fa",
+    "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482"
+   ],
+   "data": "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e0000000000000000000000000000000000000000000000000000000000000384ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "word0Changed": {
+   "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+   "topics": [
+    "0x69d8248d5566bdb2ebc4d218970710d8378a2ff9b709a999e052b71970f808fa",
+    "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482"
+   ],
+   "data": "0x000000000000000000000000000000000000000000000000000000000000dead00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e0000000000000000000000000000000000000000000000000000000000000384ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "expectWord0": "evm/channel-id-mismatch"
+ },
+ "ES1": {
+  "channelPda": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8",
+  "bump": 255,
+  "salt43": "87anxbpY5qDH7q8d8p9sV7iQGWnhP3DUHYaBvcpz4cxZ",
+  "eventAuthority": "75c2huVzDW1Eq4kD86by5392sjdJzuAT195XNgP2f2tX",
+  "eventAuthorityBump": 249,
+  "wrongCurveTest": "BqJ4hYS6j5yYAyziKMLt3NeTztuoxEvCNm2bURXxK9ri"
+ },
+ "ES2": {
+  "openInstructionData": "012a00000000000000a086010000000000100e0000403f531400000000010000001cc66ed43751115a42b5905132c4f668328611e5e8deb7d862585d2a3551d0011027",
+  "messageLength": 671,
+  "messageSha256": "e587b0a57619b5d3abd45b8a6e4a33fa3ea5901129ac117221856591c3d4aee0",
+  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+  "wireLength": 800,
+  "wireSha256Prefix": "ed301d6a"
+ },
+ "ES3": {
+  "message": "56017380ae64e95eb45273c8239cf5957096e690c6075a453bfd9361e560ab6ec4f9e8030000000000000000000000000000",
+  "signaturePrefix": "5828b646",
+  "signatureSuffix": "6b2c00"
+ },
+ "ES4": {
+  "accepted": {
+   "scheme": "batch-settlement",
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "amount": "1000",
+   "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "maxTimeoutSeconds": 300,
+   "extra": {
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "withdrawDelay": 3600,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "config": {
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "withdrawDelay": 3600,
+   "salt": "42",
+   "openSlot": 341000000
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectKind": "open",
+  "expectRef": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "channel": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8"
+  },
+  "topUpWireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+kEjI6zlWv40INKzrlpGlw8fv+B1VWTjvZ9IGkBMRdKAWZDVs/OeiLIrNW8xL0bpTzfLiVYwCX9wbSWWAE80BgAIABQqBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqenofuk6ysJCZP30t/WK4niuHIHemOf19dHqOmfY9QVrsldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrBAUABQJADQMABQAJAwEAAAAAAAAACQYBAwQCCAcJA1DDAAAAAAAABgBNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQA",
+  "expectTopUpKind": "within",
+  "closeWireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0kNnO6mLaojN54sL6sPAPUxjAw8dV4jTw4q1h/rcY41O8xLHXtvzUfnTYKZS/hKdej3YDL6ZT+gKkbeSVpJMJgAIBAwaBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cc4CuZOletFJzyCOc9ZVwluaQxgdaRTv9k2HlYKtuxPkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa7JXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQDAAUCQA0DAAMACQMBAAAAAAAAAAUCAQIBBQQATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "expectCloseKind": "close",
+  "expectBoundWithin": "x402/not-bound-within",
+  "plantNonce": {
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkbNOiGFpX1kKakJFygX5yN3Wl25YrHLMmmoDVZtxxQfBDq20J4fyl/WjGnAbePszYM5ApXsXJGQcpz7pKnIEPgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHACAwMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZgA=",
+   "expect": "svm/memo-not-lcp"
+  },
+  "plantSalt43": {
+   "case": "a voucher payload whose voucher.channelId is ES1 and whose channelConfig.salt is 43",
+   "expect": "svm/channel-id-mismatch"
+  }
+ },
+ "ES5": {
+  "txid": "62RzG8yhQ1ecrAovS7EFWigjoiFNEGwk24gbtRugVgXcPfgATLDtM6SmevDN82fbJ8iNGSctTqf4a5B2tnUnoLWg",
+  "landedWireBase64": "AvtRoZ1NyRgw2QzWgw7fr7ulRGAtwQgIi39rAnNxL9ZokK2uh8GreTin32uPWc3SmNqjY+nFpRyeOnRrB6cMxQWgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+  "ref": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "transaction": "62RzG8yhQ1ecrAovS7EFWigjoiFNEGwk24gbtRugVgXcPfgATLDtM6SmevDN82fbJ8iNGSctTqf4a5B2tnUnoLWg",
+   "digest": "0xe587b0a57619b5d3abd45b8a6e4a33fa3ea5901129ac117221856591c3d4aee0",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "fromSlot": "0"
+  },
+  "rows": [
+   {
+    "at": "finalized",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "finalized"
+    }
+   },
+   {
+    "at": "finalized",
+    "err": {
+     "InstructionError": [
+      2,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "err"
+    }
+   },
+   {
+    "at": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   }
+  ],
+  "plantNoChannel": {
+   "landedWireBase64": "ApdCzdWrOy/W+1VybpEY68cXZkN+5IcfGO9ore6UXm/vvG4oBgB7QMejWmqXPmqokuHuiq56n0kPzmL7qUvTBQTPW1kHKSkU4CIhivYFbg9e/zdrpIYej8/2guOdFmXp8TwTd5M7ub7ophcxF/tq6ozm7q+W2tbJ50Ptw5ecyHMIgAIBAgSBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwIABQJADQMAAgAJAwEAAAAAAAAAAwEBTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+   "digest": "0xd4e6becc2ad3543f47353380bde577aecb1cddecc77ed9580d0be2113c2a1c47",
+   "expect": {
+    "state": "failed",
+    "why": "no-channel-instruction"
+   }
+  }
+ },
+ "ES6": {
+  "case": "a full refund: buildWithin with refund {} builds the request_close itself (x402 scheme_batch_settlement_svm, canonical refund request_close and the refund payload): the Compute Budget prefix (limit 200000, price 1 microlamport), request_close (data 05) of the payment-channels program with exactly the payer (read-only signer) and the channel PDA (writable), then one Memo v3 with extra.memo when the option carries one, else none; fee payer extra.feePayer; recentBlockhash the caller's when extra has none. The payload is {type: refund, channelConfig, transaction}, with no amount (the request MUST NOT contain an amount) and no voucher.",
+  "withMemo": {
+   "case": "ES4's option (extra.memo = L): decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0 (key order inside a category is not compared: the rail does not fix it)",
+   "expectKind": "close"
+  },
+  "withoutMemo": {
+   "case": "ES4's option without extra.memo",
+   "instructions": [
+    {
+     "program": "ComputeBudget111111111111111111111111111111",
+     "accounts": [],
+     "data": "02400d0300"
+    },
+    {
+     "program": "ComputeBudget111111111111111111111111111111",
+     "accounts": [],
+     "data": "030100000000000000"
+    },
+    {
+     "program": "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",
+     "accounts": [
+      {
+       "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "signer": true,
+       "writable": false
+      },
+      {
+       "address": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8",
+       "signer": false,
+       "writable": true
+      }
+     ],
+     "data": "05"
+    }
+   ]
+  },
+  "refundWithAmount": {
+   "case": "refund {amount} on Solana",
+   "expect": "svm/input-malformed"
+  },
+  "noBlockhash": {
+   "case": "no recentBlockhash, and the option carries no extra.recentBlockhash",
+   "expect": "svm/input-malformed"
+  }
+ },
+ "ES7": {
+  "case": "svmLocate for the opening, with no transaction named: the fee payer's signatures list ES5's txid, whose RPC memo rendering is '[77] ' + L (getSignaturesForAddress renders each memo as '[len] text'), then one signature below fromSlot. Each candidate is read through the pairing's own status (svmChannelStatus): the opening is found. Read through the transfer test instead, the opening, which carries no top-level transfer, is not found and the search would end complete and empty.",
+  "fromSlot": "1000000",
+  "firstAvailableBlock": "999000",
+  "expectChannelStatus": {
+   "found": "62RzG8yhQ1ecrAovS7EFWigjoiFNEGwk24gbtRugVgXcPfgATLDtM6SmevDN82fbJ8iNGSctTqf4a5B2tnUnoLWg",
+   "complete": true
+  },
+  "expectTransferTest": {
+   "complete": true
+  }
+ },
+ "EC1": {
+  "payload": {
+   "x402Version": 2,
+   "payload": {
+    "amount": "5",
+    "asset": "USD"
+   },
+   "accepted": {
+    "scheme": "batch-settlement",
+    "network": "cloudflare:402",
+    "amount": "5",
+    "asset": "USD",
+    "payTo": "merchant",
+    "maxTimeoutSeconds": 30,
+    "extra": {
+     "version": "1.0.0"
+    }
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    }
+   }
+  },
+  "payloadLength": 469,
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "withoutExtensions": "x402/no-legal-context",
+  "expectPairing": "x402/batch-settlement/cloudflare"
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the batch-settlement specification leaves to the implementation.",
+  "rows": [
+   {
+    "case": "bound, reference or ref with a channelConfig member missing or malformed, or a deposit amount that is not decimal",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "recover when no ChannelCreated log from the channel contract is in the receipt",
+    "expect": "evm/no-channel-created"
+   },
+   {
+    "case": "recover when several are",
+    "expect": "evm/ambiguous"
+   },
+   {
+    "case": "batchChannelId or batchChannelCreated with a malformed config or data",
+    "expect": "evm/field-malformed"
+   },
+   {
+    "case": "complete with a signature count other than the requests', or an EVM signature that is not 0x hex",
+    "expect": "x402/signature-malformed"
+   },
+   {
+    "case": "SVM complete with a signature that is not 64 bytes of base58, or a build input out of range",
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "Cloudflare build when the challenge's legalContext hash is not h",
+    "expect": "x402/legal-context-conflict"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "batch-settlement",
+        "network": "cloudflare:402",
+        "amount": "5",
+        "asset": "USD",
+        "payTo": "merchant",
+        "maxTimeoutSeconds": 30,
+        "extra": {
+         "version": "1.0.0"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "cloudflare:402:agent.example",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "payload": {
+       "amount": "5",
+       "asset": "USD"
+      },
+      "accepted": {
+       "scheme": "batch-settlement",
+       "network": "cloudflare:402",
+       "amount": "5",
+       "asset": "USD",
+       "payTo": "merchant",
+       "maxTimeoutSeconds": 30,
+       "extra": {
+        "version": "1.0.0"
+       }
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's EC1 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "x402/batch-settlement/eip155",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "batch-settlement",
+        "network": "eip155:84532",
+        "amount": "1000",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "maxTimeoutSeconds": 3600,
+        "extra": {
+         "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+         "withdrawDelay": 900,
+         "name": "USDC",
+         "version": "2"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "deposit": "100000",
+      "authSalt": "0x0000000000000000000000000000000000000000000000000000000000000001"
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/batch-settlement/eip155",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "batch-settlement",
+       "network": "eip155:84532",
+       "amount": "1000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 3600,
+       "extra": {
+        "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+        "withdrawDelay": 900,
+        "name": "USDC",
+        "version": "2"
+       }
+      },
+      "payload": {
+       "type": "deposit",
+       "channelConfig": {
+        "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+        "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "withdrawDelay": 900,
+        "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       },
+       "voucher": {
+        "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+        "maxClaimableAmount": "1000",
+        "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+       },
+       "deposit": {
+        "amount": "100000",
+        "authorization": {
+         "erc3009Authorization": {
+          "validAfter": "0",
+          "validBefore": "1790003600",
+          "salt": "0x0000000000000000000000000000000000000000000000000000000000000001",
+          "signature": "0x1a8c019f1b4b29fb865d8aa3378cda488a550220180f8e16a65f430ec37888f741e7457488332d9b1560cc73bbab13e39ab0e320c92305847b07146d0e8cd0271c"
+         }
+        }
+       }
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's EB6 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "x402/batch-settlement/solana",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "batch-settlement",
+        "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        "amount": "1000",
+        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+         "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+         "withdrawDelay": 3600,
+         "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+         "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {
+      "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "deposit": "100000",
+      "openSlot": "341000000",
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+      "salt": "42"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/batch-settlement/solana",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "batch-settlement",
+       "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+       "amount": "1000",
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "maxTimeoutSeconds": 300,
+       "extra": {
+        "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+        "withdrawDelay": 3600,
+        "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      },
+      "payload": {
+       "type": "deposit",
+       "channelConfig": {
+        "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        "withdrawDelay": 3600,
+        "salt": "42",
+        "openSlot": 341000000
+       },
+       "voucher": {
+        "channelId": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8",
+        "maxClaimableAmount": "1000",
+        "expiresAt": 0,
+        "signature": "x"
+       },
+       "deposit": {
+        "amount": "100000",
+        "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA="
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's ES4 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

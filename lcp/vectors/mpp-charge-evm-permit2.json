@@ -1,0 +1,174 @@
+{
+ "about": "Vectors for mpp/charge/evm/permit2, single and batch. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "fixed": {
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "spender": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "R_E6b": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"permit2\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\",\"splits\":[{\"amount\":\"500\",\"recipient\":\"0x8Ba1f109551bD432803012645Ac136ddd64DBA72\"}]},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+  "R_E6bAuthorizationOnly": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"authorization\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\",\"splits\":[{\"amount\":\"500\",\"recipient\":\"0x8Ba1f109551bD432803012645Ac136ddd64DBA72\"}]},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}"
+ },
+ "MV6": {
+  "case": "build (single) for MV3's placed C_E with spender S, EIP-712, sign, bound",
+  "expectDigest": "0x503125d82632b2d128f6efcca61d13b0c80bbbdc79ee4a2ea826e95610a501d0",
+  "expectDomainSeparator": {
+   "prefix": "0x010f27a9",
+   "suffix": "592c"
+  },
+  "literalWitnessString": "PaymentWitness witness)PaymentWitness(bytes32 challengeHash, string externalId)TokenPermissions(address token,uint256 amount)",
+  "expectLiteralTypeHash": {
+   "prefix": "0xf7aec95a",
+   "suffix": "8c37"
+  },
+  "expectLiteralDigest": {
+   "prefix": "0x8ef37a8a",
+   "suffix": "fa25"
+  },
+  "expectSignature": "0xd7869587988d7615afe8bbcb88ab66fc3882ec3f8b8014052b99c56ccdefb4772113d37911ef65d83991ac17fd344e5238ca6cc0f3d7651f3e7af256174c3b761c"
+ },
+ "MV6b": {
+  "case": "the batch form: C_E with one split, so primary = 9500",
+  "expectPairings": [
+   "mpp/charge/evm/permit2"
+  ],
+  "expectAuthorizationOnly": {
+   "refused": true,
+   "code": "mpp/credential-types"
+  },
+  "expectDigest": "0x5c947b47482a9fcd28925b6c11044c26582b34e39ff3e962845946aa86bd114a",
+  "expectTypeHash": "0x96a90010da2e116bc8940fa6c7f977bf0f57a0f2fbe4f8fd151f614767639503",
+  "expectSignature": "0x43201525901f8b80110dde257363ccfa7f71df7a184ce0a2690b0d81bf806acb034c66f9fc9a8a5d9b7300b7caa127f7ba7dfdcbecc0268288ad9d965a8b485b1c",
+  "expectTransferDetails": [
+   {
+    "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "requestedAmount": "9500"
+   },
+   {
+    "to": "0x8Ba1f109551bD432803012645Ac136ddd64DBA72",
+    "requestedAmount": "500"
+   }
+  ],
+  "expectPrimaryIdentity": "0xf7f1f06096f7cdde64f22bf2c057326a7db4e396226f9412084cfcbc7b553c19",
+  "splitOnlyReceipt": {
+   "note": "the split's Transfer and no primary Transfer, from USDC at block 100, finalized 100",
+   "expect": {
+    "state": "failed",
+    "why": "transfer-not-found"
+   }
+  }
+ },
+ "plant": {
+  "case": "MV6b's batch credential with witness.challengeHash = keccak of the id ….1 and the realm: the same ATR's H, another challenge",
+  "challengeHashOfPosition1": "0x8459836e989f685ed57d519f9af1c81703e5d1fd29597e736ba3ebcd7cce9c57",
+  "expect": {
+   "refused": true,
+   "code": "mpp/witness-not-challenge-hash"
+  }
+ },
+ "pattern": {
+  "pattern": "id-reuse",
+  "canonical": true,
+  "buyerSigns": true,
+  "claims": true,
+  "onChain": true,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "proves": "The payer signed a Permit2 transfer, single or batch, whose witness carries keccak256 of this challenge's id and realm, and the id is this ATR's hash in base64url with the challenge's position. Permit2 verified the signature when it executed the transfer; a batch's transfers all executed in that one call. The witness is in the settlement transaction's calldata only as a hash, and no event carries it. This does not show that amount, payee, asset, splits or timing match the ATR's content."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/evm/permit2",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "evm",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "spender": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/evm/permit2",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "evm",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payload": {
+       "type": "permit2",
+       "permit": {
+        "permitted": [
+         {
+          "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "amount": "10000"
+         }
+        ],
+        "nonce": "36481962888124223048003848319198225522890142851501557528268796339554120316023",
+        "deadline": "1790000060"
+       },
+       "transferDetails": [
+        {
+         "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+         "requestedAmount": "10000"
+        }
+       ],
+       "witness": {
+        "challengeHash": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477",
+        "externalId": ""
+       },
+       "signature": "0xd7869587988d7615afe8bbcb88ab66fc3882ec3f8b8014052b99c56ccdefb4772113d37911ef65d83991ac17fd344e5238ca6cc0f3d7651f3e7af256174c3b761c"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's MV6 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

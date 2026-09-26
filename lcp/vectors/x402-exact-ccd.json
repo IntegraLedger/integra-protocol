@@ -1,0 +1,816 @@
+{
+ "about": "Vectors for the x402/exact/ccd pairing: the ccd entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The accounts are version byte 01 plus SHA-256 of a label, base58check-encoded with bs58check; x402's example addresses fail base58check. D1 was produced by cborg 6.1.2; D2 was hand-assembled to the steward's PLT encoder; the digests are GNU coreutils sha256sum. D3's CCD signedTransaction is the output of @concordium/web-sdk 12.0.2's Transaction.toJSONString for Transaction.transfer(payee, 1000000 microCCD, memo D1) with sender payer, nonce 7, expiry 1790000060 and sponsor with one signature, signed by Transaction.sign with buildBasicAccountSigner of the seed 0x00…01; its memo is DataBlob.toJSON, a 2-byte big-endian length then the bytes, and the refusal rows' memos are DataBlob.toJSON of their bytes. D3's PLT signedTransaction is the output of the same SDK's Transaction.toJSONString for Transaction.tokenUpdate(createTokenUpdatePayload(EURR, {transfer: {amount: TokenAmount.create(5000000, 6), recipient: CborAccountAddress.fromBase58(payee), memo: CborMemo.fromString(H's LCP string)}})) with the same sender, nonce, expiry, sponsor and seed; its operations are Cbor.toJSON, plain hex with no length, and its recipient is the SDK's tag-40307 map with the coin info (key 1, tag 40305 {1: 919}) beside the address (key 3). bound verifies no signature. Byte strings are hex; amounts are decimal strings. A memo carries H only as ccdMemo(H) exactly: LCP's string form with lowercase hex, as one CBOR text string under RFC 8949 §4.1's preferred serialization (cborg 6.1.2's strict decode refuses the non-preferred head), so bound, status and recover read it alike. A map with a repeated key is malformed (RFC 8949 §5.6; cborg 6.1.2 with rejectDuplicateMapKeys refuses the repeated memo).",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+  "payer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+  "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+  "sponsor": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd",
+  "payerBytes": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+  "payeeBytes": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+  "payerLabel": "lcp-test/ccd-payer",
+  "payeeLabel": "lcp-test/ccd-payee",
+  "sponsorLabel": "lcp-test/ccd-sponsor",
+  "O": {
+   "scheme": "exact",
+   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+   "amount": "1000000",
+   "asset": "CCD",
+   "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+   }
+  },
+  "OPlt": {
+   "scheme": "exact",
+   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+   "amount": "5000000",
+   "asset": "EURR",
+   "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+   }
+  },
+  "now": 1790000000,
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "D1": {
+  "case": "ccdMemo(H) and pltMemo(H)",
+  "lcpString": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectCcdMemo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+  "expectPltMemo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+ },
+ "D2": {
+  "case": "a PLT operations array: one transfer of 5 units at 6 decimals to the payee, memo tag 24 around D1",
+  "operations": "81a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a1035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+  "length": 164,
+  "expectDecoded": {
+   "memoTag": 24,
+   "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+   "amountTag": 4,
+   "amount": [
+    -6,
+    5000000
+   ],
+   "recipientTag": 40307,
+   "recipientKey": 3,
+   "recipient": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696"
+  }
+ },
+ "D3": {
+  "case": "bound of a signed transaction",
+  "ccd": {
+   "payment": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "exact",
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "amount": "1000000",
+     "asset": "CCD",
+     "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+     }
+    },
+    "payload": {
+     "signedTransaction": {
+      "version": 1,
+      "signatures": {
+       "sender": {
+        "0": {
+         "0": "345ba7ac54149a137bc3b327e913abbe44b188f5727c5864723860b7f6de77e6e217ead20ac063195f72d603db0e32ecec344d5902602c1682b96183aa3a0609"
+        }
+       }
+      },
+      "header": {
+       "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "nonce": 7,
+       "expiry": 1790000060,
+       "executionEnergyAmount": 300,
+       "numSignatures": 1,
+       "sponsor": {
+        "account": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd",
+        "numSignatures": 1
+       }
+      },
+      "payload": {
+       "type": "transferWithMemo",
+       "toAddress": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "memo": "004f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+       "amount": "1000000"
+      }
+     }
+    }
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "plt": {
+   "payment": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "exact",
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "amount": "5000000",
+     "asset": "EURR",
+     "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+     }
+    },
+    "payload": {
+     "signedTransaction": {
+      "version": 1,
+      "signatures": {
+       "sender": {
+        "0": {
+         "0": "45c4fecc15bb56678edc7a7ddbd3ab183b1a9ac5ef9f6a3b3380111e8027426c276b27d7e539f23a3e90518c6cf076568ff640ef98a2e6a2276854f3e4371408"
+        }
+       }
+      },
+      "header": {
+       "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "nonce": 7,
+       "expiry": 1790000060,
+       "executionEnergyAmount": 400,
+       "numSignatures": 1,
+       "sponsor": {
+        "account": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd",
+        "numSignatures": 1
+       }
+      },
+      "payload": {
+       "type": "tokenUpdate",
+       "tokenId": "EURR",
+       "operations": "81a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a201d99d71a101190397035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696"
+      }
+     }
+    }
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "rows": [
+   {
+    "case": "memo is CBOR text \"test\"",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "00056474657374"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/memo-not-lcp"
+    }
+   },
+   {
+    "case": "memo is D1's 77 ASCII bytes with no CBOR header",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "004d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/memo-not-cbor-text"
+    }
+   },
+   {
+    "case": "memo's 2-byte length (0x50) disagrees with the 79 bytes after it",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "0050784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/transaction-malformed"
+    }
+   },
+   {
+    "case": "memo is D1 with no 2-byte length, so its first two bytes read as the length 30797",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/too-large"
+    }
+   },
+   {
+    "case": "payload type transfer",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload": {
+      "type": "transfer",
+      "toAddress": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+      "amount": "1000000"
+     }
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/no-memo"
+    }
+   },
+   {
+    "case": "two operations in the array",
+    "base": "plt",
+    "set": {
+     "payload.signedTransaction.payload.operations": "82a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a1035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a1035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/operation-count"
+    }
+   },
+   {
+    "case": "version 0",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.version": 0
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/not-v1"
+    }
+   },
+   {
+    "case": "payload type deployModule",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload": {
+      "type": "deployModule"
+     }
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/payload-kind"
+    }
+   },
+   {
+    "case": "sender with a broken checksum",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.header.sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wch"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/address-malformed"
+    }
+   },
+   {
+    "case": "memo of 257 bytes, written as DataBlob.toJSON writes a blob (the SDK itself refuses one over 256 bytes)",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "01010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/too-large"
+    }
+   },
+   {
+    "case": "operations truncated",
+    "base": "plt",
+    "set": {
+     "payload.signedTransaction.payload.operations": "81a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a1035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb791476"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/operations-malformed"
+    }
+   },
+   {
+    "case": "a PLT transfer without a memo",
+    "base": "plt",
+    "set": {
+     "payload.signedTransaction.payload.operations": "81a1687472616e73666572a266616d6f756e74c482251a004c4b4069726563697069656e74d99d73a1035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/no-memo"
+    }
+   },
+   {
+    "case": "accepted network is eip155",
+    "base": "ccd",
+    "set": {
+     "accepted.network": "eip155:84532"
+    },
+    "expect": {
+     "refused": true,
+     "code": "x402/option-not-this-pairing"
+    }
+   },
+   {
+    "case": "signedTransaction not an object",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction": "00"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/transaction-malformed"
+    }
+   },
+   {
+    "case": "memo in LCP's string form with upper-case hex digits",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "004f784d6c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/memo-not-lcp"
+    }
+   },
+   {
+    "case": "memo text under a non-preferred CBOR head (79 00 4d, RFC 8949 §4.1's preferred serialization is 78 4d)",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "005079004d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/memo-not-lcp"
+    }
+   },
+   {
+    "case": "memo text with a leading U+FEFF, a character of the text string (RFC 8949 §3.1)",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.payload.memo": "00527850efbbbf6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/memo-not-lcp"
+    }
+   },
+   {
+    "case": "a PLT transfer map that repeats memo, which RFC 8949 §5.6 and Concordium's PLT decoder treat as malformed",
+    "base": "plt",
+    "set": {
+     "payload.signedTransaction.payload.operations": "81a1687472616e73666572a4646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a1035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696646d656d6f4474657374"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/operations-malformed"
+    }
+   },
+   {
+    "case": "an operation that is an array, not a map",
+    "base": "plt",
+    "set": {
+     "payload.signedTransaction.payload.operations": "818100"
+    },
+    "expect": {
+     "refused": true,
+     "code": "ccd/operation-count"
+    }
+   }
+  ]
+ },
+ "D4": {
+  "case": "reference",
+  "ccd": {
+   "expect": {
+    "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+    "asset": "CCD",
+    "idDigest": "0x0a5d3a6cca5dede00c20607c7b45d383b08292c5feb016ad1fc10666c76c33d8",
+    "settleBy": 1790000060
+   }
+  },
+  "plt": {
+   "expect": {
+    "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+    "asset": "EURR",
+    "idDigest": "0x541e5a8c6e0876791d50ed0bf8611e36dc5ee8d94f03a14068dce965ebc3f4a6",
+    "settleBy": 1790000060
+   }
+  }
+ },
+ "D5": {
+  "reader": {
+   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27"
+  },
+  "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+  "ref": {
+   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+   "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+   "asset": "CCD",
+   "idDigest": "0x0a5d3a6cca5dede00c20607c7b45d383b08292c5feb016ad1fc10666c76c33d8",
+   "settleBy": 1790000060,
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "refPlt": {
+   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+   "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+   "asset": "EURR",
+   "idDigest": "0x541e5a8c6e0876791d50ed0bf8611e36dc5ee8d94f03a14068dce965ebc3f4a6",
+   "settleBy": 1790000060,
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "rows": [
+   {
+    "case": "finalized, successful, one CCD transfer to the payee of 1000000 with memo D1, sender the payer",
+    "ref": "ref",
+    "item": {
+     "state": "finalized",
+     "success": true,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": [
+      {
+       "kind": "ccd",
+       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "amount": "1000000",
+       "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+      }
+     ]
+    },
+    "expectStatus": {
+     "state": "settled",
+     "finality": "finalized"
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "finalized, successful, one PLT transfer with memo tag 24 around D1",
+    "ref": "refPlt",
+    "item": {
+     "state": "finalized",
+     "success": true,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": [
+      {
+       "kind": "plt",
+       "tokenId": "EURR",
+       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "amount": "5000000",
+       "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+      }
+     ]
+    },
+    "expectStatus": {
+     "state": "settled",
+     "finality": "finalized"
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "committed",
+    "ref": "ref",
+    "item": {
+     "state": "committed"
+    },
+    "expectStatus": {
+     "state": "pending",
+     "why": "committed"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/not-finalized"
+    }
+   },
+   {
+    "case": "received",
+    "ref": "ref",
+    "item": {
+     "state": "received"
+    },
+    "expectStatus": {
+     "state": "pending",
+     "why": "received"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/not-finalized"
+    }
+   },
+   {
+    "case": "finalized, rejected",
+    "ref": "ref",
+    "item": {
+     "state": "finalized",
+     "success": false,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": []
+    },
+    "expectStatus": {
+     "state": "failed",
+     "why": "rejected"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/rejected"
+    }
+   },
+   {
+    "case": "the node does not know it",
+    "ref": "ref",
+    "item": null,
+    "expectStatus": {
+     "state": "pending",
+     "why": "not-found"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/not-found"
+    }
+   },
+   {
+    "case": "the reader fails",
+    "ref": "ref",
+    "item": "reader-error",
+    "expectStatus": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/unreadable"
+    }
+   },
+   {
+    "case": "a transfer without a memo",
+    "ref": "ref",
+    "item": {
+     "state": "finalized",
+     "success": true,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": [
+      {
+       "kind": "ccd",
+       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "amount": "1000000",
+       "memo": null
+      }
+     ]
+    },
+    "expectStatus": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/no-carrier"
+    }
+   },
+   {
+    "case": "a landed CCD transfer whose memo in LCP's string form with upper-case hex digits",
+    "ref": "ref",
+    "item": {
+     "state": "finalized",
+     "success": true,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": [
+      {
+       "kind": "ccd",
+       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "amount": "1000000",
+       "memo": "784d6c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144"
+      }
+     ]
+    },
+    "expectStatus": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/no-carrier"
+    }
+   },
+   {
+    "case": "a landed CCD transfer whose memo text under a non-preferred CBOR head (79 00 4d, RFC 8949 §4.1's preferred serialization is 78 4d)",
+    "ref": "ref",
+    "item": {
+     "state": "finalized",
+     "success": true,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": [
+      {
+       "kind": "ccd",
+       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "amount": "1000000",
+       "memo": "79004d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+      }
+     ]
+    },
+    "expectStatus": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/no-carrier"
+    }
+   },
+   {
+    "case": "a landed CCD transfer whose memo text with a leading U+FEFF, a character of the text string (RFC 8949 §3.1)",
+    "ref": "ref",
+    "item": {
+     "state": "finalized",
+     "success": true,
+     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "transfers": [
+      {
+       "kind": "ccd",
+       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "amount": "1000000",
+       "memo": "7850efbbbf6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+      }
+     ]
+    },
+    "expectStatus": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "ccd/no-carrier"
+    }
+   }
+  ],
+  "wrongReader": {
+   "network": "ccd:9dd9ca4d19e9393877d2c44b70f89acb",
+   "expectStatus": {
+    "state": "pending",
+    "why": "unreadable"
+   },
+   "expectRecover": {
+    "refused": true,
+    "code": "ccd/wrong-reader"
+   }
+  }
+ },
+ "plant": {
+  "case": "a finalized, successful transfer with memo D1 whose receiver is the payer itself",
+  "item": {
+   "state": "finalized",
+   "success": true,
+   "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+   "transfers": [
+    {
+     "kind": "ccd",
+     "receiver": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+     "amount": "1000000",
+     "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    }
+   ]
+  },
+  "expectStatus": {
+   "state": "failed",
+   "why": "not-this-instrument"
+  }
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/ccd",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+        "amount": "1000000",
+        "asset": "CCD",
+        "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "ccd:4221332d34e1694168c2a0c0b3fd0f27:3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/ccd",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+       "amount": "1000000",
+       "asset": "CCD",
+       "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+       }
+      },
+      "payload": {
+       "signedTransaction": {
+        "version": 1,
+        "signatures": {
+         "sender": {
+          "0": {
+           "0": "345ba7ac54149a137bc3b327e913abbe44b188f5727c5864723860b7f6de77e6e217ead20ac063195f72d603db0e32ecec344d5902602c1682b96183aa3a0609"
+          }
+         }
+        },
+        "header": {
+         "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+         "nonce": 7,
+         "expiry": 1790000060,
+         "executionEnergyAmount": 300,
+         "numSignatures": 1,
+         "sponsor": {
+          "account": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd",
+          "numSignatures": 1
+         }
+        },
+        "payload": {
+         "type": "transferWithMemo",
+         "toAddress": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+         "memo": "004f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+         "amount": "1000000"
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's D3.ccd.payment payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

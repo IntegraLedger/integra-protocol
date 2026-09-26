@@ -1,0 +1,402 @@
+{
+ "about": "Vectors for the x402/exact/xrpl pairing: the xrpl and x402/exact/xrpl entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; payer from Ed25519 entropy 01x16, destination from 02x16; 1 000 000 drops, Fee 12, Sequence 7, LastLedgerSequence 1000, computed with xrpl-py 4.1.0 on Python 3.12.3, GNU coreutils 9.4 and OpenSSL 3.0.13. The plant's blob was built with xrpl-py 4.1.0 on Python 3.11; the same script reproduces V2's and V3's blobs and hashes.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "payer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+  "destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+  "option": {
+   "scheme": "exact",
+   "network": "xrpl:1",
+   "amount": "1000000",
+   "asset": "XRP",
+   "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "areFeesSponsored": false
+   }
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V1": {
+  "x402InvoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
+  "mppInvoiceId": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+ },
+ "V2": {
+  "blob": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+  "accepted": {
+   "scheme": "exact",
+   "network": "xrpl:1",
+   "amount": "1000000",
+   "asset": "XRP",
+   "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "areFeesSponsored": false,
+    "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "xrpl:1",
+   "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+   "expect": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
+   "lastLedgerSequence": 1000
+  },
+  "build": {
+   "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "fee": "12",
+   "sequence": 7,
+   "lastLedgerSequence": 1000
+  },
+  "expectTxJson": {
+   "TransactionType": "Payment",
+   "Flags": 0,
+   "Sequence": 7,
+   "LastLedgerSequence": 1000,
+   "InvoiceID": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
+   "Amount": "1000000",
+   "Fee": "12",
+   "Account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "Destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+  }
+ },
+ "V3": {
+  "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+  "hash": "49FBB1A497E694900A368096BC7F136EC37B870D81EDD9D1D667F91F3794CFFA",
+  "invoiceId": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+ },
+ "V4": {
+  "challengeId": "kM9xPqWvT2nJrHsY4aDfEb",
+  "derivedInvoiceId": "08B1F8BA199231AB7BEF24E5E3AFC3DB0BE5B75095CCCB6EEF0EC077F9F20AC1",
+  "x402Row": {
+   "ref": {
+    "network": "xrpl:1",
+    "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+    "expect": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
+    "lastLedgerSequence": 1000,
+    "fromLedger": 980
+   },
+   "landed": {
+    "validated": true,
+    "result": "tesSUCCESS",
+    "ledgerIndex": 990,
+    "transactionType": "Payment",
+    "invoiceId": "08B1F8BA199231AB7BEF24E5E3AFC3DB0BE5B75095CCCB6EEF0EC077F9F20AC1"
+   },
+   "expect": {
+    "state": "failed",
+    "why": "not-this-instrument"
+   }
+  },
+  "v3UnderX402": {
+   "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+   "accepted": {
+    "scheme": "exact",
+    "network": "xrpl:1",
+    "amount": "1000000",
+    "asset": "XRP",
+    "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "areFeesSponsored": false,
+     "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "expect": "xrpl/carrier-mismatch"
+  }
+ },
+ "V5": {
+  "ref": {
+   "network": "xrpl:1",
+   "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+   "expect": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
+   "lastLedgerSequence": 1000,
+   "fromLedger": 980
+  },
+  "rows": [
+   {
+    "case": "validated tesSUCCESS at ledger 990",
+    "tx": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 990,
+     "transactionType": "Payment",
+     "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
+    },
+    "expect": {
+     "state": "settled",
+     "ledgerIndex": 990
+    }
+   },
+   {
+    "case": "validated false with tesSUCCESS",
+    "tx": {
+     "validated": false,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 990,
+     "transactionType": "Payment",
+     "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-validated"
+    }
+   },
+   {
+    "case": "validated tecUNFUNDED_PAYMENT",
+    "tx": {
+     "validated": true,
+     "result": "tecUNFUNDED_PAYMENT",
+     "ledgerIndex": 990,
+     "transactionType": "Payment",
+     "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "claimed-fee"
+    }
+   },
+   {
+    "case": "not found, searchedAll, validated 1001",
+    "tx": {
+     "notFound": true,
+     "searchedAll": true
+    },
+    "validated": 1001,
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "not found, searchedAll, validated 1000",
+    "tx": {
+     "notFound": true,
+     "searchedAll": true
+    },
+    "validated": 1000,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "reader error",
+    "tx": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ]
+ },
+ "V6": {
+  "case": "the facilitator names 98B6769A... (another Payment); status reads by V2's hash, not yet found",
+  "named": "98B6769A1BBB4F3A29346848761E73D5BBAA520B36980DDBFACB3BC80B7EEC7D",
+  "ref": {
+   "network": "xrpl:1",
+   "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+   "expect": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
+   "lastLedgerSequence": 1000,
+   "fromLedger": 980
+  },
+  "expect": {
+   "state": "pending",
+   "why": "not-found"
+  }
+ },
+ "plant": {
+  "case": "the same payer's Payment with no InvoiceID and one memo whose MemoData is L's bytes, under x402 with extra.invoiceId = L",
+  "blob": "12000022000000002400000007201B000003E86140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440909AC8254C390DA0C61565641C6C5A7D4EB321BE1960E68B6889421CED98AAAE533F6CB8525D4F81355F5C977634247E7240E69CB8C57A193F2CE5F1B04D380F81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+  "hash": "98B6769A1BBB4F3A29346848761E73D5BBAA520B36980DDBFACB3BC80B7EEC7D",
+  "accepted": {
+   "scheme": "exact",
+   "network": "xrpl:1",
+   "amount": "1000000",
+   "asset": "XRP",
+   "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "areFeesSponsored": false,
+    "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "expect": "xrpl/no-invoice-id"
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the XRPL specification leaves to the implementation, as the TypeScript and Python implementations both apply them.",
+  "rows": [
+   {
+    "case": "decodeBlob when ripple-binary-codec is not installed",
+    "expect": "xrpl/peer-missing"
+   },
+   {
+    "case": "a blob that is not an even number of hex digits, or that the codec cannot decode",
+    "expect": "xrpl/blob-malformed"
+   },
+   {
+    "case": "a blob that is not the canonical serialization of what it decodes to (strictEncoding)",
+    "expect": "xrpl/blob-malformed"
+   },
+   {
+    "case": "a blob over 4096 hex characters",
+    "expect": "xrpl/blob-too-large"
+   },
+   {
+    "case": "recover when the reader fails or answers malformed",
+    "expect": "xrpl/unreadable"
+   },
+   {
+    "case": "build with a malformed fee, sequence, ticket sequence or LastLedgerSequence, or an amount build cannot write",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a payment whose option fails the pairing's filter",
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "strictEncoding": {
+  "about": "Blobs ripple-binary-codec 2.11.0's decode reads but that are not the canonical binary serialization of what they decode to (xrpl.org Binary Format: the signature and the transaction hash are over the canonical serialization; ripple-binary-codec's encode of the decoded JSON gives it). Each is refused.",
+  "rows": [
+   {
+    "case": "V3's blob followed by an object end marker (byte 0xE1) and one byte, which the transaction hash would cover",
+    "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AE100",
+    "expect": "xrpl/blob-malformed"
+   },
+   {
+    "case": "V3's blob followed by an object end marker (byte 0xE1) alone",
+    "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AE1",
+    "expect": "xrpl/blob-malformed"
+   },
+   {
+    "case": "the plant's blob with its Memos array's one member a LedgerHash (Hash256, 32 bytes) instead of a Memo object",
+    "blob": "12000022000000002400000007201B000003E86140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440909AC8254C390DA0C61565641C6C5A7D4EB321BE1960E68B6889421CED98AAAE533F6CB8525D4F81355F5C977634247E7240E69CB8C57A193F2CE5F1B04D380F81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9512E000000012E000000012E000000012E00000001130001130001130001130001F1",
+    "expect": "xrpl/blob-malformed"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/xrpl",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "xrpl:1",
+        "amount": "1000000",
+        "asset": "XRP",
+        "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "areFeesSponsored": false,
+         "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "xrpl:1:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "inputs": {
+      "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+      "fee": "12",
+      "sequence": 7,
+      "lastLedgerSequence": 1000
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/xrpl",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "exact",
+       "network": "xrpl:1",
+       "amount": "1000000",
+       "asset": "XRP",
+       "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "areFeesSponsored": false,
+        "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      },
+      "payload": {
+       "signedTxBlob": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

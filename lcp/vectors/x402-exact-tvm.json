@@ -1,0 +1,676 @@
+{
+ "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers; inBody is a BoC in hex.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
+  "publicKey": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "O": {
+   "scheme": "exact",
+   "network": "tvm:-239",
+   "amount": "10000",
+   "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+   "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "areFeesSponsored": true
+   }
+  },
+  "placed": {
+   "scheme": "exact",
+   "network": "tvm:-239",
+   "amount": "10000",
+   "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+   "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "areFeesSponsored": true,
+    "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+   }
+  },
+  "wallet": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+  "walletId": 2147483409,
+  "seqno": 5,
+  "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+  "attachNanotons": "50000000",
+  "now": 1790000000,
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V1": {
+  "expectCommentBits": 648,
+  "expectCommentHash": "ee089534c301c6cc8f14677965b4f3497d27d10d8166e5d83495acc9bbdc96de",
+  "expectBoc": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+ },
+ "V2": {
+  "case": "build({required: {x402Version: 2, resource, accepts: [placed]}, accepted: placed, wallet, walletId, seqno, jettonWallet, attachNanotons, now}, H), then complete(signature)",
+  "expectTransferBodyBits": 391,
+  "expectTransferBodyHash": "2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
+  "expectOutMessageHash": {
+   "prefix": "d0935b60",
+   "suffix": "666222fae"
+  },
+  "expectActionsHash": {
+   "prefix": "a79f2b0a",
+   "suffix": "3d9477456"
+  },
+  "expectRequestHash": "d5741edc93f80783ae005269cec93696cb7bf058f046ef34fe8e87e05cdb465a",
+  "expectSignature": {
+   "prefix": "6483cff80194d94e",
+   "suffix": "761f183506"
+  },
+  "expectSettlementRootHash": "696775c946299a6249d2856c9284735961758c91dca2ea084e278380cb3e1f15"
+ },
+ "V3": {
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "tvm:-239",
+   "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
+   "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "validUntil": 1790000060
+  },
+  "refusals": [
+   {
+    "case": "a payload of 0x00000000 and invoice-42",
+    "settlementBoc": "te6cckECBwEAAQ0AAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFu0fJlVoOBKpeW/jR3+3pFQR8KrMk8OaQCvUPBPgBGd+Cw2uoONmHiZ97f/QoBEs1KmsQu2rGGt04YqMPsapcAKACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgAcAAAAAGludm9pY2UtNDKRrcKa",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/payload-not-lcp"
+   },
+   {
+    "case": "a binary comment, 0x00000000 ff and H's 32 bytes",
+    "settlementBoc": "te6cckECBwEAASQAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmIPbC8bT0kiZmBYBlmtWwe3Uw9a/C4b2hVoLfcZYm7rSlkuKQnyvvIsqSWmfbQTJgTwx0HJe+d/X8dbEFXgIwqACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgBKAAAAAP+6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrV5Npsw=",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/payload-not-lcp"
+   },
+   {
+    "case": "two actions",
+    "settlementBoc": "te6cckECCAEAAVkAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFvC9fLxLPQwmt1Mqk+QB3oYz0Bjru5LSzII0xeoGz3S9tJQn0uFVgOmU9UMx6AaKTi142MdpUZKc7SFKthfKIwmACAgoOw8htAwMFAgoOw8htAwQFAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEGAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBwCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkKXfJQg==",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/actions"
+   },
+   {
+    "case": "an option whose forwardPayload is another comment",
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87w==",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NUmHuyI="
+     }
+    },
+    "expect": "tvm/carrier-mismatch"
+   }
+  ]
+ },
+ "V4": {
+  "ref": {
+   "network": "tvm:-239",
+   "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
+   "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "validUntil": 1790000060
+  },
+  "status": [
+   {
+    "case": "finality 2 and 2",
+    "byInBody": [
+     {
+      "hash": "tx-payer",
+      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-internal",
+        "opcode": 395134233
+       }
+      ]
+     }
+    ],
+    "byInMessage": [
+     {
+      "hash": "tx-payee",
+      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "finality": "finalized"
+    }
+   },
+   {
+    "case": "finality 2 and 1",
+    "byInBody": [
+     {
+      "hash": "tx-payer",
+      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-internal",
+        "opcode": 395134233
+       }
+      ]
+     }
+    ],
+    "byInMessage": [
+     {
+      "hash": "tx-payee",
+      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+      "aborted": false,
+      "finality": 1,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "finality": "confirmed"
+    }
+   },
+   {
+    "case": "finality 2 and 0",
+    "byInBody": [
+     {
+      "hash": "tx-payer",
+      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-internal",
+        "opcode": 395134233
+       }
+      ]
+     }
+    ],
+    "byInMessage": [
+     {
+      "hash": "tx-payee",
+      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+      "aborted": false,
+      "finality": 0,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "not-final"
+    }
+   },
+   {
+    "case": "the first transaction aborted",
+    "byInBody": [
+     {
+      "hash": "tx-payer",
+      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+      "aborted": true,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-internal",
+        "opcode": 395134233
+       }
+      ]
+     }
+    ],
+    "byInMessage": [],
+    "expect": {
+     "state": "failed",
+     "why": "aborted"
+    }
+   },
+   {
+    "case": "the second aborted",
+    "byInBody": [
+     {
+      "hash": "tx-payer",
+      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-internal",
+        "opcode": 395134233
+       }
+      ]
+     }
+    ],
+    "byInMessage": [
+     {
+      "hash": "tx-payee",
+      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+      "aborted": true,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "bounced"
+    }
+   },
+   {
+    "case": "nothing found, headUtime 1790000120",
+    "byInBody": [],
+    "headUtime": 1790000120,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "nothing found, headUtime 1790000121",
+    "byInBody": [],
+    "headUtime": 1790000121,
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "a ReaderError",
+    "byInBody": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": [
+   {
+    "case": "the payer Jetton wallet's transaction with V2's Jetton body",
+    "transaction": "tx-payer",
+    "inBodyHex": "b5ee9c720101020100870001610f8a7ea5000000000000000022710801248674aed97cad89b990db29692f459e3153755390507fd451d487d6784b9fda030100a2000000006c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  ]
+ },
+ "plant": {
+  "case": "an equal body executed on another account, and nothing else",
+  "byInBody": [
+   {
+    "hash": "tx-payer",
+    "account": "0:2222222222222222222222222222222222222222222222222222222222222222",
+    "aborted": false,
+    "finality": 2,
+    "inBody": null,
+    "outMsgs": [
+     {
+      "hash": "msg-internal",
+      "opcode": 395134233
+     }
+    ]
+   }
+  ],
+  "headUtime": 1790000200,
+  "expect": {
+   "state": "failed",
+   "why": "expired"
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "rows": [
+   {
+    "case": "an option whose network is tvm: and not an integer",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:mainnet",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "tvm/network-malformed"
+   },
+   {
+    "case": "an option whose payTo is not a raw workchain:hex address",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "EQCSQzpXbL5WxNzIbZS0l6LPGKm6qcgoP-oo6kPrPCXP7Ttj",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "an option without extra.areFeesSponsored true",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "an option whose forwardTonAmount is not decimal",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardTonAmount": "1e9"
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "an option whose amount is 2^120",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "1329227995784915872903807060280344576",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "an option with extra.assetTransferMethod",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "assetTransferMethod": "default"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "an option whose paymentFlow is upfront",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "paymentFlow": "upfront"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "advertise on an option whose forwardPayload is another cell",
+    "advertiseOption": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAEAAAHAAAAABpbnZvaWNlLTQyu971tw=="
+     }
+    },
+    "expect": "tvm/carrier-occupied"
+   },
+   {
+    "case": "build with attachNanotons not above forwardTonAmount",
+    "attachNanotons": "0",
+    "expect": "tvm/value-too-low"
+   },
+   {
+    "case": "build with a malformed wallet, jettonWallet, walletId, seqno or now",
+    "wallet": "EQ-not-raw",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "complete with a signature that is not 64 bytes",
+    "signatureBytes": 63,
+    "expect": "x402/signature-malformed"
+   },
+   {
+    "case": "bound with a settlementBoc that is not base64 of one root cell",
+    "settlementBoc": "not base64!",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with a settlementBoc over 8192 bytes",
+    "settlementBoc": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "tvm/boc-too-large"
+   },
+   {
+    "case": "bound with a body that is not internal_signed",
+    "settlementBoc": "te6cckEBAgEAOQABYEIADtENNxn3kUIAFNc7yAew3UEFynQJ0dvfenH1I4gDsi+AAAAAAAAAAAAAAAAAAQEACHNpZ27t3gid",
+    "expect": "tvm/not-w5-signed"
+   },
+   {
+    "case": "recover when the reader fails",
+    "expect": "tvm/unreadable"
+   },
+   {
+    "case": "any tvm function that needs the SDK when @ton/core is not installed",
+    "expect": "tvm/peer-missing"
+   }
+  ]
+ },
+ "V2b": {
+  "case": "An undeployed wallet: build({…V2's choice, wallet: the state init's address, seqno: 0, stateInit: the base64 BoC}, H), then complete(signature). The internal message to the wallet carries init = the state init as a reference (Maybe 1, Either 1) and the signed body as a reference, as V2 lays the body out. The state init's code is a one-cell fixture (32 bits 0xdeadbeef); its data is W5's layout for the payer key: is_signature_allowed 1, seqno 0, wallet_id, the public key, no extensions. Computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2 by a script that reproduces V2's settlement root 696775c9…1f15 exactly before adding the init.",
+  "stateInit": "te6cckEBAwEANgACATQBAgAI3q2+7wBRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riAa6z05",
+  "expectStateInitHash": "6e1691b4371386ec5126b3bd61b991397c798f0b78435f44d4046f7fae460990",
+  "wallet": "0:6e1691b4371386ec5126b3bd61b991397c798f0b78435f44d4046f7fae460990",
+  "seqno": 0,
+  "expectTransferBodyHash": "2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
+  "expectRequestHash": "eecf21626b99c76772ddf26e39d67eb73975396ca9293fa3fe0c7460db0b41c9",
+  "expectSignature": "8f11b3d78f88a7af96ebdc34f70ddb46ec8dac7e268b2ef4772b8a14f803600cc84e92bdd00a93e97aeeed4cc7f4922ab55584272acd89bdc59d16970403b20c",
+  "expectSettlementRootHash": "a658a2c0cfde01ec9f131c2331050c7fab4a19c9825b783bf8439c51c043bdba",
+  "refusals": [
+   {
+    "case": "a stateInit that is not base64",
+    "stateInit": "not a boc!",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "a stateInit that is base64 but not a BoC",
+    "stateInit": "AAAA",
+    "expect": "tvm/boc-malformed"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/tvm",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "tvm:-239",
+        "amount": "10000",
+        "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+        "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "areFeesSponsored": true,
+         "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "tvm:-239:0%3A1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+     "inputs": {
+      "walletId": 2147483409,
+      "seqno": 5,
+      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+      "attachNanotons": "50000000"
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/tvm",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "tvm:-239",
+       "amount": "10000",
+       "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+       "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "areFeesSponsored": true,
+        "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+       }
+      },
+      "payload": {
+       "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87w==",
+       "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

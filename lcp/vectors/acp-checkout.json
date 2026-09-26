@@ -1,0 +1,1124 @@
+{
+ "about": "Vectors for the acp/checkout/delegated and acp/checkout/undelegated pairings: the acp entry point of @integraledger/lcp. Every expected value is fixed by the pairing. A is a 287-byte ATR, H = SHA-256(A) (GNU coreutils sha256sum and openssl dgst -sha256 agree), L = https://atr.seller.example/<H>, S0 a checkout session, and otherH ucp.json's H. A value {\"$repeat\": [s, n]} in args stands for the string s repeated n times.",
+ "fixed": {
+  "A": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e80\",\"acp\":{\"options\":[{\"requires_delegate_payment\":true},{\"requires_delegate_payment\":false}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
+  "H": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+  "L": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+  "S0": {
+   "currency": "usd",
+   "metadata": {
+    "order_ref": "A-100"
+   }
+  },
+  "otherH": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+ },
+ "V1": {
+  "case": "tie of both handler kinds, serialised by P1, is the acp value in A; assemble with A's id and content gives A and H",
+  "options": [
+   {
+    "requires_delegate_payment": true
+   },
+   {
+    "requires_delegate_payment": false
+   }
+  ],
+  "expectSlot": [
+   "acp",
+   {
+    "options": [
+     {
+      "requires_delegate_payment": true
+     },
+     {
+      "requires_delegate_payment": false
+     }
+    ]
+   }
+  ],
+  "expectSlotText": "{\"options\":[{\"requires_delegate_payment\":true},{\"requires_delegate_payment\":false}]}",
+  "assemble": {
+   "id": "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e80",
+   "content": [
+    [
+     "line_items",
+     "[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}]"
+    ],
+    [
+     "totals",
+     "[{\"type\":\"total\",\"amount\":19900}]"
+    ]
+   ],
+   "expectBytes": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e80\",\"acp\":{\"options\":[{\"requires_delegate_payment\":true},{\"requires_delegate_payment\":false}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
+   "expectHash": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+  }
+ },
+ "V2": {
+  "advertise": {
+   "doc": {
+    "currency": "usd",
+    "metadata": {
+     "order_ref": "A-100"
+    }
+   },
+   "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "link": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "offer": {
+    "requires_delegate_payment": true
+   }
+  },
+  "expectSession": {
+   "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "currency": "usd",
+   "metadata": {
+    "order_ref": "A-100",
+    "legal_context": {
+     "type": "sha256",
+     "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    }
+   }
+  },
+  "expectRead": {
+   "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "link": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+  },
+  "readUpperCaseId": {
+   "id": "0x1BE27E75EA3728B55834EC54FF6709669427B11C9BA47A6D9F182B0BE46513BE",
+   "expectH": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+  },
+  "idConflict": {
+   "doc": {
+    "currency": "usd",
+    "metadata": {
+     "order_ref": "A-100"
+    },
+    "id": "cs_1"
+   },
+   "expect": {
+    "refused": true,
+    "code": "acp/id-conflict"
+   }
+  },
+  "httpLink": {
+   "link": "http://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "expect": {
+    "refused": true,
+    "code": "acp/link-not-https"
+   }
+  }
+ },
+ "V3": {
+  "digests": [
+   {
+    "option": {
+     "requires_delegate_payment": true
+    },
+    "expect": "0x04a20ad000f7c25b9dd398261136123eb687e3c75ebd240d60ab269ee09c7c76"
+   },
+   {
+    "option": {
+     "requires_delegate_payment": false
+    },
+    "expect": "0x3191a36fdf651a99752f1956a0530be3ef028a978d65053df39fe668b66f986d"
+   }
+  ]
+ },
+ "V4": {
+  "choice": {
+   "session": {
+    "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+    "currency": "usd",
+    "metadata": {
+     "order_ref": "A-100",
+     "legal_context": {
+      "type": "sha256",
+      "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+     }
+    }
+   },
+   "max_amount": 19900,
+   "currency": "usd",
+   "merchant_id": "acct_123",
+   "expires_at": "2026-09-21T14:23:20Z"
+  },
+  "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+  "expectAllowance": {
+   "reason": "one_time",
+   "max_amount": 19900,
+   "currency": "usd",
+   "checkout_session_id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "merchant_id": "acct_123",
+   "expires_at": "2026-09-21T14:23:20Z"
+  },
+  "expectBound": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+  "changedSessionId": {
+   "checkout_session_id": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "expect": {
+    "refused": true,
+    "code": "acp/allowance-changed"
+   }
+  },
+  "upperCurrency": {
+   "currency": "USD",
+   "expect": {
+    "refused": true,
+    "code": "acp/choice-malformed"
+   }
+  }
+ },
+ "V5": {
+  "session": {
+   "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "currency": "usd",
+   "metadata": {
+    "order_ref": "A-100",
+    "legal_context": {
+     "type": "sha256",
+     "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    }
+   }
+  },
+  "expectRead": {
+   "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "link": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+  },
+  "expectBuild": {
+   "refused": true,
+   "code": "acp/nothing-to-sign"
+  },
+  "expectBound": {
+   "refused": true,
+   "code": "acp/not-buyer-signed"
+  }
+ },
+ "V6": {
+  "case": "a top-level legal_context and no metadata.legal_context",
+  "doc": {
+   "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "currency": "usd",
+   "legal_context": {
+    "type": "sha256",
+    "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+    "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+   }
+  },
+  "expect": {
+   "refused": true,
+   "code": "acp/no-legal-context"
+  }
+ },
+ "plant": {
+  "case": "metadata.legal_context.value is another ATR's hash while id stays H; read must refuse, never return either hash",
+  "doc": {
+   "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "currency": "usd",
+   "metadata": {
+    "order_ref": "A-100",
+    "legal_context": {
+     "type": "sha256",
+     "value": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    }
+   }
+  },
+  "expect": {
+   "refused": true,
+   "code": "acp/legal-context-conflict"
+  }
+ },
+ "patterns": {
+  "acp/checkout/delegated": {
+   "pattern": "native-field",
+   "canonical": true,
+   "profile": "acp/checkout/session-id",
+   "buyerSigns": false,
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "claims": false
+  },
+  "acp/checkout/undelegated": {
+   "pattern": "http-advisory",
+   "canonical": true,
+   "profile": "acp/checkout/session-id",
+   "buyerSigns": false,
+   "onChain": false,
+   "zeroPartyRecoverable": false,
+   "forwardIndexable": false,
+   "publicProof": false,
+   "claims": false
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation, as this package applies them. call names the pairing and function; args are its arguments.",
+  "rows": [
+   {
+    "case": "advertise of a session that is not a JSON object",
+    "call": "delegated.advertise",
+    "args": [
+     [
+      "not",
+      "a",
+      "session"
+     ],
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/session-malformed"
+    }
+   },
+   {
+    "case": "advertise of a session whose metadata is not an object",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": "x"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/session-malformed"
+    }
+   },
+   {
+    "case": "advertise of a session over 1 MiB",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100"
+      },
+      "pad": {
+       "$repeat": [
+        "a",
+        1048576
+       ]
+      }
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/too-large"
+    }
+   },
+   {
+    "case": "advertise with an offer that is not {requires_delegate_payment: boolean}",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100"
+      }
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": "yes"
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/option-malformed"
+    }
+   },
+   {
+    "case": "advertise with a hash that is not 0x and 64 hex digits",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100"
+      }
+     },
+     "0x1234",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/legal-context-malformed"
+    }
+   },
+   {
+    "case": "advertise with a link over 2048 characters",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100"
+      }
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "$repeat": [
+       "https://atr.seller.example/",
+       76
+      ]
+     },
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/legal-context-malformed"
+    }
+   },
+   {
+    "case": "advertise over a metadata.legal_context with another link",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be?v=2"
+       }
+      }
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/legal-context-conflict"
+    }
+   },
+   {
+    "case": "advertise over its own result gives an equal session",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100",
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "currency": "usd",
+     "metadata": {
+      "order_ref": "A-100",
+      "legal_context": {
+       "type": "sha256",
+       "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+      }
+     }
+    }
+   },
+   {
+    "case": "advertise with the id already H in upper case gives the lowercase id",
+    "call": "undelegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100"
+      },
+      "id": "0x1BE27E75EA3728B55834EC54FF6709669427B11C9BA47A6D9F182B0BE46513BE"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": false
+     }
+    ],
+    "expect": {
+     "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "currency": "usd",
+     "metadata": {
+      "order_ref": "A-100",
+      "legal_context": {
+       "type": "sha256",
+       "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+      }
+     }
+    }
+   },
+   {
+    "case": "read of a session that is not a JSON object",
+    "call": "delegated.read",
+    "args": [
+     "cs_1"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/session-malformed"
+    }
+   },
+   {
+    "case": "build with a choice that is not an object",
+    "call": "delegated.build",
+    "args": [
+     null,
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
+   },
+   {
+    "case": "read of a session whose id is 67 characters",
+    "call": "delegated.read",
+    "args": [
+     {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be0",
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100",
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/too-large"
+    }
+   },
+   {
+    "case": "read of a session with no id",
+    "call": "delegated.read",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100",
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/id-not-hash"
+    }
+   },
+   {
+    "case": "read of a legal_context whose type is not sha256",
+    "call": "delegated.read",
+    "args": [
+     {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "legal_context": {
+        "type": "sha512",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/legal-context-malformed"
+    }
+   },
+   {
+    "case": "read of a well-formed legal_context with an http link",
+    "call": "delegated.read",
+    "args": [
+     {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "http://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/link-not-https"
+    }
+   },
+   {
+    "case": "read of a legal_context link over 2048 characters",
+    "call": "delegated.read",
+    "args": [
+     {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       }
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/legal-context-malformed"
+    }
+   },
+   {
+    "case": "read of a session over 1 MiB",
+    "call": "delegated.read",
+    "args": [
+     {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100",
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      },
+      "pad": {
+       "$repeat": [
+        "a",
+        1048576
+       ]
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/too-large"
+    }
+   },
+   {
+    "case": "build when the session id is not the hash",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/hash-not-session"
+    }
+   },
+   {
+    "case": "build with a negative max_amount",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": -1,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
+   },
+   {
+    "case": "build with a max_amount that is not an integer",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 199.5,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
+   },
+   {
+    "case": "build with an empty merchant_id",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
+   },
+   {
+    "case": "build with a merchant_id over 256 characters",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/too-large"
+    }
+   },
+   {
+    "case": "build with an expires_at that is not an RFC 3339 date-time",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21 14:23:20"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
+   },
+   {
+    "case": "build with an expires_at of 2026-02-30",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-02-30T00:00:00Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
+   },
+   {
+    "case": "build with an expires_at over 64 characters",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T14:23:20.00000000000000000000000000000000000000000000Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/too-large"
+    }
+   },
+   {
+    "case": "build with an expires_at carrying an offset and fractional seconds",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T16:23:20.5+02:00"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "allowance": {
+      "reason": "one_time",
+      "max_amount": 19900,
+      "currency": "usd",
+      "checkout_session_id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T16:23:20.5+02:00"
+     }
+    }
+   },
+   {
+    "case": "bound of a request with no allowance",
+    "call": "delegated.bound",
+    "args": [
+     {
+      "payment_method": {}
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/allowance-malformed"
+    }
+   },
+   {
+    "case": "bound of an allowance missing a member",
+    "call": "delegated.bound",
+    "args": [
+     {
+      "allowance": {
+       "reason": "one_time",
+       "max_amount": 19900,
+       "currency": "usd",
+       "checkout_session_id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "expires_at": "2026-09-21T14:23:20Z"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/allowance-malformed"
+    }
+   },
+   {
+    "case": "bound of an allowance with a seventh member",
+    "call": "delegated.bound",
+    "args": [
+     {
+      "allowance": {
+       "reason": "one_time",
+       "max_amount": 19900,
+       "currency": "usd",
+       "checkout_session_id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "merchant_id": "acct_123",
+       "expires_at": "2026-09-21T14:23:20Z",
+       "extra": "x"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/allowance-malformed"
+    }
+   },
+   {
+    "case": "bound of an allowance whose reason is not one_time",
+    "call": "delegated.bound",
+    "args": [
+     {
+      "allowance": {
+       "reason": "recurring",
+       "max_amount": 19900,
+       "currency": "usd",
+       "checkout_session_id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "merchant_id": "acct_123",
+       "expires_at": "2026-09-21T14:23:20Z"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/allowance-malformed"
+    }
+   },
+   {
+    "case": "bound of an allowance whose checkout_session_id is not a hash",
+    "call": "delegated.bound",
+    "args": [
+     {
+      "allowance": {
+       "reason": "one_time",
+       "max_amount": 19900,
+       "currency": "usd",
+       "checkout_session_id": "cs_1",
+       "merchant_id": "acct_123",
+       "expires_at": "2026-09-21T14:23:20Z"
+      }
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/id-not-hash"
+    }
+   },
+   {
+    "case": "bound of an allowance whose checkout_session_id is H in upper case",
+    "call": "delegated.bound",
+    "args": [
+     {
+      "allowance": {
+       "reason": "one_time",
+       "max_amount": 19900,
+       "currency": "usd",
+       "checkout_session_id": "0x1BE27E75EA3728B55834EC54FF6709669427B11C9BA47A6D9F182B0BE46513BE",
+       "merchant_id": "acct_123",
+       "expires_at": "2026-09-21T14:23:20Z"
+      }
+     }
+    ],
+    "expect": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "acp/checkout/delegated",
+    "plant": true,
+    "input": {
+     "doc": {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100",
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653830222c22616370223a7b226f7074696f6e73223a5b7b2272657175697265735f64656c65676174655f7061796d656e74223a747275657d2c7b2272657175697265735f64656c65676174655f7061796d656e74223a66616c73657d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_123",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+    "servedHash": "0xa927ff2f123983d8fb85907600c5308bdef113b5dea59b787c7463e6eced382d",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "acp/checkout/delegated",
+    "input": {
+     "presented": {
+      "allowance": {
+       "reason": "one_time",
+       "max_amount": 19900,
+       "currency": "usd",
+       "checkout_session_id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "merchant_id": "acct_123",
+       "expires_at": "2026-09-21T14:23:20Z"
+      },
+      "payment_method": {
+       "type": "card"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653830222c22616370223a7b226f7074696f6e73223a5b7b2272657175697265735f64656c65676174655f7061796d656e74223a747275657d2c7b2272657175697265735f64656c65676174655f7061796d656e74223a66616c73657d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930307d5d7d"
+      },
+      {
+       "bytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653830222c22616370223a7b226f7074696f6e73223a5b7b2272657175697265735f64656c65676174655f7061796d656e74223a747275657d2c7b2272657175697265735f64656c65676174655f7061796d656e74223a66616c73657d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V4 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "acp/checkout/undelegated",
+    "plant": true,
+    "input": {
+     "doc": {
+      "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100",
+       "legal_context": {
+        "type": "sha256",
+        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       }
+      }
+     },
+     "servesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653830222c22616370223a7b226f7074696f6e73223a5b7b2272657175697265735f64656c65676174655f7061796d656e74223a747275657d2c7b2272657175697265735f64656c65676174655f7061796d656e74223a66616c73657d5d7d2c226c696e655f6974656d73223a5b7b226964223a226c695f31222c226974656d223a7b226964223a22736b755f31222c227469746c65223a22517561727465726c79207265706f7274227d2c227175616e74697479223a317d5d2c22746f74616c73223a5b7b2274797065223a22746f74616c222c22616d6f756e74223a31393930317d5d7d",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+    "servedHash": "0xa927ff2f123983d8fb85907600c5308bdef113b5dea59b787c7463e6eced382d",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "acp/checkout/undelegated": "The buyer signs nothing (buyerSigns false): the file holds no payment that carries H."
+  }
+ }
+}

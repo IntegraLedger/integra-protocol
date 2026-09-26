@@ -1,0 +1,493 @@
+{
+ "about": "Vectors for the card entry point of @integraledger/lcp: Visa TAP, Mastercard Verifiable Intent and the plain card checkout. H is SHA-256(\"abc\") from FIPS 180-2 and E is SHA-256 of the empty string. The TAP signatures are RFC 9421 Ed25519 under RFC 9421's test-key-ed25519. The VI strings are built from a recipe (compact JSON, members in the order written) with fixed ES256 signatures, which verify under USER (L2i, L2a) and AGENT (L3b); every digest was checked with Python 3.12.3 hashlib.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "E": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "checkout": "chk_1001",
+  "USER": {
+   "kty": "EC",
+   "crv": "P-256",
+   "x": "1MiQ_fF5DhEHczHt_rT0DSZ_NqbAlEMNokTFgTZF1Fo",
+   "y": "Lig8-7AZ5zmpoqd9DB_NeRpHSsVfqGSbu6lnUgtk9i0"
+  },
+  "AGENT": {
+   "kty": "EC",
+   "crv": "P-256",
+   "x": "PaYGMml9ry32qSCY_xX4VAuwG2zcCg51S2HUgMqK5Ps",
+   "y": "rFuGNsqCyPr9-HWQueONkpRGghaWch3RFgFVnNsE2eY",
+   "kid": "agent-1"
+  }
+ },
+ "C1": {
+  "advertise": {
+   "offer": {
+    "scheme": "seller-reference",
+    "checkout": "chk_1001"
+   },
+   "expect": {
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    "reference": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   "referenceLength": 77
+  },
+  "otherSchemes": [
+   "visa-tap",
+   "mastercard-vi"
+  ],
+  "httpLink": {
+   "link": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": "card/link-not-https"
+  },
+  "digestJson": [
+   {
+    "option": {
+     "scheme": "visa-tap",
+     "checkout": "chk_1001"
+    },
+    "expect": "0x5c8234630c58ae1888017f9e3eca44ac38e18def165210c3b8e91898d5c9d465"
+   },
+   {
+    "option": {
+     "scheme": "mastercard-vi",
+     "checkout": "chk_1001"
+    },
+    "expect": "0x4d80fc940b41349c0ae3acf3b9768bc733ce1031fd9cc4ce856235d110d8c9dd"
+   },
+   {
+    "option": {
+     "scheme": "seller-reference",
+     "checkout": "chk_1001"
+    },
+    "expect": "0xcafd312ef6ef1c951e2beeb227d4a68ba1f48c742d7b0498c3c823745015059f"
+   }
+  ]
+ },
+ "C2": {
+  "request": {
+   "authority": "merchant.example",
+   "path": "/checkout/pay",
+   "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+   "signature": "sig1=:d2z/nlZwMjoE0x63KxkEwRW9BfsZDA0e7de6lc/cJkGCyHyG8fb9BWtGb28ADB+UBDMgFwJcj9qJimcaVThbDg==:, sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:",
+   "lcpHash": [
+    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   ]
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "upperCaseField": {
+   "lcpHash": [
+    "0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+   ],
+   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "repeatedField": {
+   "lcpHash": [
+    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   ],
+   "expect": "card/tap-field-repeated"
+  },
+  "sig2Base": "\"@authority\": merchant.example\n\"@path\": /checkout/pay\n\"lcp-hash\": 0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n\"@signature-params\": (\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+  "expectSig2BaseSha256": "08445f6675f28dc87fa7993cb7f89f4e04698a53c0349cde4c6febd6dd7bdc18",
+  "testKeyEd25519Spki": "MCowBQYDK2VwAyEAJrQLj5P/89iXES9+vFgrIy29clF9CC/oPPsw3c5D0bs=",
+  "build": {
+   "doc": {
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "expect": {
+    "field": "lcp-hash",
+    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "component": "lcp-hash"
+   }
+  }
+ },
+ "C3": {
+  "case": "sig1 lists lcp-hash and sig2, the agent-payer-auth signature, does not",
+  "signatureInput": "sig1=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+  "signature": "sig1=:d2z/nlZwMjoE0x63KxkEwRW9BfsZDA0e7de6lc/cJkGCyHyG8fb9BWtGb28ADB+UBDMgFwJcj9qJimcaVThbDg==:, sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:",
+  "lcpHash": [
+   "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  ],
+  "expect": "card/tap-hash-not-covered"
+ },
+ "C4": [
+  {
+   "disclosure": "WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsICJmYW1pbHlfbmFtZSIsICJNw7ZiaXVzIl0",
+   "expect": "X9yH0Ajrdm1Oij4tWso9UzzKJvPoDxwmuEcO3XAdRC0"
+  },
+  {
+   "disclosure": "WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0",
+   "expect": "w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs"
+  }
+ ],
+ "vi": {
+  "CJ": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LTEifQ.eyJpc3MiOiJodHRwczovL3NlbGxlci5leGFtcGxlIiwiY2hlY2tvdXQiOiJjaGtfMTAwMSIsImxlZ2FsQ29udGV4dCI6eyJ0eXBlIjoic2hhMjU2IiwidmFsdWUiOiIweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJsZWdhbENvbnRleHRVcmwiOiJodHRwczovL2F0ci5zZWxsZXIuZXhhbXBsZS8weGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifX0.IcNWROUr4Ci8bHc_JoKveoLeOYseAxzrR9Pmo1K5DXrfxa23YjEGxivsHSGBZtGZ9EXUDjolVLQQ68xKahuSnA",
+  "L1": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNkK2p3dCIsImtpZCI6Imlzc3Vlci0xIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci0xIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE4MjE1MzYwMDAsInZjdCI6Imh0dHBzOi8vY3JlZGVudGlhbHMubWFzdGVyY2FyZC5jb20vY2FyZCIsImNuZiI6eyJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJQLTI1NiIsIngiOiIxTWlRX2ZGNURoRUhjekh0X3JUMERTWl9OcWJBbEVNTm9rVEZnVFpGMUZvIiwieSI6IkxpZzgtN0FaNXptcG9xZDlEQl9OZVJwSFNzVmZxR1NidTZsblVndGs5aTAifX0sInBhbl9sYXN0X2ZvdXIiOiIxMjM0Iiwic2NoZW1lIjoiTWFzdGVyY2FyZCIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbXX0.4TM-0t5wLef8rq959wHR0t_gwK4h-nn2F6JVmzhFwSdGWdR7hULwxKpejHfgjOm0pK7HlO1BUGukD8IXoMckcQ~",
+  "L2i": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCJ9.eyJub25jZSI6ImJtOXVZMlV0YkRJIiwiYXVkIjoiaHR0cHM6Ly9uZXR3b3JrLmV4YW1wbGUvdmkiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDkwMCwic2RfaGFzaCI6IjdnQ0pRQ0FxMFBfZ0p4VEd5U2E4VWFJYkEtZUdVeEZOWGVJVFM2bFJyVE0iLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIiwiSnI2MFp5bEExRHFsa21LV1NueV9QVTlSdzV4RHRDZ1NQR3ZFNk41UVlITSJdLCJkZWxlZ2F0ZV9wYXlsb2FkIjpbeyIuLi4iOiJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIn0seyIuLi4iOiJKcjYwWnlsQTFEcWxrbUtXU255X1BVOVJ3NXhEdENnU1BHdkU2TjVRWUhNIn1dfQ.lNk5BrrNrceNs7HQQFrRqVm6SsXJXzHEYpvQ67qO89HXp1r-VUUNQxvQcaz8m2NlB5e_AdqMoAfyc31Zo1rpRA~WyJjMkZzZEMxamFHVmphMjkxZEEiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC4xIiwiY2hlY2tvdXRfand0IjoiZXlKaGJHY2lPaUpGVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0lzSW10cFpDSTZJbTFsY21Ob1lXNTBMVEVpZlEuZXlKcGMzTWlPaUpvZEhSd2N6b3ZMM05sYkd4bGNpNWxlR0Z0Y0d4bElpd2lZMmhsWTJ0dmRYUWlPaUpqYUd0Zk1UQXdNU0lzSW14bFoyRnNRMjl1ZEdWNGRDSTZleUowZVhCbElqb2ljMmhoTWpVMklpd2lkbUZzZFdVaU9pSXdlR0poTnpneE5tSm1PR1l3TVdObVpXRTBNVFF4TkRCa1pUVmtZV1V5TWpJellqQXdNell4WVRNNU5qRTNOMkU1WTJJME1UQm1aall4WmpJd01ERTFZV1FpTENKc1pXZGhiRU52Ym5SbGVIUlZjbXdpT2lKb2RIUndjem92TDJGMGNpNXpaV3hzWlhJdVpYaGhiWEJzWlM4d2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlmWDAuSWNOV1JPVXI0Q2k4YkhjX0pvS3Zlb0xlT1lzZUF4enJSOVBtbzFLNURYcmZ4YTIzWWpFR3hpdnNIU0dCWnRHWjlFWFVEam9sVkxRUTY4eEthaHVTbkEiLCJjaGVja291dF9oYXNoIjoiTjJiTENKanZiSTJiYnBSYzRfRGRSbUowQ2dvdFE4OXd5Tk9kNW5ubi1NdyJ9XQ~WyJjMkZzZEMxd1lYbHRaVzUwIix7InZjdCI6Im1hbmRhdGUucGF5bWVudC4xIiwicGF5bWVudF9pbnN0cnVtZW50Ijp7InR5cGUiOiJtYXN0ZXJjYXJkLnNyY0RpZ2l0YWxDYXJkIiwiaWQiOiJmMTk5YzNkZC03MTA2LTQ3OGItOWI1Zi03YWY5Y2E3MjUxNzAifSwicGF5bWVudF9hbW91bnQiOnsiY3VycmVuY3kiOiJVU0QiLCJhbW91bnQiOjI3OTk5fSwicGF5ZWUiOnsiaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9LCJ0cmFuc2FjdGlvbl9pZCI6Ik4yYkxDSmp2YkkyYmJwUmM0X0RkUm1KMENnb3RRODl3eU5PZDVubm4tTXcifV0~",
+  "L2a": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiN2dDSlFDQXEwUF9nSnhUR3lTYThVYUliQS1lR1V4Rk5YZUlUUzZsUnJUTSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbInEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EiLCItZVBzU0szZzlpY0x1TmE2cWdKQVk2am13WHRqVC1kS3A4bmR6NFhLcllzIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6InEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EifSx7Ii4uLiI6Ii1lUHNTSzNnOWljTHVOYTZxZ0pBWTZqbXdYdGpULWRLcDhuZHo0WEtyWXMifV19.ED1vLFXyJbbedOG0xLMMfveL0hg2tC-uZbwJ7jbOu5QYFVM14Jy3ZUpR7tc7yRXbIEDbT27p9aB0nUx7kela-g~WyJjMkZzZEMxdmNHVnVMV05vWldOcmIzVjAiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiUGFZR01tbDlyeTMycVNDWV94WDRWQXV3RzJ6Y0NnNTFTMkhVZ01xSzVQcyIsInkiOiJyRnVHTnNxQ3lQcjktSFdRdWVPTmtwUkdnaGFXY2gzUkZnRlZuTnNFMmVZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9XX1dfV0~",
+  "L3b": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCIsImtpZCI6ImFnZW50LTEifQ.eyJub25jZSI6ImJtOXVZMlV0YkROaSIsImF1ZCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAxMDAsImV4cCI6MTc5MDAwMDQwMCwic2RfaGFzaCI6ImJlRWhEZG1yS2F3SUs1RVhZQm5XQjRCUVhOWmZJYTZvLXJLdmRWcEd6cTQiLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyIwY1lFcTNnNEVpVHJ4WkdKT29fbWFielBwX3RkZFkzOXFmSU90WmtQTGtRIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6IjBjWUVxM2c0RWlUcnhaR0pPb19tYWJ6UHBfdGRkWTM5cWZJT3Raa1BMa1EifV19.ORSlvExfL2lAPoa-oxdoaqnK5utgIiLGjHf9Ys862rAhc7cqh9KtoMRp3DJJUS642k70Qi1Xvd0xdqyfP8WHTw~WyJjMkZzZEMxc00ySXRZMmhsWTJ0dmRYUSIseyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9qd3QiOiJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExURWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwzTmxiR3hsY2k1bGVHRnRjR3hsSWl3aVkyaGxZMnR2ZFhRaU9pSmphR3RmTVRBd01TSXNJbXhsWjJGc1EyOXVkR1Y0ZENJNmV5SjBlWEJsSWpvaWMyaGhNalUySWl3aWRtRnNkV1VpT2lJd2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlMQ0pzWldkaGJFTnZiblJsZUhSVmNtd2lPaUpvZEhSd2N6b3ZMMkYwY2k1elpXeHNaWEl1WlhoaGJYQnNaUzh3ZUdKaE56Z3hObUptT0dZd01XTm1aV0UwTVRReE5EQmtaVFZrWVdVeU1qSXpZakF3TXpZeFlUTTVOakUzTjJFNVkySTBNVEJtWmpZeFpqSXdNREUxWVdRaWZYMC5JY05XUk9VcjRDaThiSGNfSm9LdmVvTGVPWXNlQXh6clI5UG1vMUs1RFhyZnhhMjNZakVHeGl2c0hTR0JadEdaOUVYVURqb2xWTFFRNjh4S2FodVNuQSIsImNoZWNrb3V0X2hhc2giOiJOMmJMQ0pqdmJJMmJicFJjNF9EZFJtSjBDZ290UTg5d3lOT2Q1bm5uLU13In1d~",
+  "printed": {
+   "CH": "N2bLCJjvbI2bbpRc4_DdRmJ0CgotQ89wyNOd5nnn-Mw",
+   "D(L1)": "7gCJQCAq0P_gJxTGySa8UaIbA-eGUxFNXeITS6lRrTM",
+   "D(dc)": "G0_Se7PgUzp7TxQDyDqfR2rng6-nvc-sIp1uGiaEMWQ",
+   "D(dp)": "Jr60ZylA1DqlkmKWSny_PU9Rw5xDtCgSPGvE6N5QYHM",
+   "D(dco)": "q3pyk9Rbhn621V-PbV3f17oWlC8J6mqpy2W92jqFnWQ",
+   "D(dpo)": "-ePsSK3g9icLuNa6qgJAY6jmwXtjT-dKp8ndz4XKrYs",
+   "D(L2a)": "beEhDdmrKawIK5EXYBnWB4BQXNZfIa6o-rKvdVpGzq4",
+   "D(d3)": "0cYEq3g4EiTrxZGJOo_mabzPp_tddY39qfIOtZkPLkQ"
+  }
+ },
+ "C5": {
+  "read": {
+   "doc": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LTEifQ.eyJpc3MiOiJodHRwczovL3NlbGxlci5leGFtcGxlIiwiY2hlY2tvdXQiOiJjaGtfMTAwMSIsImxlZ2FsQ29udGV4dCI6eyJ0eXBlIjoic2hhMjU2IiwidmFsdWUiOiIweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJsZWdhbENvbnRleHRVcmwiOiJodHRwczovL2F0ci5zZWxsZXIuZXhhbXBsZS8weGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifX0.IcNWROUr4Ci8bHc_JoKveoLeOYseAxzrR9Pmo1K5DXrfxa23YjEGxivsHSGBZtGZ9EXUDjolVLQQ68xKahuSnA",
+   "expect": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "build": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "checkoutMandate": {
+     "vct": "mandate.checkout.1",
+     "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LTEifQ.eyJpc3MiOiJodHRwczovL3NlbGxlci5leGFtcGxlIiwiY2hlY2tvdXQiOiJjaGtfMTAwMSIsImxlZ2FsQ29udGV4dCI6eyJ0eXBlIjoic2hhMjU2IiwidmFsdWUiOiIweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJsZWdhbENvbnRleHRVcmwiOiJodHRwczovL2F0ci5zZWxsZXIuZXhhbXBsZS8weGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifX0.IcNWROUr4Ci8bHc_JoKveoLeOYseAxzrR9Pmo1K5DXrfxa23YjEGxivsHSGBZtGZ9EXUDjolVLQQ68xKahuSnA",
+     "checkout_hash": "N2bLCJjvbI2bbpRc4_DdRmJ0CgotQ89wyNOd5nnn-Mw"
+    },
+    "transactionId": "N2bLCJjvbI2bbpRc4_DdRmJ0CgotQ89wyNOd5nnn-Mw"
+   }
+  },
+  "conflict": {
+   "h": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "expect": "card/vi-legal-context-conflict"
+  }
+ },
+ "C6": {
+  "bound": {
+   "presented": {
+    "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCJ9.eyJub25jZSI6ImJtOXVZMlV0YkRJIiwiYXVkIjoiaHR0cHM6Ly9uZXR3b3JrLmV4YW1wbGUvdmkiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDkwMCwic2RfaGFzaCI6IjdnQ0pRQ0FxMFBfZ0p4VEd5U2E4VWFJYkEtZUdVeEZOWGVJVFM2bFJyVE0iLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIiwiSnI2MFp5bEExRHFsa21LV1NueV9QVTlSdzV4RHRDZ1NQR3ZFNk41UVlITSJdLCJkZWxlZ2F0ZV9wYXlsb2FkIjpbeyIuLi4iOiJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIn0seyIuLi4iOiJKcjYwWnlsQTFEcWxrbUtXU255X1BVOVJ3NXhEdENnU1BHdkU2TjVRWUhNIn1dfQ.lNk5BrrNrceNs7HQQFrRqVm6SsXJXzHEYpvQ67qO89HXp1r-VUUNQxvQcaz8m2NlB5e_AdqMoAfyc31Zo1rpRA~WyJjMkZzZEMxamFHVmphMjkxZEEiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC4xIiwiY2hlY2tvdXRfand0IjoiZXlKaGJHY2lPaUpGVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0lzSW10cFpDSTZJbTFsY21Ob1lXNTBMVEVpZlEuZXlKcGMzTWlPaUpvZEhSd2N6b3ZMM05sYkd4bGNpNWxlR0Z0Y0d4bElpd2lZMmhsWTJ0dmRYUWlPaUpqYUd0Zk1UQXdNU0lzSW14bFoyRnNRMjl1ZEdWNGRDSTZleUowZVhCbElqb2ljMmhoTWpVMklpd2lkbUZzZFdVaU9pSXdlR0poTnpneE5tSm1PR1l3TVdObVpXRTBNVFF4TkRCa1pUVmtZV1V5TWpJellqQXdNell4WVRNNU5qRTNOMkU1WTJJME1UQm1aall4WmpJd01ERTFZV1FpTENKc1pXZGhiRU52Ym5SbGVIUlZjbXdpT2lKb2RIUndjem92TDJGMGNpNXpaV3hzWlhJdVpYaGhiWEJzWlM4d2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlmWDAuSWNOV1JPVXI0Q2k4YkhjX0pvS3Zlb0xlT1lzZUF4enJSOVBtbzFLNURYcmZ4YTIzWWpFR3hpdnNIU0dCWnRHWjlFWFVEam9sVkxRUTY4eEthaHVTbkEiLCJjaGVja291dF9oYXNoIjoiTjJiTENKanZiSTJiYnBSYzRfRGRSbUowQ2dvdFE4OXd5Tk9kNW5ubi1NdyJ9XQ~WyJjMkZzZEMxd1lYbHRaVzUwIix7InZjdCI6Im1hbmRhdGUucGF5bWVudC4xIiwicGF5bWVudF9pbnN0cnVtZW50Ijp7InR5cGUiOiJtYXN0ZXJjYXJkLnNyY0RpZ2l0YWxDYXJkIiwiaWQiOiJmMTk5YzNkZC03MTA2LTQ3OGItOWI1Zi03YWY5Y2E3MjUxNzAifSwicGF5bWVudF9hbW91bnQiOnsiY3VycmVuY3kiOiJVU0QiLCJhbW91bnQiOjI3OTk5fSwicGF5ZWUiOnsiaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9LCJ0cmFuc2FjdGlvbl9pZCI6Ik4yYkxDSmp2YkkyYmJwUmM0X0RkUm1KMENnb3RRODl3eU5PZDVubm4tTXcifV0~"
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "plant": {
+   "case": "dc replaced by a disclosure of the same shape whose checkout_jwt carries E, with a consistent checkout_hash; the signed payload references only D(dc)",
+   "presented": {
+    "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCJ9.eyJub25jZSI6ImJtOXVZMlV0YkRJIiwiYXVkIjoiaHR0cHM6Ly9uZXR3b3JrLmV4YW1wbGUvdmkiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDkwMCwic2RfaGFzaCI6IjdnQ0pRQ0FxMFBfZ0p4VEd5U2E4VWFJYkEtZUdVeEZOWGVJVFM2bFJyVE0iLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIiwiSnI2MFp5bEExRHFsa21LV1NueV9QVTlSdzV4RHRDZ1NQR3ZFNk41UVlITSJdLCJkZWxlZ2F0ZV9wYXlsb2FkIjpbeyIuLi4iOiJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIn0seyIuLi4iOiJKcjYwWnlsQTFEcWxrbUtXU255X1BVOVJ3NXhEdENnU1BHdkU2TjVRWUhNIn1dfQ.lNk5BrrNrceNs7HQQFrRqVm6SsXJXzHEYpvQ67qO89HXp1r-VUUNQxvQcaz8m2NlB5e_AdqMoAfyc31Zo1rpRA~WyJjMkZzZEMxamFHVmphMjkxZEEiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC4xIiwiY2hlY2tvdXRfand0IjoiZXlKaGJHY2lPaUpGVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0lzSW10cFpDSTZJbTFsY21Ob1lXNTBMVEVpZlEuZXlKcGMzTWlPaUpvZEhSd2N6b3ZMM05sYkd4bGNpNWxlR0Z0Y0d4bElpd2lZMmhsWTJ0dmRYUWlPaUpqYUd0Zk1UQXdNU0lzSW14bFoyRnNRMjl1ZEdWNGRDSTZleUowZVhCbElqb2ljMmhoTWpVMklpd2lkbUZzZFdVaU9pSXdlR1V6WWpCak5EUXlPVGhtWXpGak1UUTVZV1ppWmpSak9EazVObVppT1RJME1qZGhaVFF4WlRRMk5EbGlPVE0wWTJFME9UVTVPVEZpTnpnMU1tSTROVFVpTENKc1pXZGhiRU52Ym5SbGVIUlZjbXdpT2lKb2RIUndjem92TDJGMGNpNXpaV3hzWlhJdVpYaGhiWEJzWlM4d2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlmWDAuSWNOV1JPVXI0Q2k4YkhjX0pvS3Zlb0xlT1lzZUF4enJSOVBtbzFLNURYcmZ4YTIzWWpFR3hpdnNIU0dCWnRHWjlFWFVEam9sVkxRUTY4eEthaHVTbkEiLCJjaGVja291dF9oYXNoIjoidTJzRldBTlQ3Rk03VDNZWHY3cDR1NnRwZzBMd0p3UDYtQUR5ZkdDci1MMCJ9XQ~WyJjMkZzZEMxd1lYbHRaVzUwIix7InZjdCI6Im1hbmRhdGUucGF5bWVudC4xIiwicGF5bWVudF9pbnN0cnVtZW50Ijp7InR5cGUiOiJtYXN0ZXJjYXJkLnNyY0RpZ2l0YWxDYXJkIiwiaWQiOiJmMTk5YzNkZC03MTA2LTQ3OGItOWI1Zi03YWY5Y2E3MjUxNzAifSwicGF5bWVudF9hbW91bnQiOnsiY3VycmVuY3kiOiJVU0QiLCJhbW91bnQiOjI3OTk5fSwicGF5ZWUiOnsiaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9LCJ0cmFuc2FjdGlvbl9pZCI6Ik4yYkxDSmp2YkkyYmJwUmM0X0RkUm1KMENnb3RRODl3eU5PZDVubm4tTXcifV0~"
+   },
+   "expect": "card/vi-disclosure-unreferenced",
+   "never": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ },
+ "C7": {
+  "bound": {
+   "presented": {
+    "l1": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNkK2p3dCIsImtpZCI6Imlzc3Vlci0xIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci0xIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE4MjE1MzYwMDAsInZjdCI6Imh0dHBzOi8vY3JlZGVudGlhbHMubWFzdGVyY2FyZC5jb20vY2FyZCIsImNuZiI6eyJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJQLTI1NiIsIngiOiIxTWlRX2ZGNURoRUhjekh0X3JUMERTWl9OcWJBbEVNTm9rVEZnVFpGMUZvIiwieSI6IkxpZzgtN0FaNXptcG9xZDlEQl9OZVJwSFNzVmZxR1NidTZsblVndGs5aTAifX0sInBhbl9sYXN0X2ZvdXIiOiIxMjM0Iiwic2NoZW1lIjoiTWFzdGVyY2FyZCIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbXX0.4TM-0t5wLef8rq959wHR0t_gwK4h-nn2F6JVmzhFwSdGWdR7hULwxKpejHfgjOm0pK7HlO1BUGukD8IXoMckcQ~",
+    "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiN2dDSlFDQXEwUF9nSnhUR3lTYThVYUliQS1lR1V4Rk5YZUlUUzZsUnJUTSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbInEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EiLCItZVBzU0szZzlpY0x1TmE2cWdKQVk2am13WHRqVC1kS3A4bmR6NFhLcllzIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6InEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EifSx7Ii4uLiI6Ii1lUHNTSzNnOWljTHVOYTZxZ0pBWTZqbXdYdGpULWRLcDhuZHo0WEtyWXMifV19.ED1vLFXyJbbedOG0xLMMfveL0hg2tC-uZbwJ7jbOu5QYFVM14Jy3ZUpR7tc7yRXbIEDbT27p9aB0nUx7kela-g~WyJjMkZzZEMxdmNHVnVMV05vWldOcmIzVjAiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiUGFZR01tbDlyeTMycVNDWV94WDRWQXV3RzJ6Y0NnNTFTMkhVZ01xSzVQcyIsInkiOiJyRnVHTnNxQ3lQcjktSFdRdWVPTmtwUkdnaGFXY2gzUkZnRlZuTnNFMmVZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9XX1dfV0~",
+    "l3b": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCIsImtpZCI6ImFnZW50LTEifQ.eyJub25jZSI6ImJtOXVZMlV0YkROaSIsImF1ZCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAxMDAsImV4cCI6MTc5MDAwMDQwMCwic2RfaGFzaCI6ImJlRWhEZG1yS2F3SUs1RVhZQm5XQjRCUVhOWmZJYTZvLXJLdmRWcEd6cTQiLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyIwY1lFcTNnNEVpVHJ4WkdKT29fbWFielBwX3RkZFkzOXFmSU90WmtQTGtRIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6IjBjWUVxM2c0RWlUcnhaR0pPb19tYWJ6UHBfdGRkWTM5cWZJT3Raa1BMa1EifV19.ORSlvExfL2lAPoa-oxdoaqnK5utgIiLGjHf9Ys862rAhc7cqh9KtoMRp3DJJUS642k70Qi1Xvd0xdqyfP8WHTw~WyJjMkZzZEMxc00ySXRZMmhsWTJ0dmRYUSIseyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9qd3QiOiJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExURWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwzTmxiR3hsY2k1bGVHRnRjR3hsSWl3aVkyaGxZMnR2ZFhRaU9pSmphR3RmTVRBd01TSXNJbXhsWjJGc1EyOXVkR1Y0ZENJNmV5SjBlWEJsSWpvaWMyaGhNalUySWl3aWRtRnNkV1VpT2lJd2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlMQ0pzWldkaGJFTnZiblJsZUhSVmNtd2lPaUpvZEhSd2N6b3ZMMkYwY2k1elpXeHNaWEl1WlhoaGJYQnNaUzh3ZUdKaE56Z3hObUptT0dZd01XTm1aV0UwTVRReE5EQmtaVFZrWVdVeU1qSXpZakF3TXpZeFlUTTVOakUzTjJFNVkySTBNVEJtWmpZeFpqSXdNREUxWVdRaWZYMC5JY05XUk9VcjRDaThiSGNfSm9LdmVvTGVPWXNlQXh6clI5UG1vMUs1RFhyZnhhMjNZakVHeGl2c0hTR0JadEdaOUVYVURqb2xWTFFRNjh4S2FodVNuQSIsImNoZWNrb3V0X2hhc2giOiJOMmJMQ0pqdmJJMmJicFJjNF9EZFJtSjBDZ290UTg5d3lOT2Q1bm5uLU13In1d~"
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "flippedSignature": {
+   "presented": {
+    "l1": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNkK2p3dCIsImtpZCI6Imlzc3Vlci0xIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci0xIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE4MjE1MzYwMDAsInZjdCI6Imh0dHBzOi8vY3JlZGVudGlhbHMubWFzdGVyY2FyZC5jb20vY2FyZCIsImNuZiI6eyJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJQLTI1NiIsIngiOiIxTWlRX2ZGNURoRUhjekh0X3JUMERTWl9OcWJBbEVNTm9rVEZnVFpGMUZvIiwieSI6IkxpZzgtN0FaNXptcG9xZDlEQl9OZVJwSFNzVmZxR1NidTZsblVndGs5aTAifX0sInBhbl9sYXN0X2ZvdXIiOiIxMjM0Iiwic2NoZW1lIjoiTWFzdGVyY2FyZCIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbXX0.4TM-0t5wLef8rq959wHR0t_gwK4h-nn2F6JVmzhFwSdGWdR7hULwxKpejHfgjOm0pK7HlO1BUGukD8IXoMckcQ~",
+    "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiN2dDSlFDQXEwUF9nSnhUR3lTYThVYUliQS1lR1V4Rk5YZUlUUzZsUnJUTSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbInEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EiLCItZVBzU0szZzlpY0x1TmE2cWdKQVk2am13WHRqVC1kS3A4bmR6NFhLcllzIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6InEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EifSx7Ii4uLiI6Ii1lUHNTSzNnOWljTHVOYTZxZ0pBWTZqbXdYdGpULWRLcDhuZHo0WEtyWXMifV19.ED1vLFXyJbbedOG0xLMMfveL0hg2tC-uZbwJ7jbOu5QYFVM14Jy3ZUpR7tc7yRXbIEDbT27p9aB0nUx7kela-g~WyJjMkZzZEMxdmNHVnVMV05vWldOcmIzVjAiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiUGFZR01tbDlyeTMycVNDWV94WDRWQXV3RzJ6Y0NnNTFTMkhVZ01xSzVQcyIsInkiOiJyRnVHTnNxQ3lQcjktSFdRdWVPTmtwUkdnaGFXY2gzUkZnRlZuTnNFMmVZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9XX1dfV0~",
+    "l3b": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCIsImtpZCI6ImFnZW50LTEifQ.eyJub25jZSI6ImJtOXVZMlV0YkROaSIsImF1ZCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAxMDAsImV4cCI6MTc5MDAwMDQwMCwic2RfaGFzaCI6ImJlRWhEZG1yS2F3SUs1RVhZQm5XQjRCUVhOWmZJYTZvLXJLdmRWcEd6cTQiLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyIwY1lFcTNnNEVpVHJ4WkdKT29fbWFielBwX3RkZFkzOXFmSU90WmtQTGtRIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6IjBjWUVxM2c0RWlUcnhaR0pPb19tYWJ6UHBfdGRkWTM5cWZJT3Raa1BMa1EifV19.OBSlvExfL2lAPoa-oxdoaqnK5utgIiLGjHf9Ys862rAhc7cqh9KtoMRp3DJJUS642k70Qi1Xvd0xdqyfP8WHTw~WyJjMkZzZEMxc00ySXRZMmhsWTJ0dmRYUSIseyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9qd3QiOiJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExURWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwzTmxiR3hsY2k1bGVHRnRjR3hsSWl3aVkyaGxZMnR2ZFhRaU9pSmphR3RmTVRBd01TSXNJbXhsWjJGc1EyOXVkR1Y0ZENJNmV5SjBlWEJsSWpvaWMyaGhNalUySWl3aWRtRnNkV1VpT2lJd2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlMQ0pzWldkaGJFTnZiblJsZUhSVmNtd2lPaUpvZEhSd2N6b3ZMMkYwY2k1elpXeHNaWEl1WlhoaGJYQnNaUzh3ZUdKaE56Z3hObUptT0dZd01XTm1aV0UwTVRReE5EQmtaVFZrWVdVeU1qSXpZakF3TXpZeFlUTTVOakUzTjJFNVkySTBNVEJtWmpZeFpqSXdNREUxWVdRaWZYMC5JY05XUk9VcjRDaThiSGNfSm9LdmVvTGVPWXNlQXh6clI5UG1vMUs1RFhyZnhhMjNZakVHeGl2c0hTR0JadEdaOUVYVURqb2xWTFFRNjh4S2FodVNuQSIsImNoZWNrb3V0X2hhc2giOiJOMmJMQ0pqdmJJMmJicFJjNF9EZFJtSjBDZ290UTg5d3lOT2Q1bm5uLU13In1d~"
+   },
+   "expect": "card/vi-signature-invalid"
+  },
+  "withoutDco": {
+   "presented": {
+    "l1": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNkK2p3dCIsImtpZCI6Imlzc3Vlci0xIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci0xIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE4MjE1MzYwMDAsInZjdCI6Imh0dHBzOi8vY3JlZGVudGlhbHMubWFzdGVyY2FyZC5jb20vY2FyZCIsImNuZiI6eyJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJQLTI1NiIsIngiOiIxTWlRX2ZGNURoRUhjekh0X3JUMERTWl9OcWJBbEVNTm9rVEZnVFpGMUZvIiwieSI6IkxpZzgtN0FaNXptcG9xZDlEQl9OZVJwSFNzVmZxR1NidTZsblVndGs5aTAifX0sInBhbl9sYXN0X2ZvdXIiOiIxMjM0Iiwic2NoZW1lIjoiTWFzdGVyY2FyZCIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbXX0.4TM-0t5wLef8rq959wHR0t_gwK4h-nn2F6JVmzhFwSdGWdR7hULwxKpejHfgjOm0pK7HlO1BUGukD8IXoMckcQ~",
+    "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiN2dDSlFDQXEwUF9nSnhUR3lTYThVYUliQS1lR1V4Rk5YZUlUUzZsUnJUTSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbInEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EiLCItZVBzU0szZzlpY0x1TmE2cWdKQVk2am13WHRqVC1kS3A4bmR6NFhLcllzIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6InEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EifSx7Ii4uLiI6Ii1lUHNTSzNnOWljTHVOYTZxZ0pBWTZqbXdYdGpULWRLcDhuZHo0WEtyWXMifV19.ED1vLFXyJbbedOG0xLMMfveL0hg2tC-uZbwJ7jbOu5QYFVM14Jy3ZUpR7tc7yRXbIEDbT27p9aB0nUx7kela-g~",
+    "l3b": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCIsImtpZCI6ImFnZW50LTEifQ.eyJub25jZSI6ImJtOXVZMlV0YkROaSIsImF1ZCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAxMDAsImV4cCI6MTc5MDAwMDQwMCwic2RfaGFzaCI6ImJlRWhEZG1yS2F3SUs1RVhZQm5XQjRCUVhOWmZJYTZvLXJLdmRWcEd6cTQiLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyIwY1lFcTNnNEVpVHJ4WkdKT29fbWFielBwX3RkZFkzOXFmSU90WmtQTGtRIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6IjBjWUVxM2c0RWlUcnhaR0pPb19tYWJ6UHBfdGRkWTM5cWZJT3Raa1BMa1EifV19.ORSlvExfL2lAPoa-oxdoaqnK5utgIiLGjHf9Ys862rAhc7cqh9KtoMRp3DJJUS642k70Qi1Xvd0xdqyfP8WHTw~WyJjMkZzZEMxc00ySXRZMmhsWTJ0dmRYUSIseyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9qd3QiOiJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExURWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwzTmxiR3hsY2k1bGVHRnRjR3hsSWl3aVkyaGxZMnR2ZFhRaU9pSmphR3RmTVRBd01TSXNJbXhsWjJGc1EyOXVkR1Y0ZENJNmV5SjBlWEJsSWpvaWMyaGhNalUySWl3aWRtRnNkV1VpT2lJd2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlMQ0pzWldkaGJFTnZiblJsZUhSVmNtd2lPaUpvZEhSd2N6b3ZMMkYwY2k1elpXeHNaWEl1WlhoaGJYQnNaUzh3ZUdKaE56Z3hObUptT0dZd01XTm1aV0UwTVRReE5EQmtaVFZrWVdVeU1qSXpZakF3TXpZeFlUTTVOakUzTjJFNVkySTBNVEJtWmpZeFpqSXdNREUxWVdRaWZYMC5JY05XUk9VcjRDaThiSGNfSm9LdmVvTGVPWXNlQXh6clI5UG1vMUs1RFhyZnhhMjNZakVHeGl2c0hTR0JadEdaOUVYVURqb2xWTFFRNjh4S2FodVNuQSIsImNoZWNrb3V0X2hhc2giOiJOMmJMQ0pqdmJJMmJicFJjNF9EZFJtSjBDZ290UTg5d3lOT2Q1bm5uLU13In1d~"
+   },
+   "expect": "card/vi-sd-hash-mismatch"
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation, as this package applies them.",
+  "rows": [
+   {
+    "case": "advertise with a link over 2048 characters",
+    "expect": "card/legal-context-malformed"
+   },
+   {
+    "case": "advertise or TAP build with a hash that is not 0x and 64 hex digits",
+    "expect": "card/legal-context-malformed"
+   },
+   {
+    "case": "read of shown JSON that is not an object, or has no legalContext member",
+    "expect": "card/no-legal-context"
+   },
+   {
+    "case": "read with a legalContext whose link is not https",
+    "expect": "card/link-not-https"
+   },
+   {
+    "case": "read with a legalContext whose link is over 2048 characters",
+    "expect": "card/legal-context-malformed"
+   },
+   {
+    "case": "VI read or build of a checkout_jwt that is not a string of three dot-separated visible-ASCII segments whose second decodes to a JSON object",
+    "expect": "card/vi-malformed"
+   },
+   {
+    "case": "VI read or build of a checkout_jwt over 16384 characters",
+    "expect": "card/too-large"
+   },
+   {
+    "case": "TAP bound with presented not an object, or signatureInput not a string",
+    "expect": "card/tap-signature-input-malformed"
+   },
+   {
+    "case": "TAP bound with signatureInput or signature over 8192 characters, a dictionary over 16 members, or an inner list over 32 items",
+    "expect": "card/too-large"
+   },
+   {
+    "case": "TAP bound with a Decimal, Date or Display String anywhere, or a Byte Sequence parameter, in signatureInput",
+    "expect": "card/tap-signature-input-malformed"
+   },
+   {
+    "case": "TAP bound with tag=agent-payer-auth as a Token rather than a String",
+    "expect": "card/tap-no-payer-signature"
+   },
+   {
+    "case": "TAP bound with lcpHash not an array, or a line that is not a string",
+    "expect": "card/tap-field-malformed"
+   },
+   {
+    "case": "TAP bound with the one lcp-hash line over 256 characters",
+    "expect": "card/too-large"
+   },
+   {
+    "case": "VI bound with a layer over 65536 characters or over 32 disclosures",
+    "expect": "card/too-large"
+   },
+   {
+    "case": "VI bound with an L2 or L3b layer that has no disclosure or a non-empty last part",
+    "expect": "card/vi-malformed"
+   },
+   {
+    "case": "VI bound with a layer payload lacking _sd_alg sha-256 or a delegate_payload array of {\"...\": string} entries",
+    "expect": "card/vi-malformed"
+   },
+   {
+    "case": "VI bound with two referenced mandate.checkout.1 values",
+    "expect": "card/vi-no-checkout-mandate"
+   },
+   {
+    "case": "VI Autonomous bound with an L3b header lacking a string kid",
+    "expect": "card/vi-typ"
+   },
+   {
+    "case": "VI Autonomous bound with no, or more than one, referenced mandate.checkout.open.1 in L2, or an L1 cnf.jwk that is not EC P-256",
+    "expect": "card/vi-key-malformed"
+   },
+   {
+    "case": "VI Autonomous bound with L2's sd_hash not the digest of l1",
+    "expect": "card/vi-sd-hash-mismatch"
+   },
+   {
+    "case": "VI Autonomous bound with an L2 signature that does not verify under L1's cnf.jwk",
+    "expect": "card/vi-signature-invalid"
+   }
+  ]
+ },
+ "C8": {
+  "inputs": [
+   null,
+   {},
+   {
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   {
+    "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCJ9.eyJub25jZSI6ImJtOXVZMlV0YkRJIiwiYXVkIjoiaHR0cHM6Ly9uZXR3b3JrLmV4YW1wbGUvdmkiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDkwMCwic2RfaGFzaCI6IjdnQ0pRQ0FxMFBfZ0p4VEd5U2E4VWFJYkEtZUdVeEZOWGVJVFM2bFJyVE0iLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIiwiSnI2MFp5bEExRHFsa21LV1NueV9QVTlSdzV4RHRDZ1NQR3ZFNk41UVlITSJdLCJkZWxlZ2F0ZV9wYXlsb2FkIjpbeyIuLi4iOiJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIn0seyIuLi4iOiJKcjYwWnlsQTFEcWxrbUtXU255X1BVOVJ3NXhEdENnU1BHdkU2TjVRWUhNIn1dfQ.lNk5BrrNrceNs7HQQFrRqVm6SsXJXzHEYpvQ67qO89HXp1r-VUUNQxvQcaz8m2NlB5e_AdqMoAfyc31Zo1rpRA~WyJjMkZzZEMxamFHVmphMjkxZEEiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC4xIiwiY2hlY2tvdXRfand0IjoiZXlKaGJHY2lPaUpGVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0lzSW10cFpDSTZJbTFsY21Ob1lXNTBMVEVpZlEuZXlKcGMzTWlPaUpvZEhSd2N6b3ZMM05sYkd4bGNpNWxlR0Z0Y0d4bElpd2lZMmhsWTJ0dmRYUWlPaUpqYUd0Zk1UQXdNU0lzSW14bFoyRnNRMjl1ZEdWNGRDSTZleUowZVhCbElqb2ljMmhoTWpVMklpd2lkbUZzZFdVaU9pSXdlR0poTnpneE5tSm1PR1l3TVdObVpXRTBNVFF4TkRCa1pUVmtZV1V5TWpJellqQXdNell4WVRNNU5qRTNOMkU1WTJJME1UQm1aall4WmpJd01ERTFZV1FpTENKc1pXZGhiRU52Ym5SbGVIUlZjbXdpT2lKb2RIUndjem92TDJGMGNpNXpaV3hzWlhJdVpYaGhiWEJzWlM4d2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlmWDAuSWNOV1JPVXI0Q2k4YkhjX0pvS3Zlb0xlT1lzZUF4enJSOVBtbzFLNURYcmZ4YTIzWWpFR3hpdnNIU0dCWnRHWjlFWFVEam9sVkxRUTY4eEthaHVTbkEiLCJjaGVja291dF9oYXNoIjoiTjJiTENKanZiSTJiYnBSYzRfRGRSbUowQ2dvdFE4OXd5Tk9kNW5ubi1NdyJ9XQ~WyJjMkZzZEMxd1lYbHRaVzUwIix7InZjdCI6Im1hbmRhdGUucGF5bWVudC4xIiwicGF5bWVudF9pbnN0cnVtZW50Ijp7InR5cGUiOiJtYXN0ZXJjYXJkLnNyY0RpZ2l0YWxDYXJkIiwiaWQiOiJmMTk5YzNkZC03MTA2LTQ3OGItOWI1Zi03YWY5Y2E3MjUxNzAifSwicGF5bWVudF9hbW91bnQiOnsiY3VycmVuY3kiOiJVU0QiLCJhbW91bnQiOjI3OTk5fSwicGF5ZWUiOnsiaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9LCJ0cmFuc2FjdGlvbl9pZCI6Ik4yYkxDSmp2YkkyYmJwUmM0X0RkUm1KMENnb3RRODl3eU5PZDVubm4tTXcifV0~"
+   }
+  ],
+  "expect": "card/no-signed-place",
+  "buyerSigns": false
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "card/mastercard-vi/autonomous",
+    "plant": true,
+    "input": {
+     "doc": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LTEifQ.eyJpc3MiOiJodHRwczovL3NlbGxlci5leGFtcGxlIiwiY2hlY2tvdXQiOiJjaGtfMTAwMSIsImxlZ2FsQ29udGV4dCI6eyJ0eXBlIjoic2hhMjU2IiwidmFsdWUiOiIweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJsZWdhbENvbnRleHRVcmwiOiJodHRwczovL2F0ci5zZWxsZXIuZXhhbXBsZS8weGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifX0.IcNWROUr4Ci8bHc_JoKveoLeOYseAxzrR9Pmo1K5DXrfxa23YjEGxivsHSGBZtGZ9EXUDjolVLQQ68xKahuSnA",
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "card/mastercard-vi/autonomous",
+    "input": {
+     "presented": {
+      "l1": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNkK2p3dCIsImtpZCI6Imlzc3Vlci0xIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci0xIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE4MjE1MzYwMDAsInZjdCI6Imh0dHBzOi8vY3JlZGVudGlhbHMubWFzdGVyY2FyZC5jb20vY2FyZCIsImNuZiI6eyJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJQLTI1NiIsIngiOiIxTWlRX2ZGNURoRUhjekh0X3JUMERTWl9OcWJBbEVNTm9rVEZnVFpGMUZvIiwieSI6IkxpZzgtN0FaNXptcG9xZDlEQl9OZVJwSFNzVmZxR1NidTZsblVndGs5aTAifX0sInBhbl9sYXN0X2ZvdXIiOiIxMjM0Iiwic2NoZW1lIjoiTWFzdGVyY2FyZCIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbXX0.4TM-0t5wLef8rq959wHR0t_gwK4h-nn2F6JVmzhFwSdGWdR7hULwxKpejHfgjOm0pK7HlO1BUGukD8IXoMckcQ~",
+      "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiN2dDSlFDQXEwUF9nSnhUR3lTYThVYUliQS1lR1V4Rk5YZUlUUzZsUnJUTSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbInEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EiLCItZVBzU0szZzlpY0x1TmE2cWdKQVk2am13WHRqVC1kS3A4bmR6NFhLcllzIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6InEzcHlrOVJiaG42MjFWLVBiVjNmMTdvV2xDOEo2bXFweTJXOTJqcUZuV1EifSx7Ii4uLiI6Ii1lUHNTSzNnOWljTHVOYTZxZ0pBWTZqbXdYdGpULWRLcDhuZHo0WEtyWXMifV19.ED1vLFXyJbbedOG0xLMMfveL0hg2tC-uZbwJ7jbOu5QYFVM14Jy3ZUpR7tc7yRXbIEDbT27p9aB0nUx7kela-g~WyJjMkZzZEMxdmNHVnVMV05vWldOcmIzVjAiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiUGFZR01tbDlyeTMycVNDWV94WDRWQXV3RzJ6Y0NnNTFTMkhVZ01xSzVQcyIsInkiOiJyRnVHTnNxQ3lQcjktSFdRdWVPTmtwUkdnaGFXY2gzUkZnRlZuTnNFMmVZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9XX1dfV0~",
+      "l3b": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCIsImtpZCI6ImFnZW50LTEifQ.eyJub25jZSI6ImJtOXVZMlV0YkROaSIsImF1ZCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAxMDAsImV4cCI6MTc5MDAwMDQwMCwic2RfaGFzaCI6ImJlRWhEZG1yS2F3SUs1RVhZQm5XQjRCUVhOWmZJYTZvLXJLdmRWcEd6cTQiLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyIwY1lFcTNnNEVpVHJ4WkdKT29fbWFielBwX3RkZFkzOXFmSU90WmtQTGtRIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6IjBjWUVxM2c0RWlUcnhaR0pPb19tYWJ6UHBfdGRkWTM5cWZJT3Raa1BMa1EifV19.ORSlvExfL2lAPoa-oxdoaqnK5utgIiLGjHf9Ys862rAhc7cqh9KtoMRp3DJJUS642k70Qi1Xvd0xdqyfP8WHTw~WyJjMkZzZEMxc00ySXRZMmhsWTJ0dmRYUSIseyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9qd3QiOiJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExURWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwzTmxiR3hsY2k1bGVHRnRjR3hsSWl3aVkyaGxZMnR2ZFhRaU9pSmphR3RmTVRBd01TSXNJbXhsWjJGc1EyOXVkR1Y0ZENJNmV5SjBlWEJsSWpvaWMyaGhNalUySWl3aWRtRnNkV1VpT2lJd2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlMQ0pzWldkaGJFTnZiblJsZUhSVmNtd2lPaUpvZEhSd2N6b3ZMMkYwY2k1elpXeHNaWEl1WlhoaGJYQnNaUzh3ZUdKaE56Z3hObUptT0dZd01XTm1aV0UwTVRReE5EQmtaVFZrWVdVeU1qSXpZakF3TXpZeFlUTTVOakUzTjJFNVkySTBNVEJtWmpZeFpqSXdNREUxWVdRaWZYMC5JY05XUk9VcjRDaThiSGNfSm9LdmVvTGVPWXNlQXh6clI5UG1vMUs1RFhyZnhhMjNZakVHeGl2c0hTR0JadEdaOUVYVURqb2xWTFFRNjh4S2FodVNuQSIsImNoZWNrb3V0X2hhc2giOiJOMmJMQ0pqdmJJMmJicFJjNF9EZFJtSjBDZ290UTg5d3lOT2Q1bm5uLU13In1d~"
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's C7 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "card/mastercard-vi/immediate",
+    "plant": true,
+    "input": {
+     "doc": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LTEifQ.eyJpc3MiOiJodHRwczovL3NlbGxlci5leGFtcGxlIiwiY2hlY2tvdXQiOiJjaGtfMTAwMSIsImxlZ2FsQ29udGV4dCI6eyJ0eXBlIjoic2hhMjU2IiwidmFsdWUiOiIweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJsZWdhbENvbnRleHRVcmwiOiJodHRwczovL2F0ci5zZWxsZXIuZXhhbXBsZS8weGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifX0.IcNWROUr4Ci8bHc_JoKveoLeOYseAxzrR9Pmo1K5DXrfxa23YjEGxivsHSGBZtGZ9EXUDjolVLQQ68xKahuSnA",
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "card/mastercard-vi/immediate",
+    "input": {
+     "presented": {
+      "l2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCJ9.eyJub25jZSI6ImJtOXVZMlV0YkRJIiwiYXVkIjoiaHR0cHM6Ly9uZXR3b3JrLmV4YW1wbGUvdmkiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDkwMCwic2RfaGFzaCI6IjdnQ0pRQ0FxMFBfZ0p4VEd5U2E4VWFJYkEtZUdVeEZOWGVJVFM2bFJyVE0iLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIiwiSnI2MFp5bEExRHFsa21LV1NueV9QVTlSdzV4RHRDZ1NQR3ZFNk41UVlITSJdLCJkZWxlZ2F0ZV9wYXlsb2FkIjpbeyIuLi4iOiJHMF9TZTdQZ1V6cDdUeFFEeURxZlIycm5nNi1udmMtc0lwMXVHaWFFTVdRIn0seyIuLi4iOiJKcjYwWnlsQTFEcWxrbUtXU255X1BVOVJ3NXhEdENnU1BHdkU2TjVRWUhNIn1dfQ.lNk5BrrNrceNs7HQQFrRqVm6SsXJXzHEYpvQ67qO89HXp1r-VUUNQxvQcaz8m2NlB5e_AdqMoAfyc31Zo1rpRA~WyJjMkZzZEMxamFHVmphMjkxZEEiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC4xIiwiY2hlY2tvdXRfand0IjoiZXlKaGJHY2lPaUpGVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0lzSW10cFpDSTZJbTFsY21Ob1lXNTBMVEVpZlEuZXlKcGMzTWlPaUpvZEhSd2N6b3ZMM05sYkd4bGNpNWxlR0Z0Y0d4bElpd2lZMmhsWTJ0dmRYUWlPaUpqYUd0Zk1UQXdNU0lzSW14bFoyRnNRMjl1ZEdWNGRDSTZleUowZVhCbElqb2ljMmhoTWpVMklpd2lkbUZzZFdVaU9pSXdlR0poTnpneE5tSm1PR1l3TVdObVpXRTBNVFF4TkRCa1pUVmtZV1V5TWpJellqQXdNell4WVRNNU5qRTNOMkU1WTJJME1UQm1aall4WmpJd01ERTFZV1FpTENKc1pXZGhiRU52Ym5SbGVIUlZjbXdpT2lKb2RIUndjem92TDJGMGNpNXpaV3hzWlhJdVpYaGhiWEJzWlM4d2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlmWDAuSWNOV1JPVXI0Q2k4YkhjX0pvS3Zlb0xlT1lzZUF4enJSOVBtbzFLNURYcmZ4YTIzWWpFR3hpdnNIU0dCWnRHWjlFWFVEam9sVkxRUTY4eEthaHVTbkEiLCJjaGVja291dF9oYXNoIjoiTjJiTENKanZiSTJiYnBSYzRfRGRSbUowQ2dvdFE4OXd5Tk9kNW5ubi1NdyJ9XQ~WyJjMkZzZEMxd1lYbHRaVzUwIix7InZjdCI6Im1hbmRhdGUucGF5bWVudC4xIiwicGF5bWVudF9pbnN0cnVtZW50Ijp7InR5cGUiOiJtYXN0ZXJjYXJkLnNyY0RpZ2l0YWxDYXJkIiwiaWQiOiJmMTk5YzNkZC03MTA2LTQ3OGItOWI1Zi03YWY5Y2E3MjUxNzAifSwicGF5bWVudF9hbW91bnQiOnsiY3VycmVuY3kiOiJVU0QiLCJhbW91bnQiOjI3OTk5fSwicGF5ZWUiOnsiaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9LCJ0cmFuc2FjdGlvbl9pZCI6Ik4yYkxDSmp2YkkyYmJwUmM0X0RkUm1KMENnb3RRODl3eU5PZDVubm4tTXcifV0~"
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's C6 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "card/seller-reference",
+    "plant": true,
+    "input": {
+     "doc": {
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B2",
+    "pairing": "card/visa-tap",
+    "plant": true,
+    "input": {
+     "doc": {
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "card/visa-tap",
+    "input": {
+     "presented": {
+      "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+      "signature": "sig1=:d2z/nlZwMjoE0x63KxkEwRW9BfsZDA0e7de6lc/cJkGCyHyG8fb9BWtGb28ADB+UBDMgFwJcj9qJimcaVThbDg==:, sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:",
+      "lcpHash": [
+       "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      ]
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's C2 payment, as the file holds it; no signature was made for this row."
+   }
+  ],
+  "noSignedPayment": {
+   "card/seller-reference": "The buyer signs nothing: the file holds no payment that carries H."
+  }
+ }
+}

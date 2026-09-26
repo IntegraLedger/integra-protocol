@@ -1,0 +1,578 @@
+{
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "O": {
+   "scheme": "exact",
+   "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+   "amount": "10000",
+   "asset": "1337",
+   "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "assetTransferMethod": "lcp-assets-remark"
+   }
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "alice": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+ },
+ "V1": {
+  "case": "a real rail vector: extrinsicHash, splitSigned's signer, and bound with the last 43 bytes as call",
+  "extrinsic": "0x6d02840074d7ec84c9249fb32e1e4e86f3747aca65d3c4e519072356108956391f4419ca00dd440952b3bd22b9546bc9ae7c5d434dcf6969bbf867622e87cb50fbc15dd3ef6a4dba25ee8dc410c2d8470916fa484da9eadbbd5c0b6afc3ae5618420afe70055000000010002043205e514003208e514008167e55fee5bd1cab9465961646ea62dd3793bfec70c1983ba0734d7260bc29d07820260fc02",
+  "expectHash": "0x80134da46a53d7dc9cc50ba582833c4c87b76b8e780ef52f0fe7563894ead9fb",
+  "expectSigner": "0x74d7ec84c9249fb32e1e4e86f3747aca65d3c4e519072356108956391f4419ca",
+  "callBytes": 43,
+  "expectBound": "polkadot/call-not-profile"
+ },
+ "V2": {
+  "case": "build's call, and ss58Decode(payTo)",
+  "expectCall": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+  "expectCallLength": 123,
+  "expectDest": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+ },
+ "V3": {
+  "case": "complete(V3), bound, reference, and the refusals",
+  "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+  "expectLength": 230,
+  "expectHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+   "extrinsicHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
+   "assetId": 1337
+  },
+  "refusals": [
+   {
+    "case": "call not a suffix",
+    "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356100",
+    "expect": "polkadot/call-not-suffix"
+   },
+   {
+    "case": "3208 in place of 3209",
+    "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083208e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083208e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": "polkadot/call-not-profile"
+   },
+   {
+    "case": "a 76-byte remark",
+    "extrinsic": "0x8d038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c0007310163703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c0007310163703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": "polkadot/call-not-profile"
+   },
+   {
+    "case": "a 77-byte remark that is not LCP",
+    "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735017878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735017878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
+    "expect": "polkadot/remark-not-lcp"
+   },
+   {
+    "case": "first body byte 0x04",
+    "extrinsic": "0x91030400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": "polkadot/not-signed-v4"
+   }
+  ]
+ },
+ "V4": {
+  "case": "the remark hash; status, recover and locate on reader fixtures",
+  "expectRemarkHash": "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1",
+  "readerNetwork": "polkadot:68d56f15f85d3136970ec16946040bc1",
+  "reference": {
+   "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+   "extrinsicHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
+   "assetId": 1337
+  },
+  "block": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "index": 2,
+  "extrinsicAt": {
+   "at": {
+    "height": "100",
+    "hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "hash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
+   "success": true,
+   "events": [
+    {
+     "pallet": "assets",
+     "method": "Transferred",
+     "data": [
+      "1337",
+      "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+      "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+      "10000"
+     ]
+    },
+    {
+     "pallet": "system",
+     "method": "Remarked",
+     "data": [
+      "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+      "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+     ]
+    },
+    {
+     "pallet": "system",
+     "method": "ExtrinsicSuccess",
+     "data": [
+      {
+       "weight": {
+        "refTime": "1",
+        "proofSize": "1"
+       },
+       "class": "Normal",
+       "paysFee": "Yes"
+      }
+     ]
+    }
+   ]
+  },
+  "raw": [
+   "0x00",
+   "0x04",
+   "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+  ],
+  "status": [
+   {
+    "case": "finalized 100, canonical hash equal",
+    "finalized": "100",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expect": {
+     "state": "settled",
+     "finality": "finalized",
+     "height": "100",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+    }
+   },
+   {
+    "case": "finalized 99",
+    "finalized": "99",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expect": {
+     "state": "settled",
+     "finality": "head",
+     "height": "100",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+    }
+   },
+   {
+    "case": "the canonical block at 100 is another block holding the same extrinsic at index 2: it counts there",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "expect": {
+     "state": "settled",
+     "finality": "finalized",
+     "height": "100",
+     "transaction": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-2"
+    }
+   },
+   {
+    "case": "the canonical block at 100 holds another extrinsic at index 2: the payment is to be located from the claim position",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "expect": {
+     "state": "pending",
+     "why": "not-located"
+    }
+   },
+   {
+    "case": "the canonical block at 100 has nothing at index 2: the payment is to be located from the claim position",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "canonicalMissing": true,
+    "expect": {
+     "state": "pending",
+     "why": "not-located"
+    }
+   },
+   {
+    "case": "one bit changed in the reference's hash",
+    "finalized": "100",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "refHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6aa",
+    "expect": {
+     "state": "failed",
+     "why": "not-this-extrinsic",
+     "finality": "finalized",
+     "height": "100",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+    }
+   },
+   {
+    "case": "success false",
+    "finalized": "100",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "change": {
+     "success": false
+    },
+    "expect": {
+     "state": "failed",
+     "why": "dispatch-failed",
+     "finality": "finalized",
+     "height": "100",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+    }
+   },
+   {
+    "case": "success false, finalized 99",
+    "finalized": "99",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "change": {
+     "success": false
+    },
+    "expect": {
+     "state": "failed",
+     "why": "dispatch-failed",
+     "finality": "head",
+     "height": "100",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+    }
+   },
+   {
+    "case": "success false, and the canonical block at 100 is another block holding the same extrinsic at index 2",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "change": {
+     "success": false
+    },
+    "expect": {
+     "state": "failed",
+     "why": "dispatch-failed",
+     "finality": "finalized",
+     "height": "100",
+     "transaction": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-2"
+    }
+   },
+   {
+    "case": "no Remarked",
+    "finalized": "100",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "change": {
+     "events": [
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1337",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "no-remark",
+     "finality": "finalized",
+     "height": "100",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+    }
+   },
+   {
+    "case": "the bare broadcast hash",
+    "transaction": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
+    "expect": {
+     "state": "pending",
+     "why": "not-located"
+    }
+   },
+   {
+    "case": "a malformed index",
+    "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-x",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "null",
+    "finalized": "100",
+    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "missing": true,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "a reader error",
+    "readerError": true,
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "recover": {
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "locate": [
+   {
+    "from": "98",
+    "to": "101",
+    "expect": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+   },
+   {
+    "from": "0",
+    "to": "256",
+    "expect": "polkadot/range"
+   }
+  ]
+ },
+ "plant": {
+  "case": "Transferred of asset 1984 at the named position: never settled",
+  "change": {
+   "events": [
+    {
+     "pallet": "assets",
+     "method": "Transferred",
+     "data": [
+      "1984",
+      "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+      "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+      "10000"
+     ]
+    },
+    {
+     "pallet": "system",
+     "method": "Remarked",
+     "data": [
+      "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+      "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+     ]
+    },
+    {
+     "pallet": "system",
+     "method": "ExtrinsicSuccess",
+     "data": [
+      {
+       "weight": {
+        "refTime": "1",
+        "proofSize": "1"
+       },
+       "class": "Normal",
+       "paysFee": "Yes"
+      }
+     ]
+    }
+   ]
+  },
+  "expect": {
+   "state": "failed",
+   "why": "no-transfer",
+   "finality": "finalized",
+   "height": "100",
+   "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+  }
+ },
+ "options": [
+  {
+   "case": "another polkadot network",
+   "option": {
+    "scheme": "exact",
+    "network": "polkadot:91b171bb158e2d3848fa23a9f1c25182",
+    "amount": "10000",
+    "asset": "1337",
+    "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "assetTransferMethod": "lcp-assets-remark"
+    }
+   },
+   "expect": "polkadot/network-unsupported"
+  },
+  {
+   "case": "no assetTransferMethod",
+   "option": {
+    "scheme": "exact",
+    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+    "amount": "10000",
+    "asset": "1337",
+    "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+    "maxTimeoutSeconds": 60,
+    "extra": {}
+   },
+   "expect": "polkadot/option-malformed"
+  },
+  {
+   "case": "amount zero",
+   "option": {
+    "scheme": "exact",
+    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+    "amount": "0",
+    "asset": "1337",
+    "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "assetTransferMethod": "lcp-assets-remark"
+    }
+   },
+   "expect": "polkadot/option-malformed"
+  },
+  {
+   "case": "maxTimeoutSeconds 3601",
+   "option": {
+    "scheme": "exact",
+    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+    "amount": "10000",
+    "asset": "1337",
+    "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+    "maxTimeoutSeconds": 3601,
+    "extra": {
+     "assetTransferMethod": "lcp-assets-remark"
+    }
+   },
+   "expect": "polkadot/option-malformed"
+  },
+  {
+   "case": "a payTo with a bad checksum",
+   "option": {
+    "scheme": "exact",
+    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+    "amount": "10000",
+    "asset": "1337",
+    "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp6",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "assetTransferMethod": "lcp-assets-remark"
+    }
+   },
+   "expect": "polkadot/address-malformed"
+  }
+ ],
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/polkadot/lcp-assets-remark",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+        "amount": "10000",
+        "asset": "1337",
+        "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "assetTransferMethod": "lcp-assets-remark"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "polkadot:68d56f15f85d3136970ec16946040bc1:16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/polkadot/lcp-assets-remark",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+       "amount": "10000",
+       "asset": "1337",
+       "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "assetTransferMethod": "lcp-assets-remark"
+       }
+      },
+      "payload": {
+       "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+       "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

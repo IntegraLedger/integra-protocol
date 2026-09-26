@@ -1,0 +1,156 @@
+{
+ "about": "Vectors for mpp/charge/usdc/evm. Expected values were computed with canonicalize 5.1.0, viem 2.56.8 and js-sha3 on Node, and json.dumps(sort_keys=True, separators=(',',':')) with eth-utils keccak on Python 3.12.3. A.1 is the usdc draft's example (draft-usdc-charge-00, blob ec7fc1868b, lines 1035-1090), whose request parameter is copied verbatim. Truncated values hold their prefix and suffix. The payer key is the published Anvil development key #0.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "realm": "api.seller.example",
+  "expires": "2026-09-21T14:14:20Z",
+  "expiresUnix": 1790000060,
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "MV1": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "tokenDomain": {
+   "name": "USDC",
+   "version": "2"
+  },
+  "otherRealm": "api.other.example"
+ },
+ "M3": {
+  "case": "usdcRequestHash of R_U, usdcNonce over MV1 and the realm, build's EIP-3009 digest, bound and its refusals",
+  "requestJson": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"evm\":{\"chainId\":84532,\"credentialTypes\":[\"authorization\"],\"decimals\":6},\"type\":\"evm\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+  "expectRequestHash": "0x438121f54dc6ba06943797a315bf71bde5c5044c23367f0256754df3994d5b60",
+  "expectNonce": "0xeb07ecfcccdc82586abe0595948468aa965963bf56d67f20130f537f28649001",
+  "expectDigest": "0xc4a7804518d566b4251e0f299ccbf77eb3752259a688a8636cdccc8daa6ee826",
+  "expectValidBefore": "1790000060",
+  "expectBoundOtherRealm": {
+   "refused": true,
+   "code": "mpp/nonce-not-usdc-derivation"
+  },
+  "notJcsRequestJson": "{\"amount\": \"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"evm\":{\"chainId\":84532,\"credentialTypes\":[\"authorization\"],\"decimals\":6},\"type\":\"evm\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
+  "expectNotJcs": {
+   "refused": true,
+   "code": "mpp/request-not-jcs"
+  }
+ },
+ "A1": {
+  "case": "the usdc draft's example A.1: its request parameter, id and realm, and the nonce it prints",
+  "id": "usdc_evm_direct_001",
+  "realm": "api.example.com",
+  "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiIweDM2MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJkZXNjcmlwdGlvbiI6IkFyYyBUZXN0bmV0IFVTREMgY2hhcmdlIiwiZXh0ZXJuYWxJZCI6Imludm9pY2UtZXZtLTAwMSIsIm1ldGhvZERldGFpbHMiOnsiZXZtIjp7ImNoYWluSWQiOjUwNDIwMDIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIl0sImRlY2ltYWxzIjo2fSwidHlwZSI6ImV2bSJ9LCJyZWNpcGllbnQiOiIweGMwNDE5M0M1MGNEMkU2YTFDNzk1OTNlNDYzNjQ0OTZGZTVmY2Q5YjYifQ",
+  "expectRequestHash": "0x2b549014d94b95669538f36d4f1c6e007b581362191d8ca8ed60f2892fddb0eb",
+  "expectNonce": "0x03e1d1aa38e2c56a0bb12e2d4562082c1c26496553f838064f3e6b4c3db9d2c2",
+  "withoutPrefix": {
+   "prefix": "0x93c86173",
+   "suffix": "7cda"
+  },
+  "upperCase": {
+   "prefix": "0xe409f005",
+   "suffix": "56b1"
+  }
+ },
+ "plant": {
+  "case": "a usdc/evm credential whose nonce is the evm method's challengeHash for the same id and realm (mpp-challenge.json's MV2), the base evm method's derivation",
+  "nonce": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477",
+  "expect": {
+   "refused": true,
+   "code": "mpp/nonce-not-usdc-derivation"
+  }
+ },
+ "pattern": {
+  "pattern": "id-reuse",
+  "canonical": true,
+  "buyerSigns": true,
+  "claims": true,
+  "onChain": true,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "proves": "The payer signed an EIP-3009 authorization whose nonce is keccak256 of the JCS of this challenge's id, realm and request hash, and the id is this ATR's hash in base64url with the challenge's position. The token contract verified the signature when it executed the transfer, and the nonce is on chain in its AuthorizationUsed event. A holder of the ATR, the realm and the request can confirm the hash; the chain alone does not reveal it. This does not show that amount, payee, asset or timing match the ATR's content."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/charge/usdc/evm",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "usdc",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJldm0iOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIl0sImRlY2ltYWxzIjo2fSwidHlwZSI6ImV2bSJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "tokenDomain": {
+       "name": "USDC",
+       "version": "2"
+      }
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/charge/usdc/evm",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "usdc",
+       "intent": "charge",
+       "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJldm0iOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIl0sImRlY2ltYWxzIjo2fSwidHlwZSI6ImV2bSJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payload": {
+       "type": "authorization",
+       "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+       "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "value": "10000",
+       "validAfter": "0",
+       "validBefore": "1790000060",
+       "nonce": "0xeb07ecfcccdc82586abe0595948468aa965963bf56d67f20130f537f28649001",
+       "signature": "0x3d842f4c37708e12dcfc3968594c85b72f7efa4e5db5be0e0485c18b83b041e02e26a928630a4ef411c748f0d1cf4bfdaa7196937dfad57432b219ced24a06f81b"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is the payment built from fixed.payerKey and M3's inputs: its authorization's EIP-712 digest is M3.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest."
+   }
+  ]
+ }
+}

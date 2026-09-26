@@ -1,0 +1,206 @@
+{
+ "about": "Vectors for mpp/session/evm. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and its ox 0.14.45 on Node 24.21.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. The session request's amount is a price per unit and enters no expected value.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H2": "0x88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
+  "H2Preimage": "abcd",
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "now": 1790000000,
+  "chainId": 84532,
+  "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+  "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+  "escrow": "0x1234567890AbcdEF1234567890aBcdef12345678",
+  "deposit": "5000000",
+  "tokenDomain": {
+   "name": "USDC",
+   "version": "2"
+  },
+  "request": "{\"amount\":\"100\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"hash\",\"authorization\",\"permit2\"],\"escrowContract\":\"0x1234567890AbcdEF1234567890aBcdef12345678\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}"
+ },
+ "ES1": {
+  "expectChannelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
+  "expectChannelIdH2": {
+   "prefix": "0x73b26c7a",
+   "suffix": "172de5"
+  }
+ },
+ "ES2": {
+  "expectOpenLength": 164,
+  "expectOpenSelector": "0xc79ea485",
+  "expectDeposit": "0x4c4b40",
+  "expectHOccurrences": 1
+ },
+ "ES3": {
+  "expectNonce": "0xee33b37ec8b7776cb32cebe2ac57f888cdd51bdcfdc5983dafe9270696de1993"
+ },
+ "ES4": {
+  "expectTypeHash": {
+   "prefix": "0xd099cc98",
+   "suffix": "413de8"
+  },
+  "typeSignature": "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)",
+  "expectDigest": "0x6633e30b9113aff59a344457b348e5344af02d463b3b5cedfd52ce6b0b419754",
+  "expectSignature": {
+   "prefix": "0x67a24fee",
+   "suffix": "c77461b"
+  }
+ },
+ "ES5": {
+  "expectVoucherDigest": "0x4e7353477b4758652152b0bae911b87cc5e765929a5122792b5ec7d7629848cf"
+ },
+ "ES6": {
+  "expectTypeHash": {
+   "prefix": "0x445a0aa3",
+   "suffix": "333418"
+  },
+  "typeSignature": "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,ChannelOpenWitness witness)ChannelOpenWitness(address payee,bytes32 salt,address authorizedSigner)TokenPermissions(address token,uint256 amount)",
+  "expectNonce": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
+  "expectDigest": "0xca1bdc5611b14167191c9cd85b1606e19ff45da2591ccb2ea363e6ff763db658"
+ },
+ "ES7": {
+  "expectIdentity": "0x41b1617ddee568b7a883613516f4503bd11dca7c2aaa610e3f9d9421770235df",
+  "expectFromTo": "0xf6d1bb97469c65488890c52732d42d14affa1170de73ad01d8084e18339cc20f"
+ },
+ "ES8": {
+  "expectSaltH2": {
+   "refused": true,
+   "code": "mpp/salt-not-this-hash"
+  },
+  "expectChannelH2": {
+   "refused": true,
+   "code": "mpp/channel-not-bound"
+  },
+  "expectNoSource": {
+   "refused": true,
+   "code": "mpp/source-required"
+  },
+  "expectDepositKind": "open",
+  "expectVoucherKind": "within",
+  "expectBoundWithin": {
+   "refused": true,
+   "code": "mpp/not-bound-within"
+  },
+  "expectChannelNamed": {
+   "refused": true,
+   "code": "mpp/channel-named"
+  }
+ },
+ "plant3": {
+  "case": "ES4 with a nonce computed over H′ and salt H",
+  "expectNonceH2": {
+   "prefix": "0x6ee07eba",
+   "suffix": "4e92926a"
+  },
+  "expect": {
+   "refused": true,
+   "code": "mpp/nonce-not-channel"
+  }
+ },
+ "pattern": {
+  "pattern": "native-field",
+  "canonical": false,
+  "profile": "mpp/session/evm-tempo",
+  "buyerSigns": true,
+  "claims": true,
+  "onChain": true,
+  "zeroPartyRecoverable": false,
+  "forwardIndexable": false,
+  "publicProof": true,
+  "proves": "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow; the seller's server verified that it created this channel. This does not show that amount, payee, asset or timing match the ATR's content. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each voucher signs a commitment to this ATR's hash."
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/session/evm",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "evm",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "inputs": {
+      "deposit": "5000000",
+      "credentialType": "authorization",
+      "tokenDomain": {
+       "name": "USDC",
+       "version": "2"
+      }
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/session/evm",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "evm",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      },
+      "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payload": {
+       "action": "open",
+       "channelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
+       "cumulativeAmount": "0",
+       "authorizedSigner": "0x0000000000000000000000000000000000000000",
+       "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "type": "authorization",
+       "authorization": {
+        "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+        "value": "5000000",
+        "validAfter": "0",
+        "validBefore": "1790000060",
+        "nonce": "0xee33b37ec8b7776cb32cebe2ac57f888cdd51bdcfdc5983dafe9270696de1993"
+       },
+       "signature": "0x67a24fee8bbd92e9462e3190c1ed12e2bce4e3cc2ca944850bfe3caa8cac074249036a82c76de3ac772f540cd4b951eaef5194c7c80e222d191ac97b464c77461b",
+       "voucherSignature": "0x8aaac375d21e1f8cac01a987ebdcf65d4ba78c8d2772cd34822f5d6f914657ee4d59a0be6ee2f9bffbd788b6c8919b230a44bad93aaba1e4bd4fd58a2bbcebb41b"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is the open by ReceiveWithAuthorization, built from fixed.payerKey and ES1 to ES5: its authorization's EIP-712 digest is ES4.expectDigest and its signature has ES4.expectSignature's prefix and suffix; voucherSignature signs the zero voucher, whose EIP-712 digest is ES5.expectVoucherDigest."
+   }
+  ]
+ }
+}

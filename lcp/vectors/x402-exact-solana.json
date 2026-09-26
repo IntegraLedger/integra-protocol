@@ -1,0 +1,503 @@
+{
+ "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. Byte strings are hex unless named base64.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "Lhex": "6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+  "payerSeed": "0101010101010101010101010101010101010101010101010101010101010101",
+  "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "feePayerSeed": "0202020202020202020202020202020202020202020202020202020202020202",
+  "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+  "amount": "1000",
+  "decimals": 6,
+  "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "computeUnitLimit": 20000,
+  "computeUnitPrice": "1",
+  "option": {
+   "scheme": "exact",
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "amount": "1000",
+   "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu"
+   }
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V1": {
+  "case": "build(...) with the fixed inputs; the message decompiled",
+  "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+  "sourceAta": "H1AviagU5Y17z77v1F9qZPJ9kCbCsL4ewiZABNfGYoRs",
+  "destinationAta": "A6cvo72FWB5PKDznP79KJv64DbT1aw7YbEfCm4AALHg8",
+  "instructions": [
+   {
+    "program": "ComputeBudget111111111111111111111111111111",
+    "accounts": [],
+    "data": "02204e0000"
+   },
+   {
+    "program": "ComputeBudget111111111111111111111111111111",
+    "accounts": [],
+    "data": "030100000000000000"
+   },
+   {
+    "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "accounts": [
+     {
+      "address": "H1AviagU5Y17z77v1F9qZPJ9kCbCsL4ewiZABNfGYoRs",
+      "signer": false,
+      "writable": true
+     },
+     {
+      "address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "signer": false,
+      "writable": false
+     },
+     {
+      "address": "A6cvo72FWB5PKDznP79KJv64DbT1aw7YbEfCm4AALHg8",
+      "signer": false,
+      "writable": true
+     },
+     {
+      "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "signer": true,
+      "writable": false
+     }
+    ],
+    "data": "0ce80300000000000006"
+   },
+   {
+    "program": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
+    "accounts": [],
+    "data": "6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+   }
+  ],
+  "messageLength": 412,
+  "messageFirstByte": 128,
+  "messageSha256": "c9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
+  "payerSignaturePrefix": "94a037bb",
+  "payerSignatureSuffix": "19ab0c",
+  "Lbytes": 77
+ },
+ "defaultComputeBudget": {
+  "case": "build without computeUnitLimit or computeUnitPrice: the Compute Budget prefix is SetComputeUnitLimit (instruction 2, u32 LE) of 40000 and SetComputeUnitPrice (instruction 3, u64 LE) of 1 microlamport. 40000 covers the 29304 units a USDC TransferChecked with the 77-byte LCP memo consumed on Solana devnet (the Memo v3 program alone consumed 28899; at 20000 the memo fails ProgramFailedToComplete), with a margin of about one third",
+  "instructions": [
+   {
+    "program": "ComputeBudget111111111111111111111111111111",
+    "accounts": [],
+    "data": "02409c0000"
+   },
+   {
+    "program": "ComputeBudget111111111111111111111111111111",
+    "accounts": [],
+    "data": "030100000000000000"
+   }
+  ]
+ },
+ "V2": {
+  "case": "bound and reference of the partially signed wire in an x402 payload with accepted.extra.memo = L; the same wire in an MPP transaction credential",
+  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "wireLength": 541,
+  "accepted": {
+   "scheme": "exact",
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "amount": "1000",
+   "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+  }
+ },
+ "V3": [
+  {
+   "case": "the memo is x402's random-nonce form",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACjVYq8rk1ISusB9tLH3H0vusTX69KU7uZ6ypcYsvjjCqpwh6QNUc00b70t5UrLlDRZZ8f9w124uGYXXaoAAvoCgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUAIDAwMTEyMjMzNDQ1NTY2Nzc4ODk5YWFiYmNjZGRlZWZmAA==",
+   "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "expect": "svm/memo-not-lcp"
+  },
+  {
+   "case": "two L memos",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADiXJ4AOiDEACKRNn//zFFuROdR4BPrZPWDeC5UdoRGePtZWqvFiusTo1gaadFPjUF/l0safYtT+YalH9Whr9UCgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusFBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkBQBNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQA",
+   "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   },
+   "expect": "svm/memo-count"
+  },
+  {
+   "case": "accepted.extra.memo differs from the memo",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+   "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "lcp:sha256:0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+   },
+   "expect": "svm/carrier-mismatch"
+  },
+  {
+   "case": "advertise on an option whose extra.memo is already pi_3abc123def456",
+   "advertiseOption": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "pi_3abc123def456"
+    }
+   },
+   "expect": "svm/carrier-occupied"
+  }
+ ],
+ "V4": {
+  "case": "status and recover of the landed wire (V2's with the fee payer's signature in slot 0)",
+  "landedWireBase64": "AqP1NFpt3XeJB0sPpBAraBA0AUTAdMK+anaN+3eB21MGGFBWP8xYCuZJDNxsNiPl1ZIGGwpR6YjxoTXFAYhyOg6UoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "txid": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+  "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+  "ref": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+   "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "fromSlot": "0"
+  },
+  "rows": [
+   {
+    "at": "finalized",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "finalized"
+    }
+   },
+   {
+    "at": "confirmed",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "confirmed"
+    }
+   },
+   {
+    "at": "finalized",
+    "err": {
+     "InstructionError": [
+      2,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "err"
+    }
+   },
+   {
+    "at": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "at": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V5": {
+  "case": "svmLocate over the fee payer's signatures; a candidate is a signature whose RPC memo carries L, at most 50 per pass. The search is complete only when the node's first available block (getFirstAvailableBlock) is at or before fromSlot, the pages reach fromSlot, and every candidate is read: a listed candidate that cannot be read leaves it incomplete. Each reader here reports firstAvailableBlock unless a row gives its own.",
+  "fromSlot": "1000000",
+  "firstAvailableBlock": "999000",
+  "tenFullPagesNoMatch": {
+   "expect": {
+    "complete": false
+   },
+   "case": "ten full pages of 1000 signatures above fromSlot, each with another memo or none"
+  },
+  "secondPageReachesFromSlot": {
+   "expect": {
+    "found": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+    "complete": true
+   },
+   "case": "page 1: 1000 signatures with other memos; page 2: the landed txid with the carrier memo, then one below fromSlot"
+  },
+  "memoRendering": {
+   "source": "getSignaturesForAddress on solana devnet, 2026-09-25: each memo is rendered '[len] text'",
+   "carrier": "[77] lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "other": "[32] 2e1fbcbca266489ba18708e5ed9707dd"
+  },
+  "candidateCap": {
+   "case": "51 signatures above fromSlot whose memo carries L, each a landed transaction whose message digest is not the reference's (the plant's wire: not this instrument), then one below fromSlot",
+   "candidates": 51,
+   "candidateWire": "plant",
+   "expect": {
+    "complete": false
+   }
+  },
+  "candidatesWithinCap": {
+   "case": "50 such signatures, each the plant's landed wire (not this instrument), then one below fromSlot",
+   "candidates": 50,
+   "candidateWire": "plant",
+   "expect": {
+    "complete": true
+   }
+  },
+  "candidatesNotReadable": {
+   "case": "50 signatures above fromSlot whose memo carries L, whose transactions getTransaction does not return at either commitment, then one below fromSlot",
+   "candidates": 50,
+   "candidateWire": null,
+   "expect": {
+    "complete": false
+   }
+  },
+  "firstAvailableAboveFromSlot": {
+   "case": "one page reaching below fromSlot with no candidate, from a node whose first available block is fromSlot + 1",
+   "firstAvailableBlock": "1000001",
+   "expect": {
+    "complete": false
+   }
+  },
+  "firstAvailableAtFromSlot": {
+   "case": "the same page, from a node whose first available block is fromSlot",
+   "firstAvailableBlock": "1000000",
+   "expect": {
+    "complete": true
+   }
+  }
+ },
+ "plant": {
+  "case": "a landed transaction the same payer signed carrying L as its one memo and no transfer (compute limit, compute price, memo with the payer as signer), err null at finalized",
+  "landedWireBase64": "AuszmBiMS6NhxibMdcI4yuK6K2O5hcQIPqd8Gtv76BG/+9zFKYDu7PO4Hprg/vpzFqft28yK/cq2JijaFtR6Cw+EB0hzrT245mgVnU66VqiKid0awAPp5Z5mmaTSMtve3J41IHR1uce5H3ab1pd2YR+P9T1wvisRTK+UFu7uYtsKgAIBAgSBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwIABQIgTgAAAgAJAwEAAAAAAAAAAwEBTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "ownDigest": {
+   "digest": "0xce7789809f357d49a63a4934b253d62020b8232566b7d3b32a76c62192a75fe1",
+   "expect": {
+    "state": "failed",
+    "why": "no-transfer"
+   }
+  },
+  "v1Digest": {
+   "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
+   "expect": {
+    "state": "failed",
+    "why": "not-this-instrument"
+   }
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the Solana specification leaves to the implementation, as the TypeScript and Python implementations both apply them.",
+  "rows": [
+   {
+    "case": "svmCarrier (and so bound and recover) on a transaction with no top-level Memo instruction, or with two or more",
+    "expect": "svm/memo-count"
+   },
+   {
+    "case": "recover with a reader for another network",
+    "expect": "svm/wrong-reader"
+   },
+   {
+    "case": "recover when the transaction is found at neither finalized nor confirmed",
+    "expect": "svm/not-found"
+   },
+   {
+    "case": "recover when the landed transaction's err is not null",
+    "expect": "svm/err"
+   },
+   {
+    "case": "recover when the reader fails or returns a malformed transaction",
+    "expect": "svm/unreadable"
+   },
+   {
+    "case": "build or buildSvmMessage with a malformed key, token program, decimals, amount, compute budget or signature",
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "advertise or build with an amount that is not a u64 in decimal",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a payload whose transaction is not base64, or whose wire does not decode exactly, or whose signature count differs from the header's",
+    "expect": "svm/tx-malformed"
+   },
+   {
+    "case": "a wire over 1232 bytes",
+    "expect": "svm/tx-too-large"
+   },
+   {
+    "case": "a payment whose option fails the pairing's filter",
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/solana",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        "amount": "1000",
+        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+         "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {
+      "decimals": 6,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/solana",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "exact",
+       "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+       "amount": "1000",
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+        "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
+      },
+      "payload": {
+       "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}

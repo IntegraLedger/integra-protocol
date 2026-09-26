@@ -1,0 +1,497 @@
+{
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with @near-js/transactions 2.5.1 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature. Nonces and heights are decimal strings.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
+  "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+  "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "O": {
+   "scheme": "exact",
+   "network": "near:testnet",
+   "amount": "1000000",
+   "asset": "usdc.testnet",
+   "payTo": "merchant.testnet",
+   "maxTimeoutSeconds": 60
+  },
+  "accessKeyNonce": "100",
+  "finalHeight": "200000000",
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "V1": {
+  "expectArgsUtf8": "{\"receiver_id\":\"merchant.testnet\",\"amount\":\"1000000\",\"memo\":\"lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}",
+  "expectArgsSha256": "c54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb",
+  "expectDelegateActionBytes": 321,
+  "expectPrefix": "6e010040",
+  "expectRequestHash": "f251e7e7e1bb09c9de87857e37ddaf98ebd7b2af2caf32cd2220aa4b21c27dea",
+  "expectSignature": {
+   "prefix": "d092fbccdedec60f",
+   "suffix": "016646890a"
+  }
+ },
+ "V2": {
+  "expectSignedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cANCS+8ze3sYPcFte5u1h3LnfanVdo7jJggxLPudilVCmDsxQu0BjPHXqpDbrcWFcztOVClDOOlgPkL7pAWZGiQo=",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "near:testnet",
+   "asset": "usdc.testnet",
+   "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+   "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "nonce": "101",
+   "maxBlockHeight": "200000060"
+  },
+  "refusals": [
+   {
+    "case": "args without memo",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXI1AAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/memo-missing"
+   },
+   {
+    "case": "\"memo\":\"invoice-42\"",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXJJAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6Imludm9pY2UtNDIifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/memo-not-lcp"
+   },
+   {
+    "case": "ft_transfer_call",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAIQAAAAZnRfdHJhbnNmZXJfY2FsbIwAAAB7InJlY2VpdmVyX2lkIjoibWVyY2hhbnQudGVzdG5ldCIsImFtb3VudCI6IjEwMDAwMDAiLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/not-ft-transfer"
+   },
+   {
+    "case": "two actions",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAAACCwAAAGZ0X3RyYW5zZmVyjAAAAHsicmVjZWl2ZXJfaWQiOiJtZXJjaGFudC50ZXN0bmV0IiwiYW1vdW50IjoiMTAwMDAwMCIsIm1lbW8iOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9AOBX60gbAAABAAAAAAAAAAAAAAAAAAAAZQAAAAAAAAA8wusLAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/actions"
+   }
+  ]
+ },
+ "V3": {
+  "relayers": [
+   "relayer.testnet"
+  ],
+  "ref": {
+   "network": "near:testnet",
+   "asset": "usdc.testnet",
+   "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+   "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "nonce": "101",
+   "maxBlockHeight": "200000060",
+   "transaction": "7XsZtC4Hj3Y1k2v3"
+  },
+  "status": [
+   {
+    "case": "receipts succeed, status FINAL",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "final"
+    }
+   },
+   {
+    "case": "receipts succeed, status EXECUTED_OPTIMISTIC",
+    "outcome": {
+     "status": "EXECUTED_OPTIMISTIC",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "optimistic"
+    }
+   },
+   {
+    "case": "the token's receipt fails",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "usdc.testnet",
+       "outcome": "failure"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "transfer-failed"
+    }
+   },
+   {
+    "case": "delegate nonce 102",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "102",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    }
+   },
+   {
+    "case": "no transaction",
+    "outcome": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "a ReaderError",
+    "outcome": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   }
+  ],
+  "lapsed": [
+   {
+    "case": "finalHeight 200000061, key nonce 100",
+    "finalHeight": "200000061",
+    "keyNonce": "100",
+    "expect": true
+   },
+   {
+    "case": "finalHeight 200000061, key nonce 101",
+    "finalHeight": "200000061",
+    "keyNonce": "101",
+    "expect": false
+   },
+   {
+    "case": "finalHeight 200000060",
+    "finalHeight": "200000060",
+    "keyNonce": "100",
+    "expect": false
+   }
+  ],
+  "recover": [
+   {
+    "case": "the settled fixture, whose args are V1's",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  ]
+ },
+ "plant": {
+  "case": "the outer transaction and the payer's Delegate receipt succeed, the token's receipt fails, status FINAL",
+  "outcome": {
+   "status": "FINAL",
+   "delegate": {
+    "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "nonce": "101",
+    "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+   },
+   "receipts": [
+    {
+     "executor": "relayer.testnet",
+     "outcome": "success"
+    },
+    {
+     "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+     "outcome": "success"
+    },
+    {
+     "executor": "usdc.testnet",
+     "outcome": "failure"
+    }
+   ]
+  },
+  "expect": {
+   "state": "failed",
+   "why": "transfer-failed"
+  }
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "rows": [
+   {
+    "case": "an option on near:betanet",
+    "option": {
+     "scheme": "exact",
+     "network": "near:betanet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "near/network-malformed"
+   },
+   {
+    "case": "an option whose payTo is not a NEAR account id",
+    "option": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "Merchant.testnet",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "an option whose amount is 2^128",
+    "option": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "340282366920938463463374607431768211456",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "an option with extra.assetTransferMethod",
+    "option": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "default"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "an option whose paymentFlow is upfront",
+    "option": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "paymentFlow": "upfront"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "a signedDelegateAction over 8192 base64 characters",
+    "signedDelegateAction": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/sda-too-large"
+   },
+   {
+    "case": "a signedDelegateAction with a trailing byte",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cANCS+8ze3sYPcFte5u1h3LnfanVdo7jJggxLPudilVCmDsxQu0BjPHXqpDbrcWFcztOVClDOOlgPkL7pAWZGiQoA",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "args that are not a JSON object",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXIDAAAAWzFdAOBX60gbAAABAAAAAAAAAAAAAAAAAAAAZQAAAAAAAAA8wusLAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "build with a publicKey that is not ed25519:… or secp256k1:…",
+    "publicKey": "not-a-key",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "complete with an Ed25519 signature that is not 64 bytes",
+    "signatureBytes": 65,
+    "expect": "x402/signature-malformed"
+   },
+   {
+    "case": "recover when the reader fails",
+    "expect": "near/unreadable"
+   },
+   {
+    "case": "recover with no relayer published",
+    "expect": "near/no-relayer"
+   },
+   {
+    "case": "any near function that needs the SDK when @near-js/crypto, @near-js/transactions or borsh is not installed",
+    "expect": "near/peer-missing"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/near",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "near:testnet",
+        "amount": "1000000",
+        "asset": "usdc.testnet",
+        "payTo": "merchant.testnet",
+        "maxTimeoutSeconds": 60
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "near:testnet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+     "inputs": {
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "accessKeyNonce": "100",
+      "finalHeight": "200000000"
+     },
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/near",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "near:testnet",
+       "amount": "1000000",
+       "asset": "usdc.testnet",
+       "payTo": "merchant.testnet",
+       "maxTimeoutSeconds": 60
+      },
+      "payload": {
+       "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cANCS+8ze3sYPcFte5u1h3LnfanVdo7jJggxLPudilVCmDsxQu0BjPHXqpDbrcWFcztOVClDOOlgPkL7pAWZGiQo="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ }
+}
