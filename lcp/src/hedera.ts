@@ -87,6 +87,11 @@ export interface MirrorEntry {
   consensus_timestamp: string;
   transfers?: readonly { account: string; amount: number }[];
   token_transfers?: readonly { token_id: string; account: string; amount: number }[];
+  /**
+   * HIP-406 staking rewards paid by this transaction, in tinybars. `transfers` already holds each account's total
+   * change, so a reward is in the rewarded account's credit there, and the staking reward account `0.0.800` pays it.
+   */
+  staking_reward_transfers?: readonly { account: string; amount: number }[];
 }
 
 /** Bounded, read-only calls against one network's Mirror Node. Every failure rejects. */
@@ -148,7 +153,17 @@ const MAX_EXECUTORS = 16;
 const MAX_AUTHORIZATION_HEX = 8192;
 const MAX_ENTRIES = 64;
 const MAX_ROWS = 256;
-const DUPLICATE = "DUPLICATE_TRANSACTION";
+/**
+ * Results that do not use up the transaction id: a rejected duplicate, and the node due-diligence failures after
+ * which a valid transaction with the same id still reaches consensus (hiero `RecordCache.NODE_FAILURES`).
+ */
+const NOT_COUNTED: ReadonlySet<string> = new Set([
+  "DUPLICATE_TRANSACTION",
+  "INVALID_NODE_ACCOUNT",
+  "INVALID_PAYER_SIGNATURE",
+]);
+/** The account that pays HIP-406 staking rewards. */
+const STAKING_REWARD_ACCOUNT = "0.0.800";
 const SUCCESS = "SUCCESS";
 const ENTITY = /^(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})$/;
 const MIRROR_ID = /^((?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18}))-(\d{1,19})-(\d{1,9})$/;
@@ -475,9 +490,12 @@ function isEntry(e: unknown): e is MirrorEntry {
   );
 }
 
-/** The user transaction's own entries: nonce 0, not scheduled, not a rejected duplicate. */
+/**
+ * The user transaction's own entries: nonce 0, not scheduled, and not a rejected duplicate or a node due-diligence
+ * failure.
+ */
 function counted(entries: readonly MirrorEntry[]): MirrorEntry[] {
-  return entries.filter((e) => e.nonce === 0 && e.scheduled === false && e.result !== DUPLICATE);
+  return entries.filter((e) => e.nonce === 0 && e.scheduled === false && !NOT_COUNTED.has(e.result));
 }
 
 function memoOf(e: MirrorEntry): Uint8Array | null {
@@ -489,9 +507,10 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 /**
- * Reads every Mirror Node entry for the transaction id. Duplicates, child and scheduled records are skipped; the
- * user transaction with SUCCESS and the recorded memo is settled, with another memo it is not this instrument, and
- * any other result is failed with that result. A failed read, or a reader for another network, is pending.
+ * Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
+ * records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
+ * not this instrument, and any other result is failed with that result. A failed read, or a reader for another
+ * network, is pending.
  */
 export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promise<HederaStatus> {
   const entries = await entriesOf(ref.network, ref.transactionId, reader);
@@ -882,8 +901,9 @@ async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refu
 
 /**
  * Reads the merged consensus record of the named transaction: the user entry must be SUCCESS; each account's net
- * change in the asset is summed over the user entry and its children, leaving out the fee payer; exactly one other
- * account must be debited, and a credit of the same magnitude must give the recorded digest.
+ * change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
+ * HBAR transfers and the fee payer left out; exactly one other account must be debited, and a credit of the same
+ * magnitude must give the recorded digest. A transfer list that is not an array is pending `unreadable`.
  */
 export async function executorStatus(
   ref: ExecutorRef & { transaction: string },
@@ -900,22 +920,35 @@ export async function executorStatus(
   if (user === undefined) return { state: "pending", why: "not-found" };
   if (user.result !== SUCCESS) return { state: "failed", why: `result:${user.result}` };
 
-  const merged = entries.filter((e) => e.scheduled === false && e.result !== DUPLICATE && (e === user || e.nonce > 0));
+  const merged = entries.filter((e) => e.scheduled === false && !NOT_COUNTED.has(e.result) && (e === user || e.nonce > 0));
   const net = new Map<string, bigint>();
+  const credit = (account: string, amount: bigint): void => {
+    if (account !== feePayer) net.set(account, (net.get(account) ?? 0n) + amount);
+  };
   let rows = 0;
+  /** Each well-formed row of `list` in the asset, or undefined when the list or a row is unreadable. */
+  const movesOf = (list: unknown): { account: string; amount: bigint }[] | undefined => {
+    if (list === undefined) return [];
+    if (!Array.isArray(list)) return undefined;
+    const out: { account: string; amount: bigint }[] = [];
+    for (const m of list as readonly unknown[]) {
+      if (++rows > MAX_ROWS) return undefined;
+      if (!isObject(m) || typeof m["account"] !== "string" || !Number.isSafeInteger(m["amount"])) return undefined;
+      if (ref.asset !== "0.0.0" && m["token_id"] !== ref.asset) continue;
+      out.push({ account: m["account"], amount: BigInt(m["amount"] as number) });
+    }
+    return out;
+  };
+  // A reward row takes the reward back out of the account it names and returns it to the account that paid it, so a
+  // row naming `0.0.800` itself changes nothing.
   for (const e of merged) {
-    const moves =
-      ref.asset === "0.0.0"
-        ? (e.transfers ?? [])
-        : (e.token_transfers ?? []).filter((t) => isObject(t) && t.token_id === ref.asset);
-    if (!Array.isArray(moves)) return { state: "pending", why: "unreadable" };
-    for (const m of moves) {
-      if (++rows > MAX_ROWS) return { state: "pending", why: "unreadable" };
-      if (!isObject(m) || typeof m.account !== "string" || !Number.isSafeInteger(m.amount)) {
-        return { state: "pending", why: "unreadable" };
-      }
-      if (m.account === feePayer) continue;
-      net.set(m.account, (net.get(m.account) ?? 0n) + BigInt(m.amount as number));
+    const moves = movesOf(ref.asset === "0.0.0" ? e.transfers : e.token_transfers);
+    const rewards = ref.asset === "0.0.0" ? movesOf(e.staking_reward_transfers) : [];
+    if (moves === undefined || rewards === undefined) return { state: "pending", why: "unreadable" };
+    for (const m of moves) credit(m.account, m.amount);
+    for (const r of rewards) {
+      credit(r.account, -r.amount);
+      credit(STAKING_REWARD_ACCOUNT, r.amount);
     }
   }
   const debited = [...net].filter(([, v]) => v < 0n);

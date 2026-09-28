@@ -88,12 +88,12 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | | | `x402/exact/hedera/transfer-executor` | The challenge only. |
 | Algorand | `avm` | `x402/exact/algorand` | The asset transfer's `note`: H's LCP string. |
 | Aptos | `aptos` | `x402/exact/aptos` | The challenge only. No field of a standard Aptos transfer carries H; the seller ties the payment to H when it claims it for the request. |
-| Cardano | `cardano` | `x402/exact/cardano` | A CIP-20 message (metadata label 674) holding H's LCP string as two strings, `lcp:sha256:0x` and the 64 hex digits, which the signed body commits to through `auxiliary_data_hash`. |
+| Cardano | `cardano` | `x402/exact/cardano` | A CIP-20 message (metadata label 674) holding H's LCP string as two strings, `lcp:sha256:0x` and the 64 lowercase hex digits, which the signed body commits to through `auxiliary_data_hash`. A message that repeats a key, or holds a second line reading as the marker in any case or behind a byte-order mark, is refused, so every reader of the chain sees one hash. |
 | Casper | `casper` | `x402/exact/casper` | The CEP-3009 authorization's `nonce`. |
-| Concordium | `ccd` | `x402/exact/ccd` | The one transfer's memo: H's LCP string as a CBOR text string, which a PLT transfer wraps in CBOR tag 24. |
+| Concordium | `ccd` | `x402/exact/ccd` | The one transfer's memo: H's LCP string as a CBOR text string, which a PLT transfer wraps in CBOR tag 24. The signed transaction travels in x402's wire form, which `@concordium/web-sdk` gives as `JSON.parse(Transaction.toJSONString(tx))`. |
 | NEAR | `near` | `x402/exact/near` | The `memo` of the one NEP-141 `ft_transfer` in the NEP-366 delegate action the payer signs. |
 | | `mpp` | `mpp/charge/nearintents` | The challenge's `externalId`. The deposit carries nothing. |
-| Polkadot Asset Hub | `polkadot` | `x402/exact/polkadot/lcp-assets-remark` | A `system.remark_with_event` holding H's LCP string, batched atomically with the asset transfer in one signed extrinsic. |
+| Polkadot Asset Hub | `polkadot` | `x402/exact/polkadot/lcp-assets-remark` | A `system.remark_with_event` holding H's LCP string with lowercase hex, byte for byte, batched atomically with the asset transfer in one signed extrinsic. |
 | Starknet | `starknet` | `x402/exact/starknet` | The SNIP-9 outside execution's nonce: H's low 250 bits. |
 | Sui | `sui` | `x402/exact/sui` | One `Pure` input, H's 32 bytes, that no command uses. |
 | Tron | `tron` | `x402/exact/tron/lcp-trc20-memo` | The TRC-20 transfer's memo, `raw_data.data`: H's LCP string. |
@@ -147,7 +147,7 @@ only when that search is complete and finds none.
 | Solana | `SvmReader` | `getTransaction` at a commitment, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
-| Hedera | `HederaReader` | the Mirror Node's transaction by id; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
+| Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
 | Algorand | `AvmReader` | the Indexer's transaction search by id | the confirmed round |
 | Aptos | `AptosReader` | the transaction by hash, the sender's transaction by sequence number, the ledger info | the version |
 | Cardano | `CardanoReader` | the chain tip, the transaction by id | the confirmations |

@@ -225,11 +225,12 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     expect(await hederaIdDigest("0.0.5001", "0.0.4001", "100000000")).toBe(X.reference.expectIdDigest);
   });
 
-  it("executorStatus", async () => {
-    for (const row of X.status.rows) {
-      expect(await executorStatus(X.status.reference, readerOf(row.entries))).toEqual(row.expect);
-    }
-  });
+  for (const [i, row] of (X.status.rows as { case?: string; reference?: object; entries: MirrorEntry[] | null; expect: unknown }[]).entries()) {
+    it(`executorStatus: ${row.case ?? `row ${i}`}`, async () => {
+      const ref = { ...X.status.reference, ...(row.reference ?? {}) };
+      expect(await executorStatus(ref, readerOf(row.entries))).toEqual(row.expect);
+    });
+  }
 
   it("plant: a hostile executor that pays another account settles nothing", async () => {
     expect(await executorStatus(X.status.reference, readerOf(X.plant.entries))).toEqual(X.plant.expect);

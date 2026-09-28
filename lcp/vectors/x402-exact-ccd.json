@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/ccd pairing: the ccd entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The accounts are version byte 01 plus SHA-256 of a label, base58check-encoded with bs58check; x402's example addresses fail base58check. D1 was produced by cborg 6.1.2; D2 was hand-assembled to the steward's PLT encoder; the digests are GNU coreutils sha256sum. D3's CCD signedTransaction is the output of @concordium/web-sdk 12.0.2's Transaction.toJSONString for Transaction.transfer(payee, 1000000 microCCD, memo D1) with sender payer, nonce 7, expiry 1790000060 and sponsor with one signature, signed by Transaction.sign with buildBasicAccountSigner of the seed 0x00…01; its memo is DataBlob.toJSON, a 2-byte big-endian length then the bytes, and the refusal rows' memos are DataBlob.toJSON of their bytes. D3's PLT signedTransaction is the output of the same SDK's Transaction.toJSONString for Transaction.tokenUpdate(createTokenUpdatePayload(EURR, {transfer: {amount: TokenAmount.create(5000000, 6), recipient: CborAccountAddress.fromBase58(payee), memo: CborMemo.fromString(H's LCP string)}})) with the same sender, nonce, expiry, sponsor and seed; its operations are Cbor.toJSON, plain hex with no length, and its recipient is the SDK's tag-40307 map with the coin info (key 1, tag 40305 {1: 919}) beside the address (key 3). bound verifies no signature. Byte strings are hex; amounts are decimal strings. A memo carries H only as ccdMemo(H) exactly: LCP's string form with lowercase hex, as one CBOR text string under RFC 8949 §4.1's preferred serialization (cborg 6.1.2's strict decode refuses the non-preferred head), so bound, status and recover read it alike. A map with a repeated key is malformed (RFC 8949 §5.6; cborg 6.1.2 with rejectDuplicateMapKeys refuses the repeated memo).",
+ "about": "Vectors for the x402/exact/ccd pairing: the ccd entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The accounts are version byte 01 plus SHA-256 of a label, base58check-encoded with bs58check; x402's example addresses fail base58check. D1 was produced by cborg 6.1.2; D2 was hand-assembled to the steward's PLT encoder; the digests are GNU coreutils sha256sum. D3's CCD signedTransaction is the output of @concordium/web-sdk 12.0.2's Transaction.toJSONString for Transaction.transfer(payee, 1000000 microCCD, memo D1) with sender payer, nonce 7, expiry 1790000060 and sponsor with one signature, signed by Transaction.sign with buildBasicAccountSigner of the seed 0x00…01; its memo is DataBlob.toJSON, a 2-byte big-endian length then the bytes, and the refusal rows' memos are DataBlob.toJSON of their bytes. D3's PLT signedTransaction is the output of the same SDK's Transaction.toJSONString for Transaction.tokenUpdate(createTokenUpdatePayload(EURR, {transfer: {amount: TokenAmount.create(5000000, 6), recipient: CborAccountAddress.fromBase58(payee), memo: CborMemo.fromString(H's LCP string)}})) with the same sender, nonce, expiry, sponsor and seed; its operations are Cbor.toJSON, plain hex with no length, and its recipient is the SDK's tag-40307 map with the coin info (key 1, tag 40305 {1: 919}) beside the address (key 3). bound verifies no signature. Byte strings are hex; amounts are decimal strings. A memo carries H only as ccdMemo(H) exactly: LCP's string form with lowercase hex, as one CBOR text string under RFC 8949 §4.1's preferred serialization (cborg 6.1.2's strict decode refuses the non-preferred head), so bound, status and recover read it alike. A map with a repeated key is malformed (RFC 8949 §5.6; cborg 6.1.2 with rejectDuplicateMapKeys refuses the repeated memo). D3's wireForm rows hold x402's wire form, JSON.parse(Transaction.toJSONString(tx)), against the SDK's object before serialization, whose header holds bigints (a row names the paths the test makes bigints), and against the unparsed JSON text; each is refused ccd/transaction-malformed.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
@@ -377,7 +377,45 @@
      "code": "ccd/operation-count"
     }
    }
-  ]
+  ],
+  "wireForm": {
+   "case": "bound, reference and complete take only x402's wire form, JSON.parse(Transaction.toJSONString(tx)); any other value is refused, never thrown",
+   "source": "x402's Concordium scheme names signedTransaction 'The JSON-serialized V1 sponsored transaction object', which @concordium/web-sdk 12.0.2 writes as Transaction.toJSONString(tx) (builder.js: JSONBig.stringify(toJSON(tx))); the object before serialization holds bigints: headerToJSON writes nonce: header.nonce?.toJSON() and executionEnergyAmount: header.executionEnergyAmount.value (Transaction/shared.js), and SequenceNumber's toJSON() returns this.value, a bigint (types/SequenceNumber.js)",
+   "rows": [
+    {
+     "case": "D3's CCD transaction with header.nonce and header.executionEnergyAmount as bigints, as the SDK's object before serialization holds them",
+     "base": "ccd",
+     "bigints": [
+      "payload.signedTransaction.header.nonce",
+      "payload.signedTransaction.header.executionEnergyAmount"
+     ],
+     "expect": {
+      "refused": true,
+      "code": "ccd/transaction-malformed"
+     }
+    },
+    {
+     "case": "D3's PLT transaction with header.nonce as a bigint",
+     "base": "plt",
+     "bigints": [
+      "payload.signedTransaction.header.nonce"
+     ],
+     "expect": {
+      "refused": true,
+      "code": "ccd/transaction-malformed"
+     }
+    },
+    {
+     "case": "D3's CCD transaction as the JSON text Transaction.toJSONString writes, not parsed",
+     "base": "ccd",
+     "asText": true,
+     "expect": {
+      "refused": true,
+      "code": "ccd/transaction-malformed"
+     }
+    }
+   ]
+  }
  },
  "D4": {
   "case": "reference",

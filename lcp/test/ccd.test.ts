@@ -27,6 +27,10 @@ const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const bytes = (h: string) => Uint8Array.from(Buffer.from(h, "hex"));
 const required = (o: PaymentRequirements = O): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
 
+function pathValue(base: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((at, k) => (at as Record<string, unknown>)[k], base);
+}
+
 function set(base: unknown, changes: Record<string, unknown>): unknown {
   const copy = structuredClone(base) as Record<string, unknown>;
   for (const [path, value] of Object.entries(changes)) {
@@ -100,7 +104,7 @@ describe("x402/exact/ccd", () => {
     expect((recipient.v as Map<number, Uint8Array>).get(e.recipientKey)).toEqual(bytes(e.recipient));
   });
 
-  it("D3: the CCD transaction is the SDK's JSON form, whose memo is a 2-byte length (0x004f = 79) and then D1", () => {
+  it("D3: the CCD transaction is x402's wire form, whose memo is a 2-byte length (0x004f = 79) and then D1", () => {
     const tx = V.D3.ccd.payment.payload.signedTransaction;
     expect(tx.payload.memo).toBe(`004f${V.D1.expectCcdMemo}`);
     expect(tx.header.sponsor).toEqual({ account: V.fixed.sponsor, numSignatures: 1 });
@@ -119,6 +123,28 @@ describe("x402/exact/ccd", () => {
         expect(await exactCcd.bound(payment)).toEqual(row.expect);
       });
     }
+  });
+
+  describe("D3: the wire form only", () => {
+    type WireRow = { case: string; base: "ccd" | "plt"; bigints?: string[]; asText?: boolean; expect: unknown };
+    const presented = (row: WireRow): CcdPaymentPayload => {
+      const payment = structuredClone(V.D3[row.base].payment);
+      if (row.asText) payment.payload.signedTransaction = JSON.stringify(payment.payload.signedTransaction);
+      const changes = Object.fromEntries((row.bigints ?? []).map((path) => [path, BigInt(pathValue(payment, path) as number)]));
+      return set(payment, changes) as CcdPaymentPayload;
+    };
+    for (const row of V.D3.wireForm.rows as WireRow[]) {
+      it(row.case, async () => {
+        const payment = presented(row);
+        expect(await exactCcd.bound(payment)).toEqual(row.expect);
+        expect(await exactCcd.reference(payment)).toEqual(row.expect);
+      });
+    }
+    it("complete refuses the SDK's object before serialization", async () => {
+      const u = (await exactCcd.build({ required: required(), accepted: O, now: V.fixed.now }, H)) as CcdUnsigned;
+      const tx = presented(V.D3.wireForm.rows[0]).payload.signedTransaction;
+      expect(u.complete(tx)).toEqual(V.D3.wireForm.rows[0].expect);
+    });
   });
 
   it("D4: reference", async () => {

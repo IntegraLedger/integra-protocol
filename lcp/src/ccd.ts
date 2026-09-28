@@ -2,9 +2,13 @@
  * Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo
  * of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer
  * event.
+ *
+ * The signed transaction is read in x402's wire form, the JSON-serialized V1 sponsored transaction: with
+ * `@concordium/web-sdk`, `JSON.parse(Transaction.toJSONString(tx))`. Any other value, such as the SDK's object
+ * before serialization, whose header holds bigints, is `ccd/transaction-malformed`.
  */
 import { sha256 } from "@noble/hashes/sha2.js";
-import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, fromLcpString, hash, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor } from "./cbor.js";
@@ -84,7 +88,10 @@ export interface CcdUnsigned {
     memo: Uint8Array;
     expiresBy: number;
   };
-  /** Takes the sender-signed V1 sponsored transaction in the SDK's `signableToJSON` form. */
+  /**
+   * Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@concordium/web-sdk`,
+   * `JSON.parse(Transaction.toJSONString(tx))`. A value that is not a JSON object is `ccd/transaction-malformed`.
+   */
   complete(signedTransaction: Json): CcdPaymentPayload | Refusal;
 }
 
@@ -282,7 +289,9 @@ async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
       expiresBy: now + accepted.maxTimeoutSeconds,
     },
     complete(signedTransaction: Json): CcdPaymentPayload | Refusal {
-      if (!isObject(signedTransaction)) return refusal("ccd/transaction-malformed");
+      if (!isObject(signedTransaction) || jsonSize(signedTransaction) === undefined) {
+        return refusal("ccd/transaction-malformed");
+      }
       return paymentWith(required, accepted, { signedTransaction: signedTransaction as { [k: string]: Json } });
     },
   };
@@ -298,8 +307,8 @@ interface Signed {
 }
 
 /**
- * The hash inside what the sender signed: the one transfer's memo, through `memoCarrier`. No signature is verified
- * here; the chain accepts the transaction only with the sender's valid signature.
+ * The hash inside what the sender signed, in x402's wire form: the one transfer's memo, through `memoCarrier`. No
+ * signature is verified here; the chain accepts the transaction only with the sender's valid signature.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const s = await signed(presented);
@@ -322,7 +331,9 @@ async function signed(presented: unknown): Promise<Signed | Refusal> {
   const payload = presented["payload"];
   const tx = isObject(payload) ? payload["signedTransaction"] : undefined;
   if (!isObject(tx)) return refusal("ccd/transaction-malformed");
-  if (utf8.encode(JSON.stringify(tx)).length > MAX_TRANSACTION) return refusal("ccd/too-large");
+  const size = jsonSize(tx);
+  if (size === undefined) return refusal("ccd/transaction-malformed");
+  if (size > MAX_TRANSACTION) return refusal("ccd/too-large");
   if (tx["version"] !== 1) return refusal("ccd/not-v1");
   const header = tx["header"];
   const body = tx["payload"];
@@ -389,6 +400,12 @@ function tokenTransfer(ops: Uint8Array, sender: Uint8Array, expiry: number): Sig
   if (typeof mantissa !== "bigint" || mantissa < 0n) return refusal("ccd/operations-malformed");
 
   return { sender, expiry, carrier, receiver: account, amount: mantissa };
+}
+
+/** The UTF-8 length of a JSON value's serialization, or undefined for a value that is not JSON (a bigint, say). */
+function jsonSize(v: unknown): number | undefined {
+  const text = canonicalJson(v as Json);
+  return typeof text === "string" ? utf8.encode(text).length : undefined;
 }
 
 /** The option unchanged: on this pairing the hash rides in the signed transfer's memo, not in the option. */

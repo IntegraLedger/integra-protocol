@@ -497,10 +497,10 @@ Cardano (`@integraledger/lcp/cardano`).
 
 | Code | Meaning |
 |---|---|
-| `cardano/ambiguous` | The Cardano auxiliary data's label 674 `msg` lines carry more than one ATR hash. |
+| `cardano/ambiguous` | The Cardano metadata holds label 674 more than once, label 674's map repeats a key, or its `msg` lines hold more than one line that reads as the LCP marker when case and a leading byte-order mark are ignored. |
 | `cardano/aux-hash-mismatch` | The Blake2b-256 of the Cardano transaction's auxiliary data is not the hash in its body. |
 | `cardano/aux-missing` | The Cardano transaction's body has no auxiliary data hash (key 7), or it carries no auxiliary data. |
-| `cardano/hash-not-carried` | The Cardano auxiliary data's label 674 `msg` lines carry no LCP marker followed by an ATR hash. |
+| `cardano/hash-not-carried` | The Cardano auxiliary data's label 674 `msg` lines carry no line that is exactly the lowercase LCP marker followed by a line of 64 lowercase hex digits. |
 | `cardano/network-malformed` | A Cardano option's network starts with `cardano:` or `cip34:` but is not one this package maps. |
 | `cardano/not-found` | The Cardano reader found no transaction for the id. |
 | `cardano/not-valid` | The Cardano transaction the reference names is on chain as invalid (its collateral was taken). |
@@ -550,7 +550,7 @@ Concordium (`@integraledger/lcp/ccd`).
 | `ccd/payload-kind` | The Concordium transaction's payload is neither `transferWithMemo` nor a PLT `tokenUpdate`. |
 | `ccd/rejected` | The Concordium block item was rejected. |
 | `ccd/too-large` | The Concordium signed transaction, its memo or its token operations exceed the size bound. |
-| `ccd/transaction-malformed` | The presented Concordium signed transaction is not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object. |
+| `ccd/transaction-malformed` | The presented Concordium signed transaction is not a JSON value (x402's wire form, `JSON.parse(Transaction.toJSONString(tx))`), or not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object. |
 | `ccd/unreadable` | The Concordium reader threw or returned a block item that is not well formed. |
 | `ccd/wrong-reader` | The Concordium reader answers for a different network than the reference names. |
 
@@ -596,7 +596,7 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/not-signed-v4` | The Polkadot extrinsic is not a signed version 4 extrinsic. |
 | `polkadot/option-malformed` | A Polkadot option does not name the `lcp-assets-remark` transfer method, names another flow, or has an invalid asset id, amount or timeout (1 to 3600 seconds), or the choice given to `build` is not an object. |
 | `polkadot/range` | `polkadotLocate` is given a block range that is not non-negative bigints in order spanning at most 256 blocks. |
-| `polkadot/remark-not-lcp` | The Polkadot remark is not UTF-8 carrying an ATR hash in LCP string form. |
+| `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
 | `polkadot/transaction-malformed` | `polkadotRecover` is given a transaction reference that is not a `<block hash>-<index>` timepoint. |
 | `polkadot/unreadable` | The Polkadot reader threw or returned block extrinsics that are not an array. |

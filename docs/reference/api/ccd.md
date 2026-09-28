@@ -101,7 +101,8 @@ The read keys recorded at claim.
 
 > **complete**(`signedTransaction`): [`Refusal`](index.md#refusal) \| [`CcdPaymentPayload`](#ccdpaymentpayload)
 
-Takes the sender-signed V1 sponsored transaction in the SDK's `signableToJSON` form.
+Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@concordium/web-sdk`,
+`JSON.parse(Transaction.toJSONString(tx))`. A value that is not a JSON object is `ccd/transaction-malformed`.
 
 ###### Parameters
 

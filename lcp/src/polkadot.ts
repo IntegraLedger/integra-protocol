@@ -354,6 +354,20 @@ async function build(
   };
 }
 
+/**
+ * The hash a remark carries: the remark must be exactly `utf8(toLcpString(h))`, LCP's string form with lowercase hex,
+ * because the chain's `Remarked` event hashes the remark's bytes as signed.
+ */
+function remarkCarrier(remark: Uint8Array): AtrHash | null {
+  let h: AtrHash | null;
+  try {
+    h = fromLcpString(UTF8.decode(remark));
+  } catch {
+    return null;
+  }
+  return h !== null && equalBytes(remark, ENCODER.encode(toLcpString(h))) ? h : null;
+}
+
 function carriedOf(
   presented: unknown,
 ): { network: PolkadotNetwork; xt: Uint8Array; call: ProfileCall; h: AtrHash } | Refusal {
@@ -370,20 +384,15 @@ function carriedOf(
   if (ok !== true) return ok;
   const decoded = decodeProfileCall(callBytes);
   if (isRefusal(decoded)) return decoded;
-  let remark: string;
-  try {
-    remark = UTF8.decode(decoded.remark);
-  } catch {
-    return refusal("polkadot/remark-not-lcp");
-  }
-  const h = fromLcpString(remark);
+  const h = remarkCarrier(decoded.remark);
   if (h === null) return refusal("polkadot/remark-not-lcp");
   return { network: p.accepted.network as PolkadotNetwork, xt, call: decoded, h };
 }
 
 /**
- * The hash inside what the payer signed: the remark of the profile call the extrinsic ends with. Amount, payee,
- * asset, signer and timing are not read, and no signature is verified here.
+ * The hash inside what the payer signed: the remark of the profile call the extrinsic ends with, which must be the
+ * hash's LCP string form with lowercase hex, byte for byte. Amount, payee, asset, signer and timing are not read, and
+ * no signature is verified here.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const c = carriedOf(presented);
@@ -521,12 +530,7 @@ export async function polkadotRecover(
   if (xt.length - tailLength < split.end || !equalBytes(tail.subarray(0, 4), tailHead)) {
     return refusal("polkadot/call-not-profile");
   }
-  let h: AtrHash | null;
-  try {
-    h = fromLcpString(UTF8.decode(tail.subarray(4)));
-  } catch {
-    h = null;
-  }
+  const h = remarkCarrier(tail.subarray(4));
   if (h === null) return refusal("polkadot/remark-not-lcp");
   const x = await readSafely(() => reader.extrinsic(block, index));
   if ("unreadable" in x) return refusal("polkadot/unreadable");
@@ -541,7 +545,9 @@ export async function polkadotRecover(
 
 /**
  * Finds a payment nobody named, by hashing every extrinsic of each block from `from` to `to` (at most 256 blocks).
- * The first match gives its timepoint; a block that does not exist ends the scan with null.
+ * The first match gives its timepoint, once the block's record at that index has the recorded extrinsic hash. A block
+ * that does not exist, or a record at the matched index with another hash (the block at that height changed between
+ * the two reads), ends the scan with null.
  */
 export async function polkadotLocate(
   ref: PolkadotRef,
@@ -564,7 +570,7 @@ export async function polkadotLocate(
       if (!hashEquals(extrinsicHash(fromHex(raw)), ref.extrinsicHash)) continue;
       const x = await readSafely(() => reader.extrinsic(n, i));
       if ("unreadable" in x) return refusal("polkadot/unreadable");
-      if (x.ok === null || !isExtrinsic(x.ok)) return null;
+      if (x.ok === null || !isExtrinsic(x.ok) || !hashEquals(x.ok.hash, ref.extrinsicHash)) return null;
       return `${x.ok.at.hash}-${i}`;
     }
   }

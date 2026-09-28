@@ -171,15 +171,16 @@ The Mirror Node's `Transaction` entry: the fields read here.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-consensus_timestamp"></a> `consensus_timestamp` | `string` |
-| <a id="property-memo_base64"></a> `memo_base64` | `string` \| `null` |
-| <a id="property-nonce"></a> `nonce` | `number` |
-| <a id="property-result"></a> `result` | `string` |
-| <a id="property-scheduled"></a> `scheduled` | `boolean` |
-| <a id="property-token_transfers"></a> `token_transfers?` | readonly `object`[] |
-| <a id="property-transfers"></a> `transfers?` | readonly `object`[] |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-consensus_timestamp"></a> `consensus_timestamp` | `string` | - |
+| <a id="property-memo_base64"></a> `memo_base64` | `string` \| `null` | - |
+| <a id="property-nonce"></a> `nonce` | `number` | - |
+| <a id="property-result"></a> `result` | `string` | - |
+| <a id="property-scheduled"></a> `scheduled` | `boolean` | - |
+| <a id="property-staking_reward_transfers"></a> `staking_reward_transfers?` | readonly `object`[] | HIP-406 staking rewards paid by this transaction, in tinybars. `transfers` already holds each account's total change, so a reward is in the rewarded account's credit there, and the staking reward account `0.0.800` pays it. |
+| <a id="property-token_transfers"></a> `token_transfers?` | readonly `object`[] | - |
+| <a id="property-transfers"></a> `transfers?` | readonly `object`[] | - |
 
 ## Type Aliases
 
@@ -419,8 +420,9 @@ id, valid duration, memo and exact bytes. Every body of a list must share id and
 > **executorStatus**(`ref`, `reader`): `Promise`\<[`HederaStatus`](#hederastatus)\>
 
 Reads the merged consensus record of the named transaction: the user entry must be SUCCESS; each account's net
-change in the asset is summed over the user entry and its children, leaving out the fee payer; exactly one other
-account must be debited, and a credit of the same magnitude must give the recorded digest.
+change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
+HBAR transfers and the fee payer left out; exactly one other account must be debited, and a credit of the same
+magnitude must give the recorded digest. A transfer list that is not an array is pending `unreadable`.
 
 #### Parameters
 
@@ -533,9 +535,10 @@ option on another rail.
 
 > **hederaStatus**(`ref`, `reader`): `Promise`\<[`HederaStatus`](#hederastatus)\>
 
-Reads every Mirror Node entry for the transaction id. Duplicates, child and scheduled records are skipped; the
-user transaction with SUCCESS and the recorded memo is settled, with another memo it is not this instrument, and
-any other result is failed with that result. A failed read, or a reader for another network, is pending.
+Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
+records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
+not this instrument, and any other result is failed with that result. A failed read, or a reader for another
+network, is pending.
 
 #### Parameters
 

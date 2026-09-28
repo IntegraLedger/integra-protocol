@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings.",
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -74,6 +74,13 @@
     "extrinsic": "0x91030400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
     "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
     "expect": "polkadot/not-signed-v4"
+   },
+   {
+    "case": "a remark whose hash digits are upper case",
+    "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144",
+    "expect": "polkadot/remark-not-lcp",
+    "source": "profile rule 3: R is the 77 ASCII bytes lcp:sha256: followed by H, and rule 1 writes H as 0x lowercase hex; frame_system's remark_with_event emits Remarked with hash = BlakeTwo256 of the remark's bytes as signed, so an upper-case remark's event never carries the hash of H's LCP string"
    }
   ]
  },
@@ -335,6 +342,23 @@
     "from": "0",
     "to": "256",
     "expect": "polkadot/range"
+   },
+   {
+    "case": "the block at the matched height changes between the two reads: its record at the matched index has another hash",
+    "from": "98",
+    "to": "101",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "expect": null,
+    "source": "the page's locate returns a timepoint only for the recorded extrinsic hash; Sidecar reads a block by height, so two reads of one height can answer from two blocks"
+   }
+  ],
+  "recoverRefusals": [
+   {
+    "case": "the raw extrinsic at the timepoint carries an upper-case remark",
+    "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144",
+    "expect": "polkadot/remark-not-lcp",
+    "source": "profile rule 3: R is the 77 ASCII bytes lcp:sha256: followed by H, and rule 1 writes H as 0x lowercase hex; frame_system's remark_with_event emits Remarked with hash = BlakeTwo256 of the remark's bytes as signed, so an upper-case remark's event never carries the hash of H's LCP string"
    }
   ]
  },
