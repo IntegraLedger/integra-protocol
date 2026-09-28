@@ -341,6 +341,20 @@ describe("x402-exact-solana.json durableNonce", () => {
     }
   });
 
+  it("a message naming its nonce account or sysvar through a lookup table is refused", async () => {
+    for (const row of D.lookupTable.rows) {
+      expect(row.liteSvm, row.case).toBe("landed");
+      expect(row.instruction0Accounts.slice(0, 2).some((i: number) => i >= row.staticKeys), row.case).toBe(true);
+      const p: SvmPaymentPayload = {
+        x402Version: 2,
+        accepted: V.V2.accepted,
+        payload: { transaction: row.wireBase64 },
+      };
+      expect(await exactSvm.bound(p), row.case).toEqual(refused(row.expect));
+      expect(await exactSvm.reference(p), row.case).toEqual(refused(row.expect));
+    }
+  });
+
   it("LiteSVM landed only the durable message", () => {
     expect(D.liteSvm.results.durable).toBe("landed");
     for (const k of ["nonceReadonly", "shapeOnlyNonceValue", "noSigner", "noSysvar"]) {

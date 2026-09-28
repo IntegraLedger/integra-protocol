@@ -369,6 +369,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/network-undeclared` | The MPP Solana challenge names `localnet`, which has no CAIP-2 network to read on. |
 | `svm/no-carrier` | The Solana transaction presented for an MPP charge has no Memo instruction carrying an ATR hash in LCP string form. |
 | `svm/no-channel-instruction` | The Solana transaction has no top-level payment-channels instruction. |
+| `svm/nonce-account-not-static` | The Solana message's first instruction is `AdvanceNonceAccount` and names its nonce account or the `RecentBlockhashes` sysvar through an address lookup table, so the message alone cannot show the durable nonce a reference records. |
 | `svm/not-found` | The Solana reader found no landed transaction for the signature. |
 | `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid. |
 | `svm/pda-not-found` | `findPda` is given an invalid program key or too many or too long seeds, or no bump yields an off-curve address. |

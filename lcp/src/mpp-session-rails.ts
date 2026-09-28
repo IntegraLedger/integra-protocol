@@ -35,6 +35,7 @@ import {
   decodeSvmTx,
   keyBytes,
   keyString,
+  staticNonce,
   svmReference,
   svmStatus,
   wireOf,
@@ -458,6 +459,8 @@ function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Checked
   if (isRefusal(e)) return e;
   const tx = solanaOpenTx(e.payload);
   if (isRefusal(tx)) return tx;
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const open = openOf(tx, e.checked.details["channelProgram"] as string);
   if (isRefusal(open)) return open;
   if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
@@ -492,7 +495,8 @@ async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot">
   if (isRefusal(network)) return network;
   const open = openOf(o.tx, o.checked.details["channelProgram"] as string);
   if (isRefusal(open)) return open;
-  return { ...(await svmReference(network, o.tx)), channel: open.channel };
+  const ref = await svmReference(network, o.tx);
+  return isRefusal(ref) ? ref : { ...ref, channel: open.channel };
 }
 
 /** A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. */

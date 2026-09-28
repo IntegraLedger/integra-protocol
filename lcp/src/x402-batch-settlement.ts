@@ -44,6 +44,7 @@ import {
   isKey,
   isSolanaNetwork,
   signedWire,
+  staticNonce,
   svmCarrier,
   svmChannelStatus,
   svmRecover,
@@ -752,6 +753,8 @@ async function svmOpening(presented: unknown) {
   const tx = svmTxOf(x.payload);
   if (tx === undefined) return refusal("x402/payload-malformed");
   if (isRefusal(tx)) return tx;
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const carrier = svmCarrier(tx);
   if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== x.accepted.extra!["memo"]) return refusal("svm/carrier-mismatch");

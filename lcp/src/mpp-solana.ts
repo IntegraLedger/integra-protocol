@@ -18,6 +18,7 @@ import {
   svmStatus,
   toBase64,
   signedWire,
+  staticNonce,
   wireOf,
   type SolanaNetwork,
   type SvmLanded,
@@ -145,6 +146,8 @@ function bindingOf(
   if (isRefusal(e)) return e;
   const tx = presentedTx(e.payload, spec.transactionOnly);
   if (isRefusal(tx)) return tx;
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const carrier = mppSvmCarrier(tx);
   if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== e.checked.request["externalId"]) return refusal("svm/carrier-mismatch");
@@ -173,6 +176,7 @@ async function reference(
   if (network === null) return refusal("svm/network-undeclared");
   if (typeof network !== "string") return network;
   const ref = await svmReference(network, b.tx);
+  if (isRefusal(ref)) return ref;
   const signature = credential.payload["signature"];
   return credential.payload["type"] === "signature" && typeof signature === "string" ? { ...ref, transaction: signature } : ref;
 }

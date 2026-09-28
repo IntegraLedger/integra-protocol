@@ -329,12 +329,15 @@ export function toBase64(b: Uint8Array): string {
 /**
  * The read keys of a signed transaction: its message digest, the fee payer (static key 0), the fee payer's signature
  * as the transaction id when that slot is signed, and what bounds the message's life: the recent blockhash, or, for a
- * durable-nonce message, an empty `blockhash` and the `nonce` it uses.
+ * durable-nonce message, an empty `blockhash` and the `nonce` it uses. A message `staticNonce` refuses has no
+ * reference.
  */
 export async function svmReference(
   network: SolanaNetwork,
   tx: SvmTx,
-): Promise<Omit<SvmRef, "fromSlot">> {
+): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const digest = await svmDigest(tx);
   const feePayer = keyString(tx.keys[0]!);
   const nonce = durableNonce(tx);
@@ -366,16 +369,35 @@ function isWritable(tx: SvmTx, i: number): boolean {
  * nonce value is the message's blockhash field.
  */
 function durableNonce(tx: SvmTx): SvmNonce | null {
-  const first = tx.instructions[0];
-  if (first === undefined || !sameBytes(tx.keys[first.program], SYSTEM_BYTES)) return null;
-  const d = first.data;
-  if (d.length < 4 || d[0] !== 4 || d[1] !== 0 || d[2] !== 0 || d[3] !== 0) return null;
+  const first = advanceNonce(tx);
+  if (first === null) return null;
   const [account, sysvar] = first.accounts;
   if (account === undefined || sysvar === undefined || !isWritable(tx, account)) return null;
   if (!sameBytes(tx.keys[sysvar], RECENT_BLOCKHASHES_BYTES)) return null;
   const required = tx.message[(tx.message[0]! & 0x80) !== 0 ? 1 : 0]!;
   if (!first.accounts.some((i) => i < required)) return null;
   return { account: keyString(tx.keys[account]!), value: keyString(tx.blockhash) };
+}
+
+/** The first instruction when it is the System program's `AdvanceNonceAccount` (data `04000000`), else null. */
+function advanceNonce(tx: SvmTx): SvmInstruction | null {
+  const first = tx.instructions[0];
+  if (first === undefined || !sameBytes(tx.keys[first.program], SYSTEM_BYTES)) return null;
+  const d = first.data;
+  return d.length >= 4 && d[0] === 4 && d[1] === 0 && d[2] === 0 && d[3] === 0 ? first : null;
+}
+
+/**
+ * `svm/nonce-account-not-static` when the message's first instruction is `AdvanceNonceAccount` and its nonce account
+ * or its sysvar is an address lookup table entry, past the static keys: the runtime resolves those entries and can take
+ * the message as durable, while the message alone cannot show the nonce it uses. Else null.
+ */
+export function staticNonce(tx: SvmTx): Refusal | null {
+  const first = advanceNonce(tx);
+  if (first === null) return null;
+  const [account, sysvar] = first.accounts;
+  const past = (i: number | undefined) => i !== undefined && i >= tx.keys.length;
+  return past(account) || past(sysvar) ? refusal("svm/nonce-account-not-static") : null;
 }
 
 /**
