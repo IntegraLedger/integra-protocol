@@ -721,6 +721,6 @@ Stacks (`@integraledger/lcp/stacks`).
 | `stacks/not-found` | The reference's transaction id is not a 32-byte hash, or the Stacks reader found no mined transaction for it. |
 | `stacks/not-success` | The mined Stacks transaction's status is not `success`. |
 | `stacks/peer-missing` | The optional peer dependency `@stacks/transactions` cannot be loaded. |
-| `stacks/unreadable` | The reference or reader is not an object, or the Stacks reader threw. |
+| `stacks/unreadable` | The reference or reader is not an object, or the Stacks reader threw or answered a transaction that is neither a mined nor an unmined transaction of the reader's documented shape. |
 | `stacks/wrong-reader` | The Stacks reader answers for a different network than the reference names. |
 
