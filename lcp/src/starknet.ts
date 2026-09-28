@@ -36,6 +36,8 @@ export const ANY_CALLER = "0x414e595f43414c4c4552";
 export const SELECTOR_TRANSFER = "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e";
 /** sn_keccak("execute_from_outside_v2") */
 export const SELECTOR_EXECUTE_FROM_OUTSIDE_V2 = "0x34cc13b274446654ca3233ed2c1620d4c5d1d32fd20b47146a3371064bdc57d";
+/** sn_keccak("Transfer"): the first key of a SNIP-2 token's `Transfer` event. */
+export const EVENT_TRANSFER = "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9";
 
 export interface Field {
   name: string;
@@ -56,10 +58,19 @@ export interface OutsideExecutionTypedData {
   };
 }
 
+/** One event of a receipt: the emitting contract, its keys and its data. */
+export interface StarknetEvent {
+  fromAddress: Felt;
+  keys: readonly Felt[];
+  data: readonly Felt[];
+}
+
 export interface StarknetReceipt {
   finality: "PRE_CONFIRMED" | "ACCEPTED_ON_L2" | "ACCEPTED_ON_L1";
   execution: "SUCCEEDED" | "REVERTED";
   blockNumber: bigint | null;
+  /** The receipt's `events`. A call that failed, and every call under it, leaves none here. */
+  events: readonly StarknetEvent[];
 }
 
 export interface StarknetInvocation {
@@ -73,7 +84,7 @@ export interface StarknetInvocation {
 /** Bounded, read-only calls against one network's JSON-RPC node. Every failure rejects with `ReaderError`. */
 export interface StarknetReader {
   readonly network: StarknetNetwork;
-  /** `starknet_getTransactionReceipt`; null: unknown hash. */
+  /** `starknet_getTransactionReceipt`, with its events; null: unknown hash. */
   receipt(tx: Felt): Promise<StarknetReceipt | null>;
   /** `starknet_traceTransaction`'s `execute_invocation`; null: none. */
   trace(tx: Felt): Promise<StarknetInvocation | null>;
@@ -116,6 +127,7 @@ const MAX_SIGNATURE_FELTS = 32;
 const MAX_TYPED_DATA_CHARS = 16_384;
 const MAX_DEPTH = 16;
 const MAX_INVOCATIONS = 512;
+const MAX_EVENTS = 1024;
 const FELT_TEXT = /^0x[0-9a-fA-F]{1,64}$/;
 const DECIMAL = /^[0-9]{1,78}$/;
 
@@ -242,9 +254,12 @@ function word(v: bigint): Uint8Array {
 // ── Settlement.
 
 /**
- * Reads the named transaction's receipt, then walks its trace for exactly one non-reverted
- * `execute_from_outside_v2` whose calldata carries this nonce and whose direct, non-reverted call is `transfer` on
- * `ref.asset` with this transfer's identity. A failed read, or a reader for another network, is pending. Two calls.
+ * Reads the named transaction's receipt. A `SUCCEEDED` receipt must emit exactly one `Transfer` event from
+ * `ref.asset` whose sender is `ref.from`, and that transfer must have this payment's identity, else failed
+ * `not-this-instrument`. Then its trace must hold exactly one `execute_from_outside_v2` whose calldata carries this
+ * nonce and whose direct call is `transfer` on `ref.asset` with this identity, no invocation on the path to either
+ * having reverted. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout, or a
+ * reader for another network is pending. Two calls.
  */
 export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
@@ -258,10 +273,47 @@ export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, r
   if (!isReceipt(receipt)) return { state: "pending", why: "unreadable" };
   if (receipt.finality === "PRE_CONFIRMED" || receipt.blockNumber === null) return { state: "pending", why: "pre-confirmed" };
   if (receipt.execution === "REVERTED") return { state: "failed", why: "reverted" };
+  const emitted = await transferEmitted(ref, receipt.events);
+  if (emitted === "unreadable") return { state: "pending", why: "unreadable" };
+  if (!emitted) return { state: "failed", why: "not-this-instrument" };
   const found = await matches(ref, reader);
   if (found === "unreadable" || found.length > 1) return { state: "pending", why: "unreadable" };
   if (found.length === 0) return { state: "failed", why: "not-this-instrument" };
   return { state: "settled", finality: receipt.finality, blockNumber: receipt.blockNumber };
+}
+
+/**
+ * Whether the receipt emits exactly one `Transfer` from `ref.asset` whose sender is `ref.from`, with this payment's
+ * identity. A `Transfer` is an event from the asset whose first key is `EVENT_TRANSFER`, in either standard layout:
+ * keyed (keys `[selector, from, to]`, data `[low, high]`) or unkeyed (keys `[selector]`, data `[from, to, low, high]`).
+ * Such an event of neither layout, or a malformed reference, is unreadable.
+ */
+async function transferEmitted(
+  ref: { asset: Felt; from: Felt; idDigest: Hex },
+  events: readonly StarknetEvent[],
+): Promise<boolean | "unreadable"> {
+  const asset = feltValue(ref.asset);
+  const payer = feltValue(ref.from);
+  if (asset === undefined || payer === undefined) return "unreadable";
+  const selector = BigInt(EVENT_TRANSFER);
+  const sent: { to: bigint; amount: bigint }[] = [];
+  for (const e of events) {
+    if (feltValue(e.fromAddress) !== asset || feltValue(e.keys[0]) !== selector) continue;
+    const fields =
+      e.keys.length === 3 && e.data.length === 2
+        ? [e.keys[1], e.keys[2], e.data[0], e.data[1]]
+        : e.keys.length === 1 && e.data.length === 4
+          ? e.data
+          : null;
+    if (fields === null) return "unreadable";
+    const [from, to, low, high] = fields.map(feltValue);
+    if (from === undefined || to === undefined || low === undefined || high === undefined) return "unreadable";
+    if (low >= U128 || high >= U128) return "unreadable";
+    if (from === payer) sent.push({ to, amount: low + high * U128 });
+  }
+  if (sent.length !== 1) return false;
+  const digest = await starknetIdDigest(feltOf(payer), feltOf(sent[0]!.to), sent[0]!.amount);
+  return !isRefusal(digest) && digest === ref.idDigest;
 }
 
 /**
@@ -288,8 +340,9 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
 }
 
 /**
- * The nonces of the non-reverted `execute_from_outside_v2` invocations in the trace whose direct, non-reverted
- * `transfer` call on `asset` has the reference's identity digest, filtered to `nonce` when it is given.
+ * The nonces of the `execute_from_outside_v2` invocations in the trace whose direct `transfer` call on `asset` has the
+ * reference's identity digest, filtered to `nonce` when it is given. A reverted invocation's whole subtree is skipped:
+ * a failed call's descendants keep `is_reverted: false`, and their effects are rolled back with it.
  */
 async function matches(
   ref: { transaction: Felt; asset: Felt; idDigest: Hex; nonce: Felt | undefined },
@@ -313,7 +366,8 @@ async function matches(
   while (stack.length > 0) {
     const { inv, depth } = stack.pop()!;
     if (!isInvocation(inv) || depth > MAX_DEPTH || ++visited > MAX_INVOCATIONS) return "unreadable";
-    if (!inv.reverted && feltValue(inv.selector) === execute) {
+    if (inv.reverted) continue;
+    if (feltValue(inv.selector) === execute) {
       const landed = feltValue(inv.calldata[1]);
       if (landed !== undefined && (nonce === undefined || landed === nonce)) {
         for (const call of inv.calls) {
@@ -333,11 +387,26 @@ async function matches(
 
 function isReceipt(r: unknown): r is StarknetReceipt {
   if (!isObject(r)) return false;
-  const { finality, execution, blockNumber } = r;
+  const { finality, execution, blockNumber, events } = r;
   return (
     (finality === "PRE_CONFIRMED" || finality === "ACCEPTED_ON_L2" || finality === "ACCEPTED_ON_L1") &&
     (execution === "SUCCEEDED" || execution === "REVERTED") &&
-    (blockNumber === null || typeof blockNumber === "bigint")
+    (blockNumber === null || typeof blockNumber === "bigint") &&
+    Array.isArray(events) &&
+    events.length <= MAX_EVENTS &&
+    events.every(isEvent)
+  );
+}
+
+function isEvent(e: unknown): e is StarknetEvent {
+  if (!isObject(e)) return false;
+  const { fromAddress, keys, data } = e;
+  return (
+    typeof fromAddress === "string" &&
+    Array.isArray(keys) &&
+    keys.every((k) => typeof k === "string") &&
+    Array.isArray(data) &&
+    data.every((d) => typeof d === "string")
   );
 }
 
