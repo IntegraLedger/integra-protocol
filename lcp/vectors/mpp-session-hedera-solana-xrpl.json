@@ -140,6 +140,77 @@
    },
    "noExpires": true,
    "expect": "mpp/expires-required"
+  },
+  {
+   "case": "xrpl with no amount",
+   "method": "xrpl",
+   "request": {
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/request-malformed"
+  },
+  {
+   "case": "xrpl with amount a JSON number",
+   "method": "xrpl",
+   "request": {
+    "amount": 100,
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/request-malformed"
+  },
+  {
+   "case": "xrpl with amount in XRP, with a decimal point",
+   "method": "xrpl",
+   "request": {
+    "amount": "0.0001",
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/request-malformed"
+  },
+  {
+   "case": "xrpl with a negative amount",
+   "method": "xrpl",
+   "request": {
+    "amount": "-100",
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/request-malformed"
+  },
+  {
+   "case": "xrpl with an amount written with a leading zero",
+   "method": "xrpl",
+   "request": {
+    "amount": "0100",
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/request-malformed"
+  },
+  {
+   "case": "xrpl with an amount of 2^64 drops, one past the u64 the claim signs (CLM\\0, the channel id, then the drops as a big-endian u64)",
+   "method": "xrpl",
+   "request": {
+    "amount": "18446744073709551616",
+    "methodDetails": {
+     "network": "testnet"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+   },
+   "expect": "mpp/request-malformed"
   }
  ],
  "HS1": {

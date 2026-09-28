@@ -16,6 +16,7 @@ type Obj = { [k: string]: Json };
 const U64_LIMIT = 1n << 64n;
 const DECIMAL = /^[0-9]{1,78}$/;
 const XRPL_AMOUNT = /^(?:0|[1-9][0-9]{0,39})(?:\.[0-9]{1,40})?$/;
+const XRPL_DROPS = /^(?:0|[1-9][0-9]{0,19})$/;
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const XRPL_CURRENCY = /^(?:[A-Za-z0-9?!@#$%^&*<>(){}[\]|]{3}|[0-9A-Fa-f]{40})$/;
 const XRPL_MPT = /^[0-9A-Fa-f]{48}$/;
@@ -52,6 +53,11 @@ function isObj(v: unknown): v is Obj {
 
 function isU64Positive(v: unknown): v is string {
   return typeof v === "string" && DECIMAL.test(v) && BigInt(v) > 0n && BigInt(v) < U64_LIMIT;
+}
+
+/** A u64 in decimal, as an XRP amount in drops is written: no sign, point or leading zero. */
+function isDrops(v: unknown): v is string {
+  return typeof v === "string" && XRPL_DROPS.test(v) && BigInt(v) < U64_LIMIT;
 }
 
 function isDecimal(v: unknown): v is string {
@@ -251,13 +257,16 @@ export function solanaSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | R
   return ["mpp/session/solana"];
 }
 
-/** `session` on `xrpl`: `channelId` absent or `""`; `network` named; `currency` absent or `"XRP"`; a classic recipient. */
+/**
+ * `session` on `xrpl`: `channelId` absent or `""`; `network` named; `currency` absent or `"XRP"`; a classic recipient;
+ * `amount` a u64 in drops, written in decimal with no sign, point or leading zero.
+ */
 export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
   const channel = r["channelId"] ?? d["channelId"];
   if (channel !== undefined && channel !== "") return refusal("mpp/channel-named");
   const network = xrplNetworkOf(d);
   if (typeof network !== "string") return network;
   if (r["currency"] !== undefined && r["currency"] !== "XRP") return refusal("xrpl/currency-not-xrp");
-  if (!isXrplAddress(r["recipient"])) return refusal("mpp/request-malformed");
+  if (!isXrplAddress(r["recipient"]) || !isDrops(r["amount"])) return refusal("mpp/request-malformed");
   return ["mpp/session/xrpl"];
 }

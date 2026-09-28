@@ -50,6 +50,10 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 | `mpp/subscription/tempo` | The `witness` of the key authorization the payer's root key signs. | Only the activation, a key authorization, is classified: it is the opening. | Refuses `mpp/not-bound-within`. | The request's `subscriptionExpires`. |
 | `mpp/subscription/stripe` | The request's `methodDetails.metadata.legal_context`. | Every payment the seller reports on this pairing is the activation. | Refuses `mpp/not-bound-within`. | none |
 
+An `mpp/session/xrpl` challenge's `amount` is the first claim's cumulative total in drops, which the claim signs as a
+big-endian u64. `pairingsOf`, and so `build`, refuses an `amount` that is not a u64 written in decimal with no sign,
+point or leading zero, with `mpp/request-malformed`.
+
 This example lists them from the registry:
 
 ```ts
