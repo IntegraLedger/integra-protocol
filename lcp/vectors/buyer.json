@@ -1,5 +1,5 @@
 {
- "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A). The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding.",
+ "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A). The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding. A BX1 case's refusal is what pairingsOf returns for its challenge; the gate then has no challenge it can pay, and declines no-payable-option.",
  "fixed": {
   "A": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033302064c3ad617320e29c93227d7d",
   "C": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033312064c3ad617320e29c93227d7d",
@@ -1271,8 +1271,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1290,8 +1291,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1309,8 +1311,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1328,8 +1331,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1347,8 +1351,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1366,8 +1371,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1385,8 +1391,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },
@@ -1404,8 +1411,9 @@
        }
       ],
       "expect": {
-       "decline": "offer-unreadable",
-       "detail": "mpp/request-malformed",
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
        "signCalls": 0
       }
      },

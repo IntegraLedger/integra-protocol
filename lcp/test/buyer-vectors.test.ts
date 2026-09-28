@@ -119,7 +119,7 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with
   const B2 = load("mpp-session-hedera-solana-xrpl.json").buyer.rows.find(
     (r: { name: string; pairing: string }) => r.name === "B2" && r.pairing === "mpp/session/xrpl",
   ).input;
-  const cases = row("BX1").input.cases as { case: string; doc: { request: string }[]; expect: { detail?: string } }[];
+  const cases = row("BX1").input.cases as { case: string; doc: { request: string }[]; expect: { decline?: string; detail?: string; refusal?: string } }[];
 
   it("the row's account and inputs are B2's", () => {
     expect(row("BX1").input.account).toBe(B2.account);
@@ -133,7 +133,9 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with
       expect({ ...got, request: undefined }).toEqual({ ...base, request: undefined });
       expect({ ...request(got!), amount: undefined }).toEqual({ ...request(base!), amount: undefined });
       if (c.expect.detail === undefined) expect(request(got!).amount).toBe("100");
-      else expect(c.expect.detail).toBe("mpp/request-malformed");
+      else {
+        expect(c.expect).toMatchObject({ decline: "no-payable-option", detail: "mpp/no-payable-option", refusal: "mpp/request-malformed" });
+      }
     });
   }
 });
