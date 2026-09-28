@@ -74,6 +74,20 @@ A landed transaction as `getTransaction` returns it with encoding `base64` and `
 
 ***
 
+### SvmNonce
+
+The durable nonce a message uses: the nonce account its `AdvanceNonceAccount` instruction names, and the nonce value
+the message carries in its blockhash field.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-account"></a> `account` | `string` |
+| <a id="property-value"></a> `value` | `string` |
+
+***
+
 ### SvmReader
 
 Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`.
@@ -85,6 +99,23 @@ Bounded, read-only calls against one network's endpoint. Every failure rejects w
 | <a id="property-network"></a> `network` | `readonly` | `` `solana:${string}` `` |
 
 #### Methods
+
+##### account()
+
+> **account**(`address`): `Promise`\<\{ `slot`: `bigint`; `value`: \{ `data`: `Uint8Array`; `owner`: `string`; \} \| `null`; \}\>
+
+`getAccountInfo` at commitment `finalized` with encoding `base64`: the response's context slot, and the account's
+owner and data, or null when no account exists at that address.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | `string` |
+
+###### Returns
+
+`Promise`\<\{ `slot`: `bigint`; `value`: \{ `data`: `Uint8Array`; `owner`: `string`; \} \| `null`; \}\>
 
 ##### blockhashValid()
 
@@ -153,18 +184,19 @@ joined by `; `), or null when it has none.
 
 ### SvmRef
 
-The read keys recorded at claim. `blockhash` is empty for a durable-nonce transaction, which never expires.
+The read keys recorded at claim.
 
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-blockhash"></a> `blockhash` | `string` | - |
+| <a id="property-blockhash"></a> `blockhash` | `string` | The recent blockhash whose expiry bounds the message's life; empty for a durable-nonce message, whose life is bounded by `nonce` instead. |
 | <a id="property-channel-1"></a> `channel?` | `string` | The channel account the transaction creates, for an opening that carries no memo: the search pages this address's signatures instead of the fee payer's, and reads each one as a candidate. |
 | <a id="property-digest"></a> `digest` | `` `0x${string}` `` | - |
 | <a id="property-feepayer-2"></a> `feePayer` | `string` | - |
 | <a id="property-fromslot"></a> `fromSlot` | `string` | The slot read at claim, as a decimal string. |
 | <a id="property-network-1"></a> `network` | `` `solana:${string}` `` | - |
+| <a id="property-nonce"></a> `nonce?` | [`SvmNonce`](#svmnonce) | Present exactly when the message uses a durable nonce. |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |
 
 ***
@@ -221,7 +253,7 @@ CAIP-2: `solana:` and 32 base58 characters.
 
 ### SvmStatus
 
-> **SvmStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-this-instrument"` \| `"no-transfer"`; \}
+> **SvmStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-this-instrument"` \| `"no-transfer"` \| `"nonce-moved"`; \}
 
 ## Variables
 
@@ -270,6 +302,15 @@ digest of the message the payer signed, and settlement read through a bounded re
 ### PAYMENT\_CHANNELS
 
 > `const` **PAYMENT\_CHANNELS**: `"CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"` = `"CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"`
+
+Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
+digest of the message the payer signed, and settlement read through a bounded reader.
+
+***
+
+### RECENT\_BLOCKHASHES
+
+> `const` **RECENT\_BLOCKHASHES**: `"SysvarRecentB1ockHashes11111111111111111111"` = `"SysvarRecentB1ockHashes11111111111111111111"`
 
 Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
 digest of the message the payer signed, and settlement read through a bounded reader.
@@ -574,7 +615,8 @@ malformed channel id or an out-of-range number is `svm/input-malformed`.
 > **svmCarrier**(`tx`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `memo`: `string`; \}
 
 The one top-level Memo instruction (v3 or v4) and the ATR hash its UTF-8 data carries in LCP string form. None, or
-more than one, is `svm/memo-count`.
+more than one, is `svm/memo-count`. The memo must be `toLcpString(h)` exactly, in lowercase hex; the same hash in
+any other spelling is `svm/carrier-not-canonical`.
 
 #### Parameters
 
@@ -652,9 +694,10 @@ SHA-256 over the message bytes every signer signed.
 > **svmLocate**(`ref`, `reader`, `h`, `status?`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
 
 Finds the instrument when no transaction was named: pages the fee payer's signatures, newest first, down to
-`fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form.
-With `channel` in the reference, it pages that account's signatures instead, and every signature is a candidate.
-Each candidate is read through `status`, the pairing's own (`svmStatus` when none is given), at most 50 per pass.
+`fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form,
+matched without regard to case. With `channel` in the reference, it pages that account's signatures instead, and
+every signature is a candidate. Each candidate is read through `status`, the pairing's own (`svmStatus` when none
+is given), at most 50 per pass.
 `complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
 `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
 leaves the search incomplete.
@@ -671,6 +714,33 @@ leaves the search incomplete.
 #### Returns
 
 `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
+
+***
+
+### svmNonceMoved()
+
+> **svmNonceMoved**(`ref`, `reader`): `Promise`\<`boolean`\>
+
+True when the durable nonce `ref.nonce` records is spent or gone: a `finalized` read of the nonce account, at a
+context slot at least 150 slots past `fromSlot`, finds no account, an account the System program does not own, an
+account that is not an initialized nonce account, or an initialized current-version nonce account holding another
+value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce` and
+a reader for another network are false. One call.
+
+The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. So
+a durable-nonce reference with no named transaction lapses when this reads true and a `svmLocate` that starts after
+it is complete with nothing found.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `ref` | [`SvmRef`](#svmref) |
+| `reader` | [`SvmReader`](#svmreader) |
+
+#### Returns
+
+`Promise`\<`boolean`\>
 
 ***
 
@@ -701,7 +771,9 @@ Zero-party recovery: the ATR hash in the landed transaction's one memo. One or t
 
 Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
 without error, and must carry a token or SOL transfer. A failed read, or a reader for another network, is pending.
-At most two calls.
+A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first available block is
+at or before `fromSlot`, is read once more at `finalized`; still not found, it is failed `nonce-moved`: the message
+can never land. At most two calls, or five for a durable-nonce reference.
 
 #### Parameters
 

@@ -138,7 +138,7 @@ reverted, aborted or expired transaction, or one that does not carry this paymen
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |
-| Solana | `SvmReader` | `getTransaction` at a commitment, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock` | the commitment: `confirmed` or `finalized` |
+| Solana | `SvmReader` | `getTransaction` at a commitment, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
 | Hedera | `HederaReader` | the Mirror Node's transaction by id; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
@@ -158,6 +158,17 @@ reverted, aborted or expired transaction, or one that does not carry this paymen
 On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport` or
 `malformed`. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a
 settlement through it.
+
+A Solana message lives until its recent blockhash expires, 150 slots after it, unless it uses a durable nonce: its first
+instruction is the System program's `AdvanceNonceAccount`, naming a writable nonce account, the `RecentBlockhashes`
+sysvar and the nonce authority as a signer, and its blockhash field holds the nonce value. Such a message lands only
+while the nonce account holds that value. Its reference records `nonce`, the account and the value, and an empty
+`blockhash`. A message whose `AdvanceNonceAccount` takes its nonce account or the sysvar from an address lookup table,
+which the runtime also takes as durable, cannot show its nonce from the message alone, so `bound` and `reference` refuse
+it with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at `finalized` and is true
+once the account holds another value, or is not a nonce account, at a read at least 150 slots past `fromSlot`. A named
+transaction then not found is failed, with the reason `nonce-moved`. With no transaction named, a `svmLocate` that
+starts after `svmNonceMoved` reads true, and is complete with nothing found, shows the message never landed.
 
 Lightning has no settlement read: the invoice and its preimage, which the parties hold, are the proof of payment, and
 no public ledger shows it. Its pairings give `reference` and no `status`.

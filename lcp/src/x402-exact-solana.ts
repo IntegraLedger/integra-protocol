@@ -11,6 +11,7 @@ import {
   svmCarrier,
   svmRecover,
   svmReference,
+  staticNonce,
   svmSigning,
   svmStatus,
   toBase64,
@@ -176,6 +177,8 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 function boundOf(accepted: PaymentRequirements, tx: SvmTx): AtrHash | Refusal {
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const carrier = svmCarrier(tx);
   if ("refused" in carrier) return carrier;
   if (carrier.memo !== accepted.extra?.["memo"]) return refusal("svm/carrier-mismatch");

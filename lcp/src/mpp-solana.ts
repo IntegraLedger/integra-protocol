@@ -10,6 +10,7 @@ import {
   MEMO_V4,
   SYSTEM,
   buildSvmMessage,
+  canonicalCarrier,
   compileV0,
   decodeSvmTx,
   keyBytes,
@@ -17,6 +18,7 @@ import {
   svmStatus,
   toBase64,
   signedWire,
+  staticNonce,
   wireOf,
   type SolanaNetwork,
   type SvmLanded,
@@ -93,6 +95,7 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
 /**
  * The one top-level Memo instruction (v3 or v4) whose UTF-8 data parses as an LCP string, and its hash. Memo
  * instructions whose data is not an LCP string are not read. None is `svm/no-carrier`; more than one `svm/memo-count`.
+ * The one found must be `toLcpString(h)` exactly, in lowercase hex, else `svm/carrier-not-canonical`.
  */
 export function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
   const found: { h: AtrHash; memo: string }[] = [];
@@ -110,7 +113,7 @@ export function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal
   }
   if (found.length === 0) return refusal("svm/no-carrier");
   if (found.length > 1) return refusal("svm/memo-count");
-  return found[0]!;
+  return canonicalCarrier(found[0]!.h, found[0]!.memo);
 }
 
 /**
@@ -143,6 +146,8 @@ function bindingOf(
   if (isRefusal(e)) return e;
   const tx = presentedTx(e.payload, spec.transactionOnly);
   if (isRefusal(tx)) return tx;
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const carrier = mppSvmCarrier(tx);
   if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== e.checked.request["externalId"]) return refusal("svm/carrier-mismatch");
@@ -171,6 +176,7 @@ async function reference(
   if (network === null) return refusal("svm/network-undeclared");
   if (typeof network !== "string") return network;
   const ref = await svmReference(network, b.tx);
+  if (isRefusal(ref)) return ref;
   const signature = credential.payload["signature"];
   return credential.payload["type"] === "signature" && typeof signature === "string" ? { ...ref, transaction: signature } : ref;
 }

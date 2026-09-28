@@ -8,6 +8,7 @@ export {
   MEMO_V3,
   MEMO_V4,
   PAYMENT_CHANNELS,
+  RECENT_BLOCKHASHES,
   RENT_SYSVAR,
   SYSTEM,
   TOKEN,
@@ -24,6 +25,7 @@ export {
   svmCarrier,
   svmDigest,
   svmLocate,
+  svmNonceMoved,
   svmRecover,
   svmStatus,
 } from "./internal/svm.js";
@@ -34,6 +36,7 @@ export type {
   SolanaNetwork,
   SvmBuildInput,
   SvmLanded,
+  SvmNonce,
   SvmReader,
   SvmRef,
   SvmStatus,

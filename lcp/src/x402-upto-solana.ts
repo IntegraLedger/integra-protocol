@@ -11,6 +11,7 @@ import {
   decodeSvmTx,
   isKey,
   isSolanaNetwork,
+  staticNonce,
   svmCarrier,
   svmChannelStatus,
   svmRecover,
@@ -211,6 +212,8 @@ function openingOf(presented: unknown) {
   if ("refused" in wire) return wire;
   const tx = decodeSvmTx(wire);
   if ("refused" in tx) return tx;
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
   const carrier = svmCarrier(tx);
   if ("refused" in carrier) return carrier;
   if (carrier.memo !== accepted.extra?.["memo"]) return refusal("svm/carrier-mismatch");

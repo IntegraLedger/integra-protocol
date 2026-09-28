@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 477 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 479 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -23,7 +23,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 12 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
-| [`svm`](#svm) | 25 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
+| [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 16 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 21 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
@@ -355,6 +355,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 |---|---|
 | `svm/bundle-empty` | An MPP Solana `bundle` credential's `transactions` is empty. |
 | `svm/carrier-mismatch` | The option's `extra.memo` or the challenge's `externalId` is not H's LCP string when `build` is called, or the memo in the presented Solana transaction is not the option's `extra.memo` or the challenge's `externalId`. |
+| `svm/carrier-not-canonical` | The Solana memo carrying the ATR hash is an LCP string in a spelling other than `toLcpString(h)`, `lcp:sha256:0x` and 64 lowercase hex digits. |
 | `svm/carrier-occupied` | `advertise` finds the option's `extra.memo`, or the MPP Solana challenge's `externalId`, already holding a value other than H's LCP string. |
 | `svm/channel-id-mismatch` | In the SVM batch pairing, the voucher's `channelId` or the channel instruction's channel account is not the channel PDA derived from the payment's config. |
 | `svm/channel-instruction` | The Solana transaction has more than one payment-channels instruction, or its one instruction has an unknown discriminator or the wrong accounts. |
@@ -368,6 +369,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/network-undeclared` | The MPP Solana challenge names `localnet`, which has no CAIP-2 network to read on. |
 | `svm/no-carrier` | The Solana transaction presented for an MPP charge has no Memo instruction carrying an ATR hash in LCP string form. |
 | `svm/no-channel-instruction` | The Solana transaction has no top-level payment-channels instruction. |
+| `svm/nonce-account-not-static` | The Solana message's first instruction is `AdvanceNonceAccount` and names its nonce account or the `RecentBlockhashes` sysvar through an address lookup table, so the message alone cannot show the durable nonce a reference records. |
 | `svm/not-found` | The Solana reader found no landed transaction for the signature. |
 | `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid. |
 | `svm/pda-not-found` | `findPda` is given an invalid program key or too many or too long seeds, or no bump yields an off-curve address. |

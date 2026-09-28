@@ -10,7 +10,17 @@ import {
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
 import { hash, type AtrHash } from "../src/index.js";
-import { decodeSvmTx, svmCarrier, svmLocate, svmRecover, svmStatus, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
+import {
+  decodeSvmTx,
+  svmCarrier,
+  svmLocate,
+  svmNonceMoved,
+  svmRecover,
+  svmStatus,
+  type SvmLanded,
+  type SvmReader,
+  type SvmRef,
+} from "../src/svm.js";
 import { exactSvm, pairingOf, type SvmPaymentPayload } from "../src/x402-exact-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
@@ -46,6 +56,9 @@ function readerFor(
     signatures: async () => [],
     blockhashValid: async () => true,
     firstAvailableBlock: async () => 0n,
+    account: async () => {
+      throw new Error("this reference names no nonce account");
+    },
   };
 }
 
@@ -240,6 +253,9 @@ describe("x402-exact-solana.json", () => {
         signatures: async () => list,
         blockhashValid: async () => false,
         firstAvailableBlock: holds,
+        account: async () => {
+          throw new Error("this reference names no nonce account");
+        },
       };
       expect(await svmLocate(ref, r, H), c.case).toEqual(c.expect);
     }
@@ -260,5 +276,144 @@ describe("x402-exact-solana.json", () => {
     const base = { ...V.V4.ref, transaction: txid } as SvmRef & { transaction: string };
     expect(await svmStatus({ ...base, digest: V.plant.ownDigest.digest }, reader)).toEqual(V.plant.ownDigest.expect);
     expect(await svmStatus({ ...base, digest: V.plant.v1Digest.digest }, reader)).toEqual(V.plant.v1Digest.expect);
+  });
+});
+
+describe("x402-exact-solana.json carrierSpelling", () => {
+  const C = V.carrierSpelling;
+
+  it("bound refuses the hash in upper-case hex, though the echoed extra.memo carries that spelling", async () => {
+    const p: SvmPaymentPayload = {
+      x402Version: 2,
+      accepted: C.bound.accepted,
+      payload: { transaction: C.bound.wireBase64 },
+    };
+    expect(await exactSvm.bound(p)).toEqual(refused(C.bound.expect));
+    expect(await exactSvm.reference(p)).toEqual(refused(C.bound.expect));
+    const tx = decodeSvmTx(b64(C.bound.wireBase64));
+    if ("refused" in tx) throw new Error(tx.code);
+    expect(svmCarrier(tx)).toEqual(refused(C.bound.expect));
+  });
+
+  it("recover refuses the landed upper-case memo", async () => {
+    const reader = readerFor("finalized", landed(b64(C.recover.landedWireBase64)), C.recover.txid);
+    const ref = { network: V.V4.network, transaction: C.recover.txid };
+    expect(await svmRecover(ref, reader)).toEqual(refused(C.recover.expect));
+  });
+
+  it("svmLocate finds the landed payment whatever the case of its memo", async () => {
+    const fromSlot = BigInt(V.V5.fromSlot);
+    const ref: SvmRef = {
+      network: V.V4.network,
+      digest: C.locate.digest,
+      feePayer: V.fixed.feePayer,
+      blockhash: V.fixed.blockhash,
+      fromSlot: V.V5.fromSlot,
+    };
+    const reader: SvmReader = {
+      ...readerFor("finalized", landed(b64(C.recover.landedWireBase64)), C.recover.txid),
+      signatures: async () => [
+        { signature: C.recover.txid, slot: fromSlot + 5n, memo: C.locate.memoRendering },
+        { signature: "older", slot: fromSlot - 1n, memo: null },
+      ],
+      firstAvailableBlock: async () => BigInt(V.V5.firstAvailableBlock),
+    };
+    expect(await svmLocate(ref, reader, H)).toEqual(C.locate.expect);
+  });
+});
+
+describe("x402-exact-solana.json durableNonce", () => {
+  const D = V.durableNonce;
+  const accountOf = (name: string | null): { owner: string; data: Uint8Array } | null =>
+    name === null ? null : { owner: D.accounts[name].owner, data: b64(D.accounts[name].dataBase64) };
+
+  it("reference records the nonce only for AdvanceNonceAccount naming the nonce accounts", async () => {
+    for (const row of D.reference) {
+      const p: SvmPaymentPayload = {
+        x402Version: 2,
+        accepted: V.V2.accepted,
+        payload: { transaction: row.wireBase64 },
+      };
+      expect(await exactSvm.bound(p), row.case).toBe(H);
+      const ref = await exactSvm.reference(p);
+      expect(ref, row.case).toEqual(row.expect);
+      expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
+    }
+  });
+
+  it("a message naming its nonce account or sysvar through a lookup table is refused", async () => {
+    for (const row of D.lookupTable.rows) {
+      expect(row.liteSvm, row.case).toBe("landed");
+      expect(row.instruction0Accounts.slice(0, 2).some((i: number) => i >= row.staticKeys), row.case).toBe(true);
+      const p: SvmPaymentPayload = {
+        x402Version: 2,
+        accepted: V.V2.accepted,
+        payload: { transaction: row.wireBase64 },
+      };
+      expect(await exactSvm.bound(p), row.case).toEqual(refused(row.expect));
+      expect(await exactSvm.reference(p), row.case).toEqual(refused(row.expect));
+    }
+  });
+
+  it("LiteSVM landed only the durable message", () => {
+    expect(D.liteSvm.results.durable).toBe("landed");
+    for (const k of ["nonceReadonly", "shapeOnlyNonceValue", "noSigner", "noSysvar"]) {
+      expect(D.liteSvm.results[k], k).not.toBe("landed");
+    }
+    expect(Buffer.from(D.accounts.held.dataBase64, "base64").length).toBe(80);
+  });
+
+  it("svmNonceMoved reads the nonce account at a slot at least 150 past fromSlot", async () => {
+    const ref: SvmRef = { ...D.reference[0].expect, fromSlot: D.nonceMoved.fromSlot };
+    for (const row of D.nonceMoved.rows) {
+      const reader: SvmReader = {
+        ...readerFor(null, landed(new Uint8Array())),
+        account: async (address) => {
+          expect(address).toBe(D.nonceAccount);
+          if (row.account === "reader-error") throw new ReaderError("transport");
+          return { slot: BigInt(row.slot), value: accountOf(row.account) };
+        },
+      };
+      expect(await svmNonceMoved(ref, reader), row.case).toBe(row.expect);
+    }
+    const plain: SvmRef = { ...V.V4.ref, fromSlot: D.nonceMoved.fromSlot };
+    delete (plain as { transaction?: string }).transaction;
+    expect(await svmNonceMoved(plain, readerFor(null, landed(new Uint8Array())))).toBe(false);
+  });
+
+  it("status on the named durable message is nonce-moved once the nonce moved on and a last read finds nothing", async () => {
+    const ref: SvmRef & { transaction: string } = {
+      ...D.reference[0].expect,
+      transaction: D.txid,
+      fromSlot: D.status.fromSlot,
+    };
+    const wire = b64(D.status.landedWireBase64);
+    for (const row of D.status.rows) {
+      const answers = [...row.transactions];
+      let accountReads = 0;
+      const reader: SvmReader = {
+        network: V.V4.network,
+        transaction: async (sig) => {
+          expect(sig).toBe(D.txid);
+          expect(answers.length, row.case).toBeGreaterThan(0);
+          return answers.shift() === "landed" ? landed(wire) : null;
+        },
+        signatures: async () => [],
+        blockhashValid: async () => false,
+        firstAvailableBlock: async () => BigInt(row.firstAvailableBlock),
+        account: async () => {
+          accountReads++;
+          return { slot: 1150n, value: accountOf(row.account) };
+        },
+      };
+      expect(await svmStatus(ref, reader), row.case).toEqual(row.expect);
+      expect(answers, row.case).toEqual([]);
+      expect(accountReads, row.case).toBe(row.accountReads);
+    }
+  });
+
+  it("status on a reference without a nonce never reads a nonce account", async () => {
+    const reader = readerFor(null, landed(new Uint8Array()));
+    expect(await svmStatus(V.V4.ref, reader)).toEqual({ state: "pending", why: "not-found" });
   });
 });

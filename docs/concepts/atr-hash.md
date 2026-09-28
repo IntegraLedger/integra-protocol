@@ -14,7 +14,9 @@ before the seller issues it and unique to one transaction.
 
 ## The forms of H
 
-The same 32 bytes are written in four forms. The package writes every hash in lowercase and reads either case.
+The same 32 bytes are written in four forms. The package writes every hash in lowercase and reads either case, with
+one exception: a Solana memo, which the payer signs and the chain keeps, must be `toLcpString(h)` exactly, and the same
+hash in another spelling is refused `svm/carrier-not-canonical`.
 
 | Form | Example | Written by | Read by |
 |---|---|---|---|
