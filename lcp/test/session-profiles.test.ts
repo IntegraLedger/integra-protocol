@@ -79,7 +79,7 @@ const RECORDS = [
       forwardIndexable: false,
       publicProof: true,
       proves:
-        "The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the MPP challenge the opening answered, protected by the server's binding of the challenge. The payer signed a Solana transaction that opened a session channel on the channel program named in the challenge, with the first 8 bytes of this ATR's hash as the channel's salt, and it executed without error. The salt matches this hash by prefix only; it does not exclude another ATR whose hash begins with the same 8 bytes. " +
+        "The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the MPP challenge the opening answered, protected by the server's binding of the challenge. The payer signed a Solana transaction that opened a session channel on the channel program named in the challenge, with the first 8 bytes of this ATR's hash as the channel's salt, and it executed without error. The salt binds only this hash's first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash shares them. " +
         `${LATER}. Where the operator signs the vouchers, each request also carried the payer's session proof, which signs the opening challenge's id and so this ATR's hash. This does not show that amount, deposit, recipient, mint or timing match the ATR's content.`,
     },
   ],
