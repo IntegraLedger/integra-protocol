@@ -104,8 +104,10 @@ async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | 
 }
 
 /**
- * A push credential (`type="hash"`) with the signed blob added as `blob`, read by that hash. Other credentials are
- * returned unchanged. A read that fails, or finds nothing, is a refusal the seller retries.
+ * A push credential (`type="hash"`) with the signed blob added as `blob`, read by that hash once the transaction is in a
+ * validated ledger. Other credentials are returned unchanged. A read that fails, finds nothing, or finds the transaction
+ * not yet validated is a refusal the seller retries; a validated result other than `tesSUCCESS` is refused
+ * `xrpl/not-success`. At most two calls.
  */
 async function fetchPresented(credential: MppCredential, reader: XrplReader): Promise<MppCredential | Refusal> {
   if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
@@ -117,6 +119,16 @@ async function fetchPresented(credential: MppCredential, reader: XrplReader): Pr
   if (reader.network !== network) return refusal("xrpl/wrong-reader");
   const hash = credential.payload["hash"];
   if (typeof hash !== "string" || !HASH.test(hash)) return refusal("mpp/credential-malformed");
+  let landed: Awaited<ReturnType<XrplReader["tx"]>>;
+  try {
+    landed = await reader.tx(hash.toUpperCase(), null);
+  } catch {
+    return refusal("xrpl/unreadable");
+  }
+  if (typeof landed !== "object" || landed === null) return refusal("xrpl/unreadable");
+  if ("notFound" in landed) return refusal("xrpl/not-found");
+  if (landed.validated !== true) return refusal("xrpl/not-validated");
+  if (landed.result !== "tesSUCCESS") return refusal("xrpl/not-success");
   let blob: string | null;
   try {
     blob = await reader.txBlob(hash.toUpperCase());

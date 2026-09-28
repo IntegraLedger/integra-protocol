@@ -108,7 +108,8 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
 
 /**
  * A push credential (`type="hash"`) with the landed envelope added as `transaction`. Other credentials are returned
- * unchanged. A read that fails, or finds nothing, is a refusal the seller retries.
+ * unchanged. A read that fails, or finds nothing, is a refusal the seller retries; a transaction the ledger records as
+ * `FAILED` is refused `stellar/tx-failed`.
  */
 async function fetchPresented(credential: MppCredential, reader: StellarReader): Promise<MppCredential | Refusal> {
   if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
@@ -125,7 +126,9 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
     return refusal("stellar/unreadable");
   }
   if (!isObject(r)) return refusal("stellar/unreadable");
+  if (r.status === "FAILED") return refusal("stellar/tx-failed");
   if (r.status === "NOT_FOUND" || typeof r.envelopeXdr !== "string") return refusal("stellar/not-found");
+  if (r.status !== "SUCCESS") return refusal("stellar/unreadable");
   return { ...credential, payload: { ...credential.payload, transaction: r.envelopeXdr } };
 }
 

@@ -113,8 +113,17 @@
     "expect": "xrpl/unreadable"
    },
    {
-    "case": "fetchPresented when the blob is not found",
+    "case": "fetchPresented when the transaction or its blob is not found",
     "expect": "xrpl/not-found"
+   },
+   {
+    "case": "fetchPresented when the transaction is not yet in a validated ledger",
+    "expect": "xrpl/not-validated"
+   },
+   {
+    "case": "fetchPresented when the validated transaction's result is not tesSUCCESS (here tecPATH_DRY, a result that claims the fee and moves nothing)",
+    "result": "tecPATH_DRY",
+    "expect": "xrpl/not-success"
    },
    {
     "case": "a signed InvoiceID that is the request's invoiceId but not the echoed challenge's hash",

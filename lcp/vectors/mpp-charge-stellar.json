@@ -112,6 +112,10 @@
     "expect": "stellar/not-found"
    },
    {
+    "case": "fetchPresented when the reader reports the transaction FAILED",
+    "expect": "stellar/tx-failed"
+   },
+   {
     "case": "a payload type other than transaction or hash",
     "expect": "mpp/credential-type"
    }

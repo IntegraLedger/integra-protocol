@@ -172,6 +172,18 @@
     "expect": "svm/unreadable or svm/not-found"
    },
    {
+    "case": "fetchPresented when the landed transaction carries an error (getTransaction's meta.err, here {\"InstructionError\":[2,{\"Custom\":1}]})",
+    "err": {
+     "InstructionError": [
+      2,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "expect": "svm/err"
+   },
+   {
     "case": "build with splits or confidential in the request, a malformed payer, or no decimals and tokenProgram for a mint",
     "expect": "svm/input-malformed"
    },

@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 476 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 477 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -24,7 +24,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`evm`](#evm) | 12 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 25 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
-| [`stellar`](#stellar) | 15 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
+| [`stellar`](#stellar) | 16 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 21 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
 | [`avm`](#avm) | 12 | Algorand (`@integraledger/lcp/avm`). |
@@ -359,7 +359,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/channel-id-mismatch` | In the SVM batch pairing, the voucher's `channelId` or the channel instruction's channel account is not the channel PDA derived from the payment's config. |
 | `svm/channel-instruction` | The Solana transaction has more than one payment-channels instruction, or its one instruction has an unknown discriminator or the wrong accounts. |
 | `svm/channel-mismatch` | The MPP Solana session opening's `channelId` is not the channel account its `open` instruction opens. |
-| `svm/err` | The landed Solana transaction failed with an error. |
+| `svm/err` | The landed Solana transaction failed with an error: the one a recovery reads, or the one an MPP Solana `signature` credential names. |
 | `svm/input-malformed` | The buyer's input to a Solana `build`, `complete` or message helper is not valid: a payer, key or blockhash that is not a base58 key, a token program other than the option's, an out-of-range amount, slot or compute budget, a signature that is not 64 bytes or not for a required signer, a session challenge with malformed Solana details, or MPP `splits` or `confidential` transfers, which are not built. |
 | `svm/memo-count` | The Solana transaction has no top-level Memo instruction or more than one (x402), or more than one Memo instruction carrying an LCP string (MPP). |
 | `svm/memo-not-lcp` | The Solana transaction's one Memo instruction does not carry an ATR hash in LCP string form. |
@@ -397,8 +397,9 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/peer-missing` | The optional peer dependency `@stellar/stellar-sdk` cannot be loaded. |
 | `stellar/read-first` | An MPP Stellar `hash` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
 | `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR within the value caps, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
+| `stellar/tx-failed` | The transaction an MPP Stellar `hash` credential names is recorded `FAILED` on the ledger, so it moved nothing. |
 | `stellar/tx-too-large` | A Stellar transaction envelope's base64 text exceeds the size bound. |
-| `stellar/unreadable` | The Stellar reader threw or returned a response that is not an object. |
+| `stellar/unreadable` | The Stellar reader threw, returned a response that is not an object, or reported a status other than `SUCCESS`, `FAILED` or `NOT_FOUND`. |
 | `stellar/wrong-reader` | The Stellar reader answers for a different network than the challenge names. |
 
 ## xrpl
@@ -422,8 +423,8 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/not-channel-create` | The XRPL session opening or the transaction a recovery reads is not a `PaymentChannelCreate`, or `xrplChannelId` or `xrplClaim` is given a malformed address, sequence, channel id or amount. |
 | `xrpl/not-found` | The XRPL reader found no transaction for the reference. |
 | `xrpl/not-payment` | The XRPL signed blob presented for a charge is not a `Payment`. |
-| `xrpl/not-success` | The validated XRPL transaction is not a `Payment` with result `tesSUCCESS`. |
-| `xrpl/not-validated` | The XRPL transaction the reference names is not in a validated ledger. |
+| `xrpl/not-success` | The validated XRPL transaction a recovery reads is not a `Payment` with result `tesSUCCESS`, or the one an MPP XRPL `hash` credential names has a result other than `tesSUCCESS`. |
+| `xrpl/not-validated` | The XRPL transaction the reference, or an MPP XRPL `hash` credential, names is not yet in a validated ledger. |
 | `xrpl/peer-missing` | The optional peer dependency `ripple-binary-codec` cannot be loaded to decode a blob. |
 | `xrpl/read-first` | An MPP XRPL `hash` credential carries no blob yet; the seller reads it by hash before `bound`. |
 | `xrpl/unreadable` | The XRPL reader threw or returned a response that is not well formed. |
