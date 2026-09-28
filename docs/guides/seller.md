@@ -60,8 +60,19 @@ facts are your records, not this package's.
 ## 5. Read the settlement
 
 `reference(payment)` gives the keys for finding this payment on chain: the network, the token, the time bound, a
-digest of the transfer, and the log that carries H. After the facilitator settles, `status` reads the settlement
-transaction through a reader you supply, and `recover` reads H back from that transaction alone.
+digest of the transfer, the log that carries H, and `authorization`, the signed authorization as the token records its
+use. After the facilitator settles, `status` reads the settlement transaction through a reader you supply, and
+`recover` reads H back from that transaction alone.
+
+`status` settles a named transaction only when it is this payment's: its receipt must hold the token's
+`AuthorizationUsed` log whose nonce is H and the `Transfer` that same authorization produced, from the authorizer, whose
+payer, payee and value hash to the reference's digest. Anything else is `failed`, with the reason, and a failed read is
+`pending`.
+
+Before any transaction is named, `authorizer(payment)` gives the account whose signature authorises the transfer, and
+`authorizationUsed(ref, authorizer, block, reader)` asks the token whether that authorization had executed by a block.
+The authorization cannot execute in a block whose timestamp is at or after its `deadline`, so once a final block is
+past it, an unused authorization never moves money.
 
 ## The whole flow
 
@@ -70,7 +81,13 @@ and a reader built from one receipt for the chain. No network is used.
 
 ```ts
 import { assemble, hashEquals, newAtrId } from "@integraledger/lcp";
-import { AUTHORIZATION_USED_TOPIC, type EvmReader, type Hex } from "@integraledger/lcp/evm";
+import {
+  AUTHORIZATION_USED_TOPIC,
+  TRANSFER_TOPIC,
+  authorizationUsed,
+  type EvmReader,
+  type Hex,
+} from "@integraledger/lcp/evm";
 import {
   exactEip3009,
   requestCommitment,
@@ -132,24 +149,31 @@ console.log("bound to the issued H:", hashEquals(h, atr.atrHash), storage.has(li
 const ref = await exactEip3009.reference(payment);
 if ("refused" in ref) throw new Error(ref.code);
 const transaction: Hex = `0x${"11".repeat(32)}`;
+const word = (hex: string): Hex => `0x${hex.replace(/^0x/, "").toLowerCase().padStart(64, "0")}`;
 const reader: EvmReader = {
   network: "eip155:84532",
   receipt: async () => ({
     status: 1,
     blockNumber: 100n,
     logs: [
+      { address: option.asset as Hex, topics: [AUTHORIZATION_USED_TOPIC, word(payer.address), h], data: "0x" },
       {
         address: option.asset as Hex,
-        topics: [AUTHORIZATION_USED_TOPIC, `0x${payer.address.slice(2).toLowerCase().padStart(64, "0")}`, h],
-        data: "0x",
+        topics: [TRANSFER_TOPIC, word(payer.address), word(option.payTo)],
+        data: word(BigInt(option.amount).toString(16)),
       },
     ],
   }),
   blockNumber: async (tag) => (tag === "finalized" ? 100n : 105n),
   transaction: async () => null,
+  // The token's authorizationState(authorizer, nonce): true once the authorization is used.
+  call: async () => word("1"),
 };
-const status = await exactEip3009.status({ network: ref.network, asset: ref.asset, transaction, h }, reader);
+const status = await exactEip3009.status({ ...ref, transaction, h }, reader);
 console.log("status:", status.state, "finality" in status ? status.finality : status.why);
+const authorizer = await exactEip3009.authorizer(payment);
+if (typeof authorizer !== "string") throw new Error(authorizer.code);
+console.log("authorization used by block 100:", await authorizationUsed(ref, authorizer, 100n, reader));
 const recovered = await exactEip3009.recover({ network: ref.network, asset: ref.asset, transaction }, reader);
 console.log("recovered from the chain alone:", typeof recovered === "string" && hashEquals(recovered, atr.atrHash));
 ```
@@ -158,6 +182,7 @@ console.log("recovered from the chain alone:", typeof recovered === "string" && 
 advertised: true
 bound to the issued H: true true
 status: settled finalized
+authorization used by block 100: true
 recovered from the chain alone: true
 ```
 

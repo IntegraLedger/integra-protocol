@@ -118,4 +118,11 @@ only the transaction's hash or signature, `fetchPresented(credential, reader)` r
 refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, and `xrpl/not-success` on the XRP
 Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that).
 
+`mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
+an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
+authorises the pull, and its reference's `authorization` names the nonce the payer signed (the challenge-derived value,
+not H), the deadline, the token and the contract that records the nonce's use, for `authorizationUsed` in
+`@integraledger/lcp/evm`. `status` on `mpp/charge/evm/permit2` reads that record at the receipt's block, as on x402's
+Permit2 pairings.
+
 The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these rules in full.
