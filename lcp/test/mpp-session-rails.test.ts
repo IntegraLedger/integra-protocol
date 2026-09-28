@@ -225,6 +225,9 @@ describe("mpp/session/solana", () => {
       },
       blockhashValid: async () => true,
       firstAvailableBlock: async () => first,
+      account: async () => {
+        throw new Error("this reference names no nonce account");
+      },
     });
     const read: string[] = [];
     const status = async (r: { transaction: string }) => {
@@ -257,6 +260,9 @@ describe("mpp/session/solana", () => {
         address === V.SV2.channel ? signatures.map((signature, i) => ({ signature, slot: 130n - BigInt(i), memo: null })) : [],
       blockhashValid: async () => true,
       firstAvailableBlock: async () => first,
+      account: async () => {
+        throw new Error("this reference names no nonce account");
+      },
     });
     const status = sessionSolana.status as (r: typeof ref & { transaction: string }, reader: SvmReader) => Promise<{ state: string }>;
     expect(await status({ ...ref, transaction: "opening" }, readerOf([], 100n))).toMatchObject({ state: "settled" });
@@ -317,6 +323,9 @@ describe("mpp/session/solana", () => {
       signatures: async () => [],
       blockhashValid: async () => true,
       firstAvailableBlock: async () => 0n,
+      account: async () => {
+        throw new Error("this reference names no nonce account");
+      },
     });
     expect(await sessionSolana.status(ref, readerOf(await closeWire(4)))).toEqual({ state: "settled", commitment: "finalized" });
     expect(await sessionSolana.status(ref, readerOf(await closeWire(2)))).toEqual({ state: "failed", why: "not-a-close" });

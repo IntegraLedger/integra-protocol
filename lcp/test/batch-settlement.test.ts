@@ -207,6 +207,9 @@ function svmReaderFor(at: "finalized" | null, l: SvmLanded, txid: string): SvmRe
     signatures: async () => [],
     blockhashValid: async () => true,
     firstAvailableBlock: async () => 0n,
+    account: async () => {
+      throw new Error("this reference names no nonce account");
+    },
   };
 }
 

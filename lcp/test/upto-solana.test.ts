@@ -35,6 +35,9 @@ function readerFor(at: "finalized" | "confirmed" | null | "reader-error", l: Svm
     signatures: async () => [],
     blockhashValid: async () => true,
     firstAvailableBlock: async () => 0n,
+    account: async () => {
+      throw new Error("this reference names no nonce account");
+    },
   };
 }
 

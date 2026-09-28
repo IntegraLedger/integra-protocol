@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. Byte strings are hex unless named base64.",
+ "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -499,5 +499,269 @@
     "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "carrierSpelling": {
+  "case": "The carrier is L exactly: lcp:sha256:0x and 64 lowercase hex, the bytes the seller issued as extra.memo (x402 SVM: the facilitator MUST verify that the Memo instruction's data matches extra.memo encoded as UTF-8). Here V1's instruction list carries the same H in upper-case hex, and the payment echoes that spelling as accepted.extra.memo, which issuedDigest does not cover",
+  "memo": "lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+  "bound": {
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcOqhQ3bbRpLngwTwLD2HVHYWTvxIuzkQX5illsbFGzsIQiH1kCqfBxviylKZR53Mwp5suyBAGMTwqFGHMkIAHgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFEAA==",
+   "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+    }
+   },
+   "expect": "svm/carrier-not-canonical"
+  },
+  "recover": {
+   "case": "the same message landed with both signatures: recover refuses the spelling",
+   "landedWireBase64": "AhBb3n8MndkUg40xKXv3wa9DsdyztY3l5SwgOO0QUmGTzUp77XxatCCmt0LNYRXeOAvLOlkkBGjtqhSAglmVdw4cOqhQ3bbRpLngwTwLD2HVHYWTvxIuzkQX5illsbFGzsIQiH1kCqfBxviylKZR53Mwp5suyBAGMTwqFGHMkIAHgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFEAA==",
+   "txid": "KyFX2YU72ny6ZEqM35umXzRTcrERzXjpXbi2WRUjHSodizfYgwJ2i5UQs1hXW1bPBBrt1meebDAnjtqevFT71m7",
+   "expect": "svm/carrier-not-canonical"
+  },
+  "locate": {
+   "case": "svmLocate matches the RPC's memo rendering without regard to case, so the landed message with the upper-case memo is a candidate; the reference's digest is that message's SHA-256",
+   "memoRendering": "[77] lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+   "digest": "0xd4805c63ed707600a98c550097e0334b3b219f5d9220ece5d274733e9f0b2350",
+   "expect": {
+    "found": "KyFX2YU72ny6ZEqM35umXzRTcrERzXjpXbi2WRUjHSodizfYgwJ2i5UQs1hXW1bPBBrt1meebDAnjtqevFT71m7",
+    "complete": true
+   }
+  }
+ },
+ "durableNonce": {
+  "case": "A message uses a durable nonce only when its first instruction is the System program's AdvanceNonceAccount (data 04000000) naming the accounts that instruction takes: the nonce account (writable), the RecentBlockhashes sysvar (SysvarRecentB1ockHashes11111111111111111111), and the nonce authority as a signer, as solders' advance_nonce_account builds it. The nonce value is the message's blockhash field. Each wire is the partially signed form of a message whose last four instructions are V1's with a compute unit limit of 40000, in a payment whose accepted is V2's",
+  "nonceAccount": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
+  "nonceAuthority": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "value": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
+  "movedValue": "C4y3jiWhA9SkgWTWFK5QzPfJeo3e1hTuKmKovhVzmpp",
+  "txid": "2w69WpPiw3ZzMRTC814avWjxu8CjYJP8n1KpHBZnvjLj4fWuFB1eYsayskL5rvY8D8MqSKXZrTQRPM33XbB8vDJA",
+  "liteSvm": {
+   "case": "Each message sent to LiteSVM after the recent blockhash expired, with the nonce value as its blockhash. Only the durable message lands, moving the payee's 1000; each other one is refused BlockhashNotFound or fails at instruction 0",
+   "results": {
+    "nonceReadonly": "TransactionErrorFieldless.BlockhashNotFound",
+    "shapeOnlyNonceValue": "TransactionErrorFieldless.BlockhashNotFound",
+    "noSigner": "TransactionErrorFieldless.BlockhashNotFound",
+    "noSysvar": "TransactionErrorInstructionError((0, Fieldless(InvalidArgument)))",
+    "durable": "landed"
+   }
+  },
+  "reference": [
+   {
+    "case": "AdvanceNonceAccount with the nonce account, the sysvar and the authority: durable; blockhash is empty and nonce holds the account and the value",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMrGN8VMSgl/vPLzXkROdAdKiOoZivjX+TSZ+Joq0l79ids9qA9EVBXZox1/iWiufU3lWmDKg5LyMkvcS3HXQOgAIBBguBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksVo7gioRfc9KXiM8DXDFFshqzRNgGLqlAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nShjpdfDyAE4QiGG9GKEaInHzKXf8J5228z7ICgtgyOAFBQMDCAEEBAAAAAYABQJAnAAABgAJAwEAAAAAAAAACQQECgIBCgzoAwAAAAAAAAYHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+    "expect": {
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "digest": "0xad7bbfa60132acead0933fff3b2ac9e3cb052cb18d57c40b42ff48e412551c67",
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "blockhash": "",
+     "nonce": {
+      "account": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
+      "value": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+     }
+    }
+   },
+   {
+    "case": "AdvanceNonceAccount's data with no accounts and x402's example blockhash: not durable, so the blockhash bounds its life",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACRCuMWruU91FhYARmAbc/PU1UZ05gaU3bSdr6s9xQppbt59aJ6l5ZTHnKdRkDrrV+cIwP/ooZuh10H9WfoGVcIgAIBBQmBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqfJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wUEAAQEAAAABQAFAkCcAAAFAAkDAQAAAAAAAAAHBAMIAgEKDOgDAAAAAAAABgYATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+    "expect": {
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "digest": "0x9023a2a648e89f303eb0ed4a4375a4c3525a7dbea27eabc1490771b740f64101",
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+    }
+   },
+   {
+    "case": "the nonce account read-only: not durable",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApfn/H/gv6yya0uldz5g0rZCAwsjWRyTWn/Y3lPv37Wfjl/HbNwiUaHq6oRh6jbJ31/5IiLEvrBLrBMsPWx4wDgAIBBwuBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFaO4IqEX3PSl4jPA1wxRbIas0TYBi6pQAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKk7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAup8qTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58ShjpdfDyAE4QiGG9GKEaInHzKXf8J5228z7ICgtgyOAFBAMKBwEEBAAAAAUABQJAnAAABQAJAwEAAAAAAAAACAQDCQIBCgzoAwAAAAAAAAYGAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+    "expect": {
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "digest": "0x1d7bf5a15b5350a098154a3d2ab6f9469b82a0b82e17a33cd5affd1e88fd6db2",
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+    }
+   },
+   {
+    "case": "no RecentBlockhashes sysvar: not durable",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB45tXaacI+gP7N7wg+s8C9ef+nH4p+R3+Dys1gblU/ZoTffn9Vph1ctA2iPmnZut9pw/Hx8lpNh/mo2ltpBUOgAIBBQqBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKk7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAup0oY6XXw8gBOEIhhvRihGiJx8yl3/CedtvM+yAoLYMjgBQUCAwEEBAAAAAYABQJAnAAABgAJAwEAAAAAAAAACAQECQIBCgzoAwAAAAAAAAYHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+    "expect": {
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "digest": "0x73f46794ce2826940ed7848386abdbcaf438f63a83c5bd90ec3dbc06aeb91222",
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+    }
+   },
+   {
+    "case": "no signer among the instruction's accounts: not durable",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB3bPGZw4uS1LAkiLeUN4YiugpTUptRm8s1oHdK2AUTk5QEYIPjAwcYy/LELSPBMf7TCDP0Xt0xtjNJclAreNkHgAIBBwyBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksVo7gioRfc9KXiM8DXDFFshqzRNgGLqlAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqRzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdKGOl18PIAThCIYb0YoRoicfMpd/wnnbbzPsgKC2DI4AUFAwMICgQEAAAABgAFAkCcAAAGAAkDAQAAAAAAAAAJBAQLAgEKDOgDAAAAAAAABgcATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+    "expect": {
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "digest": "0xd8cf63bbcaf537c7955dbe3c7c8da1fb8f07d735f618ea64a170916582718f73",
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+    }
+   }
+  ],
+  "accounts": {
+   "about": "getAccountInfo values for the nonce account. held and moved are LiteSVM's bytes before and after the durable message landed; uninitialized is an 80-byte System account from create_account; legacyHeld is held with its version (bytes 0-3) set to 0, the legacy version; notSystem is held's bytes under the token program. The layout is version u32, state u32, authority (32 bytes), durable nonce (32 bytes), lamports per signature u64, little-endian",
+   "held": {
+    "owner": "11111111111111111111111111111111",
+    "dataBase64": "AQAAAAEAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXEoY6XXw8gBOEIhhvRihGiJx8yl3/CedtvM+yAoLYMjgiBMAAAAAAAA="
+   },
+   "moved": {
+    "owner": "11111111111111111111111111111111",
+    "dataBase64": "AQAAAAEAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXALV36cmO4c7vPWMCyT/LaI+nKQgAvumiS4LEO1doO7tiBMAAAAAAAA="
+   },
+   "uninitialized": {
+    "owner": "11111111111111111111111111111111",
+    "dataBase64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+   },
+   "legacyHeld": {
+    "owner": "11111111111111111111111111111111",
+    "dataBase64": "AAAAAAEAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXEoY6XXw8gBOEIhhvRihGiJx8yl3/CedtvM+yAoLYMjgiBMAAAAAAAA="
+   },
+   "notSystem": {
+    "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "dataBase64": "AQAAAAEAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXEoY6XXw8gBOEIhhvRihGiJx8yl3/CedtvM+yAoLYMjgiBMAAAAAAAA="
+   }
+  },
+  "nonceMoved": {
+   "case": "svmNonceMoved on the durable reference with fromSlot 1000: a finalized read of the nonce account at a context slot at least 150 slots past fromSlot (a blockhash's lifetime: Solana's transaction documentation gives a blockhash 150 slots) shows whether the recorded nonce has moved on",
+   "fromSlot": "1000",
+   "rows": [
+    {
+     "case": "the account holds the recorded value",
+     "account": "held",
+     "slot": "1150",
+     "expect": false
+    },
+    {
+     "case": "the account holds another value",
+     "account": "moved",
+     "slot": "1150",
+     "expect": true
+    },
+    {
+     "case": "another value, read 149 slots past fromSlot",
+     "account": "moved",
+     "slot": "1149",
+     "expect": false
+    },
+    {
+     "case": "no account",
+     "account": null,
+     "slot": "1150",
+     "expect": true
+    },
+    {
+     "case": "an uninitialized System account",
+     "account": "uninitialized",
+     "slot": "1150",
+     "expect": true
+    },
+    {
+     "case": "an account the System program does not own",
+     "account": "notSystem",
+     "slot": "1150",
+     "expect": true
+    },
+    {
+     "case": "a legacy-version nonce account, which an upgrade turns into a current one",
+     "account": "legacyHeld",
+     "slot": "1150",
+     "expect": false
+    },
+    {
+     "case": "the reader fails",
+     "account": "reader-error",
+     "slot": "1150",
+     "expect": false
+    }
+   ]
+  },
+  "status": {
+   "case": "svmStatus on the durable message named by its txid, fromSlot 1000, with the nonce account read at slot 1150. transactions lists what each successive transaction read returns: finalized, then confirmed, then, once the nonce has moved on and the node holds fromSlot, one more read at finalized",
+   "landedWireBase64": "AmCpPBBBtnFMI++0DBLZfF7rh3680NkTB81bqxAAyn+7HRPZtuJScQ+plM+UazCw3Gr76TmuONmkQlWrK0f4pQsMrGN8VMSgl/vPLzXkROdAdKiOoZivjX+TSZ+Joq0l79ids9qA9EVBXZox1/iWiufU3lWmDKg5LyMkvcS3HXQOgAIBBguBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksVo7gioRfc9KXiM8DXDFFshqzRNgGLqlAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nShjpdfDyAE4QiGG9GKEaInHzKXf8J5228z7ICgtgyOAFBQMDCAEEBAAAAAYABQJAnAAABgAJAwEAAAAAAAAACQQECgIBCgzoAwAAAAAAAAYHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+   "fromSlot": "1000",
+   "rows": [
+    {
+     "case": "landed at finalized: settled, and the nonce account is not read",
+     "transactions": [
+      "landed"
+     ],
+     "account": null,
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "settled",
+      "commitment": "finalized"
+     },
+     "accountReads": 0
+    },
+    {
+     "case": "never found, and the nonce has moved on: failed nonce-moved",
+     "transactions": [
+      null,
+      null,
+      null
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "failed",
+      "why": "nonce-moved"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "never found, and the account holds the recorded value: pending",
+     "transactions": [
+      null,
+      null
+     ],
+     "account": "held",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "pending",
+      "why": "not-found"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "never found, the nonce has moved on, but the node's first available block is above fromSlot: pending",
+     "transactions": [
+      null,
+      null
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "1001",
+     "expect": {
+      "state": "pending",
+      "why": "not-found"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "not found at first, then found by the read at finalized after the nonce read: settled",
+     "transactions": [
+      null,
+      null,
+      "landed"
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "settled",
+      "commitment": "finalized"
+     },
+     "accountReads": 1
+    }
+   ]
+  }
  }
 }

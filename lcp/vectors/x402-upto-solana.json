@@ -300,6 +300,27 @@
     }
    },
    "expect": "svm/memo-count"
+  },
+  {
+   "case": "EU3's opening with its memo's hex in upper case, echoed as accepted.extra.memo: the carrier is L exactly. The wire is EU3's with those 64 bytes substituted; bound verifies no signature",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgOFbNN1mZa8NqWGFEh0mUWAso937yWxCaO+GHE+ft1sn2/v1WW2tID1/FSntu7d/v88f4hOBvJEOzdrxJplsDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQGAAUCQA0DAAYACQMBAAAAAAAAAA0OAQAACg4CBAMJBQgMCw1DAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJwcATWxjcDpzaGEyNTY6MHhCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFEAA==",
+   "accepted": {
+    "scheme": "upto",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "10000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+     "withdrawDelay": 3600,
+     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+     "paymentFlow": "escrow",
+     "memo": "lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+    }
+   },
+   "expect": "svm/carrier-not-canonical"
   }
  ],
  "agreedRefusals": {

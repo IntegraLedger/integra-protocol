@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/solana. Fixtures are seeds 01 and 02, devnet USDC, x402's payTo and blockhash, and x402-exact-solana.json's V2 and V3 wires. The placed request is computed with Python 3 json.dumps(sort_keys=True, separators=(',',':')) and base64url without padding. Exactly one memo whose data parses as an LCP string, equal to the carrier; other memos are not read.",
+ "about": "Vectors for mpp/charge/solana. Fixtures are seeds 01 and 02, devnet USDC, x402's payTo and blockhash, and x402-exact-solana.json's V2 and V3 wires. The placed request is computed with Python 3 json.dumps(sort_keys=True, separators=(',',':')) and base64url without padding. Exactly one memo whose data parses as an LCP string, spelled as L and equal to the carrier; other memos are not read.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -120,6 +120,12 @@
    "externalId": "lcp:sha256:0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
    "expect": "svm/carrier-mismatch"
+  },
+  {
+   "case": "the LCP memo spells H in upper-case hex, and the echoed request's externalId is that spelling: the carrier is L exactly, the externalId the seller issued (x402-exact-solana.json's carrierSpelling wire)",
+   "externalId": "lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcOqhQ3bbRpLngwTwLD2HVHYWTvxIuzkQX5illsbFGzsIQiH1kCqfBxviylKZR53Mwp5suyBAGMTwqFGHMkIAHgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFEAA==",
+   "expect": "svm/carrier-not-canonical"
   }
  ],
  "split": {

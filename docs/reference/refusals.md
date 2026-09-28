@@ -355,6 +355,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 |---|---|
 | `svm/bundle-empty` | An MPP Solana `bundle` credential's `transactions` is empty. |
 | `svm/carrier-mismatch` | The option's `extra.memo` or the challenge's `externalId` is not H's LCP string when `build` is called, or the memo in the presented Solana transaction is not the option's `extra.memo` or the challenge's `externalId`. |
+| `svm/carrier-not-canonical` | The Solana memo carrying the ATR hash is an LCP string in a spelling other than `toLcpString(h)`, `lcp:sha256:0x` and 64 lowercase hex digits. |
 | `svm/carrier-occupied` | `advertise` finds the option's `extra.memo`, or the MPP Solana challenge's `externalId`, already holding a value other than H's LCP string. |
 | `svm/channel-id-mismatch` | In the SVM batch pairing, the voucher's `channelId` or the channel instruction's channel account is not the channel PDA derived from the payment's config. |
 | `svm/channel-instruction` | The Solana transaction has more than one payment-channels instruction, or its one instruction has an unknown discriminator or the wrong accounts. |

@@ -350,9 +350,9 @@ Solana rail pieces: the wire transaction, its one Memo instruction carrying the 
 import { ATA_PROGRAM, buildChannelMessage, buildSvmMessage, … } from "@integraledger/lcp/svm";
 ```
 
-**Values (31):** `ATA_PROGRAM`, `buildChannelMessage`, `buildSvmMessage`, `channelInstruction`, `channelPda`, `channelVoucherMessage`, `COMPUTE_BUDGET`, `decodeSvmTx`, `findPda`, `MEMO_V3`, `MEMO_V4`, `OPEN_DISCRIMINATOR`, `openInstructionData`, `openOf`, `PAYMENT_CHANNELS`, `RENT_SYSVAR`, `SEAL_DISCRIMINATOR`, `sessionProof`, `sessionSalt`, `SETTLE_AND_SEAL_DISCRIMINATOR`, `solanaVoucher`, `svmCarrier`, `svmChannelStatus`, `svmCloseStatus`, `svmDigest`, `svmLocate`, `svmRecover`, `svmStatus`, `SYSTEM`, `TOKEN`, `TOKEN_2022`.
+**Values (33):** `ATA_PROGRAM`, `buildChannelMessage`, `buildSvmMessage`, `channelInstruction`, `channelPda`, `channelVoucherMessage`, `COMPUTE_BUDGET`, `decodeSvmTx`, `findPda`, `MEMO_V3`, `MEMO_V4`, `OPEN_DISCRIMINATOR`, `openInstructionData`, `openOf`, `PAYMENT_CHANNELS`, `RECENT_BLOCKHASHES`, `RENT_SYSVAR`, `SEAL_DISCRIMINATOR`, `sessionProof`, `sessionSalt`, `SETTLE_AND_SEAL_DISCRIMINATOR`, `solanaVoucher`, `svmCarrier`, `svmChannelStatus`, `svmCloseStatus`, `svmDigest`, `svmLocate`, `svmNonceMoved`, `svmRecover`, `svmStatus`, `SYSTEM`, `TOKEN`, `TOKEN_2022`.
 
-**Types (12):** `ChannelBuildInput`, `ChannelIx`, `ChannelStatus`, `SolanaNetwork`, `SvmBuildInput`, `SvmCloseRef`, `SvmCloseStatus`, `SvmLanded`, `SvmReader`, `SvmRef`, `SvmStatus`, `SvmTx`.
+**Types (13):** `ChannelBuildInput`, `ChannelIx`, `ChannelStatus`, `SolanaNetwork`, `SvmBuildInput`, `SvmCloseRef`, `SvmCloseStatus`, `SvmLanded`, `SvmNonce`, `SvmReader`, `SvmRef`, `SvmStatus`, `SvmTx`.
 
 ## `@integraledger/lcp/tempo`
 

@@ -18,6 +18,7 @@ export const MEMO_V4 = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH";
 export const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 export const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 export const SYSTEM = "11111111111111111111111111111111";
+export const RECENT_BLOCKHASHES = "SysvarRecentB1ockHashes11111111111111111111";
 export const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
 export const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
@@ -27,6 +28,10 @@ const MAX_LOCATE_PAGES = 10;
 const LOCATE_PAGE = 1000;
 const MAX_CANDIDATES = 50;
 const SLOT = /^(0|[1-9][0-9]{0,19})$/;
+/** Slots between the claim and a nonce account read that can show the recorded nonce has moved on. */
+const NONCE_SETTLED_SLOTS = 150n;
+/** The System program's nonce account: version u32, state u32, authority, durable nonce, lamports per signature. */
+const NONCE_ACCOUNT_BYTES = 80;
 
 export interface SvmInstruction {
   program: number;
@@ -70,15 +75,35 @@ export interface SvmReader {
   blockhashValid(blockhash: string): Promise<boolean>;
   /** `getFirstAvailableBlock`: the lowest slot whose block the node still holds. */
   firstAvailableBlock(): Promise<bigint>;
+  /**
+   * `getAccountInfo` at commitment `finalized` with encoding `base64`: the response's context slot, and the account's
+   * owner and data, or null when no account exists at that address.
+   */
+  account(address: string): Promise<{ slot: bigint; value: { owner: string; data: Uint8Array } | null }>;
 }
 
-/** The read keys recorded at claim. `blockhash` is empty for a durable-nonce transaction, which never expires. */
+/**
+ * The durable nonce a message uses: the nonce account its `AdvanceNonceAccount` instruction names, and the nonce value
+ * the message carries in its blockhash field.
+ */
+export interface SvmNonce {
+  account: string;
+  value: string;
+}
+
+/** The read keys recorded at claim. */
 export interface SvmRef {
   network: SolanaNetwork;
   transaction?: string;
   digest: Hex;
   feePayer: string;
+  /**
+   * The recent blockhash whose expiry bounds the message's life; empty for a durable-nonce message, whose life is
+   * bounded by `nonce` instead.
+   */
   blockhash: string;
+  /** Present exactly when the message uses a durable nonce. */
+  nonce?: SvmNonce;
   /** The slot read at claim, as a decimal string. */
   fromSlot: string;
   /**
@@ -91,7 +116,7 @@ export interface SvmRef {
 export type SvmStatus =
   | { state: "settled"; commitment: "confirmed" | "finalized" }
   | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "err" | "not-this-instrument" | "no-transfer" };
+  | { state: "failed"; why: "err" | "not-this-instrument" | "no-transfer" | "nonce-moved" };
 
 export interface SvmBuildInput {
   feePayer: string;
@@ -144,6 +169,7 @@ const MEMO_V4_BYTES = base58.decode(MEMO_V4);
 const TOKEN_BYTES = base58.decode(TOKEN);
 const TOKEN_2022_BYTES = base58.decode(TOKEN_2022);
 const SYSTEM_BYTES = base58.decode(SYSTEM);
+const RECENT_BLOCKHASHES_BYTES = base58.decode(RECENT_BLOCKHASHES);
 
 function sameBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
   if (a === undefined || a.length !== b.length) return false;
@@ -254,7 +280,8 @@ function decode(wire: Uint8Array): Decoded | Refusal {
 
 /**
  * The one top-level Memo instruction (v3 or v4) and the ATR hash its UTF-8 data carries in LCP string form. None, or
- * more than one, is `svm/memo-count`.
+ * more than one, is `svm/memo-count`. The memo must be `toLcpString(h)` exactly, in lowercase hex; the same hash in
+ * any other spelling is `svm/carrier-not-canonical`.
  */
 export function svmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
   const memos = tx.instructions.filter((ix) => {
@@ -270,7 +297,12 @@ export function svmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
   }
   const h = fromLcpString(memo);
   if (h === null) return refusal("svm/memo-not-lcp");
-  return { h, memo };
+  return canonicalCarrier(h, memo);
+}
+
+/** The carrier when `memo` is `toLcpString(h)` exactly, else `svm/carrier-not-canonical`. */
+export function canonicalCarrier(h: AtrHash, memo: string): { h: AtrHash; memo: string } | Refusal {
+  return memo === toLcpString(h) ? { h, memo } : refusal("svm/carrier-not-canonical");
 }
 
 /** SHA-256 over the message bytes every signer signed. */
@@ -295,8 +327,9 @@ export function toBase64(b: Uint8Array): string {
 }
 
 /**
- * The read keys of a signed transaction: its message digest, the fee payer (static key 0), the blockhash (empty for a
- * durable-nonce transaction), and the fee payer's signature as the transaction id when that slot is signed.
+ * The read keys of a signed transaction: its message digest, the fee payer (static key 0), the fee payer's signature
+ * as the transaction id when that slot is signed, and what bounds the message's life: the recent blockhash, or, for a
+ * durable-nonce message, an empty `blockhash` and the `nonce` it uses.
  */
 export async function svmReference(
   network: SolanaNetwork,
@@ -304,23 +337,45 @@ export async function svmReference(
 ): Promise<Omit<SvmRef, "fromSlot">> {
   const digest = await svmDigest(tx);
   const feePayer = keyString(tx.keys[0]!);
-  const first = tx.instructions[0];
-  const durable =
-    first !== undefined &&
-    sameBytes(tx.keys[first.program], SYSTEM_BYTES) &&
-    first.data.length >= 4 &&
-    first.data[0] === 4 &&
-    first.data[1] === 0 &&
-    first.data[2] === 0 &&
-    first.data[3] === 0;
+  const nonce = durableNonce(tx);
   const signed = tx.signatures[0]!.some((x) => x !== 0);
   return {
     network,
     ...(signed ? { transaction: keyString(tx.signatures[0]!) } : {}),
     digest,
     feePayer,
-    blockhash: durable ? "" : keyString(tx.blockhash),
+    blockhash: nonce === null ? keyString(tx.blockhash) : "",
+    ...(nonce === null ? {} : { nonce }),
   };
+}
+
+/** True when static key `i` is writable under the message header's signer and read-only counts. */
+function isWritable(tx: SvmTx, i: number): boolean {
+  const at = (tx.message[0]! & 0x80) !== 0 ? 1 : 0;
+  const required = tx.message[at]!;
+  const readonlySigned = tx.message[at + 1]!;
+  const readonlyUnsigned = tx.message[at + 2]!;
+  if (i >= tx.keys.length) return false;
+  return i < required ? i < required - readonlySigned : i < tx.keys.length - readonlyUnsigned;
+}
+
+/**
+ * The durable nonce a message uses, or null. A message uses one when its first instruction is the System program's
+ * `AdvanceNonceAccount` (data `04000000`) naming the nonce accounts that instruction requires: the nonce account as a
+ * writable static key, then the `RecentBlockhashes` sysvar, and the nonce authority as a signer of the message. The
+ * nonce value is the message's blockhash field.
+ */
+function durableNonce(tx: SvmTx): SvmNonce | null {
+  const first = tx.instructions[0];
+  if (first === undefined || !sameBytes(tx.keys[first.program], SYSTEM_BYTES)) return null;
+  const d = first.data;
+  if (d.length < 4 || d[0] !== 4 || d[1] !== 0 || d[2] !== 0 || d[3] !== 0) return null;
+  const [account, sysvar] = first.accounts;
+  if (account === undefined || sysvar === undefined || !isWritable(tx, account)) return null;
+  if (!sameBytes(tx.keys[sysvar], RECENT_BLOCKHASHES_BYTES)) return null;
+  const required = tx.message[(tx.message[0]! & 0x80) !== 0 ? 1 : 0]!;
+  if (!first.accounts.some((i) => i < required)) return null;
+  return { account: keyString(tx.keys[account]!), value: keyString(tx.blockhash) };
 }
 
 /**
@@ -510,9 +565,10 @@ export function svmSigning(message: Uint8Array, signer: string): SvmSigning {
 async function landedAt(
   reader: SvmReader,
   transaction: string,
+  commitments: readonly ("finalized" | "confirmed")[] = ["finalized", "confirmed"],
 ): Promise<{ landed: SvmLanded; commitment: "confirmed" | "finalized" } | null | undefined> {
   try {
-    for (const commitment of ["finalized", "confirmed"] as const) {
+    for (const commitment of commitments) {
       const landed = await reader.transaction(transaction, commitment);
       if (landed === null) continue;
       if (!isLanded(landed)) return undefined;
@@ -558,7 +614,9 @@ function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
 /**
  * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
  * without error, and must carry a token or SOL transfer. A failed read, or a reader for another network, is pending.
- * At most two calls.
+ * A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first available block is
+ * at or before `fromSlot`, is read once more at `finalized`; still not found, it is failed `nonce-moved`: the message
+ * can never land. At most two calls, or five for a durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
   return settledBy(ref, reader, (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer"));
@@ -566,6 +624,8 @@ export async function svmStatus(ref: SvmRef & { transaction: string }, reader: S
 
 /**
  * The shared settlement read: digest, then `err`, then the pairing's own check, which names a failure or returns null.
+ * A durable-nonce transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at
+ * `finalized` still finds nothing.
  */
 export async function settledBy<W extends string>(
   ref: SvmRef & { transaction: string },
@@ -574,11 +634,16 @@ export async function settledBy<W extends string>(
 ): Promise<
   | { state: "settled"; commitment: "confirmed" | "finalized" }
   | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "err" | "not-this-instrument" | W }
+  | { state: "failed"; why: "err" | "not-this-instrument" | "nonce-moved" | W }
 > {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
-  const read = await landedAt(reader, ref.transaction);
+  let read = await landedAt(reader, ref.transaction);
   if (read === undefined) return { state: "pending", why: "unreadable" };
+  if (read === null && ref.nonce !== undefined && (await nonceLapsed(ref, reader))) {
+    read = await landedAt(reader, ref.transaction, ["finalized"]);
+    if (read === undefined) return { state: "pending", why: "unreadable" };
+    if (read === null) return { state: "failed", why: "nonce-moved" };
+  }
   if (read === null) return { state: "pending", why: "not-found" };
   const tx = decodeSvmTx(read.landed.wire);
   if ("refused" in tx) return { state: "pending", why: "unreadable" };
@@ -590,10 +655,63 @@ export async function settledBy<W extends string>(
 }
 
 /**
+ * True when the durable nonce `ref.nonce` records is spent or gone: a `finalized` read of the nonce account, at a
+ * context slot at least 150 slots past `fromSlot`, finds no account, an account the System program does not own, an
+ * account that is not an initialized nonce account, or an initialized current-version nonce account holding another
+ * value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce` and
+ * a reader for another network are false. One call.
+ *
+ * The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. So
+ * a durable-nonce reference with no named transaction lapses when this reads true and a `svmLocate` that starts after
+ * it is complete with nothing found.
+ */
+export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<boolean> {
+  if (reader.network !== ref.network) return false;
+  const nonce: unknown = ref.nonce;
+  if (typeof nonce !== "object" || nonce === null) return false;
+  const { account, value } = nonce as SvmNonce;
+  if (!isKey(account) || !isKey(value)) return false;
+  if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return false;
+  let read: Awaited<ReturnType<SvmReader["account"]>>;
+  try {
+    read = await reader.account(account);
+  } catch {
+    return false;
+  }
+  if (typeof read !== "object" || read === null || typeof read.slot !== "bigint") return false;
+  if (read.slot < BigInt(ref.fromSlot) + NONCE_SETTLED_SLOTS) return false;
+  const found: unknown = read.value;
+  if (found === null) return true;
+  if (typeof found !== "object") return false;
+  const { owner, data } = found as { owner: unknown; data: unknown };
+  if (typeof owner !== "string" || !(data instanceof Uint8Array)) return false;
+  if (owner !== SYSTEM || data.length !== NONCE_ACCOUNT_BYTES) return true;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const version = view.getUint32(0, true);
+  const state = view.getUint32(4, true);
+  if (state !== 1) return true;
+  if (version === 0) return false;
+  if (version !== 1) return true;
+  return keyString(data.subarray(40, 72)) !== value;
+}
+
+/** `svmNonceMoved`, and the node still holds every block from `fromSlot`. */
+async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<boolean> {
+  if (!(await svmNonceMoved(ref, reader))) return false;
+  try {
+    const first = await reader.firstAvailableBlock();
+    return typeof first === "bigint" && first <= BigInt(ref.fromSlot);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Finds the instrument when no transaction was named: pages the fee payer's signatures, newest first, down to
- * `fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form.
- * With `channel` in the reference, it pages that account's signatures instead, and every signature is a candidate.
- * Each candidate is read through `status`, the pairing's own (`svmStatus` when none is given), at most 50 per pass.
+ * `fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form,
+ * matched without regard to case. With `channel` in the reference, it pages that account's signatures instead, and
+ * every signature is a candidate. Each candidate is read through `status`, the pairing's own (`svmStatus` when none
+ * is given), at most 50 per pass.
  * `complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
  * `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
  * leaves the search incomplete.
@@ -636,7 +754,7 @@ export async function svmLocate(
       if (typeof entry?.signature !== "string" || typeof entry.slot !== "bigint") return { complete: false };
       if (entry.memo !== null && typeof entry.memo !== "string") return { complete: false };
       if (entry.slot < fromSlot) return { complete: true };
-      if (ref.channel === undefined && (entry.memo === null || !entry.memo.includes(carrier))) continue;
+      if (ref.channel === undefined && (entry.memo === null || !entry.memo.toLowerCase().includes(carrier))) continue;
       if (++candidates > MAX_CANDIDATES) return { complete: false };
       const s = await status({ ...ref, transaction: entry.signature }, reader);
       if (s.state === "settled") return { found: entry.signature, complete: true };
