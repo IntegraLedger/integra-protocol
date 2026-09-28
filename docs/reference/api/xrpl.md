@@ -226,9 +226,11 @@ field, then every UInt32 field in field-code order, precede all others. Undefine
 > **decodeBlob**(`hex`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `hash`: `string`; `tx`: [`XrplTxJson`](#xrpltxjson); \}\>
 
 Decodes a signed blob of at most 4 KiB of hex, and computes its transaction hash as the ledger does: SHA-512Half
-over `54584E00` and the blob, in upper case. The blob must be the canonical serialization of what it decodes to: the
-codec's encoding of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and
-every array member is an object.
+over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its fields refuses a
+blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep or holds more than `XRPL_MAX_FIELDS`
+fields and array members. The blob must be the canonical serialization of what it decodes to: the codec's encoding
+of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and every array member is
+an object.
 
 #### Parameters
 
