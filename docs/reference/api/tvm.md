@@ -214,7 +214,7 @@ tvm:<global_id>: tvm:-239 mainnet, tvm:-3 testnet.
 
 ### exactTvm
 
-> `const` **exactTvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmUnsigned`](#tvmunsigned)\>; `carrier`: `"extra.forwardPayload"`; `claims`: `boolean`; `id`: `"x402/exact/tvm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmRef`](#tvmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`TvmStatus`](#tvmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `txId`: (`tx`) => `string`; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactTvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmUnsigned`](#tvmunsigned)\>; `carrier`: `"extra.forwardPayload"`; `claims`: `boolean`; `id`: `"x402/exact/tvm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmRef`](#tvmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`TvmStatus`](#tvmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `txId`: (`tx`) => `string`; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -292,7 +292,7 @@ to a text comment holding an LCP string.
 
 ### tvmRecover()
 
-> **tvmRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **tvmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. One call.
 
@@ -307,7 +307,7 @@ Recovers the hash from the payer Jetton wallet's transaction: the comment in its
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 

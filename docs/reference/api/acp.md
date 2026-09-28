@@ -46,7 +46,7 @@ description: "The exports of @integraledger/lcp/acp."
 
 ##### bound()
 
-> **bound**(`presented`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **bound**(`presented`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ###### Parameters
 
@@ -56,7 +56,7 @@ description: "The exports of @integraledger/lcp/acp."
 
 ###### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ##### build()
 

@@ -493,6 +493,25 @@ failing link refused as `link-not-https`. Every other failing link is `legal-con
 
 ***
 
+### isRefusal()
+
+> **isRefusal**(`v`): `v is Refusal`
+
+True only for a value `refusal` made. A caller's value shaped `{ refused: true, … }` is not a refusal, so no input is
+ever passed on as one.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `v` | `unknown` |
+
+#### Returns
+
+`v is Refusal`
+
+***
+
 ### jsonWithinDepth()
 
 > **jsonWithinDepth**(`text`): `boolean`

@@ -610,7 +610,7 @@ keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint2
 
 ### authorizationIdDigest()
 
-> **authorizationIdDigest**(`from`, `to`, `value`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **authorizationIdDigest**(`from`, `to`, `value`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 SHA-256 over the 72 bytes of `abi.encodePacked(address from, address to, uint256 value)`: the identity of one
 transfer, which a `Transfer(from, to, value)` log in the settlement transaction reproduces.
@@ -625,7 +625,7 @@ transfer, which a `Transfer(from, to, value)` log in the settlement transaction 
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
@@ -657,7 +657,7 @@ is not an address, or a block that is not a non-negative bigint is `evm/field-ma
 
 ### bindSalt()
 
-> **bindSalt**(`receiverAuthorizer`, `policy`, `h`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **bindSalt**(`receiverAuthorizer`, `policy`, `h`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 keccak256(abi.encode(SALT_BINDING_TYPEHASH, receiverAuthorizer, policy, h)).
 
@@ -671,7 +671,7 @@ keccak256(abi.encode(SALT_BINDING_TYPEHASH, receiverAuthorizer, policy, h)).
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
@@ -716,7 +716,7 @@ array is returned in the input's order, leaf first. An empty array decodes to `[
 
 ### eip3009Recover()
 
-> **eip3009Recover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **eip3009Recover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
 that `asset` emitted in it. One call.
@@ -730,7 +730,7 @@ that `asset` emitted in it. One call.
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
@@ -868,7 +868,7 @@ True for a receipt with a 0 or 1 status, a bigint block number and a list of log
 
 ### paymentHash()
 
-> **paymentHash**(`chainId`, `escrow`, `p`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **paymentHash**(`chainId`, `escrow`, `p`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The escrow's `getHash`: keccak256(abi.encode(chainId, escrow, keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, p)))).
 With `payer` zero it is x402's `signatureNonce`.
@@ -883,7 +883,7 @@ With `payer` zero it is x402's `signatureNonce`.
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
@@ -969,7 +969,7 @@ The EIP-712 typed data for `ReceiveWithAuthorization`, built as `eip3009TypedDat
 
 ### redeemedLeafRecover()
 
-> **redeemedLeafRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **redeemedLeafRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers H from a settlement transaction through MetaMask's DelegationManager: among its `RedeemedDelegation` logs,
 the leaves are those whose data word 1 (the delegate) is the redeemer in topic 2 or the wildcard delegate; exactly
@@ -986,7 +986,7 @@ one distinct leaf salt (data word 5) is H. One call.
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
@@ -1011,7 +1011,7 @@ Settled at the highest finality mark whose block is at or above `at`; a failed m
 
 ### transferDigest()
 
-> **transferDigest**(`v`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **transferDigest**(`v`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 the core's `hash` over the fields present, in the order `from`, `to`, `value`: 20, 20 and 32 bytes, the value as a
 big-endian uint256. `authorizationIdDigest(from, to, value)` equals `transferDigest({from, to, value})`.
@@ -1027,7 +1027,7 @@ big-endian uint256. `authorizationIdDigest(from, to, value)` equals `transferDig
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 

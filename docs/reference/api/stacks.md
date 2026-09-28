@@ -187,7 +187,7 @@ H from a memo argument that is `(some <32-byte buffer>)`, or null.
 
 ### stacksRecover()
 
-> **stacksRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **stacksRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
 A wrong reader is `stacks/wrong-reader`, a failed read or an answer of neither documented shape `stacks/unreadable`,
@@ -206,7 +206,7 @@ an unknown or unmined transaction `stacks/not-found`, any other status `stacks/n
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 

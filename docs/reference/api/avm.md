@@ -135,7 +135,7 @@ CAIP-2: the first 32 characters of the URL-safe base64 genesis hash.
 
 ### exactAvm
 
-> `const` **exactAvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmUnsigned`](#avmunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/algorand"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmRef`](#avmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`AvmStatus`](#avmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactAvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmUnsigned`](#avmunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/algorand"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmRef`](#avmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`AvmStatus`](#avmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -187,7 +187,7 @@ The pairing's id for an option it can pay, or undefined.
 
 ### avmRecover()
 
-> **avmRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **avmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The hash from the landed payment's note, for anyone holding the transaction id. One call.
 
@@ -202,7 +202,7 @@ The hash from the landed payment's note, for anyone holding the transaction id. 
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 

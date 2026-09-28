@@ -133,7 +133,7 @@ base58 for `solana-message` and `ed25519-raw`.
 | Property | Type |
 | ------ | ------ |
 | <a id="property-channel"></a> `channel` | `object` |
-| `channel.boundWithin` | `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\> |
+| `channel.boundWithin` | `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\> |
 | `channel.kind` | `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"` |
 | `channel.ref` | `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\> |
 | `channel.until` | `number` \| `undefined` |
@@ -198,19 +198,19 @@ A request to the buyer's signer.
 
 ### batchCloudflare
 
-> `const` **batchCloudflare**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CloudflarePaymentPayload`](#cloudflarepaymentpayload)\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/cloudflare"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **batchCloudflare**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CloudflarePaymentPayload`](#cloudflarepaymentpayload)\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/cloudflare"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
 ### batchEvm
 
-> `const` **batchEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `kind`: (`p`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`p`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_p`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/eip155"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **batchEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`p`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`p`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_p`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/eip155"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
 ### batchSvm
 
-> `const` **batchSvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `buildWithin`: (`w`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `carrier`: `"extra.memo"`; `channel`: `Readonly`\<\{ `boundWithin`: (`_p`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `kind`: (`p`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`p`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_p`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`SvmRef`](svm.md#svmref), `"fromSlot"`\>\>; `status`: (`ref`, `reader`) => `Promise`\<[`ChannelStatus`](svm.md#channelstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **batchSvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `buildWithin`: (`w`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `carrier`: `"extra.memo"`; `channel`: `Readonly`\<\{ `boundWithin`: (`_p`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`p`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`p`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_p`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`SvmRef`](svm.md#svmref), `"fromSlot"`\>\>; `status`: (`ref`, `reader`) => `Promise`\<[`ChannelStatus`](svm.md#channelstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -271,7 +271,7 @@ The config and id of a `ChannelCreated(channelId, config)` log, the id recompute
 
 ### batchChannelId()
 
-> **batchChannelId**(`chainId`, `c`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **batchChannelId**(`chainId`, `c`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The channel id: the EIP-712 digest of the configuration under the `x402 Batch Settlement` domain.
 
@@ -284,13 +284,13 @@ The channel id: the EIP-712 digest of the configuration under the `x402 Batch Se
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
 ### erc3009DepositNonce()
 
-> **erc3009DepositNonce**(`channelId`, `authSalt`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **erc3009DepositNonce**(`channelId`, `authSalt`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The ERC-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)).
 
@@ -303,7 +303,7 @@ The ERC-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 au
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 

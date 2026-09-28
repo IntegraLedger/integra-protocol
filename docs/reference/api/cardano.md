@@ -103,7 +103,7 @@ Bounded, read-only calls against one network's indexer. Every failure rejects wi
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-h"></a> `h` | `` `0x${string}` `` \| [`Refusal`](index.md#refusal) |
+| <a id="property-h"></a> `h` | [`Refusal`](index.md#refusal) \| `` `0x${string}` `` |
 | <a id="property-ttlslot-1"></a> `ttlSlot` | `bigint` \| `null` |
 | <a id="property-txid-1"></a> `txId` | `` `0x${string}` `` |
 
@@ -152,7 +152,7 @@ Bounded, read-only calls against one network's indexer. Every failure rejects wi
 
 ### exactCardano
 
-> `const` **exactCardano**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoUnsigned`](#cardanounsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/cardano"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoRef`](#cardanoref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CardanoStatus`](#cardanostatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCardano**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoUnsigned`](#cardanounsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/cardano"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoRef`](#cardanoref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CardanoStatus`](#cardanostatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -221,7 +221,7 @@ This pairing's id for an option it can pay, or undefined.
 
 ### cardanoRecover()
 
-> **cardanoRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **cardanoRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Reads the hash back from the included transaction alone, by its id. One call.
 
@@ -236,7 +236,7 @@ Reads the hash back from the included transaction alone, by its id. One call.
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 

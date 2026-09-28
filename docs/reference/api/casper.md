@@ -219,13 +219,13 @@ keccak256("EIP712Domain(string name,string version,string chain_name,bytes32 con
 
 ### exactCasper
 
-> `const` **exactCasper**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperUnsigned`](#casperunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/casper"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperRef`](#casperref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CasperStatus`](#casperstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCasper**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperUnsigned`](#casperunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/casper"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperRef`](#casperref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CasperStatus`](#casperstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ## Functions
 
 ### casperIdDigest()
 
-> **casperIdDigest**(`from`, `to`, `value`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **casperIdDigest**(`from`, `to`, `value`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 SHA-256 over the 33 + 33 bytes of the two addresses and the value as a 32-byte big-endian integer.
 
@@ -239,7 +239,7 @@ SHA-256 over the 33 + 33 bytes of the two addresses and the value as a 32-byte b
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
@@ -263,7 +263,7 @@ The pairing's filter: an `exact` option on a `casper:` network that `build` can 
 
 ### casperRecover()
 
-> **casperRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **casperRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`.
 
@@ -279,7 +279,7 @@ The hash from a settlement transaction alone: the `nonce` argument of the execut
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
