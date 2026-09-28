@@ -44,11 +44,15 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 | `mpp/session/evm` | The channel's `salt`: in the signed `open` call, the EIP-3009 nonce MPP derives over the channel parameters and the salt, or the Permit2 witness. | A voucher or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/session/tempo` | The `salt` of the signed `open` call to the channel escrow. | A voucher or a top-up is within; `close` is the close. | On the v2 escrow, the salt in the payment's channel descriptor, once the descriptor's channel id is the payment's channel. | none |
 | `mpp/session/hedera` | The `salt` of the escrow's `open`. | A voucher, a top-up or a `use` is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
-| `mpp/session/solana` | The `open` instruction's `salt`: H's first 8 bytes. | A voucher, a top-up or a `use` is within; `close` is the close. | H from a `use` credential whose session proof names the opening challenge's id. | none |
+| `mpp/session/solana` | The `open` instruction's `salt`: H's first 8 bytes. It binds those 8 bytes only: whoever assembles the ATR can construct a second ATR whose hash shares them. | A voucher, a top-up or a `use` is within; `close` is the close. | H from a `use` credential whose session proof names the opening challenge's id. | none |
 | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo, H's LCP string. | A voucher is within; `close` is the close. | Refuses `mpp/not-bound-within`. | The opening's `CancelAfter`, where it sets one. |
 | `mpp/session/lightning` | The deposit invoice's description hash `h`, which the seller's node signs. | A bearer proof or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/subscription/tempo` | The `witness` of the key authorization the payer's root key signs. | Only the activation, a key authorization, is classified: it is the opening. | Refuses `mpp/not-bound-within`. | The request's `subscriptionExpires`. |
 | `mpp/subscription/stripe` | The request's `methodDetails.metadata.legal_context`. | Every payment the seller reports on this pairing is the activation. | Refuses `mpp/not-bound-within`. | none |
+
+An `mpp/session/xrpl` challenge's `amount` is the first claim's cumulative total in drops, which the claim signs as a
+big-endian u64. `pairingsOf`, and so `build`, refuses an `amount` that is not a u64 written in decimal with no sign,
+point or leading zero, with `mpp/request-malformed`.
 
 This example lists them from the registry:
 
@@ -251,6 +255,15 @@ Ledger session, each voucher signs the channel id and an amount, not H. The
 and `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives the read keys of the close from the issued
 challenge and the channel, and `status` reads the close through the same reader. On `mpp/session/evm`, a transaction
 that is not a call closing that channel reads as pending, with the reason `not-a-close`.
+
+An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim. Its `reference`
+carries `opens`: the escrow, the channel, H and the chain. `status` then reads the transaction itself, through the
+reader's `transaction` (`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles
+only when it is the escrow's `open(address payee, address token, uint128 deposit, bytes32 salt, address
+authorizedSigner)`, sent to the escrow, with H as its salt, and whose sender, payee, token and authorized signer give
+the channel id. The payer is then the account that signed the call, not the credential's `source`. Any other
+transaction, such as a plain token transfer to the escrow, or another channel's opening, reads as failed, with the
+reason `open-call-not-found`. The deposit is not read.
 
 ## Next
 

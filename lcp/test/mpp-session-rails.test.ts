@@ -18,7 +18,7 @@ import {
 } from "@solana/kit";
 import { decode as decodeXrpl, encode as encodeXrpl } from "ripple-binary-codec";
 import { hashTypedData } from "viem";
-import { canonicalJson, toLcpString, type AtrHash } from "../src/index.js";
+import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/index.js";
 import type { EvmReceipt } from "../src/evm.js";
 import { ReaderError } from "../src/evm.js";
 import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
@@ -395,6 +395,30 @@ describe("mpp/session/xrpl", () => {
     const c = await u.complete({ signedBlob: V.XS2.blob, claimSignature: "C042FD" });
     if ("refused" in c) throw new Error(c.code);
     expect(c.source).toBe(`did:pkh:xrpl:1:${V.XS2.account}`);
+  });
+
+  it("build refuses a request whose amount is not a u64 of drops, and builds the largest u64", async () => {
+    const choice = (challenge: MppChallenge & { id: string }) => ({
+      challenge,
+      from: V.XS2.account,
+      now: 1790000000,
+      deposit: BigInt(V.XS2.deposit),
+      xrpl: { publicKey: `ED${"11".repeat(32)}`, settleDelay: 3600, fee: "12", sequence: 7, lastLedgerSequence: 1000 },
+    });
+    const placedWith = (request: Json) => {
+      const c: MppChallenge = { ...V.SS1.xrpl.challenge, request: b64u(canonicalJson(request) as string) };
+      return (sessionXrpl.advertise([c], H, V.fixed.link, c) as (MppChallenge & { id: string })[])[0]!;
+    };
+    const amountRows = V.SS1refusals.filter((r: { method: string; expect: string }) => r.method === "xrpl" && r.expect === "mpp/request-malformed");
+    for (const row of amountRows) {
+      const c: MppChallenge & { id: string } = { ...C_X, request: b64u(canonicalJson(row.request) as string) };
+      expect(await sessionXrpl.build(choice(c), H), row.case).toEqual(refused("mpp/request-malformed"));
+    }
+    // 2^64 - 1, the largest value the claim's big-endian u64 holds.
+    const max = placedWith({ ...V.SS1refusals.at(-1).request, amount: "18446744073709551615" });
+    const u = await sessionXrpl.build(choice(max), H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(hex(u.request.claim.bytes).toUpperCase().endsWith("FFFFFFFFFFFFFFFF")).toBe(true);
   });
 
   it("XS4: the opening's status and a reported close", async () => {

@@ -86,6 +86,133 @@
    "code": "mpp/channel-named"
   }
  },
+ "ES9": {
+  "about": "The hash opening's settlement read. The credential is ES7's hash opening, whose transaction the payer broadcast before the claim. status reads the receipt, then the transaction by eth_getTransactionByHash, and settles only when the transaction is the payer's own call to the escrow of draft-evm-session-00's open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner) with salt H, whose sender, payee, token and authorized signer give the credential's channel id (ES1). Each input is viem 2.56.8's encodeFunctionData of that signature, or of ERC-20 transfer(address,uint256); openH is ES2's call (164 bytes, selector 0xc79ea485, deposit 0x4c4b40, H once). The receipt holds the token's Transfer of the deposit from the payer to the escrow, at block 90, with the safe and finalized marks at 100.",
+  "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "90",
+   "logs": [
+    {
+     "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x0000000000000000000000001234567890abcdef1234567890abcdef12345678"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000004c4b40"
+    }
+   ]
+  },
+  "finalized": "100",
+  "cases": [
+   {
+    "case": "the payer's open call to the escrow, salt H",
+    "transaction": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+     "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "finalized",
+     "blockNumber": "90"
+    }
+   },
+   {
+    "case": "a plain ERC-20 transfer of 1 base unit to the escrow, with no open call",
+    "transaction": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "input": "0xa9059cbb0000000000000000000000001234567890abcdef1234567890abcdef123456780000000000000000000000000000000000000000000000000000000000000001"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "open-call-not-found"
+    }
+   },
+   {
+    "case": "the payer's open call whose salt is H2",
+    "transaction": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+     "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b4088d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f0315890000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "open-call-not-found"
+    }
+   },
+   {
+    "case": "openH signed by another account",
+    "transaction": {
+     "from": "0x7777777777777777777777777777777777777777",
+     "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+     "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "open-call-not-found"
+    }
+   },
+   {
+    "case": "the open call naming another payee",
+    "transaction": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+     "input": "0xc79ea4850000000000000000000000007777777777777777777777777777777777777777000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "open-call-not-found"
+    }
+   },
+   {
+    "case": "openH sent to the token instead of the escrow",
+    "transaction": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "open-call-not-found"
+    }
+   },
+   {
+    "case": "openH with one byte cut from its end",
+    "transaction": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+     "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00000000000000000000000000000000000000000000000000000000000000"
+    },
+    "expect": {
+     "state": "failed",
+     "why": "open-call-not-found"
+    }
+   },
+   {
+    "case": "no transaction by that hash",
+    "transaction": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   }
+  ],
+  "presentedForH2": {
+   "case": "the transaction of the first case presented as the hash opening of a channel for H2: the same payer, payee, token and escrow, salt H2 and ES1's H2 channel id",
+   "transaction": {
+    "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "to": "0x1234567890AbcdEF1234567890aBcdef12345678",
+    "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "expect": {
+    "state": "failed",
+    "why": "open-call-not-found"
+   }
+  }
+ },
  "plant3": {
   "case": "ES4 with a nonce computed over H′ and salt H",
   "expectNonceH2": {
@@ -107,7 +234,7 @@
   "zeroPartyRecoverable": false,
   "forwardIndexable": false,
   "publicProof": true,
-  "proves": "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow; the seller's server verified that it created this channel. This does not show that amount, payee, asset or timing match the ATR's content. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each voucher signs a commitment to this ATR's hash."
+  "proves": "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow. Where the payer sent the open call, the seller read that call: it is to the escrow, its salt is this ATR's hash, and its sender, payee, token and authorized signer give this channel id, so the payer is the account that signed it. Where the opening is an EIP-3009 authorization or a Permit2 transfer, the seller's server verified that the transaction created this channel. This does not show that amount, payee, asset or timing match the ATR's content. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each voucher signs a commitment to this ATR's hash."
  },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",

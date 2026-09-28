@@ -108,6 +108,12 @@ export interface SessionRef extends EvmRef {
   /** The transaction the credential presents, where the payer broadcast the opening before the claim. */
   transaction?: Hex;
   opened?: { address: Hex; version: "v1" | "v2"; channel: Hex; h: AtrHash; chainId: number };
+  /**
+   * The opening of an EVM session that the payer broadcast as a call: a call to `escrow` of `OPEN_V1_SELECTOR` whose
+   * salt is `h`, and whose sender, payee, token and authorized signer, with `h`, the escrow and `chainId`, give
+   * `channel`.
+   */
+  opens?: { escrow: Hex; channel: Hex; h: AtrHash; chainId: number };
   /** The close of an EVM session: a call to `escrow` of one of `EVM_CLOSE_SELECTORS` naming `channel`. */
   closes?: { escrow: Hex; channel: Hex };
   /**
@@ -117,7 +123,10 @@ export interface SessionRef extends EvmRef {
   accessKey?: { keyId: Hex; token: Hex; to: Hex; account?: Hex };
 }
 
-export type SessionStatus = EvmBreadthStatus | { state: "pending"; why: "not-a-close" };
+export type SessionStatus =
+  | EvmBreadthStatus
+  | { state: "pending"; why: "not-a-close" }
+  | { state: "failed"; why: "open-call-not-found" };
 
 /**
  * The buyer's inputs to an in-channel payment: the within 402's challenge, echoed as given; the held opening, exactly
@@ -195,6 +204,8 @@ export const EVM_CLOSE_SELECTORS = Object.freeze(["0x0d65c51d", "0x79d35ded", "0
 const TEMPO_V1_DEFAULT_CHAIN = 4217;
 const MAX_SIGNATURE = 8192;
 const MAX_WIRE = 65_536;
+/** `open(address,address,uint128,bytes32,address)`: the selector and five words. */
+const OPEN_CALL_BYTES = 164;
 const U96 = 1n << 96n;
 const U128 = 1n << 128n;
 const KEY_TYPES = { secp256k1: 0, p256: 1, webAuthn: 2 } as const;
@@ -362,10 +373,12 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
 /**
  * `evmStatus` on the named logs, then, where `ref.opened` is present, one `ChannelOpened` log from `opened.address`
  * naming the channel: on v2 its data word 3 (the salt) is `h`; on v1 the channel id recomputed from the event with
- * salt `h` is the channel. Where `ref.closes` is present, the succeeded transaction must be a call to that escrow whose
- * calldata starts with one of `EVM_CLOSE_SELECTORS` and whose first argument is that channel, else pending
- * `not-a-close`. Where `ref.accessKey.account` is present, the succeeded receipt must also hold the account keychain's
- * `AccessKeySpend` log naming that account, key and token, else failed `binding-log-not-found`. At most four calls.
+ * salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction must be the open call `opens`
+ * describes, read by `eth_getTransactionByHash`, else failed `open-call-not-found`. Where `ref.closes` is present, the
+ * succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
+ * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
+ * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
+ * failed `binding-log-not-found`. At most four calls.
  */
 export async function sessionStatus(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionStatus> {
   if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
@@ -379,6 +392,7 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     transaction: (tx) => reader.transaction(tx),
   };
   const s = await evmStatus(ref, watching);
+  if (s.state === "settled" && ref.opens !== undefined) return openRead(s, ref.transaction, ref.opens, reader);
   if (s.state === "settled" && ref.closes !== undefined) return closeRead(s, ref.transaction, ref.closes, reader);
   if (s.state === "settled" && ref.accessKey?.account !== undefined) {
     return spentUnder((seen as EvmReceipt | null)?.logs ?? [], ref.accessKey) ? s : { state: "failed", why: "binding-log-not-found" };
@@ -560,10 +574,13 @@ async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
     if (transaction === null) return refusal("mpp/credential-malformed");
     const digest = await transferDigest({ from: o.payer, to: o.escrow });
     if (typeof digest !== "string") return digest;
+    const channel = normalHash(presented.payload["channelId"]);
+    if (channel === null) return refusal("mpp/credential-malformed");
     return {
       network,
       transaction: transaction as Hex,
       transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to", digest },
+      opens: { escrow: o.escrow, channel: channel as Hex, h: o.h, chainId: o.checked.details["chainId"] as number },
     };
   }
   if (o.opening.type === "authorization") {
@@ -742,6 +759,48 @@ async function closeRead(
     (EVM_CLOSE_SELECTORS as readonly string[]).includes(selector ?? "") &&
     sameBytes(hexOf(input.subarray(4, 36)), closes.channel);
   return closing ? settled : { state: "pending", why: "not-a-close" };
+}
+
+/**
+ * A succeeded transaction read as an EVM session's opening, by `eth_getTransactionByHash`: sent to the escrow, with
+ * 164 bytes of calldata `open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)`,
+ * its salt `h`, and `evmChannelId` over the transaction's sender, the call's payee, token and authorized signer, `h`,
+ * the escrow and the chain equal to the channel. The deposit is not read.
+ */
+async function openRead(
+  settled: SessionStatus,
+  transaction: Hex,
+  opens: NonNullable<SessionRef["opens"]>,
+  reader: EvmReader,
+): Promise<SessionStatus> {
+  let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
+  try {
+    tx = await reader.transaction(transaction);
+  } catch {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (tx === null) return { state: "pending", why: "not-found" };
+  const readable = isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, Infinity);
+  if (!readable) return { state: "pending", why: "unreadable" };
+  const input = bytesOf(tx.input, OPEN_CALL_BYTES);
+  if (input?.length !== OPEN_CALL_BYTES) return { state: "failed", why: "open-call-not-found" };
+  const word = (i: number) => input.subarray(4 + 32 * i, 4 + 32 * (i + 1));
+  /** An ABI address word: 12 zero bytes, then the address. */
+  const address = (i: number) => (word(i).subarray(0, 12).every((b) => b === 0) ? hexOf(word(i).subarray(12)) : undefined);
+  const payee = address(0);
+  const token = address(1);
+  const signer = address(4);
+  const { escrow, chainId, channel, h } = opens;
+  const opening =
+    tx.to !== null &&
+    sameBytes(tx.to, escrow) &&
+    hexOf(input.subarray(0, 4)) === OPEN_V1_SELECTOR &&
+    sameBytes(hexOf(word(3)), h) &&
+    payee !== undefined &&
+    token !== undefined &&
+    signer !== undefined &&
+    sameBytes(evmChannelId({ payer: tx.from, payee, token, salt: h, authorizedSigner: signer, escrow, chainId }), channel);
+  return opening ? settled : { state: "failed", why: "open-call-not-found" };
 }
 
 /**
@@ -1136,8 +1195,11 @@ export const sessionEvm = Object.freeze({
       "signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over " +
       "the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and " +
       "the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's " +
-      "deposit to the escrow; the seller's server verified that it created this channel. This does not show that " +
-      "amount, payee, asset or timing match the ATR's content. " +
+      "deposit to the escrow. Where the payer sent the open call, the seller read that call: it is to the escrow, its " +
+      "salt is this ATR's hash, and its sender, payee, token and authorized signer give this channel id, so the payer " +
+      "is the account that signed it. Where the opening is an EIP-3009 authorization or a Permit2 transfer, the " +
+      "seller's server verified that the transaction created this channel. This does not show that amount, payee, " +
+      "asset or timing match the ATR's content. " +
       LATER_VOUCHERS,
   ),
   claims: true as const,
