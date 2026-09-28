@@ -52,7 +52,9 @@ function reader(a: { status?: 0 | 1; tx?: EvmTransaction | null | "error" }): Ev
 describe("the EVM session's close read", () => {
   const ES = challenge("evm", "session", f.request);
   const ref = sessionEvm.closeRef(ES, CHANNEL) as SessionRef;
-  const read = (tx: EvmTransaction | null | "error", status: 0 | 1 = 1) => sessionStatus({ ...ref, transaction: TX }, reader({ status, tx }));
+  // The sender is the payer; the close read does not read it.
+  const read = (tx: Omit<EvmTransaction, "from"> | null | "error", status: 0 | 1 = 1) =>
+    sessionStatus({ ...ref, transaction: TX }, reader({ status, tx: tx === null || tx === "error" ? tx : { from: f.payer, ...tx } }));
   const escrow = f.escrow as Hex;
 
   it("the three selectors are the draft's function signatures", () => {

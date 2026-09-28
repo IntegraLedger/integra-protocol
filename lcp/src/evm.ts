@@ -163,12 +163,16 @@ export interface EvmReader {
   receipt(tx: Hex): Promise<EvmReceipt | null>;
   /** `eth_getBlockByNumber(tag, false).number`. */
   blockNumber(tag: "safe" | "finalized"): Promise<bigint>;
-  /** `eth_getTransactionByHash`: the recipient (null for a contract creation) and the calldata; null when none. */
+  /**
+   * `eth_getTransactionByHash`: the sender, the recipient (null for a contract creation) and the calldata; null when
+   * none.
+   */
   transaction(tx: Hex): Promise<EvmTransaction | null>;
 }
 
-/** A transaction as `eth_getTransactionByHash` gives it: `to` and `input`. */
+/** A transaction as `eth_getTransactionByHash` gives it: `from`, the address that signed it; `to`; and `input`. */
 export interface EvmTransaction {
+  from: Hex;
   to: Hex | null;
   input: Hex;
 }

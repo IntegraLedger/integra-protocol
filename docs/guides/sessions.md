@@ -252,6 +252,15 @@ and `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives the read keys
 challenge and the channel, and `status` reads the close through the same reader. On `mpp/session/evm`, a transaction
 that is not a call closing that channel reads as pending, with the reason `not-a-close`.
 
+An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim. Its `reference`
+carries `opens`: the escrow, the channel, H and the chain. `status` then reads the transaction itself, through the
+reader's `transaction` (`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles
+only when it is the escrow's `open(address payee, address token, uint128 deposit, bytes32 salt, address
+authorizedSigner)`, sent to the escrow, with H as its salt, and whose sender, payee, token and authorized signer give
+the channel id. The payer is then the account that signed the call, not the credential's `source`. Any other
+transaction, such as a plain token transfer to the escrow, or another channel's opening, reads as failed, with the
+reason `open-call-not-found`. The deposit is not read.
+
 ## Next
 
 - [x402](./x402.md) and [MPP](./mpp.md): the surfaces these channels run on.
