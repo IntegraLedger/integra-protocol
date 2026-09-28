@@ -337,10 +337,10 @@ Recovers the hash from the transaction id alone: the memo of the transaction who
 
 > **tronStatus**(`ref`, `reader`): `Promise`\<[`TronStatus`](#tronstatus)\>
 
-Reads the transaction by id: at the Solidity node first, then at the FullNode's head. Settled when its receipt
-result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as `expired` only when the latest
-solidified block is two slots past the expiration and no node holds it. A failed read, or a reader for another
-network, is pending. At most three calls.
+Reads the latest solidified block first, then the transaction by id: at the Solidity node, then at the FullNode's
+head. Settled when its receipt result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as
+`expired` only when that earlier solidified block is two slots past the expiration and neither lookup finds the
+transaction. A failed read, or a reader for another network, is pending. At most three calls.
 
 #### Parameters
 

@@ -229,7 +229,8 @@ arguments whose `memo` is an LCP string. The bytes must be exactly the borsh enc
 > **nearLapsed**(`ref`, `reader`): `Promise`\<`boolean`\>
 
 True only when the delegate action can never execute: the final height is past `maxBlockHeight` and the key's
-nonce is below the action's, or the key is gone. Two calls; a failed read is false.
+nonce is below the action's. A key that does not exist is false, because a key deleted after the delegate
+executed gives the same answer. Two calls; a failed read is false.
 
 #### Parameters
 
@@ -270,8 +271,10 @@ Recovers the hash from the settlement transaction: the `memo` in its delegated `
 > **nearStatus**(`ref`, `reader`): `Promise`\<[`NearStatus`](#nearstatus)\>
 
 Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be this
-instrument and reads the receipts the token contract executed: a failure is failed, a success is settled. A
-failed read, an empty relayer list, or a reader for another network is pending.
+instrument and reads the receipts the token contract executed: a failure is failed, a success is settled. Settled
+is `final` only when `final_execution_status` is `FINAL`, every receipt's block then being final; any other status,
+`EXECUTED` included, is `optimistic`. A failed read, an empty relayer list, or a reader for another network is
+pending.
 
 #### Parameters
 
