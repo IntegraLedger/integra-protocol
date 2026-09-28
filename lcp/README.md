@@ -153,7 +153,9 @@ the signed nonce is H: true
 ```
 
 Each pairing's functions return their result or a refusal, `{ refused: true, code }`, whose code names what is wrong,
-such as `x402/link-not-https`.
+such as `x402/link-not-https`. Only the package makes refusals: a value you pass in is never returned to you as one,
+whatever members it carries
+([refusals](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/concepts/refusals.md)).
 
 ## Guides
 
