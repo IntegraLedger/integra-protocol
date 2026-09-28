@@ -215,6 +215,9 @@ describe("mpp-charge-solana.json", () => {
       signatures: async () => [],
       blockhashValid: async () => true,
       firstAvailableBlock: async () => 0n,
+      account: async () => {
+        throw new Error("a push credential's read makes no account read");
+      },
     };
     const cr = credential(placed, { type: "signature", signature: V.push.txid });
     expect(await chargeSolana.fetchPresented(cr, reader)).toEqual(refused(row.expect));
