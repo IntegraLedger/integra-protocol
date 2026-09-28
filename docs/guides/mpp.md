@@ -26,6 +26,12 @@ value derived from it, commits to H. Some methods also carry H in a request memb
 that member for each intent and method (for example `externalId` for `solana` charges, and
 `methodDetails.invoiceId` for `xrpl`).
 
+`issuedDigest(challenge)` is the digest of what the seller issued: SHA-256 over the RFC 8785 form of the bound
+members, with `request` decoded and its `CARRIER` member left out, and `opaque` without the LCP members. The seller
+compares the echoed challenge's digest with the one it recorded at issue. A `stellar` charge's `recipient` is the one
+carrier that stays in part: the digest keeps its base `G…` account and leaves out only the muxed id, so an echoed
+challenge whose `recipient` names another account gives another digest.
+
 ## Placing and reading
 
 `place(doc, h, link, option)` is the seller's placement over a list of challenges: the challenge whose bound members
@@ -88,11 +94,11 @@ Payment scheme's problem type and HTTP status for a refusal code.
 |---|---|---|
 | `evm` | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` | The signed nonce, or the witness's `challengeHash`: keccak256 of the challenge id and realm (`challengeHash`). |
 | `evm` | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | Nothing signed or landed; H is in the challenge. |
-| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | MPP's attribution memo on the `transferWithMemo`, whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`). |
+| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | MPP's attribution memo on the `transferWithMemo`, whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`): H is bound through those 7 bytes only. |
 | `solana` | `mpp/charge/solana` | The one Memo instruction, holding H's LCP string (the request's `externalId`). |
-| `stellar` | `mpp/charge/stellar` | The seller's muxed recipient address, whose 8-byte id is H's first 8 bytes. |
+| `stellar` | `mpp/charge/stellar` | The seller's muxed recipient address, whose 8-byte id is H's first 8 bytes: H is bound through those 8 bytes only. |
 | `xrpl` | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H itself (the request's `methodDetails.invoiceId`). |
-| `hedera` | `mpp/charge/hedera` | MPP's attribution memo as the signed body memo. |
+| `hedera` | `mpp/charge/hedera` | MPP's attribution memo as the signed body memo: H is bound through its 7-byte nonce only. |
 | `lightning` | `mpp/charge/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 | `usdc` | `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | The EIP-3009 nonce, or the Gateway burn intent's salt: `usdc`'s derivation over the challenge id. |
 | `usdc` | `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks` | The signed Memo instruction (H's LCP string), or the SIP-010 `transfer` memo (H's 32 bytes). |
@@ -101,8 +107,15 @@ Payment scheme's problem type and HTTP status for a refusal code.
 | sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/hedera`, `mpp/session/solana`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
 | subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. |
 
+Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the attribution memo on Tempo and Hedera, and
+the Stellar muxed id), the payment binds H only through those bytes: whoever assembles the ATR can construct a second
+ATR that shares them. Those pairings state this in their `pattern.proves`.
+
 Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs. Its
 `bound(credential)` reads H from the echoed challenge and checks that what was signed carries it; `reference` and
-`status` read the settlement where the method lands on a chain.
+`status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
+only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
+refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, and `xrpl/not-success` on the XRP
+Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that).
 
 The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these rules in full.

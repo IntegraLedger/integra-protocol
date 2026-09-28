@@ -15,7 +15,7 @@ import {
   type Hex as ViemHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { TRANSFER_TOPIC, type EvmLog, type EvmRef, type Permit2TypedData } from "../src/evm.js";
+import { RECEIVE_POLICY_GUARD, TRANSFER_TOPIC, type EvmLog, type EvmRef, type Permit2TypedData } from "../src/evm.js";
 import {
   attributionMemo,
   challengeHash,
@@ -300,6 +300,24 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(await status({ status: 0, blockNumber: "100", logs: [] })).toEqual(HS.MV12.expectReverted);
     expect(await status("reader-error")).toEqual({ state: "pending", why: "unreadable" });
     expect(evmHash.pattern).toEqual(Object.fromEntries(Object.entries(HS.pattern).filter(([k]) => k !== "claims")));
+  });
+
+  it("MV12: a Transfer to the receive-policy guard is failed receive-policy-blocked, never the payment", async () => {
+    const keys = await evmHash.reference({ challenge: C_E } as MppCredential);
+    if ("refused" in keys) throw new Error(keys.code);
+    const ref = { ...keys, transaction: HS.MV12.hash };
+    const status = async (logs: EvmLog[]) =>
+      withBigints(await evmHash.status(ref, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs })));
+    const transfer = (to: string): EvmLog => ({
+      address: USDC as `0x${string}`,
+      topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(to)],
+      data: wordOf(10000n),
+    });
+    expect(HS.MV12.guard).toBe(RECEIVE_POLICY_GUARD);
+    expect(await status([transfer(HS.MV12.guard)])).toEqual(HS.MV12.expectBlocked);
+    expect(await evmTransaction.status(ref, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [transfer(HS.MV12.guard)] })))
+      .toEqual(HS.MV12.expectBlocked);
+    expect(await status([transfer(HS.MV12.guard), transfer(RECIPIENT_E)])).toEqual(HS.MV12.expectSettled);
   });
 });
 

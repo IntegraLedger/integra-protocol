@@ -177,7 +177,8 @@ async function reference(
 
 /**
  * A push credential (`type="signature"`) with the landed wire added as `transaction`, read at `confirmed`. Other
- * credentials are returned unchanged. A read that fails, or finds nothing, is a refusal the seller retries.
+ * credentials are returned unchanged. A read that fails, or finds nothing, is a refusal the seller retries; a landed
+ * transaction that failed with an error is refused `svm/err`.
  */
 async function fetchPresented(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
@@ -202,6 +203,7 @@ async function fetchPresented(
   }
   if (landed === null) return refusal("svm/not-found");
   if (!isObject(landed) || !(landed.wire instanceof Uint8Array)) return refusal("svm/unreadable");
+  if (landed.err !== null && landed.err !== undefined) return refusal("svm/err");
   return { ...credential, payload: { ...credential.payload, transaction: toBase64(landed.wire) } };
 }
 

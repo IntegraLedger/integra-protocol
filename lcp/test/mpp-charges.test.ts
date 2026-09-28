@@ -28,6 +28,7 @@ import {
   chargeSolana,
   chargeStellar,
   chargeXrpl,
+  issuedDigest,
   pairingsOf,
   type MppChallenge,
   type MppCredential,
@@ -196,6 +197,25 @@ describe("mpp-charge-solana.json", () => {
     expect(await chargeSolana.fetchPresented(cr, failing)).toEqual(refused("svm/unreadable"));
     expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toBe(V.recover.expect);
   });
+
+  it("push: fetchPresented refuses a landed transaction that carries an error", async () => {
+    const row = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "svm/err");
+    const landed: SvmLanded = {
+      wire: Uint8Array.from(Buffer.from(V.push.landedWireBase64, "base64")),
+      err: row.err,
+      loaded: { writable: [], readonly: [] },
+      inner: [],
+    };
+    const reader: SvmReader = {
+      network: V.push.network,
+      transaction: async (sig) => (sig === V.push.txid ? landed : null),
+      signatures: async () => [],
+      blockhashValid: async () => true,
+      firstAvailableBlock: async () => 0n,
+    };
+    const cr = credential(placed, { type: "signature", signature: V.push.txid });
+    expect(await chargeSolana.fetchPresented(cr, reader)).toEqual(refused(row.expect));
+  });
 });
 
 /** A v0 transfer message signed by the vector's payer seed, with two Memo instructions: `first`, then `second`. */
@@ -245,6 +265,18 @@ describe("mpp-charge-stellar.json", () => {
     expect(roundTrip(ref)).toEqual(ref);
   });
 
+  it("issuedDigest keeps recipient's base account, so an echo naming another account gives another digest", async () => {
+    const D = V.issuedDigest;
+    expect(await issuedDigest(V.challenge)).toBe(D.expectIssued);
+    expect(await issuedDigest(placed)).toBe(D.expectIssued);
+    expect(await issuedDigest(chargeStellar.unplaced(placed))).toBe(D.expectIssued);
+    expect(chargeStellar.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
+    expect(JSON.parse(Buffer.from(D.echoedRequest, "base64url").toString("utf8")).recipient).toBe(D.payerMuxed);
+    const echoed = { ...placed, request: D.echoedRequest };
+    expect(await issuedDigest(echoed)).toBe(D.expectEchoed);
+    expect(await issuedDigest(chargeStellar.unplaced(echoed))).toBe(D.expectEchoed);
+  });
+
   it("refusals, and fetchPresented of a hash credential", async () => {
     expect(await chargeStellar.bound(credential(placed, V.refusals[0].payload))).toEqual(refused(V.refusals[0].expect));
     const other = { ...placed, id: "47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU.0" };
@@ -266,6 +298,17 @@ describe("mpp-charge-stellar.json", () => {
     const ref = await chargeStellar.reference(fetched);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.transaction).toBe(V.refusals[0].payload.hash);
+  });
+
+  it("push: fetchPresented refuses a transaction the reader reports FAILED", async () => {
+    const row = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "stellar/tx-failed");
+    const reader: StellarReader = {
+      network: "stellar:testnet",
+      transaction: async () => ({ status: "FAILED", envelopeXdr: V.V3.envelope, ledger: 990, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      latestLedger: async () => 1000,
+    } as StellarReader;
+    expect(await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader)).toEqual(refused(row.expect));
   });
 
   it("bound and build read the invocation the payer's entry signs (x402-exact-stellar.json's V4 and V4build rows)", async () => {
@@ -335,15 +378,37 @@ describe("mpp-charge-xrpl.json", () => {
 
   it("push: fetchPresented reads the blob by hash; read-first before it", async () => {
     expect(await chargeXrpl.bound(credential(placed, V.refusals[0].payload))).toEqual(refused(V.refusals[0].expect));
+    const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment" };
     const reader: XrplReader = {
       network: "xrpl:1",
-      tx: async () => ({ notFound: true, searchedAll: true }),
+      tx: async (h) => (h === V.V3.expectReference.transaction ? landed : { notFound: true, searchedAll: true }),
       txBlob: async (h) => (h === V.V3.expectReference.transaction ? V.V3.blob : null),
       validatedLedger: async () => 1000,
     };
     const fetched = await chargeXrpl.fetchPresented(credential(placed, V.refusals[0].payload), reader);
     if ("refused" in fetched) throw new Error(fetched.code);
     expect(await chargeXrpl.bound(fetched)).toBe(H);
+  });
+
+  it("push: fetchPresented refuses a transaction not yet validated, and a validated result other than tesSUCCESS", async () => {
+    const row = (code: string) => V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === code);
+    const readerOf = (landed: { validated: boolean; result: string }): XrplReader => ({
+      network: "xrpl:1",
+      tx: async () => ({ ...landed, ledgerIndex: 990, transactionType: "Payment" }),
+      txBlob: async () => V.V3.blob,
+      validatedLedger: async () => 1000,
+    });
+    const push = credential(placed, V.refusals[0].payload);
+    const pending = row("xrpl/not-validated");
+    expect(await chargeXrpl.fetchPresented(push, readerOf({ validated: false, result: "tesSUCCESS" }))).toEqual(
+      refused(pending.expect),
+    );
+    const failed = row("xrpl/not-success");
+    expect(await chargeXrpl.fetchPresented(push, readerOf({ validated: true, result: failed.result }))).toEqual(
+      refused(failed.expect),
+    );
+    const missing: XrplReader = { ...readerOf({ validated: true, result: "tesSUCCESS" }), tx: async () => ({ notFound: true, searchedAll: false }) };
+    expect(await chargeXrpl.fetchPresented(push, missing)).toEqual(refused("xrpl/not-found"));
   });
 
   it("plant: a memo carrying L without InvoiceID is refused, never H", async () => {

@@ -707,6 +707,25 @@ the digest. Settled carries the highest finality mark reached. At most three cal
 
 ***
 
+### isGuardTransfer()
+
+> **isGuardTransfer**(`log`, `token`): `boolean`
+
+A `Transfer` log from `token` whose recipient is `RECEIVE_POLICY_GUARD`: a transfer a Tempo receive policy blocked.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `log` | [`EvmLog`](#evmlog) |
+| `token` | `` `0x${string}` `` |
+
+#### Returns
+
+`boolean`
+
+***
+
 ### isLog()
 
 > **isLog**(`l`): `l is EvmLog`

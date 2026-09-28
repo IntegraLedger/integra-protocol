@@ -12,6 +12,7 @@ import {
   TRANSFER_TOPIC,
   eip3009TypedData,
   evmStatus,
+  isGuardTransfer,
   permit2TypedData,
   transferDigest,
   transferParts,
@@ -183,7 +184,9 @@ const PAYMENT_WITNESS = [
 
 /**
  * `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
- * topics and `topics[0]` = `Transfer`, else failed `transfer-not-found`. At most three calls.
+ * topics and `topics[0]` = `Transfer` whose recipient is not `RECEIVE_POLICY_GUARD`. Without one, a `Transfer` from
+ * `ref.asset` to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`. At most
+ * three calls.
  */
 export async function transferPresent(
   ref: EvmRef & { transaction: Hex; asset: Hex },
@@ -202,10 +205,13 @@ export async function transferPresent(
   const s = await evmStatus({ network: ref.network, transaction: ref.transaction }, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
+  if (!isAddress(ref.asset)) return { state: "failed", why: "transfer-not-found" };
   const moved = logs.some(
-    (l) => isAddress(ref.asset) && transferParts(l, ref.asset, TRANSFER_TOPIC) !== undefined,
+    (l) => transferParts(l, ref.asset, TRANSFER_TOPIC) !== undefined && !isGuardTransfer(l, ref.asset),
   );
-  return moved ? s : { state: "failed", why: "transfer-not-found" };
+  if (moved) return s;
+  if (logs.some((l) => isGuardTransfer(l, ref.asset))) return { state: "failed", why: "receive-policy-blocked" };
+  return { state: "failed", why: "transfer-not-found" };
 }
 
 // ── Shared steps.
@@ -733,8 +739,8 @@ const MEMO_PROVES =
   "challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction " +
   "whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain " +
   "verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's " +
-  "TransferWithMemo event. It ties the payment to the challenge instance, and does not exclude another challenge " +
-  "with the same 7 bytes. " +
+  "TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash only through those " +
+  "7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. " +
   LIMIT;
 
 const PUSH_PROVES =
@@ -743,7 +749,8 @@ const PUSH_PROVES =
   "transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that " +
   "id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of " +
   "the token's TransferWithMemo event, read after the money had moved. It ties the payment to the challenge " +
-  "instance, and does not exclude another challenge with the same 7 bytes. " +
+  "instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second " +
+  "ATR whose challenge id gives the same 7 bytes. " +
   LIMIT;
 
 const CALL_PROVES =

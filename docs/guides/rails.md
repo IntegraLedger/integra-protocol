@@ -30,7 +30,9 @@ A rail field holds H in one of these forms:
 
 A field that holds only part of H, or a value derived from it, lets anyone holding the ATR confirm H, but does not let
 anyone recover H from the chain alone. Each pairing's `pattern` says which it is: `zeroPartyRecoverable` is true only
-where the chain keeps H itself.
+where the chain keeps H itself. Where only 7 or 8 bytes of the payment depend on H, as with the Stellar muxed id and
+the nonce of MPP's attribution memo on Tempo and Hedera, the payment binds H only through those bytes: whoever
+assembles the ATR can construct a second ATR that shares them, and the pairing's `pattern.proves` says so.
 
 This example prints the forms for one H, using each rail's own helper:
 

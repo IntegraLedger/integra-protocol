@@ -25,6 +25,7 @@ import {
   pushedField,
   read,
   tie,
+  withoutCarrier,
   type Checked,
   type MppChallenge,
   type MppCredential,
@@ -107,7 +108,8 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
 
 /**
  * A push credential (`type="hash"`) with the landed envelope added as `transaction`. Other credentials are returned
- * unchanged. A read that fails, or finds nothing, is a refusal the seller retries.
+ * unchanged. A read that fails, or finds nothing, is a refusal the seller retries; a transaction the ledger records as
+ * `FAILED` is refused `stellar/tx-failed`.
  */
 async function fetchPresented(credential: MppCredential, reader: StellarReader): Promise<MppCredential | Refusal> {
   if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
@@ -124,7 +126,9 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
     return refusal("stellar/unreadable");
   }
   if (!isObject(r)) return refusal("stellar/unreadable");
+  if (r.status === "FAILED") return refusal("stellar/tx-failed");
   if (r.status === "NOT_FOUND" || typeof r.envelopeXdr !== "string") return refusal("stellar/not-found");
+  if (r.status !== "SUCCESS") return refusal("stellar/unreadable");
   return { ...credential, payload: { ...credential.payload, transaction: r.envelopeXdr } };
 }
 
@@ -164,6 +168,11 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   };
 }
 
+/** The challenge as issued: a muxed `recipient` back to its base `G…` account, the member that stays in the digest. */
+function unplaced(option: MppChallenge): MppChallenge {
+  return withoutCarrier(option, unmux);
+}
+
 /** The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. */
 function advertise(
   doc: readonly MppChallenge[],
@@ -189,11 +198,6 @@ function advertise(
   );
 }
 
-/** The challenge as issued: `recipient`, which carries the id once placed, is left out of the digest of what was issued. */
-function unplaced(option: MppChallenge): MppChallenge {
-  return option;
-}
-
 const pattern: LcpPattern = deepFreeze({
   pattern: "truncated-field",
   canonical: true,
@@ -206,9 +210,9 @@ const pattern: LcpPattern = deepFreeze({
     "The ATR was assembled, written to the seller's storage and linked in the challenge before approval, " +
     "and its hash is in the payment challenge, which the payer " +
     "did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of " +
-    "this ATR's hash, and the transaction succeeded. The id matches this hash by prefix only; it does not exclude " +
-    "another ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the " +
-    "ATR's content.",
+    "this ATR's hash, and the transaction succeeded. The id binds this hash only through its first 8 bytes: whoever " +
+    "assembles the ATR can construct a second ATR whose hash begins with the same 8 bytes. This does not show that " +
+    "amount, asset or timing match the ATR's content.",
 });
 
 export const chargeStellar = Object.freeze({

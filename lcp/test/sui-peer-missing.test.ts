@@ -2,7 +2,7 @@
 // import, and each function that needs the peer refuses `sui/peer-missing` (the vectors' refusal), never
 // throwing; `status` reads as pending `unreadable`.
 import { readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
 const CODE = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "sui/peer-missing").expect as string;
@@ -14,9 +14,16 @@ vi.mock("@mysten/sui/utils", () => {
   throw new Error("Cannot find package '@mysten/sui'");
 });
 
+/** The root import loads every module of the package, which takes longest on a loaded machine. */
+const IMPORT_MS = 30_000;
+
 describe("without @mysten/sui", () => {
-  it("the root imports, and every function that needs the peer refuses peer-missing", async () => {
-    const root = await import("../src/index.js");
+  let root: typeof import("../src/index.js");
+  beforeAll(async () => {
+    root = await import("../src/index.js");
+  }, IMPORT_MS);
+
+  it("the root imports, and every function that needs the peer refuses peer-missing", { timeout: IMPORT_MS }, async () => {
     expect(root.BINDINGS.map((b) => b.id)).toContain("x402/exact/sui");
     const { decodeSuiTx, exactSui } = await import("../src/sui.js");
     const b64 = V.V2.tx.transactionBase64 as string;

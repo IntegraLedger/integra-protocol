@@ -2,7 +2,7 @@
 // import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
 // throwing; a status that needs one reads as pending `unreadable`, and nothing is read.
 import { readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const TVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tvm.json", import.meta.url), "utf8"));
 const NEAR = JSON.parse(readFileSync(new URL("../vectors/x402-exact-near.json", import.meta.url), "utf8"));
@@ -22,15 +22,22 @@ vi.mock("borsh", () => {
   throw new Error("Cannot find package 'borsh'");
 });
 
+/** The root import loads every module of the package, which takes longest on a loaded machine. */
+const IMPORT_MS = 30_000;
+
 describe("without the TON and NEAR peers", () => {
-  it("the root imports with both pairings in BINDINGS", async () => {
-    const root = await import("../src/index.js");
+  let root: typeof import("../src/index.js");
+  beforeAll(async () => {
+    root = await import("../src/index.js");
+  }, IMPORT_MS);
+
+  it("the root imports with both pairings in BINDINGS", { timeout: IMPORT_MS }, () => {
     const ids = root.BINDINGS.map((b) => b.id);
     expect(ids).toContain("x402/exact/tvm");
     expect(ids).toContain("x402/exact/near");
   });
 
-  it("TON: every function that needs @ton/core refuses tvm/peer-missing", async () => {
+  it("TON: every function that needs @ton/core refuses tvm/peer-missing", { timeout: IMPORT_MS }, async () => {
     const { exactTvm, lcpComment, pairingOf, tvmCarrier } = await import("../src/tvm.js");
     const refused = { refused: true, code: code(TVM) };
     const O = TVM.fixed.O;
@@ -50,7 +57,7 @@ describe("without the TON and NEAR peers", () => {
     expect(calls).toBe(0);
   });
 
-  it("NEAR: every function that needs the NEAR SDK or borsh refuses near/peer-missing", async () => {
+  it("NEAR: every function that needs the NEAR SDK or borsh refuses near/peer-missing", { timeout: IMPORT_MS }, async () => {
     const { exactNear, nearCarrier } = await import("../src/near.js");
     const refused = { refused: true, code: code(NEAR) };
     const O = NEAR.fixed.O;

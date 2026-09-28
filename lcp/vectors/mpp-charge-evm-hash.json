@@ -6,7 +6,7 @@
   "now": 1790000000
  },
  "MV12": {
-  "case": "the hash credential, reference({challenge: C_E}), and transferPresent on fixture receipts with finalized 100",
+  "case": "the hash credential, reference({challenge: C_E}), and transferPresent on fixture receipts with finalized 100; a receipt whose only Transfer goes to the receive-policy guard, which a Tempo TIP-20 transfer blocked by the recipient's receive policy emits instead of paying the recipient, is failed receive-policy-blocked",
   "hash": "0xbd39ed4f289dde35adf490855f950b9ea337d5eeb4c1cf941c76c228e36ee29d",
   "expectReference": {
    "network": "eip155:84532",
@@ -24,6 +24,11 @@
   "expectReverted": {
    "state": "failed",
    "why": "reverted"
+  },
+  "guard": "0xb10c000000000000000000000000000000000000",
+  "expectBlocked": {
+   "state": "failed",
+   "why": "receive-policy-blocked"
   }
  },
  "pattern": {
