@@ -325,10 +325,11 @@ describe("mpp-charge-stellar.json", () => {
       expect(got, row.case).toEqual(refused(row.expect));
     }
     const now = Date.parse(V.fixed.expires) / 1000 - 60;
-    const agreeing = await chargeStellar.build({ challenge: placed, simulatedXdr: XST.V2.simulatedXdr, currentLedger: 988, now }, H);
+    const payer: string = XST.fixed.payer;
+    const agreeing = await chargeStellar.build({ challenge: placed, simulatedXdr: XST.V2.simulatedXdr, currentLedger: 988, now, payer }, H);
     expect("refused" in agreeing).toBe(false);
     for (const row of XST.V4build.rows) {
-      const u = await chargeStellar.build({ challenge: placed, simulatedXdr: row.simulatedXdr, currentLedger: 988, now }, H);
+      const u = await chargeStellar.build({ challenge: placed, simulatedXdr: row.simulatedXdr, currentLedger: 988, now, payer }, H);
       expect(u, row.case).toEqual(refused(row.expect));
     }
   });

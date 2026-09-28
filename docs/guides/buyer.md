@@ -29,6 +29,13 @@ typed data for `TransferWithAuthorization` whose `nonce` is H, valid until `now`
 
 Pass the H you compared. Never read H from the document again between the comparison and `build`.
 
+Where the buyer supplies the transaction the payer signs, `build` compares it with the option before anything reaches
+the signer. On Stellar (`x402/exact/stellar` and `mpp/charge/stellar`) the choice carries the buyer's simulated Soroban
+`transfer` and the `payer` account. `build` refuses a transfer whose token contract is not the option's asset
+(`stellar/asset-mismatch`), whose amount is not the option's amount exactly (`stellar/amount-mismatch`: x402's Stellar
+scheme requires that argument 2, the amount, *"MUST equal `requirements.amount` exactly"*), or whose `from` is not the
+`payer` (`stellar/payer-mismatch`).
+
 ## 3. Finish
 
 `complete(signature)` gives the x402 payment, echoing the challenge's `resource` and `extensions` unchanged. Before

@@ -47,11 +47,16 @@ export interface StellarPaymentPayload {
   extensions?: PaymentRequired["extensions"];
 }
 
+/**
+ * The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
+ * payer's account (`G…`), which must be the simulated transfer's `from`.
+ */
 export interface StellarChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   simulatedXdr: string;
   currentLedger: number;
+  payer: string;
 }
 
 /** This pairing's id for an option it can pay, or undefined. */
@@ -102,7 +107,9 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 /**
  * The authorization preimage for the payer to sign, from the buyer's simulated transaction, with the entry's expiration at
  * `currentLedger + ceil(maxTimeoutSeconds / 5)`. The option's `payTo` must carry `muxedId(h)` and equal the `to` of
- * the invocation the payer's entry signs, and the operation must invoke exactly that.
+ * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
+ * must then be the option's `asset`, its amount the option's `amount` exactly, and its `from` the choice's `payer`.
+ * Nothing reaches the signer unless every one holds.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
@@ -117,6 +124,9 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
   if (isRefusal(s)) return s;
   if (s.payment.to !== accepted.payTo) return refusal("stellar/carrier-mismatch");
   if (!s.agrees) return refusal("stellar/not-one-transfer");
+  if (s.payment.asset !== accepted.asset) return refusal("stellar/asset-mismatch");
+  if (s.payment.amount !== BigInt(accepted.amount)) return refusal("stellar/amount-mismatch");
+  if (s.payment.from !== c.payer) return refusal("stellar/payer-mismatch");
   return s.unsigned;
 }
 

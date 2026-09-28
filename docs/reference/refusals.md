@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 480 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 483 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -24,7 +24,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`evm`](#evm) | 12 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
-| [`stellar`](#stellar) | 16 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
+| [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
 | [`avm`](#avm) | 12 | Algorand (`@integraledger/lcp/avm`). |
@@ -387,6 +387,8 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 
 | Code | Meaning |
 |---|---|
+| `stellar/amount-mismatch` | A Stellar `build` finds that the simulated transfer's amount is not the option's `amount` (x402) or the request's `amount` (MPP) exactly. Nothing reaches the signer. |
+| `stellar/asset-mismatch` | A Stellar `build` finds that the simulated transfer calls a token contract other than the option's `asset` (x402) or the request's `currency` (MPP). Nothing reaches the signer. |
 | `stellar/carrier-mismatch` | The option's `payTo` or the challenge's `recipient` does not carry the muxed id derived from H, or the signed transfer's recipient or muxed id is not the one the option or challenge names. |
 | `stellar/carrier-occupied` | `advertise` finds the x402 option's `payTo` not a plain account, or the MPP challenge's `recipient` already muxed. |
 | `stellar/event-malformed` | `transferEventOf` is given topics or data that do not decode as a SEP-41 `transfer` event with an address recipient within the value caps. |
@@ -396,6 +398,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/not-found` | The Stellar reader found no transaction envelope for the hash. |
 | `stellar/not-one-transfer` | The Stellar envelope does not hold exactly one `invokeHostFunction` operation calling a SEP-41 `transfer(from, to, amount)`, the payer's signed root invocation is not one such transfer with no sub-invocations, or the operation does not invoke exactly what the payer signed. |
 | `stellar/option-malformed` | An MPP Stellar challenge's `network`, `amount`, `currency`, `recipient` or `feePayer` is not of the required form, a recipient cannot take a muxed id, or `transferEventTopics` is given an address that is neither an account nor a contract. |
+| `stellar/payer-mismatch` | A Stellar `build` finds that the simulated transfer's `from` is not the choice's `payer`. Nothing reaches the signer. |
 | `stellar/peer-missing` | The optional peer dependency `@stellar/stellar-sdk` cannot be loaded. |
 | `stellar/read-first` | An MPP Stellar `hash` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
 | `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR within the value caps, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
