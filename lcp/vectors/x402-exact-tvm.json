@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers; inBody is a BoC in hex.",
+ "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers: byInBody answers the lookup by the Jetton transfer's body hash, byInBodyRequest the lookup by the signed W5 request's body hash, and headUtime the masterchain head's gen_utime; inBody is a BoC in hex. W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -68,6 +68,8 @@
    "network": "tvm:-239",
    "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
    "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "requestBodyHash": "0xd2a6d348458c3d5213503704aba9674b8f47dffdcce88950bb0b5c3331f4116f",
+   "wallet": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
    "validUntil": 1790000060
   },
   "refusals": [
@@ -146,6 +148,8 @@
    "network": "tvm:-239",
    "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
    "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "requestBodyHash": "0xd2a6d348458c3d5213503704aba9674b8f47dffdcce88950bb0b5c3331f4116f",
+   "wallet": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
    "validUntil": 1790000060
   },
   "status": [
@@ -301,26 +305,147 @@
     }
    },
    {
-    "case": "nothing found, headUtime 1790000120",
+    "case": "nothing found, headUtime 1790000060 (at validUntil)",
     "byInBody": [],
-    "headUtime": 1790000120,
+    "byInBodyRequest": [],
+    "headUtime": 1790000060,
     "expect": {
      "state": "pending",
      "why": "not-found"
     }
    },
    {
-    "case": "nothing found, headUtime 1790000121",
+    "case": "nothing found, headUtime 1790000061 (past validUntil)",
     "byInBody": [],
-    "headUtime": 1790000121,
+    "byInBodyRequest": [],
+    "headUtime": 1790000061,
     "expect": {
      "state": "failed",
      "why": "expired"
     }
    },
    {
+    "case": "the W5 wallet executed the request and emitted the Jetton transfer, headUtime 1790000200",
+    "byInBody": [],
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "headUtime": 1790000200,
+    "expect": {
+     "state": "pending",
+     "why": "in-flight"
+    }
+   },
+   {
+    "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000200",
+    "byInBody": [],
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "headUtime": 1790000200,
+    "expect": {
+     "state": "failed",
+     "why": "no-transfer"
+    }
+   },
+   {
+    "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000060",
+    "byInBody": [],
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "headUtime": 1790000060,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000200",
+    "byInBody": [],
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": true,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "headUtime": 1790000200,
+    "expect": {
+     "state": "failed",
+     "why": "aborted"
+    }
+   },
+   {
+    "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000060",
+    "byInBody": [],
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": true,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "headUtime": 1790000060,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "nothing found and the head read fails",
+    "byInBody": [],
+    "byInBodyRequest": [],
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
     "case": "a ReaderError",
     "byInBody": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "a ReaderError on the request lookup",
+    "byInBody": [],
+    "byInBodyRequest": "reader-error",
+    "headUtime": 1790000200,
     "expect": {
      "state": "pending",
      "why": "unreadable"
@@ -337,7 +462,7 @@
   ]
  },
  "plant": {
-  "case": "an equal body executed on another account, and nothing else",
+  "case": "an equal Jetton body and an equal W5 request executed on other accounts, and nothing else",
   "byInBody": [
    {
     "hash": "tx-payer",
@@ -349,6 +474,21 @@
      {
       "hash": "msg-internal",
       "opcode": 395134233
+     }
+    ]
+   }
+  ],
+  "byInBodyRequest": [
+   {
+    "hash": "tx-w5",
+    "account": "0:2222222222222222222222222222222222222222222222222222222222222222",
+    "aborted": false,
+    "finality": 2,
+    "inBody": null,
+    "outMsgs": [
+     {
+      "hash": "msg-jetton-transfer",
+      "opcode": 260734629
      }
     ]
    }
@@ -547,7 +687,8 @@
     "stateInit": "AAAA",
     "expect": "tvm/boc-malformed"
    }
-  ]
+  ],
+  "expectRequestBodyHash": "cd43a7ab468a41f98db3beb579d3432c2bf292bec07d80254aed2c815cfff4f2"
  },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
