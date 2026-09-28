@@ -13,6 +13,7 @@ import {
   eip3009TypedData,
   evmStatus,
   isGuardTransfer,
+  permit2Status,
   permit2TypedData,
   transferDigest,
   transferParts,
@@ -201,6 +202,7 @@ export async function transferPresent(
     receipt: async (tx) => (seen = await reader.receipt(tx)),
     blockNumber: (tag) => reader.blockNumber(tag),
     transaction: (tx) => reader.transaction(tx),
+    call: (to, data, block) => reader.call(to, data, block),
   };
   const s = await evmStatus({ network: ref.network, transaction: ref.transaction }, watching);
   if (s.state !== "settled") return s;
@@ -417,7 +419,16 @@ async function authorizationReference(input: unknown): Promise<EvmRef | Refusal>
     bindingLog: { address: currency, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: nonce },
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
     search: { address: currency, topics: [AUTHORIZATION_USED_TOPIC, null, nonce] },
+    authorization: { scheme: "eip3009", at: currency, nonce, deadline: validBefore.toString(), asset: currency },
   };
+}
+
+/** The account whose signature authorises the pull: the authorization's `from`, which its signed message holds, lowercase. */
+async function authorizationAuthorizer(input: unknown): Promise<Hex | Refusal> {
+  const h = await authorizationBound(input);
+  if (typeof h !== "string") return h;
+  const from = (input as MppCredential).payload["from"];
+  return isAddress(from) ? (from.toLowerCase() as Hex) : refusal("mpp/credential-malformed");
 }
 
 // ── mpp/charge/evm/permit2.
@@ -513,11 +524,32 @@ async function permit2Reference(input: unknown): Promise<EvmRef | Refusal> {
   const digest = await transferDigest({ from, to: first["to"], value });
   if (typeof digest !== "string") return digest;
   const currency = str(c.request["currency"]) as Hex;
+  const permit2 = c.details["permit2Address"];
   return {
     network: `eip155:${chainOf(c)}`,
     settleBy: deadline.toString(),
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
+    authorization: {
+      scheme: "permit2",
+      at: isAddress(permit2) ? permit2 : PERMIT2,
+      nonce: challengeHash(presented.challenge.id, presented.challenge.realm),
+      deadline: deadline.toString(),
+      asset: currency,
+    },
   };
+}
+
+/**
+ * The permit's owner: the address of the credential's `did:pkh` `source`, which MPP requires the signature to recover
+ * to, lowercase. Permit2's signature does not cover the owner.
+ */
+async function permit2Authorizer(input: unknown): Promise<Hex | Refusal> {
+  const presented = credentialOf(input);
+  if ("refused" in presented) return presented;
+  const h = await permit2Bound(presented);
+  if (typeof h !== "string") return h;
+  const from = didPkhAddress(presented.source);
+  return from === undefined ? refusal("mpp/source-required") : (from.toLowerCase() as Hex);
 }
 
 // ── mpp/charge/evm/transaction and mpp/charge/evm/hash.
@@ -784,6 +816,7 @@ export const evmAuthorization = Object.freeze({
   build: authorizationBuild,
   bound: authorizationBound,
   reference: authorizationReference,
+  authorizer: authorizationAuthorizer,
   status: evmStatus,
 });
 
@@ -809,7 +842,8 @@ export const evmPermit2 = Object.freeze({
   build: permit2Build,
   bound: permit2Bound,
   reference: permit2Reference,
-  status: evmStatus,
+  authorizer: permit2Authorizer,
+  status: permit2Status,
 });
 
 export const evmTransaction = Object.freeze({

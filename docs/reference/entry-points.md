@@ -23,7 +23,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/casper`](#integraledgerlcpcasper) | CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments. |
 | [`@integraledger/lcp/ccd`](#integraledgerlcpccd) | Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event. |
 | [`@integraledger/lcp/discovery`](#integraledgerlcpdiscovery) | The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one, members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check only what LCP §2 states. Neither throws or does I/O. |
-| [`@integraledger/lcp/evm`](#integraledgerlcpevm) | EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, and the settlement read from the token's `AuthorizationUsed` event. Nothing here knows x402. |
+| [`@integraledger/lcp/evm`](#integraledgerlcpevm) | EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named. Nothing here knows x402. |
 | [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); and MPP's `mpp/charge/hedera`, whose signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash. |
 | [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices and the Lightning pairings on x402 and MPP. On `x402/exact/lnbtc` the seller's node writes the ATR hash as the invoice's `m` field and signs it; on `x402/exact/lnbtc/invoice-named` the invoice carries no hash and the ATR's `x402` slot names the invoice instead. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice. |
 | [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256(id ‖ realm)), EVM `permit2` (the signed witness carries that value), EVM `transaction` and `hash` (nothing signed carries H), and Tempo pull and push (the signed `transferWithMemo` carries MPP's attribution memo, whose nonce is keccak256 of the id). The session and subscription pairings are re-exported from their module. |
@@ -56,7 +56,7 @@ import { assemble, BINDINGS, canonicalJson, … } from "@integraledger/lcp";
 
 **Values (22):** `assemble`, `BINDINGS`, `canonicalJson`, `canonicalTx`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHashWithNonHttpsLink`, `isHttpsLink`, `isOtherSchemeLink`, `jsonWithinDepth`, `MAX_JSON_DEPTH`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
-**Types (17):** `AtrHash`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `PairingOn`, `Presented`, `PresentedOn`, `PushMode`, `Refusal`, `Surface`, `TieRequestOn`, `TxSpelling`, `X402Binding`.
+**Types (18):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `PairingOn`, `Presented`, `PresentedOn`, `PushMode`, `Refusal`, `Surface`, `TieRequestOn`, `TxSpelling`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -210,15 +210,15 @@ import { emit, MAX_DOCUMENT_BYTES, parse, … } from "@integraledger/lcp/discove
 
 ## `@integraledger/lcp/evm`
 
-EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, and the settlement read from the token's `AuthorizationUsed` event. Nothing here knows x402.
+EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named. Nothing here knows x402.
 
 ```ts no-check
-import { AUTHORIZATION_USED_TOPIC, authorizationIdDigest, bindSalt, … } from "@integraledger/lcp/evm";
+import { AUTHORIZATION_STATE_SELECTOR, AUTHORIZATION_USED_TOPIC, authorizationIdDigest, … } from "@integraledger/lcp/evm";
 ```
 
-**Values (33):** `AUTHORIZATION_USED_TOPIC`, `authorizationIdDigest`, `bindSalt`, `carriesBinding`, `decodePermissionContext`, `DELEGATION_MANAGER`, `DELEGATION_MANAGER_CHAINS`, `eip3009Recover`, `eip3009Status`, `eip3009TypedData`, `ESCROW`, `evmStatus`, `EXACT_PERMIT2_PROXY`, `isGuardTransfer`, `isLog`, `isReceipt`, `PAYMENT_AUTHORIZED_TOPIC`, `PAYMENT_INFO_TYPEHASH`, `paymentHash`, `PERMIT2`, `permit2TypedData`, `ReaderError`, `RECEIVE_POLICY_GUARD`, `receiveTypedData`, `REDEEMED_DELEGATION_TOPIC`, `redeemedLeafRecover`, `SALT_BINDING_TYPEHASH`, `settledAt`, `TRANSFER_TOPIC`, `TRANSFER_WITH_AUTHORIZATION_TYPEHASH`, `transferDigest`, `transferParts`, `UPTO_PERMIT2_PROXY`.
+**Values (37):** `AUTHORIZATION_STATE_SELECTOR`, `AUTHORIZATION_USED_TOPIC`, `authorizationIdDigest`, `authorizationUsed`, `bindSalt`, `carriesBinding`, `decodePermissionContext`, `DELEGATION_MANAGER`, `DELEGATION_MANAGER_CHAINS`, `eip3009Recover`, `eip3009Status`, `eip3009TypedData`, `ESCROW`, `evmStatus`, `EXACT_PERMIT2_PROXY`, `isGuardTransfer`, `isLog`, `isReceipt`, `NONCE_BITMAP_SELECTOR`, `PAYMENT_AUTHORIZED_TOPIC`, `PAYMENT_INFO_TYPEHASH`, `paymentHash`, `PERMIT2`, `permit2Status`, `permit2TypedData`, `ReaderError`, `RECEIVE_POLICY_GUARD`, `receiveTypedData`, `REDEEMED_DELEGATION_TOPIC`, `redeemedLeafRecover`, `SALT_BINDING_TYPEHASH`, `settledAt`, `TRANSFER_TOPIC`, `TRANSFER_WITH_AUTHORIZATION_TYPEHASH`, `transferDigest`, `transferParts`, `UPTO_PERMIT2_PROXY`.
 
-**Types (18):** `Delegation`, `Eip155`, `Eip3009Ref`, `Eip3009TypedData`, `EvmBreadthStatus`, `EvmLog`, `EvmReader`, `EvmReceipt`, `EvmRef`, `EvmStatus`, `EvmTransaction`, `EvmTxRef`, `Field`, `Hex`, `PaymentInfo`, `Permit2TypedData`, `ReceiveTypedData`, `TransferIdentity`.
+**Types (20):** `Delegation`, `Eip155`, `Eip3009Ref`, `Eip3009TypedData`, `EvmBreadthStatus`, `EvmLog`, `EvmReader`, `EvmReceipt`, `EvmRef`, `EvmStatus`, `EvmTransaction`, `EvmTxRef`, `Field`, `Hex`, `PaymentInfo`, `Permit2TypedData`, `PullAuthorization`, `ReceiveTypedData`, `TransferIdentity`, `TransferLog`.
 
 ## `@integraledger/lcp/hedera`
 

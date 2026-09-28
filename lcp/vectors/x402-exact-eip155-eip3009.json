@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/eip155/eip3009 pairing: the x402 and evm entry points of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; O is the x402 specification's example option (section 5.2.1); the payer is the published Anvil development key. The EIP-712 values were computed with eth-account 0.14.0, eth-abi 6.0.0 and eth-utils 6.0.0 on Python 3.12.3; every SHA-256 with GNU coreutils sha256sum. Byte strings are hex; uint256 values are decimal strings.",
+ "about": "Vectors for the x402/exact/eip155/eip3009 pairing: the x402 and evm entry points of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; O is the x402 specification's example option (section 5.2.1); the payer is the published Anvil development key. The EIP-712 values were computed with eth-account 0.14.0, eth-abi 6.0.0 and eth-utils 6.0.0 on Python 3.12.3; every SHA-256 with GNU coreutils sha256sum. The ERC-20 Transfer topic is keccak256(\"Transfer(address,address,uint256)\"). Byte strings are hex; uint256 values are decimal strings.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -371,7 +371,13 @@
    "network": "eip155:84532",
    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
    "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
-   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "transferLog": {
+    "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+    "identity": "from,to,value",
+    "digest": "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f"
+   }
   },
   "status": [
    {
@@ -415,6 +421,15 @@
        "topics": [
         "0x0000000000000000000000000000000000000000000000000000000000000003"
        ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
       }
      ]
     },
@@ -454,6 +469,15 @@
        "topics": [
         "0x0000000000000000000000000000000000000000000000000000000000000003"
        ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
       }
      ]
     },
@@ -493,6 +517,15 @@
        "topics": [
         "0x0000000000000000000000000000000000000000000000000000000000000003"
        ]
+      },
+      {
+       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
       }
      ]
     },
@@ -581,7 +614,124 @@
      "code": "evm/ambiguous"
     }
    }
-  ]
+  ],
+  "notThisPayment": {
+   "case": "status of a named transaction that is not V2's payment: each is failed, never settled. The pair one EIP-3009 authorization produces is its AuthorizationUsed(authorizer, nonce) and its Transfer(from = authorizer, to, value), in the token's code; the ref's transferLog digest is SHA-256 over payer, payTo and uint256(10000), from GNU coreutils sha256sum",
+   "rows": [
+    {
+     "case": "another account's own authorization with nonce H and its zero-value transfer to itself",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x0000000000000000000000003333333333333333333333333333333333333333",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ]
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x0000000000000000000000003333333333333333333333333333333333333333",
+         "0x0000000000000000000000003333333333333333333333333333333333333333"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "transfer-not-found"
+     }
+    },
+    {
+     "case": "another account's use of nonce H beside the payer's transfer of the same value to payTo",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x0000000000000000000000003333333333333333333333333333333333333333",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ]
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "transfer-not-found"
+     }
+    },
+    {
+     "case": "the payer's use of nonce H with a transfer of another value",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ]
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x000000000000000000000000000000000000000000000000000000000000270f"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "transfer-not-found"
+     }
+    },
+    {
+     "case": "the payer's transfer to payTo with no use of nonce H",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "authorization-not-used"
+     }
+    }
+   ]
+  }
  },
  "plant": {
   "case": "a successful receipt whose only AuthorizationUsed log with topics[2] = H came from a contract other than the option's asset",

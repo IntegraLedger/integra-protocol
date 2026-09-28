@@ -219,7 +219,7 @@ lists every export of every entry point, and the
 Every pairing has the same members: `id`, `pattern` (what a payment through it proves), `tie` (the ATR's binding
 slot), `advertise` and `read` (H into and out of the challenge), `build` (what the buyer signs, with H in its place),
 and `bound` (H back out of the payment). Pairings that settle on a readable rail add `reference`, `status` and, where
-the rail keeps H, `recover`.
+the rail keeps H, `recover`. EVM pull pairings add `authorizer`, the account whose signature authorises the pull.
 
 ## Supported pairings
 

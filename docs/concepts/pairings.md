@@ -36,6 +36,7 @@ Pairings that settle on a rail the package can read also have:
 | `reference(presented)` | The read keys for finding this payment's settlement later: the network, and the log, transfer or transaction that carries H. |
 | `status(ref, reader)` | The settlement's state, read through a bounded reader you supply: settled with its finality, pending, or failed with the reason. |
 | `recover(tx, reader)` | H read back from a settled transaction alone, where the rail keeps it (`pattern.zeroPartyRecoverable`). |
+| `authorizer(presented)` | On an EVM pull pairing, the account whose signature authorises the pull. With the reference's `authorization`, it lets a reader ask the chain whether the authorization executed before any transaction is named. |
 
 Some pairings carry members for their own shape of payment:
 

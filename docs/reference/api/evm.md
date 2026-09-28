@@ -217,6 +217,24 @@ Bounded, read-only calls against one network's endpoint. Every failure rejects w
 
 `Promise`\<`bigint`\>
 
+##### call()
+
+> **call**(`to`, `data`, `block`): `Promise`\<`` `0x${string}` ``\>
+
+`eth_call` of `data` to the contract `to`, in the state after block `block`: the return data.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `to` | `` `0x${string}` `` |
+| `data` | `` `0x${string}` `` |
+| `block` | `bigint` |
+
+###### Returns
+
+`Promise`\<`` `0x${string}` ``\>
+
 ##### receipt()
 
 > **receipt**(`tx`): `Promise`\<[`EvmReceipt`](#evmreceipt) \| `null`\>
@@ -276,17 +294,14 @@ What the issuer records at claim for an EVM payment: read keys only.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
+| <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](#pullauthorization) | The signed pull authorization and where the chain records its use; present on every pull pairing that has one. |
 | <a id="property-bindinglog"></a> `bindingLog?` | \{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) | The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. |
 | <a id="property-network-1"></a> `network` | `` `eip155:${string}` `` \| `HederaNetwork` | - |
 | <a id="property-search"></a> `search?` | `object` | The log filter that finds the transaction when none is named; absent, only a named transaction is read. |
 | `search.address` | `` `0x${string}` `` | - |
 | `search.topics` | readonly (`` `0x${string}` `` \| `null`)[] | - |
 | <a id="property-settleby"></a> `settleBy?` | `string` | Decimal Unix seconds after which the payment can no longer execute. |
-| <a id="property-transferlog"></a> `transferLog?` | `object` | The token transfer this payment made, identified by the digest of the named fields. |
-| `transferLog.address` | `` `0x${string}` `` | - |
-| `transferLog.digest` | `` `0x${string}` `` | - |
-| `transferLog.identity` | [`TransferIdentity`](#transferidentity) | - |
-| `transferLog.topic0` | `` `0x${string}` `` | - |
+| <a id="property-transferlog"></a> `transferLog?` | [`TransferLog`](#transferlog) | The token transfer this payment made, identified by the digest of the named fields. |
 
 ***
 
@@ -369,6 +384,43 @@ A transaction as `eth_getTransactionByHash` gives it: `from`, the address that s
 | `types.EIP712Domain` | [`Field`](#field)[] |
 | `types.TokenPermissions` | [`Field`](#field)[] |
 
+***
+
+### PullAuthorization
+
+The signed pull authorization of a payment that has not landed, as the chain records its use: what a settlement
+reader needs to decide, with `authorizationUsed` and the payment's authorizer, whether it executed or can still
+execute.
+- `eip3009`: the token `at` answers `authorizationState(authorizer, nonce)`, true once the authorization is used. It
+  executes only in a block whose timestamp is below `deadline` (ERC-3009's `validBefore`).
+- `permit2`: the Permit2 deployment `at` answers `nonceBitmap(authorizer, nonce >> 8)`, whose bit `nonce & 0xff` is
+  set once the nonce is used. The permit executes only in a block whose timestamp is at most `deadline`.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-asset-1"></a> `asset` | `` `0x${string}` `` | The token the authorization moves. |
+| <a id="property-at"></a> `at` | `` `0x${string}` `` | The contract that records the nonce's use: the token for `eip3009`, the Permit2 deployment for `permit2`. |
+| <a id="property-deadline"></a> `deadline` | `string` | The signed time bound, in decimal Unix seconds. |
+| <a id="property-nonce"></a> `nonce` | `` `0x${string}` `` | The nonce the payer signed, as that contract records it: `0x` and 64 lowercase hex digits. |
+| <a id="property-scheme"></a> `scheme` | `"eip3009"` \| `"permit2"` | - |
+
+***
+
+### TransferLog
+
+A token transfer, identified by the core's `hash` over the fields `identity` names (see `transferDigest`).
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-address-1"></a> `address` | `` `0x${string}` `` |
+| <a id="property-digest"></a> `digest` | `` `0x${string}` `` |
+| <a id="property-identity"></a> `identity` | [`TransferIdentity`](#transferidentity) |
+| <a id="property-topic0"></a> `topic0` | `` `0x${string}` `` |
+
 ## Type Aliases
 
 ### Eip155
@@ -384,29 +436,32 @@ CAIP-2 for EVM chains; the reference is the decimal chain id.
 > **Eip3009Ref** = [`EvmRef`](#evmref) & `object`
 
 What a settlement reference holds for an EIP-3009 payment: read keys only. It is an `EvmRef` naming the
-`AuthorizationUsed` log and the transfer's identity, with the token, `validBefore` and the transfer digest.
+`AuthorizationUsed` log, the transfer's identity and the authorization as the token records its use, with the
+token, `validBefore` and the transfer digest.
 
 #### Type Declaration
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
 | `asset` | [`Hex`](#hex) | - |
+| `authorization` | [`PullAuthorization`](#pullauthorization) | - |
 | `idDigest` | [`Hex`](#hex) | - |
 | `maxTimeoutSeconds` | `number` | The option's `maxTimeoutSeconds`: the authorization was signed no earlier than `validBefore` less this. |
 | `network` | [`Eip155`](#eip155) | - |
+| `transferLog` | [`TransferLog`](#transferlog) | - |
 | `validBefore` | `string` | - |
 
 ***
 
 ### EvmBreadthStatus
 
-> **EvmBreadthStatus** = [`EvmStatus`](#evmstatus) \| \{ `state`: `"failed"`; `why`: `"binding-log-not-found"` \| `"transfer-not-found"` \| `"receive-policy-blocked"`; \}
+> **EvmBreadthStatus** = [`EvmStatus`](#evmstatus) \| \{ `state`: `"failed"`; `why`: `"binding-log-not-found"` \| `"transfer-not-found"` \| `"receive-policy-blocked"` \| `"nonce-not-used"`; \}
 
 ***
 
 ### EvmStatus
 
-> **EvmStatus** = \{ `blockNumber`: `bigint`; `finality`: `"latest"` \| `"safe"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"authorization-not-used"`; \}
+> **EvmStatus** = \{ `blockNumber`: `bigint`; `finality`: `"latest"` \| `"safe"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"authorization-not-used"` \| `"transfer-not-found"`; \}
 
 ***
 
@@ -438,6 +493,14 @@ EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthoriza
 > **TransferIdentity** = `"from,to,value"` \| `"from,to"` \| `"from"` \| `"to,value"` \| `"to"`
 
 ## Variables
+
+### AUTHORIZATION\_STATE\_SELECTOR
+
+> `const` **AUTHORIZATION\_STATE\_SELECTOR**: `"0xe94a0102"`
+
+keccak256("authorizationState(address,bytes32)")[0..4]
+
+***
 
 ### AUTHORIZATION\_USED\_TOPIC
 
@@ -474,6 +537,14 @@ The commerce-payments escrow's two deployments: the escrow, its two token collec
 ### EXACT\_PERMIT2\_PROXY
 
 > `const` **EXACT\_PERMIT2\_PROXY**: `"0x402085c248EeA27D92E8b30b2C58ed07f9E20001"`
+
+***
+
+### NONCE\_BITMAP\_SELECTOR
+
+> `const` **NONCE\_BITMAP\_SELECTOR**: `"0x4fe02b44"`
+
+keccak256("nonceBitmap(address,uint256)")[0..4]
 
 ***
 
@@ -555,6 +626,32 @@ transfer, which a `Transfer(from, to, value)` log in the settlement transaction 
 #### Returns
 
 `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+
+***
+
+### authorizationUsed()
+
+> **authorizationUsed**(`ref`, `authorizer`, `block`, `reader`): `Promise`\<`boolean` \| [`Refusal`](index.md#refusal)\>
+
+Whether `authorizer` had used the payment's pull authorization, `ref.authorization`, in the state after block
+`block`: one `eth_call` to `authorization.at`, of `authorizationState(authorizer, nonce)` for `eip3009`, or of
+`nonceBitmap(authorizer, nonce >> 8)` for `permit2`, whose bit `nonce & 0xff` is then read. A reader for another
+network than `ref.network` is `evm/wrong-reader`. A failed call, or an answer that is not one 32-byte word (for
+`eip3009`, one holding 0 or 1), is `evm/unreadable`. A ref with no well-formed `authorization`, an authorizer that
+is not an address, or a block that is not a non-negative bigint is `evm/field-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `ref` | `Pick`\<[`EvmRef`](#evmref), `"network"` \| `"authorization"`\> |
+| `authorizer` | `` `0x${string}` `` |
+| `block` | `bigint` |
+| `reader` | [`EvmReader`](#evmreader) |
+
+#### Returns
+
+`Promise`\<`boolean` \| [`Refusal`](index.md#refusal)\>
 
 ***
 
@@ -641,9 +738,12 @@ that `asset` emitted in it. One call.
 
 > **eip3009Status**(`ref`, `reader`): `Promise`\<[`EvmStatus`](#evmstatus)\>
 
-Reads the named transaction. Settled when its receipt succeeded and holds a log from `asset` with exactly three
-topics, the first `AuthorizationUsed` and the third equal to `h`; the finality is the highest block mark at or above
-the receipt's block. A failed read, or a reader for another network, is pending, never failed. At most three calls.
+Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
+pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
+third equal to `h`, and the `Transfer` that `transferLog` identifies, whose `from` is that log's authorizer (topic
+1). No such `AuthorizationUsed` log is failed `authorization-not-used`; no such `Transfer` is failed
+`transfer-not-found`. The finality is the highest block mark at or above the receipt's block. A failed read, a reader
+for another network, or a `transferLog` that is not one is pending `unreadable`, never failed. At most three calls.
 
 #### Parameters
 
@@ -693,8 +793,10 @@ The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in 
 
 Reads the named transaction. A reader for another network, or a failed read, is pending; no receipt is pending
 `not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
-the binding log with `value` in its topic or data word, and the transfer log whose `from`, `to` and `value` hash to
-the digest. Settled carries the highest finality mark reached. At most three calls.
+the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
+Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
+authorization's: the transfer's `from` is the binding log's authorizer (topic 1), else failed `transfer-not-found`.
+Settled carries the highest finality mark reached. At most three calls.
 
 #### Parameters
 
@@ -782,6 +884,29 @@ With `payer` zero it is x402's `signatureNonce`.
 #### Returns
 
 `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+
+***
+
+### permit2Status()
+
+> **permit2Status**(`ref`, `reader`): `Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
+
+Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then Permit2's record of the nonce. The ref's
+`authorization` must be a `permit2` one and its `transferLog` must name `from`, else pending `unreadable`. At the
+receipt's block, `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set, where
+`from` is the matched transfer's; else failed `nonce-not-used`. A failed call is pending `unreadable`. At most four
+calls.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `ref` | [`EvmRef`](#evmref) & `object` |
+| `reader` | [`EvmReader`](#evmreader) |
+
+#### Returns
+
+`Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
 
 ***
 

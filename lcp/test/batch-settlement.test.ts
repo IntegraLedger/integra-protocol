@@ -99,6 +99,9 @@ function evmReaderFor(receipt: unknown): EvmReader {
     },
     blockNumber: async (tag) => BigInt(tag === "finalized" ? V.EB7.reader.finalized : V.EB7.reader.safe),
     transaction: async () => null,
+    call: async () => {
+      throw new ReaderError("transport");
+    },
   };
 }
 

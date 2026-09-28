@@ -7,6 +7,31 @@ description: "The exports of @integraledger/lcp."
 
 ## Interfaces
 
+### Authorizer
+
+The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
+whose signature authorises the pull, from the presented payment, as lowercase hex. With the pairing's `reference`,
+whose `authorization` names the nonce, the deadline and the token, it is what a settlement reader needs to read the
+authorization's use before any transaction is named.
+
+#### Methods
+
+##### authorizer()?
+
+> `optional` **authorizer**(`presented`): `Promise`\<`string` \| [`Refusal`](#refusal)\>
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `presented` | `unknown` |
+
+###### Returns
+
+`Promise`\<`string` \| [`Refusal`](#refusal)\>
+
+***
+
 ### CarrierAfterH
 
 The optional member of a pairing whose carrier the seller writes after H: `advertise`'s checks and placement, without
@@ -126,7 +151,7 @@ a record keeps.
 
 ### Binding
 
-> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & [`PushMode`](#pushmode) & [`CarrierAfterH`](#carrierafterh) & [`TxSpelling`](#txspelling)
+> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & [`PushMode`](#pushmode) & [`CarrierAfterH`](#carrierafterh) & [`TxSpelling`](#txspelling) & [`Authorizer`](#authorizer)
 
 A pairing of protocol, scheme and rail.
 

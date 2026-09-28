@@ -6,8 +6,10 @@ import {
   concat,
   domainSeparator,
   encodeAbiParameters,
+  encodeFunctionData,
   hashTypedData,
   keccak256,
+  parseAbi,
   recoverTypedDataAddress,
   toBytes,
   toHex,
@@ -89,7 +91,27 @@ describe("mpp-charge-evm-authorization.json", () => {
       bindingLog: { address: USDC, topic0: A.MV5.expectAuthorizationUsedTopic, index: 2, value: A.MV5.expectNonce },
       transferLog: { address: USDC, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: A.MV5.expectTransferDigest },
       search: { address: USDC, topics: [A.MV5.expectAuthorizationUsedTopic, null, A.MV5.expectNonce] },
+      authorization: { scheme: "eip3009", at: USDC, nonce: A.MV5.expectNonce, deadline: A.MV5.expectValidBefore, asset: USDC },
     });
+    expect(await evmAuthorization.authorizer(cred)).toBe(A.fixed.payer.toLowerCase());
+    expect(await evmAuthorization.authorizer(other)).toEqual(A.MV5.expectBoundOtherRealm);
+  });
+
+  it("MV5: status requires the transfer the same authorization produces", async () => {
+    const cred = (await build()).complete(A.MV5.expectSignature) as MppCredential;
+    const ref = (await evmAuthorization.reference(cred)) as EvmRef;
+    const another = "0x3333333333333333333333333333333333333333";
+    const used = (by: string): EvmLog => ({
+      address: USDC,
+      topics: [A.MV5.expectAuthorizationUsedTopic, topicOf(by), A.MV5.expectNonce],
+      data: "0x",
+    });
+    const paid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)], data: wordOf(10000n) };
+    const tx = `0x${"22".repeat(32)}` as const;
+    const status = async (logs: EvmLog[]) =>
+      withBigints(await evmAuthorization.status({ ...ref, transaction: tx }, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs })));
+    expect(await status([used(A.fixed.payer), paid])).toEqual({ state: "settled", finality: "finalized", blockNumber: "100" });
+    expect(await status([used(another), paid])).toEqual({ state: "failed", why: "transfer-not-found" });
   });
 
   it("build and bound refuse what is not this pairing's", async () => {
@@ -149,6 +171,11 @@ describe("mpp-charge-evm-permit2.json", () => {
     expect(signature).toBe(P.MV6.expectSignature);
     const cred = u.complete(signature) as MppCredential;
     expect(await evmPermit2.bound(cred)).toBe(H);
+    expect(await evmPermit2.authorizer(cred)).toBe(A.fixed.payer.toLowerCase());
+    expect(await evmPermit2.authorizer({ ...cred, source: undefined } as never)).toEqual({
+      refused: true,
+      code: "mpp/source-required",
+    });
 
     const literalTypeHash = typeHashOf(
       "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline," +
@@ -216,6 +243,40 @@ describe("mpp-charge-evm-permit2.json", () => {
       refused: true,
       code: "mpp/source-required",
     });
+  });
+
+  it("MV6: the reference names Permit2's record of the nonce, which status reads at the receipt's block", async () => {
+    const ch = placedOf(C_E);
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const cred = u.complete(P.MV6.expectSignature) as MppCredential;
+    const ref = (await evmPermit2.reference(cred)) as EvmRef;
+    // Uniswap's Permit2, at one address on every chain; the Permit2 nonce is the challengeHash (MV5's nonce, the same
+    // challenge), and the deadline the challenge's expiry.
+    const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+    expect(ref.authorization).toEqual({ scheme: "permit2", at: PERMIT2, nonce: A.MV5.expectNonce, deadline: A.MV5.expectValidBefore, asset: USDC });
+    const nonce = BigInt(A.MV5.expectNonce);
+    // Permit2's SignatureTransfer records nonce n in nonceBitmap(owner, n >> 8), bit n & 0xff (_useUnorderedNonce).
+    const data = encodeFunctionData({
+      abi: parseAbi(["function nonceBitmap(address owner, uint256 wordPos) view returns (uint256)"]),
+      args: [A.fixed.payer, nonce >> 8n],
+    });
+    const paid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)], data: wordOf(10000n) };
+    const tx = `0x${"22".repeat(32)}` as const;
+    const status = async (word: bigint) => {
+      const calls: unknown[] = [];
+      const reader = {
+        ...readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [paid] }),
+        call: async (to: string, d: string, block: bigint) => {
+          calls.push([to, d, block]);
+          return toHex(word, { size: 32 });
+        },
+      };
+      const s = withBigints(await evmPermit2.status({ ...ref, transaction: tx }, reader));
+      expect(calls).toEqual([[PERMIT2, data, 100n]]);
+      return s;
+    };
+    expect(await status(1n << (nonce & 0xffn))).toEqual({ state: "settled", finality: "finalized", blockNumber: "100" });
+    expect(await status(0n)).toEqual({ state: "failed", why: "nonce-not-used" });
   });
 
   it("plant: a witness for the same ATR's other challenge is not bound to this one", async () => {
