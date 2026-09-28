@@ -221,6 +221,11 @@ The settlement read keys of these pairings.
 | `opened.channel` | `` `0x${string}` `` | - | - |
 | `opened.h` | `` `0x${string}` `` | - | - |
 | `opened.version` | `"v2"` \| `"v1"` | - | - |
+| <a id="property-opens"></a> `opens?` | `object` | The opening of an EVM session that the payer broadcast as a call: a call to `escrow` of `OPEN_V1_SELECTOR` whose salt is `h`, and whose sender, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`. | - |
+| `opens.chainId` | `number` | - | - |
+| `opens.channel` | `` `0x${string}` `` | - | - |
+| `opens.escrow` | `` `0x${string}` `` | - | - |
+| `opens.h` | `` `0x${string}` `` | - | - |
 | <a id="property-search"></a> `search?` | `object` | The log filter that finds the transaction when none is named; absent, only a named transaction is read. | [`EvmRef`](evm.md#evmref).[`search`](evm.md#property-search) |
 | `search.address` | `` `0x${string}` `` | - | - |
 | `search.topics` | readonly (`` `0x${string}` `` \| `null`)[] | - | - |
@@ -630,7 +635,7 @@ Every MPP pairing `pairingsOf` can name.
 
 ### SessionStatus
 
-> **SessionStatus** = [`EvmBreadthStatus`](evm.md#evmbreadthstatus) \| \{ `state`: `"pending"`; `why`: `"not-a-close"`; \}
+> **SessionStatus** = [`EvmBreadthStatus`](evm.md#evmbreadthstatus) \| \{ `state`: `"pending"`; `why`: `"not-a-close"`; \} \| \{ `state`: `"failed"`; `why`: `"open-call-not-found"`; \}
 
 ***
 
@@ -1257,10 +1262,12 @@ cannot be read.
 
 `evmStatus` on the named logs, then, where `ref.opened` is present, one `ChannelOpened` log from `opened.address`
 naming the channel: on v2 its data word 3 (the salt) is `h`; on v1 the channel id recomputed from the event with
-salt `h` is the channel. Where `ref.closes` is present, the succeeded transaction must be a call to that escrow whose
-calldata starts with one of `EVM_CLOSE_SELECTORS` and whose first argument is that channel, else pending
-`not-a-close`. Where `ref.accessKey.account` is present, the succeeded receipt must also hold the account keychain's
-`AccessKeySpend` log naming that account, key and token, else failed `binding-log-not-found`. At most four calls.
+salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction must be the open call `opens`
+describes, read by `eth_getTransactionByHash`, else failed `open-call-not-found`. Where `ref.closes` is present, the
+succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
+whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
+succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
+failed `binding-log-not-found`. At most four calls.
 
 #### Parameters
 

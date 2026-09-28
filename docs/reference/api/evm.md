@@ -237,7 +237,8 @@ Bounded, read-only calls against one network's endpoint. Every failure rejects w
 
 > **transaction**(`tx`): `Promise`\<[`EvmTransaction`](#evmtransaction) \| `null`\>
 
-`eth_getTransactionByHash`: the recipient (null for a contract creation) and the calldata; null when none.
+`eth_getTransactionByHash`: the sender, the recipient (null for a contract creation) and the calldata; null when
+none.
 
 ###### Parameters
 
@@ -291,12 +292,13 @@ What the issuer records at claim for an EVM payment: read keys only.
 
 ### EvmTransaction
 
-A transaction as `eth_getTransactionByHash` gives it: `to` and `input`.
+A transaction as `eth_getTransactionByHash` gives it: `from`, the address that signed it; `to`; and `input`.
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
+| <a id="property-from"></a> `from` | `` `0x${string}` `` |
 | <a id="property-input"></a> `input` | `` `0x${string}` `` |
 | <a id="property-to"></a> `to` | `` `0x${string}` `` \| `null` |
 
