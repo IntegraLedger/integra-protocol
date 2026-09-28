@@ -5,7 +5,7 @@
  * The public names are re-exported by `../xrpl.ts`.
  */
 import { hash, toLcpString, toRawBytes, type AtrHash } from "../core.js";
-import { refusal, type Refusal } from "../refusal.js";
+import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
 /** CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295. */
 export type XrplNetwork = `xrpl:${number}`;
@@ -213,7 +213,7 @@ export async function decodePresented(holder: object, hex: unknown): Promise<Dec
     presented.set(holder, seen);
   }
   const d = await seen.decoded;
-  if ("refused" in d) return d;
+  if (isRefusal(d)) return d;
   return "Signers" in d.tx ? refusal("xrpl/multisigned") : d;
 }
 

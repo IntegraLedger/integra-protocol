@@ -21,7 +21,7 @@ export const A2A_EXTENSION_URIS: readonly string[] = Object.freeze([
 ]);
 
 /** A2A binds nothing: the refusal given wherever an A2A pairing is asked for. */
-export const binding: Refusal = Object.freeze({ refused: true, code: "a2a/no-signed-place" });
+export const binding: Refusal = Object.freeze(refusal("a2a/no-signed-place"));
 
 /** What the carrier proves. */
 export const delivery: { proves: string } = Object.freeze({

@@ -8,7 +8,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { base58 } from "@scure/base";
 import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
-import { refusal, type Refusal } from "../refusal.js";
+import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
 /** CAIP-2: `solana:` and 32 base58 characters. */
 export type SolanaNetwork = `solana:${string}`;
@@ -218,7 +218,7 @@ class Cursor {
 /** Decodes a legacy or v0 wire transaction of at most 1,232 bytes. */
 export function decodeSvmTx(wire: Uint8Array): SvmTx | Refusal {
   const d = decode(wire);
-  if ("refused" in d) return d;
+  if (isRefusal(d)) return d;
   const { requiredSignatures: _, ...tx } = d;
   return tx;
 }
@@ -415,7 +415,7 @@ export function signedWire(message: Uint8Array, signer: string, signature: Uint8
   at += 64 * required;
   withSlots.set(message, at);
   const d = decode(withSlots);
-  if ("refused" in d) return d;
+  if (isRefusal(d)) return d;
   const slot = d.keys.slice(0, d.requiredSignatures).findIndex((k) => sameBytes(k, signerKey));
   if (slot === -1) return refusal("svm/input-malformed");
   withSlots.set(signature, slotsAt + 64 * slot);
@@ -668,7 +668,7 @@ export async function settledBy<W extends string>(
   }
   if (read === null) return { state: "pending", why: "not-found" };
   const tx = decodeSvmTx(read.landed.wire);
-  if ("refused" in tx) return { state: "pending", why: "unreadable" };
+  if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
   if ((await svmDigest(tx)) !== ref.digest.toLowerCase()) return { state: "failed", why: "not-this-instrument" };
   if (read.landed.err !== null && read.landed.err !== undefined) return { state: "failed", why: "err" };
   const why = check(tx, read.landed);
@@ -799,9 +799,9 @@ export async function svmRecover(
   if (read === null) return refusal("svm/not-found");
   if (read.landed.err !== null && read.landed.err !== undefined) return refusal("svm/err");
   const tx = decodeSvmTx(read.landed.wire);
-  if ("refused" in tx) return tx;
+  if (isRefusal(tx)) return tx;
   const c = svmCarrier(tx);
-  return "refused" in c ? c : c.h;
+  return isRefusal(c) ? c : c.h;
 }
 
 // ── the payment-channels program ─────────────────────────────────────────────────────────────────────────────────
@@ -854,7 +854,7 @@ export function channelPda(a: {
     [new TextEncoder().encode("channel"), ...(keys as Uint8Array[]), u64le(a.salt), u64le(a.openSlot)],
     PAYMENT_CHANNELS,
   );
-  return "refused" in pda ? pda : pda.address;
+  return isRefusal(pda) ? pda : pda.address;
 }
 
 function isU64(v: unknown): v is bigint {
@@ -1028,7 +1028,7 @@ export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Ar
       })
     )[0];
   const eventAuthority = findPda([new TextEncoder().encode("event_authority")], PAYMENT_CHANNELS);
-  if ("refused" in eventAuthority) return eventAuthority;
+  if (isRefusal(eventAuthority)) return eventAuthority;
   const a = (s: string, role: (typeof AccountRole)[keyof typeof AccountRole]) => ({ address: address(s), role });
   let accounts;
   if (ix.kind === "open") {

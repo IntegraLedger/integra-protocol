@@ -18,7 +18,7 @@ import {
   type StellarUnsigned,
 } from "./internal/stellar.js";
 import { isObject } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
   chosen,
@@ -90,7 +90,7 @@ function advertise(
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
-  if ("refused" in placed) return placed;
+  if (isRefusal(placed)) return placed;
   if (!isAccount(offer.payTo)) return refusal("stellar/carrier-occupied");
   return withOption(placed, offeredAt(placed.accepts, offer), { ...offer, payTo: muxedFor(offer.payTo, h) });
 }
@@ -114,7 +114,7 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
   const expiration = c.currentLedger + Math.ceil(accepted.maxTimeoutSeconds / 5);
   const s = signingFor(c.simulatedXdr, accepted.network as "stellar:pubnet", expiration, false);
-  if ("refused" in s) return s;
+  if (isRefusal(s)) return s;
   if (s.payment.to !== accepted.payTo) return refusal("stellar/carrier-mismatch");
   if (!s.agrees) return refusal("stellar/not-one-transfer");
   return s.unsigned;
@@ -126,11 +126,11 @@ function presentedOf(presented: unknown) {
   const accepted = presented["accepted"] as PaymentRequirements;
   if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
   const lc = legalContextOf(presented["extensions"]);
-  if ("refused" in lc) return lc;
+  if (isRefusal(lc)) return lc;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const signed = readSignedTransfer(payload["transaction"] as string, accepted.network as "stellar:pubnet");
-  if ("refused" in signed) return signed;
+  if (isRefusal(signed)) return signed;
   const { payment } = signed;
   if (payment.toId === null) return refusal("stellar/no-carrier");
   if (payment.to !== accepted.payTo || payment.toId !== muxedId(lc.h)) return refusal("stellar/carrier-mismatch");
@@ -145,13 +145,13 @@ function presentedOf(presented: unknown) {
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const p = presentedOf(presented);
-  return "refused" in p ? p : p.h;
+  return isRefusal(p) ? p : p.h;
 }
 
 /** The read keys for finding this payment later, from the signed entry. `fromLedger` is 0 until the caller sets it. */
 async function reference(presented: unknown): Promise<StellarRef | Refusal> {
   const p = presentedOf(presented);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   return {
     network: p.accepted.network as StellarRef["network"],
     authDigest: p.payment.auth.preimageHash,

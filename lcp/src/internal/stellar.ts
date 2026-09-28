@@ -18,7 +18,7 @@ import type {
 } from "@stellar/stellar-sdk/xdr";
 import { toRawBytes, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
-import { refusal, type Refusal } from "../refusal.js";
+import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
 const peer: typeof StellarBase | undefined = await import("@stellar/stellar-sdk/base").then(
   (m) => m,
@@ -403,7 +403,7 @@ export function readSignedTransfer(
   if (typeof xdrB64 !== "string" || xdrB64.length === 0) return refusal("stellar/tx-malformed");
   if (xdrB64.length > MAX_XDR) return refusal("stellar/tx-too-large");
   const p = parse(S, xdrB64, network);
-  return "refused" in p ? p : { payment: p.payment, agrees: p.agrees };
+  return isRefusal(p) ? p : { payment: p.payment, agrees: p.agrees };
 }
 
 /**
@@ -417,7 +417,7 @@ export function readSignedTransfer(
  */
 export function decodeStellarTx(xdrB64: string, network: StellarNetwork): StellarPayment | Refusal {
   const p = readSignedTransfer(xdrB64, network);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   return p.agrees ? p.payment : refusal("stellar/not-one-transfer");
 }
 
@@ -438,7 +438,7 @@ export function signingFor(
   if (typeof simulatedXdr !== "string" || simulatedXdr.length === 0) return refusal("stellar/tx-malformed");
   if (simulatedXdr.length > MAX_XDR) return refusal("stellar/tx-too-large");
   const parsed = parse(S, simulatedXdr, network);
-  if ("refused" in parsed) return parsed;
+  if (isRefusal(parsed)) return parsed;
   const { payment, wire, entry, cred } = parsed;
   if (!Number.isInteger(expiration) || expiration < 0 || expiration > 0xffffffff) return refusal("stellar/tx-malformed");
   if (!S.StrKey.isValidEd25519PublicKey(payment.from)) return refusal("stellar/no-address-auth");
@@ -563,8 +563,8 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
     return { state: "pending", why: "unreadable" };
   }
   const p = decodeStellarTx(r.envelopeXdr, ref.network);
-  if ("refused" in p && p.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
-  if ("refused" in p) return { state: "other", why: "not-this-instrument" };
+  if (isRefusal(p) && p.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
+  if (isRefusal(p)) return { state: "other", why: "not-this-instrument" };
   if (p.auth.preimageHash !== ref.authDigest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
     return { state: "other", why: "not-this-instrument" };
   }

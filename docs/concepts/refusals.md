@@ -38,6 +38,15 @@ if ("refused" in result) {
 core/slot-reserved
 ```
 
+## Where a refusal comes from
+
+Only the package makes refusals. Its entry points recognise a refusal by where it was made, not by its members, so a
+value you pass in is never returned to you as a refusal, whatever it holds. A presented payment or credential that the
+package would otherwise hand back to you unchanged is refused as malformed when it carries a `refused` member:
+`mpp/credential-malformed` for an MPP credential, `x402/payload-malformed` for an x402 EIP-3009 payment and
+`casper/payload-malformed` for a Casper payment. Every other entry point reads a presented value only for the members
+its pairing defines, and returns either a value it built or its own refusal.
+
 ## Where the core throws
 
 Three core functions take a value the caller controls completely, and throw a `TypeError` when it is wrong:

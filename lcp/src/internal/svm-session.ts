@@ -4,7 +4,7 @@
  * are re-exported by `../svm.ts`.
  */
 import { canonicalJson, toRawBytes, type AtrHash } from "../core.js";
-import { refusal, type Refusal } from "../refusal.js";
+import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import {
   channelVoucherMessage,
   decodeSvmTx,
@@ -112,7 +112,7 @@ export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promi
   }
   if (found.landed.err !== null && found.landed.err !== undefined) return { state: "failed", why: "err" };
   const tx = decodeSvmTx(found.landed.wire);
-  if ("refused" in tx) return { state: "pending", why: "unreadable" };
+  if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
   const programKey = keyBytes(ref.program);
   const channelKey = keyBytes(ref.channel);
   if (programKey === null || channelKey === null) return { state: "failed", why: "not-a-close" };

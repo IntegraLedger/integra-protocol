@@ -32,7 +32,7 @@ import {
   xrplChargePairings,
   xrplSessionPairings,
 } from "./mpp-rail-checks.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /** A challenge's auth-params after quoted-string unescaping. `request` and `opaque` are base64url-nopad JSON. */
 export interface MppChallenge {
@@ -400,7 +400,7 @@ export interface Checked {
 /** Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. */
 export function pairingsOf(c: MppChallenge): readonly MppPairing[] | Refusal {
   const checked = checkChallenge(c, false);
-  return "refused" in checked ? checked : checked.pairings;
+  return isRefusal(checked) ? checked : checked.pairings;
 }
 
 /**
@@ -435,7 +435,7 @@ export function checkChallenge(c: unknown, placed: boolean): Checked | Refusal {
   const details = md === undefined ? {} : isObject(md) ? (md as { [k: string]: Json }) : undefined;
   if (details === undefined) return refusal("mpp/request-malformed");
   const pairings = check(request, details, c);
-  if ("refused" in pairings) return pairings;
+  if (isRefusal(pairings)) return pairings;
   return { challenge: c, request, details, expires, intent: c.intent as MppIntent, method: c.method as MppMethod, pairings };
 }
 
@@ -656,7 +656,7 @@ export function place(
   const agreementFaulted = agreementRefusal("mpp", agreementUrl);
   if (agreementFaulted !== undefined) return agreementFaulted;
   const checked = checkChallenge(option, false);
-  if ("refused" in checked) return checked;
+  if (isRefusal(checked)) return checked;
   const i = doc.findIndex((c) => sameBound(c, option));
   if (i === -1) return refusal("mpp/not-this-pairing");
   const target = doc[i]!;
@@ -698,7 +698,7 @@ export function placeCarrier(
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   const placed = place(doc, h, link, option, agreementUrl);
-  if ("refused" in placed) return placed;
+  if (isRefusal(placed)) return placed;
   const i = doc.findIndex((c) => sameBound(c, option));
   const request = decodeObject(placed[i]!.request);
   if (request === undefined) return refusal("mpp/request-malformed");
@@ -840,7 +840,9 @@ export function read(
 
 /** A credential's shape: an echoed challenge with an id, an optional string `source`, and a payload object. */
 export function credentialOf(c: unknown): MppCredential | Refusal {
-  if (!isObject(c) || !isObject(c.challenge) || !isObject(c.payload)) return refusal("mpp/credential-malformed");
+  if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
   if (!isChallengeShape(c.challenge) || typeof c.challenge.id !== "string") return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
   return c as unknown as MppCredential;
@@ -849,7 +851,7 @@ export function credentialOf(c: unknown): MppCredential | Refusal {
 /** The string member `field` of a credential whose payload `type` is `type`, or undefined for any other value. */
 export function pushedField(presented: unknown, type: string, field: string): string | undefined {
   const c = credentialOf(presented);
-  if ("refused" in c || c.payload["type"] !== type) return undefined;
+  if (isRefusal(c) || c.payload["type"] !== type) return undefined;
   const v = c.payload[field];
   return typeof v === "string" ? v : undefined;
 }
@@ -859,7 +861,9 @@ export function pushedField(presented: unknown, type: string, field: string): st
  * its `request` decodes.
  */
 export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]: Json } } | Refusal {
-  if (!isObject(c) || !isObject(c.challenge) || !isObject(c.payload)) return refusal("mpp/credential-malformed");
+  if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
   if (!isChallengeShape(c.challenge) || typeof c.challenge.id !== "string") return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
   if (!jsonWithin(c, MAX_CREDENTIAL)) return refusal("mpp/credential-malformed");
@@ -884,10 +888,10 @@ export function echoedFor(
   pairing: MppPairing,
 ): { h: AtrHash; checked: Checked; payload: { [k: string]: Json } } | Refusal {
   const b = challengeBound(c);
-  if ("refused" in b) return b;
+  if (isRefusal(b)) return b;
   const credential = c as MppCredential;
   const checked = checkChallenge(credential.challenge, true);
-  if ("refused" in checked) return checked;
+  if (isRefusal(checked)) return checked;
   if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
   return { h: b.h, checked, payload: credential.payload };
 }
@@ -896,7 +900,7 @@ export function echoedFor(
 export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairing): Checked | Refusal {
   if (!isChallengeShape(challenge) || typeof challenge.id !== "string") return refusal("mpp/input-malformed");
   const checked = checkChallenge(challenge, true);
-  if ("refused" in checked) return checked;
+  if (isRefusal(checked)) return checked;
   if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
   const fromId = challengeIdH(challenge);
   if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");

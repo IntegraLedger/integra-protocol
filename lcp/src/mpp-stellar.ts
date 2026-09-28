@@ -30,7 +30,7 @@ import {
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const ID = "mpp/charge/stellar" as const;
@@ -82,7 +82,7 @@ function bindingOf(credential: MppCredential): { h: AtrHash; checked: Checked; p
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = bindingOf(credential);
   return isRefusal(b) ? b : b.h;
 }
@@ -90,7 +90,7 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
 /** The read keys from the signed entry; `transaction` only for a credential the client submitted itself. */
 async function reference(input: unknown): Promise<StellarRef | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = bindingOf(credential);
   if (isRefusal(b)) return b;
   const hash = credential.payload["hash"];
@@ -112,7 +112,9 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
  * `FAILED` is refused `stellar/tx-failed`.
  */
 async function fetchPresented(credential: MppCredential, reader: StellarReader): Promise<MppCredential | Refusal> {
-  if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
+  if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
   if (credential.payload["type"] !== "hash") return credential;
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;

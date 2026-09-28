@@ -5,7 +5,7 @@
 import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
   chosen,
@@ -356,6 +356,7 @@ function unplaced(option: PaymentRequirements): PaymentRequirements {
 /** The payment's shape as this pairing requires it, or `casper/payload-malformed`. */
 function paymentOf(presented: unknown): CasperPaymentPayload | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("casper/payload-malformed");
+  if (carriesRefused(presented)) return refusal("casper/payload-malformed");
   if (!casperOption(presented["accepted"])) return refusal("casper/payload-malformed");
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("casper/payload-malformed");

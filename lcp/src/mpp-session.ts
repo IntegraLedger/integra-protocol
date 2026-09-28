@@ -293,7 +293,7 @@ function paramsOf(c: unknown): Params | Refusal {
 /** The CAIP-2 network of an EVM or Tempo session or subscription challenge. */
 export function sessionNetwork(c: MppChallenge): `eip155:${number}` | Refusal {
   const p = paramsOf(c);
-  return "refused" in p ? p : p.network;
+  return isRefusal(p) ? p : p.network;
 }
 
 // ── Shared steps.
@@ -301,7 +301,7 @@ export function sessionNetwork(c: MppChallenge): `eip155:${number}` | Refusal {
 function offerFor(choice: MppChoice, h: AtrHash, pairing: ChannelId): Checked | Refusal {
   if (!isObject(choice) || !isObject(choice.challenge)) return refusal("mpp/input-malformed");
   const checked = checkChallenge(choice.challenge, true);
-  if ("refused" in checked) return checked;
+  if (isRefusal(checked)) return checked;
   if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
   const fromId = challengeIdH(choice.challenge);
   if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");
@@ -314,9 +314,9 @@ function echoed(
   pairing: ChannelId,
 ): { h: AtrHash; checked: Checked; payload: { [k: string]: Json } } | Refusal {
   const b = challengeBound(presented);
-  if ("refused" in b) return b;
+  if (isRefusal(b)) return b;
   const checked = checkChallenge(presented.challenge, true);
-  if ("refused" in checked) return checked;
+  if (isRefusal(checked)) return checked;
   if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
   return { h: b.h, checked, payload: presented.payload };
 }
@@ -465,7 +465,7 @@ export function keySearch(ref: SessionRef, receipt: EvmReceipt, h: AtrHash): Ses
  */
 export function evmSessionResume(c: MppChallenge): { network: string; channel: Hex } | null | Refusal {
   const p = paramsOf(c);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   if (p.intent !== "session") return refusal("mpp/not-this-pairing");
   const named = p.details["channelId"];
   if (named === undefined) return null;
@@ -503,9 +503,9 @@ function evmOpened(
   presented: MppCredential,
 ): { h: AtrHash; checked: Checked; opening: Opening; payer: Hex; escrow: Hex; auth: { [k: string]: Json } } | Refusal {
   const e = echoed(presented, SESSION_EVM);
-  if ("refused" in e) return e;
+  if (isRefusal(e)) return e;
   const opening = evmOpening(e.payload);
-  if ("refused" in opening) return opening;
+  if (isRefusal(opening)) return opening;
   const { type, o } = opening;
   if (type !== "hash" && type !== "authorization" && type !== "permit2") return refusal("mpp/credential-type");
   const salt = normalHash(o["salt"]);
@@ -558,16 +558,16 @@ function evmOpened(
 
 async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = evmOpened(presented);
-  return "refused" in o ? o : o.h;
+  return isRefusal(o) ? o : o.h;
 }
 
 async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = evmOpened(presented);
-  if ("refused" in o) return o;
+  if (isRefusal(o)) return o;
   const currency = str(o.checked.request["currency"]) as Hex;
   const network = `eip155:${o.checked.details["chainId"] as number}` as const;
   if (o.opening.type === "hash") {
@@ -614,7 +614,7 @@ async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
 
 async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
   const o = offerFor(choice, h, SESSION_EVM);
-  if ("refused" in o) return o;
+  if (isRefusal(o)) return o;
   const deposit = choice.deposit;
   if (typeof deposit !== "bigint" || deposit <= 0n || deposit >= U128) return refusal("mpp/input-malformed");
   const signer = choice.authorizedSigner ?? ZERO;
@@ -702,7 +702,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
       witness: { payee: recipient, salt, authorizedSigner: signer },
     };
   }
-  if ("refused" in typedData) return typedData;
+  if (isRefusal(typedData)) return typedData;
   return {
     funding: { kind: "eip712", typedData },
     voucher,
@@ -722,16 +722,16 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
 /** The transaction a `hash` opening presents, which the payer broadcast before the claim; undefined for any other. */
 function evmLandedTx(presented: unknown): string | undefined {
   const c = credentialOf(presented);
-  if ("refused" in c) return undefined;
+  if (isRefusal(c)) return undefined;
   const opening = evmOpening(c.payload);
-  if ("refused" in opening || opening.type !== "hash") return undefined;
+  if (isRefusal(opening) || opening.type !== "hash") return undefined;
   return normalHash(opening.o["hash"]) ?? undefined;
 }
 
 /** The close keys of an EVM session: the network, and the escrow the issued challenge names with the channel. */
 function evmCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refusal {
   const p = paramsOf(chosen);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const c = normalHash(channel);
   if (c === null) return refusal("mpp/credential-malformed");
   return { network: p.network, closes: { escrow: p.escrow.toLowerCase() as Hex, channel: c as Hex } };
@@ -880,11 +880,11 @@ function descriptorSalt(payload: { [k: string]: Json }, p: Params): AtrHash | Re
 
 async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const payload = payloadOf(presented);
   if (isRefusal(payload)) return payload;
   const p = paramsOf(isObject(presented) ? presented.challenge : undefined);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   if (p.version !== "v2") return refusal("mpp/not-bound-within");
   return descriptorSalt(payload, p);
 }
@@ -894,15 +894,15 @@ function tempoOpened(
   presented: MppCredential,
 ): { h: AtrHash; checked: Checked; params: Params; validBefore: bigint | null; channel: Hex } | Refusal {
   const e = echoed(presented, SESSION_TEMPO);
-  if ("refused" in e) return e;
+  if (isRefusal(e)) return e;
   if (e.payload["action"] !== "open" || e.payload["type"] !== "transaction") return refusal("mpp/not-an-opening");
   const p = paramsOf(presented.challenge);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const wire = e.payload["transaction"];
   if (typeof wire !== "string" || wire.length % 2 !== 0 || !/^0x[0-9a-fA-F]*$/.test(wire)) return refusal("mpp/credential-malformed");
   if ((wire.length - 2) / 2 > MAX_WIRE) return refusal("tempo/tx-too-large");
   const tx = decodeTempoTx(bytesOf(wire)!);
-  if ("refused" in tx) return tx;
+  if (isRefusal(tx)) return tx;
   const selector = p.version === "v2" ? OPEN_V2_SELECTOR : OPEN_V1_SELECTOR;
   const opens = tx.calls.filter(
     (c) => c.to !== null && sameBytes(c.to, p.escrow) && c.input.length >= 4 && hexOf(c.input.subarray(0, 4)) === selector,
@@ -924,16 +924,16 @@ function tempoOpened(
 
 async function tempoBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = tempoOpened(presented);
-  return "refused" in o ? o : o.h;
+  return isRefusal(o) ? o : o.h;
 }
 
 async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = tempoOpened(presented);
-  if ("refused" in o) return o;
+  if (isRefusal(o)) return o;
   const topic0 = o.params.version === "v2" ? CHANNEL_OPENED_V2_TOPIC : CHANNEL_OPENED_V1_TOPIC;
   return {
     network: o.params.network,
@@ -945,9 +945,9 @@ async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
 
 async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
   const o = offerFor(choice, h, SESSION_TEMPO);
-  if ("refused" in o) return o;
+  if (isRefusal(o)) return o;
   const p = paramsOf(choice.challenge);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const deposit = choice.deposit;
   if (typeof deposit !== "bigint" || deposit <= 0n || deposit >= (p.version === "v2" ? U96 : U128)) {
     return refusal("mpp/input-malformed");
@@ -983,14 +983,14 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
     funding: { kind: "tempo-call", chainId: p.chainId, call: { to: p.escrow, data }, validBefore: o.expires, broadcast: false },
     voucher(signedTx: Hex): VoucherTypedData | Refusal {
       const c = opened(signedTx);
-      if ("refused" in c) return c;
+      if (isRefusal(c)) return c;
       return p.version === "v2"
         ? voucherData("TIP20 Channel Reserve", "uint96", p.chainId, p.escrow, c.channelId)
         : voucherData("Tempo Stream Channel", "uint128", p.chainId, p.escrow, c.channelId);
     },
     complete(signedTx: Hex, voucherSignature: Hex): MppCredential | Refusal {
       const c = opened(signedTx);
-      if ("refused" in c) return c;
+      if (isRefusal(c)) return c;
       if (!isHexBytes(voucherSignature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       return {
         challenge,
@@ -1013,7 +1013,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
 /** The close's read keys: the escrow's `ChannelClosed` naming the channel, as the binding log and as the search filter. */
 function tempoCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refusal {
   const p = paramsOf(chosen);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const c = normalHash(channel);
   if (c === null) return refusal("mpp/credential-malformed");
   const topic0 = p.version === "v2" ? CHANNEL_CLOSED_V2_TOPIC : CHANNEL_CLOSED_V1_TOPIC;
@@ -1053,12 +1053,12 @@ function subscriptionKind(presented: MppCredential): "open" | "within" | "close"
 
 function subscriptionWitness(presented: MppCredential): { h: AtrHash; checked: Checked; keyId: Hex } | Refusal {
   const e = echoed(presented, SUBSCRIPTION);
-  if ("refused" in e) return e;
+  if (isRefusal(e)) return e;
   if (e.payload["type"] !== "keyAuthorization") return refusal("mpp/not-an-opening");
   const signed = e.payload["signature"];
   if (typeof signed !== "string") return refusal("tempo/key-authorization-malformed");
   const k = decodeKeyAuthorization(signed as Hex);
-  if ("refused" in k) return k;
+  if (isRefusal(k)) return k;
   if (k.witness === undefined) return refusal("tempo/no-witness");
   if (!hashEquals(k.witness, e.h)) return refusal("tempo/witness-not-bound");
   return { h: e.h, checked: e.checked, keyId: k.keyId };
@@ -1066,16 +1066,16 @@ function subscriptionWitness(presented: MppCredential): { h: AtrHash; checked: C
 
 async function subscriptionBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const w = subscriptionWitness(presented);
-  return "refused" in w ? w : w.h;
+  return isRefusal(w) ? w : w.h;
 }
 
 async function subscriptionReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const w = subscriptionWitness(presented);
-  if ("refused" in w) return w;
+  if (isRefusal(w)) return w;
   const r = w.checked.request;
   const currency = str(r["currency"]) as Hex;
   const digest = await transferDigest({ to: str(r["recipient"]) as Hex, value: BigInt(str(r["amount"])) });
@@ -1095,22 +1095,22 @@ async function subscriptionRef(presented: MppCredential): Promise<{ network: str
   const payload = payloadOf(presented);
   if (isRefusal(payload)) return payload;
   const p = paramsOf(presented.challenge);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   if (typeof payload["signature"] !== "string") return refusal("tempo/key-authorization-malformed");
   const k = decodeKeyAuthorization(payload["signature"] as Hex);
-  return "refused" in k ? k : { network: p.network, channel: k.digest };
+  return isRefusal(k) ? k : { network: p.network, channel: k.digest };
 }
 
 function subscriptionUntil(presented: MppCredential): number | undefined {
   const p = isObject(presented) ? paramsOf(presented.challenge) : undefined;
-  if (p === undefined || "refused" in p) return undefined;
+  if (p === undefined || isRefusal(p)) return undefined;
   const e = p.request["subscriptionExpires"];
   return typeof e === "string" ? unixOf(e) : undefined;
 }
 
 async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<KeyAuthorizationUnsigned | Refusal> {
   const o = offerFor(choice, h, SUBSCRIPTION);
-  if ("refused" in o) return o;
+  if (isRefusal(o)) return o;
   const r = o.request;
   const key = o.details["accessKey"] as { accessKeyAddress: Hex; keyType: keyof typeof KEY_TYPES };
   const chainId = o.details["chainId"] as number;
@@ -1141,7 +1141,7 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
 
 function subscriptionCloseRef(chosen: MppChallenge, _channel: string): SessionRef | Refusal {
   const p = paramsOf(chosen);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const key = p.details["accessKey"];
   const address = isObject(key) ? key["accessKeyAddress"] : undefined;
   if (!isAddress(address)) return refusal("mpp/access-key-malformed");
@@ -1180,7 +1180,7 @@ async function refFrom(presented: MppCredential): Promise<{ network: string; cha
   const payload = payloadOf(presented);
   if (isRefusal(payload)) return payload;
   const p = paramsOf(presented.challenge);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const channel = channelOf(payload);
   return typeof channel === "string" ? { network: p.network, channel } : channel;
 }
