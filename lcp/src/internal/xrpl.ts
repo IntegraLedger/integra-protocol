@@ -78,11 +78,13 @@ const HASH256 = /^[0-9A-Fa-f]{64}$/;
 const TXN_PREFIX = Uint8Array.of(0x54, 0x58, 0x4e, 0x00);
 
 type Codec = typeof import("ripple-binary-codec");
-let codec: Promise<Codec | undefined> | undefined;
+type Parser = typeof import("ripple-binary-codec/dist/serdes/binary-parser.js").BinaryParser;
+let codec: Promise<{ c: Codec; BinaryParser: Parser } | undefined> | undefined;
 
-function loadCodec(): Promise<Codec | undefined> {
-  codec ??= import("ripple-binary-codec").then(
-    (m) => m,
+/** The codec and its `BinaryParser`, loaded together on first use; undefined when the peer is not installed. */
+function loadCodec(): Promise<{ c: Codec; BinaryParser: Parser } | undefined> {
+  codec ??= Promise.all([import("ripple-binary-codec"), import("ripple-binary-codec/dist/serdes/binary-parser.js")]).then(
+    ([c, p]) => ({ c, BinaryParser: p.BinaryParser }),
     () => undefined,
   );
   return codec;
@@ -128,24 +130,23 @@ export function mppInvoiceId(h: AtrHash): string {
 
 /**
  * Decodes a signed blob of at most 4 KiB of hex, and computes its transaction hash as the ledger does: SHA-512Half
- * over `54584E00` and the blob, in upper case. The blob must be the canonical serialization of what it decodes to: the
- * codec's encoding of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and
- * every array member is an object.
+ * over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its fields refuses a
+ * blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep or holds more than `XRPL_MAX_FIELDS`
+ * fields and array members. The blob must be the canonical serialization of what it decodes to: the codec's encoding
+ * of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and every array member is
+ * an object.
  */
 export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: string } | Refusal> {
   if (typeof hex !== "string" || !HEX.test(hex)) return refusal("xrpl/blob-malformed");
   if (hex.length > MAX_BLOB_HEX) return refusal("xrpl/blob-too-large");
-  const c = await loadCodec();
-  if (c === undefined) return refusal("xrpl/peer-missing");
+  const loaded = await loadCodec();
+  if (loaded === undefined) return refusal("xrpl/peer-missing");
+  const { c, BinaryParser } = loaded;
+  if (!withinCaps(new BinaryParser(hex, c.DEFAULT_DEFINITIONS))) return refusal("xrpl/blob-malformed");
   let tx: XrplTxJson;
-  try {
-    tx = c.decode(hex) as XrplTxJson;
-  } catch {
-    return refusal("xrpl/blob-malformed");
-  }
-  if (!withinCaps(tx, c.DEFAULT_DEFINITIONS)) return refusal("xrpl/blob-malformed");
   let canonical: string;
   try {
+    tx = c.decode(hex) as XrplTxJson;
     canonical = c.encode(tx as Parameters<Codec["encode"]>[0]);
   } catch {
     return refusal("xrpl/blob-malformed");
@@ -163,37 +164,57 @@ export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: s
 }
 
 /**
- * True when the decoded transaction nests STObject and STArray fields at most `XRPL_MAX_DEPTH` deep and holds at most
- * `XRPL_MAX_FIELDS` fields and array members. The field types are the codec's definitions.
+ * True when the serialized transaction nests STObject and STArray fields at most `XRPL_MAX_DEPTH` deep and holds at
+ * most `XRPL_MAX_FIELDS` fields and array members, and every object and array it opens is closed. It reads each field
+ * header once: an object or array field opens a level in place, its end marker closes it, and every other field's
+ * value is read as a leaf, so the pass is linear in the blob's length. Levels open and close as the codec's decode
+ * reads them: inside an object only `ObjectEndMarker` closes, inside an array only `ArrayEndMarker` closes, and any
+ * other field whose type is STObject or STArray opens a level.
  */
-function withinCaps(tx: unknown, definitions: Codec["DEFAULT_DEFINITIONS"]): boolean {
+function withinCaps(parser: InstanceType<Parser>): boolean {
+  const open: ("STObject" | "STArray")[] = [];
   let fields = 0;
-  const typeOf = (name: string): string | undefined => {
-    try {
-      return definitions.field.fromString(name)?.type.name;
-    } catch {
-      return undefined;
-    }
-  };
-  const walk = (o: unknown, depth: number): boolean => {
-    if (typeof o !== "object" || o === null || Array.isArray(o)) return false;
-    for (const [name, v] of Object.entries(o)) {
+  try {
+    while (!parser.end()) {
+      const field = parser.readField();
+      const inside = open.at(-1) ?? "STObject";
+      const closes = inside === "STObject" ? "ObjectEndMarker" : "ArrayEndMarker";
+      if (field.name === closes) {
+        if (open.pop() === undefined) return false;
+        continue;
+      }
       if (++fields > XRPL_MAX_FIELDS) return false;
-      const type = typeOf(name);
-      if (type === "STObject") {
-        if (depth + 1 > XRPL_MAX_DEPTH || !walk(v, depth + 1)) return false;
-      } else if (type === "STArray") {
-        if (depth + 1 > XRPL_MAX_DEPTH || !Array.isArray(v)) return false;
-        for (const member of v) {
-          if (++fields > XRPL_MAX_FIELDS || depth + 2 > XRPL_MAX_DEPTH) return false;
-          if (typeof member !== "object" || member === null || Object.keys(member).length !== 1) return false;
-          if (!walk(Object.values(member)[0], depth + 2)) return false;
-        }
+      const type = field.type.name;
+      if (type === "STObject" || type === "STArray") {
+        if (open.length >= XRPL_MAX_DEPTH) return false;
+        open.push(type);
+      } else {
+        parser.readFieldValue(field);
       }
     }
-    return true;
-  };
-  return walk(tx, 0);
+  } catch {
+    return false;
+  }
+  return open.length === 0;
+}
+
+type Decoded = { tx: XrplTxJson; hash: string };
+const presented = new WeakMap<object, { hex: unknown; decoded: Promise<Decoded | Refusal> }>();
+
+/**
+ * The signed blob a presented payment holds, decoded once per holding object: a later call with the same object and
+ * the same blob gives the first call's result. A blob that carries `Signers` is refused `xrpl/multisigned`: the payer
+ * signs with a single key, so the transaction hash computed from the blob is the one that can land.
+ */
+export async function decodePresented(holder: object, hex: unknown): Promise<Decoded | Refusal> {
+  let seen = presented.get(holder);
+  if (seen === undefined || seen.hex !== hex) {
+    seen = { hex, decoded: decodeBlob(hex as string) };
+    presented.set(holder, seen);
+  }
+  const d = await seen.decoded;
+  if ("refused" in d) return d;
+  return "Signers" in d.tx ? refusal("xrpl/multisigned") : d;
 }
 
 /**

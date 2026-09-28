@@ -21,7 +21,7 @@ Each pairing places H in one field. Some examples, all from the package's own pa
 |---|---|
 | `x402/exact/eip155/eip3009` | The `nonce` of the EIP-3009 authorization the payer signs. |
 | `x402/exact/solana` | The option's `extra.memo`, written by the payer as the transaction's one Memo instruction. |
-| `x402/exact/xrpl` | The Payment's `InvoiceID`, which is SHA-256 of H's LCP string. |
+| `x402/exact/xrpl` | The Payment's `InvoiceID`, which is SHA-256 of H's LCP string, in a Payment the payer signs with a single key. |
 | `mpp/charge/evm/authorization` | The MPP challenge `id`, from which the signed nonce is derived. |
 | `x402/batch-settlement/eip155` | The channel configuration's `salt`, which every signature in the channel signs. |
 | `card/visa-tap` | An `lcp-hash` field covered by the agent's `agent-payer-auth` message signature. |

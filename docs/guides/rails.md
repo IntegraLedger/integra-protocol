@@ -79,8 +79,8 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | Solana | `svm`, `x402-exact-solana`, `x402-upto-solana` | `x402/exact/solana`, `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/charge/solana`, `mpp/charge/usdc/solana` | The transaction's one Memo instruction, holding H's LCP string. |
 | | | `mpp/session/solana` | The session channel's salt: H's first 8 bytes. It binds those 8 bytes only: whoever assembles the ATR can construct a second ATR whose hash shares them. |
 | Stellar | `stellar`, `x402-exact-stellar` | `x402/exact/stellar`, `mpp/charge/stellar` | The seller's muxed address, whose 8-byte id is H's first 8 bytes, as the Soroban `transfer`'s `to`. |
-| XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. |
-| | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. |
+| XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. The payer signs with a single key: a blob that carries `Signers` is refused `xrpl/multisigned`. |
+| | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. The payer signs with a single key, as for `x402/exact/xrpl`. |
 | | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo: H's LCP string. |
 | Hedera | `hedera` | `x402/exact/hedera` | The signed transaction body's memo: H's LCP string. |
 | | | `mpp/charge/hedera` | MPP's attribution memo, as the signed body memo. |

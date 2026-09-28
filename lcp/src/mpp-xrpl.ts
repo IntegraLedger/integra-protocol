@@ -1,10 +1,10 @@
 /**
  * `mpp/charge/xrpl`: the ATR hash itself, as 64 upper-case hex digits, placed as the request's
- * `methodDetails.invoiceId`, which the payer signs as the Payment's `InvoiceID`.
+ * `methodDetails.invoiceId`, which the payer signs with a single key as the Payment's `InvoiceID`.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
 import {
-  decodeBlob,
+  decodePresented,
   mppInvoiceId,
   sameInvoice,
   xrplInvoiceOf,
@@ -67,7 +67,7 @@ async function bindingOf(
   if (isRefusal(e)) return e;
   const blob = presentedBlob(e.payload);
   if (isRefusal(blob)) return blob;
-  const decoded = await decodeBlob(blob);
+  const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
   const { tx } = decoded;
   if (tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
@@ -78,7 +78,11 @@ async function bindingOf(
   return { h: e.h, checked: e.checked, tx, hash: decoded.hash };
 }
 
-/** H from the echoed challenge, once the signed Payment's `InvoiceID` is the request's `invoiceId` and equals that H. */
+/**
+ * H from the echoed challenge, once the signed Payment's `InvoiceID` is the request's `invoiceId` and equals that H. A
+ * multi-signed blob is refused `xrpl/multisigned`: the payer signs with a single key. The blob is decoded once per
+ * payload object, so `bound` and `reference` on one credential share one decode.
+ */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
   if ("refused" in credential) return credential;
@@ -86,7 +90,7 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(b) ? b : b.h;
 }
 
-/** The read keys from the signed blob: its hash, its `InvoiceID`, and its `LastLedgerSequence` or null. */
+/** The read keys from the single-signed blob: its hash, its `InvoiceID`, and its `LastLedgerSequence` or null. */
 async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const credential = credentialOf(input);
   if ("refused" in credential) return credential;
@@ -232,8 +236,8 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The payer signed an XRPL Payment whose InvoiceID is this ATR's hash, and the Payment is in a validated ledger " +
-    "with tesSUCCESS. This does not show that amount, destination, asset or timing match the ATR's content.",
+    "The payer signed, with a single key, an XRPL Payment whose InvoiceID is this ATR's hash, and the Payment is in a " +
+    "validated ledger with tesSUCCESS. This does not show that amount, destination, asset or timing match the ATR's content.",
 });
 
 export const chargeXrpl = Object.freeze({
