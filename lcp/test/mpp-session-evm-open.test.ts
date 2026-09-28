@@ -28,6 +28,9 @@ function reader(tx: EvmTransaction | null | "error"): EvmReader {
       if (tx === "error") throw new ReaderError("transport");
       return hash === R.hash ? tx : null;
     },
+    call: async () => {
+      throw new Error("the hash opening's read makes no eth_call");
+    },
   };
 }
 
