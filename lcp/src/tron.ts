@@ -358,13 +358,14 @@ function memoHash(data: Uint8Array): AtrHash | null {
 // ── Settlement.
 
 /**
- * Reads the transaction by id: at the Solidity node first, then at the FullNode's head. Settled when its receipt
- * result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as `expired` only when the latest
- * solidified block is two slots past the expiration and no node holds it. A failed read, or a reader for another
- * network, is pending. At most three calls.
+ * Reads the latest solidified block first, then the transaction by id: at the Solidity node, then at the FullNode's
+ * head. Settled when its receipt result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as
+ * `expired` only when that earlier solidified block is two slots past the expiration and neither lookup finds the
+ * transaction. A failed read, or a reader for another network, is pending. At most three calls.
  */
 export async function tronStatus(ref: TronRef, reader: TronReader): Promise<TronStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  const head = await solidTimestamp(reader);
   for (const level of ["solid", "head"] as const) {
     let info: TronInfo | null;
     try {
@@ -378,18 +379,21 @@ export async function tronStatus(ref: TronRef, reader: TronReader): Promise<Tron
     if (!info.logs.some((log) => isAssetTransfer(log, ref.asset))) return { state: "failed", why: "no-transfer" };
     return { state: "settled", finality: level === "solid" ? "solidified" : "head", blockNumber: info.blockNumber };
   }
-  let head: { number: bigint; timestamp: bigint };
+  const expiration = typeof ref.expiration === "string" && /^[0-9]{1,19}$/.test(ref.expiration) ? BigInt(ref.expiration) : null;
+  if (head === null || expiration === null) return { state: "pending", why: "unreadable" };
+  if (head >= expiration + EXPIRY_SLOTS_MS) return { state: "failed", why: "expired" };
+  return { state: "pending", why: "not-found" };
+}
+
+/** The latest solidified block's timestamp in milliseconds, or null when the read fails or its answer is malformed. */
+async function solidTimestamp(reader: TronReader): Promise<bigint | null> {
+  let head: unknown;
   try {
     head = await reader.solidHead();
   } catch {
-    return { state: "pending", why: "unreadable" };
+    return null;
   }
-  const expiration = typeof ref.expiration === "string" && /^[0-9]{1,19}$/.test(ref.expiration) ? BigInt(ref.expiration) : null;
-  if (!isObject(head) || typeof head.timestamp !== "bigint" || expiration === null) {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (head.timestamp >= expiration + EXPIRY_SLOTS_MS) return { state: "failed", why: "expired" };
-  return { state: "pending", why: "not-found" };
+  return isObject(head) && typeof head["timestamp"] === "bigint" ? head["timestamp"] : null;
 }
 
 /** Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. One call. */
