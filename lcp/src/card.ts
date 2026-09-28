@@ -241,8 +241,9 @@ async function noSignedPlace(): Promise<Refusal> {
 // ── The one check: bound ──
 
 /**
- * The hash from a TAP payment request: the one `lcp-hash` line, when an `agent-payer-auth` signature lists
- * `"lcp-hash"` without parameters and has its `Signature` member. No signature, key, window or nonce is verified.
+ * The hash from a TAP payment request: the one `lcp-hash` line, when every `agent-payer-auth` signature lists
+ * `"lcp-hash"` without parameters and one of them has its `Signature` member, so whichever payer signature the
+ * seller's recognition verifies covers the hash. No signature, key, window or nonce is verified.
  */
 async function tapBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented)) return refusal("card/tap-signature-input-malformed");
@@ -262,9 +263,8 @@ async function tapBound(presented: unknown): Promise<AtrHash | Refusal> {
 
   const payers = [...inputs].filter(([, m]) => isPayerTag(m.params.get("tag")));
   if (payers.length === 0) return refusal("card/tap-no-payer-signature");
-  const covering = payers.filter(([, m]) => (m as InnerList).list.some(isBareHashComponent));
-  if (covering.length === 0) return refusal("card/tap-hash-not-covered");
-  if (!covering.some(([label]) => signatures.has(label))) return refusal("card/tap-signature-missing");
+  if (!payers.every(([, m]) => (m as InnerList).list.some(isBareHashComponent))) return refusal("card/tap-hash-not-covered");
+  if (!payers.some(([label]) => signatures.has(label))) return refusal("card/tap-signature-missing");
 
   if (!Array.isArray(lcpHash)) return refusal("card/tap-field-malformed");
   if (lcpHash.length === 0) return refusal("card/tap-field-missing");
@@ -432,8 +432,9 @@ const visaTapPattern: LcpPattern = deepFreeze({
   proves:
     AFTER_AGREEMENT +
     "The buyer's agent sent this ATR's hash in the lcp-hash field and listed that field among the covered components " +
-    "of its TAP agent-payer-auth message signature. The seller checked that listing and did not verify the " +
-    "signature here, which belongs to its TAP recognition step. The card authorization itself does not carry the hash. " +
+    "of every TAP agent-payer-auth message signature in the request. The seller checked that listing and did not " +
+    "verify a signature here, which belongs to its TAP recognition step. The card authorization itself does not carry " +
+    "the hash. " +
     "This does not show that amount, payee or timing match the ATR's content.",
 });
 

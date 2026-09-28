@@ -274,11 +274,11 @@ Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraled
 | `card/tap-field-malformed` | The TAP request's `lcpHash` is not an array of strings, or its one line is not an ATR hash. |
 | `card/tap-field-missing` | The TAP request carries no `lcp-hash` field line. |
 | `card/tap-field-repeated` | The TAP request carries more than one `lcp-hash` field line. |
-| `card/tap-hash-not-covered` | No `agent-payer-auth` signature input lists the `lcp-hash` component without parameters. |
+| `card/tap-hash-not-covered` | An `agent-payer-auth` signature input in the TAP request does not list the `lcp-hash` component without parameters. |
 | `card/tap-no-payer-signature` | No signature input in the TAP request has the `agent-payer-auth` tag. |
 | `card/tap-signature-input-malformed` | The Visa TAP `bound` refuses a presentation that is not an object, or a `signatureInput` that is not a string parsing as an RFC 9651 dictionary of signature inputs. |
 | `card/tap-signature-malformed` | The Visa TAP `bound` refuses a `signature` that is not a string parsing as an RFC 9651 dictionary of byte-sequence signatures. |
-| `card/tap-signature-missing` | No `agent-payer-auth` signature input that covers `lcp-hash` has a matching member in the `Signature` field. |
+| `card/tap-signature-missing` | No `agent-payer-auth` signature input has a matching member in the `Signature` field. |
 | `card/too-large` | A `checkout_jwt` exceeds 16384 characters, a Verifiable Intent layer exceeds 65536 characters or 32 disclosures, a decoded payload nests too deeply, a TAP `Signature-Input` or `Signature` field exceeds 8192 characters, 16 members or 32 components, or an `lcp-hash` line exceeds 256 characters. |
 | `card/vi-checkout-hash-mismatch` | The checkout mandate's `checkout_hash` is not the digest of its `checkout_jwt`. |
 | `card/vi-disclosure-unreferenced` | A Verifiable Intent layer carries a disclosure that no digest in its payload references. |

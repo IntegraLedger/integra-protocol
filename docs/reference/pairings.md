@@ -145,7 +145,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `card/visa-tap`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The buyer's agent sent this ATR's hash in the lcp-hash field and listed that field among the covered components of its TAP agent-payer-auth message signature. The seller checked that listing and did not verify the signature here, which belongs to its TAP recognition step. The card authorization itself does not carry the hash. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The buyer's agent sent this ATR's hash in the lcp-hash field and listed that field among the covered components of every TAP agent-payer-auth message signature in the request. The seller checked that listing and did not verify a signature here, which belongs to its TAP recognition step. The card authorization itself does not carry the hash. This does not show that amount, payee or timing match the ATR's content.
 
 ### `mpp/charge/card`
 
