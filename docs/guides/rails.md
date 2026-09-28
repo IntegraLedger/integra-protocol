@@ -141,6 +141,12 @@ entry leaves the payment pending while the entry is valid. Past the entry's expi
 asset's transfer events to the seller: it settles on a transaction that used the entry, and answers failed `expired`
 only when that search is complete and finds none.
 
+A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
+time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
+payment up, so a payment that lands between the two reads, or a reader whose sources disagree between them, never
+reads as failed. On TON, a request the payer's W5 wallet has executed stays pending `in-flight` until its Jetton
+transfer lands, however late, because an internal message carries no expiry.
+
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |
@@ -153,13 +159,13 @@ only when that search is complete and finds none.
 | Cardano | `CardanoReader` | the chain tip, the transaction by id | the confirmations |
 | Casper | `CasperReader` | `info_get_transaction` | the finalized block height |
 | Concordium | `CcdReader` | gRPC `GetBlockItemStatus` | `finalized` |
-| NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` | `final` or `optimistic` |
+| NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` | `final` when the status is `FINAL`, else `optimistic` |
 | Polkadot Asset Hub | `PolkadotReader` | Sidecar's extrinsic by block and index, a block's raw extrinsics, the finalized head | `finalized` or `head` |
-| Starknet | `StarknetReader` | `starknet_getTransactionReceipt`, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
+| Starknet | `StarknetReader` | `starknet_getTransactionReceipt` with its `Transfer` events, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
 | Sui | `SuiReader` | the transaction by digest, with the current epoch | the checkpoint |
-| Tron | `TronReader` | `gettransactioninfobyid` at the solidified or head level, `gettransactionbyid`, the latest solidified block | `solidified` or `head` |
-| TON | `TvmReader` | Toncenter's transactions by message body hash, by message hash and by hash, and the masterchain head | `confirmed` or `finalized` |
-| Stacks | `StacksReader` | the transaction by id, a block's tenure height, the tip's tenure height, an account's confirmed nonce | `block` or `bitcoin` |
+| Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level; `gettransactionbyid` | `solidified` or `head` |
+| TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the Jetton transfer's, then the signed W5 request's), by message hash and by hash | `confirmed` or `finalized` |
+| Stacks | `StacksReader` | the origin's confirmed nonce, read first; the transaction by id; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
 
 On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport` or
 `malformed`. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a

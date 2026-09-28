@@ -45,6 +45,20 @@ SNIP-12 revision 1, SNIP-9 v2, as x402's Starknet scheme prints it.
 
 ***
 
+### StarknetEvent
+
+One event of a receipt: the emitting contract, its keys and its data.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-data"></a> `data` | readonly `` `0x${string}` ``[] |
+| <a id="property-fromaddress"></a> `fromAddress` | `` `0x${string}` `` |
+| <a id="property-keys"></a> `keys` | readonly `` `0x${string}` ``[] |
+
+***
+
 ### StarknetInvocation
 
 #### Properties
@@ -75,7 +89,7 @@ Bounded, read-only calls against one network's JSON-RPC node. Every failure reje
 
 > **receipt**(`tx`): `Promise`\<[`StarknetReceipt`](#starknetreceipt) \| `null`\>
 
-`starknet_getTransactionReceipt`; null: unknown hash.
+`starknet_getTransactionReceipt`, with its events; null: unknown hash.
 
 ###### Parameters
 
@@ -109,11 +123,12 @@ Bounded, read-only calls against one network's JSON-RPC node. Every failure reje
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-blocknumber"></a> `blockNumber` | `bigint` \| `null` |
-| <a id="property-execution"></a> `execution` | `"SUCCEEDED"` \| `"REVERTED"` |
-| <a id="property-finality"></a> `finality` | `"PRE_CONFIRMED"` \| `"ACCEPTED_ON_L2"` \| `"ACCEPTED_ON_L1"` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-blocknumber"></a> `blockNumber` | `bigint` \| `null` | - |
+| <a id="property-events"></a> `events` | readonly [`StarknetEvent`](#starknetevent)[] | The receipt's `events`. A call that failed, and every call under it, leaves none here. |
+| <a id="property-execution"></a> `execution` | `"SUCCEEDED"` \| `"REVERTED"` | - |
+| <a id="property-finality"></a> `finality` | `"PRE_CONFIRMED"` \| `"ACCEPTED_ON_L2"` \| `"ACCEPTED_ON_L1"` | - |
 
 ***
 
@@ -197,6 +212,14 @@ Lowercase `0x` hex with no leading zero digit, below FELT_P.
 > `const` **ANY\_CALLER**: `"0x414e595f43414c4c4552"` = `"0x414e595f43414c4c4552"`
 
 The SNIP-9 any-caller sentinel, the short string `ANY_CALLER`.
+
+***
+
+### EVENT\_TRANSFER
+
+> `const` **EVENT\_TRANSFER**: `"0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"` = `"0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"`
+
+sn_keccak("Transfer"): the first key of a SNIP-2 token's `Transfer` event.
 
 ***
 
@@ -358,9 +381,12 @@ hash's low 250 bits. It is found by the transfer's identity on `ref.asset`, not 
 
 > **starknetStatus**(`ref`, `reader`): `Promise`\<[`StarknetStatus`](#starknetstatus)\>
 
-Reads the named transaction's receipt, then walks its trace for exactly one non-reverted
-`execute_from_outside_v2` whose calldata carries this nonce and whose direct, non-reverted call is `transfer` on
-`ref.asset` with this transfer's identity. A failed read, or a reader for another network, is pending. Two calls.
+Reads the named transaction's receipt. A `SUCCEEDED` receipt must emit exactly one `Transfer` event from
+`ref.asset` whose sender is `ref.from`, and that transfer must have this payment's identity, else failed
+`not-this-instrument`. Then its trace must hold exactly one `execute_from_outside_v2` whose calldata carries this
+nonce and whose direct call is `transfer` on `ref.asset` with this identity, no invocation on the path to either
+having reverted. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout, or a
+reader for another network is pending. Two calls.
 
 #### Parameters
 

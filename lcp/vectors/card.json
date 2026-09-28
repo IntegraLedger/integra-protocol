@@ -489,5 +489,43 @@
   "noSignedPayment": {
    "card/seller-reference": "The buyer signs nothing: the file holds no payment that carries H."
   }
+ },
+ "C9": {
+  "about": "TAP requests with two agent-payer-auth signatures. A verifier determines which signature to process by its own policy and configuration (RFC 9421 §3.2, step 1.1), so bound takes the hash only when every agent-payer-auth signature lists lcp-hash. sig3's signature is 64 zero bytes, since bound verifies no signature. Built from C2's request.",
+  "rows": [
+   {
+    "case": "sig2 lists lcp-hash and sig3, a second agent-payer-auth signature, does not",
+    "signatureInput": "sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:, sig3=:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==:",
+    "lcpHash": [
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "card/tap-hash-not-covered"
+    }
+   },
+   {
+    "case": "sig3 lists lcp-hash and sig2, the first agent-payer-auth signature, does not",
+    "signatureInput": "sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:, sig3=:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==:",
+    "lcpHash": [
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "card/tap-hash-not-covered"
+    }
+   },
+   {
+    "case": "sig2 and sig3 both list lcp-hash",
+    "signatureInput": "sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:, sig3=:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==:",
+    "lcpHash": [
+     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ],
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  ]
  }
 }

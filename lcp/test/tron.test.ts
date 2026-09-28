@@ -230,6 +230,50 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     expect(exactTronMemo.carrier).toBeNull();
   });
 
+  // A java-tron node accepts a transaction only while its expiration is after the head block's time
+  // (Manager.validateCommon: `transactionExpiration <= headBlockTime` throws TransactionExpirationException), so a
+  // transaction included in a block timed before its expiration can never read as `expired`. The reader below answers from a chain that advances between calls, as a
+  // node catching up or a FullNode and a SolidityNode at different heights do.
+  it("the solid head is read before the lookups, so a transaction landing between reads is never expired", async () => {
+    const expiration = BigInt(REF.expiration);
+    const txBlock = 1000n;
+    const blockTime = (n: bigint) => expiration - 3000n + (n - txBlock) * 3000n;
+    const found: TronInfo = { blockNumber: txBlock, result: "SUCCESS", logs: V.V4.status[0].solid.logs };
+    for (const start of [960n, 990n, 1000n, 1010n, 1019n, 1030n]) {
+      for (const step of [0n, 1n, 10n, 40n]) {
+        let head = start;
+        const calls: string[] = [];
+        const reader: TronReader = {
+          network: REF.network,
+          info: async (_txid, level) => {
+            calls.push(`info:${level}`);
+            const top = level === "solid" ? head - 19n : head;
+            head += step;
+            return top >= txBlock ? found : null;
+          },
+          transaction: async () => null,
+          solidHead: async () => {
+            calls.push("solidHead");
+            const solid = head - 19n;
+            head += step;
+            return { number: solid, timestamp: blockTime(solid) };
+          },
+        };
+        const got = await exactTronMemo.status(REF, reader);
+        expect(calls[0]).toBe("solidHead");
+        expect([start, step, got.state]).not.toEqual([start, step, "failed"]);
+      }
+    }
+  });
+
+  it("a failed or malformed solid-head read leaves a found transaction settled and a missing one unreadable", async () => {
+    const solid = V.V4.status[0].solid;
+    expect(plain(await exactTronMemo.status(REF, readerFor({ solid })))).toEqual(V.V4.status[0].expect);
+    const malformed = { ...readerFor({}), solidHead: async () => ({ number: 1n, timestamp: "1790300730000" }) as never };
+    expect(await exactTronMemo.status(REF, malformed)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactTronMemo.status(REF, readerFor({}))).toEqual({ state: "pending", why: "unreadable" });
+  });
+
   it("a network mismatch is pending for status and wrong-reader for recover", async () => {
     const r = { ...readerFor({}), network: "tron:3448148188" as const };
     expect(await exactTronMemo.status(REF, r)).toEqual({ state: "pending", why: "unreadable" });

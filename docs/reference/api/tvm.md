@@ -151,12 +151,14 @@ The read keys recorded at claim.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-jettonwallet-1"></a> `jettonWallet` | `string` |
-| <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` |
-| <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` |
-| <a id="property-validuntil"></a> `validUntil` | `number` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-jettonwallet-1"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the destination of the W5 request's one message. |
+| <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` | - |
+| <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the body of the message to the payer's wallet. |
+| <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` | The representation hash of the Jetton transfer body the W5 request sends. |
+| <a id="property-validuntil"></a> `validUntil` | `number` | - |
+| <a id="property-wallet-1"></a> `wallet` | `string` | The payer's W5 wallet, raw: the destination of the settlement message. |
 
 ***
 
@@ -270,7 +272,7 @@ This pairing's id for an option it can pay, or undefined.
 
 ### tvmCarrier()
 
-> **tvmCarrier**(`settlementBoc`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `jettonWallet`: `string`; `payload`: [`TonCell`](#toncell); `transferBodyHash`: `` `0x${string}` ``; `validUntil`: `number`; \}
+> **tvmCarrier**(`settlementBoc`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `jettonWallet`: `string`; `payload`: [`TonCell`](#toncell); `requestBodyHash`: `` `0x${string}` ``; `transferBodyHash`: `` `0x${string}` ``; `validUntil`: `number`; `wallet`: `string`; \}
 
 Reads the signed request in a settlement BoC: an internal message whose body is a W5 `internal_signed` request with
 exactly one `action_send_msg` behind an empty list, carrying a Jetton transfer whose forward payload is a reference
@@ -284,7 +286,7 @@ to a text comment holding an LCP string.
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `jettonWallet`: `string`; `payload`: [`TonCell`](#toncell); `transferBodyHash`: `` `0x${string}` ``; `validUntil`: `number`; \}
+[`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `jettonWallet`: `string`; `payload`: [`TonCell`](#toncell); `requestBodyHash`: `` `0x${string}` ``; `transferBodyHash`: `` `0x${string}` ``; `validUntil`: `number`; `wallet`: `string`; \}
 
 ***
 
@@ -313,9 +315,14 @@ Recovers the hash from the payer Jetton wallet's transaction: the comment in its
 
 > **tvmStatus**(`ref`, `reader`): `Promise`\<[`TvmStatus`](#tvmstatus)\>
 
-Finds the transfer by its body hash on the payer's Jetton wallet, then follows its `internal_transfer` to the
-payee's Jetton wallet. Settled when both executed without aborting, at the lower finality of the two. A
-transaction on any other account is ignored. A failed read, or a reader for another network, is pending.
+Reads the head's time first. Then finds the transfer by its body hash on the payer's Jetton wallet and follows its
+`internal_transfer` to the payee's Jetton wallet: settled when both executed without aborting, at the lower
+finality of the two. When the Jetton wallet holds no such transaction, finds the signed request by its body hash on
+the payer's W5 wallet: a W5 transaction that emitted the Jetton transfer is pending `in-flight`, because an internal
+message carries no expiry. W5 refuses the request once `valid_until <= now()`, so only a head read first and past
+`validUntil` answers failed: `expired` when the W5 wallet holds no such transaction, `no-transfer` when one executed
+and emitted nothing, `aborted` when every one aborted. A transaction on any other account is ignored. A failed or
+malformed read, a malformed reference, or a reader for another network is pending `unreadable`. At most three calls.
 
 #### Parameters
 

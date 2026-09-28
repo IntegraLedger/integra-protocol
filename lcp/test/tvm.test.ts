@@ -42,6 +42,7 @@ const signed = async () => {
 type Fixture = Omit<TonTx, "inBody"> & { inBody?: null };
 function readerFor(a: {
   byInBody?: Fixture[] | "reader-error";
+  byInBodyRequest?: Fixture[] | "reader-error";
   byInMessage?: Fixture[];
   headUtime?: number;
   inBodyHex?: string;
@@ -50,9 +51,10 @@ function readerFor(a: {
   const tx = (f: Fixture): TonTx => ({ ...f, inBody: null });
   return {
     network: V.V4.ref.network,
-    byInBody: async () => {
-      if (a.byInBody === "reader-error") throw new ReaderError("transport");
-      return (a.byInBody ?? []).map(tx);
+    byInBody: async (bodyHash) => {
+      const answer = bodyHash === V.V4.ref.requestBodyHash ? a.byInBodyRequest : a.byInBody;
+      if (answer === "reader-error") throw new ReaderError("transport");
+      return (answer ?? []).map(tx);
     },
     byInMessage: async () => (a.byInMessage ?? []).map(tx),
     byHash: async (h) => {
@@ -126,6 +128,8 @@ describe("x402-exact-tvm.json", () => {
     const ref = await exactTvm.reference(p);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.transferBodyHash).toBe(`0x${W.expectTransferBodyHash}`);
+    expect(ref.requestBodyHash).toBe(`0x${W.expectRequestBodyHash}`);
+    expect(ref.wallet).toBe(W.wallet);
     const asCell = await exactTvm.build({ ...choice(), wallet: W.wallet, seqno: W.seqno, stateInit: Cell.fromBase64(W.stateInit) }, H);
     if ("refused" in asCell) throw new Error(asCell.code);
     expect(Buffer.from(asCell.request.hash).toString("hex")).toBe(W.expectRequestHash);
@@ -186,6 +190,43 @@ describe("x402-exact-tvm.json", () => {
 
   it("plant: an equal body executed on another account is never the payment", async () => {
     expect(await exactTvm.status(REF, readerFor(V.plant))).toEqual(V.plant.expect);
+  });
+
+  // W5 refuses a request once `valid_until <= now()` in its own transaction (wallet_v5.fc, `error::expired`), and an
+  // internal message carries no expiry, so the Jetton transfer a W5 transaction emitted is delivered whenever it is
+  // processed. The reader answers from a chain on which W5 executes the request one second before `validUntil` and the
+  // Jetton wallet receives the transfer `delay` seconds later; the head advances `step` seconds with every call.
+  it("a request W5 executed before validUntil is never expired, however late its transfer lands", async () => {
+    const executed = REF.validUntil - 1;
+    const payer = { hash: "tx-payer", account: REF.jettonWallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "m", opcode: 0x178d4519 }] };
+    const payee = { hash: "tx-payee", account: "0:" + "33".repeat(32), aborted: false, finality: 2 as const, inBody: null, outMsgs: [] };
+    const request = { hash: "tx-w5", account: REF.wallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "j", opcode: 0x0f8a7ea5 }] };
+    for (const delay of [5, 61, 90, 3600]) {
+      for (const start of [REF.validUntil - 30, REF.validUntil + 30, REF.validUntil + 61, executed + delay - 1]) {
+        for (const step of [0, 1, 40]) {
+          let now = start;
+          const calls: string[] = [];
+          const tick = <T>(name: string, v: T): T => {
+            calls.push(name);
+            now += step;
+            return v;
+          };
+          const reader: TvmReader = {
+            network: REF.network,
+            headUtime: async () => tick("head", now),
+            byInBody: async (bodyHash) =>
+              bodyHash === REF.requestBodyHash
+                ? tick("request", now >= executed ? [request] : [])
+                : tick("transfer", now >= executed + delay ? [payer] : []),
+            byInMessage: async () => tick("delivery", now >= executed + delay ? [payee] : []),
+            byHash: async () => null,
+          };
+          const got = await exactTvm.status(REF, reader);
+          expect(calls[0]).toBe("head");
+          expect([delay, start, step, got.state]).not.toEqual([delay, start, step, "failed"]);
+        }
+      }
+    }
   });
 
   it("refusal codes left to the implementation", async () => {

@@ -254,10 +254,11 @@ every card pairing: the `legalContext` the seller shows before payment, and `ref
 seller to place in its processor reference.
 
 - **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** The agent sends
-  H in an `lcp-hash` field and lists that field among the covered components of its `agent-payer-auth` message
-  signature (RFC 9421). `build` returns the field for the agent's signer to add: `{ field: "lcp-hash", value: H,
-  component: "lcp-hash" }`. `bound` reads the one `lcp-hash` line when an `agent-payer-auth` signature lists
-  `"lcp-hash"` without parameters. It verifies no signature, key, window or nonce. The LCP profile
+  H in an `lcp-hash` field and lists that field among the covered components of every `agent-payer-auth` message
+  signature it sends (RFC 9421). `build` returns the field for the agent's signer to add:
+  `{ field: "lcp-hash", value: H, component: "lcp-hash" }`. `bound` reads the one `lcp-hash` line when every
+  `agent-payer-auth` signature in the request lists `"lcp-hash"` without parameters, so whichever payer signature the
+  seller's TAP recognition verifies covers H. It verifies no signature, key, window or nonce. The LCP profile
   [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) states the rules.
 - **[Mastercard Verifiable Intent](https://github.com/agent-intent/verifiable-intent).** H rides in the merchant's
   `checkout_jwt` as its `legalContext`, and a mandate signs that JWT's SHA-256 as `checkout_hash`. `build` returns the

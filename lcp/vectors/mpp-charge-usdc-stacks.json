@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK.",
+ "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). Rows with txAnswer give the transaction read's answer as is: values of neither StacksLanded's nor StacksMempool's shape, which status reads as pending unreadable and recover refuses stacks/unreadable.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",
@@ -209,6 +209,119 @@
     }
    },
    {
+    "case": "not found, the confirmed nonce read rejects",
+    "tx": null,
+    "confirmedNonce": "reader-error",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "not found, the confirmed nonce read answers a number",
+    "tx": null,
+    "confirmedNonce": "number",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "L, the confirmed nonce read rejects",
+    "confirmedNonce": "reader-error",
+    "tip": "256358",
+    "expect": {
+     "state": "settled",
+     "finality": "bitcoin",
+     "blockHeight": "9021832"
+    }
+   },
+   {
+    "case": "an answer that is a bare string",
+    "txAnswer": "success",
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "a mined answer with no sender",
+    "txAnswer": {
+     "mined": true,
+     "status": "success",
+     "blockHeight": "9021832",
+     "call": {
+      "contractId": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+      "functionName": "transfer",
+      "args": [
+       "0x01000000000000000000000000000f4240",
+       "0x051a751e76e8199196d454941c45d1b3a323f1433bd6",
+       "0x051adebc095099629badb11b9d5335e874d12f1f1d45",
+       "0x0a0200000020ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "a mined answer with no status",
+    "txAnswer": {
+     "mined": true,
+     "sender": {
+      "address": "ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+      "nonce": "0"
+     },
+     "blockHeight": "9021832",
+     "call": {
+      "contractId": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+      "functionName": "transfer",
+      "args": [
+       "0x01000000000000000000000000000f4240",
+       "0x051a751e76e8199196d454941c45d1b3a323f1433bd6",
+       "0x051adebc095099629badb11b9d5335e874d12f1f1d45",
+       "0x0a0200000020ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "a mined answer whose call has no args",
+    "txAnswer": {
+     "mined": true,
+     "status": "success",
+     "sender": {
+      "address": "ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+      "nonce": "0"
+     },
+     "blockHeight": "9021832",
+     "call": {
+      "contractId": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+      "functionName": "transfer"
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
+    "case": "an unmined answer with no status",
+    "txAnswer": {
+     "mined": false
+    },
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    }
+   },
+   {
     "case": "the transaction read rejects with ReaderError",
     "tx": "reader-error",
     "expect": {
@@ -244,6 +357,56 @@
     "expect": {
      "refused": true,
      "code": "stacks/no-memo"
+    }
+   },
+   {
+    "case": "an answer that is a bare string",
+    "txAnswer": "success",
+    "expect": {
+     "refused": true,
+     "code": "stacks/unreadable"
+    }
+   },
+   {
+    "case": "a mined answer with no sender",
+    "txAnswer": {
+     "mined": true,
+     "status": "success",
+     "blockHeight": "9021832",
+     "call": {
+      "contractId": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+      "functionName": "transfer",
+      "args": [
+       "0x01000000000000000000000000000f4240",
+       "0x051a751e76e8199196d454941c45d1b3a323f1433bd6",
+       "0x051adebc095099629badb11b9d5335e874d12f1f1d45",
+       "0x0a0200000020ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      ]
+     }
+    },
+    "expect": {
+     "refused": true,
+     "code": "stacks/unreadable"
+    }
+   },
+   {
+    "case": "a mined answer whose call has no args",
+    "txAnswer": {
+     "mined": true,
+     "status": "success",
+     "sender": {
+      "address": "ST1THWXQ8368SDN2MJGE4BMDKMCHZ2GSVTSQDA7QF",
+      "nonce": "0"
+     },
+     "blockHeight": "9021832",
+     "call": {
+      "contractId": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx",
+      "functionName": "transfer"
+     }
+    },
+    "expect": {
+     "refused": true,
+     "code": "stacks/unreadable"
     }
    }
   ]

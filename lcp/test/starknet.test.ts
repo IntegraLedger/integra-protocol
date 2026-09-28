@@ -8,6 +8,7 @@ import { keccak256, toBytes } from "viem";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import {
+  EVENT_TRANSFER,
   MASK_250,
   SELECTOR_EXECUTE_FROM_OUTSIDE_V2,
   SELECTOR_TRANSFER,
@@ -20,6 +21,7 @@ import {
   type StarknetInvocation,
   type StarknetPayment,
   type StarknetReader,
+  type StarknetReceipt,
   type StarknetRef,
 } from "../src/starknet.js";
 import type { AtrHash } from "../src/core.js";
@@ -46,7 +48,10 @@ const pay = async (required: PaymentRequired = advertised()) => {
   if ("refused" in u) throw new Error(u.code);
   return u.complete(V.S3.signature) as StarknetPayment;
 };
-type Rec = { finality: string; execution: string; blockNumber: string | null } | null | "reader-error";
+type Rec =
+  | { finality: string; execution: string; blockNumber: string | null; events: StarknetReceipt["events"] }
+  | null
+  | "reader-error";
 function readerFor(a: { receipt?: Rec; trace?: StarknetInvocation }): StarknetReader {
   return {
     network: V.S5.ref.network,
@@ -127,6 +132,13 @@ describe("x402-exact-starknet.json", () => {
       expect([row.case, plain(await exactStarknet.status(REF, readerFor(row)))]).toEqual([row.case, row.expect]);
     }
     expect(await starknetLandedNonce(REF, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
+    const underReverted = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer"));
+    expect(await starknetLandedNonce(REF, readerFor(underReverted))).toEqual({ refused: true, code: "starknet/not-found" });
+  });
+
+  it("S1: the Transfer event's first key is sn_keccak(\"Transfer\")", () => {
+    expect(snKeccak("Transfer")).toBe(V.S1.expectSelectorTransferEvent);
+    expect(EVENT_TRANSFER).toBe(V.S1.expectSelectorTransferEvent);
   });
 
   it("plant: a transfer on another contract with the same calldata is never the payment", async () => {

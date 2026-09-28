@@ -190,9 +190,9 @@ H from a memo argument that is `(some <32-byte buffer>)`, or null.
 > **stacksRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
 
 Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
-A wrong reader is `stacks/wrong-reader`, a failed read `stacks/unreadable`, an unknown or unmined transaction
-`stacks/not-found`, any other status `stacks/not-success`, and no `(some <32 bytes>)` memo of that call
-`stacks/no-memo`.
+A wrong reader is `stacks/wrong-reader`, a failed read or an answer of neither documented shape `stacks/unreadable`,
+an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`, and no
+`(some <32 bytes>)` memo of that call `stacks/no-memo`.
 
 #### Parameters
 
@@ -214,12 +214,14 @@ A wrong reader is `stacks/wrong-reader`, a failed read `stacks/unreadable`, an u
 
 > **stacksStatus**(`ref`, `reader`): `Promise`\<[`StacksStatus`](#stacksstatus)\>
 
-The payment's settlement, in at most three reader calls. A wrong reader, or a failed transaction or nonce read, is
-pending `unreadable`. A mined transaction must be the origin's at its nonce, calling the contract's `transfer` with
-`(some H)` as its fourth argument, else failed `not-this-instrument`; then the API's `status` decides. A mined
-transaction's answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the
-block's plus two, else `block`, and a failed tenure read counts as `block`. Unmined and dropped, or unknown, the
-origin's confirmed nonce at or above the transaction's is failed `nonce-used`, read at the API's tip: `block`.
+The payment's settlement, in at most four reader calls. The origin's confirmed nonce is read first, then the
+transaction. A wrong reader, a failed transaction read, or an answer of neither documented shape is pending
+`unreadable`. A mined transaction must be the origin's at its nonce, calling the contract's `transfer` with `(some H)`
+as its fourth argument, else failed `not-this-instrument`; then the API's `status` decides. A mined transaction's
+answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
+two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
+failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
+was read at the API's tip, so `block`. A failed or malformed nonce read then is pending `unreadable`.
 
 #### Parameters
 

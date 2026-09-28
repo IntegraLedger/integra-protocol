@@ -131,7 +131,8 @@ type Row = {
   senderNonce?: string;
   memo?: string;
   tx?: null | "reader-error" | { mined: false; status: string };
-  confirmedNonce?: string | null;
+  txAnswer?: unknown;
+  confirmedNonce?: string | null | "reader-error" | "number";
   readerNetwork?: string;
   expect: unknown;
 };
@@ -149,12 +150,25 @@ function landed(row: Partial<Row>): StacksLanded {
   };
 }
 
-function readerFor(row: Partial<Row>): StacksReader & { calls: number } {
+/** A `txAnswer` as the reader returns it: a mined answer's decimal-string integers read as bigints. */
+function answer(v: unknown): StacksLanded | StacksMempool | null {
+  if (typeof v !== "object" || v === null || (v as { mined?: unknown }).mined !== true) return v as StacksMempool;
+  const o = { ...(v as Record<string, unknown>) };
+  if (typeof o["blockHeight"] === "string") o["blockHeight"] = BigInt(o["blockHeight"]);
+  const sender = o["sender"] as { address: string; nonce: string } | undefined;
+  if (sender !== undefined) o["sender"] = { address: sender.address, nonce: BigInt(sender.nonce) };
+  return o as unknown as StacksLanded;
+}
+
+function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: string[] } {
   const r = {
     calls: 0,
+    order: [] as string[],
     network: (row.readerNetwork ?? F.network) as StacksReader["network"],
     async transaction(): Promise<StacksLanded | StacksMempool | null> {
       r.calls++;
+      r.order.push("transaction");
+      if (row.txAnswer !== undefined) return answer(row.txAnswer);
       if (row.tx === "reader-error") throw new ReaderError("transport");
       if (row.tx !== undefined) return row.tx;
       return landed(row);
@@ -171,7 +185,10 @@ function readerFor(row: Partial<Row>): StacksReader & { calls: number } {
     },
     async confirmedNonce() {
       r.calls++;
+      r.order.push("confirmedNonce");
       const n = row.confirmedNonce;
+      if (n === "reader-error") throw new ReaderError("transport");
+      if (n === "number") return 0 as unknown as bigint;
       return n === null || n === undefined ? null : BigInt(n);
     },
   };
@@ -187,7 +204,8 @@ describe("usdc/stacks status and recover (M4b)", () => {
   it.each(V.M4b.rows as Row[])("$case", async (row) => {
     const reader = readerFor(row);
     expect(withBigints(await stacksStatus(ref, reader))).toEqual(row.expect);
-    expect(reader.calls).toBeLessThanOrEqual(3);
+    expect(reader.calls).toBeLessThanOrEqual(4);
+    if (reader.calls > 0) expect(reader.order[0]).toBe("confirmedNonce");
   });
 
   it.each(V.M4b.recover as Row[])("recover: $case", async (row) => {
@@ -196,6 +214,37 @@ describe("usdc/stacks status and recover (M4b)", () => {
       row.expect,
     );
     expect(reader.calls).toBe(1);
+  });
+
+  // A nonce the origin's account has confirmed at or above the transaction's means the transaction can never be
+  // mined (SIP-005: a transaction's nonce must equal its origin's next nonce). The reader below answers from an API
+  // at which the transaction is mined, and the origin's nonce confirmed, between the two reads.
+  it("the confirmed nonce is read before the transaction, so a transaction mined between reads is never nonce-used", async () => {
+    for (const minedAt of [0, 1, 2]) {
+      let reads = 0;
+      const mined = () => reads > minedAt;
+      const reader: StacksReader = {
+        network: F.network as StacksReader["network"],
+        async confirmedNonce() {
+          const n = mined() ? 0n : null;
+          reads++;
+          return n;
+        },
+        async transaction() {
+          const t = mined() ? landed({}) : null;
+          reads++;
+          return t;
+        },
+        async blockTenure() {
+          return BigInt(V.M4b.blockTenure);
+        },
+        async tipTenure() {
+          return 0n;
+        },
+      };
+      const got = await stacksStatus(ref, reader);
+      expect([minedAt, got.state]).not.toEqual([minedAt, "failed"]);
+    }
   });
 
   it("plant: a post-condition abort is failed, never settled, and recover refuses it", async () => {

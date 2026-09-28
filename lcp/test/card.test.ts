@@ -114,7 +114,7 @@ describe("C1 values and digests", () => {
 });
 
 describe("C2 TAP", () => {
-  it("bound returns H from the agent-payer-auth signature that lists lcp-hash", async () => {
+  it("bound returns H when the agent-payer-auth signature lists lcp-hash", async () => {
     expect(await visaTap.bound(tap({}))).toBe(V.C2.expectBound);
   });
 
@@ -157,6 +157,17 @@ describe("C3 TAP plant: the lcp-hash listing must be the agent-payer-auth signat
     expect(r).toEqual(refused(V.C3.expect));
     expect(r).not.toBe(H);
   });
+});
+
+describe("C9 TAP: every agent-payer-auth signature must list lcp-hash", () => {
+  it.each(V.C9.rows as { case: string; signatureInput: string; signature: string; lcpHash: string[]; expect: unknown }[])(
+    "$case",
+    async (row) => {
+      expect(await visaTap.bound({ signatureInput: row.signatureInput, signature: row.signature, lcpHash: row.lcpHash })).toEqual(
+        row.expect,
+      );
+    },
+  );
 });
 
 describe("TAP bound, the remaining refusals", () => {

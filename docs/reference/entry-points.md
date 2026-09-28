@@ -307,14 +307,14 @@ import { MEMO_PREFIX, memoArgument, memoHash, … } from "@integraledger/lcp/sta
 Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits. Settlement is read from the executed call's trace through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash.
 
 ```ts no-check
-import { ANY_CALLER, chainIdFelt, exactStarknet, … } from "@integraledger/lcp/starknet";
+import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp/starknet";
 ```
 
 **Pairings:** `x402/exact/starknet`.
 
-**Values (13):** `ANY_CALLER`, `chainIdFelt`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `pairingOf`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `starknetIdDigest`, `starknetLandedNonce`, `starknetStatus`.
+**Values (14):** `ANY_CALLER`, `chainIdFelt`, `EVENT_TRANSFER`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `pairingOf`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `starknetIdDigest`, `starknetLandedNonce`, `starknetStatus`.
 
-**Types (11):** `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetInvocation`, `StarknetNetwork`, `StarknetPayment`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
+**Types (12):** `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetEvent`, `StarknetInvocation`, `StarknetNetwork`, `StarknetPayment`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
 
 ## `@integraledger/lcp/stellar`
 
