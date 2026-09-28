@@ -100,7 +100,7 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | TON | `tvm` | `x402/exact/tvm` | The Jetton transfer's forward payload: a TEP-74 text comment holding H's LCP string. |
 | Stacks | `stacks` | `mpp/charge/usdc/stacks` | The SIP-010 `transfer`'s memo: H's 32 bytes. |
 | Lightning | `lightning` | `x402/exact/lnbtc` | The BOLT11 invoice's `m` field, which the seller's node signs. |
-| | | `x402/exact/lnbtc/invoice-named` | Nothing in the invoice: the ATR's binding slot names the invoice instead. |
+| | | `x402/exact/lnbtc/invoice-named` | Nothing in the invoice: the ATR's `x402` slot names the invoice instead. The buyer's `build` reads that slot only from an ATR whose first members are `atrVersion`, `id` and `x402` and whose member names do not repeat. |
 | | | `mpp/charge/lightning`, `mpp/session/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 
 Where a profile defines the binding, the [pairings reference](../reference/pairings.md) links it, and the profile

@@ -698,7 +698,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 | `ln/field-length` | The invoice's `h` or `m` field is not 32 bytes. |
 | `ln/field-repeated` | The invoice carries more than one `h` field or more than one `m` field. |
 | `ln/invoice-malformed` | A BOLT11 invoice is missing or not a string, mixes case, or does not decode (bech32 checksum, prefix, field lengths, exactly one payment hash, expiry width). |
-| `ln/invoice-not-named` | The invoice-named pairing's `build` finds that the ATR's `x402` slot does not name the option's invoice. |
+| `ln/invoice-not-named` | The invoice-named pairing's `build` finds that the ATR's `x402` slot does not name the option's invoice, or that the ATR is not one JSON object whose first members are `atrVersion`, `id` and `x402` with no member name repeated. |
 | `ln/invoice-too-large` | A BOLT11 invoice exceeds 8 KiB or carries more tagged fields than the bound. |
 | `ln/no-description-hash` | The invoice has no `h` (description hash) field. |
 | `ln/no-legal-context` | The invoice-named pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |

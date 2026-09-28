@@ -163,6 +163,21 @@ describe("x402/exact/lnbtc/invoice-named", () => {
     expect(lnbtcPairingOf(ON)).toBe("x402/exact/lnbtc/invoice-named");
   });
 
+  it("atrNamesInvoice: the named invoice is read only from the one x402 member that follows atrVersion and id", () => {
+    const invoices: Record<string, string> = { N: N.L6.invoice, N2: N.plant2.invoice };
+    const rows = N.atrNamesInvoice.rows as { case: string; atrHex: string; members: string[] | null; expect: Record<string, boolean> }[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      const bytes = Uint8Array.from(Buffer.from(r.atrHex, "hex"));
+      const m = r.members;
+      const layout = m !== null && m[0] === "atrVersion" && m[1] === "id" && m[2] === "x402" && new Set(m).size === m.length;
+      if (!layout) expect([r.case, Object.values(r.expect).some((v) => v)]).toEqual([r.case, false]);
+      for (const [name, expected] of Object.entries(r.expect)) {
+        expect([r.case, name, atrNamesInvoice(bytes, invoices[name]!)]).toEqual([r.case, name, expected]);
+      }
+    }
+  });
+
   it("plant 2: the buyer never pays an invoice its ATR does not name", async () => {
     const a = await atr();
     const offered = set(ON, { "extra.invoice": N.plant2.invoice }) as PaymentRequirements;
