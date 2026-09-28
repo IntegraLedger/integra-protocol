@@ -26,6 +26,12 @@ value derived from it, commits to H. Some methods also carry H in a request memb
 that member for each intent and method (for example `externalId` for `solana` charges, and
 `methodDetails.invoiceId` for `xrpl`).
 
+`issuedDigest(challenge)` is the digest of what the seller issued: SHA-256 over the RFC 8785 form of the bound
+members, with `request` decoded and its `CARRIER` member left out, and `opaque` without the LCP members. The seller
+compares the echoed challenge's digest with the one it recorded at issue. A `stellar` charge's `recipient` is the one
+carrier that stays in part: the digest keeps its base `G…` account and leaves out only the muxed id, so an echoed
+challenge whose `recipient` names another account gives another digest.
+
 ## Placing and reading
 
 `place(doc, h, link, option)` is the seller's placement over a list of challenges: the challenge whose bound members

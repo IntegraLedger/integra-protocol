@@ -25,6 +25,7 @@ import {
   pushedField,
   read,
   tie,
+  withoutCarrier,
   type Checked,
   type MppChallenge,
   type MppCredential,
@@ -164,6 +165,11 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   };
 }
 
+/** The challenge as issued: a muxed `recipient` back to its base `G…` account, the member that stays in the digest. */
+function unplaced(option: MppChallenge): MppChallenge {
+  return withoutCarrier(option, unmux);
+}
+
 /** The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. */
 function advertise(
   doc: readonly MppChallenge[],
@@ -187,11 +193,6 @@ function advertise(
     },
     agreementUrl,
   );
-}
-
-/** The challenge as issued: `recipient`, which carries the id once placed, is left out of the digest of what was issued. */
-function unplaced(option: MppChallenge): MppChallenge {
-  return option;
 }
 
 const pattern: LcpPattern = deepFreeze({

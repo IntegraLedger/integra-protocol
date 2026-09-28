@@ -28,6 +28,7 @@ import {
   chargeSolana,
   chargeStellar,
   chargeXrpl,
+  issuedDigest,
   pairingsOf,
   type MppChallenge,
   type MppCredential,
@@ -243,6 +244,18 @@ describe("mpp-charge-stellar.json", () => {
     const ref = await chargeStellar.reference(cr);
     expect(ref).toEqual(V.V3.expectReference);
     expect(roundTrip(ref)).toEqual(ref);
+  });
+
+  it("issuedDigest keeps recipient's base account, so an echo naming another account gives another digest", async () => {
+    const D = V.issuedDigest;
+    expect(await issuedDigest(V.challenge)).toBe(D.expectIssued);
+    expect(await issuedDigest(placed)).toBe(D.expectIssued);
+    expect(await issuedDigest(chargeStellar.unplaced(placed))).toBe(D.expectIssued);
+    expect(chargeStellar.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
+    expect(JSON.parse(Buffer.from(D.echoedRequest, "base64url").toString("utf8")).recipient).toBe(D.payerMuxed);
+    const echoed = { ...placed, request: D.echoedRequest };
+    expect(await issuedDigest(echoed)).toBe(D.expectEchoed);
+    expect(await issuedDigest(chargeStellar.unplaced(echoed))).toBe(D.expectEchoed);
   });
 
   it("refusals, and fetchPresented of a hash credential", async () => {

@@ -20,6 +20,7 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementRefusal } from "./internal/agreement.js";
+import type { unmux as StellarUnmux } from "./internal/stellar.js";
 import { cardChargePairings, stripeChargePairings, stripeSubscriptionPairings, usdcChargePairings } from "./mpp-method-checks.js";
 import {
   hederaChargePairings,
@@ -69,7 +70,8 @@ export type MppIntent = "charge" | "session" | "subscription";
 
 /**
  * The request member a pairing writes H into, by intent and method; null where no request member carries it. `usdc`
- * carries H in a request member only on its Solana profile (`USDC_CARRIER`).
+ * carries H in a request member only on its Solana profile (`USDC_CARRIER`). A Stellar charge's `recipient` carries H's
+ * first 8 bytes as its muxed id only: its base account stays a member of what was issued.
  */
 export const CARRIER: { readonly [i in MppIntent]: { readonly [m in MppMethod]?: readonly string[] | null } } =
   deepFreeze({
@@ -606,15 +608,17 @@ export function tie(options: readonly MppChallenge[]): ["mpp", { challenges: Mpp
 }
 
 /**
- * the core's `digestJson` over the bound members, with `request` decoded and its carrier member removed, and `opaque`
- * decoded without the LCP members (omitted when that leaves it empty). A value that does not decode is its string.
+ * the core's `digestJson` over the bound members, with `request` decoded and its carrier removed (`asIssued`), and
+ * `opaque` decoded without the LCP members (omitted when that leaves it empty). A value that does not decode is its
+ * string.
  */
 export async function issuedDigest(c: MppChallenge): Promise<Hex | Refusal> {
   if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
   const out: { [k: string]: Json } = { realm: c.realm, method: c.method, intent: c.intent };
   const request = decodeObject(c.request);
-  const carrier = request === undefined ? null : carrierOf(c, request);
-  out["request"] = request === undefined ? c.request : carrier ? without(request, carrier) : request;
+  // The Stellar module is imported when a Stellar charge is digested, so loading this module never waits on its peer.
+  const unmux = isStellarCharge(c) ? (await import("./internal/stellar.js")).unmux : undefined;
+  out["request"] = request === undefined ? c.request : asIssued(c, request, unmux);
   if (c.expires !== undefined) out["expires"] = c.expires;
   if (c.digest !== undefined) out["digest"] = c.digest;
   if (c.header !== undefined) out["header"] = c.header;
@@ -726,18 +730,43 @@ export function carrierOf(c: MppChallenge, request: { [k: string]: Json }): read
 }
 
 /**
- * The challenge with its carrier member removed from `request`, re-encoded as base64url of the core's `canonicalJson`; an
- * emptied `metadata` object is removed too. A challenge whose request holds no carrier member is returned unchanged.
+ * The challenge with its carrier removed from `request` (`asIssued`, with `unmux` for a Stellar charge), re-encoded as
+ * base64url of the core's `canonicalJson`. A challenge whose request holds no carrier is returned unchanged.
  */
-export function withoutCarrier(c: MppChallenge): MppChallenge {
+export function withoutCarrier(c: MppChallenge, unmux?: typeof StellarUnmux): MppChallenge {
   if (!isChallengeShape(c)) return c;
   const request = decodeObject(c.request);
   if (request === undefined) return c;
-  const path = carrierOf(c, request);
-  if (path === null || memberAt(request, path) === undefined) return c;
-  const text = canonicalJson(without(request, path));
+  const issued = asIssued(c, request, unmux);
+  if (issued === request) return c;
+  const text = canonicalJson(issued);
   if (typeof text !== "string") return c;
   return { ...c, request: b64uEncode(new TextEncoder().encode(text)) };
+}
+
+/**
+ * A decoded request as the seller issued it: the carrier member `carrierOf` names removed, with a `metadata` object that
+ * removal empties removed too. A Stellar charge's muxed `recipient` is replaced by its base `G…` account through
+ * `unmux`, so only the muxed id leaves; a `recipient` that is not a muxed address, or any `recipient` when `unmux` is
+ * not given, stays as it is. The request itself is returned when it holds no carrier.
+ */
+function asIssued(
+  c: MppChallenge,
+  request: { [k: string]: Json },
+  unmux: typeof StellarUnmux | undefined,
+): { [k: string]: Json } {
+  const path = carrierOf(c, request);
+  if (path === null || memberAt(request, path) === undefined) return request;
+  if (isStellarCharge(c)) {
+    const m = unmux?.(request["recipient"]) ?? null;
+    return m === null ? request : { ...request, recipient: m.base };
+  }
+  return without(request, path);
+}
+
+/** A Stellar charge, whose carrier is the muxed id of `recipient`. */
+function isStellarCharge(c: MppChallenge): boolean {
+  return c.intent === "charge" && c.method === "stellar";
 }
 
 /** The value at `path` in a decoded request, or undefined. */
