@@ -135,6 +135,12 @@ A reader that throws, times out, or answers for another network never makes a pa
 pending, with the reason `unreadable`, and a later read can settle it. Failed means the rail itself says so: a
 reverted, aborted or expired transaction, or one that does not carry this payment.
 
+On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
+transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
+entry leaves the payment pending while the entry is valid. Past the entry's expiration ledger, `status` searches the
+asset's transfer events to the seller: it settles on a transaction that used the entry, and answers failed `expired`
+only when that search is complete and finds none.
+
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |

@@ -357,6 +357,7 @@
   }
  ],
  "V5": {
+  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists; a listed transaction bbbb… reads as candidate.",
   "ref": {
    "network": "stellar:testnet",
    "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -369,29 +370,123 @@
   },
   "rows": [
    {
+    "case": "the named transaction succeeded with V3's envelope",
     "status": "SUCCESS",
     "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
     "ledger": 990,
+    "latestLedger": 995,
     "expect": {
      "state": "settled",
      "ledger": 990
     }
    },
    {
+    "case": "the named transaction failed; the latest ledger is the entry's expiration ledger",
     "status": "FAILED",
+    "latestLedger": 1000,
     "expect": {
-     "state": "failed",
-     "why": "failed"
+     "state": "pending",
+     "why": "transaction-failed"
     }
    },
    {
+    "case": "the named transaction failed; past the expiration ledger, the search is complete and lists nothing",
+    "status": "FAILED",
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [],
+     "complete": true
+    },
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "the named transaction failed; past the expiration ledger, the RPC reports events disabled",
+    "status": "FAILED",
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [],
+     "complete": false
+    },
+    "expect": {
+     "state": "pending",
+     "why": "transaction-failed"
+    }
+   },
+   {
+    "case": "the named transaction failed; past the expiration ledger, the search lists the rebuilt transaction, which succeeded at ledger 995",
+    "status": "FAILED",
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [
+      {
+       "txHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+     ],
+     "complete": true
+    },
+    "candidate": {
+     "status": "SUCCESS",
+     "envelope": "rebuilt",
+     "ledger": 995
+    },
+    "expect": {
+     "state": "settled",
+     "ledger": 995
+    }
+   },
+   {
+    "case": "the named transaction succeeded with the plant's envelope (another signing), before the expiration ledger",
+    "status": "SUCCESS",
+    "envelope": "plant",
+    "ledger": 990,
+    "latestLedger": 995,
+    "expect": {
+     "state": "pending",
+     "why": "not-this-instrument"
+    }
+   },
+   {
+    "case": "the named transaction succeeded with the plant's envelope; past the expiration ledger, the search is complete and lists nothing",
+    "status": "SUCCESS",
+    "envelope": "plant",
+    "ledger": 990,
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [],
+     "complete": true
+    },
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "the named transaction is not found, before the expiration ledger",
     "status": "NOT_FOUND",
+    "latestLedger": 995,
     "expect": {
      "state": "pending",
      "why": "not-found"
     }
    },
    {
+    "case": "the named transaction is not found; past the expiration ledger, the search is complete and lists nothing",
+    "status": "NOT_FOUND",
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [],
+     "complete": true
+    },
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "getTransaction fails",
     "status": "reader-error",
     "expect": {
      "state": "pending",
@@ -399,6 +494,10 @@
     }
    }
   ],
+  "rebuilt": {
+   "case": "V3's operation and signed authorization entry copied unchanged into a transaction with source account 07x32 (Ed25519 public key), sequence number 424242 and fee 5000000, unsigned; written with @stellar/stellar-sdk 17.1.0's XDR types",
+   "envelope": "AAAAAgAAAAAHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwBMS0AAAAAAAAZ5MgAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA="
+  },
   "locateEventsDisabled": {
    "expect": {
     "complete": false
@@ -430,9 +529,10 @@
   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAIAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQDwAXK2MV8ztYy2BlnnqdfPNPB5E5Rs5pRSE/WnGqUl04LbmLTDEyK5c6vk3BeP/ANJj+Xd7bHCshAkeLB3rTgYAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
   "otherPreimageSha256": "38f2818003b0ee30a711cb5b59464b0fec2c01426bdd938acc66a307b2f77c8a",
   "expect": {
-   "state": "failed",
+   "state": "pending",
    "why": "not-this-instrument"
-  }
+  },
+  "latestLedger": 995
  },
  "agreedRefusals": {
   "about": "Refusal codes the Stellar specification leaves to the implementation, as the TypeScript and Python implementations both apply them.",

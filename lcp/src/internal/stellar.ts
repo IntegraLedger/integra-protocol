@@ -104,10 +104,16 @@ export interface StellarRef {
   fromLedger: number;
 }
 
+/**
+ * What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded.
+ * `pending`: nothing final yet; `why` names what the named transaction read as (`not-found`, `transaction-failed`, a
+ * successful transaction that is `not-this-instrument`) or that a read failed (`unreadable`). `failed` is final:
+ * `expired`, the ledger is past the entry's expiration and a complete search finds no transaction that used it.
+ */
 export type StellarStatus =
   | { state: "settled"; ledger: number }
-  | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "failed" | "not-this-instrument" };
+  | { state: "pending"; why: "not-found" | "transaction-failed" | "not-this-instrument" | "unreadable" }
+  | { state: "failed"; why: "expired" };
 
 /** What the payer signs (the signer signs SHA-256 of `preimage`), and how the signature completes the transaction. */
 export interface StellarUnsigned {
@@ -532,48 +538,89 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** One transaction read by hash: settled on this instrument, not final, or a transaction that is not this one's use. */
+type Named =
+  | { state: "settled"; ledger: number }
+  | { state: "pending"; why: "not-found" | "unreadable" }
+  | { state: "other"; why: "transaction-failed" | "not-this-instrument" };
+
 /**
- * Reads a named transaction. Settled when it succeeded and its authorization entry's preimage digest and `to` id are
- * the ones recorded at claim. A failed read, or a reader for another network, is pending. One call.
+ * Reads one transaction. Settled when it succeeded and its authorization entry's preimage digest and `to` id are the
+ * ones recorded at claim. A transaction that failed, or succeeded with another entry, is `other`: the entry was not
+ * used there. One call.
+ */
+async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): Promise<Named> {
+  let r: Awaited<ReturnType<StellarReader["transaction"]>>;
+  try {
+    r = await reader.transaction(hash);
+  } catch {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (typeof r !== "object" || r === null) return { state: "pending", why: "unreadable" };
+  if (r.status === "NOT_FOUND") return { state: "pending", why: "not-found" };
+  if (r.status === "FAILED") return { state: "other", why: "transaction-failed" };
+  if (r.status !== "SUCCESS" || typeof r.envelopeXdr !== "string" || !Number.isInteger(r.ledger)) {
+    return { state: "pending", why: "unreadable" };
+  }
+  const p = decodeStellarTx(r.envelopeXdr, ref.network);
+  if ("refused" in p && p.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
+  if ("refused" in p) return { state: "other", why: "not-this-instrument" };
+  if (p.auth.preimageHash !== ref.authDigest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
+    return { state: "other", why: "not-this-instrument" };
+  }
+  return { state: "settled", ledger: r.ledger! };
+}
+
+/**
+ * Reads the instrument through a named transaction. Settled when that transaction used the authorization entry recorded
+ * at claim and succeeded. Otherwise the entry can still be used by another transaction until its expiration ledger, so
+ * a named transaction that is not found, failed, or succeeded with another entry is pending. The read is final only
+ * past that ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
+ * transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
+ * incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
+ * or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well.
  */
 export async function stellarStatus(
   ref: StellarRef & { transaction: string },
   reader: StellarReader,
 ): Promise<StellarStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
-  let r: Awaited<ReturnType<StellarReader["transaction"]>>;
+  const named = await readNamed(ref, ref.transaction, reader);
+  if (named.state === "settled") return named;
+  if (named.why === "unreadable") return { state: "pending", why: "unreadable" };
+  let latest: number;
   try {
-    r = await reader.transaction(ref.transaction);
+    latest = await reader.latestLedger();
   } catch {
     return { state: "pending", why: "unreadable" };
   }
-  if (typeof r !== "object" || r === null) return { state: "pending", why: "unreadable" };
-  if (r.status === "NOT_FOUND") return { state: "pending", why: "not-found" };
-  if (r.status === "FAILED") return { state: "failed", why: "failed" };
-  if (r.status !== "SUCCESS" || typeof r.envelopeXdr !== "string" || !Number.isInteger(r.ledger)) {
-    return { state: "pending", why: "unreadable" };
-  }
-  const p = decodeStellarTx(r.envelopeXdr, ref.network);
-  if ("refused" in p && p.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
-  if ("refused" in p) return { state: "failed", why: "not-this-instrument" };
-  if (p.auth.preimageHash !== ref.authDigest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
-    return { state: "failed", why: "not-this-instrument" };
-  }
-  return { state: "settled", ledger: r.ledger! };
+  if (!Number.isSafeInteger(latest)) return { state: "pending", why: "unreadable" };
+  if (latest <= ref.expiration) return { state: "pending", why: named.why };
+  const l = await locate(ref, reader);
+  if (l.found !== undefined) return { state: "settled", ledger: l.found.ledger };
+  return l.complete ? { state: "failed", why: "expired" } : { state: "pending", why: named.why };
 }
 
 /**
  * Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` to
- * the entry's expiration, keeping those whose muxed id is `toId`, each read as `stellarStatus` does. `complete` is
- * true only when every page was read, the reader reported events enabled on each, the RPC still held `fromLedger`
- * (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed candidate whose transaction reads pending
- * leaves the search incomplete. At most 10 pages and 50 candidates.
+ * the entry's expiration, keeping those whose muxed id is `toId`, each read as `stellarStatus` reads its named
+ * transaction. `complete` is true only when every page was read, the reader reported events enabled on each, the RPC
+ * still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed candidate whose
+ * transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50 candidates.
  */
 export async function stellarLocate(
   ref: StellarRef,
   reader: StellarReader,
 ): Promise<{ found?: string; complete: boolean }> {
   if (reader.network !== ref.network) return { complete: false };
+  const l = await locate(ref, reader);
+  return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
+}
+
+async function locate(
+  ref: StellarRef,
+  reader: StellarReader,
+): Promise<{ found?: { hash: string; ledger: number }; complete: boolean }> {
   let cursor: string | undefined;
   let candidates = 0;
   for (let page = 0; page < MAX_LOCATE_PAGES; page++) {
@@ -594,8 +641,8 @@ export async function stellarLocate(
     for (const e of r.events) {
       if (typeof e?.toMuxedId !== "bigint" || e.toMuxedId.toString() !== ref.toId || typeof e.txHash !== "string") continue;
       if (++candidates > MAX_CANDIDATES) return { complete: false };
-      const s = await stellarStatus({ ...ref, transaction: e.txHash }, reader);
-      if (s.state === "settled") return { found: e.txHash, complete: true };
+      const s = await readNamed(ref, e.txHash, reader);
+      if (s.state === "settled") return { found: { hash: e.txHash, ledger: s.ledger }, complete: true };
       if (s.state === "pending") return { complete: false };
     }
     if (r.cursor === undefined) return { complete: true };
