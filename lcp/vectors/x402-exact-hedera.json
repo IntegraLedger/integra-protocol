@@ -145,6 +145,61 @@
      "why": "unreadable"
     },
     "source": "a failed read is pending"
+   },
+   {
+    "entries": [
+     {
+      "result": "INVALID_PAYER_SIGNATURE",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000001.000000001"
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    },
+    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'"
+   },
+   {
+    "entries": [
+     {
+      "result": "INVALID_NODE_ACCOUNT",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000001.000000001"
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    },
+    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'"
+   },
+   {
+    "entries": [
+     {
+      "result": "INVALID_PAYER_SIGNATURE",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000001.000000001"
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000009.000000001"
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1700000009.000000001"
+    },
+    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'"
    }
   ],
   "recover": {

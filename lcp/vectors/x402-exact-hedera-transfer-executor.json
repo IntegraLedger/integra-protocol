@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is printf '%s' '0.0.5001,0.0.4001,100000000' | sha256sum, and Python hashlib printed the same.",
+ "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is printf '%s' '0.0.5001,0.0.4001,100000000' | sha256sum, and Python hashlib printed the same. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. A row's reference fields override the status reference.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -266,6 +266,595 @@
      "state": "pending",
      "why": "not-found"
     }
+   },
+   {
+    "case": "the payee is paid a staking reward, listed in the parent record",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       },
+       {
+        "account": "0.0.800",
+        "amount": -12345
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ],
+      "staking_reward_transfers": [
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
+   },
+   {
+    "case": "the payee is paid a staking reward, netted into its credit",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       },
+       {
+        "account": "0.0.800",
+        "amount": -12345
+       }
+      ],
+      "staking_reward_transfers": [
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100012345
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
+   },
+   {
+    "case": "the staking reward account's fee share exceeds the reward it pays",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4700000
+       },
+       {
+        "account": "0.0.800",
+        "amount": 37655
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ],
+      "staking_reward_transfers": [
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'if a transaction has a portion of its transaction fee that sends 3 tinybars to 0.0.800, and 0.0.800 is sending Bob 1 tinybar as an earned staking reward, then the existing list will show a change of +2 tinybars for 0.0.800'."
+   },
+   {
+    "case": "the payer is paid a staking reward",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       },
+       {
+        "account": "0.0.800",
+        "amount": -12345
+       },
+       {
+        "account": "0.0.5001",
+        "amount": 12345
+       }
+      ],
+      "staking_reward_transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": 12345
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
+   },
+   {
+    "case": "the reward list also names the staking reward account's debit",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       },
+       {
+        "account": "0.0.800",
+        "amount": -12345
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ],
+      "staking_reward_transfers": [
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       },
+       {
+        "account": "0.0.800",
+        "amount": -12345
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'the new list will show a -1 change for 0.0.800 (change due to staking rewards)'."
+   },
+   {
+    "case": "a staking reward listed with no transfer that pays it",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ],
+      "staking_reward_transfers": [
+       {
+        "account": "0.0.4001",
+        "amount": 12345
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the payee's net credit, less the listed reward, is not the amount the payer's payment named"
+   },
+   {
+    "case": "token_transfers is {}",
+    "reference": {
+     "asset": "0.0.456858"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ],
+      "token_transfers": {}
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "source": "the Mirror Node's token_transfers is an array; another shape is an unreadable answer, never a throw"
+   },
+   {
+    "case": "token_transfers is \"x\"",
+    "reference": {
+     "asset": "0.0.456858"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ],
+      "token_transfers": "x"
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "source": "the Mirror Node's token_transfers is an array; another shape is an unreadable answer, never a throw"
+   },
+   {
+    "case": "token_transfers is 7",
+    "reference": {
+     "asset": "0.0.456858"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ],
+      "token_transfers": 7
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "source": "the Mirror Node's token_transfers is an array; another shape is an unreadable answer, never a throw"
+   },
+   {
+    "case": "staking_reward_transfers is an object",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ],
+      "staking_reward_transfers": {
+       "account": "0.0.4001",
+       "amount": 12345
+      }
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "source": "the Mirror Node's staking_reward_transfers is an array; another shape is an unreadable answer"
+   },
+   {
+    "case": "only a node due-diligence failure",
+    "entries": [
+     {
+      "result": "INVALID_PAYER_SIGNATURE",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500001.000000001"
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    },
+    "source": "hiero-consensus-node RecordCache: records with INVALID_NODE_ACCOUNT or INVALID_PAYER_SIGNATURE 'do not prevent valid transactions with the same id from reaching consensus and being handled'"
    }
   ]
  },

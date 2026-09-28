@@ -147,7 +147,7 @@ only when that search is complete and finds none.
 | Solana | `SvmReader` | `getTransaction` at a commitment, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
-| Hedera | `HederaReader` | the Mirror Node's transaction by id; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
+| Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
 | Algorand | `AvmReader` | the Indexer's transaction search by id | the confirmed round |
 | Aptos | `AptosReader` | the transaction by hash, the sender's transaction by sequence number, the ledger info | the version |
 | Cardano | `CardanoReader` | the chain tip, the transaction by id | the confirmations |
