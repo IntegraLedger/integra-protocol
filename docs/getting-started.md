@@ -43,11 +43,11 @@ byte for byte as given. It returns the bytes and H.
 Save this as `assemble.ts` and run `node assemble.ts`:
 
 ```ts
-import { assemble } from "@integraledger/lcp";
+import { assemble, isRefusal } from "@integraledger/lcp";
 
 const terms = new TextEncoder().encode('{"text":"One market report for 10000 base units of USDC."}');
 const atr = await assemble("0f8fad5b-d9cb-469f-a165-70867728950e", ["x402", { accepts: [] }], [["terms", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 
 console.log(new TextDecoder().decode(atr.bytes));
 console.log(atr.atrHash);
@@ -62,7 +62,7 @@ This page fixes the id so your output matches. For a real transaction, pass `new
 the fresh id makes every H unique, even for identical terms.
 
 Every function in the package returns its result or a [refusal](./concepts/refusals.md), a value with a code, so
-check for `refused` before you use a result.
+check `isRefusal(result)` before you use a result.
 
 ## 2. Compare the bytes with H
 
@@ -71,11 +71,11 @@ the result with the H the seller advertised. One changed byte, here the final `.
 another hash:
 
 ```ts
-import { assemble, hash, hashEquals } from "@integraledger/lcp";
+import { assemble, hash, hashEquals, isRefusal } from "@integraledger/lcp";
 
 const terms = new TextEncoder().encode('{"text":"One market report for 10000 base units of USDC."}');
 const atr = await assemble("0f8fad5b-d9cb-469f-a165-70867728950e", ["x402", { accepts: [] }], [["terms", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 
 const served = atr.bytes.slice();
 console.log("as served:", hashEquals(await hash(served), atr.atrHash));
@@ -98,7 +98,7 @@ The whole exchange, on `x402/exact/eip155/eip3009`: USDC on Base Sepolia, paid w
 Save this as `pay.ts` and run `node pay.ts`:
 
 ```ts
-import { assemble, hash, hashEquals, newAtrId } from "@integraledger/lcp";
+import { assemble, hash, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 import {
   exactEip3009,
   requestCommitment,
@@ -127,10 +127,10 @@ const challenge: PaymentRequired = {
 
 // Seller, a: assemble the ATR for this request. Its binding slot records the options and the request.
 const request = await requestCommitment({ method: "GET", target: "/v1/report", body: new Uint8Array() });
-if ("refused" in request) throw new Error(request.code);
+if (isRefusal(request)) throw new Error(request.code);
 const terms = new TextEncoder().encode('{"text":"One market report for 10000 base units of USDC."}');
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 
 // Seller, b: store the bytes at an https link before the challenge goes out.
 const link = `https://atr.seller.example/${atr.atrHash}`;
@@ -138,13 +138,13 @@ const storage = new Map([[link, atr.bytes]]);
 
 // Seller, c: advertise H and the link in the challenge's legalContext extension.
 const advertised = exactEip3009.advertise(challenge, atr.atrHash, link, option);
-if ("refused" in advertised) throw new Error(advertised.code);
+if (isRefusal(advertised)) throw new Error(advertised.code);
 const info = advertised.extensions?.["legalContext"]?.info as { value?: string } | undefined;
 console.log("1. challenge carries H:", info?.value === atr.atrHash);
 
 // Buyer, d: read H and the link, fetch the bytes, and compare.
 const offer = exactEip3009.read(advertised);
-if ("refused" in offer) throw new Error(offer.code);
+if (isRefusal(offer)) throw new Error(offer.code);
 const served = storage.get(offer.link);
 if (served === undefined || !hashEquals(await hash(served), offer.h)) throw new Error("decline: hash-mismatch");
 console.log("2. the served bytes hash to H");
@@ -155,11 +155,11 @@ const unsigned = await exactEip3009.build(
   { required: advertised, accepted: offer.offer.options[0]!, from: payer.address, now: Math.floor(Date.now() / 1000) },
   offer.h,
 );
-if ("refused" in unsigned) throw new Error(unsigned.code);
+if (isRefusal(unsigned)) throw new Error(unsigned.code);
 const { primaryType, message } = unsigned.typedData;
 console.log("3. the buyer signs", primaryType, "with nonce H:", message.nonce === offer.h);
 const payment = unsigned.complete(await payer.signTypedData(unsigned.typedData as TypedDataDefinition));
-if ("refused" in payment) throw new Error(payment.code);
+if (isRefusal(payment)) throw new Error(payment.code);
 
 // Seller, f: read H back from what the buyer signed, and match it to the H it issued.
 const bound = await exactEip3009.bound(payment);

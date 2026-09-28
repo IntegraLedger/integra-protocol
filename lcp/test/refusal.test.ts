@@ -3,7 +3,7 @@
 // refuse one that carries a `refused` member with their own malformed-input code.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { assemble, BINDINGS } from "../src/index.js";
+import { assemble, BINDINGS, isRefusal as rootIsRefusal } from "../src/index.js";
 import { credentialOf } from "../src/mpp-challenge.js";
 import { isRefusal, refusal } from "../src/refusal.js";
 
@@ -30,6 +30,10 @@ describe("isRefusal", () => {
     const r = await assemble("6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40", ["bind", {}], [["id", new TextEncoder().encode("{}")]]);
     expect(isRefusal(r)).toBe(true);
     expect(r).toEqual({ refused: true, code: "core/slot-reserved" });
+  });
+
+  it("is the package root's export", () => {
+    expect(rootIsRefusal).toBe(isRefusal);
   });
 
   it("is false for a value of the same shape that the package did not make", () => {

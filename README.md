@@ -51,13 +51,13 @@ npm install @integraledger/lcp
 ```
 
 ```ts
-import { assemble, hash, hashEquals, newAtrId } from "@integraledger/lcp";
+import { assemble, hash, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 
 // The seller assembles the ATR: its bytes, and H over exactly those bytes.
 const atr = await assemble(newAtrId(), ["x402", { accepts: [] }], [
   ["terms", new TextEncoder().encode('{"text":"One report for 10000 base units of USDC."}')],
 ]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 
 // The buyer fetches the bytes and compares their hash with H before it signs anything.
 console.log(hashEquals(await hash(atr.bytes), atr.atrHash));

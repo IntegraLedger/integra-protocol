@@ -48,7 +48,7 @@ The seller's challenge below was advertised for an ATR the buyer can fetch. A st
 network is used.
 
 ```ts
-import { hash, hashEquals } from "@integraledger/lcp";
+import { hash, hashEquals, isRefusal } from "@integraledger/lcp";
 import { exactEip3009, type PaymentRequired } from "@integraledger/lcp/x402";
 import type { TypedDataDefinition } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -116,7 +116,7 @@ const sellerFetch: typeof fetch = async () => new Response(atrBytes);
 
 // 1. Compare.
 const offer = exactEip3009.read(challenge);
-if ("refused" in offer) throw new Error(`decline: ${offer.code}`);
+if (isRefusal(offer)) throw new Error(`decline: ${offer.code}`);
 const served = await fetchAtr(offer.link, sellerFetch);
 if (typeof served === "string") throw new Error(`decline: ${served}`);
 if (!hashEquals(await hash(served), offer.h)) throw new Error("decline: hash-mismatch");
@@ -129,13 +129,13 @@ const unsigned = await exactEip3009.build(
   { required: challenge, accepted, from: payer.address, now: Math.floor(Date.now() / 1000) },
   offer.h,
 );
-if ("refused" in unsigned) throw new Error(`decline: ${unsigned.code}`);
+if (isRefusal(unsigned)) throw new Error(`decline: ${unsigned.code}`);
 console.log("signing:", unsigned.typedData.primaryType, "with nonce H:", unsigned.typedData.message.nonce === offer.h);
 const signature = await payer.signTypedData(unsigned.typedData as TypedDataDefinition);
 
 // 3. Finish.
 const payment = unsigned.complete(signature);
-if ("refused" in payment) throw new Error(`decline: ${payment.code}`);
+if (isRefusal(payment)) throw new Error(`decline: ${payment.code}`);
 const signed = await exactEip3009.bound(payment);
 if (typeof signed !== "string" || !hashEquals(signed, offer.h)) throw new Error("decline: signed-not-bound");
 console.log("finished: the payment carries H");

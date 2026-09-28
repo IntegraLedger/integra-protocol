@@ -33,7 +33,7 @@ The files ship inside the package, beside `dist/`. This example runs the core ro
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { assemble, type Json } from "@integraledger/lcp";
+import { assemble, isRefusal, type Json } from "@integraledger/lcp";
 
 const url = new URL("../vectors/core-vectors.json", import.meta.resolve("@integraledger/lcp"));
 const core = JSON.parse(await readFile(url, "utf8")) as {
@@ -44,7 +44,7 @@ for (const v of core.vectors) {
   if (v.id === undefined || v.binding === undefined || v.content === undefined) continue;
   const content = v.content.map(([slot, hex]) => [slot, Uint8Array.from(Buffer.from(hex, "hex"))] as const);
   const atr = await assemble(v.id, v.binding, content);
-  console.log(v.name, !("refused" in atr) && atr.atrHash === v.expectHash);
+  console.log(v.name, !isRefusal(atr) && atr.atrHash === v.expectHash);
 }
 ```
 

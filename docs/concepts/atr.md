@@ -40,7 +40,7 @@ a buyer that fetches them hash the same thing.
 This example assembles the ATR of the package's first core vector, and prints its bytes and its hash:
 
 ```ts
-import { assemble } from "@integraledger/lcp";
+import { assemble, isRefusal } from "@integraledger/lcp";
 
 const utf8 = new TextEncoder();
 const atr = await assemble(
@@ -51,7 +51,7 @@ const atr = await assemble(
     ["seller", utf8.encode('{"name":"Acme Reports"}')],
   ],
 );
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 
 console.log(new TextDecoder().decode(atr.bytes));
 console.log(atr.atrHash);
