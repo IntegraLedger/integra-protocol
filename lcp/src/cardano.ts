@@ -337,29 +337,70 @@ function decodeBytes(bytes: Uint8Array): CardanoTx | Refusal {
   return { txId, ttlSlot, h: carrier(aux) };
 }
 
-/** The one `LCP_MARKER` line followed by 64 lowercase hex digits in label 674's `"msg"` lines. */
+/**
+ * The hash in label 674's `"msg"` lines: exactly one line equal to `LCP_MARKER`, followed by a line of 64 lowercase hex
+ * digits. The metadata may hold label 674 once, and its map may not repeat a key, so every reader of the message
+ * reads the same lines. Marker lines are counted ignoring case and a leading byte-order mark: more than one is
+ * `cardano/ambiguous`, and one that is not exactly `LCP_MARKER` followed by lowercase hex carries no hash.
+ */
 function carrier(aux: Item): AtrHash | Refusal {
   const metadata = metadataOf(aux);
-  const found: AtrHash[] = [];
-  if (metadata !== undefined) {
-    for (const [label, value] of metadata.entries) {
-      if (label.kind !== "uint" || label.value !== LABEL_MESSAGE || value.kind !== "map") continue;
-      for (const [key, lines] of value.entries) {
-        if (key.kind !== "text" || key.value !== "msg" || lines.kind !== "array") continue;
-        const items = lines.items;
-        for (let i = 0; i + 1 < items.length; i++) {
-          const a = items[i]!;
-          const b = items[i + 1]!;
-          if (a.kind !== "text" || a.value !== LCP_MARKER || b.kind !== "text" || !HEX64.test(b.value)) continue;
-          const h = fromLcpString(LCP_MARKER + b.value);
-          if (h !== null) found.push(h);
-        }
-      }
+  const messages = (metadata?.entries ?? []).filter(([l]) => l.kind === "uint" && l.value === LABEL_MESSAGE);
+  if (messages.length > 1) return refusal("cardano/ambiguous");
+  const message = messages[0]?.[1];
+  const candidates: [Item, Item | undefined][] = [];
+  if (message?.kind === "map") {
+    const keys = new Set<string>();
+    for (const [key] of message.entries) {
+      const k = keyOf(key);
+      if (keys.has(k)) return refusal("cardano/ambiguous");
+      keys.add(k);
+    }
+    for (const [key, lines] of message.entries) {
+      if (key.kind !== "text" || key.value !== "msg" || lines.kind !== "array") continue;
+      lines.items.forEach((line, i) => {
+        if (line.kind === "text" && isMarkerLike(line.value)) candidates.push([line, lines.items[i + 1]]);
+      });
     }
   }
-  if (found.length === 0) return refusal("cardano/hash-not-carried");
-  if (found.length > 1) return refusal("cardano/ambiguous");
-  return found[0]!;
+  if (candidates.length > 1) return refusal("cardano/ambiguous");
+  const [marker, digits] = candidates[0] ?? [];
+  if (marker?.kind !== "text" || marker.value !== LCP_MARKER || digits?.kind !== "text" || !HEX64.test(digits.value)) {
+    return refusal("cardano/hash-not-carried");
+  }
+  return fromLcpString(LCP_MARKER + digits.value) ?? refusal("cardano/hash-not-carried");
+}
+
+/** A line that reads as `LCP_MARKER` once case and a leading byte-order mark are ignored. */
+function isMarkerLike(line: string): boolean {
+  return line.replace(/^\uFEFF/, "").toLowerCase() === LCP_MARKER;
+}
+
+/**
+ * A map key's identity as a decoded value, so that two encodings of one value are the same key. A text key is
+ * compared without a leading byte-order mark, and every float is one key.
+ */
+function keyOf(k: Item): string {
+  switch (k.kind) {
+    case "uint":
+      return `u${k.value}`;
+    case "nint":
+      return `n${k.value}`;
+    case "bytes":
+      return `b${hexOf(k.value)}`;
+    case "text":
+      return `t${JSON.stringify(k.value.replace(/^\uFEFF/, ""))}`;
+    case "array":
+      return `a[${k.items.map(keyOf).join(",")}]`;
+    case "map":
+      return `m{${k.entries.map(([a, b]) => `${keyOf(a)}:${keyOf(b)}`).join(",")}}`;
+    case "tag":
+      return `g${k.tag}(${keyOf(k.item)})`;
+    case "simple":
+      return `s${k.value}`;
+    case "float":
+      return "f";
+  }
 }
 
 /** The metadata map of the three auxiliary data forms: a map, `[metadata, scripts]`, or tag 259 with key 0. */
@@ -389,7 +430,7 @@ function isOnChain(t: unknown): t is CardanoOnChain {
 
 type Item = { start: number; end: number } & (
   | { kind: "uint"; value: bigint }
-  | { kind: "nint" }
+  | { kind: "nint"; value: bigint }
   | { kind: "bytes"; value: Uint8Array }
   | { kind: "text"; value: string }
   | { kind: "array"; items: Item[] }
@@ -401,11 +442,12 @@ type Item = { start: number; end: number } & (
 
 /**
  * A bounded CBOR reader (RFC 8949) that keeps each item's byte span. Definite and indefinite lengths and tags are
- * read; nesting is at most 64 deep. Anything malformed throws, and the caller turns that into a refusal.
+ * read; nesting is at most 64 deep. Text keeps a leading byte-order mark. Anything malformed throws, and the caller
+ * turns that into a refusal.
  */
 class CborReader {
   at = 0;
-  private readonly text = new TextDecoder("utf-8", { fatal: true });
+  private readonly text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   constructor(private readonly b: Uint8Array) {}
 
   item(depth: number): Item {
@@ -420,7 +462,7 @@ class CborReader {
       case 0:
         return { kind: "uint", value: arg, start, end: this.at };
       case 1:
-        return { kind: "nint", start, end: this.at };
+        return { kind: "nint", value: -1n - arg, start, end: this.at };
       case 2:
         return { kind: "bytes", value: this.take(arg), start, end: this.at };
       case 3:

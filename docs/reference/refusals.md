@@ -497,10 +497,10 @@ Cardano (`@integraledger/lcp/cardano`).
 
 | Code | Meaning |
 |---|---|
-| `cardano/ambiguous` | The Cardano auxiliary data's label 674 `msg` lines carry more than one ATR hash. |
+| `cardano/ambiguous` | The Cardano metadata holds label 674 more than once, label 674's map repeats a key, or its `msg` lines hold more than one line that reads as the LCP marker when case and a leading byte-order mark are ignored. |
 | `cardano/aux-hash-mismatch` | The Blake2b-256 of the Cardano transaction's auxiliary data is not the hash in its body. |
 | `cardano/aux-missing` | The Cardano transaction's body has no auxiliary data hash (key 7), or it carries no auxiliary data. |
-| `cardano/hash-not-carried` | The Cardano auxiliary data's label 674 `msg` lines carry no LCP marker followed by an ATR hash. |
+| `cardano/hash-not-carried` | The Cardano auxiliary data's label 674 `msg` lines carry no line that is exactly the lowercase LCP marker followed by a line of 64 lowercase hex digits. |
 | `cardano/network-malformed` | A Cardano option's network starts with `cardano:` or `cip34:` but is not one this package maps. |
 | `cardano/not-found` | The Cardano reader found no transaction for the id. |
 | `cardano/not-valid` | The Cardano transaction the reference names is on chain as invalid (its collateral was taken). |

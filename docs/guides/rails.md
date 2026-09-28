@@ -88,7 +88,7 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | | | `x402/exact/hedera/transfer-executor` | The challenge only. |
 | Algorand | `avm` | `x402/exact/algorand` | The asset transfer's `note`: H's LCP string. |
 | Aptos | `aptos` | `x402/exact/aptos` | The challenge only. No field of a standard Aptos transfer carries H; the seller ties the payment to H when it claims it for the request. |
-| Cardano | `cardano` | `x402/exact/cardano` | A CIP-20 message (metadata label 674) holding H's LCP string as two strings, `lcp:sha256:0x` and the 64 hex digits, which the signed body commits to through `auxiliary_data_hash`. |
+| Cardano | `cardano` | `x402/exact/cardano` | A CIP-20 message (metadata label 674) holding H's LCP string as two strings, `lcp:sha256:0x` and the 64 lowercase hex digits, which the signed body commits to through `auxiliary_data_hash`. A message that repeats a key, or holds a second line reading as the marker in any case or behind a byte-order mark, is refused, so every reader of the chain sees one hash. |
 | Casper | `casper` | `x402/exact/casper` | The CEP-3009 authorization's `nonce`. |
 | Concordium | `ccd` | `x402/exact/ccd` | The one transfer's memo: H's LCP string as a CBOR text string, which a PLT transfer wraps in CBOR tag 24. |
 | NEAR | `near` | `x402/exact/near` | The `memo` of the one NEP-141 `ft_transfer` in the NEP-366 delegate action the payer signs. |
