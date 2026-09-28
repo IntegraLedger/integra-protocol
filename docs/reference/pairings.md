@@ -169,7 +169,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `mpp/charge/hedera`
 
-The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the MPP challenge this payment answered, protected by the server's binding of the challenge, not by the payer's signature. The payer signed a memo whose 7-byte nonce is keccak256 of that challenge's id: it ties the payment to the challenge instance, and does not exclude another challenge with the same 7 bytes. This does not show that amount, recipient, token or timing match the ATR's content.
+The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the MPP challenge this payment answered, protected by the server's binding of the challenge, not by the payer's signature. The payer signed a memo whose 7-byte nonce is keccak256 of that challenge's id. It ties the payment to the challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. This does not show that amount, recipient, token or timing match the ATR's content.
 
 ### `mpp/charge/lightning`
 
@@ -185,7 +185,7 @@ The payer signed a Solana transaction whose one Memo instruction carries this AT
 
 ### `mpp/charge/stellar`
 
-The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the payment challenge, which the payer did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of this ATR's hash, and the transaction succeeded. The id matches this hash by prefix only; it does not exclude another ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the ATR's content.
+The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the payment challenge, which the payer did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of this ATR's hash, and the transaction succeeded. The id binds this hash only through its first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the ATR's content.
 
 ### `mpp/charge/stripe`
 
@@ -193,11 +193,11 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `mpp/charge/tempo/memo`
 
-The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event. It ties the payment to the challenge instance, and does not exclude another challenge with the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content.
+The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `mpp/charge/tempo/push`
 
-The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed and broadcast a Tempo transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event, read after the money had moved. It ties the payment to the challenge instance, and does not exclude another challenge with the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content.
+The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed and broadcast a Tempo transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event, read after the money had moved. It ties the payment to the challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `mpp/charge/usdc/evm`
 
@@ -357,7 +357,7 @@ The payer signed a SNIP-12 outside execution whose nonce is the low 250 bits of 
 
 ### `x402/exact/stellar`
 
-The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the payment challenge, which the payer did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of this ATR's hash, and the transaction succeeded. The id matches this hash by prefix only; it does not exclude another ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the ATR's content.
+The ATR was assembled, written to the seller's storage and linked in the challenge before approval, and its hash is in the payment challenge, which the payer did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of this ATR's hash, and the transaction succeeded. The id binds this hash only through its first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/exact/sui`
 

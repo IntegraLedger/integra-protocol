@@ -739,8 +739,8 @@ const MEMO_PROVES =
   "challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction " +
   "whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain " +
   "verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's " +
-  "TransferWithMemo event. It ties the payment to the challenge instance, and does not exclude another challenge " +
-  "with the same 7 bytes. " +
+  "TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash only through those " +
+  "7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. " +
   LIMIT;
 
 const PUSH_PROVES =
@@ -749,7 +749,8 @@ const PUSH_PROVES =
   "transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that " +
   "id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of " +
   "the token's TransferWithMemo event, read after the money had moved. It ties the payment to the challenge " +
-  "instance, and does not exclude another challenge with the same 7 bytes. " +
+  "instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second " +
+  "ATR whose challenge id gives the same 7 bytes. " +
   LIMIT;
 
 const CALL_PROVES =

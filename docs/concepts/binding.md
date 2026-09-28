@@ -37,7 +37,7 @@ Every pairing declares one binding pattern in its `pattern.pattern`. The six thi
 | `native-field` | H itself, or its LCP string, sits in a field the protocol or rail defines: a nonce, memo, note, remark, salt, session id or invoice field. |
 | `id-reuse` | An identifier the payment already carries is derived from H: MPP's challenge id through the signed nonce, an escrow's salt, the XRPL `InvoiceID`, or a card checkout's hash. |
 | `opaque-challenge` | H rides in the challenge or checkout the seller issues, and what the buyer presents echoes it or commits to it. |
-| `truncated-field` | A signed or landed field holds part of H: its first 8 bytes, or its low 250 bits. Anyone holding the ATR confirms H from it; nothing recovers H from it. |
+| `truncated-field` | A signed or landed field holds part of H: its first 8 bytes, or its low 250 bits. Anyone holding the ATR confirms H from it; nothing recovers H from it. An 8-byte part binds H only through those bytes: whoever assembles the ATR can construct a second ATR that shares them. |
 | `protocol-extension` | H rides in a protocol extension: a field the agent's message signature covers, or an extension echoed on each request. |
 | `http-advisory` | H and its link are advertised in the exchange, and nothing the buyer signs or the rail carries holds H. |
 

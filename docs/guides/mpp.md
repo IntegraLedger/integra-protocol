@@ -94,11 +94,11 @@ Payment scheme's problem type and HTTP status for a refusal code.
 |---|---|---|
 | `evm` | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` | The signed nonce, or the witness's `challengeHash`: keccak256 of the challenge id and realm (`challengeHash`). |
 | `evm` | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | Nothing signed or landed; H is in the challenge. |
-| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | MPP's attribution memo on the `transferWithMemo`, whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`). |
+| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | MPP's attribution memo on the `transferWithMemo`, whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`): H is bound through those 7 bytes only. |
 | `solana` | `mpp/charge/solana` | The one Memo instruction, holding H's LCP string (the request's `externalId`). |
-| `stellar` | `mpp/charge/stellar` | The seller's muxed recipient address, whose 8-byte id is H's first 8 bytes. |
+| `stellar` | `mpp/charge/stellar` | The seller's muxed recipient address, whose 8-byte id is H's first 8 bytes: H is bound through those 8 bytes only. |
 | `xrpl` | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H itself (the request's `methodDetails.invoiceId`). |
-| `hedera` | `mpp/charge/hedera` | MPP's attribution memo as the signed body memo. |
+| `hedera` | `mpp/charge/hedera` | MPP's attribution memo as the signed body memo: H is bound through its 7-byte nonce only. |
 | `lightning` | `mpp/charge/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 | `usdc` | `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | The EIP-3009 nonce, or the Gateway burn intent's salt: `usdc`'s derivation over the challenge id. |
 | `usdc` | `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks` | The signed Memo instruction (H's LCP string), or the SIP-010 `transfer` memo (H's 32 bytes). |
@@ -106,6 +106,10 @@ Payment scheme's problem type and HTTP status for a refusal code.
 | `card`, `stripe` | `mpp/charge/card`, `mpp/charge/stripe`, `mpp/subscription/stripe` | The request's `externalId`, or `methodDetails.metadata.legal_context`, which Stripe copies into the PaymentIntent. The buyer's card or token signs nothing that carries H. |
 | sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/hedera`, `mpp/session/solana`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
 | subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. |
+
+Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the attribution memo on Tempo and Hedera, and
+the Stellar muxed id), the payment binds H only through those bytes: whoever assembles the ATR can construct a second
+ATR that shares them. Those pairings state this in their `pattern.proves`.
 
 Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs. Its
 `bound(credential)` reads H from the echoed challenge and checks that what was signed carries it; `reference` and

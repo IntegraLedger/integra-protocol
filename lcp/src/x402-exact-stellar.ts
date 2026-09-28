@@ -175,9 +175,9 @@ const pattern: LcpPattern = Object.freeze({
     "The ATR was assembled, written to the seller's storage and linked in the challenge before approval, " +
     "and its hash is in the payment challenge, which the payer " +
     "did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of " +
-    "this ATR's hash, and the transaction succeeded. The id matches this hash by prefix only; it does not exclude " +
-    "another ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the " +
-    "ATR's content.",
+    "this ATR's hash, and the transaction succeeded. The id binds this hash only through its first 8 bytes: whoever " +
+    "assembles the ATR can construct a second ATR whose hash begins with the same 8 bytes. This does not show that " +
+    "amount, asset or timing match the ATR's content.",
 });
 
 export const exactStellar = Object.freeze({
