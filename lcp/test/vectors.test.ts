@@ -42,6 +42,9 @@ function readerFor(r: FixtureReceipt): EvmReader {
     },
     blockNumber: async (tag) => BigInt(tag === "finalized" ? P.V6.reader.finalized : P.V6.reader.safe),
     transaction: async () => null,
+    call: async () => {
+      throw new ReaderError("transport");
+    },
   };
 }
 const withBigints = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
@@ -124,6 +127,12 @@ describe("x402-exact-eip155-eip3009.json", () => {
     for (const row of P.V6.recover) {
       const tx = { network: ref.network, asset: ref.asset, transaction: ref.transaction };
       expect(await exactEip3009.recover(tx, readerFor(row.receipt))).toEqual(row.expect);
+    }
+  });
+
+  it("V6: a named transaction that is not this payment is failed", async () => {
+    for (const row of P.V6.notThisPayment.rows) {
+      expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt))), row.case).toEqual(row.expect);
     }
   });
 

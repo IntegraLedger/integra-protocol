@@ -1,13 +1,14 @@
 // The evm entry point's breadth pieces: bounds, the settlement read's rules, and the shipped profiles.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { encodeAbiParameters, keccak256, toBytes } from "viem";
+import { encodeAbiParameters, encodeFunctionData, keccak256, parseAbi, toBytes } from "viem";
 import {
   DELEGATION_MANAGER_CHAINS,
   RECEIVE_POLICY_GUARD,
   TRANSFER_TOPIC,
   ReaderError,
   authorizationIdDigest,
+  authorizationUsed,
   decodePermissionContext,
   evmStatus,
   permit2TypedData,
@@ -31,6 +32,9 @@ const reader = (r: EvmReceipt | null | "error", network = "eip155:84532"): EvmRe
   },
   blockNumber: async (tag) => (tag === "finalized" ? 100n : 105n),
   transaction: async () => null,
+  call: async () => {
+    throw new ReaderError("transport");
+  },
 });
 
 describe("transferDigest", () => {
@@ -156,6 +160,59 @@ describe("permit2TypedData", () => {
   });
   it("the Transfer topic is keccak of the ERC-20 event signature", () => {
     expect(keccak256(toBytes("Transfer(address,address,uint256)"))).toBe(TRANSFER_TOPIC);
+  });
+});
+
+describe("authorizationUsed", () => {
+  const nonce = ("0x" + "ab".repeat(31) + "07") as Hex;
+  const keys = (scheme: "eip3009" | "permit2") => ({
+    network: "eip155:84532" as const,
+    authorization: { scheme, at: scheme === "eip3009" ? USDC : ("0x000000000022D473030F116dDEE9F6B43aC78BA3" as Hex), nonce, deadline: "1790000060", asset: USDC },
+  });
+  const answering = (answer: Hex | Error, calls: unknown[] = [], network = "eip155:84532"): EvmReader => ({
+    network: network as `eip155:${string}`,
+    receipt: async () => null,
+    blockNumber: async () => 0n,
+    transaction: async () => null,
+    call: async (to, data, block) => {
+      calls.push([to, data, block]);
+      if (answer instanceof Error) throw answer;
+      return answer;
+    },
+  });
+  // The calldata, from viem's ABI encoder over each contract's view function.
+  const stateCall = encodeFunctionData({
+    abi: parseAbi(["function authorizationState(address authorizer, bytes32 nonce) view returns (bool)"]),
+    args: [PAYER, nonce],
+  });
+  const bitmapCall = encodeFunctionData({
+    abi: parseAbi(["function nonceBitmap(address owner, uint256 wordPos) view returns (uint256)"]),
+    args: [PAYER, BigInt(nonce) >> 8n],
+  });
+
+  it("eip3009: one authorizationState call to the token at the block; true, false, or unreadable", async () => {
+    const calls: unknown[] = [];
+    expect(await authorizationUsed(keys("eip3009"), PAYER, 100n, answering(word(1n), calls))).toBe(true);
+    expect(calls).toEqual([[USDC, stateCall, 100n]]);
+    expect(await authorizationUsed(keys("eip3009"), PAYER, 100n, answering(word(0n)))).toBe(false);
+    expect(await authorizationUsed(keys("eip3009"), PAYER, 100n, answering(word(2n)))).toEqual({ refused: true, code: "evm/unreadable" });
+    expect(await authorizationUsed(keys("eip3009"), PAYER, 100n, answering("0x01"))).toEqual({ refused: true, code: "evm/unreadable" });
+  });
+  it("permit2: one nonceBitmap call to Permit2 at the block, reading bit nonce & 0xff", async () => {
+    const calls: unknown[] = [];
+    expect(await authorizationUsed(keys("permit2"), PAYER, 7n, answering(word(1n << 7n), calls))).toBe(true);
+    expect(calls).toEqual([["0x000000000022D473030F116dDEE9F6B43aC78BA3", bitmapCall, 7n]]);
+    expect(await authorizationUsed(keys("permit2"), PAYER, 7n, answering(word((1n << 256n) - 1n - (1n << 7n))))).toBe(false);
+  });
+  it("refuses another network's reader, a failed call, and malformed keys", async () => {
+    const r = answering(word(1n));
+    expect(await authorizationUsed(keys("eip3009"), PAYER, 1n, answering(word(1n), [], "eip155:8453"))).toEqual({ refused: true, code: "evm/wrong-reader" });
+    expect(await authorizationUsed(keys("eip3009"), PAYER, 1n, answering(new ReaderError("timeout")))).toEqual({ refused: true, code: "evm/unreadable" });
+    expect(await authorizationUsed({ network: "eip155:84532" }, PAYER, 1n, r)).toEqual({ refused: true, code: "evm/field-malformed" });
+    expect(await authorizationUsed(keys("eip3009"), "0x12" as Hex, 1n, r)).toEqual({ refused: true, code: "evm/field-malformed" });
+    const upper = { ...keys("eip3009"), authorization: { ...keys("eip3009").authorization, nonce: nonce.toUpperCase().replace("0X", "0x") as Hex } };
+    expect(await authorizationUsed(upper, PAYER, 1n, r)).toEqual({ refused: true, code: "evm/field-malformed" });
+    expect(await authorizationUsed(keys("eip3009"), PAYER, -1n, r)).toEqual({ refused: true, code: "evm/field-malformed" });
   });
 });
 

@@ -62,6 +62,9 @@ function hederaReader(receipts: Record<string, EvmReceipt>, network = "hedera:te
     receipt: async (tx) => receipts[tx.toLowerCase()] ?? null,
     blockNumber: async () => 50_000_000n,
     transaction: async () => null,
+    call: async () => {
+      throw new ReaderError("transport");
+    },
   };
 }
 const asReceipt = (r: { status: number; blockNumber: string; logs: EvmReceipt["logs"] }): EvmReceipt => ({

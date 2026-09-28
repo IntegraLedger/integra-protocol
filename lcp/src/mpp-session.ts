@@ -390,6 +390,7 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     receipt: async (tx) => (seen = await reader.receipt(tx)),
     blockNumber: (tag) => reader.blockNumber(tag),
     transaction: (tx) => reader.transaction(tx),
+    call: (to, data, block) => reader.call(to, data, block),
   };
   const s = await evmStatus(ref, watching);
   if (s.state === "settled" && ref.opens !== undefined) return openRead(s, ref.transaction, ref.opens, reader);

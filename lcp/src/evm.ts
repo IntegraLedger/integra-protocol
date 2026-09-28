@@ -1,6 +1,7 @@
 /**
- * EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, and the settlement
- * read from the token's `AuthorizationUsed` event. Nothing here knows x402.
+ * EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, the settlement read from
+ * the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use
+ * before any transaction is named. Nothing here knows x402.
  */
 import { hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import {
@@ -19,7 +20,7 @@ import {
   type Hex,
 } from "./evm-abi.js";
 import { chainIdOf, isAddress, isUint256, normalHash, uint256Of } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export type { Hex } from "./evm-abi.js";
 /** CAIP-2 for EVM chains; the reference is the decimal chain id. */
@@ -129,7 +130,8 @@ export async function authorizationIdDigest(from: Hex, to: Hex, value: string | 
 
 /**
  * What a settlement reference holds for an EIP-3009 payment: read keys only. It is an `EvmRef` naming the
- * `AuthorizationUsed` log and the transfer's identity, with the token, `validBefore` and the transfer digest.
+ * `AuthorizationUsed` log, the transfer's identity and the authorization as the token records its use, with the
+ * token, `validBefore` and the transfer digest.
  */
 export type Eip3009Ref = EvmRef & {
   network: Eip155;
@@ -138,6 +140,8 @@ export type Eip3009Ref = EvmRef & {
   /** The option's `maxTimeoutSeconds`: the authorization was signed no earlier than `validBefore` less this. */
   maxTimeoutSeconds: number;
   idDigest: Hex;
+  transferLog: TransferLog;
+  authorization: PullAuthorization;
 };
 
 /** One receipt log: the emitter, its topics and its data. */
@@ -168,6 +172,8 @@ export interface EvmReader {
    * none.
    */
   transaction(tx: Hex): Promise<EvmTransaction | null>;
+  /** `eth_call` of `data` to the contract `to`, in the state after block `block`: the return data. */
+  call(to: Hex, data: Hex, block: bigint): Promise<Hex>;
 }
 
 /** A transaction as `eth_getTransactionByHash` gives it: `from`, the address that signed it; `to`; and `input`. */
@@ -195,15 +201,21 @@ export interface EvmTxRef {
 export type EvmStatus =
   | { state: "settled"; finality: "latest" | "safe" | "finalized"; blockNumber: bigint }
   | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "reverted" | "authorization-not-used" };
+  | { state: "failed"; why: "reverted" | "authorization-not-used" | "transfer-not-found" };
 
 /**
- * Reads the named transaction. Settled when its receipt succeeded and holds a log from `asset` with exactly three
- * topics, the first `AuthorizationUsed` and the third equal to `h`; the finality is the highest block mark at or above
- * the receipt's block. A failed read, or a reader for another network, is pending, never failed. At most three calls.
+ * Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
+ * pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
+ * third equal to `h`, and the `Transfer` that `transferLog` identifies, whose `from` is that log's authorizer (topic
+ * 1). No such `AuthorizationUsed` log is failed `authorization-not-used`; no such `Transfer` is failed
+ * `transfer-not-found`. The finality is the highest block mark at or above the receipt's block. A failed read, a reader
+ * for another network, or a `transferLog` that is not one is pending `unreadable`, never failed. At most three calls.
  */
-export async function eip3009Status(ref: EvmTxRef & { h: AtrHash }, reader: EvmReader): Promise<EvmStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+export async function eip3009Status(
+  ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
+  reader: EvmReader,
+): Promise<EvmStatus> {
+  if (reader.network !== ref.network || !isTransferLog(ref.transferLog)) return { state: "pending", why: "unreadable" };
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -214,11 +226,11 @@ export async function eip3009Status(ref: EvmTxRef & { h: AtrHash }, reader: EvmR
   if (!isReceipt(receipt)) return { state: "pending", why: "unreadable" };
   if (receipt.status === 0) return { state: "failed", why: "reverted" };
 
-  const used = receipt.logs.some((log) => {
-    const nonce = authorizationUse(log, ref.asset);
-    return nonce !== undefined && hashEquals(nonce, ref.h);
-  });
-  if (!used) return { state: "failed", why: "authorization-not-used" };
+  const binding = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
+  const authorizers = authorizersOf(receipt.logs, binding);
+  if (authorizers.length === 0) return { state: "failed", why: "authorization-not-used" };
+  const transfers = await transfersOf(receipt.logs, ref.transferLog);
+  if (!transfers.some((t) => authorizers.includes(t.from))) return { state: "failed", why: "transfer-not-found" };
 
   const at = receipt.blockNumber;
   return settledAt(at, reader);
@@ -251,6 +263,21 @@ export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<
   if (found.size === 0) return refusal("evm/no-authorization-use");
   if (found.size > 1) return refusal("evm/ambiguous");
   return [...found][0]!;
+}
+
+/**
+ * The authorizers (topic 1, lowercase) of the logs that carry `binding` with exactly three topics: for an
+ * `AuthorizationUsed` binding, the accounts whose authorization with that nonce the transaction used.
+ */
+function authorizersOf(logs: readonly EvmLog[], binding: NonNullable<EvmRef["bindingLog"]>): Hex[] {
+  const out: Hex[] = [];
+  for (const log of logs) {
+    if (typeof log !== "object" || log === null || !Array.isArray(log.topics) || log.topics.length !== 3) continue;
+    if (!carriesBinding(log, binding)) continue;
+    const a = topicAddress(log.topics[1]);
+    if (a !== undefined) out.push(a);
+  }
+  return out;
 }
 
 /** The nonce topic of an `AuthorizationUsed` log emitted by `asset`, or undefined for any other log. */
@@ -437,6 +464,35 @@ export async function transferDigest(v: { from?: Hex; to?: Hex; value?: bigint }
 
 export type TransferIdentity = "from,to,value" | "from,to" | "from" | "to,value" | "to";
 
+/** A token transfer, identified by the core's `hash` over the fields `identity` names (see `transferDigest`). */
+export interface TransferLog {
+  address: Hex;
+  topic0: Hex;
+  identity: TransferIdentity;
+  digest: Hex;
+}
+
+/**
+ * The signed pull authorization of a payment that has not landed, as the chain records its use: what a settlement
+ * reader needs to decide, with `authorizationUsed` and the payment's authorizer, whether it executed or can still
+ * execute.
+ * - `eip3009`: the token `at` answers `authorizationState(authorizer, nonce)`, true once the authorization is used. It
+ *   executes only in a block whose timestamp is below `deadline` (ERC-3009's `validBefore`).
+ * - `permit2`: the Permit2 deployment `at` answers `nonceBitmap(authorizer, nonce >> 8)`, whose bit `nonce & 0xff` is
+ *   set once the nonce is used. The permit executes only in a block whose timestamp is at most `deadline`.
+ */
+export interface PullAuthorization {
+  scheme: "eip3009" | "permit2";
+  /** The contract that records the nonce's use: the token for `eip3009`, the Permit2 deployment for `permit2`. */
+  at: Hex;
+  /** The nonce the payer signed, as that contract records it: `0x` and 64 lowercase hex digits. */
+  nonce: Hex;
+  /** The signed time bound, in decimal Unix seconds. */
+  deadline: string;
+  /** The token the authorization moves. */
+  asset: Hex;
+}
+
 /** What the issuer records at claim for an EVM payment: read keys only. */
 export interface EvmRef {
   network: Eip155 | HederaNetwork;
@@ -445,22 +501,68 @@ export interface EvmRef {
   /** The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. */
   bindingLog?: { address: Hex; topic0: Hex; value: Hex } & ({ index: 1 | 2 | 3 } | { dataWord: number });
   /** The token transfer this payment made, identified by the digest of the named fields. */
-  transferLog?: { address: Hex; topic0: Hex; identity: TransferIdentity; digest: Hex };
+  transferLog?: TransferLog;
   /** The log filter that finds the transaction when none is named; absent, only a named transaction is read. */
   search?: { address: Hex; topics: readonly (Hex | null)[] };
+  /** The signed pull authorization and where the chain records its use; present on every pull pairing that has one. */
+  authorization?: PullAuthorization;
 }
 
 export type EvmBreadthStatus =
   | EvmStatus
-  | { state: "failed"; why: "binding-log-not-found" | "transfer-not-found" | "receive-policy-blocked" };
+  | {
+      state: "failed";
+      why: "binding-log-not-found" | "transfer-not-found" | "receive-policy-blocked" | "nonce-not-used";
+    };
 
 /**
  * Reads the named transaction. A reader for another network, or a failed read, is pending; no receipt is pending
  * `not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
- * the binding log with `value` in its topic or data word, and the transfer log whose `from`, `to` and `value` hash to
- * the digest. Settled carries the highest finality mark reached. At most three calls.
+ * the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
+ * Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
+ * authorization's: the transfer's `from` is the binding log's authorizer (topic 1), else failed `transfer-not-found`.
+ * Settled carries the highest finality mark reached. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
+  const read = await matchedTransfers(ref, reader);
+  if (!("receipt" in read)) return read;
+  return settledAt(read.receipt.blockNumber, reader);
+}
+
+/**
+ * Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then Permit2's record of the nonce. The ref's
+ * `authorization` must be a `permit2` one and its `transferLog` must name `from`, else pending `unreadable`. At the
+ * receipt's block, `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set, where
+ * `from` is the matched transfer's; else failed `nonce-not-used`. A failed call is pending `unreadable`. At most four
+ * calls.
+ */
+export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
+  const auth = ref.authorization;
+  if (!isPullAuthorization(auth) || auth.scheme !== "permit2" || !isTransferLog(ref.transferLog)) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (!ref.transferLog.identity.split(",").includes("from")) return { state: "pending", why: "unreadable" };
+  const read = await matchedTransfers(ref, reader);
+  if (!("receipt" in read)) return read;
+  const owners = [...new Set(read.transfers.map((t) => t.from))];
+  let used = false;
+  for (const owner of owners) {
+    const u = await authorizationUsed(ref, owner, read.receipt.blockNumber, reader);
+    if (isRefusal(u)) return { state: "pending", why: "unreadable" };
+    used ||= u;
+  }
+  if (!used) return { state: "failed", why: "nonce-not-used" };
+  return settledAt(read.receipt.blockNumber, reader);
+}
+
+/**
+ * The receipt of the named transaction and the transfers in it that the ref's `transferLog` identifies, once the
+ * checks `evmStatus` makes before its finality marks hold; otherwise the status those checks give.
+ */
+async function matchedTransfers(
+  ref: EvmRef & { transaction: Hex },
+  reader: EvmReader,
+): Promise<{ receipt: EvmReceipt; transfers: { from: Hex; to: Hex; value: bigint }[] } | EvmBreadthStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
   let receipt: EvmReceipt | null;
   try {
@@ -473,10 +575,16 @@ export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
   if (receipt.status === 0) return { state: "failed", why: "reverted" };
 
   let missing: "binding-log-not-found" | "transfer-not-found" | undefined;
+  let transfers: { from: Hex; to: Hex; value: bigint }[] = [];
   if (ref.bindingLog !== undefined && !receipt.logs.some((l) => carriesBinding(l, ref.bindingLog!))) {
     missing = "binding-log-not-found";
-  } else if (ref.transferLog !== undefined && !(await hasTransfer(receipt.logs, ref.transferLog))) {
-    missing = "transfer-not-found";
+  } else if (ref.transferLog !== undefined) {
+    transfers = await transfersOf(receipt.logs, ref.transferLog);
+    if (ref.bindingLog !== undefined && pairsAuthorization(ref.bindingLog, ref.transferLog)) {
+      const authorizers = authorizersOf(receipt.logs, ref.bindingLog);
+      transfers = transfers.filter((t) => authorizers.includes(t.from));
+    }
+    if (transfers.length === 0) missing = "transfer-not-found";
   }
   if (missing !== undefined) {
     const token = ref.transferLog?.address ?? ref.bindingLog?.address;
@@ -485,7 +593,82 @@ export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
     }
     return { state: "failed", why: missing };
   }
-  return settledAt(receipt.blockNumber, reader);
+  return { receipt, transfers };
+}
+
+/** True where the binding log is `AuthorizationUsed` with its nonce in topic 2 and the transfer log names `from`. */
+function pairsAuthorization(b: NonNullable<EvmRef["bindingLog"]>, t: TransferLog): boolean {
+  return sameBytes(b.topic0, AUTHORIZATION_USED_TOPIC) && "index" in b && b.index === 2 &&
+    t.identity.split(",").includes("from");
+}
+
+/** keccak256("authorizationState(address,bytes32)")[0..4] */
+export const AUTHORIZATION_STATE_SELECTOR = "0xe94a0102" as const;
+/** keccak256("nonceBitmap(address,uint256)")[0..4] */
+export const NONCE_BITMAP_SELECTOR = "0x4fe02b44" as const;
+
+/**
+ * Whether `authorizer` had used the payment's pull authorization, `ref.authorization`, in the state after block
+ * `block`: one `eth_call` to `authorization.at`, of `authorizationState(authorizer, nonce)` for `eip3009`, or of
+ * `nonceBitmap(authorizer, nonce >> 8)` for `permit2`, whose bit `nonce & 0xff` is then read. A reader for another
+ * network than `ref.network` is `evm/wrong-reader`. A failed call, or an answer that is not one 32-byte word (for
+ * `eip3009`, one holding 0 or 1), is `evm/unreadable`. A ref with no well-formed `authorization`, an authorizer that
+ * is not an address, or a block that is not a non-negative bigint is `evm/field-malformed`.
+ */
+export async function authorizationUsed(
+  ref: Pick<EvmRef, "network" | "authorization">,
+  authorizer: Hex,
+  block: bigint,
+  reader: EvmReader,
+): Promise<boolean | Refusal> {
+  if (typeof ref !== "object" || ref === null) return refusal("evm/field-malformed");
+  const auth = ref.authorization;
+  if (!isPullAuthorization(auth) || !isAddress(authorizer) || typeof block !== "bigint" || block < 0n) {
+    return refusal("evm/field-malformed");
+  }
+  if (typeof reader !== "object" || reader === null || reader.network !== ref.network) return refusal("evm/wrong-reader");
+  const nonce = BigInt(auth.nonce);
+  const data =
+    auth.scheme === "eip3009"
+      ? hexOf(concat([bytesOf(AUTHORIZATION_STATE_SELECTOR)!, addressWord(authorizer), uintWord(nonce)]))
+      : hexOf(concat([bytesOf(NONCE_BITMAP_SELECTOR)!, addressWord(authorizer), uintWord(nonce >> 8n)]));
+  let answer: unknown;
+  try {
+    answer = await reader.call(auth.at, data, block);
+  } catch {
+    return refusal("evm/unreadable");
+  }
+  const word = bytesOf(answer, 32);
+  if (word === undefined || word.length !== 32) return refusal("evm/unreadable");
+  const v = uintOf(word);
+  if (auth.scheme === "eip3009") return v <= 1n ? v === 1n : refusal("evm/unreadable");
+  return ((v >> (nonce & 0xffn)) & 1n) === 1n;
+}
+
+/** True for a `PullAuthorization` whose members are well formed. */
+function isPullAuthorization(a: unknown): a is PullAuthorization {
+  if (typeof a !== "object" || a === null) return false;
+  const { scheme, at, nonce, deadline, asset } = a as Record<string, unknown>;
+  return (
+    (scheme === "eip3009" || scheme === "permit2") &&
+    isAddress(at) &&
+    isAddress(asset) &&
+    typeof nonce === "string" &&
+    /^0x[0-9a-f]{64}$/.test(nonce) &&
+    uint256Of(deadline) !== undefined
+  );
+}
+
+/** True for a `TransferLog` whose members are well formed. */
+function isTransferLog(t: unknown): t is TransferLog {
+  if (typeof t !== "object" || t === null) return false;
+  const { address, topic0, identity, digest } = t as Record<string, unknown>;
+  return (
+    isAddress(address) &&
+    bytesOf(topic0)?.length === 32 &&
+    ["from,to,value", "from,to", "from", "to,value", "to"].includes(identity as string) &&
+    bytesOf(digest)?.length === 32
+  );
 }
 
 /** Settled at the highest finality mark whose block is at or above `at`; a failed mark read counts as not reached. */
@@ -506,7 +689,9 @@ export function carriesBinding(log: EvmLog, b: NonNullable<EvmRef["bindingLog"]>
   return w !== undefined && sameBytes(hexOf(w), b.value);
 }
 
-async function hasTransfer(logs: readonly EvmLog[], t: NonNullable<EvmRef["transferLog"]>): Promise<boolean> {
+/** The transfers among `logs` that `t` identifies: from its emitter, under its topic, whose named fields hash to its digest. */
+async function transfersOf(logs: readonly EvmLog[], t: TransferLog): Promise<{ from: Hex; to: Hex; value: bigint }[]> {
+  const out: { from: Hex; to: Hex; value: bigint }[] = [];
   for (const log of logs) {
     const parts = transferParts(log, t.address, t.topic0);
     if (parts === undefined) continue;
@@ -516,9 +701,9 @@ async function hasTransfer(logs: readonly EvmLog[], t: NonNullable<EvmRef["trans
       ...(fields.includes("to") ? { to: parts.to } : {}),
       ...(fields.includes("value") ? { value: parts.value } : {}),
     });
-    if (typeof digest === "string" && sameBytes(digest, t.digest)) return true;
+    if (typeof digest === "string" && sameBytes(digest, t.digest)) out.push(parts);
   }
-  return false;
+  return out;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { toLegalContext, type AtrHash, type Json } from "./core.js";
-import { isRefusal } from "./refusal.js";
+import { isRefusal, type Refusal } from "./refusal.js";
 
 export {
   assemble,
@@ -103,6 +103,15 @@ export interface CarrierAfterH {
 export interface TxSpelling {
   txId?(tx: string): string;
 }
+/**
+ * The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
+ * whose signature authorises the pull, from the presented payment, as lowercase hex. With the pairing's `reference`,
+ * whose `authorization` names the nonce, the deadline and the token, it is what a settlement reader needs to read the
+ * authorization's use before any transaction is named.
+ */
+export interface Authorizer {
+  authorizer?(presented: unknown): Promise<string | Refusal>;
+}
 /** A pairing of protocol, scheme and rail. */
 export type Binding = (
   | X402Binding
@@ -122,7 +131,8 @@ export type Binding = (
 ) &
   PushMode &
   CarrierAfterH &
-  TxSpelling;
+  TxSpelling &
+  Authorizer;
 export type PairingId = Binding["id"];
 /** The surfaces: a pairing id's first "/" segment. */
 export type Surface = keyof PresentedOn;

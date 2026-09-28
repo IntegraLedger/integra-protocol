@@ -46,6 +46,9 @@ function reader(a: { status?: 0 | 1; tx?: EvmTransaction | null | "error" }): Ev
       if (a.tx === "error") throw new ReaderError("transport");
       return a.tx ?? null;
     },
+    call: async () => {
+      throw new ReaderError("transport");
+    },
   };
 }
 

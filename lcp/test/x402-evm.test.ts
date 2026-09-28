@@ -367,7 +367,18 @@ describe("the identity digest and the reference", () => {
         digest: ID_DIGEST,
       },
       search: { address: O.asset, topics: [AUTHORIZATION_USED_TOPIC, null, H] },
+      authorization: { scheme: "eip3009", at: O.asset, nonce: H, deadline: "1790000060", asset: O.asset },
     });
+  });
+  it("authorizer gives the authorization's from, lowercase, and refuses what bound refuses", async () => {
+    const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
+    expect(await exactEip3009.authorizer(p)).toBe(PAYER.toLowerCase());
+    const permit2 = structuredClone(p);
+    permit2.accepted.extra = { ...permit2.accepted.extra, assetTransferMethod: "permit2" };
+    expect(await exactEip3009.authorizer(permit2)).toEqual(refused("x402/option-not-this-pairing"));
+    const noFrom = structuredClone(p);
+    noFrom.payload.authorization.from = "0x1234";
+    expect(await exactEip3009.authorizer(noFrom)).toEqual(refused("x402/payload-malformed"));
   });
 });
 
@@ -379,11 +390,20 @@ describe("V6 status and recover", () => {
     topics: [("0x" + n.toString(16).padStart(64, "0")) as Hex],
     data: "0x" as Hex,
   });
-  const used = (nonce: Hex, address: Hex = ASSET) => ({
+  const word = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
+  const used = (nonce: Hex, address: Hex = ASSET, authorizer: string = PAYER) => ({
     address,
-    topics: [AUTHORIZATION_USED_TOPIC, ("0x" + "00".repeat(12) + PAYER.slice(2).toLowerCase()) as Hex, nonce],
+    topics: [AUTHORIZATION_USED_TOPIC, word(authorizer), nonce],
     data: "0x" as Hex,
   });
+  // keccak256("Transfer(address,address,uint256)"), ERC-20's event, with the value as one uint256 data word.
+  const TRANSFER = keccak256(toHex("Transfer(address,address,uint256)"));
+  const transfer = (from: string, to: string, value: bigint) => ({
+    address: ASSET,
+    topics: [TRANSFER, word(from), word(to)],
+    data: toHex(value, { size: 32 }),
+  });
+  const payment = transfer(PAYER, O.payTo, 10000n);
   const receiptAt = (blockNumber: bigint, logs: EvmReceipt["logs"], status: 0 | 1 = 1): EvmReceipt => ({
     status,
     blockNumber,
@@ -397,9 +417,19 @@ describe("V6 status and recover", () => {
     },
     blockNumber: async (tag) => (tag === "finalized" ? 100n : 105n),
     transaction: async () => null,
+    call: async () => {
+      throw new ReaderError("transport");
+    },
   });
-  const ref = { network: "eip155:84532" as const, asset: ASSET, transaction: TX, h: H };
-  const matchingThirdOfFour = [other(1), other(2), used(H), other(3)];
+  // The identity digest of V2's transfer (sha256sum, as in the reference test above).
+  const transferLog = {
+    address: ASSET,
+    topic0: TRANSFER,
+    identity: "from,to,value" as const,
+    digest: "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f" as Hex,
+  };
+  const ref = { network: "eip155:84532" as const, asset: ASSET, transaction: TX, h: H, transferLog };
+  const matchingThirdOfFour = [other(1), other(2), used(H), other(3), payment];
 
   it("a reverted receipt is failed", async () => {
     expect(await exactEip3009.status(ref, reader(receiptAt(100n, [], 0)))).toEqual({ state: "failed", why: "reverted" });
@@ -447,6 +477,26 @@ describe("V6 status and recover", () => {
     expect(await exactEip3009.recover(tx, reader(null))).toEqual(refused("evm/not-found"));
     expect(await exactEip3009.recover(tx, reader(receiptAt(100n, [], 0)))).toEqual(refused("evm/reverted"));
     expect(await exactEip3009.recover(tx, reader(new ReaderError("transport")))).toEqual(refused("evm/unreadable"));
+  });
+
+  it("the use of H must come with the transfer the same authorization produces", async () => {
+    const another = "0x3333333333333333333333333333333333333333";
+    const failed = { state: "failed", why: "transfer-not-found" };
+    // Another account's own authorization with nonce H, and its zero-value transfer to itself.
+    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [used(H, ASSET, another), transfer(another, another, 0n)])))).toEqual(failed);
+    // Another account's use of H beside the payer's transfer of the same value to the payee.
+    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [used(H, ASSET, another), payment])))).toEqual(failed);
+    // The payer's use of H with a transfer of another value, or with the transfer from another token.
+    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [used(H), transfer(PAYER, O.payTo, 9999n)])))).toEqual(failed);
+    const elsewhere = { ...payment, address: "0x000000000000000000000000000000000000dEaD" as Hex };
+    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [used(H), elsewhere])))).toEqual(failed);
+  });
+  it("a ref without a well-formed transferLog is pending unreadable", async () => {
+    const { transferLog: _, ...bare } = ref;
+    const r = reader(receiptAt(100n, matchingThirdOfFour));
+    expect(await exactEip3009.status(bare as typeof ref, r)).toEqual({ state: "pending", why: "unreadable" });
+    const short = { ...ref, transferLog: { ...transferLog, digest: "0x12" as Hex } };
+    expect(await exactEip3009.status(short, r)).toEqual({ state: "pending", why: "unreadable" });
   });
 
   it("plant: an AuthorizationUsed log with H from another contract is never settled", async () => {

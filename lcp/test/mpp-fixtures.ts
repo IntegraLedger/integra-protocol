@@ -33,6 +33,9 @@ export function readerFor(network: string, r: FixtureReceipt, finalized = 100n, 
     },
     blockNumber: async (tag) => (tag === "finalized" ? finalized : safe),
     transaction: async () => null,
+    call: async () => {
+      throw new ReaderError("transport");
+    },
   };
 }
 

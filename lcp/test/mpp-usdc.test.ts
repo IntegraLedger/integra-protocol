@@ -102,6 +102,11 @@ describe("mpp/charge/usdc/evm (M3)", () => {
       bindingLog: { index: 2, value: EVM.M3.expectNonce },
       search: { topics: [expect.any(String), null, EVM.M3.expectNonce] },
     });
+    const currency = JSON.parse(EVM.M3.requestJson).currency;
+    expect(ref).toMatchObject({
+      authorization: { scheme: "eip3009", at: currency, nonce: EVM.M3.expectNonce, deadline: EVM.M3.expectValidBefore, asset: currency },
+    });
+    expect(await chargeUsdcEvm.authorizer(cred)).toBe(F.payer.toLowerCase());
   });
 
   it("A.1: the draft's request, id and realm give the nonce the draft prints", async () => {

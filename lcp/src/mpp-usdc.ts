@@ -251,7 +251,10 @@ async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(b) ? b : b.h;
 }
 
-/** The authorization's read keys: its `AuthorizationUsed` nonce, its transfer's digest, and `validBefore`. */
+/**
+ * The authorization's read keys: its `AuthorizationUsed` nonce, its transfer's digest, `validBefore`, and the
+ * authorization as the token records its use.
+ */
 async function evmReference(input: unknown): Promise<EvmRef | Refusal> {
   const b = await evmBinding(input);
   if (isRefusal(b)) return b;
@@ -270,7 +273,16 @@ async function evmReference(input: unknown): Promise<EvmRef | Refusal> {
     bindingLog: { address: currency, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: b.nonce },
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
     search: { address: currency, topics: [AUTHORIZATION_USED_TOPIC, null, b.nonce] },
+    authorization: { scheme: "eip3009", at: currency, nonce: b.nonce, deadline: validBefore.toString(), asset: currency },
   };
+}
+
+/** The account whose signature authorises the pull: the authorization's `from`, which its signed message holds, lowercase. */
+async function evmAuthorizer(input: unknown): Promise<Hex | Refusal> {
+  const b = await evmBinding(input);
+  if (isRefusal(b)) return b;
+  const from = (input as MppCredential).payload["from"];
+  return isAddress(from) ? (from.toLowerCase() as Hex) : refusal("mpp/credential-malformed");
 }
 
 export const chargeUsdcEvm = Object.freeze({
@@ -299,6 +311,7 @@ export const chargeUsdcEvm = Object.freeze({
   build: evmBuild as (choice: MppChoice, h: AtrHash) => Promise<UsdcUnsigned | Refusal>,
   bound: evmBound,
   reference: evmReference,
+  authorizer: evmAuthorizer,
   status: evmStatus,
 });
 

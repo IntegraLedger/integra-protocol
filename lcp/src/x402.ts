@@ -22,6 +22,7 @@ import {
   ESCROW,
   EXACT_PERMIT2_PROXY,
   PAYMENT_AUTHORIZED_TOPIC,
+  PERMIT2,
   REDEEMED_DELEGATION_TOPIC,
   TRANSFER_TOPIC,
   UPTO_PERMIT2_PROXY,
@@ -33,6 +34,7 @@ import {
   eip3009TypedData,
   evmStatus,
   paymentHash,
+  permit2Status,
   permit2TypedData,
   receiveTypedData,
   redeemedLeafRecover,
@@ -40,6 +42,7 @@ import {
   type Eip155,
   type Eip3009Ref,
   type Eip3009TypedData,
+  type EvmBreadthStatus,
   type EvmReader,
   type EvmRef,
   type Field,
@@ -489,7 +492,8 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 /**
  * The read keys for finding this payment on chain later: network, token, `validBefore`, the option's
  * `maxTimeoutSeconds` and the transfer's digest, and the same keys as an `EvmRef`: the `AuthorizationUsed` log carrying
- * H, the transfer's identity, and the nonce search.
+ * H, the transfer's identity, the nonce search, and the authorization as the token records its use (nonce H, deadline
+ * `validBefore`).
  */
 async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
   const h = await bound(presented);
@@ -514,7 +518,19 @@ async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
     bindingLog: { address: asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: h },
     transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: idDigest },
     search: { address: asset, topics: [AUTHORIZATION_USED_TOPIC, null, h] },
+    authorization: { scheme: "eip3009", at: asset, nonce: h, deadline: validBefore.toString(), asset },
   };
+}
+
+/**
+ * The account whose signature authorises the pull: the authorization's `from`, lowercase. ERC-3009's signed message
+ * holds `from`, so the authorization can execute only from that account.
+ */
+async function authorizer(presented: unknown): Promise<Hex | Refusal> {
+  const h = await bound(presented);
+  if (isRefusal(h)) return h;
+  const from = (presented as Eip3009Payment).payload.authorization.from;
+  return isAddress(from) ? (from.toLowerCase() as Hex) : refusal("x402/payload-malformed");
 }
 
 /** The option unchanged: on this pairing the hash rides in the authorization, not in the option. */
@@ -549,6 +565,7 @@ export const exactEip3009 = Object.freeze({
   build,
   bound,
   reference,
+  authorizer,
   status: eip3009Status,
   recover: eip3009Recover,
 });
@@ -911,11 +928,26 @@ function permit2Reference(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
       upto ? { from: a.from, to: a.witness["to"] as Hex } : { from: a.from, to: a.witness["to"] as Hex, value },
     );
     if (isRefusal(digest)) return refusal("x402/payload-malformed");
+    const asset = p.accepted.asset as Hex;
     return {
       network: p.accepted.network as Eip155,
       settleBy: deadline.toString(),
-      transferLog: { address: p.accepted.asset as Hex, topic0: TRANSFER_TOPIC, identity: upto ? "from,to" : "from,to,value", digest },
+      transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: upto ? "from,to" : "from,to,value", digest },
+      authorization: { scheme: "permit2", at: PERMIT2, nonce: r.h, deadline: deadline.toString(), asset },
     };
+  };
+}
+
+/**
+ * The account the permit names as its owner, `permit2Authorization.from`, lowercase. Permit2's signature does not
+ * cover the owner: the permit executes only as the account its signature recovers to, or, for a contract account, the
+ * account whose ERC-1271 check accepts it.
+ */
+function permit2Authorizer(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
+  return async (presented: unknown): Promise<Hex | Refusal> => {
+    const r = permit2Presented(id, presented);
+    if (isRefusal(r)) return r;
+    return isAddress(r.a.from) ? (r.a.from.toLowerCase() as Hex) : refusal("x402/payload-malformed");
   };
 }
 
@@ -1006,6 +1038,19 @@ function erc7710Reference(id: typeof ERC7710 | typeof ERC7710_SALT) {
     }
     return ref;
   };
+}
+
+/**
+ * At the salt level, the account whose signature authorises the pull: the delegator of the permission context's root
+ * delegation (its last), whose account the DelegationManager executes the transfer from, lowercase.
+ */
+async function erc7710SaltAuthorizer(presented: unknown): Promise<Hex | Refusal> {
+  const h = await erc7710SaltBound(presented);
+  if (isRefusal(h)) return h;
+  const { d } = erc7710Presented(ERC7710_SALT, presented) as { d: { permissionContext: string } };
+  const delegations = decodePermissionContext(d.permissionContext as Hex);
+  if (isRefusal(delegations) || delegations.length === 0) return refusal("x402/permission-context-malformed");
+  return delegations[delegations.length - 1]!.delegator;
 }
 
 // ── `auth-capture` on the commerce-payments escrow.
@@ -1215,25 +1260,42 @@ function authCaptureReference(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
     const paymentId = paymentHash(t.chainId, t.deployment.escrow, t.info(payer as Hex, salt, preApprovalExpiry));
     if (isRefusal(paymentId)) return refusal("x402/payload-malformed");
     const topic0 = t.flow === "authorization" ? t.deployment.chargedTopic : PAYMENT_AUTHORIZED_TOPIC;
+    const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, t.info(ZERO_ADDRESS, salt, preApprovalExpiry));
+    if (isRefusal(signatureNonce)) return refusal("x402/payload-malformed");
+    const asset = p.accepted.asset as Hex;
     const ref: EvmRef = {
       network: p.accepted.network as Eip155,
       settleBy: preApprovalExpiry.toString(),
       bindingLog: { address: t.deployment.escrow, topic0, index: 1, value: paymentId },
+      authorization:
+        id === AC_EIP3009
+          ? { scheme: "eip3009", at: asset, nonce: signatureNonce, deadline: preApprovalExpiry.toString(), asset }
+          : { scheme: "permit2", at: PERMIT2, nonce: signatureNonce, deadline: preApprovalExpiry.toString(), asset },
     };
     if (id === AC_EIP3009) {
-      const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, t.info(ZERO_ADDRESS, salt, preApprovalExpiry));
       const digest = await transferDigest({
         from: payer as Hex,
         to: t.deployment.eip3009Collector,
         value: BigInt(p.accepted.amount),
       });
-      if (isRefusal(signatureNonce) || isRefusal(digest)) return refusal("x402/payload-malformed");
-      ref.transferLog = { address: p.accepted.asset as Hex, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest };
-      ref.search = { address: p.accepted.asset as Hex, topics: [AUTHORIZATION_USED_TOPIC, null, signatureNonce] };
+      if (isRefusal(digest)) return refusal("x402/payload-malformed");
+      ref.transferLog = { address: asset, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest };
+      ref.search = { address: asset, topics: [AUTHORIZATION_USED_TOPIC, null, signatureNonce] };
     } else {
       ref.search = { address: t.deployment.escrow, topics: [topic0, paymentId] };
     }
     return ref;
+  };
+}
+
+/**
+ * The payer of a presented auth-capture payment, lowercase: the token authorization's `from`, which the escrow's
+ * payment hash commits to and the collector pulls from.
+ */
+function authCaptureAuthorizer(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
+  return async (presented: unknown): Promise<Hex | Refusal> => {
+    const r = authCapturePresented(id, presented);
+    return isRefusal(r) ? r : (r.payer.toLowerCase() as Hex);
   };
 }
 
@@ -1256,7 +1318,8 @@ function record(p: LcpPattern): LcpPattern {
   return deepFreeze(p);
 }
 
-type BreadthBinding<Id extends X402PairingId> = {
+/** The members every x402 EVM breadth pairing shares. */
+type BreadthBase<Id extends X402PairingId> = {
   readonly id: Id;
   readonly pattern: LcpPattern;
   readonly claims: boolean;
@@ -1264,22 +1327,24 @@ type BreadthBinding<Id extends X402PairingId> = {
   readonly tie: typeof tie;
   readonly advertise: X402Advertise;
   readonly read: (doc: unknown) => X402Read | Refusal;
+};
+
+/** The members each x402 EVM breadth pairing gives itself. */
+type BreadthMembers = {
   readonly build: (choice: X402Choice, h: AtrHash) => Promise<X402Unsigned | Refusal>;
   readonly bound: (presented: unknown) => Promise<AtrHash | Refusal>;
   readonly reference: (presented: unknown) => Promise<EvmRef | Refusal>;
-  readonly status: typeof evmStatus;
+  readonly authorizer?: (presented: unknown) => Promise<Hex | Refusal>;
+  readonly status?: (ref: EvmRef & { transaction: Hex }, reader: EvmReader) => Promise<EvmBreadthStatus>;
   readonly recover?: (ref: { network: Eip155; transaction: Hex }, reader: EvmReader) => Promise<AtrHash | Refusal>;
 };
 
-function binding<Id extends X402PairingId>(
+function binding<Id extends X402PairingId, M extends BreadthMembers>(
   id: Id,
   pattern: LcpPattern,
   claims: boolean,
-  build: BreadthBinding<Id>["build"],
-  bound: BreadthBinding<Id>["bound"],
-  reference: BreadthBinding<Id>["reference"],
-  recover?: BreadthBinding<Id>["recover"],
-): BreadthBinding<Id> {
+  members: M,
+): BreadthBase<Id> & M {
   return Object.freeze({
     id,
     pattern,
@@ -1288,11 +1353,7 @@ function binding<Id extends X402PairingId>(
     tie,
     advertise: advertiseFor(evmServes(id, isBreadthPayable(id))),
     read: readFor(evmNames(id)),
-    build,
-    bound,
-    reference,
-    status: evmStatus,
-    ...(recover !== undefined ? { recover } : {}),
+    ...members,
   });
 }
 
@@ -1310,9 +1371,13 @@ export const exactPermit2 = binding(
     proves: PERMIT2_PROVES,
   }),
   true,
-  permit2Build(PERMIT2_EXACT),
-  permit2Bound(PERMIT2_EXACT),
-  permit2Reference(PERMIT2_EXACT),
+  {
+    build: permit2Build(PERMIT2_EXACT),
+    bound: permit2Bound(PERMIT2_EXACT),
+    reference: permit2Reference(PERMIT2_EXACT),
+    authorizer: permit2Authorizer(PERMIT2_EXACT),
+    status: permit2Status,
+  },
 );
 
 export const uptoPermit2 = binding(
@@ -1329,12 +1394,20 @@ export const uptoPermit2 = binding(
     proves: PERMIT2_PROVES + " The amount settled is the facilitator's, at most the signed maximum.",
   }),
   true,
-  permit2Build(PERMIT2_UPTO),
-  permit2Bound(PERMIT2_UPTO),
-  permit2Reference(PERMIT2_UPTO),
+  {
+    build: permit2Build(PERMIT2_UPTO),
+    bound: permit2Bound(PERMIT2_UPTO),
+    reference: permit2Reference(PERMIT2_UPTO),
+    authorizer: permit2Authorizer(PERMIT2_UPTO),
+    status: permit2Status,
+  },
 );
 
-const erc7710 = binding(
+/**
+ * The unsigned ERC-7710 level has no `status`: its read keys identify any transfer from the delegator to the payee, and
+ * nothing in the settlement transaction ties one to this payment, so a read of the chain alone never settles it.
+ */
+export const exactErc7710 = binding(
   ERC7710,
   record({
     pattern: "http-advisory",
@@ -1352,12 +1425,8 @@ const erc7710 = binding(
       "The buyer's delegation does not sign the hash, and the settlement transaction does not carry it.",
   }),
   false,
-  erc7710Build,
-  erc7710Bound,
-  erc7710Reference(ERC7710),
+  { build: erc7710Build, bound: erc7710Bound, reference: erc7710Reference(ERC7710) },
 );
-
-export const exactErc7710 = erc7710;
 
 export const exactErc7710Salt = binding(
   ERC7710_SALT,
@@ -1379,10 +1448,14 @@ export const exactErc7710Salt = binding(
       "match the ATR's content.",
   }),
   true,
-  erc7710Build,
-  erc7710SaltBound,
-  erc7710Reference(ERC7710_SALT),
-  redeemedLeafRecover,
+  {
+    build: erc7710Build,
+    bound: erc7710SaltBound,
+    reference: erc7710Reference(ERC7710_SALT),
+    authorizer: erc7710SaltAuthorizer,
+    status: evmStatus,
+    recover: redeemedLeafRecover,
+  },
 );
 
 export const authCaptureEip3009 = binding(
@@ -1399,9 +1472,13 @@ export const authCaptureEip3009 = binding(
     proves: AUTH_CAPTURE_PROVES,
   }),
   true,
-  authCaptureBuild(AC_EIP3009),
-  authCaptureBound(AC_EIP3009),
-  authCaptureReference(AC_EIP3009),
+  {
+    build: authCaptureBuild(AC_EIP3009),
+    bound: authCaptureBound(AC_EIP3009),
+    reference: authCaptureReference(AC_EIP3009),
+    authorizer: authCaptureAuthorizer(AC_EIP3009),
+    status: evmStatus,
+  },
 );
 
 export const authCapturePermit2 = binding(
@@ -1418,9 +1495,13 @@ export const authCapturePermit2 = binding(
     proves: AUTH_CAPTURE_PROVES,
   }),
   true,
-  authCaptureBuild(AC_PERMIT2),
-  authCaptureBound(AC_PERMIT2),
-  authCaptureReference(AC_PERMIT2),
+  {
+    build: authCaptureBuild(AC_PERMIT2),
+    bound: authCaptureBound(AC_PERMIT2),
+    reference: authCaptureReference(AC_PERMIT2),
+    authorizer: authCaptureAuthorizer(AC_PERMIT2),
+    status: evmStatus,
+  },
 );
 
 function isNonEmpty(v: unknown): v is string {

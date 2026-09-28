@@ -59,7 +59,7 @@
   "expectReferenceDigest": "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f"
  },
  "EV6": {
-  "case": "evmStatus of EV1's reference on fixture receipts; the reader answers finalized 100, safe 105",
+  "case": "exactPermit2.status of EV1's reference on fixture receipts; the reader answers finalized 100, safe 105, and answers each eth_call with the row's nonceBitmap word. Permit2's SignatureTransfer records a nonce in nonceBitmap(owner, nonce >> 8), bit nonce & 0xff (Permit2 _useUnorderedNonce). expectCall is the one eth_call a row that reaches Permit2's record makes: to Permit2, at the receipt's block, of the selector keccak256(\"nonceBitmap(address,uint256)\")[0..4] (js-sha3 0.13.0) with the payer as owner and H >> 8 as the word position; H & 0xff is 173, and the words are Python integers",
   "reader": {
    "network": "eip155:84532",
    "finalized": "100",
@@ -86,6 +86,53 @@
     "state": "settled",
     "finality": "finalized",
     "blockNumber": "100"
+   },
+   "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000"
+  },
+  "nonceUnused": {
+   "case": "the same transfer in a transaction by whose block Permit2 holds nonce H unused: a transfer of the payer's with another nonce",
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+      ],
+      "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+     }
+    ]
+   },
+   "nonceBitmap": "0xffffffffffffffffffffdfffffffffffffffffffffffffffffffffffffffffff",
+   "expect": {
+    "state": "failed",
+    "why": "nonce-not-used"
+   }
+  },
+  "callFails": {
+   "case": "the same transfer, and the eth_call fails",
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+      ],
+      "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+     }
+    ]
+   },
+   "nonceBitmap": "reader-error",
+   "expect": {
+    "state": "pending",
+    "why": "unreadable"
    }
   },
   "value9999": {
@@ -126,6 +173,11 @@
     "state": "pending",
     "why": "not-found"
    }
+  },
+  "expectCall": {
+   "to": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+   "data": "0x4fe02b44000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015",
+   "block": "100"
   }
  },
  "plantEmitter": {
