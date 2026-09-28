@@ -261,7 +261,9 @@ BLAKE2b-256 of the extrinsic's bytes, its length prefix included.
 > **polkadotLocate**(`ref`, `reader`, `from`, `to`): `Promise`\<`string` \| [`Refusal`](index.md#refusal) \| `null`\>
 
 Finds a payment nobody named, by hashing every extrinsic of each block from `from` to `to` (at most 256 blocks).
-The first match gives its timepoint; a block that does not exist ends the scan with null.
+The first match gives its timepoint, once the block's record at that index has the recorded extrinsic hash. A block
+that does not exist, or a record at the matched index with another hash (the block at that height changed between
+the two reads), ends the scan with null.
 
 #### Parameters
 

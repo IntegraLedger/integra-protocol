@@ -132,8 +132,17 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const transaction = `${V.V4.block}-${V.V4.index}`;
     expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader)).toBe(V.V4.recover.expect);
     for (const row of V.V4.locate) {
-      const got = await polkadotLocate(V.V4.reference, reader, BigInt(row.from), BigInt(row.to));
-      expect(typeof got === "string" ? got : got?.code).toBe(row.expect);
+      const got = await polkadotLocate(V.V4.reference, readerOf({ finalized: "100", ...row }), BigInt(row.from), BigInt(row.to));
+      expect(got === null || typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
+    }
+    for (const row of V.V4.recoverRefusals) {
+      const raw = [...V.V4.raw];
+      raw[V.V4.index] = row.raw;
+      const upper: PolkadotReader = { ...reader, rawExtrinsics: async () => raw };
+      expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, upper), row.case).toEqual({
+        refused: true,
+        code: row.expect,
+      });
     }
   });
 
