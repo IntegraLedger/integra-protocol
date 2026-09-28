@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with @near-js/transactions 2.5.1 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature. Nonces and heights are decimal strings.",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with @near-js/transactions 2.5.1 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -132,6 +132,32 @@
     }
    },
    {
+    "case": "receipts succeed, status EXECUTED",
+    "outcome": {
+     "status": "EXECUTED",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "optimistic"
+    }
+   },
+   {
     "case": "the token's receipt fails",
     "outcome": {
      "status": "FINAL",
@@ -213,6 +239,12 @@
     "case": "finalHeight 200000060",
     "finalHeight": "200000060",
     "keyNonce": "100",
+    "expect": false
+   },
+   {
+    "case": "finalHeight 200000061, the key does not exist",
+    "finalHeight": "200000061",
+    "keyNonce": null,
     "expect": false
    }
   ],

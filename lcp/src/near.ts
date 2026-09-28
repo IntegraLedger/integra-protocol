@@ -202,8 +202,10 @@ function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | nu
 
 /**
  * Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be this
- * instrument and reads the receipts the token contract executed: a failure is failed, a success is settled. A
- * failed read, an empty relayer list, or a reader for another network is pending.
+ * instrument and reads the receipts the token contract executed: a failure is failed, a success is settled. Settled
+ * is `final` only when `final_execution_status` is `FINAL`, every receipt's block then being final; any other status,
+ * `EXECUTED` included, is `optimistic`. A failed read, an empty relayer list, or a reader for another network is
+ * pending.
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
   if (reader.network !== ref.network || !Array.isArray(reader.relayers) || reader.relayers.length === 0) {
@@ -221,13 +223,13 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
   const byToken = outcome.receipts.filter((r) => r.executor === ref.asset);
   if (byToken.some((r) => r.outcome === "failure")) return { state: "failed", why: "transfer-failed" };
   if (!byToken.some((r) => r.outcome === "success")) return { state: "pending", why: "in-flight" };
-  const final = outcome.status === "EXECUTED" || outcome.status === "FINAL";
-  return { state: "settled", finality: final ? "final" : "optimistic" };
+  return { state: "settled", finality: outcome.status === "FINAL" ? "final" : "optimistic" };
 }
 
 /**
  * True only when the delegate action can never execute: the final height is past `maxBlockHeight` and the key's
- * nonce is below the action's, or the key is gone. Two calls; a failed read is false.
+ * nonce is below the action's. A key that does not exist is false, because a key deleted after the delegate
+ * executed gives the same answer. Two calls; a failed read is false.
  */
 export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<boolean> {
   const maxBlockHeight = u64Of(ref.maxBlockHeight);
@@ -237,7 +239,7 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
     const height = await reader.finalHeight();
     if (typeof height !== "bigint" || height <= maxBlockHeight) return false;
     const nonce = await reader.accessKeyNonce(ref.payer, ref.publicKey);
-    return nonce === null || (typeof nonce === "bigint" && nonce < signed);
+    return typeof nonce === "bigint" && nonce < signed;
   } catch {
     return false;
   }
