@@ -21,13 +21,14 @@ The [refusal code reference](../reference/refusals.md) lists every code with its
 
 ## Checking a result
 
-Test for `refused` before using a result. Where a result is a string, such as the hash `bound` returns, test its type:
+`isRefusal(result)` is how a caller tells a refusal from a result: it is true only for a refusal this package made, and
+false for every result, the hashes `bound` returns included. Test it before using a result:
 
 ```ts
-import { assemble, newAtrId } from "@integraledger/lcp";
+import { assemble, isRefusal, newAtrId } from "@integraledger/lcp";
 
 const result = await assemble(newAtrId(), ["bind", {}], [["id", new TextEncoder().encode("{}")]]);
-if ("refused" in result) {
+if (isRefusal(result)) {
   console.log(result.code);
 } else {
   console.log(result.atrHash);
@@ -37,6 +38,16 @@ if ("refused" in result) {
 ```text
 core/slot-reserved
 ```
+
+## Where a refusal comes from
+
+Only the package makes refusals. `isRefusal`, which the package's own entry points use as well, recognises a refusal by
+where it was made, not by its members, so a value you pass in is never returned to you as a refusal, whatever it
+holds. A presented payment or credential that the
+package would otherwise hand back to you unchanged is refused as malformed when it carries a `refused` member:
+`mpp/credential-malformed` for an MPP credential, `x402/payload-malformed` for an x402 EIP-3009 payment and
+`casper/payload-malformed` for a Casper payment. Every other entry point reads a presented value only for the members
+its pairing defines, and returns either a value it built or its own refusal.
 
 ## Where the core throws
 

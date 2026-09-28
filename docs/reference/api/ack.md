@@ -63,7 +63,7 @@ agreement URL after the link when one is given.
 
 ### fromReceipt()
 
-> **fromReceipt**(`credentialSubject`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **fromReceipt**(`credentialSubject`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The hash in a receipt: the `id` of the Payment Request token embedded in its `credentialSubject`. Verifies nothing;
 a party calls it on a receipt it has verified.
@@ -76,7 +76,7 @@ a party calls it on a receipt it has verified.
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 

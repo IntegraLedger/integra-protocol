@@ -41,7 +41,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { solanaNetworkOf } from "./mpp-rail-checks.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const ID = "mpp/charge/solana" as const;
@@ -158,7 +158,7 @@ function bindingOf(
 /** H from the echoed challenge, once the signed LCP memo equals the request's `externalId` and names that H. */
 async function bound(spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">, input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = bindingOf(spec, credential);
   return isRefusal(b) ? b : b.h;
 }
@@ -169,7 +169,7 @@ async function reference(
   input: unknown,
 ): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = bindingOf(spec, credential);
   if (isRefusal(b)) return b;
   const network = solanaNetworkOf(spec.details(b.checked), spec.networkRequired);
@@ -191,7 +191,9 @@ async function fetchPresented(
   credential: MppCredential,
   reader: SvmReader,
 ): Promise<MppCredential | Refusal> {
-  if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
+  if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
   if (credential.payload["type"] !== "signature") return credential;
   const e = echoedFor(credential, spec.id);
   if (isRefusal(e)) return e;

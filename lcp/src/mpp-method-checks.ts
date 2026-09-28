@@ -6,7 +6,7 @@ import type { Json } from "./core.js";
 import { isAddress } from "./fields.js";
 import type { MppChallenge, MppPairing } from "./mpp-challenge.js";
 import { solanaChargePairings, solanaNetworkOf } from "./mpp-rail-checks.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 type Obj = { [k: string]: Json };
 
@@ -105,7 +105,7 @@ export function usdcProfile(d: Obj): { type: string; details: Obj } | Refusal {
  */
 export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly MppPairing[] | Refusal {
   const profile = usdcProfile(d);
-  if ("refused" in profile) return profile;
+  if (isRefusal(profile)) return profile;
   const p = profile.details;
   if (typeof r["amount"] !== "string" || !POSITIVE.test(r["amount"]) || typeof r["recipient"] !== "string") {
     return refusal("mpp/request-malformed");
@@ -126,7 +126,7 @@ export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly M
       const network = solanaNetworkOf(p, true);
       if (network !== null && typeof network === "object") return network;
       const solana = solanaChargePairings(r, p);
-      return "refused" in solana ? solana : ["mpp/charge/usdc/solana"];
+      return isRefusal(solana) ? solana : ["mpp/charge/usdc/solana"];
     }
     case "stacks": {
       const chainId = p["chainId"];

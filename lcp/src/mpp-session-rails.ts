@@ -239,7 +239,7 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
  */
 async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const e = opening(presented, HEDERA);
   if (isRefusal(e)) return e;
   const landed = (presented as Partial<HederaLandedCredential>).landed;
@@ -280,7 +280,7 @@ async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
 /** The opening's read keys: the reported open transaction and its `ChannelOpened` log naming the channel. */
 async function hederaReference(input: unknown): Promise<HederaSessionRef | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const e = opening(presented, HEDERA);
   if (isRefusal(e)) return e;
   const network = hederaSessionNetworkOf(e.checked.details);
@@ -475,7 +475,7 @@ function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Checked
 
 async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = solanaOpening(presented);
   return isRefusal(o) ? o : o.h;
 }
@@ -487,7 +487,7 @@ async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
  */
 async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = solanaOpening(presented);
   if (isRefusal(o)) return o;
   const network = solanaNetworkOf(o.checked.details, true);
@@ -502,7 +502,7 @@ async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot">
 /** A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. */
 async function solanaBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const k = actionKind(presented, ["voucher", "topUp", "use"]);
   if (isRefusal(k)) return k;
   if (presented.payload["action"] !== "use") return refusal("mpp/not-bound-within");
@@ -685,14 +685,14 @@ async function xrplOpening(
 
 async function xrplBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = await xrplOpening(presented);
   return isRefusal(o) ? o : o.h;
 }
 
 async function xrplReference(input: unknown): Promise<Omit<XrplRef, "fromLedger" | "expect"> | Refusal> {
   const presented = credentialOf(input);
-  if ("refused" in presented) return presented;
+  if (isRefusal(presented)) return presented;
   const o = await xrplOpening(presented);
   if (isRefusal(o)) return o;
   const network = xrplNetworkOf(o.checked.details);
@@ -957,7 +957,7 @@ export const sessionHedera = Object.freeze({
   fetchPresented: hederaFetchPresented,
   landedTx: (presented: unknown): string | undefined => {
     const c = credentialOf(presented);
-    if ("refused" in c || c.payload["action"] !== "open") return undefined;
+    if (isRefusal(c) || c.payload["action"] !== "open") return undefined;
     return normalHash(c.payload["txHash"]) ?? undefined;
   },
   closeRef: hederaCloseRef,

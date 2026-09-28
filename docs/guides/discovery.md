@@ -53,7 +53,7 @@ This example writes the reference document from the package's vectors, whose `at
 upper case:
 
 ```ts
-import { hash } from "@integraledger/lcp";
+import { hash, isRefusal } from "@integraledger/lcp";
 import { emit, WELL_KNOWN_PATH, type LegalContextDocument } from "@integraledger/lcp/discovery";
 
 const document: LegalContextDocument = {
@@ -65,7 +65,7 @@ const document: LegalContextDocument = {
 };
 
 const bytes = emit(document);
-if ("refused" in bytes) throw new Error(bytes.code);
+if (isRefusal(bytes)) throw new Error(bytes.code);
 
 console.log(WELL_KNOWN_PATH);
 console.log(new TextDecoder().decode(bytes));
@@ -96,6 +96,7 @@ not define.
 
 ```ts
 import { parse } from "@integraledger/lcp/discovery";
+import { isRefusal } from "@integraledger/lcp";
 
 const served = new TextEncoder().encode(
   JSON.stringify({
@@ -107,12 +108,12 @@ const served = new TextEncoder().encode(
 );
 
 const read = parse(served);
-if ("refused" in read) throw new Error(read.code);
+if (isRefusal(read)) throw new Error(read.code);
 console.log(read.document);
 console.log(read.ignored);
 
 const overHttp = parse(new TextEncoder().encode('{"terms":"http://seller.example/terms/v3.md"}'));
-console.log("refused" in overHttp ? overHttp.code : "read");
+console.log(isRefusal(overHttp) ? overHttp.code : "read");
 ```
 
 ```text

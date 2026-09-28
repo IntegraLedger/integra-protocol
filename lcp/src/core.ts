@@ -6,6 +6,8 @@
  * form only and is never parsed into values, re-serialised or canonicalised.
  */
 
+import { refusal } from "./refusal.js";
+
 /** `0x` followed by 64 hex digits. Every hash this module emits is lowercase. */
 export type AtrHash = `0x${string}`;
 
@@ -34,7 +36,7 @@ const HEX_DIGITS = "0123456789abcdef";
 const utf8 = new TextEncoder();
 
 function refuse(code: CoreRefusal["code"]): CoreRefusal {
-  return { refused: true, code };
+  return refusal(code);
 }
 
 /** A random RFC 9562 version 4 UUID, lowercase. */

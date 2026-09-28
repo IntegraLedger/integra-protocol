@@ -18,7 +18,7 @@ import {
   type StellarUnsigned,
 } from "./internal/stellar.js";
 import { isObject } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
   chosen,
@@ -47,11 +47,16 @@ export interface StellarPaymentPayload {
   extensions?: PaymentRequired["extensions"];
 }
 
+/**
+ * The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
+ * payer's account (`G…`), which must be the simulated transfer's `from`.
+ */
 export interface StellarChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   simulatedXdr: string;
   currentLedger: number;
+  payer: string;
 }
 
 /** This pairing's id for an option it can pay, or undefined. */
@@ -90,7 +95,7 @@ function advertise(
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
-  if ("refused" in placed) return placed;
+  if (isRefusal(placed)) return placed;
   if (!isAccount(offer.payTo)) return refusal("stellar/carrier-occupied");
   return withOption(placed, offeredAt(placed.accepts, offer), { ...offer, payTo: muxedFor(offer.payTo, h) });
 }
@@ -102,7 +107,9 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 /**
  * The authorization preimage for the payer to sign, from the buyer's simulated transaction, with the entry's expiration at
  * `currentLedger + ceil(maxTimeoutSeconds / 5)`. The option's `payTo` must carry `muxedId(h)` and equal the `to` of
- * the invocation the payer's entry signs, and the operation must invoke exactly that.
+ * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
+ * must then be the option's `asset`, its amount the option's `amount` exactly, and its `from` the choice's `payer`.
+ * Nothing reaches the signer unless every one holds.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
@@ -114,9 +121,12 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
   const expiration = c.currentLedger + Math.ceil(accepted.maxTimeoutSeconds / 5);
   const s = signingFor(c.simulatedXdr, accepted.network as "stellar:pubnet", expiration, false);
-  if ("refused" in s) return s;
+  if (isRefusal(s)) return s;
   if (s.payment.to !== accepted.payTo) return refusal("stellar/carrier-mismatch");
   if (!s.agrees) return refusal("stellar/not-one-transfer");
+  if (s.payment.asset !== accepted.asset) return refusal("stellar/asset-mismatch");
+  if (s.payment.amount !== BigInt(accepted.amount)) return refusal("stellar/amount-mismatch");
+  if (s.payment.from !== c.payer) return refusal("stellar/payer-mismatch");
   return s.unsigned;
 }
 
@@ -126,11 +136,11 @@ function presentedOf(presented: unknown) {
   const accepted = presented["accepted"] as PaymentRequirements;
   if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
   const lc = legalContextOf(presented["extensions"]);
-  if ("refused" in lc) return lc;
+  if (isRefusal(lc)) return lc;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const signed = readSignedTransfer(payload["transaction"] as string, accepted.network as "stellar:pubnet");
-  if ("refused" in signed) return signed;
+  if (isRefusal(signed)) return signed;
   const { payment } = signed;
   if (payment.toId === null) return refusal("stellar/no-carrier");
   if (payment.to !== accepted.payTo || payment.toId !== muxedId(lc.h)) return refusal("stellar/carrier-mismatch");
@@ -145,13 +155,13 @@ function presentedOf(presented: unknown) {
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const p = presentedOf(presented);
-  return "refused" in p ? p : p.h;
+  return isRefusal(p) ? p : p.h;
 }
 
 /** The read keys for finding this payment later, from the signed entry. `fromLedger` is 0 until the caller sets it. */
 async function reference(presented: unknown): Promise<StellarRef | Refusal> {
   const p = presentedOf(presented);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   return {
     network: p.accepted.network as StellarRef["network"],
     authDigest: p.payment.auth.preimageHash,

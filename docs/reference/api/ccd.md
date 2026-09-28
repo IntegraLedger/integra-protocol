@@ -155,7 +155,7 @@ CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash.
 
 ### exactCcd
 
-> `const` **exactCcd**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCcd**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ## Functions
 
@@ -180,7 +180,7 @@ the double SHA-256 of the 33 before them.
 
 ### ccdIdDigest()
 
-> **ccdIdDigest**(`sender`, `receiver`, `amount`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **ccdIdDigest**(`sender`, `receiver`, `amount`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 SHA-256 over the 32 + 32 bytes of the two accounts and the amount as a 32-byte big-endian integer.
 
@@ -194,7 +194,7 @@ SHA-256 over the 32 + 32 bytes of the two accounts and the amount as a 32-byte b
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
@@ -237,7 +237,7 @@ The pairing's filter: an `exact` option on a `ccd:` network, for CCD or a token 
 
 ### ccdRecover()
 
-> **ccdRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **ccdRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The hash from a settlement block item alone: its one memo-carrying transfer's memo, through `memoCarrier`.
 
@@ -252,7 +252,7 @@ The hash from a settlement block item alone: its one memo-carrying transfer's me
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 
@@ -279,7 +279,7 @@ Reads the named block item. Settled when it is finalized and successful, with ex
 
 ### memoCarrier()
 
-> **memoCarrier**(`memo`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **memoCarrier**(`memo`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The hash a memo carries: exactly one CBOR text string, nothing after it, whose bytes are `ccdMemo` of the hash it
 names (LCP's string form with lowercase hex, under the preferred two-byte head). `bound`, `status` and `recover` all
@@ -293,7 +293,7 @@ read a memo through this one function.
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 

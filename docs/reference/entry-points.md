@@ -54,7 +54,7 @@ The core: assembling an ATR and hashing its exact bytes, comparing hashes, the h
 import { assemble, BINDINGS, canonicalJson, … } from "@integraledger/lcp";
 ```
 
-**Values (22):** `assemble`, `BINDINGS`, `canonicalJson`, `canonicalTx`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHashWithNonHttpsLink`, `isHttpsLink`, `isOtherSchemeLink`, `jsonWithinDepth`, `MAX_JSON_DEPTH`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (23):** `assemble`, `BINDINGS`, `canonicalJson`, `canonicalTx`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHashWithNonHttpsLink`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `jsonWithinDepth`, `MAX_JSON_DEPTH`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
 **Types (18):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `PairingOn`, `Presented`, `PresentedOn`, `PushMode`, `Refusal`, `Surface`, `TieRequestOn`, `TxSpelling`, `X402Binding`.
 

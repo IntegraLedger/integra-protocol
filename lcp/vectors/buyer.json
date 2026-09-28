@@ -1,5 +1,5 @@
 {
- "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A). The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour.",
+ "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A). The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding. A BX1 case's refusal is what pairingsOf returns for its challenge; the gate then has no challenge it can pay, and declines no-payable-option.",
  "fixed": {
   "A": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033302064c3ad617320e29c93227d7d",
   "C": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033312064c3ad617320e29c93227d7d",
@@ -59,7 +59,7 @@
   "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "now": 1790000000,
   "agreement": {
-   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says; the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.56.8 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree.",
+   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says; the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.56.8 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60.",
    "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
    "option": {
     "scheme": "exact",
@@ -186,7 +186,70 @@
     "agreed": true,
     "network": "eip155:84532",
     "transaction": "0xabababababababababababababababababababababababababababababababab"
-   }
+   },
+   "requiredMixed": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "accepts": [
+     {
+      "scheme": "exact",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "amount": "1000",
+      "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+      "maxTimeoutSeconds": 600,
+      "extra": {
+       "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu"
+      }
+     },
+     {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "1",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+       "name": "USDC",
+       "version": "2"
+      }
+     }
+    ],
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+       "legalContextUrl": "https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   },
+   "requiredTimeoutText": "{\"x402Version\":2,\"resource\":{\"url\":\"https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\"},\"accepts\":[{\"scheme\":\"exact\",\"network\":\"eip155:84532\",\"amount\":\"1\",\"asset\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"payTo\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\",\"maxTimeoutSeconds\":60.0,\"extra\":{\"name\":\"USDC\",\"version\":\"2\"}}],\"extensions\":{\"legalContext\":{\"info\":{\"type\":\"sha256\",\"value\":\"0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\",\"legalContextUrl\":\"https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\"},\"schema\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"type\":{\"const\":\"sha256\"},\"value\":{\"type\":\"string\",\"pattern\":\"^0x[0-9a-f]{64}$\"},\"legalContextUrl\":{\"type\":\"string\",\"pattern\":\"^https://\"}},\"required\":[\"type\",\"value\",\"legalContextUrl\"]}}}}"
   }
  },
  "rows": [
@@ -558,7 +621,8 @@
       "body": "receipt"
      }
     ],
-    "signer": "counting"
+    "signer": "counting",
+    "approve": true
    },
    "expect": {
     "signCalls": 2,
@@ -578,7 +642,13 @@
     "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
     "paidRequests": 2,
     "paymentSignature": "B6",
-    "receipt": "receipt"
+    "receipt": "receipt",
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    }
    },
    "note": "One agreement signature, then the full payment's one signature. Both paid requests carry the same PAYMENT-SIGNATURE."
   },
@@ -618,12 +688,19 @@
      }
     ],
     "signer": "counting",
-    "advanceMs": 240000
+    "advanceMs": 240000,
+    "approve": true
    },
    "expect": {
     "decline": "agreement-pending",
     "signCalls": 1,
-    "paidRequests": 120
+    "paidRequests": 120,
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    }
    },
    "note": "A 202 that never becomes 200 within the agreement option's maxTimeoutSeconds plus 180 s, 240 s: the result is agreement-pending and the full payment is never signed. Paid requests go at 0, 2, ..., 238 s."
   },
@@ -641,11 +718,18 @@
       "body": "receiptOtherHash"
      }
     ],
-    "signer": "counting"
+    "signer": "counting",
+    "approve": true
    },
    "expect": {
     "decline": "agreement-failed",
-    "signCalls": 1
+    "signCalls": 1,
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    }
    },
    "note": "A 200 receipt whose atrHash is hash(C): the full payment is never signed."
   },
@@ -692,13 +776,668 @@
       "body": "receipt"
      }
     ],
-    "signer": "counting"
+    "signer": "counting",
+    "approve": true
    },
    "expect": {
     "signed": "B6",
-    "agreement": "receipt"
+    "agreement": "receipt",
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    }
    },
    "note": "transact returns the agreement's receipt beside the payment. A transact that paid no agreement (B6, BA6) returns no agreement."
+  },
+  {
+   "name": "BA8",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "required"
+     }
+    ],
+    "approve": false,
+    "signer": "counting"
+   },
+   "expect": {
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    },
+    "signCalls": 0,
+    "agreementFetches": 1,
+    "paidRequests": 0
+   },
+   "note": "The agent has not approved the agreement payment: the gate answers with the approval it asks for, and signs and pays nothing."
+  },
+  {
+   "name": "BA9",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "requiredMixed"
+     },
+     {
+      "status": 200,
+      "body": "receipt"
+     }
+    ],
+    "approve": true,
+    "signer": "counting"
+   },
+   "expect": {
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    },
+    "signCalls": 2,
+    "order": [
+     "agreement",
+     "payment"
+    ],
+    "agreementMessage": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "1",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
+    "paymentSignature": "B6"
+   },
+   "note": "The signer's account is on eip155:84532, so the Solana option is not one it can pay; the EVM option is the first it can pay whose pairing is a public proof, and the gate asks approval for that option and signs it as BA1."
+  },
+  {
+   "name": "BA10",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "requiredMixed"
+     },
+     {
+      "status": 202,
+      "retryAfter": "2",
+      "repeats": true
+     }
+    ],
+    "approve": true,
+    "signer": "counting",
+    "advanceMs": 240000
+   },
+   "expect": {
+    "decline": "agreement-pending",
+    "signCalls": 1,
+    "paidRequests": 120
+   },
+   "note": "The exchange is bounded by the chosen EVM option's maxTimeoutSeconds, 60, plus 180 s: agreement-pending at 240 s, as BA3, never by the Solana option's 600."
+  },
+  {
+   "name": "BA11",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequiredText": "requiredTimeoutText"
+     },
+     {
+      "status": 200,
+      "body": "receipt"
+     }
+    ],
+    "approve": true,
+    "signer": "counting"
+   },
+   "expect": {
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    },
+    "signCalls": 2,
+    "agreementMessage": {
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "1",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+    },
+    "agreementDigest": "0x0e8f9e383c80f341bbdbfc7c3168c5945225b764256771e81cd680a547262ba0",
+    "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
+    "paymentSignature": "B6"
+   },
+   "note": "maxTimeoutSeconds written 60.0 is the number 60 (RFC 8259 section 6: a number is a sequence of digits with an optional fraction), so validBefore is now + 60 and the agreement signature is BA1's."
+  },
+  {
+   "name": "BE1",
+   "input": {
+    "doc": "D",
+    "serves": "A under each case's Content-Encoding, the body as each case gives it",
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "gzip",
+      "contentEncoding": "gzip",
+      "bodyHex": "1f8b0800000000000203ab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca09072786d62b1c2a33993956a6b01fa7366e88a000000"
+     },
+     {
+      "case": "x-gzip",
+      "contentEncoding": "x-gzip",
+      "bodyHex": "1f8b0800000000000203ab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca09072786d62b1c2a33993956a6b01fa7366e88a000000"
+     },
+     {
+      "case": "deflate",
+      "contentEncoding": "deflate",
+      "bodyHex": "78daab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca09072786d62b1c2a33993956a6b019a6b2a58"
+     },
+     {
+      "case": "br",
+      "contentEncoding": "br",
+      "bodyHex": "1b8900001c87e9c647364a3f25acf3a1d410e19cca9f2e7c1ad63596d8e2c8cbe524676aeab0f439e53450ac004bacede0f8a6b43295d616de8ffe3aa45e0245ec1390252cfd6487748ae3901a1797b457cea65e82f3be08d1ca4cbc8d14f8f185ca24a10763bf54b7c81c39be3266ee944099ffbbaa962647b0f0"
+     },
+     {
+      "case": "gzip applied twice",
+      "contentEncoding": "gzip, gzip",
+      "bodyHex": "1f8b080000000000020301980067ff1f8b0800000000000203ab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca09072786d62b1c2a33993956a6b01fa7366e88a0000003ca2a64498000000"
+     },
+     {
+      "case": "gzip of A then gzip of C, two members",
+      "contentEncoding": "gzip",
+      "bodyHex": "1f8b0800000000000203ab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca09072786d62b1c2a33993956a6b01fa7366e88a0000001f8b0800000000000203ab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca89072786d62b1c2a33993956a6b018c9269758a000000"
+     },
+     {
+      "case": "identity then gzip",
+      "contentEncoding": "identity, gzip",
+      "bodyHex": "1f8b0800000000000203ab564a2c290a4b2d2acecccf53b2523254d251ca4c01320cd22cd212534c9374532c9393744dcc2cd374130dcd4c75cd0d2ccccccd8d2c2c4d0d52816a2b4c0c8c94acaa95aa94ac0cf50c749412815a9313d3624a0d0c522d956a75948a537372528b404af2f24b5281b2ce896987572a3c6a98a2606ca09072786d62b1c2a33993956a6b01fa7366e88a000000"
+     }
+    ]
+   },
+   "expect": {
+    "requestHeaders": {
+     "accept-encoding": "identity"
+    },
+    "decline": "atr-unfetchable",
+    "signCalls": 0
+   },
+   "control": {
+    "input": {
+     "doc": "D",
+     "serves": "A",
+     "contentEncoding": "identity",
+     "signer": "counting"
+    },
+    "expect": {
+     "requestHeaders": {
+      "accept-encoding": "identity"
+     },
+     "signCalls": 1,
+     "paymentSignature": "B6"
+    }
+   },
+   "note": "The gate asks for the identity coding (RFC 9110 section 12.5.3) and hashes the bytes exactly as served, so any other content coding is declined before anything is hashed or signed. gzip bodies are GNU gzip 1.12 -n -9, deflate is Python's zlib 1.3 (RFC 1950), br is Node's brotli 1.2.0."
+  },
+  {
+   "name": "BE2",
+   "input": {
+    "doc": "as BA1",
+    "approve": true,
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "the 402 answer carries Content-Encoding gzip",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequired": "required",
+        "contentEncoding": "gzip"
+       }
+      ],
+      "expect": {
+       "decline": "agreement-failed",
+       "signCalls": 0,
+       "paidRequests": 0
+      }
+     },
+     {
+      "case": "the 200 receipt carries Content-Encoding gzip, its body gzip of the receipt's JSON",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequired": "required"
+       },
+       {
+        "status": 200,
+        "body": "receipt",
+        "contentEncoding": "gzip"
+       }
+      ],
+      "expect": {
+       "decline": "agreement-failed",
+       "signCalls": 1
+      }
+     },
+     {
+      "case": "the 200 receipt carries Content-Encoding br",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequired": "required"
+       },
+       {
+        "status": 200,
+        "body": "receipt",
+        "contentEncoding": "br"
+       }
+      ],
+      "expect": {
+       "decline": "agreement-failed",
+       "signCalls": 1
+      }
+     }
+    ]
+   },
+   "expect": {
+    "requestHeaders": {
+     "accept-encoding": "identity"
+    }
+   },
+   "note": "Every request of the agreement exchange asks for the identity coding, and an answer in any other coding is agreement-failed; after the agreement payment is signed the full payment is never signed."
+  },
+  {
+   "name": "BS1",
+   "input": {
+    "pairing": "x402/exact/stellar",
+    "doc": {
+     "x402Version": 2,
+     "resource": {
+      "url": "https://api.seller.example/v1/quote"
+     },
+     "accepts": [
+      {
+       "scheme": "exact",
+       "network": "stellar:testnet",
+       "amount": "10000000",
+       "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+       "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "areFeesSponsored": true
+       }
+      }
+     ],
+     "extensions": {
+      "legalContext": {
+       "info": {
+        "type": "sha256",
+        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       },
+       "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+         "type": {
+          "const": "sha256"
+         },
+         "value": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$"
+         },
+         "legalContextUrl": {
+          "type": "string",
+          "pattern": "^https://"
+         }
+        },
+        "required": [
+         "type",
+         "value",
+         "legalContextUrl"
+        ]
+       }
+      }
+     }
+    },
+    "servesHex": "616263",
+    "account": "stellar:testnet:GBXHUHG5FGYLPD6RHL2MKWMP572O6KUXCZXDZJXS4T57ZTMAKBN7DWXN",
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "the operation and the invocation the payer's entry would sign transfer 1000000000000, not the option's 10000000",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAOjUpRAAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAADo1KUQAAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "decline": "offer-unreadable",
+       "detail": "stellar/amount-mismatch",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "the operation and the invocation the payer's entry would sign call the token contract of 07x32 and transfer 1000000000000",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAOjUpRAAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAADo1KUQAAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "decline": "offer-unreadable",
+       "detail": "stellar/asset-mismatch",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "the operation and the invocation the payer's entry would sign transfer from the account of Ed25519 seed 08x32, whose entry it is, not the payer",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAAATmPYsbRpFfFG6aktfPb0vafypMhYhjciZfkFr0X2TygAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAABOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPKAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAE5j2LG0aRXxRumpLXz29L2n8qTIWIY3ImX5Ba9F9k8oAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "decline": "offer-unreadable",
+       "detail": "stellar/payer-mismatch",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "the simulated envelope of the pairing's B2 row: the option's amount and token, from the payer",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "signCalls": 1,
+       "signRequestKind": "stellar-auth"
+      }
+     }
+    ]
+   },
+   "note": "The link serves abc, whose SHA-256 (FIPS 180-2 B.1) is the advertised H, so the gate reaches build. Each envelope is x402-exact-stellar.json's V4build row of the same case, built with @stellar/stellar-sdk 17.1.0; build compares the simulated transfer with the option before the signer is called (x402 scheme_exact_stellar: argument 2 (amount) MUST equal requirements.amount exactly; MPP Stellar charge: transfer on the contract matching currency). The choice's payer is the account's address."
+  },
+  {
+   "name": "BS2",
+   "input": {
+    "pairing": "mpp/charge/stellar",
+    "doc": [
+     {
+      "realm": "api.seller.example",
+      "method": "stellar",
+      "intent": "charge",
+      "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0In0sInJlY2lwaWVudCI6Ik1ERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haT1RZQzI3WTZBT1A1TEpRTyJ9",
+      "expires": "2026-09-21T14:14:20Z",
+      "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+     }
+    ],
+    "servesHex": "616263",
+    "account": "stellar:testnet:GBXHUHG5FGYLPD6RHL2MKWMP572O6KUXCZXDZJXS4T57ZTMAKBN7DWXN",
+    "now": 1790000000,
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "the operation and the invocation the payer's entry would sign transfer 1000000000000, not the option's 10000000",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAOjUpRAAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAADo1KUQAAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "decline": "offer-unreadable",
+       "detail": "stellar/amount-mismatch",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "the operation and the invocation the payer's entry would sign call the token contract of 07x32 and transfer 1000000000000",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAOjUpRAAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAADo1KUQAAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "decline": "offer-unreadable",
+       "detail": "stellar/asset-mismatch",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "the operation and the invocation the payer's entry would sign transfer from the account of Ed25519 seed 08x32, whose entry it is, not the payer",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAAATmPYsbRpFfFG6aktfPb0vafypMhYhjciZfkFr0X2TygAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAABOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPKAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAE5j2LG0aRXxRumpLXz29L2n8qTIWIY3ImX5Ba9F9k8oAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "decline": "offer-unreadable",
+       "detail": "stellar/payer-mismatch",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "the simulated envelope of the pairing's B2 row: the option's amount and token, from the payer",
+      "inputs": {
+       "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+       "currentLedger": 988
+      },
+      "expect": {
+       "signCalls": 1,
+       "signRequestKind": "stellar-auth"
+      }
+     }
+    ]
+   },
+   "note": "The link serves abc, whose SHA-256 (FIPS 180-2 B.1) is the advertised H, so the gate reaches build. Each envelope is x402-exact-stellar.json's V4build row of the same case, built with @stellar/stellar-sdk 17.1.0; build compares the simulated transfer with the option before the signer is called (x402 scheme_exact_stellar: argument 2 (amount) MUST equal requirements.amount exactly; MPP Stellar charge: transfer on the contract matching currency). The choice's payer is the account's address."
+  },
+  {
+   "name": "BX1",
+   "input": {
+    "pairing": "mpp/session/xrpl",
+    "servesHex": "616263",
+    "account": "xrpl:1:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "inputs": {
+     "deposit": "1000000",
+     "xrpl": {
+      "publicKey": "0xED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
+      "settleDelay": 3600,
+      "fee": "12",
+      "sequence": 7,
+      "lastLedgerSequence": 1000
+     }
+    },
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "amount []",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOltdLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount true",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOnRydWUsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount 0",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOjAsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount [[]]",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOltbXV0sImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount 1000",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOjEwMDAsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount \"1.5\"",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOiIxLjUiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount \"-1\"",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOiItMSIsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount \"18446744073709551616\"",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOiIxODQ0Njc0NDA3MzcwOTU1MTYxNiIsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "decline": "no-payable-option",
+       "detail": "mpp/no-payable-option",
+       "refusal": "mpp/request-malformed",
+       "signCalls": 0
+      }
+     },
+     {
+      "case": "amount \"100\", the pairing's B2 request",
+      "doc": [
+       {
+        "realm": "api.seller.example",
+        "method": "xrpl",
+        "intent": "session",
+        "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+        "expires": "2026-09-21T14:14:20Z",
+        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+       }
+      ],
+      "expect": {
+       "signCalls": 1,
+       "signRequestKind": "xrpl-session-open"
+      }
+     }
+    ]
+   },
+   "note": "The link serves abc, whose SHA-256 (FIPS 180-2 B.1) is the advertised H. Each document is the pairing's B2 document with request.amount replaced, the request re-encoded as compact JSON in base64url without padding (RFC 4648 section 5). The session's amount is a string of whole drops in decimal, at most 2^64 - 1 (the XRP Ledger's Currency Formats: an XRP amount is a string of whole drops), so every other value is mpp/request-malformed and nothing is signed."
   }
  ]
 }

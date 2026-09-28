@@ -16,7 +16,7 @@ import {
 import type { EvmReader, EvmReceipt } from "./evm.js";
 import { readReceipt } from "./receipt.js";
 import { isAddress, normalHash } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpBytes, rlpDecode, rlpList, rlpUint, rlpUintBytes, type RlpItem } from "./rlp.js";
 import type { AtrHash } from "./core.js";
 import type { MppCredential } from "./mpp-challenge.js";
@@ -105,7 +105,7 @@ export function decodeTempoTx(
   wire: Uint8Array,
 ): { chainId: bigint; calls: TempoCall[]; validBefore: bigint | null } | Refusal {
   const items = decodeEnvelope(wire);
-  if ("refused" in items) return items;
+  if (isRefusal(items)) return items;
   const callList = items[CALLS] as Extract<RlpItem, { kind: "list" }>;
   if (callList.items.length > MAX_CALLS) return refusal("tempo/tx-malformed");
   const calls: TempoCall[] = [];
@@ -177,7 +177,7 @@ export function tempoChannelId(d: TempoDescriptor & { escrow: Hex; chainId: numb
  */
 export function expiringNonceHash(signedTx: Uint8Array, sender: Hex): Hex | Refusal {
   const items = decodeEnvelope(signedTx);
-  if ("refused" in items) return items;
+  if (isRefusal(items)) return items;
   if (!isAddress(sender)) return refusal("tempo/tx-malformed");
   const fields = items.slice(0, -1).map((i) => i.raw);
   const feePayerSigned = !(items[FEE_PAYER_SIGNATURE]!.kind === "bytes" && items[FEE_PAYER_SIGNATURE]!.raw.length === 1 &&
@@ -307,7 +307,7 @@ export async function witnessRecover(
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
   const receipt = await readReceipt(ref.network, ref.transaction, reader);
-  if ("refused" in receipt) return receipt;
+  if (isRefusal(receipt)) return receipt;
   const witnesses: Hex[] = [];
   for (const log of receipt.logs) {
     if (log.address.toLowerCase() !== ACCOUNT_KEYCHAIN.toLowerCase()) continue;

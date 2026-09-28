@@ -24,7 +24,7 @@ import {
   type SvmRef,
 } from "./internal/svm.js";
 import { isObject } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
   advertiseFor,
@@ -128,7 +128,7 @@ function advertise(
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
-  if ("refused" in placed) return placed;
+  if (isRefusal(placed)) return placed;
   if (offer.extra?.["paymentFlow"] !== "escrow") return refusal("x402/flow-missing");
   const memo = toLcpString(h);
   const current = offer.extra["memo"];
@@ -177,14 +177,14 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
       recipient: accepted.payTo,
     },
   });
-  if ("refused" in message) return message;
+  if (isRefusal(message)) return message;
   const validAfter = extra["validAfter"];
   const signing = svmSigning(message, c.payer);
   return {
     request: signing.request,
     complete(signature: Uint8Array): UptoSvmPaymentPayload | Refusal {
       const wire = signing.wire(signature);
-      if ("refused" in wire) return wire;
+      if (isRefusal(wire)) return wire;
       return paymentWith(required, accepted, {
         from: c.payer,
         maxAmount: accepted.amount,
@@ -209,16 +209,16 @@ function openingOf(presented: unknown) {
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const wire = wireOf(payload["openTransaction"]);
-  if ("refused" in wire) return wire;
+  if (isRefusal(wire)) return wire;
   const tx = decodeSvmTx(wire);
-  if ("refused" in tx) return tx;
+  if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
   const carrier = svmCarrier(tx);
-  if ("refused" in carrier) return carrier;
+  if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== accepted.extra?.["memo"]) return refusal("svm/carrier-mismatch");
   const ix = channelInstruction(tx);
-  if ("refused" in ix || ix.kind !== "open") return refusal("x402/not-an-opening");
+  if (isRefusal(ix) || ix.kind !== "open") return refusal("x402/not-an-opening");
   return { accepted, tx, h: carrier.h };
 }
 
@@ -228,13 +228,13 @@ function openingOf(presented: unknown) {
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const p = openingOf(presented);
-  return "refused" in p ? p : p.h;
+  return isRefusal(p) ? p : p.h;
 }
 
 /** The opening's read keys: digest, fee payer, blockhash, and the transaction id once the fee payer has signed. */
 async function reference(presented: unknown): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
   const p = openingOf(presented);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   return svmReference(p.accepted.network as SvmRef["network"], p.tx);
 }
 

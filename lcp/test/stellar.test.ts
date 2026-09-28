@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { Keypair, Networks, buildAuthorizationEntryPreimage, xdr } from "@stellar/stellar-sdk";
+import { Keypair, Networks, StrKey, buildAuthorizationEntryPreimage, xdr } from "@stellar/stellar-sdk";
 import { ScVal, TransactionEnvelope } from "@stellar/stellar-sdk/xdr";
 import { ReaderError } from "../src/evm.js";
 import type { AtrHash } from "../src/index.js";
@@ -105,7 +105,7 @@ describe("x402-exact-stellar.json", () => {
     const accepted: PaymentRequirements = V.V3.accepted;
     const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
     const u = await exactStellar.build(
-      { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger },
+      { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer },
       H,
     );
     if ("refused" in u) throw new Error(u.code);
@@ -197,7 +197,10 @@ describe("x402-exact-stellar.json", () => {
   it("V3v2: sorobanCredentialsAddressV2 decodes, builds and settles", async () => {
     const accepted: PaymentRequirements = V.V3.accepted;
     const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-    const u = await exactStellar.build({ required, accepted, simulatedXdr: V.V3v2.simulatedXdr, currentLedger: V.V3v2.currentLedger }, H);
+    const u = await exactStellar.build(
+      { required, accepted, simulatedXdr: V.V3v2.simulatedXdr, currentLedger: V.V3v2.currentLedger, payer: V.fixed.payer },
+      H,
+    );
     if ("refused" in u) throw new Error(u.code);
     expect(u.request.preimage.length).toBe(V.V3v2.expectPreimageLength);
     expect(sha256(u.request.preimage)).toBe(V.V3v2.expectPreimageSha256);
@@ -259,10 +262,17 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
     ["the invocation the payer's entry signs has amount 10000001; the operation has 10000000", { operation: { to: M, amount: A }, signed: { to: M, amount: A + 1n } }],
     ["the invocation the payer's entry signs carries a sub-invocation", { ...agree, subInvocation: true }],
   ];
+  const otherAsset = new Uint8Array(32).fill(7);
+  const otherPayer = Keypair.fromRawEd25519Seed(Buffer.from("08".repeat(32), "hex"));
+  const moved = (amount: bigint, x: Partial<Case> = {}): Case => ({ operation: { to: M, amount }, signed: { to: M, amount }, ...x });
   const buildRows: readonly Case[] = [
     { operation: { to: M, amount: A }, signed: { to: O, amount: A } },
     { operation: { to: M, amount: A }, signed: { to: M, amount: A + 1n } },
     { ...agree, subInvocation: true },
+    moved(1_000_000_000_000n),
+    moved(A, { asset: otherAsset }),
+    moved(1_000_000_000_000n, { asset: otherAsset }),
+    moved(A, { from: otherPayer.rawPublicKey() }),
   ];
 
   it("@stellar/stellar-sdk 17.1.0 reproduces V2's simulated envelope, V3's and V4's plain-G envelope, and every row built with it", async () => {
@@ -276,15 +286,18 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
       expect(await signed(V.V2.simulatedXdr, c, seed, 1000), name).toBe(row.envelope);
     }
     expect(other.publicKey()).toBe(V.V4build.other);
+    expect(StrKey.encodeContract(Buffer.from(otherAsset))).toBe(V.V4build.otherAsset);
+    expect(otherPayer.publicKey()).toBe(V.V4build.otherPayer);
+    expect(buildRows.length).toBe(V.V4build.rows.length);
     buildRows.forEach((c, i) => expect(simulated(V.V2.simulatedXdr, c)).toBe(V.V4build.rows[i].simulatedXdr));
   });
 
-  it("build refuses a simulated envelope whose signed invocation is not the operation's, or pays another account", async () => {
+  it("build refuses a simulated envelope whose signed invocation is not the operation's, pays another account, or moves another amount or token, or from another payer, than the option names", async () => {
     const accepted: PaymentRequirements = V.V3.accepted;
     const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
     for (const row of V.V4build.rows) {
-      const u = await exactStellar.build({ required, accepted, simulatedXdr: row.simulatedXdr, currentLedger: V.V4build.currentLedger }, H);
-      expect(u, row.case).toEqual(refused(row.expect));
+      const choice = { required, accepted, simulatedXdr: row.simulatedXdr, currentLedger: V.V4build.currentLedger, payer: V.fixed.payer };
+      expect(await exactStellar.build(choice, H), row.case).toEqual(refused(row.expect));
     }
   });
 

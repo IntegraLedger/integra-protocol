@@ -80,7 +80,7 @@ This program runs every step above. A `Map` stands in for the seller's storage, 
 and a reader built from one receipt for the chain. No network is used.
 
 ```ts
-import { assemble, hashEquals, newAtrId } from "@integraledger/lcp";
+import { assemble, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
@@ -115,10 +115,10 @@ const challenge: PaymentRequired = {
 
 // 1. Assemble the ATR for this request.
 const request = await requestCommitment({ method: "GET", target: "/v1/quote", body: new Uint8Array() });
-if ("refused" in request) throw new Error(request.code);
+if (isRefusal(request)) throw new Error(request.code);
 const terms = new TextEncoder().encode('{"text":"One quote for 10000 base units of USDC."}');
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 
 // 2. Store the bytes and link them.
 const link = `https://atr.seller.example/${atr.atrHash}`;
@@ -126,7 +126,7 @@ const storage = new Map([[link, atr.bytes]]);
 
 // 3. Advertise H.
 const advertised = exactEip3009.advertise(challenge, atr.atrHash, link, option);
-if ("refused" in advertised) throw new Error(advertised.code);
+if (isRefusal(advertised)) throw new Error(advertised.code);
 console.log("advertised:", JSON.stringify(advertised.extensions?.["legalContext"]?.info) === JSON.stringify({
   type: "sha256",
   value: atr.atrHash,
@@ -136,9 +136,9 @@ console.log("advertised:", JSON.stringify(advertised.extensions?.["legalContext"
 // The buyer's side, in brief: see the buyer guide.
 const payer = privateKeyToAccount(generatePrivateKey());
 const unsigned = await exactEip3009.build({ required: advertised, accepted: option, from: payer.address, now: 1790000000 }, atr.atrHash);
-if ("refused" in unsigned) throw new Error(unsigned.code);
+if (isRefusal(unsigned)) throw new Error(unsigned.code);
 const payment = unsigned.complete(await payer.signTypedData(unsigned.typedData as TypedDataDefinition));
-if ("refused" in payment) throw new Error(payment.code);
+if (isRefusal(payment)) throw new Error(payment.code);
 
 // 4. Check the payment.
 const h = await exactEip3009.bound(payment);
@@ -147,7 +147,7 @@ console.log("bound to the issued H:", hashEquals(h, atr.atrHash), storage.has(li
 
 // 5. Read the settlement. The facilitator's settle answer names the transaction.
 const ref = await exactEip3009.reference(payment);
-if ("refused" in ref) throw new Error(ref.code);
+if (isRefusal(ref)) throw new Error(ref.code);
 const transaction: Hex = `0x${"11".repeat(32)}`;
 const word = (hex: string): Hex => `0x${hex.replace(/^0x/, "").toLowerCase().padStart(64, "0")}`;
 const reader: EvmReader = {

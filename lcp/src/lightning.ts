@@ -90,6 +90,8 @@ const REQUEST_HASH = /^[0-9a-f]{64}$/;
 const PREIMAGE = /^[0-9a-f]{64}$/;
 const POSITIVE = /^[1-9][0-9]{0,77}$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true });
+/** The ATR's text: strict UTF-8 with a byte-order mark kept, so an ATR that begins with one is not one JSON object. */
+const atrText = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** Decodes a BOLT11 invoice without its length limit, up to 8 KiB. The signature is not verified. */
 export async function decodeBolt11(invoice: string): Promise<Bolt11 | Refusal> {
@@ -108,18 +110,23 @@ export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
 }
 
 /**
- * True when the ATR's bytes are one JSON object whose `x402` slot's `accepts` holds an option whose
- * `extra.invoice` is exactly `invoice`. Only that slot is read.
+ * True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds an option
+ * whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`, `id` and `x402`, in that
+ * order, and no member name appears twice, so every JSON reader finds the same `x402` slot. Only that slot is read.
  */
 export function atrNamesInvoice(atr: Uint8Array, invoice: string): boolean {
   if (!(atr instanceof Uint8Array) || atr.length > MAX_ATR || typeof invoice !== "string") return false;
-  let parsed: unknown;
+  let text: string;
   try {
-    parsed = parseJson(utf8.decode(atr));
+    text = atrText.decode(atr);
   } catch {
     return false;
   }
+  const parsed = parseJson(text);
   if (!isObject(parsed)) return false;
+  const names = memberNames(text);
+  if (names[0] !== "atrVersion" || names[1] !== "id" || names[2] !== "x402") return false;
+  if (new Set(names).size !== names.length) return false;
   const slot = parsed["x402"];
   const accepts = isObject(slot) ? slot["accepts"] : undefined;
   if (!Array.isArray(accepts)) return false;
@@ -127,6 +134,60 @@ export function atrNamesInvoice(atr: Uint8Array, invoice: string): boolean {
     const extra = isObject(o) ? o["extra"] : undefined;
     return isObject(extra) && extra["invoice"] === invoice;
   });
+}
+
+/**
+ * The member names of the JSON object `text` holds, decoded, in the order written. `text` is one JSON object that
+ * `JSON.parse` has read, so the scan only walks it; each step moves forward, so the scan ends within its length.
+ */
+function memberNames(text: string): string[] {
+  let i = 0;
+  const space = (): void => {
+    while (i < text.length && (text[i] === " " || text[i] === "\t" || text[i] === "\n" || text[i] === "\r")) i++;
+  };
+  const skipString = (): void => {
+    i++;
+    while (i < text.length && text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    i++;
+  };
+  const skipValue = (): void => {
+    let depth = 0;
+    while (i < text.length) {
+      const c = text[i];
+      if (c === '"') {
+        skipString();
+        if (depth === 0) return;
+        continue;
+      }
+      if (c === "{" || c === "[") depth++;
+      else if (c === "}" || c === "]") {
+        if (depth === 0) return;
+        depth--;
+        i++;
+        if (depth === 0) return;
+        continue;
+      } else if (c === "," && depth === 0) return;
+      i++;
+    }
+  };
+  const names: string[] = [];
+  space();
+  i++;
+  space();
+  while (i < text.length && text[i] === '"') {
+    const start = i;
+    skipString();
+    names.push(JSON.parse(text.slice(start, i)) as string);
+    space();
+    i++;
+    space();
+    skipValue();
+    space();
+    if (text[i] !== ",") break;
+    i++;
+    space();
+  }
+  return names;
 }
 
 function decode(invoice: string): Bolt11 | Refusal {

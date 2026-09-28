@@ -1,6 +1,7 @@
 // Builds Soroban `transfer` envelopes with @stellar/stellar-sdk 17.1.0: the XDR codec encodes them and `authorizeEntry`
 // computes the payer's HashIDPreimage and signs it. Each case starts from x402-exact-stellar.json's simulated envelope
-// (the unsigned V2 form) and sets the operation's `transfer` and the invocation the payer's entry signs.
+// (the unsigned V2 form) and sets the operation's `transfer` and the invocation the payer's entry signs, and, where a
+// case names them, the token contract both call and the `from` both pass, with the entry's address credential for it.
 import { Keypair, Networks, authorizeEntry, xdr } from "@stellar/stellar-sdk";
 import type { ScValWire, SorobanAuthorizedInvocationWire, TransactionEnvelopeWire } from "@stellar/stellar-sdk/xdr";
 
@@ -13,6 +14,10 @@ export interface Case {
   operation: TransferArgs;
   signed: TransferArgs;
   subInvocation?: boolean;
+  /** The 32-byte id of the token contract both the operation and the signed invocation call. */
+  asset?: Uint8Array;
+  /** The Ed25519 key of the `from` account both pass, and of the entry's address credential. */
+  from?: Uint8Array;
 }
 
 /** A plain account address as an SCVal. */
@@ -40,6 +45,17 @@ function shape(simulatedXdr: string, c: Case) {
   if (root.function.type !== 0) throw new Error("not a contract call");
   root.function.contractFn.args[1] = c.signed.to;
   root.function.contractFn.args[2] = i128(c.signed.amount);
+  if (c.asset !== undefined) {
+    body.invokeHostFunctionOp.hostFunction.invokeContract.contractAddress = { type: 1, contractId: c.asset };
+    root.function.contractFn.contractAddress = { type: 1, contractId: c.asset };
+  }
+  if (c.from !== undefined) {
+    const from = account(c.from);
+    opArgs[0] = from;
+    root.function.contractFn.args[0] = from;
+    if (entry.credentials.type !== 1 || from.type !== 18) throw new Error("not an address credential");
+    entry.credentials.address.address = from.address;
+  }
   if (c.subInvocation === true) {
     const fn = root.function.contractFn;
     root.subInvocations = [

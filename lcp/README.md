@@ -88,7 +88,7 @@ storage and a random key for the buyer's signer, so it runs without a network. S
 [viem](https://viem.sh) (`npm install viem`); any EIP-712 signer works.
 
 ```ts
-import { assemble, hash, hashEquals, newAtrId } from "@integraledger/lcp";
+import { assemble, hash, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 import {
   exactEip3009,
   requestCommitment,
@@ -117,18 +117,18 @@ const challenge: PaymentRequired = {
 
 // Seller: assemble the ATR for this request, store its bytes, and advertise H.
 const request = await requestCommitment({ method: "GET", target: "/v1/quote", body: new Uint8Array() });
-if ("refused" in request) throw new Error(request.code);
+if (isRefusal(request)) throw new Error(request.code);
 const terms = new TextEncoder().encode('{"text":"One quote for 10000 base units of USDC."}');
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 const link = `https://atr.seller.example/${atr.atrHash}`;
 const storage = new Map([[link, atr.bytes]]);
 const advertised = exactEip3009.advertise(challenge, atr.atrHash, link, option);
-if ("refused" in advertised) throw new Error(advertised.code);
+if (isRefusal(advertised)) throw new Error(advertised.code);
 
 // Buyer: read H and the link, fetch the bytes, and compare before signing anything.
 const offer = exactEip3009.read(advertised);
-if ("refused" in offer) throw new Error(offer.code);
+if (isRefusal(offer)) throw new Error(offer.code);
 const served = storage.get(offer.link);
 if (served === undefined || !hashEquals(await hash(served), offer.h)) throw new Error("the ATR does not match H");
 
@@ -138,9 +138,9 @@ const unsigned = await exactEip3009.build(
   { required: advertised, accepted: offer.offer.options[0]!, from: payer.address, now: Math.floor(Date.now() / 1000) },
   offer.h,
 );
-if ("refused" in unsigned) throw new Error(unsigned.code);
+if (isRefusal(unsigned)) throw new Error(unsigned.code);
 const payment = unsigned.complete(await payer.signTypedData(unsigned.typedData as TypedDataDefinition));
-if ("refused" in payment) throw new Error(payment.code);
+if (isRefusal(payment)) throw new Error(payment.code);
 
 // Seller: read H from what the payer signed, and match it to the H it issued.
 const bound = await exactEip3009.bound(payment);
@@ -153,7 +153,9 @@ the signed nonce is H: true
 ```
 
 Each pairing's functions return their result or a refusal, `{ refused: true, code }`, whose code names what is wrong,
-such as `x402/link-not-https`.
+such as `x402/link-not-https`. `isRefusal(result)` tells the two apart. Only the package makes refusals: a value you
+pass in is never returned to you as one, whatever members it carries
+([refusals](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/concepts/refusals.md)).
 
 ## Guides
 
@@ -187,6 +189,7 @@ Each entry point is imported by its subpath. The core:
 | `newAtrId()` | A random RFC 9562 version 4 UUID for the ATR's `id`. |
 | `hash(bytes)` | SHA-256 over the bytes as given, as `0x` and lowercase hex. |
 | `hashEquals(a, b)` | True when both are 32-byte hashes, in either case, with the same bytes. |
+| `isRefusal(v)` | True only for a refusal this package made: how a caller tells a refusal from a result. |
 | `toLcpString(h)`, `fromLcpString(s)` | H as `lcp:sha256:0x…` (`LCP §8.1`), and back. |
 | `toLegalContext(h, url, spelling?)`, `fromLegalContext(o)` | H and the link as `{ legalContext: { type, value, legalContextUrl } }` (`LCP §8.1`), and back. |
 | `toRawBytes(h)`, `fromRawBytes(b)` | H as 32 raw bytes, and back. |

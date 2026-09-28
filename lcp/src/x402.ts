@@ -54,7 +54,7 @@ import {
 import { bytesOf } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { AGREEMENT_URL, agreementIn, agreementRefusal } from "./internal/agreement.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export type { Eip3009TypedData } from "./evm.js";
 
@@ -573,6 +573,7 @@ export const exactEip3009 = Object.freeze({
 /** The payment's shape as this pairing requires it, or the refusal that names what is wrong. */
 function paymentOf(presented: unknown): Eip3009Payment | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
+  if (carriesRefused(presented)) return refusal("x402/payload-malformed");
   const accepted = presented["accepted"];
   if (!isObject(accepted)) return refusal("x402/payload-malformed");
   if (evmPairingOf(accepted as PaymentRequirements) !== ID) return refusal("x402/option-not-this-pairing");

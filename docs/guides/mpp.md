@@ -41,7 +41,7 @@ derives from that hash. `pairingsOf(challenge)` names the pairings a challenge o
 ATR's binding slot: every challenge's bound members, as issued.
 
 ```ts
-import { hash } from "@integraledger/lcp";
+import { hash, isRefusal } from "@integraledger/lcp";
 import { challengeH, pairingsOf, place, read, type MppChallenge } from "@integraledger/lcp/mpp";
 
 const request = Buffer.from(
@@ -68,13 +68,13 @@ console.log(pairingsOf(issued));
 
 const h = await hash(new TextEncoder().encode("abc"));
 const placed = place([issued], h, `https://atr.seller.example/${h}`, issued);
-if ("refused" in placed) throw new Error(placed.code);
+if (isRefusal(placed)) throw new Error(placed.code);
 const id = placed[0]!.id!;
 console.log(id, challengeH(id) === h);
 console.log(Buffer.from(placed[0]!.opaque!, "base64url").toString());
 
 const offer = read(placed);
-if ("refused" in offer) throw new Error(offer.code);
+if (isRefusal(offer)) throw new Error(offer.code);
 console.log(offer.h === h, offer.offer.challenges.length);
 ```
 

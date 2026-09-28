@@ -63,38 +63,38 @@ own `{ "requires_delegate_payment": boolean }`, and nothing from the checkout. T
   `bound` refuses `acp/not-buyer-signed`.
 
 ```ts
-import { assemble, hash, hashEquals, newAtrId } from "@integraledger/lcp";
+import { assemble, hash, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 import { delegated, tie, type HandlerOption, type Session } from "@integraledger/lcp/acp";
 
 // Seller: the session offers a handler that requires delegate_payment.
 const handler: HandlerOption = { requires_delegate_payment: true };
 const terms = new TextEncoder().encode('{"line_items":[{"id":"li_1","quantity":1}],"total":19900}');
 const atr = await assemble(newAtrId(), tie([handler]), [["order", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 const link = `https://atr.seller.example/${atr.atrHash}`;
 const opened: Session = { currency: "usd", metadata: { order_ref: "A-100" } };
 const session = delegated.advertise(opened, atr.atrHash, link, handler);
-if ("refused" in session) throw new Error(String(session.code));
+if (isRefusal(session)) throw new Error(String(session.code));
 console.log("session id is H:", session.id === atr.atrHash, Object.keys(session.metadata ?? {}));
 
 // Buyer: read H and the link, fetch and compare, then build the allowance.
 const offer = delegated.read(session);
-if ("refused" in offer) throw new Error(offer.code);
+if (isRefusal(offer)) throw new Error(offer.code);
 if (!hashEquals(await hash(atr.bytes), offer.h)) throw new Error("decline: hash-mismatch");
 const unsigned = await delegated.build(
   { session, max_amount: 19900, currency: "usd", merchant_id: "acme", expires_at: "2026-10-01T00:00:00Z" },
   offer.h,
 );
-if ("refused" in unsigned) throw new Error(unsigned.code);
+if (isRefusal(unsigned)) throw new Error(unsigned.code);
 const { checkout_session_id, ...rest } = unsigned.allowance;
 console.log("checkout_session_id is H:", checkout_session_id === offer.h, rest);
 
 // Buyer: the agent's own stack builds and signs its delegate_payment request around the allowance.
 // complete returns the request only when the allowance in it is the one built.
 const request = unsigned.complete({ allowance: unsigned.allowance, payment_method: { type: "card" } });
-if ("refused" in request) throw new Error(String(request.code));
+if (isRefusal(request)) throw new Error(String(request.code));
 const changed = unsigned.complete({ allowance: { ...unsigned.allowance, max_amount: 99900 } });
-console.log("refused" in changed ? changed.code : "accepted");
+console.log(isRefusal(changed) ? changed.code : "accepted");
 
 // Seller: H back out of what the agent signed.
 const bound = await delegated.bound(request);
@@ -144,7 +144,7 @@ option's (`ucp/option-not-this-checkout`).
 [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) states the rules.
 
 ```ts
-import { hash } from "@integraledger/lcp";
+import { hash, isRefusal } from "@integraledger/lcp";
 import { legalContextLink, unsigned, type Checkout } from "@integraledger/lcp/ucp";
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
@@ -156,14 +156,14 @@ const checkout: Checkout = {
 };
 
 const placed = unsigned.advertise(checkout, h, link, { checkout: "chk_123" });
-if ("refused" in placed) throw new Error(String(placed.code));
+if (isRefusal(placed)) throw new Error(String(placed.code));
 console.log(placed.links);
 
 const found = legalContextLink(placed);
-console.log("refused" in found ? found.code : found.h === h);
+console.log(isRefusal(found) ? found.code : found.h === h);
 const wrong = unsigned.advertise(checkout, h, link, { checkout: "chk_999" });
-console.log("refused" in wrong ? wrong.code : "placed");
-console.log("refused" in (await unsigned.build({ checkout: placed }, h)));
+console.log(isRefusal(wrong) ? wrong.code : "placed");
+console.log(isRefusal(await unsigned.build({ checkout: placed }, h)));
 ```
 
 ```text
@@ -200,13 +200,13 @@ commits to it through `checkout_hash`, the SHA-256 of that JWT. This package put
 [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) states the rules.
 
 ```ts
-import { hash } from "@integraledger/lcp";
+import { hash, isRefusal } from "@integraledger/lcp";
 import { checkoutMandate } from "@integraledger/lcp/ap2";
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const checkout = { id: "chk_42", total: { currency: "USD", value: "19.90" } };
 const payload = checkoutMandate.advertise(checkout, h, `https://atr.seller.example/${h}`, { checkout: "chk_42" });
-if ("refused" in payload) throw new Error(String(payload.code));
+if (isRefusal(payload)) throw new Error(String(payload.code));
 console.log(Object.keys(payload));
 
 // The seller's stack signs the payload. A placeholder signature stands in: the buyer's side verifies none.
@@ -215,9 +215,9 @@ const signature = Buffer.from("signature").toString("base64url");
 const checkoutJwt = `${segment({ alg: "ES256", typ: "JWT" })}.${segment(payload)}.${signature}`;
 
 const offer = checkoutMandate.read(checkoutJwt);
-if ("refused" in offer) throw new Error(offer.code);
+if (isRefusal(offer)) throw new Error(offer.code);
 const unsigned = await checkoutMandate.build(offer.offer, offer.h);
-if ("refused" in unsigned) throw new Error(unsigned.code);
+if (isRefusal(unsigned)) throw new Error(unsigned.code);
 console.log(unsigned.content.vct, unsigned.content.checkout_hash.length);
 ```
 
@@ -273,7 +273,7 @@ seller to place in its processor reference.
   `card/no-signed-place`.
 
 ```ts
-import { hash } from "@integraledger/lcp";
+import { hash, isRefusal } from "@integraledger/lcp";
 import { pairingsOf, visaTap, type CardOption } from "@integraledger/lcp/card";
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
@@ -281,11 +281,11 @@ const option: CardOption = { scheme: "visa-tap", checkout: "order-7731" };
 console.log(pairingsOf(option), pairingsOf({ scheme: "mastercard-vi", checkout: "order-7731" }));
 
 const shown = visaTap.advertise({}, h, `https://atr.seller.example/${h}`, option);
-if ("refused" in shown) throw new Error(shown.code);
+if (isRefusal(shown)) throw new Error(shown.code);
 console.log(shown.reference === `lcp:sha256:${h}`);
 
 const field = await visaTap.build(shown, h);
-if ("refused" in field) throw new Error(field.code);
+if (isRefusal(field)) throw new Error(field.code);
 console.log(field.field, field.component, field.value === h);
 ```
 
@@ -312,7 +312,7 @@ pairing, whose record states what it proves.
 | `delivery.proves` | What the delivery shows: nothing about the payment. |
 
 ```ts
-import { hash } from "@integraledger/lcp";
+import { hash, isRefusal } from "@integraledger/lcp";
 import { agentExtension, place, read, requested, type A2aTask } from "@integraledger/lcp/a2a";
 
 console.log(agentExtension()[0]?.uri);
@@ -323,9 +323,9 @@ console.log(requested(header));
 
 const task: A2aTask = { id: "task-1", contextId: "ctx-1", status: { state: "input-required" }, kind: "task" };
 const delivered = place(task, h, `https://atr.seller.example/${h}`, header);
-if ("refused" in delivered) throw new Error(String(delivered.code));
+if (isRefusal(delivered)) throw new Error(String(delivered.code));
 const got = read(delivered);
-console.log("refused" in got ? got.code : got.h === h && got.link.endsWith(h));
+console.log(isRefusal(got) ? got.code : got.h === h && got.link.endsWith(h));
 console.log(read(task));
 ```
 

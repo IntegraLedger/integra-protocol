@@ -28,7 +28,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { xrplNetworkOf } from "./mpp-rail-checks.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const ID = "mpp/charge/xrpl" as const;
@@ -85,7 +85,7 @@ async function bindingOf(
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = await bindingOf(credential);
   return isRefusal(b) ? b : b.h;
 }
@@ -93,7 +93,7 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
 /** The read keys from the single-signed blob: its hash, its `InvoiceID`, and its `LastLedgerSequence` or null. */
 async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = await bindingOf(credential);
   if (isRefusal(b)) return b;
   const network = xrplNetworkOf(b.checked.details);
@@ -114,7 +114,9 @@ async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | 
  * `xrpl/not-success`. At most two calls.
  */
 async function fetchPresented(credential: MppCredential, reader: XrplReader): Promise<MppCredential | Refusal> {
-  if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
+  if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
   if (credential.payload["type"] !== "hash") return credential;
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;

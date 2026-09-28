@@ -746,7 +746,7 @@ it is complete with nothing found.
 
 ### svmRecover()
 
-> **svmRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **svmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Zero-party recovery: the ATR hash in the landed transaction's one memo. One or two calls.
 
@@ -761,7 +761,7 @@ Zero-party recovery: the ATR hash in the landed transaction's one memo. One or t
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ***
 

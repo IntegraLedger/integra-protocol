@@ -114,7 +114,7 @@ Both sides run in one process: a random key stands in for the buyer's signer and
 [viem](https://viem.sh).
 
 ```ts
-import { assemble, hashEquals, newAtrId } from "@integraledger/lcp";
+import { assemble, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 import { requestCommitment, tie, type PaymentRequired, type PaymentRequirements } from "@integraledger/lcp/x402";
 import { batchEvm, type SigningRequest } from "@integraledger/lcp/x402-batch-settlement";
 import type { TypedDataDefinition } from "viem";
@@ -153,16 +153,16 @@ const challenge: PaymentRequired = {
 
 // Seller: one ATR for the whole channel, and H advertised in the challenge.
 const request = await requestCommitment({ method: "GET", target: "/v1/stream", body: new Uint8Array() });
-if ("refused" in request) throw new Error(request.code);
+if (isRefusal(request)) throw new Error(request.code);
 const terms = new TextEncoder().encode('{"text":"1000 base units of USDC per request."}');
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
-if ("refused" in atr) throw new Error(atr.code);
+if (isRefusal(atr)) throw new Error(atr.code);
 const advertised = batchEvm.advertise(challenge, atr.atrHash, `https://atr.seller.example/${atr.atrHash}`, option);
-if ("refused" in advertised) throw new Error(advertised.code);
+if (isRefusal(advertised)) throw new Error(advertised.code);
 
 // Buyer: read H, compare the served bytes with it as the buyer guide shows, then open the channel with H as its salt.
 const offer = batchEvm.read(advertised);
-if ("refused" in offer) throw new Error(offer.code);
+if (isRefusal(offer)) throw new Error(offer.code);
 const accepted = offer.offer.options[0]!;
 const unsignedOpening = await batchEvm.build(
   {
@@ -176,16 +176,16 @@ const unsignedOpening = await batchEvm.build(
   },
   offer.h,
 );
-if ("refused" in unsignedOpening) throw new Error(unsignedOpening.code);
+if (isRefusal(unsignedOpening)) throw new Error(unsignedOpening.code);
 const kinds = unsignedOpening.requests.map((r) => (r.kind === "eip712" ? r.typedData.primaryType : r.kind));
 console.log("the opening signs:", kinds);
 const opening = unsignedOpening.complete(await sign(unsignedOpening.requests));
-if ("refused" in opening) throw new Error(opening.code);
+if (isRefusal(opening)) throw new Error(opening.code);
 
 // Seller: the opening is bound to the H it issued, and names the channel.
 const h = await batchEvm.bound(opening);
 const channel = await batchEvm.channel.ref(opening);
-if ("refused" in channel) throw new Error(channel.code);
+if (isRefusal(channel)) throw new Error(channel.code);
 console.log(batchEvm.channel.kind(opening), "bound to H:", typeof h === "string" && hashEquals(h, atr.atrHash));
 
 // Buyer: a later voucher in the same channel, for a cumulative 2000 base units.
@@ -194,14 +194,14 @@ const unsignedVoucher = await batchEvm.buildWithin(
   { required: advertised, accepted, channelConfig, maxClaimableAmount: 2000n },
   offer.h,
 );
-if ("refused" in unsignedVoucher) throw new Error(unsignedVoucher.code);
+if (isRefusal(unsignedVoucher)) throw new Error(unsignedVoucher.code);
 const voucher = unsignedVoucher.complete(await sign(unsignedVoucher.requests));
-if ("refused" in voucher) throw new Error(voucher.code);
+if (isRefusal(voucher)) throw new Error(voucher.code);
 
 // Seller: the voucher is within the same channel, and its configuration still carries H.
 const sameChannel = await batchEvm.channel.ref(voucher);
 const within = await batchEvm.channel.boundWithin(voucher);
-const same = !("refused" in sameChannel) && sameChannel.channel === channel.channel;
+const same = !isRefusal(sameChannel) && sameChannel.channel === channel.channel;
 console.log(batchEvm.channel.kind(voucher), "same channel:", same);
 console.log("within bound to H:", typeof within === "string" && hashEquals(within, atr.atrHash));
 const notAnOpening = await batchEvm.bound(voucher);
@@ -212,9 +212,9 @@ const unsignedClose = await batchEvm.buildWithin(
   { required: advertised, accepted, channelConfig, maxClaimableAmount: 2000n, refund: {} },
   offer.h,
 );
-if ("refused" in unsignedClose) throw new Error(unsignedClose.code);
+if (isRefusal(unsignedClose)) throw new Error(unsignedClose.code);
 const close = unsignedClose.complete(await sign(unsignedClose.requests));
-if ("refused" in close) throw new Error(close.code);
+if (isRefusal(close)) throw new Error(close.code);
 console.log(batchEvm.channel.kind(close));
 ```
 

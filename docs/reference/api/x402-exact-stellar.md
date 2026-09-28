@@ -9,12 +9,16 @@ description: "The exports of @integraledger/lcp/x402-exact-stellar."
 
 ### StellarChoice
 
+The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
+payer's account (`G…`), which must be the simulated transfer's `from`.
+
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
 | <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
 | <a id="property-currentledger"></a> `currentLedger` | `number` |
+| <a id="property-payer"></a> `payer` | `string` |
 | <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) |
 | <a id="property-simulatedxdr"></a> `simulatedXdr` | `string` |
 
@@ -40,7 +44,7 @@ A payment on this pairing: the base64 XDR of the transaction with the payer's en
 
 ### exactStellar
 
-> `const` **exactStellar**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StellarUnsigned`](stellar.md#stellarunsigned)\>; `carrier`: `"payTo"`; `claims`: `boolean`; `id`: `"x402/exact/stellar"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StellarRef`](stellar.md#stellarref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`StellarStatus`](stellar.md#stellarstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactStellar**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StellarUnsigned`](stellar.md#stellarunsigned)\>; `carrier`: `"payTo"`; `claims`: `boolean`; `id`: `"x402/exact/stellar"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StellarRef`](stellar.md#stellarref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`StellarStatus`](stellar.md#stellarstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ## Functions
 

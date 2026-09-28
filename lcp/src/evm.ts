@@ -100,7 +100,7 @@ export type ReceiveTypedData = Omit<Eip3009TypedData, "primaryType" | "types"> &
 /** The EIP-712 typed data for `ReceiveWithAuthorization`, built as `eip3009TypedData` builds its transfer form. */
 export function receiveTypedData(a: Parameters<typeof eip3009TypedData>[0]): ReceiveTypedData | Refusal {
   const t = eip3009TypedData(a);
-  if ("refused" in t) return t;
+  if (isRefusal(t)) return t;
   return {
     domain: t.domain,
     types: { EIP712Domain: t.types.EIP712Domain, ReceiveWithAuthorization: t.types.TransferWithAuthorization },

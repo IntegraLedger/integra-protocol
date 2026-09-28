@@ -30,18 +30,22 @@ import {
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const ID = "mpp/charge/stellar" as const;
 const HASH = /^[0-9a-fA-F]{64}$/;
 
-/** The buyer's inputs to `build`: the buyer's simulated transaction and its ledger and clock readings. */
+/**
+ * The buyer's inputs to `build`: the chosen challenge, the buyer's simulated transaction, its ledger and clock readings,
+ * and the payer's account (`G…`), which must be the simulated transfer's `from`.
+ */
 export interface StellarChargeChoice {
   challenge: MppChallenge & { id: string };
   simulatedXdr: string;
   currentLedger: number;
   now: number;
+  payer: string;
 }
 
 export interface StellarChargeUnsigned {
@@ -82,7 +86,7 @@ function bindingOf(credential: MppCredential): { h: AtrHash; checked: Checked; p
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = bindingOf(credential);
   return isRefusal(b) ? b : b.h;
 }
@@ -90,7 +94,7 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
 /** The read keys from the signed entry; `transaction` only for a credential the client submitted itself. */
 async function reference(input: unknown): Promise<StellarRef | Refusal> {
   const credential = credentialOf(input);
-  if ("refused" in credential) return credential;
+  if (isRefusal(credential)) return credential;
   const b = bindingOf(credential);
   if (isRefusal(b)) return b;
   const hash = credential.payload["hash"];
@@ -112,7 +116,9 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
  * `FAILED` is refused `stellar/tx-failed`.
  */
 async function fetchPresented(credential: MppCredential, reader: StellarReader): Promise<MppCredential | Refusal> {
-  if (!isObject(credential) || !isObject(credential.payload)) return refusal("mpp/credential-malformed");
+  if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
   if (credential.payload["type"] !== "hash") return credential;
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;
@@ -135,7 +141,9 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
 /**
  * The authorization preimage for the payer to sign, from the buyer's simulated transaction, with the entry's expiration at
  * `currentLedger + ceil((expires − now) / 5)`. The request's `recipient` must carry `muxedId(h)` and equal the `to` of
- * the invocation the payer's entry signs, and the operation must invoke exactly that. With `feePayer` true the source is the all-zeros account.
+ * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
+ * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
+ * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
@@ -157,6 +165,9 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   if (isRefusal(s)) return s;
   if (s.payment.to !== recipient) return refusal("stellar/carrier-mismatch");
   if (!s.agrees) return refusal("stellar/not-one-transfer");
+  if (s.payment.asset !== checked.request["currency"]) return refusal("stellar/asset-mismatch");
+  if (s.payment.amount !== BigInt(checked.request["amount"] as string)) return refusal("stellar/amount-mismatch");
+  if (s.payment.from !== choice.payer) return refusal("stellar/payer-mismatch");
   const challenge = choice.challenge;
   return {
     request: s.unsigned.request,

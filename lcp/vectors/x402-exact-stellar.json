@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/stellar pairing: the stellar and x402/exact/stellar entry points of @integraledger/lcp. The fixed inputs are H = SHA-256(\"abc\") from FIPS 180-2, the seller from Ed25519 seed 04x32, the payer from 05x32 and the asset the contract strkey of 06x32, on testnet; the expected values were computed with stellar-sdk 13.0.0 on Python 3.12.3. The fixtures described without being printed (the unsigned simulated envelope, V4's plain-G envelope, the plant) were built with stellar-sdk 13.0.0 on Python 3.11 from V3's envelope; the same script reproduces V2's preimage digest and signature. The payer signs the authorization entry's rootInvocation, not the operation (CAP-46: the credentials' signature covers the HashIDPreimage of the network id, nonce, expiration and invocation; x402 scheme_exact_stellar: argument 1 (to) MUST equal payTo, and the rootInvocation MUST NOT contain subInvocations), so the payment is read from that invocation and the operation must invoke exactly it. V4's rows with a differing operation or signed invocation, and V4build, were built with @stellar/stellar-sdk 17.1.0 (its XDR codec, and authorizeEntry for the payer's signature, nonce 1, expiration 1000) from V2's simulated envelope; the same builder reproduces V3's envelope and V4's plain-G envelope byte for byte. V4's encoding rows follow RFC 4648 (section 3.3: characters outside the base alphabet are rejected; section 3.5: non-zero padding bits are rejected; section 4: the encoding is padded to a multiple of 4) and the XDR decoder of @stellar/stellar-sdk 17.1.0, which refuses bytes after the envelope.",
+ "about": "Vectors for the x402/exact/stellar pairing: the stellar and x402/exact/stellar entry points of @integraledger/lcp. The fixed inputs are H = SHA-256(\"abc\") from FIPS 180-2, the seller from Ed25519 seed 04x32, the payer from 05x32 and the asset the contract strkey of 06x32, on testnet; the expected values were computed with stellar-sdk 13.0.0 on Python 3.12.3. The fixtures described without being printed (the unsigned simulated envelope, V4's plain-G envelope, the plant) were built with stellar-sdk 13.0.0 on Python 3.11 from V3's envelope; the same script reproduces V2's preimage digest and signature. The payer signs the authorization entry's rootInvocation, not the operation (CAP-46: the credentials' signature covers the HashIDPreimage of the network id, nonce, expiration and invocation; x402 scheme_exact_stellar: argument 1 (to) MUST equal payTo, and the rootInvocation MUST NOT contain subInvocations), so the payment is read from that invocation and the operation must invoke exactly it. V4's rows with a differing operation or signed invocation, and V4build, were built with @stellar/stellar-sdk 17.1.0 (its XDR codec, and authorizeEntry for the payer's signature, nonce 1, expiration 1000) from V2's simulated envelope, V4build's other token contract being the contract strkey of 07x32 and its other payer the account of Ed25519 seed 08x32, both encoded by its StrKey; the same builder reproduces V3's envelope and V4's plain-G envelope byte for byte. V4's encoding rows follow RFC 4648 (section 3.3: characters outside the base alphabet are rejected; section 3.5: non-zero padding bits are rejected; section 4: the encoding is padded to a multiple of 4) and the XDR decoder of @stellar/stellar-sdk 17.1.0, which refuses bytes after the envelope.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seller": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
@@ -562,6 +562,18 @@
     "expect": "stellar/carrier-mismatch"
    },
    {
+    "case": "build when the operation and the signed invocation agree but call a token contract other than the option's asset (x402 scheme_exact_stellar: the SEP-41 token of requirements.asset; MPP stellar charge: the contract matching currency), checked after the carrier and the one-transfer check",
+    "expect": "stellar/asset-mismatch"
+   },
+   {
+    "case": "build when the agreed transfer's amount is not the option's amount (x402 scheme_exact_stellar: argument 2 MUST equal requirements.amount exactly, as i128; MPP stellar charge: the request's amount), checked after the asset",
+    "expect": "stellar/amount-mismatch"
+   },
+   {
+    "case": "build when the agreed transfer's from is not the choice's payer, the account whose key signs, checked after the amount",
+    "expect": "stellar/payer-mismatch"
+   },
+   {
     "case": "advertise or build with an amount that is not a positive i128 in decimal, or maxTimeoutSeconds not a positive integer",
     "expect": "x402/option-malformed"
    },
@@ -654,7 +666,7 @@
   ]
  },
  "V4build": {
-  "case": "build on simulated envelopes (unsigned entry, nonce 1) with currentLedger 988, the option V3's accepted",
+  "case": "build on simulated envelopes (unsigned entry, nonce 1) with currentLedger 988, the option V3's accepted and the payer fixed.payer",
   "currentLedger": 988,
   "other": "GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57",
   "rows": [
@@ -672,8 +684,30 @@
     "case": "the invocation the payer's entry would sign carries a sub-invocation",
     "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAEAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
     "expect": "stellar/not-one-transfer"
+   },
+   {
+    "case": "the operation and the invocation the payer's entry would sign transfer 1000000000000, not the option's 10000000",
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAOjUpRAAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAADo1KUQAAAAAAAAAAAAAAAAAA==",
+    "expect": "stellar/amount-mismatch"
+   },
+   {
+    "case": "the operation and the invocation the payer's entry would sign call the token contract of 07x32, not the option's asset",
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+    "expect": "stellar/asset-mismatch"
+   },
+   {
+    "case": "the operation and the invocation the payer's entry would sign call the token contract of 07x32 and transfer 1000000000000",
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAOjUpRAAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAADo1KUQAAAAAAAAAAAAAAAAAA==",
+    "expect": "stellar/asset-mismatch"
+   },
+   {
+    "case": "the operation and the invocation the payer's entry would sign transfer from the account of Ed25519 seed 08x32, whose entry it is, not the payer",
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAAATmPYsbRpFfFG6aktfPb0vafypMhYhjciZfkFr0X2TygAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAABOY9ixtGkV8UbpqS189vS9p/KkyFiGNyJl+QWvRfZPKAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAE5j2LG0aRXxRumpLXz29L2n8qTIWIY3ImX5Ba9F9k8oAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+    "expect": "stellar/payer-mismatch"
    }
-  ]
+  ],
+  "otherAsset": "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR",
+  "otherPayer": "GAJZR5RMNUNEK7CRXJVEWXZ5XUXWT7FJGILCDDOITF7EC26RPWJ4UVOE"
  },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",

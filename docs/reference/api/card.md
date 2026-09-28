@@ -60,7 +60,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 ##### bound()
 
-> **bound**(`presented`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **bound**(`presented`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ###### Parameters
 
@@ -70,7 +70,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 ###### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ##### build()
 

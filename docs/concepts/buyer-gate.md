@@ -31,7 +31,9 @@ sequenceDiagram
 1. **Read.** The pairing's `read(doc)` gives H, the link, and the options this pairing can pay. A document without a
    well-formed hash and `https` link is refused before anything is fetched.
 2. **Fetch.** Fetch the link and keep the bytes exactly as received. Bound the fetch: this package's shared vectors
-   fix a limit of 1 MiB on the body, a 10-second deadline, and no redirects.
+   fix a limit of 1 MiB on the body, a 10-second deadline, and no redirects. Ask for the bytes as they are
+   (`Accept-Encoding: identity`) and decline an answer in any other content coding, such as `gzip` or `br`: the hash is
+   over the bytes served, never over bytes a decoder produced.
 3. **Compare.** `hashEquals(await hash(bytes), h)`. On any difference, stop: nothing is signed.
 4. **Build and sign.** The pairing's `build(choice, h)` returns what the signer signs, with H in its place. Pass the H
    you compared, never a value read again from the document.
@@ -76,23 +78,34 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 |---|---|
 | `hash-mismatch` | The served bytes do not hash to H: one changed byte, the same JSON written another way, or an agreement resource advertising another ATR's hash. |
 | `signed-not-bound` | What the signer returned does not carry the H the buyer compared. |
-| `offer-unreadable` | The pairing's `read` refused the document; the row carries its refusal code. |
+| `offer-unreadable` | The pairing's `read` refused the document, or its `build` refused the option with the buyer's inputs, such as a Stellar simulated transfer whose amount, token or payer is not the option's; the row carries the refusal code, and nothing is signed. |
 | `link-not-https` | The link or the agreement URL is not `https`. Nothing is fetched. |
-| `atr-unfetchable` | The fetch redirected, returned an error status, failed, or did not answer in time. |
+| `atr-unfetchable` | The fetch redirected, returned an error status, failed, did not answer in time, or answered in a content coding other than `identity`. |
 | `atr-too-large` | The body is larger than 1 MiB. The fetch is cancelled. |
 | `signer-failed` | The signer rejected. |
 | `no-payable-option` | No option is payable by the buyer's accounts. Nothing is fetched. |
 | `pairing-not-supported` | The pairing id is not one the gate implements. |
 | `agreement-pending` | An agreement payment was made and its receipt did not arrive in time; the full payment is not signed. |
-| `agreement-failed` | The agreement's receipt names another ATR's hash; the full payment is not signed. |
+| `agreement-failed` | The agreement's receipt names another ATR's hash, or an agreement answer is in a content coding other than `identity`; the full payment is not signed. |
 
 ## The agreement URL
 
 Where a pairing's payment carries H in nothing public, the seller may advertise an **agreement URL**
 (`legalContextAgreementUrl`) beside the link. The buyer first pays that URL, whose payment carries H publicly, and
 pays the full payment only after its `200` receipt names the same H. Where the chosen pairing's payment is itself a
-public proof of H (`pattern.publicProof`), the buyer does not pay the agreement URL. The buyer vector rows `BA1` to
-`BA7` fix this order.
+public proof of H (`pattern.publicProof`), the buyer does not pay the agreement URL.
+
+The agreement payment is a payment like any other, so the buyer's agent approves it before anything is signed:
+
+1. **Fetch** the agreement URL's `402` and check that it advertises the same H.
+2. **Choose** its option with the main payment's rule: the options in order, the first the signer can pay whose
+   pairing's payment is itself a public proof of H.
+3. **Hand the agent** that option's amount, token (`asset`), payee (`payTo`) and network, and sign only once it
+   approves.
+4. **Pay and wait** for the `200` receipt. The exchange is bounded by the chosen option's `maxTimeoutSeconds` plus
+   180 seconds; `maxTimeoutSeconds` is a JSON number with an integral value, so `60.0` is `60`.
+
+The buyer vector rows `BA1` to `BA11` fix this order, the approval and the bounds.
 
 ## Next
 

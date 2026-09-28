@@ -16,7 +16,7 @@ import {
   type XrplUnsigned,
 } from "./internal/xrpl.js";
 import { isObject } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
   chosen,
@@ -92,7 +92,7 @@ function advertise(
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
-  if ("refused" in placed) return placed;
+  if (isRefusal(placed)) return placed;
   const invoiceId = toLcpString(h);
   const current = offer.extra?.["invoiceId"];
   if (current !== undefined && current !== invoiceId) return refusal("xrpl/carrier-occupied");
@@ -156,7 +156,7 @@ async function presentedOf(presented: unknown) {
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const blob = await decodePresented(payload, payload["signedTxBlob"]);
-  if ("refused" in blob) return blob;
+  if (isRefusal(blob)) return blob;
   if (blob.tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
   if (typeof blob.tx.InvoiceID !== "string") return refusal("xrpl/no-invoice-id");
   const h = fromLcpString(accepted.extra?.["invoiceId"] as string);
@@ -172,13 +172,13 @@ async function presentedOf(presented: unknown) {
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const p = await presentedOf(presented);
-  return "refused" in p ? p : p.h;
+  return isRefusal(p) ? p : p.h;
 }
 
 /** The read keys for finding this payment later, all from the single-signed blob. */
 async function reference(presented: unknown): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const p = await presentedOf(presented);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const lls = p.blob.tx.LastLedgerSequence;
   return {
     network: p.accepted.network as XrplRef["network"],

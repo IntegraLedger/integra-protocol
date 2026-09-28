@@ -29,6 +29,13 @@ typed data for `TransferWithAuthorization` whose `nonce` is H, valid until `now`
 
 Pass the H you compared. Never read H from the document again between the comparison and `build`.
 
+Where the buyer supplies the transaction the payer signs, `build` compares it with the option before anything reaches
+the signer. On Stellar (`x402/exact/stellar` and `mpp/charge/stellar`) the choice carries the buyer's simulated Soroban
+`transfer` and the `payer` account. `build` refuses a transfer whose token contract is not the option's asset
+(`stellar/asset-mismatch`), whose amount is not the option's amount exactly (`stellar/amount-mismatch`: x402's Stellar
+scheme requires that argument 2, the amount, *"MUST equal `requirements.amount` exactly"*), or whose `from` is not the
+`payer` (`stellar/payer-mismatch`).
+
 ## 3. Finish
 
 `complete(signature)` gives the x402 payment, echoing the challenge's `resource` and `extensions` unchanged. Before
@@ -41,7 +48,7 @@ The seller's challenge below was advertised for an ATR the buyer can fetch. A st
 network is used.
 
 ```ts
-import { hash, hashEquals } from "@integraledger/lcp";
+import { hash, hashEquals, isRefusal } from "@integraledger/lcp";
 import { exactEip3009, type PaymentRequired } from "@integraledger/lcp/x402";
 import type { TypedDataDefinition } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -109,7 +116,7 @@ const sellerFetch: typeof fetch = async () => new Response(atrBytes);
 
 // 1. Compare.
 const offer = exactEip3009.read(challenge);
-if ("refused" in offer) throw new Error(`decline: ${offer.code}`);
+if (isRefusal(offer)) throw new Error(`decline: ${offer.code}`);
 const served = await fetchAtr(offer.link, sellerFetch);
 if (typeof served === "string") throw new Error(`decline: ${served}`);
 if (!hashEquals(await hash(served), offer.h)) throw new Error("decline: hash-mismatch");
@@ -122,13 +129,13 @@ const unsigned = await exactEip3009.build(
   { required: challenge, accepted, from: payer.address, now: Math.floor(Date.now() / 1000) },
   offer.h,
 );
-if ("refused" in unsigned) throw new Error(`decline: ${unsigned.code}`);
+if (isRefusal(unsigned)) throw new Error(`decline: ${unsigned.code}`);
 console.log("signing:", unsigned.typedData.primaryType, "with nonce H:", unsigned.typedData.message.nonce === offer.h);
 const signature = await payer.signTypedData(unsigned.typedData as TypedDataDefinition);
 
 // 3. Finish.
 const payment = unsigned.complete(signature);
-if ("refused" in payment) throw new Error(`decline: ${payment.code}`);
+if (isRefusal(payment)) throw new Error(`decline: ${payment.code}`);
 const signed = await exactEip3009.bound(payment);
 if (typeof signed !== "string" || !hashEquals(signed, offer.h)) throw new Error("decline: signed-not-bound");
 console.log("finished: the payment carries H");
@@ -152,8 +159,9 @@ pairing's `build`. The same H rides in whichever you choose.
 ## When the challenge carries an agreement URL
 
 Some pairings' payments carry H in nothing public. For those, `read` also returns `agreement`: an `https` URL the
-buyer pays first, whose payment carries H publicly. Pay the full payment only after the agreement's `200` receipt
-names the same H. See [the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
+buyer pays first, whose payment carries H publicly. The agreement payment is approved like any other: hand the agent
+its amount, token, payee and network, and sign it only once the agent approves. Pay the full payment only after the
+agreement's `200` receipt names the same H. See [the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
 
 ## Channels and sessions
 

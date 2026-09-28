@@ -253,7 +253,7 @@ rlp([that list, signature]). At most 16 limits and 16 scopes, 16 selector rules 
 
 ### expiringNonceHash()
 
-> **expiringNonceHash**(`signedTx`, `sender`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **expiringNonceHash**(`signedTx`, `sender`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 keccak256(`0x76` ‖ rlp(every envelope field before the sender's signature) ‖ sender). When a fee payer has signed,
 `fee_token` is written as `0x80` and the fee payer's signature as `0x00`, as the sender signed them.
@@ -267,13 +267,13 @@ keccak256(`0x76` ‖ rlp(every envelope field before the sender's signature) ‖
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
 ### keyAccount()
 
-> **keyAccount**(`receipt`, `h`, `keyId`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **keyAccount**(`receipt`, `h`, `keyId`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The account for which a receipt's key authorization carried witness `h` and registered `keyId`: topic 1 of the
 account keychain's `KeyAuthorizationWitness` logs whose topic 2 is `h`, when the keychain's `KeyAuthorized` log in
@@ -290,13 +290,13 @@ before the transaction's calls run.
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
 ### memoCalldata()
 
-> **memoCalldata**(`to`, `amount`, `memo`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **memoCalldata**(`to`, `amount`, `memo`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 `transferWithMemo(to, amount, memo)` calldata: the selector, then the three 32-byte words.
 
@@ -310,13 +310,13 @@ before the transaction's calls run.
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
 ### tempoChannelId()
 
-> **tempoChannelId**(`d`): `` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+> **tempoChannelId**(`d`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 The TIP-20 channel reserve's channel id: keccak256(abi.encode(payer, payee, operator, token, salt,
 authorizedSigner, expiringNonceHash, escrow, chainId)).
@@ -329,13 +329,13 @@ authorizedSigner, expiringNonceHash, escrow, chainId)).
 
 #### Returns
 
-`` `0x${string}` `` \| [`Refusal`](index.md#refusal)
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
 ***
 
 ### witnessRecover()
 
-> **witnessRecover**(`ref`, `reader`): `Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+> **witnessRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Reads the transaction's receipt and returns topic 2 of its one `KeyAuthorizationWitness` log from the account
 keychain. One call.
@@ -351,7 +351,7 @@ keychain. One call.
 
 #### Returns
 
-`Promise`\<`` `0x${string}` `` \| [`Refusal`](index.md#refusal)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 ## References
 

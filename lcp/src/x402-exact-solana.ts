@@ -22,7 +22,7 @@ import {
   type SvmTx,
 } from "./internal/svm.js";
 import { isObject } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
   chosen,
@@ -108,7 +108,7 @@ function advertise(
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
-  if ("refused" in placed) return placed;
+  if (isRefusal(placed)) return placed;
   const memo = toLcpString(h);
   const current = offer.extra?.["memo"];
   if (current !== undefined && current !== memo) return refusal("svm/carrier-occupied");
@@ -141,13 +141,13 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
     computeUnitLimit: c.computeUnitLimit ?? 40_000,
     computeUnitPrice: c.computeUnitPrice ?? 1n,
   });
-  if ("refused" in message) return message;
+  if (isRefusal(message)) return message;
   const signing = svmSigning(message, c.payer);
   return {
     request: signing.request,
     complete(signature: Uint8Array): SvmPaymentPayload | Refusal {
       const wire = signing.wire(signature);
-      if ("refused" in wire) return wire;
+      if (isRefusal(wire)) return wire;
       return paymentWith(required, accepted, { transaction: toBase64(wire) });
     },
   };
@@ -161,9 +161,9 @@ function presentedTx(presented: unknown) {
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const wire = wireOf(payload["transaction"]);
-  if ("refused" in wire) return wire;
+  if (isRefusal(wire)) return wire;
   const tx = decodeSvmTx(wire);
-  if ("refused" in tx) return tx;
+  if (isRefusal(tx)) return tx;
   return { accepted: accepted as PaymentRequirements, tx };
 }
 
@@ -173,14 +173,14 @@ function presentedTx(presented: unknown) {
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const p = presentedTx(presented);
-  return "refused" in p ? p : boundOf(p.accepted, p.tx);
+  return isRefusal(p) ? p : boundOf(p.accepted, p.tx);
 }
 
 function boundOf(accepted: PaymentRequirements, tx: SvmTx): AtrHash | Refusal {
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
   const carrier = svmCarrier(tx);
-  if ("refused" in carrier) return carrier;
+  if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== accepted.extra?.["memo"]) return refusal("svm/carrier-mismatch");
   return carrier.h;
 }
@@ -188,7 +188,7 @@ function boundOf(accepted: PaymentRequirements, tx: SvmTx): AtrHash | Refusal {
 /** The read keys for finding this payment later: digest, fee payer, blockhash, and the transaction id once signed. */
 async function reference(presented: unknown): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
   const p = presentedTx(presented);
-  if ("refused" in p) return p;
+  if (isRefusal(p)) return p;
   const h = boundOf(p.accepted, p.tx);
   if (typeof h !== "string") return h;
   if (!isSolanaNetwork(p.accepted.network)) return refusal("svm/network-malformed");

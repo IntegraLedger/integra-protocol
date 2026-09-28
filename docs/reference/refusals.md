@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 480 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 483 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -24,7 +24,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`evm`](#evm) | 12 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
-| [`stellar`](#stellar) | 16 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
+| [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
 | [`avm`](#avm) | 12 | Algorand (`@integraledger/lcp/avm`). |
@@ -109,7 +109,7 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 | `x402/option-malformed` | The document's `accepts` is not an array of at most 32 options, an option this pairing names lacks what the pairing needs to pay it (a valid amount, asset, `payTo`, positive `maxTimeoutSeconds`, token name and version, or its scheme's required `extra` members), or the buyer's choice given to `build` carries an invalid payer address, `now`, key, nonce, sequence, deposit or amount. |
 | `x402/option-not-in-document` | The option given to `advertise` or chosen in `build` is not one of the document's `accepts`, compared by identity or RFC 8785 form. |
 | `x402/option-not-this-pairing` | The option offered, chosen or presented (as the payment's `accepted`) is not one this pairing serves: its scheme, network, asset transfer method, payment flow or fields belong to another pairing or to none. |
-| `x402/payload-malformed` | The presented payment's `accepted` or `payload` is not an object or lacks a member the pairing reads (authorization, Permit2 authorization, delegation fields, transaction, channel config, voucher or deposit), a member does not decode to a valid address, amount, deadline or digest, or H given to `build` is not a valid ATR hash. |
+| `x402/payload-malformed` | The presented EIP-3009 payment carries a `refused` member, the presented payment's `accepted` or `payload` is not an object or lacks a member the pairing reads (authorization, Permit2 authorization, delegation fields, transaction, channel config, voucher or deposit), a member does not decode to a valid address, amount, deadline or digest, or H given to `build` is not a valid ATR hash. |
 | `x402/permission-context-malformed` | The ERC-7710 `permissionContext` given to `complete` is not hex of at most 32 KiB, or at the salt level it does not decode as a list of delegations. |
 | `x402/request-target-invalid` | `requestCommitment` refuses a request whose method or target is not a string, whose body is not a `Uint8Array`, or whose target does not start with `/` or contains a character outside visible ASCII. |
 | `x402/request-too-large` | `requestCommitment` refuses a request target longer than 8192 characters or a body larger than 1 MiB. |
@@ -135,7 +135,7 @@ MPP challenges and credentials, and the checks every MPP pairing shares (`@integ
 | `mpp/challenge-malformed` | A challenge is not challenge-shaped: `parseChallenges` finds a repeated parameter or a missing or empty required one, `place`, `read` or `issuedDigest` is given more than 32 challenges or one without the required members, `challengeId` is given an invalid H or a position outside 0 to 31, a Hedera charge `build` is given a challenge without a string `id` and `realm`, or H or a value to hash cannot be written in its canonical form. |
 | `mpp/channel-named` | A session challenge as issued already names a channel (`channelId`, or an EVM or Tempo `sessionSnapshot`), so it is not a challenge to open one. |
 | `mpp/channel-not-bound` | An EVM session opening's `channelId` is not the channel id computed from the payer, payee, token, H as salt, signer, escrow and chain. |
-| `mpp/credential-malformed` | A credential is not an object with an echoed challenge carrying an `id`, an optional string `source` and a `payload` object, exceeds the credential size bound, or lacks a payload member the pairing reads (signature, nonce, hash, transaction, salt, channel id, authorization fields or landed logs) in the required form; or a signature or hash given to `complete` is not the required hex, or the Lightning `build` choice has no challenge with a string `id`. |
+| `mpp/credential-malformed` | A credential is not an object with an echoed challenge carrying an `id`, an optional string `source` and a `payload` object, carries a `refused` member, exceeds the credential size bound, or lacks a payload member the pairing reads (signature, nonce, hash, transaction, salt, channel id, authorization fields or landed logs) in the required form; or a signature or hash given to `complete` is not the required hex, or the Lightning `build` choice has no challenge with a string `id`. |
 | `mpp/credential-type` | The credential's payload `type` is not one the pairing accepts (such as `transaction`, `hash`, `authorization`, `permit2`, `transfer` or `keyAuthorization`). |
 | `mpp/credential-types` | The challenge's `credentialTypes` is not a non-empty array of types the method defines, or leaves no pairing (EVM `splits` allow only Permit2), or the credential type the buyer asks a session `build` for is not one the challenge lists. |
 | `mpp/escrow-malformed` | An EVM or Tempo session challenge's `methodDetails.escrowContract` is not an address. |
@@ -387,6 +387,8 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 
 | Code | Meaning |
 |---|---|
+| `stellar/amount-mismatch` | A Stellar `build` finds that the simulated transfer's amount is not the option's `amount` (x402) or the request's `amount` (MPP) exactly. Nothing reaches the signer. |
+| `stellar/asset-mismatch` | A Stellar `build` finds that the simulated transfer calls a token contract other than the option's `asset` (x402) or the request's `currency` (MPP). Nothing reaches the signer. |
 | `stellar/carrier-mismatch` | The option's `payTo` or the challenge's `recipient` does not carry the muxed id derived from H, or the signed transfer's recipient or muxed id is not the one the option or challenge names. |
 | `stellar/carrier-occupied` | `advertise` finds the x402 option's `payTo` not a plain account, or the MPP challenge's `recipient` already muxed. |
 | `stellar/event-malformed` | `transferEventOf` is given topics or data that do not decode as a SEP-41 `transfer` event with an address recipient within the value caps. |
@@ -396,6 +398,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/not-found` | The Stellar reader found no transaction envelope for the hash. |
 | `stellar/not-one-transfer` | The Stellar envelope does not hold exactly one `invokeHostFunction` operation calling a SEP-41 `transfer(from, to, amount)`, the payer's signed root invocation is not one such transfer with no sub-invocations, or the operation does not invoke exactly what the payer signed. |
 | `stellar/option-malformed` | An MPP Stellar challenge's `network`, `amount`, `currency`, `recipient` or `feePayer` is not of the required form, a recipient cannot take a muxed id, or `transferEventTopics` is given an address that is neither an account nor a contract. |
+| `stellar/payer-mismatch` | A Stellar `build` finds that the simulated transfer's `from` is not the choice's `payer`. Nothing reaches the signer. |
 | `stellar/peer-missing` | The optional peer dependency `@stellar/stellar-sdk` cannot be loaded. |
 | `stellar/read-first` | An MPP Stellar `hash` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
 | `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR within the value caps, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
@@ -524,7 +527,7 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/not-executed` | The Casper transaction the reference names has not executed. |
 | `casper/not-found` | The Casper reader found no transaction for the reference. |
 | `casper/option-malformed` | A Casper asset is not a contract package hash, the token name or version is not a valid name, `validBefore` is out of range, or the `now` given to `build` is not a non-negative safe integer. |
-| `casper/payload-malformed` | The presented Casper payment is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature, or its value or `validBefore` cannot be read, or H given to `cep3009TypedData` is not a valid ATR hash. |
+| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature, or its value or `validBefore` cannot be read, or H given to `cep3009TypedData` is not a valid ATR hash. |
 | `casper/reverted` | The Casper transaction executed with an error. |
 | `casper/signature-malformed` | The public key or signature given to the Casper `complete` is not tagged hex of the allowed length. |
 | `casper/unreadable` | The Casper reader threw or returned a call that is not well formed. |
@@ -698,7 +701,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 | `ln/field-length` | The invoice's `h` or `m` field is not 32 bytes. |
 | `ln/field-repeated` | The invoice carries more than one `h` field or more than one `m` field. |
 | `ln/invoice-malformed` | A BOLT11 invoice is missing or not a string, mixes case, or does not decode (bech32 checksum, prefix, field lengths, exactly one payment hash, expiry width). |
-| `ln/invoice-not-named` | The invoice-named pairing's `build` finds that the ATR's `x402` slot does not name the option's invoice. |
+| `ln/invoice-not-named` | The invoice-named pairing's `build` finds that the ATR's `x402` slot does not name the option's invoice, or that the ATR is not one JSON object whose first members are `atrVersion`, `id` and `x402` with no member name repeated. |
 | `ln/invoice-too-large` | A BOLT11 invoice exceeds 8 KiB or carries more tagged fields than the bound. |
 | `ln/no-description-hash` | The invoice has no `h` (description hash) field. |
 | `ln/no-legal-context` | The invoice-named pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |

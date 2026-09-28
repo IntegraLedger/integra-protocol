@@ -50,7 +50,9 @@ describe("each entry point that reads JSON text reads 64 levels and refuses 65",
 
   it("the ATR's named invoice: an ATR nested to 64 levels is read; 65 is not", () => {
     const atr = (n: number) =>
-      new TextEncoder().encode(`{"x402":{"accepts":[{"extra":{"invoice":"lnbc1"}}]},"seller":${nest(n - 1, "")}}`);
+      new TextEncoder().encode(
+        `{"atrVersion":"1","id":"1b4e28ba-2fa1-41d2-883f-0016d3cca427","x402":{"accepts":[{"extra":{"invoice":"lnbc1"}}]},"seller":${nest(n - 1, "")}}`,
+      );
     expect(atrNamesInvoice(atr(64), "lnbc1")).toBe(true);
     expect(atrNamesInvoice(atr(65), "lnbc1")).toBe(false);
   });
