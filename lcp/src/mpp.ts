@@ -12,6 +12,7 @@ import {
   TRANSFER_TOPIC,
   eip3009TypedData,
   evmStatus,
+  isGuardTransfer,
   permit2TypedData,
   transferDigest,
   transferParts,
@@ -183,7 +184,9 @@ const PAYMENT_WITNESS = [
 
 /**
  * `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
- * topics and `topics[0]` = `Transfer`, else failed `transfer-not-found`. At most three calls.
+ * topics and `topics[0]` = `Transfer` whose recipient is not `RECEIVE_POLICY_GUARD`. Without one, a `Transfer` from
+ * `ref.asset` to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`. At most
+ * three calls.
  */
 export async function transferPresent(
   ref: EvmRef & { transaction: Hex; asset: Hex },
@@ -202,10 +205,13 @@ export async function transferPresent(
   const s = await evmStatus({ network: ref.network, transaction: ref.transaction }, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
+  if (!isAddress(ref.asset)) return { state: "failed", why: "transfer-not-found" };
   const moved = logs.some(
-    (l) => isAddress(ref.asset) && transferParts(l, ref.asset, TRANSFER_TOPIC) !== undefined,
+    (l) => transferParts(l, ref.asset, TRANSFER_TOPIC) !== undefined && !isGuardTransfer(l, ref.asset),
   );
-  return moved ? s : { state: "failed", why: "transfer-not-found" };
+  if (moved) return s;
+  if (logs.some((l) => isGuardTransfer(l, ref.asset))) return { state: "failed", why: "receive-policy-blocked" };
+  return { state: "failed", why: "transfer-not-found" };
 }
 
 // ── Shared steps.

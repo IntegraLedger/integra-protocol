@@ -533,7 +533,8 @@ export function transferParts(log: EvmLog, address: Hex, topic0: Hex): { from: H
   return { from, to, value: uintOf(w) };
 }
 
-function isGuardTransfer(log: EvmLog, token: Hex): boolean {
+/** A `Transfer` log from `token` whose recipient is `RECEIVE_POLICY_GUARD`: a transfer a Tempo receive policy blocked. */
+export function isGuardTransfer(log: EvmLog, token: Hex): boolean {
   const p = transferParts(log, token, TRANSFER_TOPIC);
   return p !== undefined && sameAddress(p.to, RECEIVE_POLICY_GUARD);
 }
