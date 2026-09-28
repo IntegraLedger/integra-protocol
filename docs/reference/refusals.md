@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 477 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 479 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -23,7 +23,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 12 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
-| [`svm`](#svm) | 25 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
+| [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 16 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 21 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
