@@ -29,7 +29,7 @@ const PROFILES: readonly [profile: string, file: string, pairings: readonly stri
       "",
       "1. `hedera`: the escrow `open`'s `salt` is H's 32 bytes; `authorizedSigner` may be zero.",
       "2. `solana`: the `open` instruction's `salt` is H's first 8 bytes read as a little-endian u64, so its encoded bytes are H's first 8 bytes. In operator mode, `authentication.sessionChallengeId` is the opening challenge's `id`.",
-      "3. `xrpl`: the `PaymentChannelCreate` carries exactly one memo whose `MemoData` is the UTF-8 of `lcp:sha256:` followed by H.",
+      "3. `xrpl`: the `PaymentChannelCreate`, which the payer signs with a single key (a blob that carries `Signers` is refused `xrpl/multisigned`), carries exactly one memo whose `MemoData` is the UTF-8 of `lcp:sha256:` followed by H.",
       "4. The server refuses an opening that lacks its carrier, before it broadcasts where the method lets it.",
     ],
   ],
@@ -95,7 +95,7 @@ const RECORDS = [
       forwardIndexable: false,
       publicProof: true,
       proves:
-        "The payer signed an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. " +
+        "The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. " +
         `${LATER}; each signs the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.`,
     },
   ],

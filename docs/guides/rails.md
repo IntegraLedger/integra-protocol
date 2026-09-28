@@ -79,9 +79,9 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | Solana | `svm`, `x402-exact-solana`, `x402-upto-solana` | `x402/exact/solana`, `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/charge/solana`, `mpp/charge/usdc/solana` | The transaction's one Memo instruction, holding H's LCP string. |
 | | | `mpp/session/solana` | The session channel's salt: H's first 8 bytes. It binds those 8 bytes only: whoever assembles the ATR can construct a second ATR whose hash shares them. |
 | Stellar | `stellar`, `x402-exact-stellar` | `x402/exact/stellar`, `mpp/charge/stellar` | The seller's muxed address, whose 8-byte id is H's first 8 bytes, as the Soroban `transfer`'s `to`. |
-| XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. |
-| | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. |
-| | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo: H's LCP string. |
+| XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. The payer signs with a single key: a blob that carries `Signers` is refused `xrpl/multisigned`. |
+| | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. The payer signs with a single key, as for `x402/exact/xrpl`. |
+| | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo: H's LCP string. The payer signs the opening with a single key. |
 | Hedera | `hedera` | `x402/exact/hedera` | The signed transaction body's memo: H's LCP string. |
 | | | `mpp/charge/hedera` | MPP's attribution memo, as the signed body memo. |
 | | | `mpp/session/hedera` | The escrow channel's salt. |
@@ -134,6 +134,12 @@ credentials, the timeouts and the retries are yours. Each `status` makes a bound
 A reader that throws, times out, or answers for another network never makes a payment failed: `status` answers
 pending, with the reason `unreadable`, and a later read can settle it. Failed means the rail itself says so: a
 reverted, aborted or expired transaction, or one that does not carry this payment.
+
+On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
+transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
+entry leaves the payment pending while the entry is valid. Past the entry's expiration ledger, `status` searches the
+asset's transfer events to the seller: it settles on a transaction that used the entry, and answers failed `expired`
+only when that search is complete and finds none.
 
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|

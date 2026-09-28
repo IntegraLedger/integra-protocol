@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 479 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 480 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -25,7 +25,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 16 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
-| [`xrpl`](#xrpl) | 21 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
+| [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
 | [`avm`](#avm) | 12 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
@@ -410,7 +410,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 
 | Code | Meaning |
 |---|---|
-| `xrpl/blob-malformed` | An XRPL signed blob is not a string of hex, does not decode within the field caps, is not the canonical serialization of what it decodes to, lacks `TransactionType` or `Account`, or a credential or `complete` call carries no string blob. |
+| `xrpl/blob-malformed` | An XRPL signed blob is not a string of hex, nests fields deeper or holds more fields than the caps allow (checked before it is decoded), does not decode, is not the canonical serialization of what it decodes to, lacks `TransactionType` or `Account`, or a credential or `complete` call carries no string blob. |
 | `xrpl/blob-too-large` | An XRPL signed blob exceeds 4 KiB. |
 | `xrpl/carrier-mismatch` | The option's `extra.invoiceId` or the challenge's `invoiceId` is not the one derived from H when `build` is called, or the signed `Payment`'s `InvoiceID` is not the one the option or challenge names. |
 | `xrpl/carrier-not-lcp` | The x402 XRPL option's `extra.invoiceId` is not an ATR hash in LCP string form. |
@@ -418,6 +418,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/currency-not-xrp` | An MPP XRPL session challenge names a `currency` other than `XRP`. |
 | `xrpl/memo-count` | The XRPL session opening carries more than 8 memos, or more than one memo carrying an LCP string. |
 | `xrpl/memos-not-carried` | The MPP XRPL charge `build` refuses a challenge whose `methodDetails` carries `memos`. |
+| `xrpl/multisigned` | The signed blob presented to `x402/exact/xrpl`, `mpp/charge/xrpl` or the `mpp/session/xrpl` opening carries `Signers`: the XRPL pairings take a transaction the payer signed with a single key, whose transaction hash is the one that can land. |
 | `xrpl/network-malformed` | The MPP XRPL challenge's `methodDetails.network` is not one of the XRPL network names this package maps. |
 | `xrpl/network-missing` | The MPP XRPL challenge's `methodDetails` names no `network`, which has no default. |
 | `xrpl/no-invoice-id` | The XRPL `Payment` carries no `InvoiceID`, or the validated transaction a recovery reads has no 256-bit `InvoiceID`. |

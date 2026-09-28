@@ -24,7 +24,7 @@ import { ReaderError } from "../src/evm.js";
 import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
 import { issuedDigest, pairingsOf, sessionHedera, sessionSolana, sessionXrpl, type MppChallenge, type MppCredential } from "../src/mpp.js";
 import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocate, type SvmLanded, type SvmReader } from "../src/svm.js";
-import { cancelAfterOf, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
+import { cancelAfterOf, decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -446,6 +446,18 @@ describe("mpp/session/xrpl", () => {
     }
     const failing: XrplReader = { ...reader({ notFound: true, searchedAll: false }), tx: async () => { throw new ReaderError("transport"); } };
     expect(await sessionXrpl.status({ ...close, transaction: "AB".repeat(32) }, failing)).toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  it("XS5: a multi-signed opening is refused by bound, reference and the channel ref", async () => {
+    const d = await decodeBlob(V.XS5.blob);
+    if ("refused" in d) throw new Error(d.code);
+    expect(d.hash).toBe(V.XS5.hash);
+    expect((d.tx["Signers"] as unknown[]).length).toBe(3);
+    expect(d.tx.Memos).toEqual((decodeXrpl(V.XS2.blob) as { Memos: unknown }).Memos);
+    const presented = open(V.XS5.blob);
+    expect(await sessionXrpl.bound(presented)).toEqual(refused(V.XS5.expect));
+    expect(await sessionXrpl.reference(presented)).toEqual(refused(V.XS5.expect));
+    expect(await sessionXrpl.channel.ref(presented)).toEqual(refused(V.XS5.expect));
   });
 
   it("plant 3: an opening whose memo carries another hash, or no memo, is refused, never H", async () => {

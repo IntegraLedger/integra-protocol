@@ -1,10 +1,11 @@
 /**
  * The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the
- * payer signs as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by the blob's hash.
+ * payer signs with a single key as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by
+ * the blob's hash.
  */
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import {
-  decodeBlob,
+  decodePresented,
   isXrplNetwork,
   networkId,
   sameInvoice,
@@ -144,14 +145,17 @@ async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymen
   };
 }
 
-/** The option, the hash and the decoded blob of a payment, or the refusal that names what is wrong. */
+/**
+ * The option, the hash and the decoded blob of a payment, or the refusal that names what is wrong. The blob is decoded
+ * once per payload object, so `bound` and `reference` on one payment share one decode.
+ */
 async function presentedOf(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = presented["accepted"] as PaymentRequirements;
   if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
-  const blob = await decodeBlob(payload["signedTxBlob"] as string);
+  const blob = await decodePresented(payload, payload["signedTxBlob"]);
   if ("refused" in blob) return blob;
   if (blob.tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
   if (typeof blob.tx.InvoiceID !== "string") return refusal("xrpl/no-invoice-id");
@@ -162,15 +166,16 @@ async function presentedOf(presented: unknown) {
 }
 
 /**
- * The hash whose LCP string's SHA-256 is the signed `InvoiceID`. The signature is not verified here; the facilitator
- * validates it, and any change to the blob invalidates it.
+ * The hash whose LCP string's SHA-256 is the signed `InvoiceID`. A multi-signed blob is refused `xrpl/multisigned`:
+ * the payer signs with a single key. The signature is not verified here; the facilitator validates it, and any change
+ * to a single-signed blob invalidates it.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const p = await presentedOf(presented);
   return "refused" in p ? p : p.h;
 }
 
-/** The read keys for finding this payment later, all from the signed blob. */
+/** The read keys for finding this payment later, all from the single-signed blob. */
 async function reference(presented: unknown): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const p = await presentedOf(presented);
   if ("refused" in p) return p;
@@ -192,8 +197,8 @@ const pattern: LcpPattern = Object.freeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The payer signed an XRPL Payment whose InvoiceID is the SHA-256 of this ATR's hash in LCP string form, and the " +
-    "Payment is in a validated ledger with tesSUCCESS. The hash can be confirmed from the ATR's bytes but not " +
+    "The payer signed, with a single key, an XRPL Payment whose InvoiceID is the SHA-256 of this ATR's hash in LCP " +
+    "string form, and the Payment is in a validated ledger with tesSUCCESS. The hash can be confirmed from the ATR's bytes but not " +
     "recovered from the ledger alone. This does not show that amount, destination, asset or timing match the ATR's " +
     "content.",
 });

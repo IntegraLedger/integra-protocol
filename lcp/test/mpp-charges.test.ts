@@ -417,6 +417,15 @@ describe("mpp-charge-xrpl.json", () => {
     expect(await chargeXrpl.fetchPresented(push, missing)).toEqual(refused("xrpl/not-found"));
   });
 
+  it("multisigned: bound and reference refuse a blob that carries Signers", async () => {
+    for (const row of V.multisigned.rows) {
+      const cr = credential(placed, { type: "transaction", blob: row.blob });
+      expect(await chargeXrpl.bound(cr), row.case).toEqual(refused(row.expect));
+      expect(await chargeXrpl.reference(cr), row.case).toEqual(refused(row.expect));
+      expect((decodeXrpl(row.blob) as { InvoiceID: string }).InvoiceID, row.case).toBe(V.fixed.invoiceId);
+    }
+  });
+
   it("plant: a memo carrying L without InvoiceID is refused, never H", async () => {
     expect(await chargeXrpl.bound(credential(placed, { type: "transaction", blob: V.plant.blob }))).toEqual(refused(V.plant.expect));
   });

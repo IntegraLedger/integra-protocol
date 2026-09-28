@@ -150,7 +150,12 @@ The base64 XDR of the transaction with the entry signed.
 
 ### StellarStatus
 
-> **StellarStatus** = \{ `ledger`: `number`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"failed"` \| `"not-this-instrument"`; \}
+> **StellarStatus** = \{ `ledger`: `number`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"transaction-failed"` \| `"not-this-instrument"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"expired"`; \}
+
+What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded.
+`pending`: nothing final yet; `why` names what the named transaction read as (`not-found`, `transaction-failed`, a
+successful transaction that is `not-this-instrument`) or that a read failed (`unreadable`). `failed` is final:
+`expired`, the ledger is past the entry's expiration and a complete search finds no transaction that used it.
 
 ## Variables
 
@@ -268,10 +273,10 @@ elements and map entries. The walk keeps its own stack.
 > **stellarLocate**(`ref`, `reader`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
 
 Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` to
-the entry's expiration, keeping those whose muxed id is `toId`, each read as `stellarStatus` does. `complete` is
-true only when every page was read, the reader reported events enabled on each, the RPC still held `fromLedger`
-(`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed candidate whose transaction reads pending
-leaves the search incomplete. At most 10 pages and 50 candidates.
+the entry's expiration, keeping those whose muxed id is `toId`, each read as `stellarStatus` reads its named
+transaction. `complete` is true only when every page was read, the reader reported events enabled on each, the RPC
+still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed candidate whose
+transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50 candidates.
 
 #### Parameters
 
@@ -290,8 +295,13 @@ leaves the search incomplete. At most 10 pages and 50 candidates.
 
 > **stellarStatus**(`ref`, `reader`): `Promise`\<[`StellarStatus`](#stellarstatus)\>
 
-Reads a named transaction. Settled when it succeeded and its authorization entry's preimage digest and `to` id are
-the ones recorded at claim. A failed read, or a reader for another network, is pending. One call.
+Reads the instrument through a named transaction. Settled when that transaction used the authorization entry recorded
+at claim and succeeded. Otherwise the entry can still be used by another transaction until its expiration ledger, so
+a named transaction that is not found, failed, or succeeded with another entry is pending. The read is final only
+past that ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
+transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
+incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
+or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well.
 
 #### Parameters
 

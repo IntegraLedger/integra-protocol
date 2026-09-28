@@ -111,6 +111,22 @@ describe("x402-exact-xrpl.json", () => {
     }
   });
 
+  it("multisigned: bound and reference refuse a blob that carries Signers", async () => {
+    const [three, two] = V.multisigned.rows;
+    for (const row of V.multisigned.rows) {
+      const d = await decodeBlob(row.blob);
+      if ("refused" in d) throw new Error(d.code);
+      expect(d.hash, row.case).toBe(row.hash);
+      expect(await exactXrpl.bound(payment(row.blob, V.V2.accepted)), row.case).toEqual(refused(row.expect));
+      expect(await exactXrpl.reference(payment(row.blob, V.V2.accepted)), row.case).toEqual(refused(row.expect));
+    }
+    const a = decode(three.blob) as { InvoiceID: string; Sequence: number; Signers: unknown[] };
+    const b = decode(two.blob) as { InvoiceID: string; Sequence: number; Signers: unknown[] };
+    expect([a.InvoiceID, a.Sequence, a.Signers.length]).toEqual([V.V1.x402InvoiceId, 7, 3]);
+    expect([b.InvoiceID, b.Sequence, b.Signers.length]).toEqual([V.V1.x402InvoiceId, 7, 2]);
+    expect(three.hash).not.toBe(two.hash);
+  });
+
   it("plant: a memo is never read as the carrier", async () => {
     const d = await decodeBlob(V.plant.blob);
     if ("refused" in d) throw new Error(d.code);

@@ -9,6 +9,7 @@ import { ReaderError } from "../src/evm.js";
 import type { AtrHash } from "../src/index.js";
 import {
   PASSPHRASE,
+  decodeStellarTx,
   muxedFor,
   muxedId,
   stellarLocate,
@@ -30,20 +31,46 @@ const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest
 const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
 const refOf = (r: Record<string, unknown>) => r as unknown as StellarRef;
 
-function readerFor(row: { status: string; envelope?: string; ledger?: number }): StellarReader {
+type Answer = { status: string; envelope?: string; ledger?: number };
+type Row = Answer & {
+  latestLedger?: number;
+  transfers?: { events: { txHash: string }[]; complete: boolean };
+  candidate?: Answer;
+};
+
+/** A vector's envelope: the literal XDR, or the name of another vector's envelope. */
+function envelopeOf(e: string | undefined): string | undefined {
+  if (e === "plant") return V.plant.envelope;
+  if (e === "rebuilt") return V.V5.rebuilt.envelope;
+  return e;
+}
+
+/**
+ * A reader answering `getTransaction` with the row's answer (a listed transaction with the row's candidate),
+ * `getLatestLedger` with the row's latest ledger (2000 when unset), and one page of the row's transfer events, each
+ * carrying V1's muxed id (none, complete, when unset).
+ */
+function readerFor(row: Row): StellarReader {
+  const answer = (a: Answer) => {
+    if (a.status === "reader-error") throw new ReaderError("transport");
+    const envelope = envelopeOf(a.envelope);
+    return {
+      status: a.status as "SUCCESS",
+      ...(envelope !== undefined ? { envelopeXdr: envelope } : {}),
+      ...(a.ledger !== undefined ? { ledger: a.ledger } : {}),
+      oldestLedger: 1,
+    };
+  };
+  const listed = new Set((row.transfers?.events ?? []).map((e) => e.txHash));
   return {
     network: "stellar:testnet",
-    transaction: async () => {
-      if (row.status === "reader-error") throw new ReaderError("transport");
-      return {
-        status: row.status as "SUCCESS",
-        ...(row.envelope !== undefined ? { envelopeXdr: row.envelope } : {}),
-        ...(row.ledger !== undefined ? { ledger: row.ledger } : {}),
-        oldestLedger: 1,
-      };
-    },
-    transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
-    latestLedger: async () => 2000,
+    transaction: async (hash) => answer(listed.has(hash) && row.candidate !== undefined ? row.candidate : row),
+    transfers: async (f) => ({
+      events: (row.transfers?.events ?? []).map((e) => ({ txHash: e.txHash, toMuxedId: BigInt(V.V1.muxedId) })),
+      complete: row.transfers?.complete ?? true,
+      oldestLedger: f.fromLedger,
+    }),
+    latestLedger: async () => row.latestLedger ?? 2000,
   };
 }
 
@@ -127,7 +154,7 @@ describe("x402-exact-stellar.json", () => {
 
   it("V5: status and stellarLocate", async () => {
     const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    for (const row of V.V5.rows) expect(await stellarStatus(ref, readerFor(row)), row.status).toEqual(row.expect);
+    for (const row of V.V5.rows) expect(await stellarStatus(ref, readerFor(row)), row.case).toEqual(row.expect);
     const disabled: StellarReader = {
       ...readerFor(V.V5.rows[0]),
       transfers: async () => ({ events: [], complete: false, oldestLedger: 1 }),
@@ -150,6 +177,21 @@ describe("x402-exact-stellar.json", () => {
       };
       expect(await stellarLocate(ref, listed), row.case).toEqual(row.expect);
     }
+  });
+
+  it("V5 rebuilt: V3's signed entry in another transaction is the same instrument", () => {
+    const e = xdr.TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
+    if (e.type !== 2) throw new Error("not a v1 envelope");
+    e.v1.tx.sourceAccount = { type: 0, ed25519: new Uint8Array(32).fill(0x07) };
+    e.v1.tx.seqNum = 424242n;
+    e.v1.tx.fee = 5_000_000;
+    e.v1.signatures = [];
+    expect(xdr.TransactionEnvelope.fromXdrObject(e).toXdr("base64")).toBe(V.V5.rebuilt.envelope);
+    const a = decodeStellarTx(V.V3.envelope, "stellar:testnet");
+    const b = decodeStellarTx(V.V5.rebuilt.envelope, "stellar:testnet");
+    if ("refused" in a || "refused" in b) throw new Error("decode");
+    expect(b.auth.preimageHash).toBe(V.V3.expectReference.authDigest);
+    expect([b.auth.preimageHash, b.toId]).toEqual([a.auth.preimageHash, a.toId]);
   });
 
   it("V3v2: sorobanCredentialsAddressV2 decodes, builds and settles", async () => {
@@ -176,8 +218,8 @@ describe("x402-exact-stellar.json", () => {
     const ref = { ...V.V3v2.expectReference, transaction: "aa".repeat(32) } as StellarRef & { transaction: string };
     expect(await stellarStatus(ref, readerFor({ status: "SUCCESS", envelope: V.V3v2.envelope, ledger: 990 }))).toEqual(V.V3v2.expectStatus);
     const v1: StellarRef & { transaction: string } = { ...ref, authDigest: V.V3.expectReference.authDigest };
-    expect(await stellarStatus(v1, readerFor({ status: "SUCCESS", envelope: V.V3v2.envelope, ledger: 990 }))).toEqual({
-      state: "failed",
+    expect(await stellarStatus(v1, readerFor({ status: "SUCCESS", envelope: V.V3v2.envelope, ledger: 990, latestLedger: 995 }))).toEqual({
+      state: "pending",
       why: "not-this-instrument",
     });
   });
@@ -197,7 +239,7 @@ describe("x402-exact-stellar.json", () => {
 
   it("plant: the 8-byte id alone is never this payment", async () => {
     const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    const r = readerFor({ status: "SUCCESS", envelope: V.plant.envelope, ledger: 990 });
+    const r = readerFor({ status: "SUCCESS", envelope: V.plant.envelope, ledger: 990, latestLedger: V.plant.latestLedger });
     expect(await stellarStatus(ref, r)).toEqual(V.plant.expect);
   });
 });
