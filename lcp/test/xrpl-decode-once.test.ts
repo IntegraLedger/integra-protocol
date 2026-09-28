@@ -1,10 +1,10 @@
 // When ripple-binary-codec's `decode` runs: never for a blob past the nesting cap (vectors/decoder-caps.json's XC5),
-// and once for one presented payment however many times `bound` and `reference` read it. The codec's `decode` is
-// counted through a module mock that calls the real one. Expected values are the vector files'.
+// and once for one presented payment or session opening however many times `bound` and `reference` read it. The
+// codec's `decode` is counted through a module mock that calls the real one. Expected values are the vector files'.
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MppChallenge, MppCredential } from "../src/mpp.js";
-import { chargeXrpl } from "../src/mpp.js";
+import { chargeXrpl, sessionXrpl } from "../src/mpp.js";
 import { exactXrpl, type XrplPaymentPayload } from "../src/x402-exact-xrpl.js";
 import { decodeBlob } from "../src/xrpl.js";
 
@@ -24,6 +24,7 @@ const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, i
 const CAPS = load("decoder-caps.json");
 const X = load("x402-exact-xrpl.json");
 const M = load("mpp-charge-xrpl.json");
+const S = load("mpp-session-hedera-solana-xrpl.json");
 const XC5 = CAPS.xrpl.rows.find((r: { name: string }) => r.name === "XC5");
 const refused = (code: string) => ({ refused: true, code });
 
@@ -70,6 +71,15 @@ describe("one decode per presented payment", () => {
     const cr: MppCredential = { challenge, payload: { type: "transaction", blob: M.V3.blob } };
     expect(await chargeXrpl.bound(cr)).toBe(M.V3.expectBound);
     expect(await chargeXrpl.reference(cr)).toEqual(M.V3.expectReference);
+    expect(calls.decode).toBe(1);
+  });
+
+  it("mpp/session/xrpl: bound, reference and the channel ref on one opening", async () => {
+    const challenge = S.SS1.xrpl.placed as MppChallenge & { id: string };
+    const cr: MppCredential = { challenge, payload: { action: "open", transaction: S.XS2.blob, amount: "100", signature: "00" } };
+    expect(await sessionXrpl.bound(cr)).toBe(S.XS2.expectBound);
+    expect(await sessionXrpl.reference(cr)).toEqual({ network: "xrpl:1", transaction: S.XS2.expectHash, lastLedgerSequence: 1000 });
+    expect(await sessionXrpl.channel.ref(cr)).toEqual({ network: "xrpl:1", channel: S.XS2.expectChannel });
     expect(calls.decode).toBe(1);
   });
 

@@ -55,7 +55,7 @@ import {
   type XrplCloseRef,
   type XrplCloseStatus,
 } from "./internal/xrpl-session.js";
-import { decodeBlob, type XrplNetwork, type XrplReader, type XrplRef, type XrplStatus, type XrplTxJson } from "./internal/xrpl.js";
+import { decodeBlob, decodePresented, type XrplNetwork, type XrplReader, type XrplRef, type XrplStatus, type XrplTxJson } from "./internal/xrpl.js";
 import {
   checkChallenge,
   chosenFor,
@@ -663,6 +663,10 @@ function xrplLcpMemo(tx: XrplTxJson): AtrHash | Refusal {
   return found[0]!;
 }
 
+/**
+ * The opening's blob, decoded once per payload: a `PaymentChannelCreate` the payer signed with a single key (a blob that
+ * carries `Signers` is refused `xrpl/multisigned`), whose one LCP memo is the echoed challenge's H.
+ */
 async function xrplOpening(
   presented: MppCredential,
 ): Promise<{ h: AtrHash; checked: Checked; tx: XrplTxJson; hash: string; blob: string } | Refusal> {
@@ -670,7 +674,7 @@ async function xrplOpening(
   if (isRefusal(e)) return e;
   const blob = e.payload["transaction"];
   if (typeof blob !== "string") return refusal("xrpl/blob-malformed");
-  const decoded = await decodeBlob(blob);
+  const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
   if (decoded.tx.TransactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
   const h = xrplLcpMemo(decoded.tx);
@@ -715,7 +719,7 @@ async function xrplRef(presented: MppCredential): Promise<{ network: string; cha
   if (isRefusal(network)) return network;
   const blob = e.payload["transaction"];
   if (typeof blob !== "string") return refusal("xrpl/blob-malformed");
-  const decoded = await decodeBlob(blob);
+  const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
   const { tx } = decoded;
   const seq = tx["Sequence"] === 0 ? tx["TicketSequence"] : tx["Sequence"];
@@ -1013,8 +1017,8 @@ export const sessionXrpl = Object.freeze({
       buyerSigns: true,
       zeroPartyRecoverable: true,
       proves:
-        "The payer signed an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a " +
-        "validated ledger with tesSUCCESS. The memo is in the public transaction. " +
+        "The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's " +
+        "hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. " +
         LATER +
         "; each signs the channel id and an amount, not the hash. This does not show that amount, deposit, " +
         "destination, settle delay or timing match the ATR's content.",

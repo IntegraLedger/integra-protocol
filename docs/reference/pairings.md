@@ -241,7 +241,7 @@ The ATR's hash is in the MPP session challenge this channel opened under: its id
 
 ### `mpp/session/xrpl`
 
-The payer signed an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each signs the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
+The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each signs the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
 
 ### `mpp/subscription/stripe`
 

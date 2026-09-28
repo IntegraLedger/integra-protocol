@@ -418,7 +418,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/currency-not-xrp` | An MPP XRPL session challenge names a `currency` other than `XRP`. |
 | `xrpl/memo-count` | The XRPL session opening carries more than 8 memos, or more than one memo carrying an LCP string. |
 | `xrpl/memos-not-carried` | The MPP XRPL charge `build` refuses a challenge whose `methodDetails` carries `memos`. |
-| `xrpl/multisigned` | The signed blob presented to `bound` or `reference` of `x402/exact/xrpl` or `mpp/charge/xrpl` carries `Signers`: these pairings take a Payment the payer signed with a single key, whose transaction hash is the one that can land. |
+| `xrpl/multisigned` | The signed blob presented to `x402/exact/xrpl`, `mpp/charge/xrpl` or the `mpp/session/xrpl` opening carries `Signers`: the XRPL pairings take a transaction the payer signed with a single key, whose transaction hash is the one that can land. |
 | `xrpl/network-malformed` | The MPP XRPL challenge's `methodDetails.network` is not one of the XRPL network names this package maps. |
 | `xrpl/network-missing` | The MPP XRPL challenge's `methodDetails` names no `network`, which has no default. |
 | `xrpl/no-invoice-id` | The XRPL `Payment` carries no `InvoiceID`, or the validated transaction a recovery reads has no 256-bit `InvoiceID`. |

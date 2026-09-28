@@ -95,7 +95,7 @@ const RECORDS = [
       forwardIndexable: false,
       publicProof: true,
       proves:
-        "The payer signed an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. " +
+        "The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. " +
         `${LATER}; each signs the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.`,
     },
   ],
