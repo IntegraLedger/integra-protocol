@@ -550,7 +550,7 @@ Concordium (`@integraledger/lcp/ccd`).
 | `ccd/payload-kind` | The Concordium transaction's payload is neither `transferWithMemo` nor a PLT `tokenUpdate`. |
 | `ccd/rejected` | The Concordium block item was rejected. |
 | `ccd/too-large` | The Concordium signed transaction, its memo or its token operations exceed the size bound. |
-| `ccd/transaction-malformed` | The presented Concordium signed transaction is not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object. |
+| `ccd/transaction-malformed` | The presented Concordium signed transaction is not a JSON value (x402's wire form, `JSON.parse(Transaction.toJSONString(tx))`), or not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object. |
 | `ccd/unreadable` | The Concordium reader threw or returned a block item that is not well formed. |
 | `ccd/wrong-reader` | The Concordium reader answers for a different network than the reference names. |
 
