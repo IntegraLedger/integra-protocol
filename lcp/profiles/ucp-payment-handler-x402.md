@@ -636,7 +636,7 @@ as it was, and the platform may complete again.
 | **The payee** | The business settles only an option it offered, so the token goes to that option's `payTo`. |
 | **The bytes delivered** | The platform hashes the bytes it received from L, never a parsed or re-serialised copy. |
 | **What the ATR shows** | Anyone with L can read the ATR, and H is public once the payment settles. The ATR holds only what both parties may show. |
-| **Data residency** | The credential holds the payer's address and signature, and no other personal data. Under AP2 mandates, `token` also holds the payment mandate's claims (the payee, the amount and the instrument) and the public keys that signed it. |
+| **Data residency** | The credential holds the payer's address and signature, and no other personal data. Under AP2 mandates, `token` also holds the payment mandate's claims (the payee, the amount and the instrument) and, in a dSD-JWT chain, the public key each hop delegates to. |
 
 ## References
 

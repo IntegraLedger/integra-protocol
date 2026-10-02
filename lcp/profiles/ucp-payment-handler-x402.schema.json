@@ -595,6 +595,12 @@
             "maxTimeoutSeconds"
           ],
           "additionalProperties": {}
+        },
+        "token": {
+          "description": "Under UCP's AP2 Mandates extension, the payment mandate exactly as presented: AP2's SD-JWT, or its dSD-JWT chain, holding one `mandate.payment.1`. The authorization's EIP-3009 `nonce` is keccak256 of its UTF-8 bytes.",
+          "type": "string",
+          "maxLength": 65536,
+          "pattern": "^[A-Za-z0-9_.~-]+$"
         }
       },
       "required": [
