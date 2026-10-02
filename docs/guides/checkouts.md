@@ -180,6 +180,15 @@ ucp/option-not-this-checkout
 true
 ```
 
+A UCP checkout paid in x402 goes through the payment handler `com.integraledger.lcp.x402`. Its `config` in the
+checkout is the x402 `PaymentRequired` that carries H, its credential is the buyer's signed x402 payment, and the
+payment carries H where the option's x402 pairing places it. The checkout's ATR takes that pairing's binding slot, whose
+request is the checkout's completion, so the ATR names the checkout. The LCP profile
+[`ucp/payment-handler/x402`](../../lcp/profiles/ucp-payment-handler-x402.md) is the handler's specification, and
+[`ucp-payment-handler-x402.schema.json`](../../lcp/profiles/ucp-payment-handler-x402.schema.json) its schema. Their
+addresses are `https://integraledger.com/lcp/ucp/x402/2026-10-02` and
+`https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json`.
+
 ## AP2
 
 In [AP2](https://ap2-protocol.org), the merchant signs a `checkout_jwt` and the buyer's closed Checkout Mandate
