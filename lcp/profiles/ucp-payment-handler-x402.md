@@ -424,7 +424,7 @@ the severity below. The checkout's `status` follows from the severity, as UCP's 
 | `agreement-changed` | The terms changed after the payment was signed: it carries an earlier H of this checkout. | `requires_buyer_review` |
 | `payment-invalid` | The facilitator refused the payment as invalid. | `recoverable` |
 | `payment-expired` | The authorization is not valid now. | `recoverable` |
-| `insufficient-funds` | The paying account does not hold enough of the token. | `requires_buyer_input` |
+| `insufficient-funds` | The paying account does not hold enough of the token. | `recoverable` |
 | `settle-failed` | Nothing was broadcast, or the transfer failed on chain. Nothing was taken. | `recoverable` |
 | `checkout-expired` | The checkout expired before it was paid. | `unrecoverable` |
 
