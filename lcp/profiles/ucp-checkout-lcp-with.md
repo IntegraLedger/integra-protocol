@@ -3,8 +3,8 @@
 - **Extension name:** `com.integraledger.lcp.with`
 - **Version:** `2026-10-02`
 - **Extends:** `dev.ucp.shopping.checkout`
-- **Specification:** `https://integraledger.com/lcp/ucp/with/2026-10-02`, this document
-- **Schema:** `https://integraledger.com/lcp/ucp/with/2026-10-02/schema.json`
+- **Specification:** `https://lcp.integraledger.com/ucp/with/2026-10-02`, this document
+- **Schema:** `https://lcp.integraledger.com/ucp/with/2026-10-02/schema.json`
 - **UCP:** `2026-08-25`
 
 ## Overview
@@ -32,8 +32,8 @@ intersection algorithm. A response then lists it in `ucp.capabilities`.
   "com.integraledger.lcp.with": [
     {
       "version": "2026-10-02",
-      "spec": "https://integraledger.com/lcp/ucp/with/2026-10-02",
-      "schema": "https://integraledger.com/lcp/ucp/with/2026-10-02/schema.json",
+      "spec": "https://lcp.integraledger.com/ucp/with/2026-10-02",
+      "schema": "https://lcp.integraledger.com/ucp/with/2026-10-02/schema.json",
       "extends": "dev.ucp.shopping.checkout"
     }
   ]
@@ -47,8 +47,8 @@ intersection algorithm. A response then lists it in `ucp.capabilities`.
   "com.integraledger.lcp.with": [
     {
       "version": "2026-10-02",
-      "spec": "https://integraledger.com/lcp/ucp/with/2026-10-02",
-      "schema": "https://integraledger.com/lcp/ucp/with/2026-10-02/schema.json",
+      "spec": "https://lcp.integraledger.com/ucp/with/2026-10-02",
+      "schema": "https://lcp.integraledger.com/ucp/with/2026-10-02/schema.json",
       "extends": "dev.ucp.shopping.checkout"
     }
   ]
@@ -334,8 +334,8 @@ An error is one entry in the checkout's `messages[]`. While an error is `require
 
 ## References
 
-- **Extension specification:** `https://integraledger.com/lcp/ucp/with/2026-10-02`
-- **Extension schema:** `https://integraledger.com/lcp/ucp/with/2026-10-02/schema.json` (the two members, and the checkout
+- **Extension specification:** `https://lcp.integraledger.com/ucp/with/2026-10-02`
+- **Extension schema:** `https://lcp.integraledger.com/ucp/with/2026-10-02/schema.json` (the two members, and the checkout
   composed with them)
 - **LCP profiles:** `ucp/checkout/legal-context` and `ucp/payment-handler/x402`, at
   `https://github.com/IntegraLedger/integra-protocol/tree/main/lcp/profiles`

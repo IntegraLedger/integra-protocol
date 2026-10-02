@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json",
+  "$id": "https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json",
   "title": "com.integraledger.lcp.x402 payment handler",
-  "description": "The x402 payment handler for UCP, com.integraledger.lcp.x402, version 2026-10-02: its configs, instrument and credential. Specification: https://integraledger.com/lcp/ucp/x402/2026-10-02",
+  "description": "The x402 payment handler for UCP, com.integraledger.lcp.x402, version 2026-10-02: its configs, instrument and credential. Specification: https://lcp.integraledger.com/ucp/x402/2026-10-02",
   "name": "com.integraledger.lcp.x402",
   "version": "2026-10-02",
   "$defs": {
@@ -689,11 +689,11 @@
         },
         "spec": {
           "type": "string",
-          "const": "https://integraledger.com/lcp/ucp/x402/2026-10-02"
+          "const": "https://lcp.integraledger.com/ucp/x402/2026-10-02"
         },
         "schema": {
           "type": "string",
-          "const": "https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json"
+          "const": "https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json"
         },
         "id": {
           "type": "string"

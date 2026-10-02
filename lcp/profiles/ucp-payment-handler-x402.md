@@ -2,8 +2,8 @@
 
 - **Handler name:** `com.integraledger.lcp.x402`
 - **Version:** `2026-10-02`
-- **Specification:** `https://integraledger.com/lcp/ucp/x402/2026-10-02`, this document
-- **Schema:** `https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json`
+- **Specification:** `https://lcp.integraledger.com/ucp/x402/2026-10-02`, this document
+- **Schema:** `https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json`
 - **UCP:** `2026-08-25`
 
 ## Introduction
@@ -107,8 +107,8 @@ The response config is an x402 version 2 `PaymentRequired`, with four members ad
     {
       "id": "lcp_x402",
       "version": "2026-10-02",
-      "spec": "https://integraledger.com/lcp/ucp/x402/2026-10-02",
-      "schema": "https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json",
+      "spec": "https://lcp.integraledger.com/ucp/x402/2026-10-02",
+      "schema": "https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json",
       "available_instruments": [{"type": "x402"}],
       "config": {
         "environment": "sandbox",
@@ -306,8 +306,8 @@ Other members are the platform's own.
     {
       "id": "wallet_x402",
       "version": "2026-10-02",
-      "spec": "https://integraledger.com/lcp/ucp/x402/2026-10-02",
-      "schema": "https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json",
+      "spec": "https://lcp.integraledger.com/ucp/x402/2026-10-02",
+      "schema": "https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json",
       "available_instruments": [{"type": "x402"}],
       "config": {"environment": "sandbox", "x402Version": 2, "networks": ["eip155:84532"], "schemes": ["exact"]}
     }
@@ -455,8 +455,8 @@ x402's reasons, as the facilitator returns them:
 
 ## References
 
-- **Handler specification:** `https://integraledger.com/lcp/ucp/x402/2026-10-02`
-- **Handler schema:** `https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json` (the configs, the instrument and
+- **Handler specification:** `https://lcp.integraledger.com/ucp/x402/2026-10-02`
+- **Handler schema:** `https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json` (the configs, the instrument and
   the credential)
 - **LCP profiles:** `ucp/checkout/legal-context`, `x402/exact/eip155/eip3009`, `x402/auth-capture/eip155`, and the
   profile of each x402 pairing, at `https://github.com/IntegraLedger/integra-protocol/tree/main/lcp/profiles`

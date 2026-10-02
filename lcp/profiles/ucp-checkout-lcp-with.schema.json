@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://integraledger.com/lcp/ucp/with/2026-10-02/schema.json",
+  "$id": "https://lcp.integraledger.com/ucp/with/2026-10-02/schema.json",
   "name": "com.integraledger.lcp.with",
   "title": "Integra's checkout extension",
-  "description": "Extends Checkout with com.integraledger.lcp.with, what the buyer gives that UCP has no field for, which is written into the checkout's public agreement; and, in a response, com.integraledger.lcp.purchase, the purchase the checkout's payment made. Specification: https://integraledger.com/lcp/ucp/with/2026-10-02",
+  "description": "Extends Checkout with com.integraledger.lcp.with, what the buyer gives that UCP has no field for, which is written into the checkout's public agreement; and, in a response, com.integraledger.lcp.purchase, the purchase the checkout's payment made. Specification: https://lcp.integraledger.com/ucp/with/2026-10-02",
   "version": "2026-10-02",
   "$defs": {
     "with": {
