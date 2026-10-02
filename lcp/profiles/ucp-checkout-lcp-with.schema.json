@@ -1,0 +1,408 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://integraledger.com/lcp/ucp/with/2026-10-02/schema.json",
+  "name": "com.integraledger.lcp.with",
+  "title": "Integra's checkout extension",
+  "description": "Extends Checkout with com.integraledger.lcp.with, what the buyer gives that UCP has no field for, which is written into the checkout's public agreement; and, in a response, com.integraledger.lcp.purchase, the purchase the checkout's payment made. Specification: https://integraledger.com/lcp/ucp/with/2026-10-02",
+  "version": "2026-10-02",
+  "$defs": {
+    "with": {
+      "title": "What the buyer gives",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,31}$",
+        "description": "One thing the buyer gives when it buys, as a lowercase name: \"name\", \"address\", \"question\"."
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "description": "Each thing the offer asks the buyer for that UCP has no field for, by the ask's name, as a string of 1 to 1000 characters. Every value is written into the agreement, which is public."
+    },
+    "purchase": {
+      "title": "The purchase",
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "settling",
+            "paid",
+            "authorised",
+            "anchored"
+          ]
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the purchase is, in words, as the business's proof page heads it."
+        },
+        "checkout": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{16,64}$",
+          "description": "The business's id of the purchase; the checkout's `order.id`."
+        },
+        "offer": {
+          "type": "string",
+          "maxLength": 48,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "The offer's id: lowercase letters and digits in words joined by \"-\", as \"house-roast\"."
+        },
+        "atrHash": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$",
+          "description": "SHA-256 over the ATR's exact bytes: 0x and 64 lowercase hex."
+        },
+        "transaction": {
+          "description": "The payment's transaction on its network, once it is known.",
+          "type": "string",
+          "pattern": "^(?:0x[0-9a-fA-F]{64}|[0-9a-f]{64}|(?:0|[1-9][0-9]{0,18})\\.(?:0|[1-9][0-9]{0,18})\\.(?:0|[1-9][0-9]{0,18})-[0-9]{1,19}-[0-9]{9})$"
+        },
+        "network": {
+          "type": "string",
+          "pattern": "^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$",
+          "description": "The network the transaction is on, as CAIP-2."
+        },
+        "proof": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https?:\\/\\/[^\\s]+$",
+          "description": "The purchase's proof page: the business's origin, then /proof/ and H."
+        },
+        "delivery": {
+          "description": "What was bought, only in the answer to complete that settled the payment, which goes only to the payer.",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "file"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mediaType": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-f]{64}$",
+                  "description": "A SHA-256 digest: 0x and 64 lowercase hex."
+                },
+                "base64": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "name",
+                "mediaType",
+                "size",
+                "sha256",
+                "base64"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "booking"
+                },
+                "reference": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "start": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "timezone": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ics": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "pattern": "^https?:\\/\\/[^\\s]+$"
+                }
+              },
+              "required": [
+                "kind",
+                "reference",
+                "start",
+                "end",
+                "timezone",
+                "ics",
+                "url"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "access"
+                },
+                "pass": {
+                  "type": "string",
+                  "minLength": 16
+                },
+                "until": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "files": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "url": {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "pattern": "^https?:\\/\\/[^\\s]+$"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "url"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "pass",
+                "until",
+                "files"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "answer"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "pattern": "^https?:\\/\\/[^\\s]+$"
+                }
+              },
+              "required": [
+                "kind",
+                "text",
+                "url"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "order"
+                },
+                "number": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "items": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "offer": {
+                        "type": "string",
+                        "maxLength": 48,
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "The offer's id: lowercase letters and digits in words joined by \"-\", as \"house-roast\"."
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "quantity": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "offer",
+                      "name",
+                      "quantity"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "to": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{0,31}$"
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  }
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "pattern": "^https?:\\/\\/[^\\s]+$"
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "kind",
+                "number",
+                "items",
+                "to",
+                "url",
+                "note"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "capture": {
+          "description": "Authorise now, collect later: when the business collects the payment from escrow, and, once kept, how that stands.",
+          "type": "object",
+          "properties": {
+            "due": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "due",
+                "sent",
+                "collected",
+                "failed"
+              ]
+            },
+            "transaction": {
+              "type": "string",
+              "pattern": "^(?:0x[0-9a-fA-F]{64}|[0-9a-f]{64}|(?:0|[1-9][0-9]{0,18})\\.(?:0|[1-9][0-9]{0,18})\\.(?:0|[1-9][0-9]{0,18})-[0-9]{1,19}-[0-9]{9})$"
+            }
+          },
+          "required": [
+            "due"
+          ],
+          "additionalProperties": false
+        },
+        "owed": {
+          "description": "Pay later: what is owed, and when it is due.",
+          "type": "object",
+          "properties": {
+            "price": {
+              "type": "string",
+              "pattern": "^(?:[1-9][0-9]{0,6}\\.[0-9]{2}|0\\.(?:0[1-9]|[1-9][0-9]))$",
+              "description": "A real-life price in US dollars and cents, as \"18.00\": digits, a point and two digits of cents, from \"0.01\" to \"9999999.99\". No \"$\" and no thousands separator.",
+              "examples": [
+                "18.00",
+                "2.30"
+              ]
+            },
+            "due": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            }
+          },
+          "required": [
+            "price",
+            "due"
+          ],
+          "additionalProperties": false
+        },
+        "demonstration": {
+          "description": "On a test network (the payment handler's environment `sandbox`), always: the statement that the purchase is a demonstration with test money.",
+          "type": "string",
+          "const": "For demonstration only. This transaction runs on a test network with test money, and has no value."
+        }
+      },
+      "required": [
+        "state",
+        "headline",
+        "checkout",
+        "offer",
+        "atrHash",
+        "network",
+        "proof"
+      ],
+      "additionalProperties": false,
+      "description": "The purchase the checkout's payment made, in a checkout response once the payment reached the business."
+    },
+    "dev.ucp.shopping.checkout": {
+      "title": "Checkout with com.integraledger.lcp.with",
+      "description": "Checkout extended with what the buyer gives that UCP has no field for, and with the purchase its payment made.",
+      "allOf": [
+        {
+          "$ref": "https://ucp.dev/2026-08-25/schemas/shopping/checkout.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "com.integraledger.lcp.with": {
+              "$ref": "#/$defs/with",
+              "description": "What the buyer gives that UCP has no field for, by the ask's name.",
+              "ucp_request": {
+                "create": "optional",
+                "update": "optional",
+                "complete": "omit"
+              }
+            },
+            "com.integraledger.lcp.purchase": {
+              "$ref": "#/$defs/purchase",
+              "description": "The purchase, once the checkout's payment reached the business.",
+              "ucp_request": "omit"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

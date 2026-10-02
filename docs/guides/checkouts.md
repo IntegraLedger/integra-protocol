@@ -189,6 +189,12 @@ request is the checkout's completion, so the ATR names the checkout. The LCP pro
 addresses are `https://integraledger.com/lcp/ucp/x402/2026-10-02` and
 `https://integraledger.com/lcp/ucp/x402/2026-10-02/schema.json`.
 
+What the buyer gives that UCP has no field for travels in the checkout extension `com.integraledger.lcp.with`, which is
+written into the ATR, and in a response the extension also carries the purchase. The LCP profile
+[`ucp/checkout/lcp-with`](../../lcp/profiles/ucp-checkout-lcp-with.md) is its specification, at
+`https://integraledger.com/lcp/ucp/with/2026-10-02`, with its schema
+[`ucp-checkout-lcp-with.schema.json`](../../lcp/profiles/ucp-checkout-lcp-with.schema.json).
+
 ## AP2
 
 In [AP2](https://ap2-protocol.org), the merchant signs a `checkout_jwt` and the buyer's closed Checkout Mandate
