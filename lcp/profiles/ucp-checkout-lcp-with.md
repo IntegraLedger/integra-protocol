@@ -115,11 +115,18 @@ UCP's own fields come first. Only what UCP has no field for goes in this member.
 | any other | this member, under the ask's name | `$['com.integraledger.lcp.with'].<ask>` |
 
 1. A product's asks are in the catalogue's `metadata.asks`. Whatever the catalogue says, the checkout names each ask not
-   given in a `missing` error, at its path.
+   given in a `missing` error: at its path, `recoverable`, to a platform that can give it; with no path,
+   `requires_buyer_input`, to one that cannot (see "A platform that does not declare it").
 2. A platform gives each ask in UCP's field where UCP has one. The business does not read an entry of this member
    named for one of those asks.
-3. The business reads from this member only the asks its offer makes, and echoes the member as the platform set it.
+3. The business reads from this member only the asks its offer makes, and echoes the member as the platform set it,
+   less the entries rule 6 refuses.
 4. A value of only white space is not given.
+5. A value is at most 1000 characters, as the ATR holds it. A longer one is `invalid` at the ask's path, and the ask is
+   not given: nothing is cut.
+6. An entry of this member that its schema refuses is `invalid` and is not kept: a name that is not an ask's, at the
+   member's path; a value that is empty or longer than 1000 characters, at the ask's path. The response echoes only
+   what the schema allows, and the ask the entry was for is `missing`.
 5. An update replaces the member whole, as it replaces every member the platform sets. An update without it gives
    nothing in it.
 
@@ -205,10 +212,16 @@ UCP's own fields come first. Only what UCP has no field for goes in this member.
 1. The business neither reads this member from the platform's requests nor writes either member in its responses, and
    the response's `ucp.capabilities` leaves the extension out.
 2. An offer whose asks all have UCP fields is bought as it would be without the extension.
-3. An offer that asks for anything else stays `incomplete`: each such ask has a `missing` error at this member's path.
-4. The platform reads the purchase from `order` and from the order's own endpoint, not from this extension.
+3. An offer that asks for anything else asks for input the platform's API cannot send, as UCP's checkout has it under
+   "Error Handling". Each such ask has a `missing` error with severity `requires_buyer_input` and no `path`, since the
+   platform's checkout has no member for it; its `content` names the ask.
+4. The checkout's status is then `requires_escalation`, and its `continue_url` is the offer's page on the business's
+   site, which names each ask and says how to give it. The platform hands the buyer to `continue_url`.
+5. The same holds for `address`, to a platform that does not declare UCP's fulfillment extension
+   (`dev.ucp.shopping.fulfillment`), which carries it.
+6. The platform reads the purchase from `order` and from the order's own endpoint, not from this extension.
 
-#### Example: the response to a platform that does not declare it
+#### Example: the response to a platform that does not declare it, for an offer that asks for `plant` and `problem`
 
 ```json
 {
@@ -220,23 +233,22 @@ UCP's own fields come first. Only what UCP has no field for goes in this member.
       "dev.ucp.shopping.fulfillment": [{"version": "2026-08-25"}]
     }
   },
-  "status": "incomplete",
+  "status": "requires_escalation",
   "messages": [
     {
       "type": "error",
       "code": "missing",
-      "path": "$['com.integraledger.lcp.with'].plant",
-      "content": "This offer asks for \"plant\": give it in com.integraledger.lcp.with.plant. It is written into the agreement, which is public.",
-      "severity": "recoverable"
+      "content": "This offer asks for \"plant\", which UCP's checkout has no field for. A checkout carries it in Integra's checkout extension com.integraledger.lcp.with, which this platform's profile does not declare, so it cannot be given here: hand the buyer to continue_url, the offer's page, which says how to give it.",
+      "severity": "requires_buyer_input"
     },
     {
       "type": "error",
       "code": "missing",
-      "path": "$['com.integraledger.lcp.with'].problem",
-      "content": "This offer asks for \"problem\": give it in com.integraledger.lcp.with.problem. It is written into the agreement, which is public.",
-      "severity": "recoverable"
+      "content": "This offer asks for \"problem\", which UCP's checkout has no field for. A checkout carries it in Integra's checkout extension com.integraledger.lcp.with, which this platform's profile does not declare, so it cannot be given here: hand the buyer to continue_url, the offer's page, which says how to give it.",
+      "severity": "requires_buyer_input"
     }
-  ]
+  ],
+  "continue_url": "https://shop.example/products/plant-doctor"
 }
 ```
 
@@ -299,12 +311,15 @@ UCP's own fields come first. Only what UCP has no field for goes in this member.
 
 ## Errors
 
-An error is one entry in the checkout's `messages[]`. While any ask is `missing`, the checkout is `incomplete`.
+An error is one entry in the checkout's `messages[]`. While an error is `requires_buyer_input`, the checkout is
+`requires_escalation`; otherwise, while an ask is `missing` or a value `invalid`, it is `incomplete`.
 
 | `code` | `path` | Severity | When |
 |---|---|---|---|
-| `missing` | the ask's path, as the table above says | `recoverable` | An ask the offer makes is not given. |
-| `invalid` | `$['com.integraledger.lcp.with']` | `recoverable` | The member is not an object whose every value is a string. The business keeps none of it, so each ask it held is `missing`. |
+| `missing` | the ask's path, as the table above says | `recoverable` | An ask the offer makes is not given, by a platform that can give it. |
+| `missing` | none | `requires_buyer_input` | An ask the offer makes that the platform cannot give: an ask UCP has no field for, to a platform that does not declare this extension; `address`, to one that does not declare UCP's fulfillment extension. The `content` names the ask; `continue_url` is the offer's page. |
+| `invalid` | the ask's path | `recoverable` | A value longer than 1000 characters, or, in this member, an empty one. Nothing is cut: the ask is not given until a value within the limit is. |
+| `invalid` | `$['com.integraledger.lcp.with']` | `recoverable` | The member is not an object whose every value is a string: the business keeps none of it, so each ask it held is `missing`. Or an entry's name is not an ask's: that entry is not kept. |
 
 ## Security Considerations
 
@@ -313,7 +328,7 @@ An error is one entry in the checkout's `messages[]`. While any ask is `missing`
 | **Public by design** | Every value is in the ATR, which anyone with L reads, and H is on chain once the payment settles. A platform never puts in this member what the buyer may not show: no card number, password or secret. |
 | **Said before it is given** | The business says the values are public (`public_agreement`), and the platform tells the buyer before it gives one. |
 | **Bound to the payment** | The values are in the ATR whose H the payment carries, so the payment commits to them. A changed value is a new H, and a payment for the earlier one does not complete the checkout. |
-| **Read only where asked** | The business reads only the asks its offer makes, each at most 1000 characters. |
+| **Read only where asked** | The business reads only the asks its offer makes, each at most 1000 characters. A longer value is refused, never cut, so the ATR holds exactly what the buyer gave. |
 | **What was bought** | `delivery` may be a file or a pass. It is only in the answer to the request that completed with the payer's payment, never in a later read. |
 | **Data residency** | The values are what the buyer chose to give, held in a public record that cannot be withdrawn. Give the least the offer needs. |
 
