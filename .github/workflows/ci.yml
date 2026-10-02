@@ -187,3 +187,5 @@ jobs:
             test -s "$f" || { echo "missing or empty: website/$f"; exit 1; }
           done
           echo "out/index.html, out/llms.txt and out/llms-full.txt exist"
+      - name: The LCP documents the site publishes equal lcp/profiles/, each with its type and caching
+        run: node scripts/check-lcp-documents.mjs --out website/out

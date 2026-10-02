@@ -280,6 +280,10 @@ that passes them agrees with this one byte for byte. The package's own tests run
 
 The LCP profiles this package implements ship in `profiles/`, one Markdown file per profile, each stating its
 binding's rules.
+The documents among them that have an address are served at it, byte for byte, on `lcp.integraledger.com`: the A2A
+extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`; UCP's x402 payment handler at
+`https://lcp.integraledger.com/ucp/x402/2026-10-02`, and the checkout extension `com.integraledger.lcp.with` at
+`https://lcp.integraledger.com/ucp/with/2026-10-02`, each with its schema at `/schema.json` beneath.
 
 ## Requirements
 

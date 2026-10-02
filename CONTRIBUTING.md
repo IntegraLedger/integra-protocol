@@ -45,6 +45,9 @@ node scripts/docs-reference.mjs --check
   package. After a change to the registry, the exports or the vectors, run `node scripts/docs-reference.mjs` and
   commit what it writes.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder.
+- `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
+  site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
+  live site the same way, after a deploy.
 
 ## The rules the code follows
 
