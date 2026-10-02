@@ -39,3 +39,7 @@ pnpm dev         # serve it locally with live reload
 - Renders ```` ```mermaid ```` blocks as diagrams.
 - Writes `/llms.txt`, `/llms-full.txt`, each page as Markdown at `/md/<path>.md`, the search index,
   `sitemap.xml`, `robots.txt` and `/.well-known/security.txt`.
+- Then `scripts/lcp-documents.mjs` writes each LCP document, byte for byte from `../lcp/profiles/`, at its
+  address (`/ucp/x402/2026-10-02`, its `schema.json`, and the rest it lists), and gives each address its type and
+  `Cache-Control: public, max-age=86400` in `out/_headers`. A profile whose address is also its schema's folder is
+  written as `<address>.html`, which the static assets serve at the address itself.

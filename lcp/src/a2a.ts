@@ -17,7 +17,7 @@ import { refusal, type Refusal } from "./refusal.js";
 
 /** The extension's URIs, in order of preference. The first is the one written when the client activated none. */
 export const A2A_EXTENSION_URIS: readonly string[] = Object.freeze([
-  "https://integraledger.com/lcp/a2a/legal-context/v1",
+  "https://lcp.integraledger.com/a2a/legal-context/v1",
 ]);
 
 /** A2A binds nothing: the refusal given wherever an A2A pairing is asked for. */

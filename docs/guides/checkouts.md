@@ -180,6 +180,21 @@ ucp/option-not-this-checkout
 true
 ```
 
+A UCP checkout paid in x402 goes through the payment handler `com.integraledger.lcp.x402`. Its `config` in the
+checkout is the x402 `PaymentRequired` that carries H, its credential is the buyer's signed x402 payment, and the
+payment carries H where the option's x402 pairing places it. The checkout's ATR takes that pairing's binding slot, whose
+request is the checkout's completion, so the ATR names the checkout. The LCP profile
+[`ucp/payment-handler/x402`](../../lcp/profiles/ucp-payment-handler-x402.md) is the handler's specification, and
+[`ucp-payment-handler-x402.schema.json`](../../lcp/profiles/ucp-payment-handler-x402.schema.json) its schema. Their
+addresses are `https://lcp.integraledger.com/ucp/x402/2026-10-02` and
+`https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json`.
+
+What the buyer gives that UCP has no field for travels in the checkout extension `com.integraledger.lcp.with`, which is
+written into the ATR, and in a response the extension also carries the purchase. The LCP profile
+[`ucp/checkout/lcp-with`](../../lcp/profiles/ucp-checkout-lcp-with.md) is its specification, at
+`https://lcp.integraledger.com/ucp/with/2026-10-02`, with its schema
+[`ucp-checkout-lcp-with.schema.json`](../../lcp/profiles/ucp-checkout-lcp-with.schema.json).
+
 ## AP2
 
 In [AP2](https://ap2-protocol.org), the merchant signs a `checkout_jwt` and the buyer's closed Checkout Mandate
@@ -304,7 +319,7 @@ pairing, whose record states what it proves.
 
 | Export | What it does |
 |---|---|
-| `A2A_EXTENSION_URIS` | The extension's URI: `https://integraledger.com/lcp/a2a/legal-context/v1`. |
+| `A2A_EXTENSION_URIS` | The extension's URI: `https://lcp.integraledger.com/a2a/legal-context/v1`. |
 | `agentExtension({ required? })` | The Agent Card `capabilities.extensions[]` entry that declares it. |
 | `requested(header)` | Whether a request's `A2A-Extensions` header value names the extension. |
 | `place(task, h, link, header?)` | A copy of the Task with `{type, value, legalContextUrl}` in its `metadata`, under the extension's URI. Other metadata is kept. |
@@ -318,7 +333,7 @@ import { agentExtension, place, read, requested, type A2aTask } from "@integrale
 console.log(agentExtension()[0]?.uri);
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
-const header = "https://integraledger.com/lcp/a2a/legal-context/v1";
+const header = "https://lcp.integraledger.com/a2a/legal-context/v1";
 console.log(requested(header));
 
 const task: A2aTask = { id: "task-1", contextId: "ctx-1", status: { state: "input-required" }, kind: "task" };
@@ -330,7 +345,7 @@ console.log(read(task));
 ```
 
 ```text
-https://integraledger.com/lcp/a2a/legal-context/v1
+https://lcp.integraledger.com/a2a/legal-context/v1
 true
 true
 { refused: true, code: 'a2a/no-legal-context' }
