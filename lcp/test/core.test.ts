@@ -1,5 +1,6 @@
 // Expected values come from vectors/core-vectors.json and from the fixed values written below with their sources.
 import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import {
   assemble,
@@ -140,6 +141,53 @@ describe("V6 the one-byte plant", () => {
     const h = await hash(fromHex(plant.bytesHex!));
     expect(h).toBe(plant.expectHash);
     expect(hashEquals(h, vector("V1").expectHash)).toBe(false);
+  });
+});
+
+describe("hash takes a Uint8Array", () => {
+  // FIPS 180-2 appendix B.1: SHA-256 of the three bytes "abc".
+  const ABC = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+  const otherRealm = (bytes: Uint8Array): Uint8Array =>
+    runInNewContext(`new Uint8Array(${JSON.stringify([...bytes])})`) as Uint8Array;
+
+  it("hashes a Buffer and a Uint8Array from another realm as their bytes", async () => {
+    const abc = otherRealm(utf8("abc"));
+    expect(abc instanceof Uint8Array).toBe(false);
+    expect(await hash(utf8("abc"))).toBe(ABC);
+    expect(await hash(Buffer.from("abc"))).toBe(ABC);
+    expect(await hash(abc)).toBe(ABC);
+  });
+  it("rejects with a TypeError for anything that is not a Uint8Array", async () => {
+    const abc = utf8("abc");
+    for (const value of [
+      "abc",
+      "5",
+      "1e10",
+      1,
+      null,
+      undefined,
+      {},
+      [97, 98, 99],
+      { length: 3 },
+      abc.slice().buffer,
+      new Uint16Array([0x6261]),
+      new Uint8ClampedArray(abc),
+      new DataView(abc.slice().buffer),
+    ]) {
+      await expect(hash(value as never)).rejects.toThrow(TypeError);
+    }
+  });
+  it("assemble takes a party's bytes from another realm", async () => {
+    const v = vector("V1");
+    const content = v.content!.map(([slot, hex]) => [slot, otherRealm(fromHex(hex))] as const);
+    const out = await assemble(v.id!, v.binding!, content);
+    if ("refused" in out) throw new Error(out.code);
+    expect(out.atrHash).toBe(v.expectHash);
+  });
+  it("fromRawBytes takes 32 bytes from another realm, and no array of numbers", () => {
+    const raw = fromHex(ABC.slice(2));
+    expect(fromRawBytes(otherRealm(raw))).toBe(ABC);
+    expect(fromRawBytes([...raw] as never)).toBeNull();
   });
 });
 

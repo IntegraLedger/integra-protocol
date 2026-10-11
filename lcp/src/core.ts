@@ -69,7 +69,7 @@ export async function assemble(
     if (slot === "atrVersion" || slot === "id" || slot === bindingSlot) return refuse("core/slot-reserved");
     if (seen.has(slot)) return refuse("core/slot-duplicate");
     seen.add(slot);
-    if (!(bytes instanceof Uint8Array)) return refuse("core/content-not-json");
+    if (!isBytes(bytes)) return refuse("core/content-not-json");
   }
 
   if (!isSerialisable(bindingValue, 0, true)) return refuse("core/binding-not-json");
@@ -99,8 +99,20 @@ export async function assemble(
   return { bytes: out, atrHash: await hash(out) };
 }
 
-/** SHA-256 over the bytes as given, as `0x` and lowercase hex. */
+/**
+ * True for a `Uint8Array`, a `Buffer` included, from this realm or another (a `vm` context, a test runner's sandbox).
+ * An `ArrayBuffer`, another typed array, an array and an array-like are false.
+ */
+function isBytes(x: unknown): x is Uint8Array {
+  return x instanceof Uint8Array || (ArrayBuffer.isView(x) && x.constructor?.name === "Uint8Array");
+}
+
+/**
+ * SHA-256 over the bytes as given, as `0x` and lowercase hex. Rejects with a TypeError when `bytes` is not a
+ * `Uint8Array`.
+ */
 export async function hash(bytes: Uint8Array): Promise<AtrHash> {
+  if (!isBytes(bytes)) throw new TypeError("not a Uint8Array");
   const view = bytes.buffer instanceof ArrayBuffer ? (bytes as Uint8Array<ArrayBuffer>) : new Uint8Array(bytes);
   const digest = await crypto.subtle.digest("SHA-256", view);
   return toHex(new Uint8Array(digest));
@@ -513,6 +525,6 @@ export function toRawBytes(h: AtrHash): Uint8Array {
 
 /** The lowercase hash of exactly 32 raw bytes, or null. */
 export function fromRawBytes(b: Uint8Array): AtrHash | null {
-  if (!(b instanceof Uint8Array) || b.length !== 32) return null;
+  if (!isBytes(b) || b.length !== 32) return null;
   return toHex(b);
 }

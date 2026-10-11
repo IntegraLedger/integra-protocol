@@ -7,7 +7,7 @@ description: SHA-256 over the ATR's exact bytes, the forms it is written in, and
 
 The **ATR hash (H)** is SHA-256 over the ATR's exact bytes: the bytes the seller serves, as they arrive. Nothing is
 parsed, trimmed or re-encoded before hashing. `hash(bytes)` computes it, and `assemble` returns it beside the bytes it
-wrote.
+wrote. `hash` takes the bytes as a `Uint8Array` and rejects with a `TypeError` for any other value, a string included.
 
 Every ATR carries its own random `id`, so two ATRs with the same terms still have different hashes. H is unpredictable
 before the seller issues it and unique to one transaction.
