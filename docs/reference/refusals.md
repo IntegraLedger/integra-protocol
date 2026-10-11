@@ -47,10 +47,10 @@ The core: `assemble` and the JSON checks under it.
 
 | Code | Meaning |
 |---|---|
-| `core/binding-not-json` | `assemble` refuses a binding value that is not serialisable JSON with safe-integer numbers and at most 64 levels of nesting. |
-| `core/content-not-json` | `assemble` refuses party content that is not a `Uint8Array` holding exactly one JSON value, and `canonicalJson` and `digestJson` refuse a value that is not JSON (deeper than 64 levels, a non-finite number, a string with an unpaired surrogate, or a non-JSON type). |
+| `core/binding-not-json` | `assemble` refuses an `id` that is not a string, or a binding value that is not serialisable JSON with safe-integer numbers and at most 64 levels of nesting. |
+| `core/content-not-json` | `assemble` refuses a `content` that is not an array, or party content that is not a `Uint8Array` holding exactly one JSON value, and `canonicalJson` and `digestJson` refuse a value that is not JSON (deeper than 64 levels, a non-finite number, a string with an unpaired surrogate, or a non-JSON type). |
 | `core/slot-duplicate` | `assemble` refuses two party slots with the same name. |
-| `core/slot-name` | `assemble` refuses a binding slot or party slot name that is not a string of 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` starting with a letter or digit. |
+| `core/slot-name` | `assemble` refuses a binding or a party slot that is not an array of two, or a binding slot or party slot name that is not a string of 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` starting with a letter or digit. |
 | `core/slot-reserved` | `assemble` refuses a slot named `atrVersion` or `id`, or a party slot that reuses the binding slot's name. |
 | `core/too-large` | `assemble` refuses a `maxBytes` limit that is not a non-negative safe integer, more than 64 party slots, or an ATR whose bytes would exceed the limit (at most 1 MiB). |
 

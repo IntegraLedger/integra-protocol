@@ -30,7 +30,15 @@ type Vector = {
 };
 const file = JSON.parse(readFileSync(new URL("../vectors/core-vectors.json", import.meta.url), "utf8")) as {
   vectors: Vector[];
-  refusals: { name: string; contentHex?: string; expect: string }[];
+  refusals: {
+    name: string;
+    contentHex?: string;
+    id?: unknown;
+    binding?: unknown;
+    content?: unknown;
+    expect?: string;
+    expectHash?: string;
+  }[];
 };
 const vector = (name: string): Vector => file.vectors.find((v) => v.name === name)!;
 const refusalOf = (name: string) => file.refusals.find((r) => r.name === name)!;
@@ -132,6 +140,81 @@ describe("V5 plants: refusals", () => {
     expect(over).toEqual({ refused: true, code: refusalOf("V5e").expect });
     const fits = await assemble(v1.id!, v1.binding!, content, { maxBytes: 190 });
     expect("refused" in fits).toBe(false);
+  });
+  it("V5f a binding that is not an array of two", async () => {
+    const row = refusalOf("V5f");
+    for (const binding of [row.binding, undefined, {}, "x", ["bind"], ["bind", {}, 1]]) {
+      expect(await assemble(v1.id!, binding as never, content)).toEqual({ refused: true, code: row.expect });
+    }
+  });
+  it("V5g content that is not an array", async () => {
+    const row = refusalOf("V5g");
+    for (const c of [row.content, undefined, {}, "ab"]) {
+      expect(await assemble(v1.id!, v1.binding!, c as never)).toEqual({ refused: true, code: row.expect });
+    }
+  });
+  it("V5h a content entry that is not an array of two", async () => {
+    const row = refusalOf("V5h");
+    expect(await assemble(v1.id!, v1.binding!, row.content as never)).toEqual({ refused: true, code: row.expect });
+    for (const entry of [undefined, {}, "ab", ["terms"], ["terms", utf8("1"), 1]]) {
+      expect(await assemble(v1.id!, v1.binding!, [content[0]!, entry as never])).toEqual({
+        refused: true,
+        code: row.expect,
+      });
+    }
+  });
+  it("V5i and V5j an id that is not a string", async () => {
+    expect(await assemble(refusalOf("V5i").id as never, v1.binding!, content)).toEqual({
+      refused: true,
+      code: refusalOf("V5i").expect,
+    });
+    for (const id of [undefined, null, {}, ["6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40"]]) {
+      expect(await assemble(id as never, v1.binding!, content)).toEqual({ refused: true, code: refusalOf("V5j").expect });
+    }
+  });
+  it("V5k a party's bytes behind an accessor are read once, and those bytes are written", async () => {
+    const row = refusalOf("V5k");
+    const terms = content[0]!;
+    for (const later of [
+      utf8('"Pay 10000 base units of USDC for one report!"'),
+      utf8('"Pay 10000 base units of USDC for one report, and one more."'),
+    ]) {
+      let reads = 0;
+      const entry = [terms[0]];
+      Object.defineProperty(entry, 1, { enumerable: true, get: () => (++reads === 1 ? terms[1] : later) });
+      const out = await assemble(v1.id!, v1.binding!, [entry as never, content[1]!]);
+      if ("refused" in out) throw new Error(out.code);
+      expect(reads).toBe(1);
+      expect(out.atrHash).toBe(row.expectHash);
+    }
+  });
+  it("V5l a binding member behind an accessor is read once, in the walk that checks and writes it", async () => {
+    const row = refusalOf("V5l");
+    let reads = 0;
+    const value = {
+      k: "v",
+      get n() {
+        return ++reads === 1 ? 7 : 1.5;
+      },
+      list: ["a", "b"],
+    };
+    const out = await assemble(v1.id!, ["bind", value as never], content);
+    if ("refused" in out) throw new Error(out.code);
+    expect(reads).toBe(1);
+    expect(out.atrHash).toBe(row.expectHash);
+    expect(new TextDecoder().decode(out.bytes)).not.toContain("1.5");
+  });
+  it("never calls a binding member's toJSON", async () => {
+    let reads = 0;
+    const value = {
+      get toJSON() {
+        return ++reads === 1 ? "x" : () => 1;
+      },
+    };
+    const out = await assemble(v1.id!, ["bind", value as never], []);
+    if ("refused" in out) throw new Error(out.code);
+    expect(reads).toBe(1);
+    expect(new TextDecoder().decode(out.bytes)).toBe(`{"atrVersion":"1","id":"${v1.id}","bind":{"toJSON":"x"}}`);
   });
 });
 

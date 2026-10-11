@@ -72,12 +72,19 @@ first rule an input breaks:
 
 | Rule | Refusal |
 |---|---|
+| `id` is a string. | `core/binding-not-json` |
+| `binding` is an array of two, the slot name and the value, and so is each party slot in `content`, the name and the bytes. | `core/slot-name` |
+| `content` is an array. | `core/content-not-json` |
 | Every slot name matches `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. | `core/slot-name` |
 | No slot is named `atrVersion` or `id`, and no party slot takes the binding slot's name. | `core/slot-reserved` |
 | No two party slots share a name. | `core/slot-duplicate` |
-| Each party slot's bytes are well-formed UTF-8 without a byte-order mark, and hold exactly one JSON value (RFC 8259) nested at most 64 levels deep. | `core/content-not-json` |
+| Each party slot's bytes are a `Uint8Array` of well-formed UTF-8 without a byte-order mark, and hold exactly one JSON value (RFC 8259) nested at most 64 levels deep. | `core/content-not-json` |
 | The binding value is a JSON value that `JSON.stringify` writes exactly: every number a safe integer, every string free of unpaired surrogates, nested at most 64 levels deep. | `core/binding-not-json` |
 | At most 64 party slots, and the whole record at most `limits.maxBytes` bytes (1 MiB by default, and never more than 1 MiB). | `core/too-large` |
+
+`assemble` reads each input once, each member of the binding value included, in the one walk that checks the binding
+value and writes it. The value read from an input behind an accessor is the value checked and written, and `toJSON`
+is never called.
 
 ## Who stores it
 

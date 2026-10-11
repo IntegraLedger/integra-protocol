@@ -46,7 +46,26 @@ export function newAtrId(): string {
 
 /**
  * Writes the ATR's bytes and hashes them. The same inputs always give the same bytes. Every problem with the inputs
- * is returned as a refusal.
+ * is returned as a refusal, from the first check that fails, in this order:
+ *
+ * 1. `limits.maxBytes`, when given, is a non-negative safe integer (`core/too-large`). The limit applied is the
+ *    smaller of it and 1 MiB.
+ * 2. `id` is a string (`core/binding-not-json`), `binding` is an array of two (`core/slot-name`), and `content` is an
+ *    array (`core/content-not-json`).
+ * 3. The binding's slot name matches the slot-name pattern (`core/slot-name`) and is not `atrVersion` or `id`
+ *    (`core/slot-reserved`).
+ * 4. There are at most 64 party slots (`core/too-large`).
+ * 5. Each party slot, in the order given, is an array of two (`core/slot-name`); its name matches the pattern
+ *    (`core/slot-name`), is not `atrVersion`, `id` or the binding's slot name (`core/slot-reserved`) and has not
+ *    appeared before (`core/slot-duplicate`); its bytes are a `Uint8Array` (`core/content-not-json`).
+ * 6. The binding value is a JSON value `JSON.stringify` writes exactly, every number a safe integer, nested at most 64
+ *    levels (`core/binding-not-json`).
+ * 7. The assembled length is at most the limit (`core/too-large`).
+ * 8. Each party's bytes, in order, are one JSON value (`core/content-not-json`).
+ *
+ * Each input is read once: each array's length and members, each party's name and bytes, and each member of the
+ * binding value, in the one walk that checks the value and writes it. What is checked is what is written, an input
+ * behind an accessor included.
  */
 export async function assemble(
   id: string,
@@ -58,45 +77,62 @@ export async function assemble(
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) return refuse("core/too-large");
   const limit = Math.min(maxBytes, MIB);
 
-  const [bindingSlot, bindingValue] = binding;
+  if (typeof id !== "string") return refuse("core/binding-not-json");
+  if (!isPair(binding)) return refuse("core/slot-name");
+  if (!Array.isArray(content)) return refuse("core/content-not-json");
+
+  const bindingSlot: unknown = binding[0];
+  const bindingValue: unknown = binding[1];
   if (typeof bindingSlot !== "string" || !SLOT_NAME.test(bindingSlot)) return refuse("core/slot-name");
   if (bindingSlot === "atrVersion" || bindingSlot === "id") return refuse("core/slot-reserved");
-  if (content.length > MAX_PARTY_SLOTS) return refuse("core/too-large");
+  const count: number = content.length;
+  if (count > MAX_PARTY_SLOTS) return refuse("core/too-large");
 
+  const names: Uint8Array[] = [];
+  const parts: Uint8Array[] = [];
   const seen = new Set<string>();
-  for (const [slot, bytes] of content) {
+  for (let i = 0; i < count; i++) {
+    const entry: unknown = content[i];
+    if (!isPair(entry)) return refuse("core/slot-name");
+    const slot: unknown = entry[0];
+    const bytes: unknown = entry[1];
     if (typeof slot !== "string" || !SLOT_NAME.test(slot)) return refuse("core/slot-name");
     if (slot === "atrVersion" || slot === "id" || slot === bindingSlot) return refuse("core/slot-reserved");
     if (seen.has(slot)) return refuse("core/slot-duplicate");
     seen.add(slot);
     if (!isBytes(bytes)) return refuse("core/content-not-json");
+    names.push(utf8.encode(`,${JSON.stringify(slot)}:`));
+    parts.push(bytes);
   }
 
-  if (!isSerialisable(bindingValue, 0, true)) return refuse("core/binding-not-json");
-  const head = utf8.encode(
-    `{"atrVersion":"1","id":${JSON.stringify(String(id))},${JSON.stringify(bindingSlot)}:${JSON.stringify(bindingValue)}`,
-  );
+  const value = writeJson(bindingValue, 0, true, false);
+  if (value === undefined) return refuse("core/binding-not-json");
+  const head = utf8.encode(`{"atrVersion":"1","id":${JSON.stringify(id)},${JSON.stringify(bindingSlot)}:${value}`);
 
-  const names = content.map(([slot]) => utf8.encode(`,${JSON.stringify(slot)}:`));
   let total = head.length + 1;
-  for (let i = 0; i < content.length; i++) total += names[i]!.length + content[i]![1].length;
+  for (let i = 0; i < parts.length; i++) total += names[i]!.length + parts[i]!.length;
   if (total > limit) return refuse("core/too-large");
 
-  for (const [, bytes] of content) {
+  for (const bytes of parts) {
     if (!isOneJsonValue(bytes)) return refuse("core/content-not-json");
   }
 
   const out = new Uint8Array(total);
   out.set(head, 0);
   let at = head.length;
-  for (let i = 0; i < content.length; i++) {
+  for (let i = 0; i < parts.length; i++) {
     out.set(names[i]!, at);
     at += names[i]!.length;
-    out.set(content[i]![1], at);
-    at += content[i]![1].length;
+    out.set(parts[i]!, at);
+    at += parts[i]!.length;
   }
   out[at] = 0x7d;
   return { bytes: out, atrHash: await hash(out) };
+}
+
+/** True for an array of exactly two members. */
+function isPair(x: unknown): x is readonly [unknown, unknown] {
+  return Array.isArray(x) && x.length === 2;
 }
 
 /**
@@ -133,43 +169,49 @@ export async function digestJson(v: Json): Promise<`0x${string}` | CoreRefusal> 
  * primitive written as `JSON.stringify` writes it. Refuses what `digestJson` refuses.
  */
 export function canonicalJson(v: Json): string | CoreRefusal {
-  if (!isSerialisable(v, 0, false)) return refuse("core/content-not-json");
-  return canonical(v);
-}
-
-function canonical(v: Json): string {
-  if (v === null || typeof v !== "object") return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${(v as readonly Json[]).map(canonical).join(",")}]`;
-  const o = v as { readonly [k: string]: Json };
-  const keys = Object.keys(o).sort();
-  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonical(o[k]!)}`).join(",")}}`;
+  return writeJson(v, 0, false, true) ?? refuse("core/content-not-json");
 }
 
 /**
- * True when `v` is a JSON value that `JSON.stringify` writes exactly, with every string free of unpaired surrogates
- * and nesting at most 64 levels. With `integersOnly`, every number must be a safe integer; otherwise it must be
- * finite.
+ * `v` written as JSON in one walk that checks each member as it reads it, reading each member once; undefined when `v`
+ * is not a JSON value this package writes. A value is null, a boolean, a string free of unpaired surrogates, a number
+ * (with `integersOnly` a safe integer, otherwise finite), an array with no holes, or an object whose prototype is
+ * `Object.prototype` or null, with no symbol-keyed property and no key holding an unpaired surrogate; arrays and
+ * objects nest at most 64 levels. Each primitive is written as `JSON.stringify` writes it, and object members in the
+ * order given or, with `sorted`, by the UTF-16 code units of their names. `toJSON` is never called.
  */
-function isSerialisable(v: unknown, depth: number, integersOnly: boolean): boolean {
-  if (v === null || typeof v === "boolean") return true;
-  if (typeof v === "string") return v.isWellFormed();
-  if (typeof v === "number") return integersOnly ? Number.isSafeInteger(v) : Number.isFinite(v);
-  if (typeof v !== "object") return false;
-  if (depth >= MAX_JSON_DEPTH) return false;
+function writeJson(v: unknown, depth: number, integersOnly: boolean, sorted: boolean): string | undefined {
+  if (v === null || typeof v === "boolean") return JSON.stringify(v);
+  if (typeof v === "string") return v.isWellFormed() ? JSON.stringify(v) : undefined;
+  if (typeof v === "number") {
+    return (integersOnly ? Number.isSafeInteger(v) : Number.isFinite(v)) ? JSON.stringify(v) : undefined;
+  }
+  if (typeof v !== "object") return undefined;
+  if (depth >= MAX_JSON_DEPTH) return undefined;
   if (Array.isArray(v)) {
-    for (let i = 0; i < v.length; i++) {
-      if (!(i in v) || !isSerialisable(v[i], depth + 1, integersOnly)) return false;
+    const length: number = v.length;
+    const items: string[] = [];
+    for (let i = 0; i < length; i++) {
+      if (!(i in v)) return undefined;
+      const item = writeJson(v[i], depth + 1, integersOnly, sorted);
+      if (item === undefined) return undefined;
+      items.push(item);
     }
-    return true;
+    return `[${items.join(",")}]`;
   }
   const proto = Object.getPrototypeOf(v);
-  if (proto !== Object.prototype && proto !== null) return false;
-  if (Object.getOwnPropertySymbols(v).length > 0) return false;
-  for (const k of Object.keys(v)) {
-    if (!k.isWellFormed()) return false;
-    if (!isSerialisable((v as Record<string, unknown>)[k], depth + 1, integersOnly)) return false;
+  if (proto !== Object.prototype && proto !== null) return undefined;
+  if (Object.getOwnPropertySymbols(v).length > 0) return undefined;
+  const keys = Object.keys(v);
+  if (sorted) keys.sort();
+  const members: string[] = [];
+  for (const k of keys) {
+    if (!k.isWellFormed()) return undefined;
+    const member = writeJson((v as Record<string, unknown>)[k], depth + 1, integersOnly, sorted);
+    if (member === undefined) return undefined;
+    members.push(`${JSON.stringify(k)}:${member}`);
   }
-  return true;
+  return `{${members.join(",")}}`;
 }
 
 /**

@@ -1,5 +1,5 @@
 {
- "about": "Core vectors for assemble, hash and hashEquals. Expected values were computed 2026-09-25 with sha256sum, openssl dgst -sha256, Python 3 json and Node v24.21.0 JSON.stringify. Content bytes are given as hex so that they are exact.",
+ "about": "Core vectors for assemble, hash and hashEquals. Expected values were computed 2026-09-25 with sha256sum, openssl dgst -sha256, Python 3 json and Node v24.21.0 JSON.stringify. Content bytes are given as hex so that they are exact. A refusals row gives its input where JSON can hold it. A row whose input sits behind an accessor describes it in its case and expects V1's hash: assemble reads each input once and writes what it read.",
  "vectors": [
   {
    "name": "V1",
@@ -96,6 +96,47 @@
    "name": "V5e",
    "case": "assembled ATR over maxBytes",
    "expect": "core/too-large"
+  },
+  {
+   "name": "V5f",
+   "case": "binding null, not an array of two",
+   "binding": null,
+   "expect": "core/slot-name"
+  },
+  {
+   "name": "V5g",
+   "case": "content null, not an array",
+   "content": null,
+   "expect": "core/content-not-json"
+  },
+  {
+   "name": "V5h",
+   "case": "a content entry null, not an array of two",
+   "content": [
+    null
+   ],
+   "expect": "core/slot-name"
+  },
+  {
+   "name": "V5i",
+   "case": "id the number 5, not a string",
+   "id": 5,
+   "expect": "core/binding-not-json"
+  },
+  {
+   "name": "V5j",
+   "case": "id undefined, not a string",
+   "expect": "core/binding-not-json"
+  },
+  {
+   "name": "V5k",
+   "case": "V1's inputs with the terms party's bytes behind an accessor that gives V1's bytes on its first read and other bytes on every later read: the ATR is V1's",
+   "expectHash": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f"
+  },
+  {
+   "name": "V5l",
+   "case": "V1's inputs with the binding value's n behind an accessor that gives 7 on its first read and 1.5 on every later read: the ATR is V1's, and never holds 1.5",
+   "expectHash": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f"
   }
  ],
  "links": {
