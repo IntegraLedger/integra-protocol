@@ -441,13 +441,15 @@ async function stacksBinding(
   if (wire.length === 0 || wire.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
   const peer = await stacksPeer();
   if (peer === undefined) return refusal("stacks/peer-missing");
+  // Decoding accepts a multisig key field that is not a point on the curve; re-serialising it throws. Either is a
+  // transaction that does not decode and re-serialise to the same bytes.
   let tx: Decoded;
   try {
     tx = peer.deserializeTransaction(wire);
+    if (!equalBytes(peer.serializeTransactionBytes(tx), wire)) return refusal("mpp/stacks-tx-malformed");
   } catch {
     return refusal("mpp/stacks-tx-malformed");
   }
-  if (!equalBytes(peer.serializeTransactionBytes(tx), wire)) return refusal("mpp/stacks-tx-malformed");
   const memo = memoArgument(e.h)!;
   const payload = tx.payload as { payloadType?: unknown; functionName?: { content?: unknown }; functionArgs?: unknown };
   if (payload.payloadType !== peer.PayloadType.ContractCall || payload.functionName?.content !== "transfer") {

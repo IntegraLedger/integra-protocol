@@ -113,6 +113,53 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     }
   });
 
+  // SIP-005: a multisig spending condition's public-key field holds a compressed secp256k1 point, 0x02 or 0x03 and its
+  // x. Where x^3 + 7 has no square root modulo the field prime (SEC 2, 2.4.1), no point has that x, and the transaction
+  // does not decode and re-serialise to the same bytes.
+  it("bound and reference refuse a multisig transaction whose key field is not a point on the curve", async () => {
+    const [address, name] = F.contract.split(".");
+    const publicKey = S.privateKeyToPublic(KEY) as string;
+    const tx = await S.makeUnsignedContractCall({
+      contractAddress: address,
+      contractName: name,
+      functionName: "transfer",
+      functionArgs: [
+        S.uintCV(BigInt(F.amount)),
+        S.principalCV(F.sender),
+        S.principalCV(F.recipient),
+        S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex"))),
+      ],
+      network: "testnet",
+      fee: BigInt(F.fee),
+      nonce: BigInt(F.nonce),
+      numSignatures: 1,
+      publicKeys: [publicKey],
+      postConditionMode: S.PostConditionMode.Deny,
+      postConditions: [S.Pc.principal(F.sender).willSendEq(BigInt(F.amount)).ft(F.contract, F.asset)],
+    });
+    tx.anchorMode = S.AnchorMode.OnChainOnly;
+    const condition = tx.auth.spendingCondition as { fields: unknown[] };
+    condition.fields = [S.createTransactionAuthField(S.PubKeyEncoding.Compressed, S.createStacksPublicKey(publicKey))];
+    const multisig = S.serializeTransactionBytes(tx);
+    expect(await chargeUsdcStacks.bound(credential(multisig))).toBe(V.M4.expectBound);
+
+    const p = 2n ** 256n - 2n ** 32n - 977n;
+    const pow = (b: bigint, e: bigint): bigint => {
+      let r = 1n;
+      for (let x = b % p, k = e; k > 0n; k >>= 1n, x = (x * x) % p) if (k & 1n) r = (r * x) % p;
+      return r;
+    };
+    const x = 5n;
+    expect(pow(x ** 3n + 7n, (p - 1n) / 2n)).toBe(p - 1n);
+    const field = `00${publicKey}`;
+    const at = hex(multisig).indexOf(field, 2);
+    expect(at % 2).toBe(0);
+    const offCurve = Uint8Array.from(multisig);
+    offCurve.set(Buffer.from(`02${x.toString(16).padStart(64, "0")}`, "hex"), (at - 2) / 2 + 1);
+    expect(await chargeUsdcStacks.bound(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+    expect(await chargeUsdcStacks.reference(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+  });
+
   it("reference gives the read keys, and survives JSON", async () => {
     const ref = await chargeUsdcStacks.reference(credential(await withMemo()));
     expect(ref).toEqual(V.M4.expectReference);
