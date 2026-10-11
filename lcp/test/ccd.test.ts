@@ -152,6 +152,42 @@ describe("x402/exact/ccd", () => {
     expect(await exactCcd.reference(V.D3.plt.payment)).toEqual(V.D4.plt.expect);
   });
 
+  describe("D4: a receiver or amount bound does not read gives H from bound and a refusal from reference", () => {
+    type Row = { case: string; base: "ccd" | "plt"; set: Record<string, unknown>; expectBound: string; expectReference: unknown };
+    const rows = V.D4.rows as Row[];
+    for (const row of rows) {
+      it(row.case, async () => {
+        const payment = set(V.D3[row.base].payment, row.set) as CcdPaymentPayload;
+        expect(await exactCcd.bound(payment)).toBe(row.expectBound);
+        expect(await exactCcd.reference(payment)).toEqual(row.expectReference);
+      });
+    }
+
+    it("the rows' inputs, read with bs58check 4.0.0 and cborg 6.1.2", () => {
+      expect(rows.map((r) => r.expectBound)).toEqual(rows.map(() => H));
+      const value = (r: Row) => Object.values(r.set)[0];
+      const address = rows.find((r) => "payload.signedTransaction.payload.toAddress" in r.set)!;
+      expect(() => bs58check.decode(value(address) as string)).toThrow();
+      expect(rows.map(value)).toContain((1n << 64n).toString());
+
+      const tags: cborg.TagDecoder[] = [];
+      for (const t of [4, 5, 24, 40305, 40306, 40307]) tags[t] = (decode) => ({ tag: t, v: decode() });
+      const transfer = (ops: string) =>
+        (cborg.decode(bytes(ops), { tags, useMaps: true }) as Map<string, Map<string, { tag: number; v: unknown }>>[])[0]!.get("transfer")!;
+      const signed = transfer(V.D3.plt.payment.payload.signedTransaction.payload.operations);
+      const changed = rows.filter((r) => r.base === "plt").map((r) => transfer(value(r) as string));
+      expect(changed.map((t) => [t.get("recipient")!.tag, t.get("amount")!.tag])).toEqual([
+        [40306, 4],
+        [40307, 5],
+      ]);
+      for (const t of changed) {
+        expect(t.get("memo")).toEqual(signed.get("memo"));
+        expect(t.get("recipient")!.v).toEqual(signed.get("recipient")!.v);
+        expect(t.get("amount")!.v).toEqual(signed.get("amount")!.v);
+      }
+    });
+  });
+
   describe("D5: status and recover", () => {
     for (const row of V.D5.rows) {
       it(row.case, async () => {

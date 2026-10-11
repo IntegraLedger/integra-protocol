@@ -11,7 +11,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { canonicalJson, fromLcpString, hash, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
-import { decodeCbor, isMap, isTag, mapGet, type Cbor } from "./cbor.js";
+import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -297,29 +297,38 @@ async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
   };
 }
 
-/** What `bound` and `reference` read from a signed transaction. */
+/**
+ * What `bound` and `reference` share from a signed transaction: the sender, the expiry, the one transfer's memo
+ * carrier, and that transfer as signed, whose receiver and amount `reference` alone reads (`transferOf`).
+ */
 interface Signed {
   sender: Uint8Array;
   expiry: number;
   carrier: AtrHash;
-  receiver: Uint8Array;
-  amount: bigint;
+  transfer: { kind: "ccd"; body: Record<string, unknown> } | { kind: "plt"; body: CborMap };
 }
 
 /**
- * The hash inside what the sender signed, in x402's wire form: the one transfer's memo, through `memoCarrier`. No
- * signature is verified here; the chain accepts the transaction only with the sender's valid signature.
+ * The hash inside what the sender signed, in x402's wire form: the one transfer's memo, through `memoCarrier`. Of the
+ * signed transaction it reads the version, the header's sender and expiry, the payload's type and the one transfer's
+ * memo, and no sponsor, receiver, amount or token. No signature is verified here; the chain accepts the transaction
+ * only with the sender's valid signature.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const s = await signed(presented);
   return isRefusal(s) ? s : s.carrier;
 }
 
-/** The read keys for finding this payment later: network, asset, the expiry and the transfer's digest. */
+/**
+ * The read keys for finding this payment later: network, asset, the expiry and the transfer's digest over the sender,
+ * the receiver and the amount. A receiver or amount that cannot be read is refused here, and not by `bound`.
+ */
 async function reference(presented: unknown): Promise<CcdRef | Refusal> {
   const s = await signed(presented);
   if (isRefusal(s)) return s;
-  const idDigest = await ccdIdDigest(s.sender, s.receiver, s.amount);
+  const t = transferOf(s.transfer);
+  if (isRefusal(t)) return t;
+  const idDigest = await ccdIdDigest(s.sender, t.receiver, t.amount);
   if (isRefusal(idDigest)) return idDigest;
   const { accepted } = presented as CcdPaymentPayload;
   return { network: accepted.network as CcdNetwork, asset: accepted.asset, idDigest, settleBy: s.expiry };
@@ -351,13 +360,7 @@ async function signed(presented: unknown): Promise<Signed | Refusal> {
       if (isRefusal(memo)) return memo;
       const carrier = memoCarrier(memo);
       if (isRefusal(carrier)) return carrier;
-      const receiver = typeof body["toAddress"] === "string" ? accountBytes(body["toAddress"]) : refusal("ccd/address-malformed");
-      if (isRefusal(receiver)) return receiver;
-      const amount = body["amount"];
-      if (typeof amount !== "string" || !DECIMAL.test(amount) || BigInt(amount) >= UINT64_LIMIT) {
-        return refusal("ccd/transaction-malformed");
-      }
-      return { sender, expiry, carrier, receiver, amount: BigInt(amount) };
+      return { sender, expiry, carrier, transfer: { kind: "ccd", body } };
     }
     case "tokenUpdate": {
       const ops = hexBytes(body["operations"], MAX_OPERATIONS);
@@ -371,7 +374,7 @@ async function signed(presented: unknown): Promise<Signed | Refusal> {
   }
 }
 
-/** The one `transfer` operation of a PLT `TokenUpdate`: its memo's carrier, recipient and amount mantissa. */
+/** The one `transfer` operation of a PLT `TokenUpdate` and its memo's carrier. */
 function tokenTransfer(ops: Uint8Array, sender: Uint8Array, expiry: number): Signed | Refusal {
   const v = decodeCbor(ops);
   if (v === null || !Array.isArray(v)) return refusal("ccd/operations-malformed");
@@ -388,18 +391,34 @@ function tokenTransfer(ops: Uint8Array, sender: Uint8Array, expiry: number): Sig
   if (!(memoBytes instanceof Uint8Array)) return refusal("ccd/operations-malformed");
   const carrier = memoCarrier(memoBytes);
   if (isRefusal(carrier)) return carrier;
+  return { sender, expiry, carrier, transfer: { kind: "plt", body } };
+}
 
-  const recipient = mapGet(body, "recipient");
+/**
+ * The signed transfer's receiver and amount, for `ccdIdDigest`: `toAddress` and `amount` (microCCD, decimal below
+ * 2^64) of a transfer with memo; the `recipient` tag-40307 map's key 3 and the tag-4 decimal fraction's mantissa of a
+ * PLT transfer.
+ */
+function transferOf(t: Signed["transfer"]): { receiver: Uint8Array; amount: bigint } | Refusal {
+  if (t.kind === "ccd") {
+    const receiver = typeof t.body["toAddress"] === "string" ? accountBytes(t.body["toAddress"]) : refusal("ccd/address-malformed");
+    if (isRefusal(receiver)) return receiver;
+    const amount = t.body["amount"];
+    if (typeof amount !== "string" || !DECIMAL.test(amount) || BigInt(amount) >= UINT64_LIMIT) {
+      return refusal("ccd/transaction-malformed");
+    }
+    return { receiver, amount: BigInt(amount) };
+  }
+  const recipient = mapGet(t.body, "recipient");
   const account = recipient !== undefined && isTag(recipient, 40307n) && isMap(recipient.value) ? mapGet(recipient.value, 3n) : undefined;
   if (!(account instanceof Uint8Array) || account.length !== 32) return refusal("ccd/operations-malformed");
 
-  const amount = mapGet(body, "amount");
+  const amount = mapGet(t.body, "amount");
   const fraction = amount !== undefined && isTag(amount, 4n) ? amount.value : undefined;
   if (!Array.isArray(fraction) || fraction.length !== 2) return refusal("ccd/operations-malformed");
   const mantissa = (fraction as readonly Cbor[])[1];
   if (typeof mantissa !== "bigint" || mantissa < 0n) return refusal("ccd/operations-malformed");
-
-  return { sender, expiry, carrier, receiver: account, amount: mantissa };
+  return { receiver: account, amount: mantissa };
 }
 
 /** The UTF-8 length of a JSON value's serialization, or undefined for a value that is not JSON (a bigint, say). */
