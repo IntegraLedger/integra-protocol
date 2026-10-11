@@ -195,5 +195,87 @@
     "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "sourceAccount": {
+  "about": "Push (a hash credential) under a request with methodDetails.feePayer false, where the payer submits the transaction as its source account and authorizes the transfer with sorobanCredentialsSourceAccount, the credential simulation gives a payer that is the source: such an entry carries no signature of its own, and the transaction's signature, which the network verifies, covers the whole transaction, to included. The transaction is the instrument: reference records it by transaction, with no authDigest or expiration, and status settles on that transaction's SUCCESS with that shape and is otherwise pending. x402 (scheme_exact_stellar: auth entries MUST use an address-based credential type), the sponsored flow (feePayer true) and a transaction credential keep refusing stellar/no-address-auth. The envelopes were written with @stellar/stellar-sdk 17.1.0 from x402-exact-stellar.json's V3 envelope: the transaction's source account set, the entry's credentials set to sorobanCredentialsSourceAccount, and the transaction signed by the source's key with its Transaction.sign on testnet; each hash is the SDK's Transaction.hash. The challenge is the place section's with methodDetails.feePayer false, its request computed with Python 3 json and base64url.",
+  "challenge": {
+   "realm": "api.seller.example",
+   "method": "stellar",
+   "intent": "charge",
+   "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjpmYWxzZSwibmV0d29yayI6InN0ZWxsYXI6dGVzdG5ldCJ9LCJyZWNpcGllbnQiOiJNREZKSExBWEFVTUhBNE9XUE9CNFA3WU83MkFRUjJITUlVWUZPWExYRTJEWkdNNjMzSzdIWk9UWUMyN1k2QU9QNUxKUU8ifQ",
+   "expires": "2026-09-21T14:14:20Z",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+  },
+  "envelope": "AAAAAgAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAGAUFvxAAAAQHZ8CimhFEbntlMEQitqV1GFNoIBSc23hUFNAZHP1iLJSoZGTa/m5OAoBustKEBua9bhAZWgxOCIFRD08+ksFAM=",
+  "hash": "866b00a9a169ca9701589714097314c75b4a7aab33bfc44bd7e40bb89f63e85a",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "stellar:testnet",
+   "transaction": "866b00a9a169ca9701589714097314c75b4a7aab33bfc44bd7e40bb89f63e85a",
+   "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+   "toBase": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+   "toId": "13436514500253700074",
+   "fromLedger": 0
+  },
+  "status": [
+   {
+    "case": "the named transaction succeeded with this envelope",
+    "status": "SUCCESS",
+    "ledger": 990,
+    "expect": {
+     "state": "settled",
+     "ledger": 990
+    }
+   },
+   {
+    "case": "the named transaction is not found",
+    "status": "NOT_FOUND",
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "the named transaction failed",
+    "status": "FAILED",
+    "expect": {
+     "state": "pending",
+     "why": "transaction-failed"
+    }
+   },
+   {
+    "case": "the named transaction succeeded with x402-exact-stellar.json's V3 envelope, whose payer authorizes with an address entry",
+    "status": "SUCCESS",
+    "envelope": "V3",
+    "ledger": 990,
+    "expect": {
+     "state": "pending",
+     "why": "not-this-instrument"
+    }
+   }
+  ],
+  "refusals": [
+   {
+    "case": "this envelope pushed under the place section's challenge, whose feePayer is true",
+    "challenge": "place",
+    "type": "hash",
+    "expect": "stellar/no-address-auth"
+   },
+   {
+    "case": "this envelope in a transaction credential under this challenge, before it lands",
+    "challenge": "sourceAccount",
+    "type": "transaction",
+    "expect": "stellar/no-address-auth"
+   },
+   {
+    "case": "the same transfer and entry in a transaction whose source account is the account of Ed25519 seed 07x32, signed by that key, pushed under this challenge",
+    "challenge": "sourceAccount",
+    "type": "hash",
+    "envelope": "AAAAAgAAAADqSmxj4pxSCr71UHsTLsX5lUd2rr6+e5JCHuppFEbSLAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAEURtIsAAAAQGWdJsQ+vIBnBgJzxlkZW77SoljoxucacVUcu4I0g5J8HgZA5bp3F6OCLDjf1Rmb8OQztef5Fb2OglqTvacNygc=",
+    "hash": "0e3932a089bee4219720b1948615f0edb47e0caa9384375a347ad72d9d878017",
+    "expect": "stellar/no-address-auth"
+   }
+  ]
  }
 }

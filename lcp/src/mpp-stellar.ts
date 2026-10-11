@@ -7,6 +7,7 @@ import {
   muxedFor,
   muxedId,
   readSignedTransfer,
+  readSourceTransfer,
   signingFor,
   stellarStatus,
   unmux,
@@ -14,6 +15,7 @@ import {
   type StellarPayment,
   type StellarReader,
   type StellarRef,
+  type SourcePayment,
 } from "./internal/stellar.js";
 import {
   chosenFor,
@@ -63,13 +65,30 @@ function presentedXdr(payload: { [k: string]: Json }): string | Refusal {
   return typeof xdr === "string" ? xdr : refusal("stellar/tx-malformed");
 }
 
-function bindingOf(credential: MppCredential): { h: AtrHash; checked: Checked; payment: StellarPayment } | Refusal {
+/**
+ * The binding of a credential: H, the checked challenge, and the payment read from its transaction. A `hash` credential
+ * whose transaction carries no address entry of the payer, under a request with `feePayer` false, is read as a payer
+ * that authorized the transfer as the transaction's source account; that transaction is the instrument, so the
+ * credential's `hash` must name it.
+ */
+function bindingOf(
+  credential: MppCredential,
+): { h: AtrHash; checked: Checked; payment: StellarPayment | SourcePayment } | Refusal {
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;
   const xdr = presentedXdr(e.payload);
   if (isRefusal(xdr)) return xdr;
+  const network = e.checked.details["network"] as StellarNetwork;
   const landed = e.payload["type"] === "hash";
-  const signed = readSignedTransfer(xdr, e.checked.details["network"] as StellarNetwork, landed);
+  let signed: { payment: StellarPayment | SourcePayment; agrees: boolean } | Refusal = readSignedTransfer(xdr, network, landed);
+  if (isRefusal(signed) && signed.code === "stellar/no-address-auth" && landed && e.checked.details["feePayer"] !== true) {
+    const source = readSourceTransfer(xdr, network);
+    if (!isRefusal(source)) {
+      const hash = e.payload["hash"];
+      if (typeof hash !== "string" || !HASH.test(hash)) return refusal("mpp/credential-malformed");
+      signed = { payment: source, agrees: true };
+    }
+  }
   if (isRefusal(signed)) return signed;
   const { payment } = signed;
   if (payment.toId === null) return refusal("stellar/no-carrier");
@@ -85,7 +104,11 @@ function bindingOf(credential: MppCredential): { h: AtrHash; checked: Checked; p
  * `recipient` whose id is H's first 8 bytes, and the operation invokes exactly that. For a `transaction` credential,
  * not yet submitted, the operation carries exactly one address-credential entry of the payer. For a `hash` credential,
  * whose transaction landed, the entry is the payer's first address-credential entry whose `rootInvocation` is the
- * operation's `transfer`, byte for byte; other entries of the payer are not read.
+ * operation's `transfer`, byte for byte; other entries of the payer are not read. A `hash` credential whose transaction
+ * carries no address entry of the payer, under a request with `feePayer` false, binds H when the payer is the source
+ * account of the transaction and of its operation and an entry with source-account credentials is that `transfer`: the
+ * payer signed the whole transaction, `to` included. With `feePayer` true, or for a `transaction` credential, such a
+ * payment is `stellar/no-address-auth`.
  * The authorization's signature is not verified here; the network verifies it when the entry is used.
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
@@ -97,7 +120,8 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys from the signed entry, the one `bound` reads; `transaction` only for a credential the client submitted
- * itself.
+ * itself. For a payer that authorized the transfer as the transaction's source account there is no entry: the keys
+ * are `transaction`, `asset`, `toBase` and `toId`, without `authDigest` or `expiration`.
  */
 async function reference(input: unknown): Promise<StellarRef | Refusal> {
   const credential = credentialOf(input);
@@ -105,14 +129,15 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
   const b = bindingOf(credential);
   if (isRefusal(b)) return b;
   const hash = credential.payload["hash"];
+  const auth = b.payment.auth;
   return {
     network: b.checked.details["network"] as StellarNetwork,
     ...(credential.payload["type"] === "hash" && typeof hash === "string" ? { transaction: hash.toLowerCase() } : {}),
-    authDigest: b.payment.auth.preimageHash,
+    ...(auth !== null ? { authDigest: auth.preimageHash } : {}),
     asset: b.payment.asset,
     toBase: b.payment.toBase,
     toId: b.payment.toId!.toString(),
-    expiration: b.payment.auth.expiration,
+    ...(auth !== null ? { expiration: auth.expiration } : {}),
     fromLedger: 0,
   };
 }

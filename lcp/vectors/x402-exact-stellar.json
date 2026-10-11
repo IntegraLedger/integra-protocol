@@ -561,7 +561,7 @@
     "expect": "stellar/tx-too-large"
    },
    {
-    "case": "before a transaction lands (decodeStellarTx, build, bound and reference): not exactly one authorization entry with sorobanCredentialsAddress or sorobanCredentialsAddressV2 whose address is from, so the envelope of V5's two-entry row is refused; status and stellarLocate read a landed transaction as V5 says",
+    "case": "before a transaction lands (decodeStellarTx, build, bound and reference): not exactly one authorization entry with sorobanCredentialsAddress or sorobanCredentialsAddressV2 whose address is from, so the envelope of V5's two-entry row is refused, and an entry with sorobanCredentialsSourceAccount is not one (x402 scheme_exact_stellar: auth entries MUST use an address-based credential type); status and stellarLocate read a landed transaction as V5 says",
     "expect": "stellar/no-address-auth"
    },
    {

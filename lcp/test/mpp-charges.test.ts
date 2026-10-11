@@ -20,6 +20,7 @@ import {
   blockhash,
 } from "@solana/kit";
 import { decode as decodeXrpl } from "ripple-binary-codec";
+import { Keypair, Networks, TransactionBuilder, xdr as stellarXdr } from "@stellar/stellar-sdk";
 import { canonicalJson, type AtrHash } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
 import {
@@ -36,7 +37,8 @@ import {
 import { MEMO_V3 } from "../src/svm.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
-import type { StellarReader } from "../src/stellar.js";
+import type { StellarReader, StellarRef } from "../src/stellar.js";
+import { exactStellar } from "../src/x402-exact-stellar.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
 const MC = load("mpp-challenge.json");
@@ -335,6 +337,88 @@ describe("mpp-charge-stellar.json", () => {
     expect(await chargeStellar.status({ ...ref, transaction: ref.transaction! }, reader)).toEqual(row.expect);
     const pull = credential(placed, { type: "transaction", transaction: row.envelope });
     expect(await chargeStellar.bound(pull)).toEqual(refused(XST.agreedRefusals.rows[3].expect));
+  });
+
+  describe("sourceAccount: push where the payer is the transaction's source account", () => {
+    const S = V.sourceAccount;
+    const challengeOf = (name: string) => (name === "place" ? placed : S.challenge);
+    /** A reader answering getTransaction for `hash` with `answer`, NOT_FOUND for any other hash, and `latest`. */
+    const readerOf = (hash: string, answer: { status: string; envelope?: string; ledger?: number }, latest = 2000): StellarReader => ({
+      network: "stellar:testnet",
+      transaction: async (h) =>
+        h === hash
+          ? {
+              status: answer.status as "SUCCESS",
+              ...(answer.envelope !== undefined ? { envelopeXdr: answer.envelope } : {}),
+              ...(answer.ledger !== undefined ? { ledger: answer.ledger } : {}),
+              oldestLedger: 1,
+            }
+          : { status: "NOT_FOUND", oldestLedger: 1 },
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      latestLedger: async () => latest,
+    });
+
+    it("@stellar/stellar-sdk 17.1.0 writes the envelopes from V3's, and the challenge is the place section's with feePayer false", () => {
+      const write = (seed: string) => {
+        const source = Keypair.fromRawEd25519Seed(Buffer.from(seed, "hex"));
+        const env = stellarXdr.TransactionEnvelope.fromXdr(XST.V3.envelope, "base64").toXdrObject();
+        if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
+        env.v1.tx.sourceAccount = { type: 0, ed25519: Uint8Array.from(source.rawPublicKey()) };
+        const auth = env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth;
+        auth[0] = { credentials: { type: 0 }, rootInvocation: auth[0]!.rootInvocation };
+        const tx = TransactionBuilder.fromXDR(stellarXdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64"), Networks.TESTNET);
+        tx.sign(source);
+        return { envelope: tx.toEnvelope().toXDR("base64"), hash: Buffer.from(tx.hash()).toString("hex") };
+      };
+      expect(write(XST.fixed.payerSeed)).toEqual({ envelope: S.envelope, hash: S.hash });
+      const other = S.refusals.find((r: { envelope?: string }) => r.envelope !== undefined);
+      expect(write("07".repeat(32))).toEqual({ envelope: other.envelope, hash: other.hash });
+      const request = (c: MppChallenge) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
+      const { request: _r, ...rest } = S.challenge;
+      expect({ ...placed, ...rest }).toEqual(placed);
+      expect(request(S.challenge)).toEqual({ ...request(placed), methodDetails: { ...request(placed).methodDetails, feePayer: false } });
+    });
+
+    it("bound gives H; reference records the transaction, with no authDigest or expiration; status reads it", async () => {
+      const reader = readerOf(S.hash, { status: "SUCCESS", envelope: S.envelope, ledger: 990 });
+      const fetched = await chargeStellar.fetchPresented(credential(S.challenge, { type: "hash", hash: S.hash }), reader);
+      if ("refused" in fetched) throw new Error(fetched.code);
+      expect(await chargeStellar.bound(fetched)).toBe(S.expectBound);
+      const ref = await chargeStellar.reference(fetched);
+      expect(ref).toEqual(S.expectReference);
+      expect(roundTrip(ref)).toEqual(ref);
+      const named = S.expectReference as StellarRef & { transaction: string };
+      for (const row of S.status) {
+        const envelope = row.envelope === "V3" ? XST.V3.envelope : S.envelope;
+        const answer = { status: row.status, ...(row.status === "SUCCESS" ? { envelope, ledger: row.ledger } : {}) };
+        expect(await chargeStellar.status(named, readerOf(S.hash, answer)), row.case).toEqual(row.expect);
+      }
+      const sourceLanded = { status: "SUCCESS", envelope: S.envelope, ledger: 990 };
+      expect(await chargeStellar.status(XST.V5.ref, readerOf(XST.V5.ref.transaction, sourceLanded, 995))).toEqual({
+        state: "pending",
+        why: "not-this-instrument",
+      });
+    });
+
+    it("refusals: the sponsored flow, a transaction credential, another source account, and x402", async () => {
+      for (const row of S.refusals) {
+        const envelope: string = row.envelope ?? S.envelope;
+        const hash: string = row.hash ?? S.hash;
+        let presented: MppCredential = credential(challengeOf(row.challenge), { type: "transaction", transaction: envelope });
+        if (row.type === "hash") {
+          const fetched = await chargeStellar.fetchPresented(
+            credential(challengeOf(row.challenge), { type: "hash", hash }),
+            readerOf(hash, { status: "SUCCESS", envelope, ledger: 990 }),
+          );
+          if ("refused" in fetched) throw new Error(fetched.code);
+          presented = fetched;
+        }
+        expect(await chargeStellar.bound(presented), row.case).toEqual(refused(row.expect));
+        expect(await chargeStellar.reference(presented), row.case).toEqual(refused(row.expect));
+      }
+      const x402 = { x402Version: 2, accepted: XST.V3.accepted, payload: { transaction: S.envelope }, extensions: XST.V3.extensions };
+      expect(await exactStellar.bound(x402)).toEqual(refused(XST.agreedRefusals.rows[3].expect));
+    });
   });
 
   it("push: fetchPresented refuses a transaction the reader reports FAILED", async () => {

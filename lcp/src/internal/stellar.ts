@@ -9,6 +9,8 @@ import { base64 } from "@scure/base";
 import type {
   HashIdPreimageWire,
   InvokeContractArgsWire,
+  InvokeHostFunctionOpWire,
+  MuxedAccountWire,
   ScAddressWire,
   ScValWire,
   SorobanAddressCredentialsWire,
@@ -101,12 +103,17 @@ export interface StellarReader {
 export interface StellarRef {
   network: StellarNetwork;
   transaction?: string;
-  authDigest: Hex;
+  /**
+   * SHA-256 of the payer's authorization entry's `HashIDPreimage`. Absent, with `expiration`, for an MPP push payment
+   * the payer authorized as the transaction's source account: `transaction` then names the instrument.
+   */
+  authDigest?: Hex;
   asset: string;
   toBase: string;
   /** The muxed id, as a decimal string. */
   toId: string;
-  expiration: number;
+  /** The entry's expiration ledger. Absent with `authDigest`. */
+  expiration?: number;
   fromLedger: number;
 }
 
@@ -318,18 +325,21 @@ function strictBase64(s: string): Uint8Array | null {
   }
 }
 
+/** The envelope's one `invokeHostFunction` operation calling `transfer(from, to, amount)`, decoded within the caps. */
+type Operation = {
+  wire: TransactionEnvelopeWire;
+  v1: TransactionV1EnvelopeWire;
+  op: InvokeHostFunctionOpWire;
+  operation: NonNullable<ReturnType<typeof transferOf>>;
+  /** True when an entry's `rootInvocation` is the operation's call, byte for byte, with no sub-invocations. */
+  carries(e: SorobanAuthorizationEntryWire): boolean;
+};
+
 /**
- * The envelope's one `transfer` operation and the one address-credential entry whose address is its `from`. The
- * payment's contract, `to` and amount are read from the entry's `rootInvocation`, the invocation the payer signs, which
- * must itself be one `transfer(from, to, amount)` with no sub-invocations.
- *
- * With `landed`, the transaction is one the ledger recorded, and the entry read is the first address-credential entry
- * of `from` whose `rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations. The host tries
- * the entries in order, skips one whose address or root invocation does not match, and authenticates the first that
- * matches, so other entries of `from` may ride unused. With no such entry, `from` must have exactly one entry, as
- * without `landed`.
+ * The envelope's one `transfer` operation: strict base64 of a v1 envelope (or a fee bump's inner v1) within the caps,
+ * holding exactly one `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract.
  */
-function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, landed: boolean): Parsed | Refusal {
+function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal {
   const bytes = strictBase64(xdrB64);
   if (bytes === null) return refusal("stellar/tx-malformed");
   let wire: TransactionEnvelopeWire;
@@ -351,26 +361,50 @@ function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, l
     const call = op.hostFunction.invokeContract;
     const operation = transferOf(S, call);
     if (operation === null) return refusal("stellar/not-one-transfer");
-
-    const entries = op.auth.flatMap((e) => {
-      const a = addressCredentials(e);
-      if (a === null) return [];
-      const who = addressOf(S, a.c.address);
-      return who !== null && who.s === operation.from.s ? [{ e, a }] : [];
-    });
     const callBytes = S.xdr.InvokeContractArgs.fromXdrObject(call).toXdr("raw");
-    const signsCall = (e: SorobanAuthorizationEntryWire): boolean =>
+    const carries = (e: SorobanAuthorizationEntryWire): boolean =>
       e.rootInvocation.function.type === 0 &&
       e.rootInvocation.subInvocations.length === 0 &&
       equalBytes(callBytes, S.xdr.InvokeContractArgs.fromXdrObject(e.rootInvocation.function.contractFn).toXdr("raw"));
-    const used = landed ? entries.find(({ e }) => signsCall(e)) : undefined;
+    return { wire, v1, op, operation, carries };
+  } catch {
+    return refusal("stellar/tx-malformed");
+  }
+}
+
+/** True when `e` is an address-credential entry whose address is `from`. */
+function isAddressEntryOf(S: typeof StellarBase, e: SorobanAuthorizationEntryWire, from: string): boolean {
+  const a = addressCredentials(e);
+  if (a === null) return false;
+  const who = addressOf(S, a.c.address);
+  return who !== null && who.s === from;
+}
+
+/**
+ * The envelope's one `transfer` operation and the one address-credential entry whose address is its `from`. The
+ * payment's contract, `to` and amount are read from the entry's `rootInvocation`, the invocation the payer signs, which
+ * must itself be one `transfer(from, to, amount)` with no sub-invocations.
+ *
+ * With `landed`, the transaction is one the ledger recorded, and the entry read is the first address-credential entry
+ * of `from` whose `rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations. The host tries
+ * the entries in order, skips one whose address or root invocation does not match, and authenticates the first that
+ * matches, so other entries of `from` may ride unused. With no such entry, `from` must have exactly one entry, as
+ * without `landed`.
+ */
+function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, landed: boolean): Parsed | Refusal {
+  const o = operationOf(S, xdrB64);
+  if (isRefusal(o)) return o;
+  const { wire, op, operation } = o;
+  try {
+    const entries = op.auth.flatMap((e) => (isAddressEntryOf(S, e, operation.from.s) ? [{ e, a: addressCredentials(e)! }] : []));
+    const used = landed ? entries.find(({ e }) => o.carries(e)) : undefined;
     if (used === undefined && entries.length !== 1) return refusal("stellar/no-address-auth");
     const { e: entry, a: cred } = used ?? entries[0]!;
     const root = entry.rootInvocation;
     if (root.function.type !== 0 || root.subInvocations.length !== 0) return refusal("stellar/not-one-transfer");
     const signed = transferOf(S, root.function.contractFn);
     if (signed === null) return refusal("stellar/not-one-transfer");
-    const agrees = equalBytes(callBytes, S.xdr.InvokeContractArgs.fromXdrObject(root.function.contractFn).toXdr("raw"));
+    const agrees = o.carries(entry);
     const preimageHash = S.hash(preimageOf(S, network, entry, cred));
     return {
       wire,
@@ -424,6 +458,41 @@ export function readSignedTransfer(
   return isRefusal(p) ? p : { payment: p.payment, agrees: p.agrees };
 }
 
+/** A landed transfer the payer authorized as the transaction's source account: no address entry, so no `auth`. */
+export type SourcePayment = Omit<StellarPayment, "auth"> & { auth: null };
+
+/**
+ * The transfer of a landed transaction whose payer authorized it as the transaction's source account: `from` has no
+ * address-credential entry, `from` is the source account of the transaction (the inner one of a fee bump) and of its
+ * operation, and an entry with source-account credentials has the operation's `transfer` as its `rootInvocation`, byte
+ * for byte, with no sub-invocations. The transaction's signatures, which the network verified when it applied the
+ * transaction, cover it whole, `to` included. Anything else is `stellar/no-address-auth`.
+ */
+export function readSourceTransfer(xdrB64: string, network: StellarNetwork): SourcePayment | Refusal {
+  const S = need();
+  if (S === null) return refusal("stellar/peer-missing");
+  if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
+  if (typeof xdrB64 !== "string" || xdrB64.length === 0) return refusal("stellar/tx-malformed");
+  if (xdrB64.length > MAX_XDR) return refusal("stellar/tx-too-large");
+  const o = operationOf(S, xdrB64);
+  if (isRefusal(o)) return o;
+  const { v1, op, operation } = o;
+  try {
+    const from = operation.from.s;
+    if (!S.StrKey.isValidEd25519PublicKey(from)) return refusal("stellar/no-address-auth");
+    const key = S.StrKey.decodeEd25519PublicKey(from);
+    const isFrom = (m: MuxedAccountWire): boolean => equalBytes(m.type === 0 ? m.ed25519 : m.med25519.ed25519, key);
+    const opSource = v1.tx.operations[0]!.sourceAccount;
+    if (!isFrom(v1.tx.sourceAccount) || (opSource !== null && !isFrom(opSource))) return refusal("stellar/no-address-auth");
+    if (op.auth.some((e) => isAddressEntryOf(S, e, from))) return refusal("stellar/no-address-auth");
+    if (!op.auth.some((e) => e.credentials.type === 0 && o.carries(e))) return refusal("stellar/no-address-auth");
+    const { asset, to, amount } = operation;
+    return { asset, from, to: to.s, toBase: to.base, toId: to.id, amount, auth: null };
+  } catch {
+    return refusal("stellar/tx-malformed");
+  }
+}
+
 /**
  * Decodes a base64 `TransactionEnvelope` (v1, or a fee bump's inner v1) of at most 8 KiB holding exactly one
  * `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract, and the one authorization entry
@@ -431,7 +500,10 @@ export function readSignedTransfer(
  * The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's
  * contract, `to` and amount are the signed invocation's. The base64 is read strictly (RFC 4648 §4, zero padding bits),
  * and the XDR must be consumed whole. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
- * passphrase: the V1 form, or for V2 the form with the address.
+ * passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
+ * without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
+ * credential, once its transaction landed, reads a payer that authorized the transfer as the transaction's source
+ * account.
  */
 export function decodeStellarTx(xdrB64: string, network: StellarNetwork): StellarPayment | Refusal {
   const p = readSignedTransfer(xdrB64, network, false);
@@ -565,7 +637,9 @@ type Named =
 /**
  * Reads one transaction. Settled when it succeeded and the payer's first address-credential entry that carries its
  * `transfer` has the preimage digest and `to` id the ref records. A transaction that failed, or succeeded with another
- * entry, is `other`: the entry was not used there. One call.
+ * entry, is `other`: the entry was not used there. For a ref without `authDigest`, settled when it succeeded as a
+ * transfer the payer authorized as its source account (`readSourceTransfer`) whose `to` carries the ref's `toId`. One
+ * call.
  */
 async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): Promise<Named> {
   let r: Awaited<ReturnType<StellarReader["transaction"]>>;
@@ -580,11 +654,20 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
   if (r.status !== "SUCCESS" || typeof r.envelopeXdr !== "string" || !Number.isInteger(r.ledger)) {
     return { state: "pending", why: "unreadable" };
   }
+  const digest = ref.authDigest;
+  if (digest === undefined) {
+    const s = readSourceTransfer(r.envelopeXdr, ref.network);
+    if (isRefusal(s) && s.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
+    if (isRefusal(s) || s.toId === null || s.toId.toString() !== ref.toId) {
+      return { state: "other", why: "not-this-instrument" };
+    }
+    return { state: "settled", ledger: r.ledger! };
+  }
   const t = readSignedTransfer(r.envelopeXdr, ref.network, true);
   if (isRefusal(t) && t.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
   if (isRefusal(t) || !t.agrees) return { state: "other", why: "not-this-instrument" };
   const p = t.payment;
-  if (p.auth.preimageHash !== ref.authDigest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
+  if (p.auth.preimageHash !== digest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
     return { state: "other", why: "not-this-instrument" };
   }
   return { state: "settled", ledger: r.ledger! };
@@ -599,7 +682,10 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
  * ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
  * transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
  * incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
- * or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well.
+ * or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
+ * without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
+ * `expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
+ * there is no expiration ledger to pass.
  */
 export async function stellarStatus(
   ref: StellarRef & { transaction: string },
@@ -609,6 +695,8 @@ export async function stellarStatus(
   const named = await readNamed(ref, ref.transaction, reader);
   if (named.state === "settled") return named;
   if (named.why === "unreadable") return { state: "pending", why: "unreadable" };
+  const expiration = ref.expiration;
+  if (ref.authDigest === undefined || expiration === undefined) return { state: "pending", why: named.why };
   let latest: number;
   try {
     latest = await reader.latestLedger();
@@ -616,8 +704,8 @@ export async function stellarStatus(
     return { state: "pending", why: "unreadable" };
   }
   if (!Number.isSafeInteger(latest)) return { state: "pending", why: "unreadable" };
-  if (latest <= ref.expiration) return { state: "pending", why: named.why };
-  const l = await locate(ref, reader);
+  if (latest <= expiration) return { state: "pending", why: named.why };
+  const l = await locate(ref, expiration, reader);
   if (l.found !== undefined) return { state: "settled", ledger: l.found.ledger };
   return l.complete ? { state: "failed", why: "expired" } : { state: "pending", why: named.why };
 }
@@ -628,19 +716,21 @@ export async function stellarStatus(
  * reads its named transaction. `complete` is true only when every page was read, the reader reported events enabled on
  * each, the RPC still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed
  * candidate whose transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50
- * candidates.
+ * candidates. A ref without `authDigest` or `expiration` names its transaction and has no entry to search for:
+ * `complete` is false.
  */
 export async function stellarLocate(
   ref: StellarRef,
   reader: StellarReader,
 ): Promise<{ found?: string; complete: boolean }> {
-  if (reader.network !== ref.network) return { complete: false };
-  const l = await locate(ref, reader);
+  if (reader.network !== ref.network || ref.authDigest === undefined || ref.expiration === undefined) return { complete: false };
+  const l = await locate(ref, ref.expiration, reader);
   return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
 }
 
 async function locate(
   ref: StellarRef,
+  expiration: number,
   reader: StellarReader,
 ): Promise<{ found?: { hash: string; ledger: number }; complete: boolean }> {
   let cursor: string | undefined;
@@ -652,7 +742,7 @@ async function locate(
         asset: ref.asset,
         toBase: ref.toBase,
         fromLedger: ref.fromLedger,
-        toLedger: ref.expiration,
+        toLedger: expiration,
         ...(cursor !== undefined ? { cursor } : {}),
       });
     } catch {

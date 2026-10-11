@@ -30,6 +30,8 @@ const refused = (code: string) => ({ refused: true, code });
 const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
 const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
 const refOf = (r: Record<string, unknown>) => r as unknown as StellarRef;
+/** A ref recorded from an authorization entry, naming its transaction. */
+type EntryRef = StellarRef & { transaction: string; authDigest: `0x${string}`; expiration: number };
 
 type Answer = { status: string; envelope?: string; ledger?: number };
 type Row = Answer & {
@@ -247,7 +249,7 @@ describe("x402-exact-stellar.json", () => {
       expect(ahead.digest).not.toBe(ref.authDigest);
       const landed = { status: "SUCCESS", envelope: ahead.envelope, ledger: 990, latestLedger: 995 };
       expect(await stellarStatus(ref, readerFor(landed))).toEqual({ state: "pending", why: "not-this-instrument" });
-      expect(await stellarStatus({ ...ref, authDigest: ahead.digest as StellarRef["authDigest"] }, readerFor(landed))).toEqual({
+      expect(await stellarStatus({ ...ref, authDigest: ahead.digest as `0x${string}` }, readerFor(landed))).toEqual({
         state: "settled",
         ledger: 990,
       });
@@ -325,7 +327,7 @@ describe("x402-exact-stellar.json", () => {
      * `toLedger`), returning a cursor until getEvents has scanned through the window's last ledger and keeping only the
      * events through it.
      */
-    function readerOver(ref: StellarRef, landedIn: number, inclusive: boolean, calls: object[]): StellarReader {
+    function readerOver(ref: EntryRef, landedIn: number, inclusive: boolean, calls: object[]): StellarReader {
       const latest = ref.expiration + 5;
       return {
         network: "stellar:testnet",
@@ -345,7 +347,7 @@ describe("x402-exact-stellar.json", () => {
     }
 
     it("a payment in the expiration ledger settles through a reader that sends endLedger toLedger + 1 and pages by cursor", async () => {
-      const ref = { ...refOf(V.V5.ref), fromLedger: 1, expiration: 25_000 } as StellarRef & { transaction: string };
+      const ref = { ...refOf(V.V5.ref), fromLedger: 1, expiration: 25_000 } as EntryRef;
       const calls: { fromLedger?: number; toLedger?: number; cursor?: string }[] = [];
       expect(await stellarStatus(ref, readerOver(ref, ref.expiration, true, calls))).toEqual({ state: "settled", ledger: ref.expiration });
       expect([calls[0]!.fromLedger, calls[0]!.toLedger]).toEqual([ref.fromLedger, ref.expiration]);
@@ -353,7 +355,7 @@ describe("x402-exact-stellar.json", () => {
     });
 
     it("the same payment through a reader that sends endLedger toLedger reads failed expired", async () => {
-      const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
+      const ref = refOf(V.V5.ref) as EntryRef;
       const read = async (inclusive: boolean) => stellarStatus(ref, readerOver(ref, ref.expiration, inclusive, []));
       expect(await read(false)).toEqual({ state: "failed", why: "expired" });
       expect(await read(true)).toEqual({ state: "settled", ledger: ref.expiration });
