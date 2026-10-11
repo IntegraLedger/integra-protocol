@@ -546,6 +546,14 @@ describe("mpp-charge-tempo-memo.json", () => {
       { address: PATHUSD, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(M.MV8.guard)], data: wordOf(1000000n) },
     ];
     expect(await status(blocked)).toEqual(M.MV8.expectBlocked);
+    const twm = (from: string, value: bigint, m: string): EvmLog => ({
+      address: PATHUSD,
+      topics: [TRANSFER_WITH_MEMO_TOPIC, topicOf(from), topicOf(M.fixed.recipient), m as `0x${string}`],
+      data: wordOf(value),
+    });
+    const apart = [twm(M.MV8.memoOnAnotherLog.stranger, 1n, memo), twm(A.fixed.payer, 1000000n, M.MV7.expectMemoPosition1)];
+    expect(await status(apart), M.MV8.memoOnAnotherLog.case).toEqual(M.MV8.memoOnAnotherLog.expect);
+    expect(await status([twm(A.fixed.payer, 1000000n, memo)])).toEqual(M.MV8.expectSettled);
     expect(tempoMemo.pattern).toEqual(Object.fromEntries(Object.entries(M.pattern).filter(([k]) => k !== "claims")));
   });
 

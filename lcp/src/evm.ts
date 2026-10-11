@@ -561,12 +561,14 @@ export type EvmBreadthStatus =
  * the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
  * Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
  * authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired with a use of the binding's
- * value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log is the
- * DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose delegate (data word 1) is the
- * redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from` is then that
- * leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator redeemed in one
- * transaction are read alike, so one transfer from it counts for either. Settled carries the highest finality mark
- * reached. At most three calls.
+ * value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log and the transfer log
+ * name one event of one contract, as Tempo's `TransferWithMemo` carries the memo and the transfer together, they are
+ * one log: the transfer counts only from a log that carries the binding, else failed `transfer-not-found`. Where the
+ * binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose delegate (data
+ * word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
+ * is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
+ * redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
+ * finality mark reached. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const read = await matchedTransfers(ref, reader);
@@ -670,10 +672,12 @@ async function matchedTransfers(
   if (binding !== undefined && carriers.length === 0) {
     missing = "binding-log-not-found";
   } else if (ref.transferLog !== undefined) {
+    const t = ref.transferLog;
+    const oneLog = binding !== undefined && sameAddress(binding.address, t.address) && sameBytes(binding.topic0, t.topic0);
     transfers =
-      binding !== undefined && pairsAuthorization(binding, ref.transferLog)
-        ? await pairedTransfers(receipt.logs, binding, ref.transferLog)
-        : await transfersOf(receipt.logs, ref.transferLog);
+      binding !== undefined && pairsAuthorization(binding, t)
+        ? await pairedTransfers(receipt.logs, binding, t)
+        : await transfersOf(oneLog ? carriers : receipt.logs, t);
     if (redemption) {
       const roots = carriers.map((l) => topicAddress(l.topics[1]));
       transfers = transfers.filter((t) => roots.includes(t.from));
