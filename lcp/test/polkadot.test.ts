@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { toLcpString, type AtrHash } from "../src/index.js";
 import {
+  decodeProfileCall,
+  encodeProfileCall,
   exactPolkadotRemark,
   extrinsicHash,
   polkadotLocate,
@@ -92,6 +94,35 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     expect(toHex(u.request.call)).toBe(V.V2.expectCall);
     expect(u.request.call.length).toBe(V.V2.expectCallLength);
     expect(toHex(ss58Decode(O.payTo) as Uint8Array)).toBe(V.V2.expectDest);
+  });
+
+  // SCALE's Compact<u32> and Compact<u128> hold unsigned values below 2^32 and 2^128, an AccountId32 is 32 bytes, and
+  // profile rule 3's remark is 77 bytes: decodeProfileCall gives nothing else back, so the encoder takes nothing else.
+  it("encodeProfileCall: V2's call from V2's values, and TypeError on a call outside the profile's types", () => {
+    const remark = new TextEncoder().encode(toLcpString(H));
+    const dest = ss58Decode(O.payTo) as Uint8Array;
+    const ok = { assetId: Number(O.asset), dest, amount: BigInt(O.amount), remark };
+    expect(toHex(encodeProfileCall(ok))).toBe(V.V2.expectCall);
+    for (const edge of [{ assetId: 2 ** 32 - 1 }, { amount: 2n ** 128n - 1n }, { assetId: 0, amount: 0n }]) {
+      const c = { ...ok, ...edge };
+      const back = decodeProfileCall(encodeProfileCall(c));
+      if ("refused" in back) throw new Error(back.code);
+      expect([back.assetId, back.amount]).toEqual([c.assetId, c.amount]);
+    }
+    const outside: [string, unknown][] = [
+      ["amount -1n", { ...ok, amount: -1n }],
+      ["amount -64n", { ...ok, amount: -64n }],
+      ["amount 2^128", { ...ok, amount: 2n ** 128n }],
+      ["amount as a number", { ...ok, amount: 10000 }],
+      ["assetId -1", { ...ok, assetId: -1 }],
+      ["assetId 2^32", { ...ok, assetId: 2 ** 32 }],
+      ["assetId 1.5", { ...ok, assetId: 1.5 }],
+      ["dest of 31 bytes", { ...ok, dest: dest.subarray(1) }],
+      ["remark of 76 bytes", { ...ok, remark: remark.subarray(1) }],
+      ["null", null],
+      ["{}", {}],
+    ];
+    for (const [name, c] of outside) expect(() => encodeProfileCall(c as never), name).toThrow(TypeError);
   });
 
   it("V3: complete, bound and reference of the accepted extrinsic, and the refusals", async () => {

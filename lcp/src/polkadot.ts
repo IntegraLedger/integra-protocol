@@ -207,8 +207,27 @@ export function ss58Decode(address: string): Uint8Array | Refusal {
   return raw.slice(1, 33);
 }
 
-/** `batch_all([transfer_keep_alive(assetId, Id(dest), amount), remark_with_event(remark)])` */
+/**
+ * `batch_all([transfer_keep_alive(assetId, Id(dest), amount), remark_with_event(remark)])`, the inverse of
+ * `decodeProfileCall`. Throws TypeError on a call that `decodeProfileCall` never gives: `assetId` must be an integer
+ * from 0 to 2^32 − 1, `dest` 32 bytes, `amount` a bigint from 0 to 2^128 − 1, and `remark` 77 bytes.
+ */
 export function encodeProfileCall(c: ProfileCall): Uint8Array {
+  if (
+    !isObject(c) ||
+    !Number.isSafeInteger(c.assetId) ||
+    c.assetId < 0 ||
+    BigInt(c.assetId) >= U32_LIMIT ||
+    !(c.dest instanceof Uint8Array) ||
+    c.dest.length !== 32 ||
+    typeof c.amount !== "bigint" ||
+    c.amount < 0n ||
+    c.amount >= U128_LIMIT ||
+    !(c.remark instanceof Uint8Array) ||
+    c.remark.length !== REMARK_LENGTH
+  ) {
+    throw new TypeError("not a profile call");
+  }
   return concat(
     CALL.batchAll,
     [0x08],
