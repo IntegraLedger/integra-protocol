@@ -298,7 +298,8 @@ const check: OptionFilter = (o) => {
   if (typeof o.asset !== "string" || !ACCOUNT.test(o.asset)) return refusal("near/option-malformed");
   if (typeof o.payTo !== "string" || !ACCOUNT.test(o.payTo)) return refusal("near/option-malformed");
   if (decimalBelow(o.amount, U128_LIMIT) === undefined) return refusal("near/option-malformed");
-  if (!Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds < 1) return refusal("near/option-malformed");
+  // Any integer timeout: `build` opens a window of max(1, maxTimeoutSeconds) blocks, x402's own mapping.
+  if (!Number.isSafeInteger(o.maxTimeoutSeconds)) return refusal("near/option-malformed");
   return true;
 };
 

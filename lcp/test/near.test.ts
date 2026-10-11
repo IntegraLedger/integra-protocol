@@ -111,6 +111,22 @@ describe("x402-exact-near.json", () => {
     expect(c.h).toBe(H);
   });
 
+  it("V2 presented under an option with timeout 0 gives H; build opens a window of one block", async () => {
+    for (const row of V.V2.presentedOptions) {
+      const p = { ...payment(V.V2.expectSignedDelegateAction), accepted: row.accepted };
+      expect([row.case, await exactNear.bound(p)]).toEqual([row.case, row.expectBound]);
+      expect([row.case, await exactNear.reference(p)]).toEqual([row.case, row.expectReference]);
+    }
+    // x402's scheme_exact_near: timeoutBlocks = max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)), 1 s blocks.
+    const accepted = { ...O, maxTimeoutSeconds: 0 };
+    const u = await exactNear.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) }) as NearPayment;
+    const ref = await exactNear.reference(p);
+    if ("refused" in ref) throw new Error(ref.code);
+    expect(ref.maxBlockHeight).toBe((BigInt(V.fixed.finalHeight) + 1n).toString());
+  });
+
   it("V3: status, nearLapsed and recover on reader fixtures", async () => {
     for (const row of V.V3.status) {
       expect([row.case, await exactNear.status(REF, readerFor(row))]).toEqual([row.case, row.expect]);

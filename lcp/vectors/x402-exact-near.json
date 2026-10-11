@@ -42,6 +42,28 @@
    "nonce": "101",
    "maxBlockHeight": "200000060"
   },
+  "presentedOptions": [
+   {
+    "case": "V2's payment presented under an option with maxTimeoutSeconds 0: the option filter names no timeout bound, and build's window is max(1, maxTimeoutSeconds) blocks (x402 scheme_exact_near: timeoutBlocks = max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)))",
+    "accepted": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 0
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "near:testnet",
+     "asset": "usdc.testnet",
+     "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+     "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "nonce": "101",
+     "maxBlockHeight": "200000060"
+    }
+   }
+  ],
   "refusals": [
    {
     "case": "args without memo",

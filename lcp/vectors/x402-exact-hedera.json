@@ -47,7 +47,51 @@
    "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
    "validUntil": 1700000120
   },
-  "expectTxIdText": "0.0.1235@1700000000.000000000"
+  "expectTxIdText": "0.0.1235@1700000000.000000000",
+  "presentedOptions": [
+   {
+    "case": "V2's payment presented under an option with maxTimeoutSeconds 0: bound and reference read the signed body, and the filter they apply (scheme, network, asset, payTo, feePayer, transfer method) names no timeout",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "1000",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "hedera:testnet",
+     "transactionId": "0.0.1235-1700000000-000000000",
+     "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "validUntil": 1700000120
+    }
+   },
+   {
+    "case": "V2's payment presented under an option with amount \"0\": bound and reference read no amount",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "0",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "hedera:testnet",
+     "transactionId": "0.0.1235-1700000000-000000000",
+     "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "validUntil": 1700000120
+    }
+   }
+  ]
  },
  "V3": {
   "case": "the one-entry TransactionList form gives H; a list whose second entry has another memo is refused",

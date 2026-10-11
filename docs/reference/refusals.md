@@ -454,7 +454,7 @@ Hedera (`@integraledger/lcp/hedera`).
 | `hedera/no-legal-context` | The transfer-executor pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |
 | `hedera/no-memo` | The signed Hedera body, or the landed transaction a recovery reads, has an empty memo. |
 | `hedera/not-found` | The Hedera reader found no transaction, or no successful entry for it, or no receipt for the session transaction. |
-| `hedera/option-malformed` | A Hedera option names an unknown transfer method or lacks what its pairing needs (a servable amount, asset and `payTo`, a `feePayer`, or 1 to the allowed number of `executors`), the buyer's choice carries an invalid payer, node, valid start, fee or decimals, or an MPP Hedera charge request has an invalid amount, currency, recipient or splits (too many, not less than the amount, or repeating an account). |
+| `hedera/option-malformed` | A Hedera option names an unknown transfer method or lacks what its pairing needs (an asset and `payTo`, a `feePayer`, 1 to the allowed number of `executors`, or a servable amount and positive timeout, which `x402/exact/hedera`'s `bound` and `reference` do not read), the buyer's choice carries an invalid payer, node, valid start, fee or decimals, or an MPP Hedera charge request has an invalid amount, currency, recipient or splits (too many, not less than the amount, or repeating an account). |
 | `hedera/read-first` | An MPP Hedera `hash` charge credential or session opening carries no landed data yet; the seller reads it with `fetchPresented` before `bound`. |
 | `hedera/reverted` | The Hedera session opening transaction reverted. |
 | `hedera/tx-malformed` | A Hedera transaction is not base64 of a wire `Transaction` or `TransactionList` whose signed body decodes within the depth bound, a signature pair given to `complete` has the wrong key or signature length, or a push credential's `transactionId` is not `shard.realm.num@seconds.nanos`. |
@@ -573,7 +573,7 @@ NEAR (`@integraledger/lcp/near`).
 | `near/not-found` | No relayer the NEAR reader lists knows the transaction, or its outcome carries no delegate action. |
 | `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer`. |
 | `near/not-hash-credential` | The NEAR Intents charge credential's payload `type` is not `hash`. |
-| `near/option-malformed` | A NEAR option's `extra` is not an object, or its `asset`, `payTo`, `amount` or `maxTimeoutSeconds` is not a valid account, u128 amount or positive timeout. |
+| `near/option-malformed` | A NEAR option's `extra` is not an object, or its `asset`, `payTo`, `amount` or `maxTimeoutSeconds` is not a valid account, u128 amount or integer timeout. |
 | `near/peer-missing` | The optional peer dependencies `@near-js/crypto`, `@near-js/transactions` and `borsh` cannot be loaded. |
 | `near/sda-malformed` | The NEAR signed delegate action is not non-empty base64 of a canonical Borsh `SignedDelegate`, or its public key cannot be read. |
 | `near/sda-too-large` | The NEAR signed delegate action's base64 text exceeds the size bound. |

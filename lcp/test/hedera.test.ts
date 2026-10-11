@@ -95,6 +95,26 @@ describe("x402-exact-hedera.json", () => {
     expect(txIdMirror(decoded.bodies[0]!.id)).toBe(V.V2.expectReference.transactionId);
   });
 
+  it("V2 presented under an option whose amount or timeout bound does not read: H and V2's reference", async () => {
+    for (const row of V.V2.presentedOptions) {
+      const p = presentedOf(V.V2.expectTransactionBase64, row.accepted);
+      expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
+      expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
+      // advertise and build still need both: build writes the transfers from the amount.
+      const doc = { ...required, accepts: [row.accepted] };
+      expect(exactHedera.advertise(doc, H, V.fixed.link, row.accepted)).toEqual({ refused: true, code: "hedera/option-malformed" });
+    }
+    const { maxTimeoutSeconds: _, ...noTimeout } = O;
+    for (const accepted of [noTimeout, { ...O, amount: "x" }]) {
+      expect(await exactHedera.bound(presentedOf(V.V2.expectTransactionBase64, accepted as PaymentRequirements))).toBe(V.V2.expectBound);
+    }
+    const { feePayer: __, ...noFeePayer } = O.extra!;
+    expect(await exactHedera.bound(presentedOf(V.V2.expectTransactionBase64, { ...O, extra: noFeePayer }))).toEqual({
+      refused: true,
+      code: "hedera/option-malformed",
+    });
+  });
+
   it("V3: the list form gives H; an inconsistent list is refused", async () => {
     expect(await exactHedera.bound(presentedOf(V.V3.listBase64))).toBe(V.V3.expectBound);
     expect(await exactHedera.bound(presentedOf(V.V3.inconsistentListBase64))).toEqual({

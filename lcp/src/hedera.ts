@@ -578,28 +578,39 @@ function onHedera(o: PaymentRequirements): boolean {
   return isObject(o) && o.scheme === "exact" && typeof o.network === "string" && o.network.startsWith("hedera:");
 }
 
-/** Everything but the transfer method: network, asset, payee, amount and timeout. */
-function isServable(o: PaymentRequirements): boolean {
-  return (
-    isHederaNetwork(o.network) &&
-    (o.extra === undefined || isObject(o.extra)) &&
-    isEntity(o.asset) &&
-    isEntity(o.payTo) &&
-    amountOf(o.amount) !== undefined &&
-    Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0
-  );
+/** The option's network, asset and payee, with `extra` an object when present. */
+function isNamed(o: PaymentRequirements): boolean {
+  return isHederaNetwork(o.network) && (o.extra === undefined || isObject(o.extra)) && isEntity(o.asset) && isEntity(o.payTo);
 }
 
-function checkExact(o: PaymentRequirements): true | Refusal | undefined {
+/** Everything but the transfer method: network, asset, payee, amount and timeout. */
+function isServable(o: PaymentRequirements): boolean {
+  return isNamed(o) && amountOf(o.amount) !== undefined && Number.isSafeInteger(o.maxTimeoutSeconds) && o.maxTimeoutSeconds > 0;
+}
+
+/** The `cryptoTransfer` method (or none) with a `feePayer`, and what `has` asks of the rest of the option. */
+function exactOption(o: PaymentRequirements, has: (o: PaymentRequirements) => boolean): true | Refusal | undefined {
   if (!onHedera(o)) return undefined;
   const method = methodOf(o);
   if (method === "transferExecutor") return undefined;
   if (method !== undefined && method !== "cryptoTransfer") return refusal("hedera/option-malformed");
-  if (!isServable(o) || !isEntity((o.extra as Record<string, unknown>)?.["feePayer"])) {
+  if (!has(o) || !isEntity((o.extra as Record<string, unknown>)?.["feePayer"])) {
     return refusal("hedera/option-malformed");
   }
   return true;
+}
+
+/** The option `advertise`, `read` and `build` serve: `build` writes the transfers from its amount. */
+function checkExact(o: PaymentRequirements): true | Refusal | undefined {
+  return exactOption(o, isServable);
+}
+
+/**
+ * The presented option `bound` and `reference` serve: method, network, asset, payee and fee payer. They read the signed
+ * body, not the option's amount or timeout, so neither is checked here.
+ */
+function checkPresented(o: PaymentRequirements): true | Refusal | undefined {
+  return exactOption(o, isNamed);
 }
 
 function executorsOf(o: PaymentRequirements): readonly string[] | undefined {
@@ -708,9 +719,9 @@ async function build(
   };
 }
 
-/** The signed body of a presented x402 Hedera payment. */
+/** The signed body of a presented x402 Hedera payment, under the presented option's method, network, asset and payee. */
 function signedBody(presented: unknown): { accepted: PaymentRequirements; body: HederaBody } | Refusal {
-  const p = presentedWith(presented, checkExact);
+  const p = presentedWith(presented, checkPresented);
   if (isRefusal(p)) return p;
   const wire = fromBase64(p.payload["transaction"]);
   if (wire === null) return refusal("hedera/tx-malformed");
@@ -721,7 +732,7 @@ function signedBody(presented: unknown): { accepted: PaymentRequirements; body: 
 
 /**
  * The hash inside what the payer signed: the body memo, in LCP string form. Transfers, amounts, the fee payer and the
- * payer are not read, and no signature is verified here.
+ * payer are not read, nor the presented option's amount and timeout, and no signature is verified here.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const s = signedBody(presented);
