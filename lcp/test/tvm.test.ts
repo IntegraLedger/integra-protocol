@@ -158,6 +158,30 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
+  // bound and reference read the transfer the payer signed and step 4's filter of the echoed option, which names no
+  // amount and no timeout. The payment is V2's, so whatever amount or timeout the option echoes, bound gives the file's
+  // H (FIPS 180-2's "abc") and reference V3's keys; pairingOf and build, which need both, still refuse such an option.
+  it("V3: bound and reference read no amount or timeout from the echoed option", async () => {
+    const p = await signed();
+    const { maxTimeoutSeconds: _timeout, ...untimed } = placed;
+    const echoed = [
+      { ...placed, amount: "abc" },
+      { ...placed, amount: "1e3" },
+      { ...placed, maxTimeoutSeconds: 0 },
+      untimed as unknown as PaymentRequirements,
+    ];
+    for (const accepted of echoed) {
+      expect(await exactTvm.bound({ ...p, accepted })).toBe(V.V3.expectBound);
+      expect(await exactTvm.reference({ ...p, accepted })).toEqual(V.V3.expectReference);
+      expect(pairingOf(accepted)).toBeUndefined();
+      const built = await exactTvm.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
+      expect(built).toEqual({ refused: true, code: "tvm/option-malformed" });
+    }
+    const unsponsored = { ...placed, extra: { ...placed.extra, areFeesSponsored: false } };
+    expect(await exactTvm.bound({ ...p, accepted: unsponsored })).toEqual({ refused: true, code: "tvm/option-malformed" });
+    expect(await exactTvm.reference({ ...p, accepted: unsponsored })).toEqual({ refused: true, code: "tvm/option-malformed" });
+  });
+
   // The entry point's interface: "No function throws". An exotic cell (TVM's library cell: type 2, then a 256-bit
   // hash) is not an ordinary cell, so each cell the read parses refuses one with the code of the check that reads it:
   // the settlement message and an exotic action list `tvm/boc-malformed`, the signed request `tvm/not-w5-signed`, the

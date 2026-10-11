@@ -442,7 +442,11 @@ function rawAddress(s: unknown): Address | null {
 
 // ── The pairing.
 
-const check: OptionFilter = (o) => {
+/**
+ * The option's scheme, network, asset, `payTo` and `extra`: what `bound` and `reference` require of the option a
+ * presented payment echoes. They read no amount and no timeout, so neither is checked here.
+ */
+const presentable: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact") return refusal("x402/option-not-this-pairing");
   if (typeof o.network !== "string" || !o.network.startsWith("tvm:")) return refusal("x402/option-not-this-pairing");
   const extra: unknown = o.extra;
@@ -459,6 +463,16 @@ const check: OptionFilter = (o) => {
   if (forwardTon !== undefined && decimalBelow(forwardTon, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   const response = extra["responseDestination"];
   if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
+  return true;
+};
+
+/**
+ * `presentable`, then the amount as a Jetton amount below 2^120 and `maxTimeoutSeconds` a positive safe integer, which
+ * `build` writes into the request: what `pairingOf`, `advertise`, `read` and `build` require.
+ */
+const check: OptionFilter = (o) => {
+  const p = presentable(o);
+  if (p !== true) return p;
   if (decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   if (!Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds < 1) return refusal("tvm/option-malformed");
   return true;
@@ -619,7 +633,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
 
 /** The signed request's carrier, checked against the option's forward payload. */
 function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclude<ReturnType<typeof carrierIn>, Refusal> } | Refusal {
-  const p = presentedWith(presented, check);
+  const p = presentedWith(presented, presentable);
   if (isRefusal(p)) return p;
   const boc = p.payload["settlementBoc"];
   if (typeof boc !== "string") return refusal("x402/payload-malformed");
