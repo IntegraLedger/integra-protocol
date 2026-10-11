@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with @near-js/transactions 2.5.1 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran.",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with @near-js/transactions 2.5.1 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -40,7 +40,8 @@
    "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
    "nonce": "101",
-   "maxBlockHeight": "200000060"
+   "maxBlockHeight": "200000060",
+   "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb"
   },
   "presentedOptions": [
    {
@@ -98,6 +99,7 @@
    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
    "nonce": "101",
    "maxBlockHeight": "200000060",
+   "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb",
    "transaction": "7XsZtC4Hj3Y1k2v3"
   },
   "status": [
@@ -109,6 +111,8 @@
       "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
       "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
       "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
      },
      "receipts": [
@@ -135,6 +139,8 @@
       "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
       "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
       "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
      },
      "receipts": [
@@ -161,6 +167,8 @@
       "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
       "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
       "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
      },
      "receipts": [
@@ -187,6 +195,8 @@
       "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
       "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
       "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
      },
      "receipts": [
@@ -209,6 +219,8 @@
       "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
       "nonce": "102",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
       "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
      },
      "receipts": [
@@ -242,6 +254,184 @@
      "state": "pending",
      "why": "unreadable"
     }
+   },
+   {
+    "case": "a second delegate on the same key and nonce whose memo carries another hash (SHA-256 of abd)",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhhNTJkMTU5ZjI2MmIyYzZkZGI3MjRhNjE4NDBiZWZjMzZlYjMwYzg4ODc3YTQwMzBiNjVjYmU4NjI5ODQ0OWM5In0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; its arguments' SHA-256 is 0x1eb14eb8f48e1e3f6bda1de1e8e80716189ca8ea1e8faab7e35878f4a60f6491"
+   },
+   {
+    "case": "a second delegate on the same key and nonce whose memo is invoice-42",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6Imludm9pY2UtNDIifQ=="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action"
+   },
+   {
+    "case": "a second delegate on the same key and nonce whose arguments carry no memo",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action"
+   },
+   {
+    "case": "a second delegate on the same key and nonce, with the same arguments, calling another contract",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "router.testnet",
+      "methodName": "ft_transfer",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "router.testnet",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; NEP-366: the delegate action's receiver_id is the contract its actions call"
+   },
+   {
+    "case": "a second delegate on the same key and nonce, with the same arguments, calling ft_transfer_call",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer_call",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; NEP-141's ft_transfer_call is another method, which calls the receiver's ft_on_transfer"
+   },
+   {
+    "case": "a second delegate the payer signed on the same key and nonce whose memo carries H and whose amount is 1",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; the arguments differ, so their SHA-256 differs from the ref's argsDigest"
    }
   ],
   "lapsed": [
@@ -279,6 +469,8 @@
       "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
       "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
       "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
      },
      "receipts": [
@@ -293,6 +485,35 @@
      ]
     },
     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "a delegate whose function call is ft_transfer_call, with V1's args",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer_call",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "success"
+      }
+     ]
+    },
+    "expect": {
+     "refused": true,
+     "code": "near/not-ft-transfer"
+    },
+    "source": "the pairing reads the memo of one NEP-141 ft_transfer; ft_transfer_call is another method"
    }
   ]
  },
@@ -304,6 +525,8 @@
     "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
     "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
     "nonce": "101",
+    "receiverId": "usdc.testnet",
+    "methodName": "ft_transfer",
     "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
    },
    "receipts": [

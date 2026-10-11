@@ -38,7 +38,11 @@ const payment = (signedDelegateAction: string): NearPayment => ({
   accepted: O,
   payload: { signedDelegateAction },
 });
-type Fixture = { status: string; delegate: null | { senderId: string; publicKey: string; nonce: string; argsBase64: string }; receipts: NearOutcome["receipts"] };
+type Fixture = {
+  status: string;
+  delegate: null | { senderId: string; publicKey: string; nonce: string; receiverId: string; methodName: string; argsBase64: string };
+  receipts: NearOutcome["receipts"];
+};
 function readerFor(a: {
   outcome?: Fixture | null | "reader-error";
   finalHeight?: string;
@@ -138,6 +142,17 @@ describe("x402-exact-near.json", () => {
       const got = await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
+  });
+
+  // The ref's argsDigest is a 32-byte hash compared as bytes, as hashEquals compares hashes; a ref without one cannot
+  // name the instrument, so the read is pending.
+  it("V3: status needs the ref's args digest, compared as 32 bytes", async () => {
+    const settled = V.V3.status[0];
+    const { argsDigest, ...noDigest } = REF;
+    expect(await exactNear.status(noDigest as never, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactNear.status({ ...REF, argsDigest: "0x12" as never }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
+    const upper = `0x${argsDigest.slice(2).toUpperCase()}` as const;
+    expect(await exactNear.status({ ...REF, argsDigest: upper }, readerFor(settled))).toEqual(settled.expect);
   });
 
   it("plant: a successful outer transaction is not the payment when the token's receipt fails", async () => {

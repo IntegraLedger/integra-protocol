@@ -6,7 +6,7 @@
 import type * as NearCrypto from "@near-js/crypto";
 import type * as NearTransactions from "@near-js/transactions";
 import type * as Borsh from "borsh";
-import { fromLcpString, hash, parseJson, toLcpString, type AtrHash } from "./core.js";
+import { fromLcpString, hash, hashEquals, parseJson, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -45,7 +45,18 @@ export const FT_TRANSFER_GAS = 30_000_000_000_000n;
 export interface NearOutcome {
   /** `final_execution_status`. */
   status: "FINAL" | "EXECUTED" | string;
-  delegate: null | { senderId: string; publicKey: string; nonce: bigint; argsBase64: string };
+  /**
+   * The delegate action the relayed transaction carries: its `sender_id`, `public_key` and `nonce`, its `receiver_id`,
+   * and the `method_name` and base64 `args` of its first action's function call.
+   */
+  delegate: null | {
+    senderId: string;
+    publicKey: string;
+    nonce: bigint;
+    receiverId: string;
+    methodName: string;
+    argsBase64: string;
+  };
   receipts: readonly { executor: string; outcome: "success" | "failure" | "pending" }[];
 }
 
@@ -71,6 +82,8 @@ export interface NearRef {
   publicKey: string;
   nonce: string;
   maxBlockHeight: string;
+  /** SHA-256 of the signed `ft_transfer` arguments' bytes, `0x` and lowercase hex. */
+  argsDigest: `0x${string}`;
   transaction?: string;
 }
 
@@ -146,6 +159,22 @@ export function nearCarrier(signedDelegateAction: string): {
   maxBlockHeight: bigint;
   asset: string;
 } | Refusal {
+  const c = carrierOf(signedDelegateAction);
+  if (isRefusal(c)) return c;
+  const { args: _args, ...carried } = c;
+  return carried;
+}
+
+/** `nearCarrier`'s reading, with the signed `ft_transfer` arguments' bytes. */
+function carrierOf(signedDelegateAction: string): {
+  h: AtrHash;
+  payer: string;
+  publicKey: string;
+  nonce: bigint;
+  maxBlockHeight: bigint;
+  asset: string;
+  args: Uint8Array;
+} | Refusal {
   if (peer === undefined) return refusal(PEER_MISSING);
   if (typeof signedDelegateAction !== "string") return refusal("near/sda-malformed");
   if (signedDelegateAction.length > MAX_SDA_BASE64) return refusal("near/sda-too-large");
@@ -162,11 +191,12 @@ export function nearCarrier(signedDelegateAction: string): {
   if (da.actions.length !== 1) return refusal("near/actions");
   const call = da.actions[0]!["functionCall"] as { methodName: string; args: number[] | Uint8Array } | undefined;
   if (call === undefined || call.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
-  const memo = memoOf(Uint8Array.from(call.args));
+  const args = Uint8Array.from(call.args);
+  const memo = memoOf(args);
   if (isRefusal(memo)) return memo;
   const publicKey = publicKeyString(da.publicKey);
   if (publicKey === null) return refusal("near/sda-malformed");
-  return { h: memo, payer: da.senderId, publicKey, nonce: da.nonce, maxBlockHeight: da.maxBlockHeight, asset: da.receiverId };
+  return { h: memo, payer: da.senderId, publicKey, nonce: da.nonce, maxBlockHeight: da.maxBlockHeight, asset: da.receiverId, args };
 }
 
 /** The hash in the `memo` of a JSON object of `ft_transfer` arguments. */
@@ -201,11 +231,14 @@ function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | nu
 // ── Settlement.
 
 /**
- * Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be this
- * instrument and reads the receipts the token contract executed: a failure is failed, a success is settled. Settled
- * is `final` only when `final_execution_status` is `FINAL`, every receipt's block then being final; any other status,
- * `EXECUTED` included, is `optimistic`. A failed read, an empty relayer list, or a reader for another network is
- * pending.
+ * Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be the
+ * instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success is
+ * settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
+ * `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
+ * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
+ * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
+ * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
+ * empty relayer list, a reader for another network, or a ref whose nonce or digest is malformed is pending.
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
   if (reader.network !== ref.network || !Array.isArray(reader.relayers) || reader.relayers.length === 0) {
@@ -216,8 +249,17 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
   if (outcome === null) return { state: "pending", why: "not-found" };
   const dg = outcome.delegate;
   const nonce = u64Of(ref.nonce);
-  if (nonce === null) return { state: "pending", why: "unreadable" };
-  if (dg === null || dg.senderId !== ref.payer || dg.publicKey !== ref.publicKey || dg.nonce !== nonce) {
+  if (nonce === null || normalHash(ref.argsDigest) === null) return { state: "pending", why: "unreadable" };
+  if (
+    dg === null ||
+    dg.senderId !== ref.payer ||
+    dg.publicKey !== ref.publicKey ||
+    dg.nonce !== nonce ||
+    dg.receiverId !== ref.asset ||
+    dg.methodName !== "ft_transfer" ||
+    !BASE64.test(dg.argsBase64) ||
+    !hashEquals(await hash(Uint8Array.from(Buffer.from(dg.argsBase64, "base64"))), ref.argsDigest)
+  ) {
     return { state: "failed", why: "not-this-instrument" };
   }
   const byToken = outcome.receipts.filter((r) => r.executor === ref.asset);
@@ -245,13 +287,17 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
   }
 }
 
-/** Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. */
+/**
+ * Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A delegate
+ * that calls another method is `near/not-ft-transfer`.
+ */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
   if (reader.network !== ref.network) return refusal("near/wrong-reader");
   if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) return refusal("near/no-relayer");
   const outcome = await findOutcome(ref.transaction, reader);
   if (outcome === "unreadable") return refusal("near/unreadable");
   if (outcome === null || outcome.delegate === null) return refusal("near/not-found");
+  if (outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = outcome.delegate.argsBase64;
   if (typeof args !== "string" || !BASE64.test(args)) return refusal("near/args-malformed");
   return memoOf(Uint8Array.from(Buffer.from(args, "base64")));
@@ -279,6 +325,7 @@ function isOutcome(o: unknown): o is NearOutcome {
     if (typeof d["senderId"] !== "string" || typeof d["publicKey"] !== "string" || typeof d["nonce"] !== "bigint") {
       return false;
     }
+    if (typeof d["receiverId"] !== "string" || typeof d["methodName"] !== "string") return false;
     if (typeof d["argsBase64"] !== "string") return false;
   }
   return o["receipts"].every((r) => isObject(r) && typeof r["executor"] === "string" && typeof r["outcome"] === "string");
@@ -376,12 +423,12 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   };
 }
 
-function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclude<ReturnType<typeof nearCarrier>, Refusal> } | Refusal {
+function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclude<ReturnType<typeof carrierOf>, Refusal> } | Refusal {
   const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   const sda = p.payload["signedDelegateAction"];
   if (typeof sda !== "string") return refusal("x402/payload-malformed");
-  const c = nearCarrier(sda);
+  const c = carrierOf(sda);
   return isRefusal(c) ? c : { accepted: p.accepted, c };
 }
 
@@ -394,11 +441,14 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(r) ? r : r.c.h;
 }
 
-/** The read keys, from the signed delegate action: the token, the payer, its key and the nonce, and the window. */
+/**
+ * The read keys, from the signed delegate action: the token, the payer, its key and the nonce, the window, and the
+ * SHA-256 of the signed `ft_transfer` arguments.
+ */
 async function reference(presented: unknown): Promise<NearRef | Refusal> {
   const r = carried(presented);
   if (isRefusal(r)) return r;
-  const { asset, payer, publicKey, nonce, maxBlockHeight } = r.c;
+  const { asset, payer, publicKey, nonce, maxBlockHeight, args } = r.c;
   return {
     network: r.accepted.network as NearNetwork,
     asset,
@@ -406,6 +456,7 @@ async function reference(presented: unknown): Promise<NearRef | Refusal> {
     publicKey,
     nonce: nonce.toString(),
     maxBlockHeight: maxBlockHeight.toString(),
+    argsDigest: await hash(args),
   };
 }
 
