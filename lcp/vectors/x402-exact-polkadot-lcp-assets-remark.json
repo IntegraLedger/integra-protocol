@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify.",
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's call_index, and recompute the length prefix; the signature is V3's and does not cover that call, which recover does not verify.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -359,6 +359,130 @@
     "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144",
     "expect": "polkadot/remark-not-lcp",
     "source": "profile rule 3: R is the 77 ASCII bytes lcp:sha256: followed by H, and rule 1 writes H as 0x lowercase hex; frame_system's remark_with_event emits Remarked with hash = BlakeTwo256 of the remark's bytes as signed, so an upper-case remark's event never carries the hash of H's LCP string"
+   },
+   {
+    "case": "the raw extrinsic at the timepoint is a bare system.remark_with_event of the remark, with no transfer",
+    "raw": "0xe9028400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": "polkadot/call-not-profile",
+    "source": "profile rule 3: the call is exactly utility.batch_all([assets.transfer_keep_alive(asset, Id(payTo), amount), system.remark_with_event(R)]); the call is frame_system's remark_with_event (call_index 7) around V3's signed preamble, SCALE by hand"
+   },
+   {
+    "case": "the raw extrinsic at the timepoint is a utility.force_batch of the transfer and the remark",
+    "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002804083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": "polkadot/call-not-profile",
+    "source": "profile rule 3, as above; pallet_utility's force_batch (call_index 4) carries on after a call fails, where batch_all applies both calls or neither; V2's call with its call index changed from 2 to 4"
+   }
+  ],
+  "recoverReads": [
+   {
+    "case": "finalized 99: the block is above the finalized height, and recover reads it as found",
+    "finalized": "99",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "source": "Sidecar: /blocks/head/header answers the most recently finalized block; a block above it is read as found, as the status row with finalized 99 reads it (settled at head)"
+   },
+   {
+    "case": "the canonical block at 100 is another block holding the same extrinsic at index 2: its record is read",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "source": "Polkadot SDK: an extrinsic is identified by its block and index; the same signed bytes at index 2 of the canonical block at 100 are the payment there, as the status row of this fixture reads it"
+   },
+   {
+    "case": "the canonical block at 100 holds another extrinsic at index 2: the named block is off the finalized chain",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "expect": "polkadot/not-found",
+    "source": "Polkadot SDK: once a block is finalized it can never be reverted, so a block at a finalized height other than the canonical one is not on the chain; the status row of this fixture is pending"
+   },
+   {
+    "case": "the canonical block at 100 has nothing at index 2",
+    "finalized": "100",
+    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "canonicalMissing": true,
+    "expect": "polkadot/not-found",
+    "source": "as the row above"
+   },
+   {
+    "case": "Transferred of asset 1984 at the named position: no transfer of the call's asset",
+    "finalized": "100",
+    "change": {
+     "events": [
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1984",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": "polkadot/no-transfer",
+    "source": "the plant's record: an event of another asset is not the transfer of asset 1337 that the call names"
+   },
+   {
+    "case": "a utility.batch of the remark and a system.remark whose data is the profile call: it ends with the profile call and moves nothing",
+    "finalized": "100",
+    "raw": "0xf1048400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000280008000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561640000ed012802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "change": {
+     "hash": "0x8eb36d47d15576f86d898a74f6d59902da7b69756f6101a0e5cd2307ae771b21",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompleted",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": "polkadot/no-transfer",
+    "source": "pallet_utility's batch (call_index 0) of frame_system's remark_with_event (7) and remark (0), whose data is V2's call, around V3's signed preamble, SCALE by hand; frame_system's remark emits no event and moves nothing, so the record has Remarked and no Transferred; the hash is b2sum -l 256"
    }
   ]
  },

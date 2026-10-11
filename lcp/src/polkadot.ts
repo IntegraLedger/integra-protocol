@@ -101,6 +101,8 @@ export interface PolkadotUnsigned {
 const ID = "x402/exact/polkadot/lcp-assets-remark" as const;
 const MAX_EXTRINSIC = 4096;
 const REMARK_LENGTH = 77;
+/** The longest profile call: both compacts in their widest form, a `u32` asset id and a `u128` amount. */
+const MAX_CALL = 141;
 const MAX_RANGE = 255n;
 const U32_LIMIT = 1n << 32n;
 const U128_LIMIT = 1n << 128n;
@@ -432,6 +434,18 @@ function hasEvent(x: PolkadotExtrinsic, pallet: string, method: string, test: (d
   );
 }
 
+/** The `Remarked` event for this remark: its `data[1]` is the BLAKE2b-256 of the remark's bytes. */
+function remarked(x: PolkadotExtrinsic, remark: Uint8Array): boolean {
+  const remarkHash = toHex(blake256(remark));
+  return hasEvent(x, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash));
+}
+
+/** A `Transferred` event of the asset: its `data[0]` is the asset id, in decimal. */
+function transferred(x: PolkadotExtrinsic, assetId: number): boolean {
+  const asset = String(assetId);
+  return hasEvent(x, "assets", "Transferred", (d) => (typeof d[0] === "string" || typeof d[0] === "number") && String(d[0]) === asset);
+}
+
 /** Why the extrinsic at the timepoint is not this payment, or undefined when it is. */
 function failureOf(
   found: PolkadotExtrinsic,
@@ -440,13 +454,37 @@ function failureOf(
 ): "not-this-extrinsic" | "dispatch-failed" | "no-remark" | "no-transfer" | undefined {
   if (!hashEquals(found.hash, ref.extrinsicHash)) return "not-this-extrinsic";
   if (!found.success) return "dispatch-failed";
-  const remarkHash = toHex(blake256(ENCODER.encode(toLcpString(h))));
-  if (!hasEvent(found, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash))) {
-    return "no-remark";
+  if (!remarked(found, ENCODER.encode(toLcpString(h)))) return "no-remark";
+  return transferred(found, ref.assetId) ? undefined : "no-transfer";
+}
+
+/**
+ * The record a read answers from, by the finality of the extrinsic found at `block`-`index`. While the finalized
+ * height is below its block's, it is the record found, at `head`. Once the finalized chain holds that height, it is the
+ * record found when the canonical block there is `block`, or the canonical block's record when that block holds the
+ * extrinsic with hash `xtHash` at the same index; either is `finalized`. Otherwise it is `not-located`. A failed read,
+ * or an answer that is not a record, is `unreadable`.
+ */
+async function finalRecord(
+  reader: PolkadotReader,
+  found: PolkadotExtrinsic,
+  block: Hex,
+  index: number,
+  xtHash: string,
+): Promise<{ read: PolkadotExtrinsic; finality: "finalized" | "head" } | "not-located" | "unreadable"> {
+  const height = found.at.height;
+  const finalized = await readSafely(() => reader.finalizedHeight());
+  if ("unreadable" in finalized || typeof finalized.ok !== "bigint") return "unreadable";
+  if (finalized.ok < height) return { read: found, finality: "head" };
+  const canonical = await readSafely(() => reader.extrinsic(height, index));
+  if ("unreadable" in canonical) return "unreadable";
+  if (canonical.ok === null) return "not-located";
+  if (!isExtrinsic(canonical.ok)) return "unreadable";
+  if (hashEquals(canonical.ok.at.hash, block)) return { read: found, finality: "finalized" };
+  if (canonical.ok.at.height === height && hashEquals(canonical.ok.hash, xtHash)) {
+    return { read: canonical.ok, finality: "finalized" };
   }
-  const asset = String(ref.assetId);
-  const transferred = (d: readonly Json[]) => (typeof d[0] === "string" || typeof d[0] === "number") && String(d[0]) === asset;
-  return hasEvent(found, "assets", "Transferred", transferred) ? undefined : "no-transfer";
+  return "not-located";
 }
 
 /**
@@ -476,33 +514,31 @@ export async function polkadotStatus(
   if ("unreadable" in x) return { state: "pending", why: "unreadable" };
   if (x.ok === null) return { state: "pending", why: "not-found" };
   if (!isExtrinsic(x.ok)) return { state: "pending", why: "unreadable" };
-  const found = x.ok;
-  const height = found.at.height;
-  const answer = (read: PolkadotExtrinsic, finality: "finalized" | "head"): PolkadotStatus => {
-    const why = failureOf(read, ref, nh);
-    const transaction = `${read.at.hash}-${index}`;
-    return why === undefined
-      ? { state: "settled", finality, height: read.at.height, transaction }
-      : { state: "failed", why, finality, height: read.at.height, transaction };
-  };
+  const at = await finalRecord(reader, x.ok, block, index, ref.extrinsicHash);
+  if (at === "unreadable" || at === "not-located") return { state: "pending", why: at };
+  const why = failureOf(at.read, ref, nh);
+  const transaction = `${at.read.at.hash}-${index}`;
+  return why === undefined
+    ? { state: "settled", finality: at.finality, height: at.read.at.height, transaction }
+    : { state: "failed", why, finality: at.finality, height: at.read.at.height, transaction };
+}
 
-  const finalized = await readSafely(() => reader.finalizedHeight());
-  if ("unreadable" in finalized || typeof finalized.ok !== "bigint") return { state: "pending", why: "unreadable" };
-  if (finalized.ok < height) return answer(found, "head");
-  const canonical = await readSafely(() => reader.extrinsic(height, index));
-  if ("unreadable" in canonical) return { state: "pending", why: "unreadable" };
-  if (canonical.ok === null) return { state: "pending", why: "not-located" };
-  if (!isExtrinsic(canonical.ok)) return { state: "pending", why: "unreadable" };
-  if (hashEquals(canonical.ok.at.hash, block)) return answer(found, "finalized");
-  if (canonical.ok.at.height === height && hashEquals(canonical.ok.hash, ref.extrinsicHash)) {
-    return answer(canonical.ok, "finalized");
+/** The profile call an extrinsic ends with, starting at or after `from`: the longest such suffix, or null. */
+function endingProfileCall(xt: Uint8Array, from: number): ProfileCall | null {
+  for (let start = Math.max(from, xt.length - MAX_CALL); start < xt.length; start++) {
+    const call = decodeProfileCall(xt.subarray(start));
+    if (!isRefusal(call)) return call;
   }
-  return { state: "pending", why: "not-located" };
+  return null;
 }
 
 /**
- * The hash from the landed extrinsic alone, for anyone holding its timepoint: its raw bytes end with the remark call,
- * and the chain's record of it has the same hash, dispatched, with the `Remarked` event. Two calls.
+ * The hash from the landed extrinsic alone, for anyone holding its timepoint. Its raw bytes must end with the profile
+ * call, after the signature, whose remark is the hash's LCP string with lowercase hex. The chain's record of it must
+ * have the same hash; the record read is then chosen as `polkadotStatus` chooses it, and a named block that the
+ * finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at its height, is
+ * `polkadot/not-found`. That record must show the extrinsic dispatched with the `Remarked` event for the remark and a
+ * `Transferred` event of the call's asset. At most four calls.
  */
 export async function polkadotRecover(
   ref: { network: PolkadotNetwork; transaction: string },
@@ -524,22 +560,20 @@ export async function polkadotRecover(
   const xt = fromHex(raw);
   const split = splitSigned(xt);
   if (isRefusal(split)) return split;
-  const tailLength = 4 + REMARK_LENGTH;
-  const tail = xt.subarray(xt.length - tailLength);
-  const tailHead = concat(CALL.remarkWithEvent, compact(BigInt(REMARK_LENGTH)));
-  if (xt.length - tailLength < split.end || !equalBytes(tail.subarray(0, 4), tailHead)) {
-    return refusal("polkadot/call-not-profile");
-  }
-  const h = remarkCarrier(tail.subarray(4));
+  const call = endingProfileCall(xt, split.end);
+  if (call === null) return refusal("polkadot/call-not-profile");
+  const h = remarkCarrier(call.remark);
   if (h === null) return refusal("polkadot/remark-not-lcp");
   const x = await readSafely(() => reader.extrinsic(block, index));
   if ("unreadable" in x) return refusal("polkadot/unreadable");
   if (x.ok === null || !isExtrinsic(x.ok)) return refusal("polkadot/not-found");
-  if (!hashEquals(x.ok.hash, extrinsicHash(xt))) return refusal("polkadot/hash-mismatch");
-  const remarkHash = toHex(blake256(tail.subarray(4)));
-  if (!x.ok.success || !hasEvent(x.ok, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash))) {
-    return refusal("polkadot/no-remark");
-  }
+  const xtHash = extrinsicHash(xt);
+  if (!hashEquals(x.ok.hash, xtHash)) return refusal("polkadot/hash-mismatch");
+  const at = await finalRecord(reader, x.ok, block, index, xtHash);
+  if (at === "unreadable") return refusal("polkadot/unreadable");
+  if (at === "not-located") return refusal("polkadot/not-found");
+  if (!at.read.success || !remarked(at.read, call.remark)) return refusal("polkadot/no-remark");
+  if (!transferred(at.read, call.assetId)) return refusal("polkadot/no-transfer");
   return h;
 }
 

@@ -146,6 +146,18 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     }
   });
 
+  it("V4: recover reads the record status reads, and needs the profile call and a transfer of its asset", async () => {
+    const transaction = `${V.V4.block}-${V.V4.index}`;
+    expect(V.V4.recoverReads.length).toBeGreaterThan(0);
+    for (const row of V.V4.recoverReads) {
+      const raw = [...V.V4.raw];
+      if (row.raw !== undefined) raw[V.V4.index] = row.raw;
+      const reader: PolkadotReader = { ...readerOf(row), rawExtrinsics: async () => raw };
+      const got = await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
+      expect(typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
+    }
+  });
+
   it("plant: a transfer of another asset at the named position is never the settlement", async () => {
     const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
     expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100", change: V.plant.change })))).toEqual(V.plant.expect);

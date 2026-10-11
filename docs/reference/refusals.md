@@ -588,21 +588,22 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 |---|---|
 | `polkadot/address-malformed` | A Polkadot address is not an SS58 string of at most 64 characters that decodes to 35 bytes with a simple prefix and a valid checksum. |
 | `polkadot/address-not-id` | The Polkadot extrinsic's signer is not a `MultiAddress::Id` of 32 bytes. |
-| `polkadot/call-not-profile` | The Polkadot call is not exactly the profile's `batchAll` of `transferKeepAlive` then `remarkWithEvent` with a remark of the fixed length, or the presented `call` is not lowercase hex, or the recovered extrinsic does not end with that remark. |
+| `polkadot/call-not-profile` | The Polkadot call is not exactly the profile's `batchAll` of `transferKeepAlive` then `remarkWithEvent` with a remark of the fixed length, or the presented `call` is not lowercase hex, or the recovered extrinsic does not end with that call after its signature. |
 | `polkadot/call-not-suffix` | The signed Polkadot extrinsic does not end with the profile call, after its signature. |
 | `polkadot/extrinsic-malformed` | A Polkadot extrinsic is not lowercase hex within the bound whose compact length prefix matches its length, or the raw extrinsic a recovery reads is not hex within the bound. |
 | `polkadot/extrinsic-too-large` | A Polkadot extrinsic exceeds the size bound. |
 | `polkadot/hash-mismatch` | The chain's record of the Polkadot extrinsic has a hash other than that of the raw bytes read. |
 | `polkadot/network-unsupported` | A Polkadot option's network starts with `polkadot:` but is not one this package supports. |
 | `polkadot/no-remark` | The Polkadot extrinsic did not dispatch successfully with a `Remarked` event for its remark. |
-| `polkadot/not-found` | The Polkadot reader found no block, no extrinsic at the index, or no record of the extrinsic. |
+| `polkadot/no-transfer` | The recovered Polkadot extrinsic's record carries no `Transferred` event of the asset its profile call names. |
+| `polkadot/not-found` | The Polkadot reader found no block, no extrinsic at the index, or no record of the extrinsic, or, for a recovery, the finalized chain has reached the named block's height and the canonical block there is another block that does not hold the same extrinsic at that index. |
 | `polkadot/not-signed-v4` | The Polkadot extrinsic is not a signed version 4 extrinsic. |
 | `polkadot/option-malformed` | A Polkadot option does not name the `lcp-assets-remark` transfer method, names another flow, or has an invalid asset id, amount or timeout (1 to 3600 seconds), or the choice given to `build` is not an object. |
 | `polkadot/range` | `polkadotLocate` is given a block range that is not non-negative bigints in order spanning at most 256 blocks. |
 | `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
 | `polkadot/transaction-malformed` | `polkadotRecover` is given a transaction reference that is not a `<block hash>-<index>` timepoint. |
-| `polkadot/unreadable` | The Polkadot reader threw or returned block extrinsics that are not an array. |
+| `polkadot/unreadable` | The Polkadot reader threw, returned block extrinsics that are not an array, or returned a record of the canonical block that is not an extrinsic's. |
 | `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names. |
 
 ## starknet
