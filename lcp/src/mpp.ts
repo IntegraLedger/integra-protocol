@@ -25,6 +25,7 @@ import {
   type EvmRef,
   type Eip3009TypedData,
   type Permit2TypedData,
+  type TransferLog,
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
@@ -185,9 +186,11 @@ const PAYMENT_WITNESS = [
 
 /**
  * `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
- * topics and `topics[0]` = `Transfer` whose recipient is not `RECEIVE_POLICY_GUARD`. Without one, a `Transfer` from
- * `ref.asset` to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`. At most
- * three calls.
+ * topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose recipient is not
+ * `RECEIVE_POLICY_GUARD`. `ref.transferLog` must identify a `Transfer` from `ref.asset` by its sender alone (identity
+ * `from`), as the pairing's `reference` records it, else pending `unreadable`. Without such a log, a `Transfer` from
+ * that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`: another
+ * account's `Transfer` in the same transaction is not this payment. At most three calls.
  */
 export async function transferPresent(
   ref: EvmRef & { transaction: Hex; asset: Hex },
@@ -196,6 +199,8 @@ export async function transferPresent(
   if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
     return { state: "pending", why: "unreadable" };
   }
+  const sender = ref.transferLog;
+  if (!identifiesSender(sender, ref.asset)) return { state: "pending", why: "unreadable" };
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
     network: reader.network,
@@ -208,12 +213,28 @@ export async function transferPresent(
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
   if (!isAddress(ref.asset)) return { state: "failed", why: "transfer-not-found" };
-  const moved = logs.some(
-    (l) => transferParts(l, ref.asset, TRANSFER_TOPIC) !== undefined && !isGuardTransfer(l, ref.asset),
-  );
-  if (moved) return s;
-  if (logs.some((l) => isGuardTransfer(l, ref.asset))) return { state: "failed", why: "receive-policy-blocked" };
+  const sent: EvmLog[] = [];
+  for (const l of logs) {
+    const parts = transferParts(l, ref.asset, TRANSFER_TOPIC);
+    if (parts === undefined) continue;
+    const digest = await transferDigest({ from: parts.from });
+    if (typeof digest === "string" && sameBytes(digest, sender.digest)) sent.push(l);
+  }
+  if (sent.some((l) => !isGuardTransfer(l, ref.asset))) return s;
+  if (sent.length > 0) return { state: "failed", why: "receive-policy-blocked" };
   return { state: "failed", why: "transfer-not-found" };
+}
+
+/** True for a `TransferLog` that identifies a `Transfer` from `asset` by its sender alone: identity `from`. */
+function identifiesSender(t: unknown, asset: unknown): t is TransferLog {
+  if (!isObject(t) || t["identity"] !== "from" || !sameBytes(t["topic0"], TRANSFER_TOPIC)) return false;
+  const address = t["address"];
+  return (
+    typeof address === "string" &&
+    typeof asset === "string" &&
+    address.toLowerCase() === asset.toLowerCase() &&
+    bytesOf(t["digest"])?.length === 32
+  );
 }
 
 // ── Shared steps.
@@ -591,16 +612,26 @@ async function noSignedPlace(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys of a payment with no claim, from the challenge alone: the network, and `asset` = the challenge's
- * `currency`, the token whose transfer `transferPresent` reads. Nothing signed was presented.
+ * The read keys of a payment with no claim, from the challenge and the credential's `source`: the network, `asset` =
+ * the challenge's `currency`, the token whose transfer `transferPresent` reads, and `transferLog`, which identifies
+ * that transfer by its sender alone (identity `from`): the payer, the address of the credential's `did:pkh` `source`,
+ * else `mpp/source-required`. Nothing the payer signed carries H.
  */
 async function networkReference(presented: unknown): Promise<(EvmRef & { asset: Hex }) | Refusal> {
-  const challenge = isObject(presented) ? presented["challenge"] : undefined;
-  if (!isObject(challenge)) return refusal("mpp/credential-malformed");
-  const c = checkChallenge(challenge, true);
+  if (!isObject(presented) || !isObject(presented["challenge"])) return refusal("mpp/credential-malformed");
+  const c = checkChallenge(presented["challenge"], true);
   if (isRefusal(c)) return c;
   if (c.method !== "evm" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
-  return { network: `eip155:${chainOf(c)}`, asset: str(c.request["currency"]) as Hex };
+  const from = didPkhAddress(presented["source"]);
+  if (from === undefined) return refusal("mpp/source-required");
+  const digest = await transferDigest({ from });
+  if (typeof digest !== "string") return digest;
+  const asset = str(c.request["currency"]) as Hex;
+  return {
+    network: `eip155:${chainOf(c)}`,
+    asset,
+    transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from", digest },
+  };
 }
 
 // ── mpp/charge/tempo/memo and mpp/charge/tempo/push.

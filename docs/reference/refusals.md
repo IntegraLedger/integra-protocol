@@ -168,7 +168,7 @@ MPP challenges and credentials, and the checks every MPP pairing shares (`@integ
 | `mpp/salt-not-usdc-derivation` | The `usdc` Gateway credential's TransferSpec `salt` is not the `usdcGatewaySalt` derived from the challenge and the credential's own values. |
 | `mpp/session-action` | A session credential's or `buildWithin` input's `action` is not one the pairing defines (such as `open`, `voucher`, `topUp`, `use`, `bearer` or `close`), or a credential presented as an opening does not have `action` `open`. |
 | `mpp/session-protocol` | A Tempo session challenge's `sessionProtocol` is neither `v1` nor `v2`. |
-| `mpp/source-required` | The credential's `source` is not a `did:pkh:eip155` DID naming the payer, which the EVM Permit2 `reference` and a `hash`-type EVM session opening need. |
+| `mpp/source-required` | The credential's `source` is not a `did:pkh:eip155` DID naming the payer, which the EVM Permit2, `transaction` and `hash` `reference` and a `hash`-type EVM session opening need. |
 | `mpp/splits-malformed` | An EVM charge challenge's `methodDetails.splits` is not an array of 1 to 10 entries, each with an address `recipient` and a non-zero decimal `amount`. |
 | `mpp/stacks-memo-not-h` | The `usdc` Stacks transaction is not a contract call to `transfer` whose fourth argument is `(some H)`. |
 | `mpp/stacks-tx-malformed` | The `usdc` Stacks credential's `transactionFormat` is not the one read, or its `transaction` is not base64 of a non-empty Stacks transaction within the size bound that decodes and re-serialises to the same bytes. |

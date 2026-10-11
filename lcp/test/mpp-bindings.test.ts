@@ -130,8 +130,8 @@ describe("MPP_BINDINGS", () => {
     const p2 = await evmPermit2.build({ challenge: chE, from: A.fixed.payer, now: 0, spender: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }, H);
     if ("refused" in p2) throw new Error(p2.code);
     refs.push(await evmPermit2.reference(p2.complete(A.MV5.expectSignature) as MppCredential));
-    refs.push(await evmTransaction.reference({ challenge: C_E } as MppCredential));
-    refs.push(await evmHash.reference({ challenge: C_E } as MppCredential));
+    refs.push(await evmTransaction.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential));
+    refs.push(await evmHash.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential));
     const chT = placed(C_T);
     const wire = concat([
       "0x76",

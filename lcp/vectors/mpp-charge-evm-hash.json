@@ -6,11 +6,17 @@
   "now": 1790000000
  },
  "MV12": {
-  "case": "the hash credential, reference({challenge: C_E}), and transferPresent on fixture receipts with finalized 100; a receipt whose only Transfer goes to the receive-policy guard, which a Tempo TIP-20 transfer blocked by the recipient's receive policy emits instead of paying the recipient, is failed receive-policy-blocked",
+  "case": "the hash credential, reference(credential), and transferPresent on fixture receipts with finalized 100. The reference identifies the payment's Transfer by its sender alone (identity from): the address of the credential's did:pkh source, whose digest is the SHA-256 of its 20 bytes. A receipt whose only Transfer of the currency is from another account is failed transfer-not-found, and the payer's own Transfer to another account, of another value, is settled. A credential with no source is refused mpp/source-required. A receipt whose only Transfer goes to the receive-policy guard, which a Tempo TIP-20 transfer blocked by the recipient's receive policy emits instead of paying the recipient, is failed receive-policy-blocked",
   "hash": "0xbd39ed4f289dde35adf490855f950b9ea337d5eeb4c1cf941c76c228e36ee29d",
   "expectReference": {
    "network": "eip155:84532",
-   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "transferLog": {
+    "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+    "identity": "from",
+    "digest": "0x96e6760225b23fdf7760696e50f3d53a79bc982b586e9bab53737a0d0a032c6b"
+   }
   },
   "expectSettled": {
    "state": "settled",
@@ -20,6 +26,15 @@
   "expectOtherEmitter": {
    "state": "failed",
    "why": "transfer-not-found"
+  },
+  "otherSender": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "expectOtherSender": {
+   "state": "failed",
+   "why": "transfer-not-found"
+  },
+  "expectNoSource": {
+   "refused": true,
+   "code": "mpp/source-required"
   },
   "expectReverted": {
    "state": "failed",
