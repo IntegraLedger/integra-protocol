@@ -85,6 +85,8 @@ export interface MirrorEntry {
   nonce: number;
   scheduled: boolean;
   consensus_timestamp: string;
+  /** The fee charged to the transaction's fee payer, in tinybars; its `transfers` row includes it. */
+  charged_tx_fee?: number;
   transfers?: readonly { account: string; amount: number }[];
   token_transfers?: readonly { token_id: string; account: string; amount: number }[];
   /**
@@ -913,8 +915,11 @@ async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refu
 /**
  * Reads the merged consensus record of the named transaction: the user entry must be SUCCESS; each account's net
  * change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
- * HBAR transfers and the fee payer left out; exactly one other account must be debited, and a credit of the same
- * magnitude must give the recorded digest. A transfer list that is not an array is pending `unreadable`.
+ * HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token rows are whole, and on HBAR the fee the
+ * user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
+ * reads as what it paid or received. Exactly one account must be debited, and a credit of the same magnitude must give
+ * the recorded digest. A transfer list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending
+ * `unreadable`.
  */
 export async function executorStatus(
   ref: ExecutorRef & { transaction: string },
@@ -930,12 +935,15 @@ export async function executorStatus(
   const user = own.find((e) => e.result === SUCCESS) ?? own[0];
   if (user === undefined) return { state: "pending", why: "not-found" };
   if (user.result !== SUCCESS) return { state: "failed", why: `result:${user.result}` };
+  const fee = ref.asset === "0.0.0" ? user.charged_tx_fee : 0;
+  if (typeof fee !== "number" || !Number.isSafeInteger(fee) || fee < 0) return { state: "pending", why: "unreadable" };
 
   const merged = entries.filter((e) => e.scheduled === false && !NOT_COUNTED.has(e.result) && (e === user || e.nonce > 0));
   const net = new Map<string, bigint>();
   const credit = (account: string, amount: bigint): void => {
-    if (account !== feePayer) net.set(account, (net.get(account) ?? 0n) + amount);
+    net.set(account, (net.get(account) ?? 0n) + amount);
   };
+  credit(feePayer, BigInt(fee));
   let rows = 0;
   /** Each well-formed row of `list` in the asset, or undefined when the list or a row is unreadable. */
   const movesOf = (list: unknown): { account: string; amount: bigint }[] | undefined => {

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is printf '%s' '0.0.5001,0.0.4001,100000000' | sha256sum, and Python hashlib printed the same. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. A row's reference fields override the status reference.",
+ "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is printf '%s' '0.0.5001,0.0.4001,100000000' | sha256sum, and Python hashlib printed the same. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; in x402's example it is the fee payer's 5000000-tinybar debit, which 0.0.3 and 0.0.98 are credited. A row's reference fields override the status reference.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -164,6 +164,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -210,6 +211,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -239,6 +241,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -276,6 +279,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -338,6 +342,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -396,6 +401,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -458,6 +464,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -520,6 +527,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -586,6 +594,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -643,6 +652,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -695,6 +705,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -747,6 +758,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -796,6 +808,7 @@
       "scheduled": false,
       "memo_base64": null,
       "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
       "transfers": [
        {
         "account": "0.0.9000",
@@ -855,6 +868,251 @@
      "why": "not-found"
     },
     "source": "hiero-consensus-node RecordCache: records with INVALID_NODE_ACCOUNT or INVALID_PAYER_SIGNATURE 'do not prevent valid transactions with the same id from reaching consensus and being handled'"
+   },
+   {
+    "case": "the payer is the fee payer, on HBAR",
+    "reference": {
+     "transaction": "0.0.5001-1755500000-000000000"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it"
+   },
+   {
+    "case": "the payer is the fee payer and only the fee moved",
+    "reference": {
+     "transaction": "0.0.5001-1755500000-000000000"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it; with the fee taken out, no account is debited"
+   },
+   {
+    "case": "the payer is the fee payer, on an HTS token",
+    "reference": {
+     "asset": "0.0.456858",
+     "transaction": "0.0.5001-1755500000-000000000"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "token_transfers": [
+       {
+        "token_id": "0.0.456858",
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "token_id": "0.0.456858",
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'An HTS token list carries no fee distribution, so there `payTo` MUST be the only credit' and 'the net credit to `payTo` in `asset` equals `amount` exactly'; the fee is HBAR, in the parent's transfers"
+   },
+   {
+    "case": "the payee is the fee payer, on an HTS token",
+    "reference": {
+     "asset": "0.0.456858",
+     "transaction": "0.0.4001-1755500000-000000000"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.4001",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "token_transfers": [
+       {
+        "token_id": "0.0.456858",
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "token_id": "0.0.456858",
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'An HTS token list carries no fee distribution, so there `payTo` MUST be the only credit' and 'the net credit to `payTo` in `asset` equals `amount` exactly'; the fee is HBAR, in the parent's transfers"
+   },
+   {
+    "case": "an HBAR user entry without charged_tx_fee",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "why": "unreadable"
+    },
+    "source": "the Mirror Node's Transaction carries charged_tx_fee; an answer without it cannot separate the fee payer's fee from what it paid"
    }
   ]
  },
@@ -867,6 +1125,7 @@
     "scheduled": false,
     "memo_base64": null,
     "consensus_timestamp": "1755500003.000000001",
+    "charged_tx_fee": 5000000,
     "transfers": [
      {
       "account": "0.0.9000",
