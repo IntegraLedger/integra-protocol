@@ -102,6 +102,11 @@ describe("mpp-charge-solana.json", () => {
     expect(r.h).toBe(H);
   });
 
+  it("unplaced gives the challenge as issued: its request without externalId", async () => {
+    expect(chargeSolana.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
+    expect(await issuedDigest(chargeSolana.unplaced(placed))).toBe(await issuedDigest(V.challenge));
+  });
+
   it("V2: bound and reference of the vector's wire", async () => {
     const cr = credential(placed, { type: "transaction", transaction: V.V2.wireBase64 });
     expect(await chargeSolana.bound(cr)).toBe(V.V2.expectBound);
@@ -362,6 +367,11 @@ describe("mpp-charge-xrpl.json", () => {
     expect(pairingsOf(noNetwork)).toEqual(refused(V.refusals[2].expect));
   });
 
+  it("unplaced gives the challenge as issued: its request without methodDetails.invoiceId", async () => {
+    expect(chargeXrpl.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
+    expect(await issuedDigest(chargeXrpl.unplaced(placed))).toBe(await issuedDigest(V.challenge));
+  });
+
   it("V3: bound and reference of the vector's MPP blob; V4: the x402 blob is refused", async () => {
     const cr = credential(placed, { type: "transaction", blob: V.V3.blob });
     expect(await chargeXrpl.bound(cr)).toBe(V.V3.expectBound);
@@ -451,6 +461,11 @@ describe("mpp-charge-nearintents.json", () => {
     expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied)).toEqual(refused(V.occupied.expect));
     expect(chargeNearIntents.claims).toBe(false);
     expect(chargeNearIntents.pattern.publicProof).toBe(false);
+  });
+
+  it("unplaced gives the challenge as issued: its request without externalId", async () => {
+    expect(chargeNearIntents.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
+    expect(await issuedDigest(chargeNearIntents.unplaced(placed))).toBe(await issuedDigest(V.challenge));
   });
 
   it("bound of a hash credential gives H", async () => {

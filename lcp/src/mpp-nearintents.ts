@@ -4,7 +4,16 @@
  * transaction came first. Settlement is the seller's report.
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash } from "./core.js";
-import { deepFreeze, echoedFor, placeCarrier, read, tie, type MppChallenge, type MppCredential } from "./mpp-challenge.js";
+import {
+  deepFreeze,
+  echoedFor,
+  placeCarrier,
+  read,
+  tie,
+  withoutCarrier,
+  type MppChallenge,
+  type MppCredential,
+} from "./mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -41,9 +50,9 @@ function advertise(
   );
 }
 
-/** The challenge as issued: `externalId` is left out of the digest of what was issued. */
+/** The challenge as issued: its request without `externalId`, where H rides. */
 function unplaced(option: MppChallenge): MppChallenge {
-  return option;
+  return withoutCarrier(option);
 }
 
 const pattern: LcpPattern = deepFreeze({

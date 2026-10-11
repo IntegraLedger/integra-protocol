@@ -23,6 +23,7 @@ import {
   pushedField,
   read,
   tie,
+  withoutCarrier,
   type Checked,
   type MppChallenge,
   type MppCredential,
@@ -224,9 +225,9 @@ function advertise(
   );
 }
 
-/** The challenge as issued: `methodDetails.invoiceId` is left out of the digest of what was issued. */
+/** The challenge as issued: its request without `methodDetails.invoiceId`, where H rides. */
 function unplaced(option: MppChallenge): MppChallenge {
-  return option;
+  return withoutCarrier(option);
 }
 
 const pattern: LcpPattern = deepFreeze({

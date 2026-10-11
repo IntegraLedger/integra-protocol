@@ -36,6 +36,7 @@ import {
   pushedField,
   read,
   tie,
+  withoutCarrier,
   type Checked,
   type MppChallenge,
   type MppCredential,
@@ -383,9 +384,9 @@ function advertise(
   );
 }
 
-/** The challenge as issued: H rides in `externalId`, which the digest of what was issued leaves out. */
+/** The challenge as issued: its request without `externalId`, where H rides. */
 function unplaced(option: MppChallenge): MppChallenge {
-  return option;
+  return withoutCarrier(option);
 }
 
 const pattern: LcpPattern = deepFreeze({
