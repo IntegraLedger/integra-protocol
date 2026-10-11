@@ -300,6 +300,64 @@ describe("x402-exact-stellar.json", () => {
     }
   });
 
+  // CAP-46-11: the entry's signature "is only considered valid until the signature expiration ledger (inclusive)", so a
+  // payment can land in the expiration ledger itself. Stellar RPC getEvents (stellar-docs openrpc EndLedger: "end of
+  // search window (exclusive)"; with a cursor, endLedger must be omitted; stellar-rpc get_events.go scans at most 10,000
+  // ledgers per call and always returns a cursor).
+  describe("StellarReader.transfers: fromLedger through toLedger, both inclusive", () => {
+    const SCAN = 10_000;
+    const listedTx = "bb".repeat(32);
+
+    /**
+     * getEvents over one transfer event at `landedIn`, the latest ledger being `latest`: `endLedger` exclusive, at most
+     * SCAN ledgers a call, and the returned cursor the last ledger scanned.
+     */
+    function getEvents(landedIn: number, latest: number, q: { startLedger: number; endLedger: number } | { cursor: string }) {
+      const start = "cursor" in q ? Number(q.cursor) + 1 : q.startLedger;
+      const end = Math.min("cursor" in q ? Infinity : q.endLedger, start + SCAN, latest + 1);
+      const ref = refOf(V.V5.ref);
+      const events = landedIn >= start && landedIn < end ? [{ txHash: listedTx, toMuxedId: BigInt(ref.toId) }] : [];
+      return { events, cursor: String(end - 1) };
+    }
+
+    /**
+     * A reader over that getEvents whose window ends at `toLedger` (inclusive) or at `toLedger - 1` (`endLedger` set to
+     * `toLedger`), returning a cursor until getEvents has scanned through the window's last ledger.
+     */
+    function readerOver(ref: StellarRef, landedIn: number, inclusive: boolean, calls: object[]): StellarReader {
+      const latest = ref.expiration + 5;
+      return {
+        network: "stellar:testnet",
+        transaction: async (hash) =>
+          hash === listedTx
+            ? { status: "SUCCESS", envelopeXdr: V.V3.envelope, ledger: landedIn, oldestLedger: 1 }
+            : { status: "NOT_FOUND", oldestLedger: 1 },
+        transfers: async (f) => {
+          calls.push(f);
+          const last = inclusive ? f.toLedger : f.toLedger - 1;
+          const r = getEvents(landedIn, latest, f.cursor !== undefined ? { cursor: f.cursor } : { startLedger: f.fromLedger, endLedger: last + 1 });
+          return { events: r.events, ...(Number(r.cursor) < last ? { cursor: r.cursor } : {}), complete: true, oldestLedger: 1 };
+        },
+        latestLedger: async () => latest,
+      };
+    }
+
+    it("a payment in the expiration ledger settles through a reader that sends endLedger toLedger + 1 and pages by cursor", async () => {
+      const ref = { ...refOf(V.V5.ref), fromLedger: 1, expiration: 25_000 } as StellarRef & { transaction: string };
+      const calls: { fromLedger?: number; toLedger?: number; cursor?: string }[] = [];
+      expect(await stellarStatus(ref, readerOver(ref, ref.expiration, true, calls))).toEqual({ state: "settled", ledger: ref.expiration });
+      expect([calls[0]!.fromLedger, calls[0]!.toLedger]).toEqual([ref.fromLedger, ref.expiration]);
+      expect(calls.length).toBe(Math.ceil(ref.expiration / SCAN));
+    });
+
+    it("the same payment through a reader that sends endLedger toLedger reads failed expired", async () => {
+      const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
+      const read = async (inclusive: boolean) => stellarStatus(ref, readerOver(ref, ref.expiration, inclusive, []));
+      expect(await read(false)).toEqual({ state: "failed", why: "expired" });
+      expect(await read(true)).toEqual({ state: "settled", ledger: ref.expiration });
+    });
+  });
+
   it("plant: the 8-byte id alone is never this payment", async () => {
     const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
     const r = readerFor({ status: "SUCCESS", envelope: V.plant.envelope, ledger: 990, latestLedger: V.plant.latestLedger });

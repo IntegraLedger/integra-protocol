@@ -139,7 +139,11 @@ On Stellar the payer signs an authorization entry for the transfer, not the tran
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
 entry leaves the payment pending while the entry is valid. Past the entry's expiration ledger, `status` searches the
 asset's transfer events to the seller: it settles on a transaction that used the entry, and answers failed `expired`
-only when that search is complete and finds none.
+only when that search is complete and finds none. The search runs through the expiration ledger itself, in which the
+entry is still valid: `transfers` takes `fromLedger` through `toLedger`, both inclusive. Stellar RPC's `getEvents`
+treats `endLedger` as exclusive and scans at most 10,000 ledgers per call, so a reader over it sends
+`endLedger: toLedger + 1` on the first page, only the cursor after that, and returns a `cursor` until `getEvents`
+has scanned through `toLedger`, even when a page holds no events.
 
 A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
 time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
