@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers: byInBody answers the lookup by the Jetton transfer's body hash, byInBodyRequest the lookup by the signed W5 request's body hash, and headUtime the masterchain head's gen_utime; inBody is a BoC in hex. W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head.",
+ "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers: byInBodyRequest answers the lookup by the signed W5 request's body hash, byInMessage the lookups by message hash, keyed by the hash, byInBody a lookup by the Jetton transfer's body hash, which status does not make, and headUtime the masterchain head's gen_utime; inBody is a BoC in hex. Status counts only the payer Jetton wallet's transaction that took the message the payer's W5 wallet emitted in a transaction with the request: W5 checks the request's signature before any action runs (wallet_v5.fc). W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -155,178 +155,6 @@
   "status": [
    {
     "case": "finality 2 and 2",
-    "byInBody": [
-     {
-      "hash": "tx-payer",
-      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-internal",
-        "opcode": 395134233
-       }
-      ]
-     }
-    ],
-    "byInMessage": [
-     {
-      "hash": "tx-payee",
-      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "expect": {
-     "state": "settled",
-     "finality": "finalized"
-    }
-   },
-   {
-    "case": "finality 2 and 1",
-    "byInBody": [
-     {
-      "hash": "tx-payer",
-      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-internal",
-        "opcode": 395134233
-       }
-      ]
-     }
-    ],
-    "byInMessage": [
-     {
-      "hash": "tx-payee",
-      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-      "aborted": false,
-      "finality": 1,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "expect": {
-     "state": "settled",
-     "finality": "confirmed"
-    }
-   },
-   {
-    "case": "finality 2 and 0",
-    "byInBody": [
-     {
-      "hash": "tx-payer",
-      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-internal",
-        "opcode": 395134233
-       }
-      ]
-     }
-    ],
-    "byInMessage": [
-     {
-      "hash": "tx-payee",
-      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-      "aborted": false,
-      "finality": 0,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "expect": {
-     "state": "pending",
-     "why": "not-final"
-    }
-   },
-   {
-    "case": "the first transaction aborted",
-    "byInBody": [
-     {
-      "hash": "tx-payer",
-      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-      "aborted": true,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-internal",
-        "opcode": 395134233
-       }
-      ]
-     }
-    ],
-    "byInMessage": [],
-    "expect": {
-     "state": "failed",
-     "why": "aborted"
-    }
-   },
-   {
-    "case": "the second aborted",
-    "byInBody": [
-     {
-      "hash": "tx-payer",
-      "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-internal",
-        "opcode": 395134233
-       }
-      ]
-     }
-    ],
-    "byInMessage": [
-     {
-      "hash": "tx-payee",
-      "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-      "aborted": true,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "expect": {
-     "state": "failed",
-     "why": "bounced"
-    }
-   },
-   {
-    "case": "nothing found, headUtime 1790000060 (at validUntil)",
-    "byInBody": [],
-    "byInBodyRequest": [],
-    "headUtime": 1790000060,
-    "expect": {
-     "state": "pending",
-     "why": "not-found"
-    }
-   },
-   {
-    "case": "nothing found, headUtime 1790000061 (past validUntil)",
-    "byInBody": [],
-    "byInBodyRequest": [],
-    "headUtime": 1790000061,
-    "expect": {
-     "state": "failed",
-     "why": "expired"
-    }
-   },
-   {
-    "case": "the W5 wallet executed the request and emitted the Jetton transfer, headUtime 1790000200",
-    "byInBody": [],
     "byInBodyRequest": [
      {
       "hash": "tx-w5",
@@ -342,6 +170,262 @@
       ]
      }
     ],
+    "byInMessage": {
+     "msg-jetton-transfer": [
+      {
+       "hash": "tx-payer",
+       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+       "aborted": false,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": [
+        {
+         "hash": "msg-internal",
+         "opcode": 395134233
+        }
+       ]
+      }
+     ],
+     "msg-internal": [
+      {
+       "hash": "tx-payee",
+       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+       "aborted": false,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "finalized"
+    }
+   },
+   {
+    "case": "finality 2 and 1",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "byInMessage": {
+     "msg-jetton-transfer": [
+      {
+       "hash": "tx-payer",
+       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+       "aborted": false,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": [
+        {
+         "hash": "msg-internal",
+         "opcode": 395134233
+        }
+       ]
+      }
+     ],
+     "msg-internal": [
+      {
+       "hash": "tx-payee",
+       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+       "aborted": false,
+       "finality": 1,
+       "inBody": null,
+       "outMsgs": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "finality": "confirmed"
+    }
+   },
+   {
+    "case": "finality 2 and 0",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "byInMessage": {
+     "msg-jetton-transfer": [
+      {
+       "hash": "tx-payer",
+       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+       "aborted": false,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": [
+        {
+         "hash": "msg-internal",
+         "opcode": 395134233
+        }
+       ]
+      }
+     ],
+     "msg-internal": [
+      {
+       "hash": "tx-payee",
+       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+       "aborted": false,
+       "finality": 0,
+       "inBody": null,
+       "outMsgs": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-final"
+    }
+   },
+   {
+    "case": "the payer Jetton wallet's transaction aborted",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "byInMessage": {
+     "msg-jetton-transfer": [
+      {
+       "hash": "tx-payer",
+       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+       "aborted": true,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": [
+        {
+         "hash": "msg-internal",
+         "opcode": 395134233
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "aborted"
+    }
+   },
+   {
+    "case": "the payee Jetton wallet's transaction aborted",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "byInMessage": {
+     "msg-jetton-transfer": [
+      {
+       "hash": "tx-payer",
+       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
+       "aborted": false,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": [
+        {
+         "hash": "msg-internal",
+         "opcode": 395134233
+        }
+       ]
+      }
+     ],
+     "msg-internal": [
+      {
+       "hash": "tx-payee",
+       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
+       "aborted": true,
+       "finality": 2,
+       "inBody": null,
+       "outMsgs": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "bounced"
+    }
+   },
+   {
+    "case": "nothing found, headUtime 1790000060 (at validUntil)",
+    "byInBodyRequest": [],
+    "headUtime": 1790000060,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "nothing found, headUtime 1790000061 (past validUntil)",
+    "byInBodyRequest": [],
+    "headUtime": 1790000061,
+    "expect": {
+     "state": "failed",
+     "why": "expired"
+    }
+   },
+   {
+    "case": "the W5 wallet executed the request and emitted the Jetton transfer, headUtime 1790000200",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "byInMessage": {
+     "msg-jetton-transfer": []
+    },
     "headUtime": 1790000200,
     "expect": {
      "state": "pending",
@@ -350,7 +434,6 @@
    },
    {
     "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000200",
-    "byInBody": [],
     "byInBodyRequest": [
      {
       "hash": "tx-w5",
@@ -369,7 +452,6 @@
    },
    {
     "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000060",
-    "byInBody": [],
     "byInBodyRequest": [
      {
       "hash": "tx-w5",
@@ -388,7 +470,6 @@
    },
    {
     "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000200",
-    "byInBody": [],
     "byInBodyRequest": [
      {
       "hash": "tx-w5",
@@ -407,7 +488,6 @@
    },
    {
     "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000060",
-    "byInBody": [],
     "byInBodyRequest": [
      {
       "hash": "tx-w5",
@@ -426,7 +506,6 @@
    },
    {
     "case": "nothing found and the head read fails",
-    "byInBody": [],
     "byInBodyRequest": [],
     "expect": {
      "state": "pending",
@@ -434,8 +513,26 @@
     }
    },
    {
-    "case": "a ReaderError",
-    "byInBody": "reader-error",
+    "case": "a ReaderError on the lookup of the message the W5 transaction emitted",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": false,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": [
+       {
+        "hash": "msg-jetton-transfer",
+        "opcode": 260734629
+       }
+      ]
+     }
+    ],
+    "byInMessage": {
+     "msg-jetton-transfer": "reader-error"
+    },
+    "headUtime": 1790000200,
     "expect": {
      "state": "pending",
      "why": "unreadable"
@@ -443,7 +540,6 @@
    },
    {
     "case": "a ReaderError on the request lookup",
-    "byInBody": [],
     "byInBodyRequest": "reader-error",
     "headUtime": 1790000200,
     "expect": {

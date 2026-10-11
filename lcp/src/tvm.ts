@@ -1,7 +1,8 @@
 /**
  * TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text
  * comment holding its LCP string. The payer's W5 wallet signs a request whose one Jetton transfer carries that
- * payload; settlement is read from the Jetton wallets' transactions through a bounded reader.
+ * payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions
+ * it led to, through a bounded reader.
  */
 import type * as TonCore from "@ton/core";
 import type { Address, Cell, MessageRelaxed } from "@ton/core";
@@ -316,14 +317,17 @@ function sendMessage(actions: Cell): Cell | Refusal {
 // ── Settlement.
 
 /**
- * Reads the head's time first. Then finds the transfer by its body hash on the payer's Jetton wallet and follows its
- * `internal_transfer` to the payee's Jetton wallet: settled when both executed without aborting, at the lower
- * finality of the two. When the Jetton wallet holds no such transaction, finds the signed request by its body hash on
- * the payer's W5 wallet: a W5 transaction that emitted the Jetton transfer is pending `in-flight`, because an internal
- * message carries no expiry. W5 refuses the request once `valid_until <= now()`, so only a head read first and past
- * `validUntil` answers failed: `expired` when the W5 wallet holds no such transaction, `no-transfer` when one executed
- * and emitted nothing, `aborted` when every one aborted. A transaction on any other account is ignored. A failed or
- * malformed read, a malformed reference, or a reader for another network is pending `unreadable`. At most three calls.
+ * Reads the head's time first. Then finds the signed request by its body hash on the payer's W5 wallet: only a W5
+ * transaction there that did not abort and emitted the Jetton transfer counts, because W5 checks the request's
+ * signature before any action runs, so a request the payer did not sign sends nothing from that wallet. It follows
+ * that message to the payer's Jetton wallet, and that wallet's `internal_transfer` to the payee's Jetton wallet:
+ * settled when both Jetton wallets executed without aborting, at the lower finality of the two. An equal Jetton body
+ * executed any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight`
+ * until the Jetton wallet takes it, because an internal message carries no expiry. W5 refuses the request once
+ * `valid_until <= now()`, so only a head read first and past `validUntil` answers failed: `expired` when the W5 wallet
+ * holds no transaction with the request, `no-transfer` when one executed and emitted nothing, `aborted` when every one
+ * aborted. A transaction on any other account is ignored. A failed or malformed read, a malformed reference, or a
+ * reader for another network is pending `unreadable`. At most four calls.
  */
 export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -332,20 +336,23 @@ export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStat
     return unreadable;
   }
   const head = await headTime(reader);
-  const mine = await transactionsOn(reader, ref.transferBodyHash, ref.jettonWallet);
-  if (mine === null) return unreadable;
-  if (mine.length === 0) return beforeTransfer(ref, reader, head);
+  const w5 = await transactionsOn(reader, ref.requestBodyHash, ref.wallet);
+  if (w5 === null) return unreadable;
+  const transfer = w5
+    .filter((t) => !t.aborted)
+    .flatMap((t) => t.outMsgs)
+    .find((m) => m.opcode === OP.jettonTransfer);
+  if (transfer === undefined) return unsent(ref, w5, head);
+  const taken = await transactionsTaking(reader, transfer.hash);
+  if (taken === null) return unreadable;
+  const mine = taken.filter((t) => sameAccount(t.account, ref.jettonWallet));
+  if (mine.length === 0) return { state: "pending", why: "in-flight" };
   const first = mine.find((t) => !t.aborted);
   if (first === undefined) return { state: "failed", why: "aborted" };
   const internal = first.outMsgs.find((m) => m.opcode === OP.internalTransfer);
   if (internal === undefined) return { state: "failed", why: "no-transfer" };
-  let delivered: readonly TonTx[];
-  try {
-    delivered = await reader.byInMessage(internal.hash);
-  } catch {
-    return unreadable;
-  }
-  if (!Array.isArray(delivered) || !delivered.every(isTonTx)) return unreadable;
+  const delivered = await transactionsTaking(reader, internal.hash);
+  if (delivered === null) return unreadable;
   const second = delivered[0];
   if (second === undefined) return { state: "pending", why: "in-flight" };
   if (second.aborted) return { state: "failed", why: "bounced" };
@@ -355,17 +362,23 @@ export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStat
   return { state: "pending", why: "not-final" };
 }
 
-/** The status while the payer's Jetton wallet holds no transfer: read from the W5 wallet and the earlier head. */
-async function beforeTransfer(ref: TvmRef, reader: TvmReader, head: number | null): Promise<TvmStatus> {
-  const w5 = await transactionsOn(reader, ref.requestBodyHash, ref.wallet);
-  if (w5 === null) return { state: "pending", why: "unreadable" };
-  if (w5.some((t) => !t.aborted && t.outMsgs.some((m) => m.opcode === OP.jettonTransfer))) {
-    return { state: "pending", why: "in-flight" };
-  }
+/** The status while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides. */
+function unsent(ref: TvmRef, w5: readonly TonTx[], head: number | null): TvmStatus {
   if (head === null) return { state: "pending", why: "unreadable" };
   if (head <= ref.validUntil) return { state: "pending", why: "not-found" };
   if (w5.length === 0) return { state: "failed", why: "expired" };
   return w5.some((t) => !t.aborted) ? { state: "failed", why: "no-transfer" } : { state: "failed", why: "aborted" };
+}
+
+/** The transactions that took this message, or null when the read fails or its answer is malformed. */
+async function transactionsTaking(reader: TvmReader, msgHash: string): Promise<readonly TonTx[] | null> {
+  let found: readonly TonTx[];
+  try {
+    found = await reader.byInMessage(msgHash);
+  } catch {
+    return null;
+  }
+  return Array.isArray(found) && found.every(isTonTx) ? found : null;
 }
 
 /** The head's `gen_utime`, or null when the read fails or its answer is not a safe integer. */

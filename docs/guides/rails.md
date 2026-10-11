@@ -144,7 +144,9 @@ only when that search is complete and finds none.
 A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
 time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
 payment up, so a payment that lands between the two reads, or a reader whose sources disagree between them, never
-reads as failed. On TON, a request the payer's W5 wallet has executed stays pending `in-flight` until its Jetton
+reads as failed. On TON, `status` counts only the Jetton transfer that a transaction of the payer's W5 wallet sent
+with the signed request, since W5 checks the signature before it sends anything; an equal transfer body executed any
+other way never settles. A request the payer's W5 wallet has executed stays pending `in-flight` until its Jetton
 transfer lands, however late, because an internal message carries no expiry.
 
 | Rail | Reader | Its calls | Settled carries |
@@ -164,7 +166,7 @@ transfer lands, however late, because an internal message carries no expiry.
 | Starknet | `StarknetReader` | `starknet_getTransactionReceipt` with its `Transfer` events, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
 | Sui | `SuiReader` | the transaction by digest, with the current epoch | the checkpoint |
 | Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level; `gettransactionbyid` | `solidified` or `head` |
-| TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the Jetton transfer's, then the signed W5 request's), by message hash and by hash | `confirmed` or `finalized` |
+| TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the signed W5 request's), by message hash (the Jetton transfer the W5 transaction sent, then the `internal_transfer` it led to) and by hash | `confirmed` or `finalized` |
 | Stacks | `StacksReader` | the origin's confirmed nonce, read first; the transaction by id; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
 
 On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport` or

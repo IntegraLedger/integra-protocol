@@ -43,7 +43,7 @@ type Fixture = Omit<TonTx, "inBody"> & { inBody?: null };
 function readerFor(a: {
   byInBody?: Fixture[] | "reader-error";
   byInBodyRequest?: Fixture[] | "reader-error";
-  byInMessage?: Fixture[];
+  byInMessage?: Record<string, Fixture[] | "reader-error">;
   headUtime?: number;
   inBodyHex?: string;
   byHash?: "reader-error";
@@ -56,7 +56,11 @@ function readerFor(a: {
       if (answer === "reader-error") throw new ReaderError("transport");
       return (answer ?? []).map(tx);
     },
-    byInMessage: async () => (a.byInMessage ?? []).map(tx),
+    byInMessage: async (msgHash) => {
+      const answer = a.byInMessage?.[msgHash];
+      if (answer === "reader-error") throw new ReaderError("transport");
+      return (answer ?? []).map(tx);
+    },
     byHash: async (h) => {
       if (a.byHash === "reader-error") throw new ReaderError("transport");
       if (a.inBodyHex === undefined) return null;
@@ -250,10 +254,44 @@ describe("x402-exact-tvm.json", () => {
     expect(await exactTvm.status(REF, readerFor(V.plant))).toEqual(V.plant.expect);
   });
 
+  // A request completed with 64 zero bytes binds, because bound reads the signature and never verifies it. W5 checks
+  // the signature before any action runs (wallet_v5.fc), so no transaction of the payer's W5 wallet sends its Jetton
+  // transfer. An equal Jetton body executed on the payer's Jetton wallet some other way, and delivered, is not the
+  // payment: pending `not-found` up to `validUntil`, then failed `expired`, or `no-transfer` when the W5 wallet ran the
+  // request and sent nothing (step 9's head rule), never settled.
+  it("plant: a Jetton transfer the payer's W5 wallet never sent is never the payment", async () => {
+    const u = await exactTvm.build(choice(), H);
+    if ("refused" in u) throw new Error(u.code);
+    const unsigned = u.complete(new Uint8Array(64)) as TvmPayment;
+    expect(await exactTvm.bound(unsigned)).toBe(V.V3.expectBound);
+    const ref = await exactTvm.reference(unsigned);
+    if ("refused" in ref) throw new Error(ref.code);
+    const landed: Record<string, Fixture[]> = V.V4.status[0].byInMessage;
+    const ignored = { hash: "tx-w5", account: ref.wallet, aborted: false, finality: 2 as const, outMsgs: [] };
+    for (const [head, w5, want] of [
+      [ref.validUntil, [], { state: "pending", why: "not-found" }],
+      [ref.validUntil + 140, [], { state: "failed", why: "expired" }],
+      [ref.validUntil + 140, [ignored], { state: "failed", why: "no-transfer" }],
+    ] as const) {
+      const reader: TvmReader = {
+        network: ref.network,
+        headUtime: async () => head,
+        byInBody: async (bodyHash) =>
+          (bodyHash === ref.transferBodyHash ? landed["msg-jetton-transfer"]! : bodyHash === ref.requestBodyHash ? w5 : []).map(
+            (f) => ({ ...f, inBody: null }),
+          ),
+        byInMessage: async (msgHash) => (landed[msgHash] ?? []).map((f) => ({ ...f, inBody: null })),
+        byHash: async () => null,
+      };
+      expect([head, w5.length, await exactTvm.status(ref, reader)]).toEqual([head, w5.length, want]);
+    }
+  });
+
   // W5 refuses a request once `valid_until <= now()` in its own transaction (wallet_v5.fc, `error::expired`), and an
   // internal message carries no expiry, so the Jetton transfer a W5 transaction emitted is delivered whenever it is
   // processed. The reader answers from a chain on which W5 executes the request one second before `validUntil` and the
-  // Jetton wallet receives the transfer `delay` seconds later; the head advances `step` seconds with every call.
+  // payer's Jetton wallet takes the transfer `delay` seconds later and the payee's at once; the head advances `step`
+  // seconds with every call. Once the whole chain has landed before the first read, the payment is settled.
   it("a request W5 executed before validUntil is never expired, however late its transfer lands", async () => {
     const executed = REF.validUntil - 1;
     const payer = { hash: "tx-payer", account: REF.jettonWallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "m", opcode: 0x178d4519 }] };
@@ -272,16 +310,16 @@ describe("x402-exact-tvm.json", () => {
           const reader: TvmReader = {
             network: REF.network,
             headUtime: async () => tick("head", now),
-            byInBody: async (bodyHash) =>
-              bodyHash === REF.requestBodyHash
-                ? tick("request", now >= executed ? [request] : [])
-                : tick("transfer", now >= executed + delay ? [payer] : []),
-            byInMessage: async () => tick("delivery", now >= executed + delay ? [payee] : []),
+            byInBody: async (bodyHash) => tick("request", bodyHash === REF.requestBodyHash && now >= executed ? [request] : []),
+            byInMessage: async (msgHash) =>
+              tick(msgHash, now < executed + delay ? [] : msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
             byHash: async () => null,
           };
           const got = await exactTvm.status(REF, reader);
           expect(calls[0]).toBe("head");
+          expect(calls.length).toBeLessThanOrEqual(4);
           expect([delay, start, step, got.state]).not.toEqual([delay, start, step, "failed"]);
+          if (start >= executed + delay) expect([delay, start, step, got]).toEqual([delay, start, step, { state: "settled", finality: "finalized" }]);
         }
       }
     }
