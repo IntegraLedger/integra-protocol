@@ -161,6 +161,13 @@ describe("mpp-charge-solana.json", () => {
     }
   });
 
+  it("a durable message whose sysvar comes from a lookup table is bound, and reference records its nonce", async () => {
+    const row = XS.durableNonce.lookupTable.rows.find((r: { expectReference?: unknown }) => r.expectReference !== undefined);
+    const cr = credential(placed, { type: "transaction", transaction: row.wireBase64 });
+    expect(await chargeSolana.bound(cr)).toBe(row.expectBound);
+    expect(await chargeSolana.reference(cr)).toEqual(row.expectReference);
+  });
+
   it("a split memo that is not an LCP string is not read", async () => {
     const wire = await twoMemoWire(V.fixed.L, V.split.splitMemo);
     expect(await chargeSolana.bound(credential(placed, { type: "transaction", transaction: wire }))).toBe(V.split.expectBound);

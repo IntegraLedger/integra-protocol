@@ -1,5 +1,6 @@
 // Runs mpp-session-hedera-solana-xrpl.json through the mpp, hedera, svm and xrpl entry points. Every expected value is
-// the file's.
+// the file's. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
+// x402-exact-solana.json's nonce; its digest is node:crypto's SHA-256 of kit's message.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -25,6 +26,7 @@ import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
 import { issuedDigest, pairingsOf, sessionHedera, sessionSolana, sessionXrpl, type MppChallenge, type MppCredential } from "../src/mpp.js";
 import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocate, type SvmLanded, type SvmReader } from "../src/svm.js";
 import { cancelAfterOf, decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
+import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -200,6 +202,23 @@ describe("mpp/session/solana", () => {
     expect(ref).toEqual(V.SV2.expectReference);
     expect(roundTrip(ref)).toEqual(ref);
     expect(await sessionSolana.channel.ref(open(V.SV2.wireBase64))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
+  });
+
+  it("SV2's opening made durable: a sysvar from a lookup table is bound and recorded; a nonce account from one is refused", async () => {
+    const sysvar = durableWire(V.SV2.wireBase64, [DURABLE.sysvar]);
+    expect(sysvar.instruction0Accounts[0]).toBeLessThan(sysvar.staticKeys);
+    expect(sysvar.instruction0Accounts[1]).toBeGreaterThanOrEqual(sysvar.staticKeys);
+    expect(await sessionSolana.bound(open(sysvar.wireBase64))).toBe(V.SV2.expectBound);
+    expect(await sessionSolana.reference(open(sysvar.wireBase64))).toEqual({
+      ...V.SV2.expectReference,
+      digest: sysvar.digest,
+      blockhash: "",
+      nonce: { account: DURABLE.nonceAccount, value: DURABLE.value },
+    });
+    const both = durableWire(V.SV2.wireBase64, [DURABLE.nonceAccount, DURABLE.sysvar]);
+    expect(both.instruction0Accounts[0]).toBeGreaterThanOrEqual(both.staticKeys);
+    expect(await sessionSolana.bound(open(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
+    expect(await sessionSolana.reference(open(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
   });
 
   // The opening carries no memo, so it is found among the signatures of the channel account it creates (the PDA whose

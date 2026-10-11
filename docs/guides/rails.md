@@ -172,15 +172,17 @@ On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout
 settlement through it.
 
 A Solana message lives until its recent blockhash expires, 150 slots after it, unless it uses a durable nonce: its first
-instruction is the System program's `AdvanceNonceAccount`, naming a writable nonce account, the `RecentBlockhashes`
-sysvar and the nonce authority as a signer, and its blockhash field holds the nonce value. Such a message lands only
-while the nonce account holds that value. Its reference records `nonce`, the account and the value, and an empty
-`blockhash`. A message whose `AdvanceNonceAccount` takes its nonce account or the sysvar from an address lookup table,
-which the runtime also takes as durable, cannot show its nonce from the message alone, so `bound` and `reference` refuse
-it with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at `finalized` and is true
-once the account holds another value, or is not a nonce account, at a read at least 150 slots past `fromSlot`. A named
-transaction then not found is failed, with the reason `nonce-moved`. With no transaction named, a `svmLocate` that
-starts after `svmNonceMoved` reads true, and is complete with nothing found, shows the message never landed.
+instruction is the System program's `AdvanceNonceAccount`, naming a writable nonce account as a static key, the
+`RecentBlockhashes` sysvar and the nonce authority as a signer, and its blockhash field holds the nonce value. Such a
+message lands only while the nonce account holds that value. Its reference records `nonce`, the account and the value,
+and an empty `blockhash`. The sysvar may come from an address lookup table: the runtime resolves it and checks it when
+`AdvanceNonceAccount` runs, and the reference records the nonce the same way. A durable message names its nonce account
+as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `AdvanceNonceAccount` takes its nonce
+account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at
+`finalized` and is true once the account holds another value, or is not a nonce account, at a read at least 150 slots
+past `fromSlot`. A named transaction then not found is failed, with the reason `nonce-moved`. With no transaction named,
+a `svmLocate` that starts after `svmNonceMoved` reads true, and is complete with nothing found, shows the message never
+landed.
 
 Lightning has no settlement read: the invoice and its preimage, which the parties hold, are the proof of payment, and
 no public ledger shows it. Its pairings give `reference` and no `status`.

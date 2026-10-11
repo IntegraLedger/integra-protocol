@@ -1,10 +1,12 @@
 // Runs x402-exact-solana.json through the svm and x402/exact/solana entry points. Every expected value is the file's.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
   decompileTransactionMessage,
   getCompiledTransactionMessageDecoder,
+  getTransactionDecoder,
   isSignerRole,
   isWritableRole,
 } from "@solana/kit";
@@ -341,10 +343,11 @@ describe("x402-exact-solana.json durableNonce", () => {
     }
   });
 
-  it("a message naming its nonce account or sysvar through a lookup table is refused", async () => {
-    for (const row of D.lookupTable.rows) {
-      expect(row.liteSvm, row.case).toBe("landed");
-      expect(row.instruction0Accounts.slice(0, 2).some((i: number) => i >= row.staticKeys), row.case).toBe(true);
+  it("a message naming its nonce account through a lookup table is refused", async () => {
+    const rows = D.lookupTable.rows.filter((r: { expect?: string }) => r.expect !== undefined);
+    expect(rows.length).toBe(1);
+    for (const row of rows) {
+      expect(row.instruction0Accounts[0], row.case).toBeGreaterThanOrEqual(row.staticKeys);
       const p: SvmPaymentPayload = {
         x402Version: 2,
         accepted: V.V2.accepted,
@@ -353,6 +356,57 @@ describe("x402-exact-solana.json durableNonce", () => {
       expect(await exactSvm.bound(p), row.case).toEqual(refused(row.expect));
       expect(await exactSvm.reference(p), row.case).toEqual(refused(row.expect));
     }
+  });
+
+  it("a static nonce account with its sysvar from a lookup table is durable: bound gives H, reference records the nonce", async () => {
+    const rows = D.lookupTable.rows.filter((r: { expectReference?: unknown }) => r.expectReference !== undefined);
+    expect(rows.length).toBe(1);
+    for (const row of rows) {
+      expect(row.liteSvm, row.case).toBe("landed");
+      expect(row.nonceMoved, row.case).toBe(true);
+      expect(row.instruction0Accounts[0], row.case).toBeLessThan(row.staticKeys);
+      expect(row.instruction0Accounts[1], row.case).toBeGreaterThanOrEqual(row.staticKeys);
+      // @solana/kit decodes the same wire: the fee payer, the nonce account the instruction names, the nonce value in
+      // the blockhash field and the message bytes whose SHA-256 the row records.
+      const wire = b64(row.wireBase64);
+      const signed = getTransactionDecoder().decode(wire);
+      const m = getCompiledTransactionMessageDecoder().decode(signed.messageBytes);
+      if (m.version !== 0) throw new Error("the row's wire is a v0 message");
+      const ix0 = m.instructions[0]!;
+      expect(m.staticAccounts.length).toBe(row.staticKeys);
+      expect(ix0.accountIndices).toEqual(row.instruction0Accounts);
+      expect(row.expectReference.feePayer).toBe(m.staticAccounts[0]);
+      expect(row.expectReference.nonce.account).toBe(m.staticAccounts[ix0.accountIndices![0]!]);
+      expect(row.expectReference.nonce.account).toBe(D.nonceAccount);
+      expect(row.expectReference.nonce.value).toBe(m.lifetimeToken);
+      expect(row.expectReference.nonce.value).toBe(D.movedValue);
+      expect(row.expectReference.digest).toBe(`0x${row.messageSha256}`);
+      expect(row.expectReference.digest).toBe(`0x${createHash("sha256").update(Uint8Array.from(signed.messageBytes)).digest("hex")}`);
+      const p: SvmPaymentPayload = {
+        x402Version: 2,
+        accepted: V.V2.accepted,
+        payload: { transaction: row.wireBase64 },
+      };
+      expect(await exactSvm.bound(p), row.case).toBe(row.expectBound);
+      const ref = await exactSvm.reference(p);
+      expect(ref, row.case).toEqual(row.expectReference);
+      expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
+    }
+  });
+
+  it("svmNonceMoved on that reference is false while the nonce account holds the value the message carries", async () => {
+    const row = D.lookupTable.rows.find((r: { expectReference?: unknown }) => r.expectReference !== undefined);
+    const ref: SvmRef = { ...row.expectReference, fromSlot: D.nonceMoved.fromSlot };
+    const readerOf = (name: string | null): SvmReader => ({
+      ...readerFor(null, landed(new Uint8Array())),
+      account: async (address) => {
+        expect(address).toBe(D.nonceAccount);
+        return { slot: 1150n, value: accountOf(name) };
+      },
+    });
+    expect(await svmNonceMoved(ref, readerOf("moved"))).toBe(false);
+    expect(await svmNonceMoved(ref, readerOf("held"))).toBe(true);
+    expect(await svmNonceMoved(ref, readerOf(null))).toBe(true);
   });
 
   it("LiteSVM landed only the durable message", () => {

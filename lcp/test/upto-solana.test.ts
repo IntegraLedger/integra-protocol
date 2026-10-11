@@ -1,4 +1,6 @@
-// Runs x402-upto-solana.json through the x402-upto-solana entry point. Every expected value is the file's.
+// Runs x402-upto-solana.json through the x402-upto-solana entry point. Every expected value is the file's. A durable
+// opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with x402-exact-solana.json's
+// nonce; its digest is node:crypto's SHA-256 of kit's message.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
@@ -13,6 +15,7 @@ import { hash, type AtrHash } from "../src/index.js";
 import { channelPda, openInstructionData, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
 import { pairingOf, uptoSvm, type UptoSvmPaymentPayload } from "../src/x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-upto-solana.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -155,6 +158,25 @@ describe("x402-upto-solana.json", () => {
     const nc = V.EU5.noChannel;
     const r = readerFor("finalized", landed(b64(nc.landedWireBase64)), "nc");
     expect(await uptoSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r)).toEqual(nc.expect);
+  });
+
+  it("EU3's opening made durable: a sysvar from a lookup table is bound and recorded; a nonce account from one is refused", async () => {
+    const sysvar = durableWire(V.EU3.wireBase64, [DURABLE.sysvar]);
+    expect(sysvar.instruction0Accounts[0]).toBeLessThan(sysvar.staticKeys);
+    expect(sysvar.instruction0Accounts[1]).toBeGreaterThanOrEqual(sysvar.staticKeys);
+    const p = payment(sysvar.wireBase64, V.EU4.accepted);
+    expect(await uptoSvm.bound(p)).toBe(V.EU4.expectBound);
+    expect(await uptoSvm.reference(p)).toEqual({
+      ...V.EU4.expectReference,
+      digest: sysvar.digest,
+      blockhash: "",
+      nonce: { account: DURABLE.nonceAccount, value: DURABLE.value },
+    });
+    const both = durableWire(V.EU3.wireBase64, [DURABLE.nonceAccount, DURABLE.sysvar]);
+    expect(both.instruction0Accounts[0]).toBeGreaterThanOrEqual(both.staticKeys);
+    const q = payment(both.wireBase64, V.EU4.accepted);
+    expect(await uptoSvm.bound(q)).toEqual(refused("svm/nonce-account-not-static"));
+    expect(await uptoSvm.reference(q)).toEqual(refused("svm/nonce-account-not-static"));
   });
 
   it("plant: an opening whose carrier is not this ATR's hash is never bound", async () => {

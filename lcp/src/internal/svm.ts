@@ -365,15 +365,17 @@ function isWritable(tx: SvmTx, i: number): boolean {
 /**
  * The durable nonce a message uses, or null. A message uses one when its first instruction is the System program's
  * `AdvanceNonceAccount` (data `04000000`) naming the nonce accounts that instruction requires: the nonce account as a
- * writable static key, then the `RecentBlockhashes` sysvar, and the nonce authority as a signer of the message. The
- * nonce value is the message's blockhash field.
+ * writable static key, then the `RecentBlockhashes` sysvar, and the nonce authority as a signer of the message. A
+ * sysvar named by a static key must be `RecentBlockhashes`; a sysvar named through an address lookup table, past the
+ * static keys, is resolved by the runtime, which checks it when `AdvanceNonceAccount` runs. The nonce value is the
+ * message's blockhash field.
  */
 function durableNonce(tx: SvmTx): SvmNonce | null {
   const first = advanceNonce(tx);
   if (first === null) return null;
   const [account, sysvar] = first.accounts;
   if (account === undefined || sysvar === undefined || !isWritable(tx, account)) return null;
-  if (!sameBytes(tx.keys[sysvar], RECENT_BLOCKHASHES_BYTES)) return null;
+  if (sysvar < tx.keys.length && !sameBytes(tx.keys[sysvar], RECENT_BLOCKHASHES_BYTES)) return null;
   const required = tx.message[(tx.message[0]! & 0x80) !== 0 ? 1 : 0]!;
   if (!first.accounts.some((i) => i < required)) return null;
   return { account: keyString(tx.keys[account]!), value: keyString(tx.blockhash) };
@@ -389,15 +391,15 @@ function advanceNonce(tx: SvmTx): SvmInstruction | null {
 
 /**
  * `svm/nonce-account-not-static` when the message's first instruction is `AdvanceNonceAccount` and its nonce account
- * or its sysvar is an address lookup table entry, past the static keys: the runtime resolves those entries and can take
- * the message as durable, while the message alone cannot show the nonce it uses. Else null.
+ * is an address lookup table entry, past the static keys: a durable message names its nonce account as a static key
+ * (SIMD-0242), so the cluster does not take that message as durable, and the message alone cannot show the nonce
+ * account a reference records. Else null.
  */
 export function staticNonce(tx: SvmTx): Refusal | null {
   const first = advanceNonce(tx);
   if (first === null) return null;
-  const [account, sysvar] = first.accounts;
-  const past = (i: number | undefined) => i !== undefined && i >= tx.keys.length;
-  return past(account) || past(sysvar) ? refusal("svm/nonce-account-not-static") : null;
+  const account = first.accounts[0];
+  return account !== undefined && account >= tx.keys.length ? refusal("svm/nonce-account-not-static") : null;
 }
 
 /**

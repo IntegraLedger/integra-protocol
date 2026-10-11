@@ -764,7 +764,7 @@
    ]
   },
   "lookupTable": {
-   "case": "A v0 message whose first instruction is AdvanceNonceAccount and names its nonce account or the RecentBlockhashes sysvar through an address lookup table. The runtime resolves lookup-table entries and takes the message as durable: sent to the LiteSVM bundled with solders 0.26.0 after the recent blockhash expired, with the nonce value as its blockhash, each lands, moving the payee's 1000 and the nonce. The message alone cannot show the nonce it uses, so bound and reference refuse it. The lookup tables were made with the address lookup table program's CreateLookupTable and ExtendLookupTable in LiteSVM; instruction0Accounts are the instruction's account indexes, where an index at or past staticKeys is a lookup-table entry",
+   "case": "A v0 message whose first instruction is AdvanceNonceAccount and names its nonce account or the RecentBlockhashes sysvar through an address lookup table; instruction0Accounts are the instruction's account indexes, where an index at or past staticKeys is a lookup-table entry. A durable message names its nonce account as a static key (SIMD-0242): a message whose nonce account is a lookup-table entry is invalid on the cluster, and bound and reference refuse it. A message whose nonce account is a writable static key and whose sysvar is a lookup-table entry is durable, the runtime checking the sysvar when AdvanceNonceAccount runs: bound gives H, and reference records the nonce account and the nonce value, the message's blockhash field, with an empty blockhash. liteSvm is the row's outcome when sent to the LiteSVM bundled with solders 0.26.0 after the recent blockhash expired, with the nonce value as its blockhash, and nonceMoved whether the nonce account then held another value. The lookup tables were made with the address lookup table program's CreateLookupTable and ExtendLookupTable in LiteSVM",
    "table": "APrT1Fr9mvZrTbHa9BmLZcSY4ZDRuYDBTcNrBTFNvi4a",
    "tableAddresses": [
     "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
@@ -787,7 +787,7 @@
      "expect": "svm/nonce-account-not-static"
     },
     {
-     "case": "the nonce account is a static key and the sysvar comes from a second lookup table holding only the sysvar",
+     "case": "the nonce account is a static key and the sysvar comes from a second lookup table holding only the sysvar: durable, so bound gives H and reference records the nonce with an empty blockhash; the message's blockhash field, the nonce value, is movedValue",
      "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADSEvDMRbbG+AE91Q4e1c8UZV3UO0rQrUpqGOAARcwmcnGxJFUSHZAnopVQBwvazLwo3RPF6/jWeXlHINl05VwPgAIBBQqBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKk7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwLV36cmO4c7vPWMCyT/LaI+nKQgAvumiS4LEO1doO7tBQUDAwoBBAQAAAAGAAUCQJwAAAYACQMBAAAAAAAAAAgEBAkCAQoM6AMAAAAAAAAGBwBNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQB0pDGaBZnaw97nEOLWOHy8skywGPOdhmfQlIFNGPmTXsAAQA=",
      "messageSha256": "02a0f93a33397374f81021303fb9993ab010651a1df7ffc1da0a6e5bb1f05e32",
      "staticKeys": 10,
@@ -798,7 +798,17 @@
      ],
      "liteSvm": "landed",
      "nonceMoved": true,
-     "expect": "svm/nonce-account-not-static"
+     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "expectReference": {
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "digest": "0x02a0f93a33397374f81021303fb9993ab010651a1df7ffc1da0a6e5bb1f05e32",
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "blockhash": "",
+      "nonce": {
+       "account": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
+       "value": "C4y3jiWhA9SkgWTWFK5QzPfJeo3e1hTuKmKovhVzmpp"
+      }
+     }
     }
    ]
   }

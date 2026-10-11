@@ -1,5 +1,6 @@
 // Runs x402-batch-settlement.json through the x402-batch-settlement and svm entry points. Every expected value is the
-// file's.
+// file's. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
+// x402-exact-solana.json's nonce; its digest is node:crypto's SHA-256 of kit's message.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -41,6 +42,7 @@ import {
   type ChannelConfig,
 } from "../src/x402-batch-settlement.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-batch-settlement.json", import.meta.url), "utf8"));
 const E = V.fixed.evm;
@@ -373,6 +375,25 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(await batchSvm.bound(deposit(V.ES4.plantNonce.wireBase64))).toEqual(refused(V.ES4.plantNonce.expect));
     const salt43 = svmPayment({ type: "voucher", channelConfig: { ...V.ES4.config, salt: "43" }, voucher });
     expect(await batchSvm.channel.ref(salt43)).toEqual(refused(V.ES4.plantSalt43.expect));
+  });
+
+  it("ES2's opening made durable: a sysvar from a lookup table is bound and recorded; a nonce account from one is refused", async () => {
+    const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
+    const deposit = (wire: string) => svmPayment({ type: "deposit", channelConfig: V.ES4.config, voucher, deposit: { amount: S.deposit, transaction: wire } });
+    const sysvar = durableWire(V.ES2.wireBase64, [DURABLE.sysvar]);
+    expect(sysvar.instruction0Accounts[0]).toBeLessThan(sysvar.staticKeys);
+    expect(sysvar.instruction0Accounts[1]).toBeGreaterThanOrEqual(sysvar.staticKeys);
+    expect(await batchSvm.bound(deposit(sysvar.wireBase64))).toBe(V.ES4.expectBound);
+    expect(await batchSvm.reference(deposit(sysvar.wireBase64))).toMatchObject({
+      network: V.ES4.accepted.network,
+      digest: sysvar.digest,
+      blockhash: "",
+      nonce: { account: DURABLE.nonceAccount, value: DURABLE.value },
+    });
+    const both = durableWire(V.ES2.wireBase64, [DURABLE.nonceAccount, DURABLE.sysvar]);
+    expect(both.instruction0Accounts[0]).toBeGreaterThanOrEqual(both.staticKeys);
+    expect(await batchSvm.bound(deposit(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
+    expect(await batchSvm.reference(deposit(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
   });
 
   it("ES7: svmLocate reads each candidate through the pairing's own status", async () => {
