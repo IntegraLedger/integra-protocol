@@ -329,7 +329,7 @@ The payer signed a Hedera transaction body whose memo carries this ATR's hash in
 
 ### `x402/exact/hedera/transfer-executor`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The seller read the merged consensus record of the named transaction, and found the transfer whose payer, payee and amount match the digest recorded at claim. This does not show that amount, recipient, token or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The seller read the merged consensus record of the named transaction, and found that its one debited account, by at least one unit, is the payer recorded at claim. This does not show that amount, recipient, token or timing match the ATR's content.
 
 ### `x402/exact/lnbtc`
 

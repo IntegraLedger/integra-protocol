@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is printf '%s' '0.0.5001,0.0.4001,100000000' | sha256sum, and Python hashlib printed the same. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; here it is the fee payer's 5000000-tinybar debit, credited to 0.0.3 and 0.0.98; x402's example states no fee. A row's reference fields override the status reference.",
+ "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is the payer's, printf '%s' '0.0.5001' | sha256sum; openssl dgst -sha256 and Python hashlib printed the same. Payee and amount are not read: a row settles when the payer is the one account debited. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; here it is the fee payer's 5000000-tinybar debit, credited to 0.0.3 and 0.0.98; x402's example states no fee. A row's reference fields override the status reference.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -145,13 +145,13 @@
   "expectWithoutExtension": "hedera/no-legal-context"
  },
  "reference": {
-  "expectIdDigest": "0xe3c70ca164e2edb9392b9914239c506f3d4e6bcbcbe701819c7c3b2721c935c3"
+  "expectIdDigest": "0x2baa52abedfc2bc71addf127e5dd4f6016a273bdc886027a5435ae35455f86f1"
  },
  "status": {
   "reference": {
    "network": "hedera:testnet",
    "asset": "0.0.0",
-   "idDigest": "0xe3c70ca164e2edb9392b9914239c506f3d4e6bcbcbe701819c7c3b2721c935c3",
+   "idDigest": "0x2baa52abedfc2bc71addf127e5dd4f6016a273bdc886027a5435ae35455f86f1",
    "transaction": "0.0.9000-1755500000-000000000"
   },
   "readerNetwork": "hedera:testnet",
@@ -269,6 +269,157 @@
      "state": "pending",
      "why": "not-found"
     }
+   },
+   {
+    "case": "the child credits 0.0.4002 instead of 0.0.4001: the payee is not read",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4002",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
+   },
+   {
+    "case": "the payer moves one tinybar: the amount is not read",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -1
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 1
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "consensus": "1755500003.000000001"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
+   },
+   {
+    "case": "a second account is debited",
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.5002",
+        "amount": -1
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000001
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "why": "not-this-instrument"
+    },
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit; x402 rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)'"
    },
    {
     "case": "the payee is paid a staking reward, listed in the parent record",
@@ -635,10 +786,10 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "settled",
+     "consensus": "1755500003.000000001"
     },
-    "source": "the payee's net credit, less the listed reward, is not the amount the payer's payment named"
+    "source": "the payer, 0.0.5001, is the one account debited; the payee's credit, less the listed reward, is not read"
    },
    {
     "case": "token_transfers is {}",
@@ -1117,7 +1268,7 @@
   ]
  },
  "plant": {
-  "case": "the child credits 0.0.4002 instead of 0.0.4001: never settled",
+  "case": "the child debits 0.0.5002 instead of 0.0.5001: never settled",
   "entries": [
    {
     "result": "SUCCESS",
@@ -1149,11 +1300,11 @@
     "consensus_timestamp": "1755500003.000000002",
     "transfers": [
      {
-      "account": "0.0.5001",
+      "account": "0.0.5002",
       "amount": -100000000
      },
      {
-      "account": "0.0.4002",
+      "account": "0.0.4001",
       "amount": 100000000
      }
     ]

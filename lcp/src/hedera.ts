@@ -137,6 +137,7 @@ export type ExecutorPaymentPayload = X402Payment<ExecutorPayload>;
 export interface ExecutorRef {
   network: HederaNetwork;
   asset: string;
+  /** `hederaIdDigest` of the payer. */
   idDigest: Hex;
   /** Unix seconds: claim time plus `maxTimeoutSeconds`. */
   settleBy: number;
@@ -795,9 +796,9 @@ export const exactHedera = Object.freeze({
 
 // ── x402/exact/hedera/transfer-executor ─────────────────────────────────────────────────────────────────────────────
 
-/** the core's hash over the ASCII of `payer,payTo,amount`: the identity of one transfer, never shown in the clear. */
-export async function hederaIdDigest(payer: string, payTo: string, amount: string): Promise<Hex> {
-  return hash(ENCODER.encode(`${payer},${payTo},${amount}`));
+/** The core's hash over the ASCII of `payer`: the payer's identity, never shown in the clear. */
+export async function hederaIdDigest(payer: string): Promise<Hex> {
+  return hash(ENCODER.encode(payer));
 }
 
 function executorPayloadOf(payload: Record<string, unknown>): ExecutorPayload | Refusal {
@@ -897,8 +898,9 @@ async function boundExecutor(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * Read keys only: the network, the asset, the digest of payer, payee and amount, and the time by which the transfer
- * settles, counted from now (the claim).
+ * Read keys only: the network, the asset, the digest of the payer, and the time by which the transfer settles, counted
+ * from the claim. Payee and amount are not recorded: the facilitator builds the executor's transfer and reports what it
+ * moved.
  */
 async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refusal> {
   const h = await boundExecutor(presented);
@@ -907,7 +909,7 @@ async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refu
   return {
     network: accepted.network as HederaNetwork,
     asset: accepted.asset,
-    idDigest: await hederaIdDigest(payload.payer, accepted.payTo, accepted.amount),
+    idDigest: await hederaIdDigest(payload.payer),
     settleBy: Math.floor(Date.now() / 1000) + accepted.maxTimeoutSeconds,
   };
 }
@@ -917,9 +919,9 @@ async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refu
  * change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
  * HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token rows are whole, and on HBAR the fee the
  * user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
- * reads as what it paid or received. Exactly one account must be debited, and a credit of the same magnitude must give
- * the recorded digest. A transfer list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending
- * `unreadable`.
+ * reads as what it paid or received. Exactly one account must be debited, by at least one unit, and its digest must be
+ * the recorded one: the payment is the named transaction's debit of the payer. Payee and amount are not read. A transfer
+ * list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`.
  */
 export async function executorStatus(
   ref: ExecutorRef & { transaction: string },
@@ -972,15 +974,10 @@ export async function executorStatus(
   }
   const debited = [...net].filter(([, v]) => v < 0n);
   if (debited.length !== 1) return { state: "failed", why: "not-this-instrument" };
-  const [payer, debit] = debited[0]!;
-  const m = -debit;
-  for (const [account, v] of net) {
-    if (v !== m) continue;
-    if ((await hederaIdDigest(payer, account, m.toString())) === ref.idDigest.toLowerCase()) {
-      return { state: "settled", consensus: user.consensus_timestamp };
-    }
-  }
-  return { state: "failed", why: "not-this-instrument" };
+  const [payer] = debited[0]!;
+  return (await hederaIdDigest(payer)) === ref.idDigest.toLowerCase()
+    ? { state: "settled", consensus: user.consensus_timestamp }
+    : { state: "failed", why: "not-this-instrument" };
 }
 
 const executorPattern: LcpPattern = deepFreeze({
@@ -996,8 +993,8 @@ const executorPattern: LcpPattern = deepFreeze({
     "recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor " +
     "contract moved the funds under an authorization the seller did not read, and the facilitator submitted the " +
     "transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries " +
-    "it. The seller read the merged consensus record of the named transaction, and found the transfer whose payer, " +
-    "payee and amount match the digest recorded at claim. This does not show that amount, recipient, token or timing " +
+    "it. The seller read the merged consensus record of the named transaction, and found that its one debited account, " +
+    "by at least one unit, is the payer recorded at claim. This does not show that amount, recipient, token or timing " +
     "match the ATR's content.",
 });
 

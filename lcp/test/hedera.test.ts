@@ -233,7 +233,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     }
   });
 
-  it("bound reads the echoed extension; reference gives the digest", async () => {
+  it("bound reads the echoed extension; reference gives the payer's digest", async () => {
     const payment = (await built()).complete(X.fixed.payload);
     if ("refused" in payment) throw new Error(payment.code);
     expect(await exactHederaExecutor.bound(payment)).toBe(X.bound.expectWithExtension);
@@ -243,7 +243,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.idDigest).toBe(X.reference.expectIdDigest);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    expect(await hederaIdDigest("0.0.5001", "0.0.4001", "100000000")).toBe(X.reference.expectIdDigest);
+    expect(await hederaIdDigest(X.fixed.payload.payer)).toBe(X.reference.expectIdDigest);
   });
 
   for (const [i, row] of (X.status.rows as { case?: string; reference?: object; entries: MirrorEntry[] | null; expect: unknown }[]).entries()) {
@@ -253,7 +253,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     });
   }
 
-  it("plant: a hostile executor that pays another account settles nothing", async () => {
+  it("plant: a debit from an account other than the payer settles nothing", async () => {
     expect(await executorStatus(X.status.reference, readerOf(X.plant.entries))).toEqual(X.plant.expect);
   });
 
