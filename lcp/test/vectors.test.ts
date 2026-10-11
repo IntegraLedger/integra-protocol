@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { domainSeparator, hashStruct, hashTypedData, recoverTypedDataAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hash, hashEquals, type AtrHash } from "../src/index.js";
-import { ReaderError, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
+import { AUTHORIZATION_USED_TOPIC, ReaderError, evmStatus, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
 import {
   exactEip3009,
   issuedDigest,
@@ -134,6 +134,23 @@ describe("x402-exact-eip155-eip3009.json", () => {
     for (const row of P.V6.notThisPayment.rows) {
       expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt))), row.case).toEqual(row.expect);
     }
+  });
+
+  it("V6: each use of H pairs with the transfer the token emits for it", async () => {
+    const ref = P.V6.ref;
+    const bindingLog = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
+    const asEvmRef = { network: ref.network, transaction: ref.transaction, bindingLog, transferLog: ref.transferLog };
+    for (const row of P.V6.pairing.rows) {
+      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt))), row.name).toEqual(row.expect);
+      expect(withBigints(await evmStatus(asEvmRef, readerFor(row.receipt))), row.name).toEqual(row.expect);
+    }
+    expect(P.V6.pairing.rows.map((r: { name: string }) => r.name)).toEqual([
+      "secondSignature",
+      "plainBeside",
+      "batch",
+      "transferFirst",
+      "transferFirstBatch",
+    ]);
   });
 
   it("plant", async () => {

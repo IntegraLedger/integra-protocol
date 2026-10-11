@@ -206,10 +206,16 @@ export type EvmStatus =
 /**
  * Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
  * pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
- * third equal to `h`, and the `Transfer` that `transferLog` identifies, whose `from` is that log's authorizer (topic
- * 1). No such `AuthorizationUsed` log is failed `authorization-not-used`; no such `Transfer` is failed
- * `transfer-not-found`. The finality is the highest block mark at or above the receipt's block. A failed read, a reader
- * for another network, or a `transferLog` that is not one is pending `unreadable`, never failed. At most three calls.
+ * third equal to `h`, and the `Transfer` paired with it, which `transferLog` identifies. The pair follows the order in
+ * which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; ERC-3009
+ * itself states no order. The `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and
+ * before the token's next `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the
+ * token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` log is failed
+ * `authorization-not-used`; no paired `Transfer` that `transferLog` identifies is failed `transfer-not-found`. A token
+ * that emits the `Transfer` first and executes two authorizations of one payer with different terms in one transaction
+ * can read one of them failed. The finality is the highest block mark at or above the receipt's block. A failed read, a
+ * reader for another network, or a `transferLog` that is not one is pending `unreadable`, never failed. At most three
+ * calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
@@ -229,8 +235,8 @@ export async function eip3009Status(
   const binding = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
   const authorizers = authorizersOf(receipt.logs, binding);
   if (authorizers.length === 0) return { state: "failed", why: "authorization-not-used" };
-  const transfers = await transfersOf(receipt.logs, ref.transferLog);
-  if (!transfers.some((t) => authorizers.includes(t.from))) return { state: "failed", why: "transfer-not-found" };
+  const transfers = await pairedTransfers(receipt.logs, binding, ref.transferLog);
+  if (transfers.length === 0) return { state: "failed", why: "transfer-not-found" };
 
   const at = receipt.blockNumber;
   return settledAt(at, reader);
@@ -276,6 +282,39 @@ function authorizersOf(logs: readonly EvmLog[], binding: NonNullable<EvmRef["bin
     if (!carriesBinding(log, binding)) continue;
     const a = topicAddress(log.topics[1]);
     if (a !== undefined) out.push(a);
+  }
+  return out;
+}
+
+/**
+ * The transfers that the uses of `binding`, `AuthorizationUsed` logs with exactly three topics, produced, paired as
+ * `eip3009Status` states: for each use, the first log from its authorizer that `t` names by emitter and topic after it
+ * and before the next `AuthorizationUsed` from the binding's emitter, or, only when there is none, the last such log
+ * after the previous one and before the use. Only the paired transfers whose named fields hash to `t`'s digest count.
+ */
+async function pairedTransfers(
+  logs: readonly EvmLog[],
+  binding: NonNullable<EvmRef["bindingLog"]>,
+  t: TransferLog,
+): Promise<{ from: Hex; to: Hex; value: bigint }[]> {
+  const isUse = (i: number) => authorizationUse(logs[i]!, binding.address) !== undefined;
+  const transferFrom = (i: number, authorizer: Hex) => {
+    const log = logs[i];
+    if (typeof log !== "object" || log === null || !Array.isArray(log.topics)) return undefined;
+    const p = transferParts(log, t.address, t.topic0);
+    return p !== undefined && p.from === authorizer ? p : undefined;
+  };
+  const out: { from: Hex; to: Hex; value: bigint }[] = [];
+  for (let i = 0; i < logs.length; i++) {
+    const log = logs[i];
+    if (typeof log !== "object" || log === null || !Array.isArray(log.topics) || log.topics.length !== 3) continue;
+    if (!carriesBinding(log, binding)) continue;
+    const authorizer = topicAddress(log.topics[1]);
+    if (authorizer === undefined) continue;
+    let paired: { from: Hex; to: Hex; value: bigint } | undefined;
+    for (let j = i + 1; paired === undefined && j < logs.length && !isUse(j); j++) paired = transferFrom(j, authorizer);
+    for (let j = i - 1; paired === undefined && j >= 0 && !isUse(j); j--) paired = transferFrom(j, authorizer);
+    if (paired !== undefined && (await identifies(paired, t))) out.push(paired);
   }
   return out;
 }
@@ -520,12 +559,13 @@ export type EvmBreadthStatus =
  * `not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
  * the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
  * Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
- * authorization's: the transfer's `from` is the binding log's authorizer (topic 1), else failed `transfer-not-found`.
- * Where the binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose
- * delegate (data word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The
- * transfer's `from` is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one
- * root delegator redeemed in one transaction are read alike, so one transfer from it counts for either. Settled
- * carries the highest finality mark reached. At most three calls.
+ * authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired with a use of the binding's
+ * value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log is the
+ * DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose delegate (data word 1) is the
+ * redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from` is then that
+ * leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator redeemed in one
+ * transaction are read alike, so one transfer from it counts for either. Settled carries the highest finality mark
+ * reached. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const read = await matchedTransfers(ref, reader);
@@ -629,11 +669,10 @@ async function matchedTransfers(
   if (binding !== undefined && carriers.length === 0) {
     missing = "binding-log-not-found";
   } else if (ref.transferLog !== undefined) {
-    transfers = await transfersOf(receipt.logs, ref.transferLog);
-    if (binding !== undefined && pairsAuthorization(binding, ref.transferLog)) {
-      const authorizers = authorizersOf(receipt.logs, binding);
-      transfers = transfers.filter((t) => authorizers.includes(t.from));
-    }
+    transfers =
+      binding !== undefined && pairsAuthorization(binding, ref.transferLog)
+        ? await pairedTransfers(receipt.logs, binding, ref.transferLog)
+        : await transfersOf(receipt.logs, ref.transferLog);
     if (redemption) {
       const roots = carriers.map((l) => topicAddress(l.topics[1]));
       transfers = transfers.filter((t) => roots.includes(t.from));
@@ -748,16 +787,20 @@ async function transfersOf(logs: readonly EvmLog[], t: TransferLog): Promise<{ f
   const out: { from: Hex; to: Hex; value: bigint }[] = [];
   for (const log of logs) {
     const parts = transferParts(log, t.address, t.topic0);
-    if (parts === undefined) continue;
-    const fields = t.identity.split(",");
-    const digest = await transferDigest({
-      ...(fields.includes("from") ? { from: parts.from } : {}),
-      ...(fields.includes("to") ? { to: parts.to } : {}),
-      ...(fields.includes("value") ? { value: parts.value } : {}),
-    });
-    if (typeof digest === "string" && sameBytes(digest, t.digest)) out.push(parts);
+    if (parts !== undefined && (await identifies(parts, t))) out.push(parts);
   }
   return out;
+}
+
+/** True when the fields of a transfer that `t.identity` names hash to `t.digest`. */
+async function identifies(parts: { from: Hex; to: Hex; value: bigint }, t: TransferLog): Promise<boolean> {
+  const fields = t.identity.split(",");
+  const digest = await transferDigest({
+    ...(fields.includes("from") ? { from: parts.from } : {}),
+    ...(fields.includes("to") ? { to: parts.to } : {}),
+    ...(fields.includes("value") ? { value: parts.value } : {}),
+  });
+  return typeof digest === "string" && sameBytes(digest, t.digest);
 }
 
 /**

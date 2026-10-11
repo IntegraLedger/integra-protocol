@@ -731,6 +731,237 @@
      }
     }
    ]
+  },
+  "pairing": {
+   "case": "status of a named transaction holding more than one AuthorizationUsed or transfer of the payer's. EIP-3009's reference implementation and Circle's FiatToken (USDC) emit AuthorizationUsed and then the transfer the authorization executes; ERC-3009 states no order. A use of H pairs with the first Transfer from its authorizer after it and before the token's next AuthorizationUsed, or, only when there is none, with the last one after the previous AuthorizationUsed and before it, and that Transfer must hash to the ref's transferLog digest. H2 is SHA-256(\"abd\") (GNU coreutils sha256sum) and O is Anvil account 4. Each row's expect holds for exactEip3009.status and for evmStatus with the AuthorizationUsed log as its bindingLog",
+   "H2": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+   "rows": [
+    {
+     "name": "secondSignature",
+     "case": "the payer's authorization with nonce H2 pays payTo 10000, and an authorization of the payer's with nonce H executes 1 unit to O: the transfer paired with H is not V2's",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+        ],
+        "data": "0x"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ],
+        "data": "0x"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x00000000000000000000000015d34aaf54267db7d7c367839aaf71a00a2c6a65"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "transfer-not-found"
+     }
+    },
+    {
+     "name": "plainBeside",
+     "case": "a plain transfer of 10000 from the payer to payTo, then the payer's authorization with nonce H executing 1 unit to O",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ],
+        "data": "0x"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x00000000000000000000000015d34aaf54267db7d7c367839aaf71a00a2c6a65"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "transfer-not-found"
+     }
+    },
+    {
+     "name": "batch",
+     "case": "two payments of the payer's in one transaction, H2's of 5000 and then H's of 10000, each use before its transfer",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+        ],
+        "data": "0x"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000001388"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ],
+        "data": "0x"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     },
+     "expect": {
+      "state": "settled",
+      "finality": "finalized",
+      "blockNumber": "100"
+     }
+    },
+    {
+     "name": "transferFirst",
+     "case": "a token that emits the Transfer before AuthorizationUsed, with H's payment alone",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ],
+        "data": "0x"
+       }
+      ]
+     },
+     "expect": {
+      "state": "settled",
+      "finality": "finalized",
+      "blockNumber": "100"
+     }
+    },
+    {
+     "name": "transferFirstBatch",
+     "case": "a token that emits the Transfer first, executing H's payment and then the payer's H2 authorization of 1 unit to O: H pairs with H2's transfer and reads failed, the limit exactEip3009.status states",
+     "receipt": {
+      "status": 1,
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ],
+        "data": "0x"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x00000000000000000000000015d34aaf54267db7d7c367839aaf71a00a2c6a65"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
+       },
+       {
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "topics": [
+         "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+        ],
+        "data": "0x"
+       }
+      ]
+     },
+     "expect": {
+      "state": "failed",
+      "why": "transfer-not-found"
+     }
+    }
+   ]
   }
  },
  "plant": {
