@@ -513,6 +513,16 @@ describe("mpp-charge-tempo-memo.json", () => {
     expect(tempoMemo.pattern).toEqual(Object.fromEntries(Object.entries(M.pattern).filter(([k]) => k !== "claims")));
   });
 
+  it("zeroAmount: a charge of amount 0 names no pairing, and nothing is built for it", async () => {
+    for (const r of M.zeroAmount.requests) {
+      const c = challenge("tempo", "charge", r);
+      expect(pairingsOf(c)).toEqual(M.zeroAmount.expectPairings);
+      expect(tempoMemo.advertise([c], H, link, c)).toEqual(M.zeroAmount.expect);
+      expect(await tempoMemo.build({ challenge: placedOf(c), from: A.fixed.payer, now: A.fixed.now }, H))
+        .toEqual(M.zeroAmount.expect);
+    }
+  });
+
   it("plant: a memo signed for the challenge ….1 does not bind the challenge ….0", async () => {
     const planted = M.MV7.expectCalldata.slice(0, -64) + M.MV7.expectMemoPosition1.slice(2);
     const cred = { challenge: ch, source: "", payload: { type: "transaction", signature: toHex(wireT(planted)) } };
@@ -564,6 +574,16 @@ describe("mpp-charge-tempo-push.json", () => {
       refused: true,
       code: "tempo/unreadable",
     });
+  });
+
+  it("zeroAmount: a charge of amount 0 names no pairing, and nothing is built for it", async () => {
+    for (const r of PU.zeroAmount.requests) {
+      const c = challenge("tempo", "charge", r);
+      expect(pairingsOf(c)).toEqual(PU.zeroAmount.expectPairings);
+      expect(tempoPush.advertise([c], H, link, c)).toEqual(PU.zeroAmount.expect);
+      expect(await tempoPush.build({ challenge: placedOf(c), from: A.fixed.payer, now: A.fixed.now }, H))
+        .toEqual(PU.zeroAmount.expect);
+    }
   });
 
   it("plant: a memo log emitted by another TIP-20 is not this payment's carrier", async () => {

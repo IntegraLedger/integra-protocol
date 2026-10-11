@@ -55,6 +55,19 @@
    "code": "tempo/reverted"
   }
  },
+ "zeroAmount": {
+  "case": "a Tempo charge of amount 0, written \"0\" or \"00\", which MPP pays with a proof credential that moves no money (draft-tempo-charge-00 at 08e7dd87, L193-194 and L411-417): pairingsOf names no pairing, whether or not supportedModes names push, and the push pairing's advertise and build answer mpp/not-this-pairing",
+  "requests": [
+   "{\"amount\":\"0\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+   "{\"amount\":\"00\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+   "{\"amount\":\"0\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"supportedModes\":[\"push\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
+  ],
+  "expectPairings": [],
+  "expect": {
+   "refused": true,
+   "code": "mpp/not-this-pairing"
+  }
+ },
  "plant": {
   "case": "MV13's receipt with its TransferWithMemo emitted by 0x20c0…0001, another TIP-20, and no memo log from pathUSD",
   "expect": {

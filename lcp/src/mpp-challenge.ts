@@ -397,7 +397,10 @@ export interface Checked {
   pairings: readonly MppPairing[];
 }
 
-/** Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. */
+/**
+ * Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. A
+ * Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money.
+ */
 export function pairingsOf(c: MppChallenge): readonly MppPairing[] | Refusal {
   const checked = checkChallenge(c, false);
   return isRefusal(checked) ? checked : checked.pairings;
@@ -481,6 +484,9 @@ function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json })
     return refusal("mpp/request-malformed");
   }
   if (d["chainId"] !== undefined && !isPositiveInt(d["chainId"])) return refusal("mpp/request-malformed");
+  // A zero charge is paid with a `proof` credential, which moves no money, so no pairing binds it; `supportedModes`
+  // does not apply to it.
+  if (BigInt(r["amount"] as string) === 0n) return [];
   if (d["memo"] !== undefined) return refusal("mpp/carrier-taken");
   const modes = d["supportedModes"];
   let pull = true;
