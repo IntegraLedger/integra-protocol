@@ -25,6 +25,33 @@ function placed(request: unknown = V.fixed.request): MppChallenge & { id: string
 }
 const credential = (payload: MppCredential["payload"]): MppCredential => ({ challenge: placed(), payload });
 
+/** The values of every length-delimited field numbered `n` of a protobuf message, read by the wire format alone. */
+function lengthDelimited(buf: Uint8Array, n: number): Uint8Array[] {
+  const out: Uint8Array[] = [];
+  let i = 0;
+  const varint = (): number => {
+    let v = 0;
+    for (let shift = 0; ; shift += 7) {
+      const b = buf[i++]!;
+      v += (b & 0x7f) * 2 ** shift;
+      if ((b & 0x80) === 0) return v;
+    }
+  };
+  while (i < buf.length) {
+    const key = varint();
+    const wt = key & 7;
+    if (wt === 0) varint();
+    else if (wt === 1) i += 8;
+    else if (wt === 5) i += 4;
+    else {
+      const len = varint();
+      if (Math.floor(key / 8) === n) out.push(buf.subarray(i, i + len));
+      i += len;
+    }
+  }
+  return out;
+}
+
 describe("mpp-charge-hedera.json", () => {
   it("V4: the attribution memo, and a memo of another challenge id", () => {
     expect(attributionMemo(V.V4.realm, V.V4.id)).toBe(V.V4.expectMemo);
@@ -127,6 +154,23 @@ describe("mpp-charge-hedera.json", () => {
   it("the request checks", () => {
     expect(hederaChargeRequest(placed())).toBe(true);
     for (const row of V.requests) expect(hederaChargeRequest(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
+  });
+
+  it("eight splits build ten token transfer entries, the most a Hedera transaction carries (tokenTransfers.maxLen 10)", async () => {
+    const splits = Array.from({ length: 8 }, (_, i) => ({ recipient: `0.0.${70000 + i}`, amount: "1" }));
+    const request = { ...V.fixed.request, splits };
+    expect(hederaChargeRequest(placed(request))).toBe(true);
+    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, request, {
+      payer: V.fixed.payer,
+      node: V.fixed.node,
+      validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
+      maxFee: BigInt(V.fixed.maxFee),
+    })) as HederaUnsigned;
+    // TransactionBody.cryptoTransfer (14) → CryptoTransferTransactionBody.tokenTransfers (2) → TokenTransferList.transfers (2)
+    const entries = lengthDelimited(u.request.bodyBytes, 14)
+      .flatMap((t) => lengthDelimited(t, 2))
+      .flatMap((l) => lengthDelimited(l, 2));
+    expect(entries.length).toBe(10);
   });
 
   it("the record states what it proves", () => {

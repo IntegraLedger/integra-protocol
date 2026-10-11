@@ -224,6 +224,56 @@
    "expect": "hedera/option-malformed"
   },
   {
+   "case": "nine splits: the payer, the recipient and nine splits are eleven token transfer entries, over the ten a Hedera transaction may carry (hiero-consensus-node LedgerConfig tokenTransfers.maxLen, default 10)",
+   "request": {
+    "amount": "1050000",
+    "currency": "0.0.5449",
+    "recipient": "0.0.1234",
+    "splits": [
+     {
+      "recipient": "0.0.70000",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70001",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70002",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70003",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70004",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70005",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70006",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70007",
+      "amount": "1"
+     },
+     {
+      "recipient": "0.0.70008",
+      "amount": "1"
+     }
+    ],
+    "methodDetails": {
+     "chainId": 296
+    }
+   },
+   "expect": "hedera/option-malformed"
+  },
+  {
    "case": "ten splits",
    "request": {
     "amount": "1050000",

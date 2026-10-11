@@ -999,7 +999,11 @@ export const exactHederaExecutor = Object.freeze({
 // ── mpp/charge/hedera ────────────────────────────────────────────────────────────────────────────────────────────────
 
 const CHARGE = "mpp/charge/hedera" as const;
-const MAX_SPLITS = 9;
+/**
+ * The most splits a charge carries: the payer's debit, the recipient's remainder and eight splits are ten token
+ * transfer entries, the most a Hedera transaction may carry (the network's `tokenTransfers.maxLen`, 10).
+ */
+const MAX_SPLITS = 8;
 const TX_ID_TEXT = /^((?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18}))@(\d{1,19})\.(\d{1,9})$/;
 const ATTRIBUTION = /^0x[0-9a-fA-F]{64}$/;
 /** The longest valid duration a Hedera transaction may declare, in seconds. */
