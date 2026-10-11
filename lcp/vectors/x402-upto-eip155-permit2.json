@@ -42,17 +42,27 @@
   }
  },
  "EV6": {
-  "case": "uptoPermit2.status of EV2's reference on fixture receipts; the reader answers finalized 100, safe 105, and answers each eth_call with the row's nonceBitmap word. The identity names from and to only, so a transfer of any amount matches it; Permit2's record of nonce H (nonceBitmap(owner, H >> 8), bit H & 0xff = 173, Permit2 _useUnorderedNonce) at the receipt's block decides whether it is this payment's. expectCall is as in x402-exact-eip155-permit2.json's EV6",
+  "case": "uptoPermit2.status of EV2's reference on fixture receipts and transactions; the reader answers finalized 100, safe 105, eth_getTransactionByHash with the row's input, and each eth_call with the row's nonceBitmap word at the receipt's block and its nonceBitmapBefore word at the block before it. The identity names from and to only, so a transfer of any amount matches it; the transaction that carries the permit's nonce in its calldata, with Permit2's record of nonce H (nonceBitmap(owner, H >> 8), bit H & 0xff = 173, Permit2 _useUnorderedNonce) set at the receipt's block and unset at the block before, decides whether it is this payment's. expectCall and expectCallBefore are as in x402-exact-eip155-permit2.json's EV6, and calls is how many of the two a row makes",
   "reader": {
    "network": "eip155:84532",
    "finalized": "100",
    "safe": "105"
   },
   "transaction": "0x3333333333333333333333333333333333333333333333333333333333333333",
+  "inputs": {
+   "settle": "0xff11e7b4000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad000000000000000000000000000000000000000000000000000000006ab13cac0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000004165102c5c27396463b772398249d7315ff8d860783bb2079f24504f785fbf95db552561410e5e10778013acef2e457be381493a70766ae187e099187a6e71e7431b00000000000000000000000000000000000000000000000000000000000000",
+   "plainAboveCap": "0xa9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000000000000000000000000000000000000004c4b41",
+   "source": "viem 2.56.8 encodeFunctionData. settle is the x402 upto Permit2 proxy's settle(permit, amount, owner, witness, signature) (x402 contracts/evm/src/x402UptoPermit2Proxy.sol, selector 0xff11e7b4) with EV2's permit, amount 1, the payer, EV2's witness and the Anvil key's signature over EV2's typed data: H is at byte 68. plainAboveCap is USDC's transfer(payTo, 5000001), one unit above the signed maximum, whose calldata holds no H"
+  },
   "expectCall": {
    "to": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
    "data": "0x4fe02b44000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015",
    "block": "100"
+  },
+  "expectCallBefore": {
+   "to": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+   "data": "0x4fe02b44000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015",
+   "block": "99"
   },
   "oneUnitUsed": {
    "case": "a one-unit transfer from the payer to payTo in a transaction by whose block Permit2 records nonce H used",
@@ -71,7 +81,10 @@
      }
     ]
    },
+   "input": "settle",
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
+   "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
+   "calls": 2,
    "expect": {
     "state": "settled",
     "finality": "finalized",
@@ -95,7 +108,34 @@
      }
     ]
    },
+   "input": "settle",
    "nonceBitmap": "0x0000000000000000000000000000000000000000000000000000000000000000",
+   "calls": 1,
+   "expect": {
+    "state": "failed",
+    "why": "nonce-not-used"
+   }
+  },
+  "aboveCapPlain": {
+   "case": "a transfer of 5000001 from the payer to payTo, one unit above the signed maximum, made by a plain ERC-20 transfer whose calldata holds no H, by whose block Permit2 holds nonce H used: the permit is spent elsewhere, and this transaction is not its payment",
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000004c4b41"
+     }
+    ]
+   },
+   "input": "plainAboveCap",
+   "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
+   "calls": 0,
    "expect": {
     "state": "failed",
     "why": "nonce-not-used"

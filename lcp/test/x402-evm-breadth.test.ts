@@ -4,10 +4,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   encodeAbiParameters,
+  encodeFunctionData,
   domainSeparator,
   hashStruct,
   hashTypedData,
   keccak256,
+  parseAbi,
   toBytes,
   toFunctionSelector,
   type TypedDataDefinition,
@@ -16,13 +18,16 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { AtrHash } from "../src/index.js";
 import {
   ESCROW,
+  EXACT_PERMIT2_PROXY,
   NONCE_BITMAP_SELECTOR,
+  PERMIT2,
   PAYMENT_AUTHORIZED_TOPIC,
   PAYMENT_INFO_TYPEHASH,
   ReaderError,
   REDEEMED_DELEGATION_TOPIC,
   SALT_BINDING_TYPEHASH,
   TRANSFER_TOPIC,
+  UPTO_PERMIT2_PROXY,
   bindSalt,
   evmStatus,
   paymentHash,
@@ -109,6 +114,100 @@ function readerFor(
 }
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
+type Permit2Row = {
+  receipt: FixtureReceipt;
+  input?: string | null;
+  nonceBitmap?: string;
+  nonceBitmapBefore?: string;
+  calls: number;
+};
+/**
+ * A reader for a Permit2 status row: its receipt; its transaction, from the payer to `to`, whose input is the file's
+ * `inputs[row.input]` (none for null, a rejection for "reader-error"); and Permit2's words, `nonceBitmap` at the
+ * receipt's block and `nonceBitmapBefore` at the block before. Each `eth_call` is recorded in `calls`.
+ */
+function permit2Reader(
+  row: Permit2Row,
+  ev: { reader: { network: string; finalized: string; safe: string }; inputs: Record<string, string> },
+  to: Hex,
+  calls: { to: string; data: string; block: string }[],
+): EvmReader {
+  const base = readerFor(row.receipt, ev.reader);
+  return {
+    ...base,
+    transaction: async () => {
+      if (row.input === "reader-error") throw new ReaderError("transport");
+      if (row.input === null || row.input === undefined) return null;
+      return { from: P2.fixed.payer, to, input: ev.inputs[row.input] as Hex };
+    },
+    call: async (to, data, block) => {
+      calls.push({ to, data, block: block.toString() });
+      const at = row.receipt === null ? undefined : BigInt(row.receipt.blockNumber);
+      const word = block === at ? row.nonceBitmap : row.nonceBitmapBefore;
+      if (word === undefined || word === "reader-error") throw new ReaderError("transport");
+      return word as Hex;
+    },
+  };
+}
+/** The byte offsets at which `input` holds the 32 bytes of `h`. */
+function offsetsOf(input: string, h: string): number[] {
+  const hay = input.slice(2).toLowerCase();
+  const out: number[] = [];
+  for (let i = hay.indexOf(h.slice(2)); i >= 0; i = hay.indexOf(h.slice(2), i + 1)) if (i % 2 === 0) out.push(i / 2);
+  return out;
+}
+/** The x402 Permit2 proxies' `settle` (x402 contracts/evm/src/x402ExactPermit2Proxy.sol, x402UptoPermit2Proxy.sol). */
+const PERMIT = {
+  name: "permit",
+  type: "tuple",
+  components: [
+    { name: "permitted", type: "tuple", components: [{ name: "token", type: "address" }, { name: "amount", type: "uint256" }] },
+    { name: "nonce", type: "uint256" },
+    { name: "deadline", type: "uint256" },
+  ],
+} as const;
+const SETTLE_EXACT = [
+  {
+    type: "function",
+    name: "settle",
+    stateMutability: "nonpayable",
+    outputs: [],
+    inputs: [
+      PERMIT,
+      { name: "owner", type: "address" },
+      { name: "witness", type: "tuple", components: [{ name: "to", type: "address" }, { name: "validAfter", type: "uint256" }] },
+      { name: "signature", type: "bytes" },
+    ],
+  },
+] as const;
+const SETTLE_UPTO = [
+  {
+    type: "function",
+    name: "settle",
+    stateMutability: "nonpayable",
+    outputs: [],
+    inputs: [
+      PERMIT,
+      { name: "amount", type: "uint256" },
+      { name: "owner", type: "address" },
+      {
+        name: "witness",
+        type: "tuple",
+        components: [{ name: "to", type: "address" }, { name: "facilitator", type: "address" }, { name: "validAfter", type: "uint256" }],
+      },
+      { name: "signature", type: "bytes" },
+    ],
+  },
+] as const;
+const ERC20 = parseAbi([
+  "function transfer(address to, uint256 value) returns (bool)",
+  "function approve(address spender, uint256 value) returns (bool)",
+]);
+const MULTICALL3 = parseAbi([
+  "struct Call3 { address target; bool allowFailure; bytes callData; }",
+  "function aggregate3(Call3[] calls) payable returns ((bool success, bytes returnData)[])",
+]);
+
 describe("x402-exact-eip155-permit2.json", () => {
   const f: Fixed = P2.fixed;
   it("pairingOf names the pairing", () => expect(pairingOf(f.option)).toBe("x402/exact/eip155/permit2"));
@@ -160,19 +259,61 @@ describe("x402-exact-eip155-permit2.json", () => {
     bad.payload.permit2Authorization.spender = P2.EV1.uptoProxyAsSpender.spender;
     expect(await exactPermit2.authorizer(bad)).toEqual(P2.EV1.uptoProxyAsSpender.expect);
   });
-  it("EV6 and the emitter plant: status of EV1's reference reads Permit2's record of the nonce", async () => {
+  it("EV6: the inputs are the exact proxy's settle call, a batch around it and a plain transfer, as viem encodes them", async () => {
+    const p = await signed(exactPermit2, f);
+    const a = (p.payload as any).permit2Authorization;
+    const settle = encodeFunctionData({
+      abi: SETTLE_EXACT,
+      functionName: "settle",
+      args: [
+        { permitted: { token: a.permitted.token, amount: BigInt(a.permitted.amount) }, nonce: BigInt(a.nonce), deadline: BigInt(a.deadline) },
+        a.from,
+        { to: a.witness.to, validAfter: BigInt(a.witness.validAfter) },
+        (p.payload as any).signature,
+      ],
+    });
+    expect(P2.EV6.inputs.settle).toBe(settle);
+    const approve = encodeFunctionData({ abi: ERC20, functionName: "approve", args: [PERMIT2, 2n ** 256n - 1n] });
+    const batched = encodeFunctionData({
+      abi: MULTICALL3,
+      functionName: "aggregate3",
+      args: [[
+        { target: f.option.asset as Hex, allowFailure: false, callData: approve },
+        { target: EXACT_PERMIT2_PROXY, allowFailure: false, callData: settle },
+      ]],
+    });
+    expect(P2.EV6.inputs.batched).toBe(batched);
+    expect(P2.EV6.inputs.plainTransfer).toBe(encodeFunctionData({ abi: ERC20, functionName: "transfer", args: [f.option.payTo as Hex, 10000n] }));
+    expect(offsetsOf(settle, H)).toEqual([68]);
+    expect(offsetsOf(batched, H)).toEqual([552]);
+    expect((552 - 4) % 32).not.toBe(0);
+    expect(offsetsOf(P2.EV6.inputs.plainTransfer, H)).toEqual([]);
+  });
+  it("EV6 and the emitter plant: status of EV1's reference reads the transaction carrying the permit's nonce and Permit2's record of it", async () => {
     const ref = (await exactPermit2.reference(await signed(exactPermit2, f))) as EvmRef;
     const tx = P2.EV6.transaction as Hex;
-    const rows = [P2.EV6.transferAt100, P2.EV6.nonceUnused, P2.EV6.callFails, P2.EV6.value9999, P2.EV6.reverted];
-    for (const row of [...rows, P2.EV6.none, P2.plantEmitter]) {
+    const names = [
+      "transferAt100",
+      "batched",
+      "nonceUnused",
+      "usedBefore",
+      "plainTransfer",
+      "callFails",
+      "transactionNone",
+      "transactionFails",
+      "value9999",
+      "reverted",
+      "none",
+    ];
+    for (const row of [...names.map((n) => P2.EV6[n]), P2.plantEmitter]) {
       const calls: { to: string; data: string; block: string }[] = [];
-      const reader = readerFor(row.receipt, P2.EV6.reader, row.nonceBitmap, calls);
-      expect(plain(await exactPermit2.status({ ...ref, transaction: tx }, reader))).toEqual(row.expect);
-      const reaches = row.nonceBitmap !== undefined;
-      expect(calls).toEqual(reaches ? [P2.EV6.expectCall] : []);
+      const reader = permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, calls);
+      expect(plain(await exactPermit2.status({ ...ref, transaction: tx }, reader)), row.case).toEqual(row.expect);
+      expect(calls, row.case).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, row.calls));
     }
     const selector = toFunctionSelector("function nonceBitmap(address owner, uint256 wordPos)");
     expect(P2.EV6.expectCall.data.startsWith(selector)).toBe(true);
+    expect(P2.EV6.expectCallBefore.data).toBe(P2.EV6.expectCall.data);
     expect(NONCE_BITMAP_SELECTOR).toBe(selector);
   });
   it("status is pending unreadable for a ref without Permit2's record or a transfer naming from", async () => {
@@ -218,13 +359,34 @@ describe("x402-upto-eip155-permit2.json", () => {
     });
     expect(await uptoPermit2.authorizer(p)).toBe(f.payer.toLowerCase());
   });
-  it("EV6: a transfer of any amount is this payment's only where Permit2 records nonce H used", async () => {
+  it("EV6: the inputs are the upto proxy's settle call for one unit and a plain transfer above the cap, as viem encodes them", async () => {
+    const p = await signed(uptoPermit2, f);
+    const a = (p.payload as any).permit2Authorization;
+    const settle = encodeFunctionData({
+      abi: SETTLE_UPTO,
+      functionName: "settle",
+      args: [
+        { permitted: { token: a.permitted.token, amount: BigInt(a.permitted.amount) }, nonce: BigInt(a.nonce), deadline: BigInt(a.deadline) },
+        1n,
+        a.from,
+        { to: a.witness.to, facilitator: a.witness.facilitator, validAfter: BigInt(a.witness.validAfter) },
+        (p.payload as any).signature,
+      ],
+    });
+    expect(UP.EV6.inputs.settle).toBe(settle);
+    expect(offsetsOf(settle, H)).toEqual([68]);
+    const above = BigInt(f.option.amount) + 1n;
+    expect(UP.EV6.inputs.plainAboveCap).toBe(encodeFunctionData({ abi: ERC20, functionName: "transfer", args: [f.option.payTo as Hex, above] }));
+    expect(BigInt(UP.EV6.aboveCapPlain.receipt.logs[0].data)).toBe(above);
+    expect(offsetsOf(UP.EV6.inputs.plainAboveCap, H)).toEqual([]);
+  });
+  it("EV6: a transfer of any amount is this payment's only in the transaction that spends the permit carrying nonce H", async () => {
     const ref = (await uptoPermit2.reference(await signed(uptoPermit2, f))) as EvmRef;
-    for (const row of [UP.EV6.oneUnitUsed, UP.EV6.oneUnitUnused]) {
+    for (const row of [UP.EV6.oneUnitUsed, UP.EV6.oneUnitUnused, UP.EV6.aboveCapPlain]) {
       const calls: { to: string; data: string; block: string }[] = [];
-      const reader = readerFor(row.receipt, UP.EV6.reader, row.nonceBitmap, calls);
+      const reader = permit2Reader(row, UP.EV6, UPTO_PERMIT2_PROXY, calls);
       expect(plain(await uptoPermit2.status({ ...ref, transaction: UP.EV6.transaction }, reader)), row.case).toEqual(row.expect);
-      expect(calls).toEqual([UP.EV6.expectCall]);
+      expect(calls, row.case).toEqual([UP.EV6.expectCall, UP.EV6.expectCallBefore].slice(0, row.calls));
     }
   });
   it("an upto option without facilitatorAddress is refused", async () => {
@@ -376,6 +538,33 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     const tx = ("0x" + "33".repeat(32)) as Hex;
     expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader))).toEqual(ES.EV9.expectStatus);
     expect(await exactErc7710Salt.recover!({ network: "eip155:84532", transaction: tx }, reader)).toBe(ES.EV9.expectRecover);
+  });
+  it("EV9 plants: status binds only a leaf carrying H and counts a transfer from that leaf's root delegator, as recover reads leaves", async () => {
+    const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
+    const ref = (await exactErc7710Salt.reference(await payment(ctx, ES.fixed.delegationManager))) as EvmRef;
+    expect(ref.transferLog?.identity).toBe("from");
+    const T = ES.plantsEV9;
+    const account = (name: string): Hex =>
+      name === "payer" ? f.payer : name === "payTo" ? (f.option.payTo as Hex) : ((T.accounts[name] ?? name) as Hex);
+    const salt = (name: string) => (name === "H" ? H : name === "H2" ? T.H2 : name);
+    const topic = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
+    const tx = ("0x" + "44".repeat(32)) as Hex;
+    for (const row of T.rows) {
+      const logs = row.logs.map((l: any) => {
+        if (l.redeemed !== undefined) {
+          const r = l.redeemed;
+          const delegation = { ...L, delegate: account(r.delegate), delegator: account(r.delegator), salt: BigInt(salt(r.salt)), signature: ES.EV8.expectSignature };
+          const data = encodeAbiParameters([{ type: "tuple", components: delegationAbi[0].components }], [delegation]) as Hex;
+          return { address: ES.fixed.delegationManager, topics: [REDEEMED_DELEGATION_TOPIC, topic(account(r.rootDelegator)), topic(account(r.redeemer))], data };
+        }
+        const t = l.transfer;
+        return { address: f.option.asset as Hex, topics: [TRANSFER_TOPIC, topic(account(t.from)), topic(account(t.to))], data: ("0x" + (10000).toString(16).padStart(64, "0")) as Hex };
+      });
+      const reader = readerFor({ status: 1, blockNumber: "100", logs }, { network: "eip155:84532", finalized: "100", safe: "105" });
+      expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader)), row.name).toEqual(row.expectStatus);
+      expect(await exactErc7710Salt.recover!({ network: "eip155:84532", transaction: tx }, reader), row.name).toBe(row.expectRecover);
+    }
+    expect(T.rows.map((r: any) => r.name)).toEqual(["nonLeaf", "otherRoot", "anyPayee", "wildcard"]);
   });
   it("plant: the leaf's salt, never the root's", async () => {
     const root = { ...L, delegate: f.payer, delegator: "0x2096" + "00".repeat(18), caveats: [], salt: H, signature: "0x" };

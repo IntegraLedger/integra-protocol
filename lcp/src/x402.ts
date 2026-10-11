@@ -1019,20 +1019,20 @@ async function erc7710SaltBound(presented: unknown): Promise<AtrHash | Refusal> 
 }
 
 /**
- * The read keys: the network, and the token's `Transfer` from the delegator to the option's `payTo`; at the salt level
- * also the manager's `RedeemedDelegation` whose leaf salt is H.
+ * The read keys: the network, and the token's `Transfer` from the delegator, identified by the delegator alone, since
+ * the delegation signs no payee; at the salt level also the manager's `RedeemedDelegation` whose leaf salt is H.
  */
 function erc7710Reference(id: typeof ERC7710 | typeof ERC7710_SALT) {
   return async (presented: unknown): Promise<EvmRef | Refusal> => {
     const h = await (id === ERC7710 ? erc7710Bound(presented) : erc7710SaltBound(presented));
     if (isRefusal(h)) return h;
     const { p, d } = erc7710Presented(id, presented) as { p: PaymentPayload; d: { delegator: string } };
-    if (!isAddress(d.delegator) || !isAddress(p.accepted.payTo)) return refusal("x402/payload-malformed");
-    const digest = await transferDigest({ from: d.delegator, to: p.accepted.payTo });
+    if (!isAddress(d.delegator)) return refusal("x402/payload-malformed");
+    const digest = await transferDigest({ from: d.delegator });
     if (isRefusal(digest)) return refusal("x402/payload-malformed");
     const ref: EvmRef = {
       network: p.accepted.network as Eip155,
-      transferLog: { address: p.accepted.asset as Hex, topic0: TRANSFER_TOPIC, identity: "from,to", digest },
+      transferLog: { address: p.accepted.asset as Hex, topic0: TRANSFER_TOPIC, identity: "from", digest },
     };
     if (id === ERC7710_SALT) {
       ref.bindingLog = { address: DELEGATION_MANAGER, topic0: REDEEMED_DELEGATION_TOPIC, dataWord: 5, value: h };
@@ -1405,8 +1405,8 @@ export const uptoPermit2 = binding(
 );
 
 /**
- * The unsigned ERC-7710 level has no `status`: its read keys identify any transfer from the delegator to the payee, and
- * nothing in the settlement transaction ties one to this payment, so a read of the chain alone never settles it.
+ * The unsigned ERC-7710 level has no `status`: its read keys identify any transfer from the delegator, and nothing in
+ * the settlement transaction ties one to this payment, so a read of the chain alone never settles it.
  */
 export const exactErc7710 = binding(
   ERC7710,

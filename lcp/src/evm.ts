@@ -521,7 +521,11 @@ export type EvmBreadthStatus =
  * the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
  * Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
  * authorization's: the transfer's `from` is the binding log's authorizer (topic 1), else failed `transfer-not-found`.
- * Settled carries the highest finality mark reached. At most three calls.
+ * Where the binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose
+ * delegate (data word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The
+ * transfer's `from` is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one
+ * root delegator redeemed in one transaction are read alike, so one transfer from it counts for either. Settled
+ * carries the highest finality mark reached. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const read = await matchedTransfers(ref, reader);
@@ -530,11 +534,17 @@ export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
 }
 
 /**
- * Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then Permit2's record of the nonce. The ref's
- * `authorization` must be a `permit2` one and its `transferLog` must name `from`, else pending `unreadable`. At the
- * receipt's block, `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set, where
- * `from` is the matched transfer's; else failed `nonce-not-used`. A failed call is pending `unreadable`. At most four
- * calls.
+ * Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then the permit in the transaction and
+ * Permit2's record of its nonce. The ref's `authorization` must be a `permit2` one and its `transferLog` must name
+ * `from`, else pending `unreadable`. The transaction (`eth_getTransactionByHash`) must carry the permit's nonce,
+ * `authorization.nonce`, as 32 bytes at any byte offset of its input: a direct call to the proxy, a batched call and an
+ * ERC-4337 bundle place it at different offsets. A transaction the node does not hold is pending `not-found`, and a
+ * failed read, or an input that is not hex bytes, pending `unreadable`. Then, where `from` is the matched transfer's,
+ * `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set at the receipt's block and
+ * unset at the block before it, so that the nonce is spent in that block. A transaction without the nonce, or a nonce
+ * unused at the receipt's block or used before it, is failed `nonce-not-used`. A failed call is pending `unreadable`.
+ * A payer who writes the nonce into a transaction of its own and spends the permit elsewhere in the same block is read
+ * as paying. At most six calls.
  */
 export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const auth = ref.authorization;
@@ -544,15 +554,51 @@ export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: 
   if (!ref.transferLog.identity.split(",").includes("from")) return { state: "pending", why: "unreadable" };
   const read = await matchedTransfers(ref, reader);
   if (!("receipt" in read)) return read;
+  const carried = await inputCarries(ref.transaction, auth.nonce, reader);
+  if (carried !== true) return carried === false ? { state: "failed", why: "nonce-not-used" } : carried;
+  const block = read.receipt.blockNumber;
   const owners = [...new Set(read.transfers.map((t) => t.from))];
   let used = false;
   for (const owner of owners) {
-    const u = await authorizationUsed(ref, owner, read.receipt.blockNumber, reader);
-    if (isRefusal(u)) return { state: "pending", why: "unreadable" };
-    used ||= u;
+    const after = await authorizationUsed(ref, owner, block, reader);
+    if (isRefusal(after)) return { state: "pending", why: "unreadable" };
+    if (!after) continue;
+    const before = block === 0n ? false : await authorizationUsed(ref, owner, block - 1n, reader);
+    if (isRefusal(before)) return { state: "pending", why: "unreadable" };
+    if (!before) {
+      used = true;
+      break;
+    }
   }
   if (!used) return { state: "failed", why: "nonce-not-used" };
-  return settledAt(read.receipt.blockNumber, reader);
+  return settledAt(block, reader);
+}
+
+/**
+ * Whether the named transaction's input holds `word` (32 bytes) at any byte offset, by `eth_getTransactionByHash`; a
+ * transaction the node does not hold is pending `not-found`, and a failed read or a malformed answer pending
+ * `unreadable`.
+ */
+async function inputCarries(
+  transaction: Hex,
+  word: Hex,
+  reader: EvmReader,
+): Promise<boolean | { state: "pending"; why: "not-found" | "unreadable" }> {
+  let tx: EvmTransaction | null;
+  try {
+    tx = await reader.transaction(transaction);
+  } catch {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (tx === null) return { state: "pending", why: "not-found" };
+  const input = typeof tx === "object" ? bytesOf(tx.input) : undefined;
+  const w = bytesOf(word);
+  if (input === undefined || w === undefined || w.length !== 32) return { state: "pending", why: "unreadable" };
+  next: for (let i = 0; i + 32 <= input.length; i++) {
+    for (let j = 0; j < 32; j++) if (input[i + j] !== w[j]) continue next;
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -576,13 +622,21 @@ async function matchedTransfers(
 
   let missing: "binding-log-not-found" | "transfer-not-found" | undefined;
   let transfers: { from: Hex; to: Hex; value: bigint }[] = [];
-  if (ref.bindingLog !== undefined && !receipt.logs.some((l) => carriesBinding(l, ref.bindingLog!))) {
+  const binding = ref.bindingLog;
+  const redemption = binding !== undefined && sameBytes(binding.topic0, REDEEMED_DELEGATION_TOPIC);
+  const carriers =
+    binding === undefined ? [] : receipt.logs.filter((l) => carriesBinding(l, binding) && (!redemption || isLeaf(l)));
+  if (binding !== undefined && carriers.length === 0) {
     missing = "binding-log-not-found";
   } else if (ref.transferLog !== undefined) {
     transfers = await transfersOf(receipt.logs, ref.transferLog);
-    if (ref.bindingLog !== undefined && pairsAuthorization(ref.bindingLog, ref.transferLog)) {
-      const authorizers = authorizersOf(receipt.logs, ref.bindingLog);
+    if (binding !== undefined && pairsAuthorization(binding, ref.transferLog)) {
+      const authorizers = authorizersOf(receipt.logs, binding);
       transfers = transfers.filter((t) => authorizers.includes(t.from));
+    }
+    if (redemption) {
+      const roots = carriers.map((l) => topicAddress(l.topics[1]));
+      transfers = transfers.filter((t) => roots.includes(t.from));
     }
     if (transfers.length === 0) missing = "transfer-not-found";
   }
@@ -767,18 +821,28 @@ export async function redeemedLeafRecover(
   const salts = new Set<AtrHash>();
   for (const log of receipt.logs) {
     if (!sameAddress(log.address, DELEGATION_MANAGER) || !sameBytes(log.topics[0], REDEEMED_DELEGATION_TOPIC)) continue;
-    const redeemer = topicAddress(log.topics[2]);
+    if (!isLeaf(log)) continue;
     const data = bytesOf(log.data);
-    const delegateWord = data === undefined ? undefined : wordAt(data, 1);
     const saltWord = data === undefined ? undefined : wordAt(data, 5);
-    const delegate = delegateWord === undefined ? undefined : addressOfWord(delegateWord);
-    if (redeemer === undefined || delegate === undefined || saltWord === undefined) continue;
-    if (delegate !== redeemer && delegate !== ANY_DELEGATE) continue;
+    if (saltWord === undefined) continue;
     salts.add(hexOf(saltWord));
   }
   if (salts.size === 0) return refusal("evm/no-leaf");
   if (salts.size > 1) return refusal("evm/ambiguous");
   return [...salts][0]!;
+}
+
+/**
+ * True for a `RedeemedDelegation` log of a leaf delegation: its delegate (data word 1) is the redeemer (topic 2) or the
+ * DelegationManager's wildcard delegate, the delegation the manager requires the redeemer to hold.
+ */
+function isLeaf(log: EvmLog): boolean {
+  const redeemer = topicAddress(log.topics[2]);
+  const data = bytesOf(log.data);
+  const delegateWord = data === undefined ? undefined : wordAt(data, 1);
+  const delegate = delegateWord === undefined ? undefined : addressOfWord(delegateWord);
+  if (redeemer === undefined || delegate === undefined) return false;
+  return delegate === redeemer || delegate === ANY_DELEGATE;
 }
 
 // ── Permit2 typed data.

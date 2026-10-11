@@ -7,6 +7,7 @@ import {
   domainSeparator,
   encodeAbiParameters,
   encodeFunctionData,
+  hashStruct,
   hashTypedData,
   keccak256,
   parseAbi,
@@ -245,7 +246,7 @@ describe("mpp-charge-evm-permit2.json", () => {
     });
   });
 
-  it("MV6: the reference names Permit2's record of the nonce, which status reads at the receipt's block", async () => {
+  it("MV6: the reference names Permit2's record of the nonce, which status reads with the transaction that spends the permit", async () => {
     const ch = placedOf(C_E);
     const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
     const cred = u.complete(P.MV6.expectSignature) as MppCredential;
@@ -262,21 +263,56 @@ describe("mpp-charge-evm-permit2.json", () => {
     });
     const paid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)], data: wordOf(10000n) };
     const tx = `0x${"22".repeat(32)}` as const;
-    const status = async (word: bigint) => {
+    // The server's call that spends the permit: Permit2's permitWitnessTransferFrom(permit, transferDetails, owner,
+    // witness, witnessTypeString, signature) (Uniswap Permit2 SignatureTransfer.sol), encoded by viem; the nonce is the
+    // permit's second word. A plain ERC-20 transfer of the same amount carries no nonce.
+    const p = cred.payload as any;
+    const spend = encodeFunctionData({
+      abi: parseAbi([
+        "function permitWitnessTransferFrom(((address token, uint256 amount) permitted, uint256 nonce, uint256 deadline) permit, (address to, uint256 requestedAmount) transferDetails, address owner, bytes32 witness, string witnessTypeString, bytes signature)",
+      ]),
+      args: [
+        { permitted: { token: p.permit.permitted[0].token, amount: BigInt(p.permit.permitted[0].amount) }, nonce, deadline: BigInt(p.permit.deadline) },
+        { to: p.transferDetails[0].to, requestedAmount: BigInt(p.transferDetails[0].requestedAmount) },
+        A.fixed.payer,
+        hashStruct({
+          data: (u.request.typedData as Permit2TypedData).message.witness,
+          primaryType: "PaymentWitness",
+          types: u.request.typedData.types,
+        } as Parameters<typeof hashStruct>[0]),
+        "PaymentWitness witness)PaymentWitness(bytes32 challengeHash,string externalId)TokenPermissions(address token,uint256 amount)",
+        p.signature,
+      ],
+    });
+    const plainTransfer = encodeFunctionData({
+      abi: parseAbi(["function transfer(address to, uint256 value) returns (bool)"]),
+      args: [RECIPIENT_E, 10000n],
+    });
+    expect(spend.slice(2).indexOf(A.MV5.expectNonce.slice(2))).toBeGreaterThan(0);
+    expect(plainTransfer.indexOf(A.MV5.expectNonce.slice(2))).toBe(-1);
+    const status = async (input: ViemHex, at: bigint, before: bigint) => {
       const calls: unknown[] = [];
       const reader = {
         ...readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [paid] }),
+        transaction: async () => ({ from: P.fixed.spender, to: PERMIT2 as ViemHex, input }),
         call: async (to: string, d: string, block: bigint) => {
           calls.push([to, d, block]);
-          return toHex(word, { size: 32 });
+          return toHex(block === 100n ? at : before, { size: 32 });
         },
       };
-      const s = withBigints(await evmPermit2.status({ ...ref, transaction: tx }, reader));
-      expect(calls).toEqual([[PERMIT2, data, 100n]]);
-      return s;
+      return { status: withBigints(await evmPermit2.status({ ...ref, transaction: tx }, reader)), calls };
     };
-    expect(await status(1n << (nonce & 0xffn))).toEqual({ state: "settled", finality: "finalized", blockNumber: "100" });
-    expect(await status(0n)).toEqual({ state: "failed", why: "nonce-not-used" });
+    const bit = 1n << (nonce & 0xffn);
+    expect(await status(spend, bit, 0n)).toEqual({
+      status: { state: "settled", finality: "finalized", blockNumber: "100" },
+      calls: [[PERMIT2, data, 100n], [PERMIT2, data, 99n]],
+    });
+    expect(await status(spend, 0n, 0n)).toEqual({ status: { state: "failed", why: "nonce-not-used" }, calls: [[PERMIT2, data, 100n]] });
+    expect(await status(spend, bit, bit)).toEqual({
+      status: { state: "failed", why: "nonce-not-used" },
+      calls: [[PERMIT2, data, 100n], [PERMIT2, data, 99n]],
+    });
+    expect(await status(plainTransfer, bit, 0n)).toEqual({ status: { state: "failed", why: "nonce-not-used" }, calls: [] });
   });
 
   it("plant: a witness for the same ATR's other challenge is not bound to this one", async () => {

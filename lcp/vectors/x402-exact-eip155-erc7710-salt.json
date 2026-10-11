@@ -96,7 +96,134 @@
    "finality": "finalized",
    "blockNumber": "100"
   },
-  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "case": "the RedeemedDelegation event, L's event data, and a fixture receipt (finalized 100, safe 105) with that log from the manager, emitted with the root delegator (the payer) in topic 1 and the redeemer F in topic 2, and a Transfer from the delegator: status settles it, and recover gives H. A log carries a leaf when its delegate (data word 1) is the redeemer or the wildcard delegate 0x0000000000000000000000000000000000000a11 (MetaMask DelegationManager.sol L41, L155-158). The rows below change one thing each; the test encodes each delegation's event data with viem's encodeAbiParameters, as for L"
+ },
+ "plantsEV9": {
+  "about": "Each row is a fixture receipt of logs, in order, from the manager (RedeemedDelegation: rootDelegator, redeemer, and the delegation as data) and from USDC (Transfer: from, to, value 10000). Delegations are L with the members the row names changed; F is L's delegate, G is Anvil account 3, and O is Anvil account 4. H2 is SHA-256(\"abd\") (FIPS 180-2 B.1's message with its last byte changed, by GNU coreutils sha256sum)",
+  "accounts": {
+   "F": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+   "G": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+   "O": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+  },
+  "H2": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+  "rows": [
+   {
+    "name": "nonLeaf",
+    "case": "H is the salt of a delegation to F that G redeems through a leaf of its own carrying H2: the delegation carrying H is not the leaf, so nothing in the transaction binds H",
+    "logs": [
+     {
+      "redeemed": {
+       "rootDelegator": "payer",
+       "redeemer": "G",
+       "delegate": "G",
+       "delegator": "F",
+       "salt": "H2"
+      }
+     },
+     {
+      "redeemed": {
+       "rootDelegator": "payer",
+       "redeemer": "G",
+       "delegate": "F",
+       "delegator": "payer",
+       "salt": "H"
+      }
+     },
+     {
+      "transfer": {
+       "from": "payer",
+       "to": "payTo"
+      }
+     }
+    ],
+    "expectStatus": {
+     "state": "failed",
+     "why": "binding-log-not-found"
+    },
+    "expectRecover": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+   },
+   {
+    "name": "otherRoot",
+    "case": "the leaf carrying H is redeemed for the root delegator O, and the transaction's only transfer is the payer's: the leaf carrying H moves none of the payer's tokens",
+    "logs": [
+     {
+      "redeemed": {
+       "rootDelegator": "O",
+       "redeemer": "F",
+       "delegate": "F",
+       "delegator": "O",
+       "salt": "H"
+      }
+     },
+     {
+      "transfer": {
+       "from": "payer",
+       "to": "payTo"
+      }
+     }
+    ],
+    "expectStatus": {
+     "state": "failed",
+     "why": "transfer-not-found"
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "name": "anyPayee",
+    "case": "L's redemption, with the delegator's transfer to O rather than to the option's payTo: the delegation signs no payee, and the read compares none",
+    "logs": [
+     {
+      "redeemed": {
+       "rootDelegator": "payer",
+       "redeemer": "F",
+       "delegate": "F",
+       "delegator": "payer",
+       "salt": "H"
+      }
+     },
+     {
+      "transfer": {
+       "from": "payer",
+       "to": "O"
+      }
+     }
+    ],
+    "expectStatus": {
+     "state": "settled",
+     "finality": "finalized",
+     "blockNumber": "100"
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "name": "wildcard",
+    "case": "L with the wildcard delegate, redeemed by G: a leaf, which binds H",
+    "logs": [
+     {
+      "redeemed": {
+       "rootDelegator": "payer",
+       "redeemer": "G",
+       "delegate": "0x0000000000000000000000000000000000000a11",
+       "delegator": "payer",
+       "salt": "H"
+      }
+     },
+     {
+      "transfer": {
+       "from": "payer",
+       "to": "payTo"
+      }
+     }
+    ],
+    "expectStatus": {
+     "state": "settled",
+     "finality": "finalized",
+     "blockNumber": "100"
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  ]
  },
  "plantLeafNotRoot": {
   "case": "a two-delegation context whose root carries salt H and whose leaf (delegate F) carries SHA-256(abd): bound must return the leaf's salt, never H. The test builds the two-delegation context itself",
