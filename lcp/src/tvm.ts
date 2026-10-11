@@ -158,7 +158,9 @@ function bocOf(c: Cell): string {
 }
 
 /**
- * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, with no exotic cell, or the refusal.
+ * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, or the refusal. An exotic cell is
+ * refused only where a read parses it: every parse here refuses one without throwing, and a cell no read parses,
+ * such as a state init's library code, is left as it is.
  */
 function rootOf(boc: unknown): Cell | Refusal {
   if (peer === undefined) return refusal(PEER_MISSING);
@@ -174,26 +176,22 @@ function rootOf(boc: unknown): Cell | Refusal {
   if (roots.length !== 1) return refusal("tvm/boc-malformed");
   const root = roots[0]!;
   if (root.depth() > MAX_DEPTH) return refusal("tvm/boc-too-large");
-  const walked = walk(root);
-  if (walked.cells > MAX_CELLS) return refusal("tvm/boc-too-large");
-  if (walked.exotic) return refusal("tvm/boc-malformed");
+  if (cellCount(root) > MAX_CELLS) return refusal("tvm/boc-too-large");
   return root;
 }
 
-/** The distinct cells under `root`, counted up to one past the bound, and whether any of them is exotic. */
-function walk(root: Cell): { cells: number; exotic: boolean } {
+/** The distinct cells under `root`, counted up to one past the bound. */
+function cellCount(root: Cell): number {
   const seen = new Set<string>();
   const stack = [root];
-  let exotic = false;
   while (stack.length > 0 && seen.size <= MAX_CELLS) {
     const c = stack.pop()!;
     const k = c.hash().toString("hex");
     if (seen.has(k)) continue;
     seen.add(k);
-    if (c.isExotic) exotic = true;
     stack.push(...c.refs);
   }
-  return { cells: seen.size, exotic };
+  return seen.size;
 }
 
 /** The hash in a text comment cell holding an LCP string and no references, or null. */

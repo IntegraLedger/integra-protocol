@@ -2,7 +2,7 @@
 // pytoniq-core 0.2.0 and PyNaCl 1.6.2.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { beginCell, Cell } from "@ton/core";
+import { beginCell, Cell, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { exactTvm, lcpComment, pairingOf, tvmCarrier, type TonTx, type TvmPayment, type TvmReader, type TvmRef } from "../src/tvm.js";
@@ -158,9 +158,10 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
-  // The entry point's interface: "No function throws", and a BoC that cannot be read as the scheme's cells is
-  // `tvm/boc-malformed`. An exotic cell (TVM's library cell: type 2, then a 256-bit hash) is not an ordinary cell.
-  it("V3: an exotic cell in the settlement BoC is tvm/boc-malformed, never a throw", async () => {
+  // The entry point's interface: "No function throws". An exotic cell (TVM's library cell: type 2, then a 256-bit
+  // hash) is not an ordinary cell, so a step that parses one refuses it with that step's code: the comment is step 5's
+  // `tvm/payload-not-lcp`, and an action list that is not a cell holding one `action_send_msg` is `tvm/boc-malformed`.
+  it("V3: an exotic cell the read parses is the parsing step's refusal, never a throw", async () => {
     const p = await signed();
     const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
     const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
@@ -172,9 +173,31 @@ describe("x402-exact-tvm.json", () => {
     };
     const transfer = root.refs[0]!.refs[0]!.refs[1]!.refs[0]!;
     const comment = transfer.refs.findIndex((r) => r.bits.length === 32 + 8 * 77);
-    for (const path of [[0, 0, 1, 0, comment], [0, 0]]) {
+    for (const [path, code] of [
+      [[0, 0, 1, 0, comment], "tvm/payload-not-lcp"],
+      [[0, 0], "tvm/boc-malformed"],
+    ] as const) {
       const boc = swap(root, path).toBoc({ idx: false, crc32: true }).toString("base64");
-      expect(await exactTvm.bound(payment(boc, p.accepted))).toEqual({ refused: true, code: "tvm/boc-malformed" });
+      expect([path, await exactTvm.bound(payment(boc, p.accepted))]).toEqual([path, { refused: true, code }]);
+    }
+  });
+
+  // A wallet deployed from a code library carries a library cell as its state init's code. The state init rides
+  // outside the signed request, and no read parses its code, so the payment is V2's: its request hash is V2's and
+  // bound and reference give V3's values (pytoniq-core 0.2.0 and PyNaCl 1.6.2, as the file records).
+  it("V2b: a state init whose code is a library cell, as a cell or a base64 BoC, binds as V2's payment", async () => {
+    const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
+    const { data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
+    const init = beginCell().store(storeStateInit({ code: library, data })).endCell();
+    for (const stateInit of [init, init.toBoc({ idx: false, crc32: true }).toString("base64")]) {
+      const u = await exactTvm.build({ ...choice(), stateInit }, H);
+      if ("refused" in u) throw new Error(u.code);
+      expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2.expectRequestHash);
+      const p = u.complete(ed25519.sign(u.request.hash, seed)) as TvmPayment;
+      const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
+      expect(root.refs.some((r) => r.refs.some((c) => c.isExotic))).toBe(true);
+      expect(await exactTvm.bound(p)).toBe(V.V3.expectBound);
+      expect(await exactTvm.reference(p)).toEqual(V.V3.expectReference);
     }
   });
 

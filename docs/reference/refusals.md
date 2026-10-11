@@ -673,7 +673,7 @@ TON (`@integraledger/lcp/tvm`).
 | Code | Meaning |
 |---|---|
 | `tvm/actions` | The W5 request's action list is not exactly one `send_msg` action with no extended actions. |
-| `tvm/boc-malformed` | A TON bag of cells is not non-empty base64 that parses to exactly one root with no exotic cells, or the settlement message is not an internal message or its action list is exotic. |
+| `tvm/boc-malformed` | A TON bag of cells is not non-empty base64 that parses to exactly one root, or the settlement message is not an internal message or its action list is exotic. |
 | `tvm/boc-too-large` | A TON bag of cells exceeds the byte, depth or cell-count bound. |
 | `tvm/carrier-mismatch` | The option's `extra.forwardPayload` is not H's comment when `build` is called, or the presented Jetton transfer's forward payload is not the option's. |
 | `tvm/carrier-occupied` | `advertise` finds the option's `extra.forwardPayload` already holding a payload other than H's comment. |
