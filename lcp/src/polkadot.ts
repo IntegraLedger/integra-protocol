@@ -398,9 +398,8 @@ function carriedOf(
   const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   const { extrinsic, call } = p.payload;
-  if (typeof extrinsic !== "string" || !LOWER_HEX.test(extrinsic) || extrinsic.length > 2 * MAX_EXTRINSIC + 2) {
-    return refusal("polkadot/extrinsic-malformed");
-  }
+  if (typeof extrinsic !== "string" || !LOWER_HEX.test(extrinsic)) return refusal("polkadot/extrinsic-malformed");
+  if (extrinsic.length > 2 * MAX_EXTRINSIC + 2) return refusal("polkadot/extrinsic-too-large");
   if (typeof call !== "string" || !LOWER_HEX.test(call)) return refusal("polkadot/call-not-profile");
   const xt = fromHex(extrinsic);
   const callBytes = fromHex(call);
@@ -585,9 +584,8 @@ export async function polkadotRecover(
   if (raws.ok === null || !Array.isArray(raws.ok)) return refusal("polkadot/not-found");
   const raw = raws.ok[index];
   if (typeof raw !== "string") return refusal("polkadot/not-found");
-  if (!/^0x(?:[0-9a-fA-F]{2})*$/.test(raw) || raw.length > 2 * MAX_EXTRINSIC + 2) {
-    return refusal("polkadot/extrinsic-malformed");
-  }
+  if (!/^0x(?:[0-9a-fA-F]{2})*$/.test(raw)) return refusal("polkadot/extrinsic-malformed");
+  if (raw.length > 2 * MAX_EXTRINSIC + 2) return refusal("polkadot/extrinsic-too-large");
   const xt = fromHex(raw);
   const split = splitSigned(xt);
   if (isRefusal(split)) return split;

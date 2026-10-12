@@ -147,6 +147,48 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     }
   });
 
+  // docs/reference/refusals.md: polkadot/extrinsic-too-large is an extrinsic, or the raw extrinsic a recovery reads,
+  // longer than 4,096 bytes; polkadot/extrinsic-malformed is text that is not hex. The resized extrinsics keep V3's
+  // signed preamble and its call, with zero bytes added before the call where the extensions sit, under a SCALE
+  // Compact<u32> length prefix in its two-byte mode, ((n << 2) | 1) little-endian for n from 64 to 16,383.
+  it("V3 resized: over 4,096 bytes is polkadot/extrinsic-too-large at bound, reference, complete and recover", async () => {
+    const v3 = fromHex(V.V3.extrinsic);
+    expect(v3[0]! & 3).toBe(1);
+    const body = v3.subarray(2);
+    const call = fromHex(V.V2.expectCall);
+    const resized = (total: number) => {
+      const n = total - 2;
+      const out = new Uint8Array(total);
+      out.set([((n << 2) | 1) & 0xff, n >> 6]);
+      out.set(body.subarray(0, body.length - call.length), 2);
+      out.set(call, total - call.length);
+      return out;
+    };
+    const [at, over] = [resized(4096), resized(4097)];
+    expect([at.length, over.length]).toEqual([4096, 4097]);
+    expect(await exactPolkadotRemark.bound(presentedOf(toHex(at), V.V2.expectCall))).toBe(V.V3.expectBound);
+    const tooLarge = { refused: true, code: "polkadot/extrinsic-too-large" };
+    const malformed = { refused: true, code: "polkadot/extrinsic-malformed" };
+    expect(await exactPolkadotRemark.bound(presentedOf(toHex(over), V.V2.expectCall))).toEqual(tooLarge);
+    expect(await exactPolkadotRemark.reference(presentedOf(toHex(over), V.V2.expectCall))).toEqual(tooLarge);
+    expect((await unsigned()).complete(over)).toEqual(tooLarge);
+    expect(await exactPolkadotRemark.bound(presentedOf(toHex(over).toUpperCase().replace("0X", "0x"), V.V2.expectCall))).toEqual(
+      malformed,
+    );
+
+    const transaction = `${V.V4.block}-${V.V4.index}`;
+    const recoverWith = (raw: string) => {
+      const raws = [...V.V4.raw];
+      raws[V.V4.index] = raw;
+      const reader: PolkadotReader = { ...readerOf({ finalized: "100" }), rawExtrinsics: async () => raws };
+      return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
+    };
+    expect(await recoverWith(toHex(over))).toEqual(tooLarge);
+    expect(await recoverWith(toHex(over).toUpperCase().replace("0X", "0x"))).toEqual(tooLarge);
+    expect(await recoverWith(`0x${"zz".repeat(4097)}`)).toEqual(malformed);
+    expect(await recoverWith(toHex(at))).toEqual({ refused: true, code: "polkadot/hash-mismatch" });
+  });
+
   it("V4: the remark hash", () => {
     const remark = new TextEncoder().encode(toLcpString(H));
     expect(toHex(blake2b(remark, { dkLen: 32 }))).toBe(V.V4.expectRemarkHash);

@@ -594,8 +594,8 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/address-not-id` | The Polkadot extrinsic's signer is not a `MultiAddress::Id` of 32 bytes. |
 | `polkadot/call-not-profile` | The Polkadot call is not exactly the profile's `batchAll` of `transferKeepAlive` then `remarkWithEvent` with a remark of the fixed length, or the presented `call` is not lowercase hex, or the recovered extrinsic does not end with that call after its signature. |
 | `polkadot/call-not-suffix` | The signed Polkadot extrinsic does not end with the profile call, after its signature. |
-| `polkadot/extrinsic-malformed` | A Polkadot extrinsic is not lowercase hex within the bound whose compact length prefix matches its length, or the raw extrinsic a recovery reads is not hex within the bound. |
-| `polkadot/extrinsic-too-large` | A Polkadot extrinsic exceeds the size bound. |
+| `polkadot/extrinsic-malformed` | A Polkadot extrinsic is not lowercase hex whose compact length prefix matches its length, or the raw extrinsic a recovery reads is not hex. |
+| `polkadot/extrinsic-too-large` | A Polkadot extrinsic, or the raw extrinsic a recovery reads, is longer than 4,096 bytes. |
 | `polkadot/hash-mismatch` | The chain's record of the Polkadot extrinsic has a hash other than that of the raw bytes read. |
 | `polkadot/network-unsupported` | A Polkadot option's network starts with `polkadot:` but is not one this package supports. |
 | `polkadot/no-remark` | The Polkadot extrinsic did not dispatch successfully with a `Remarked` event for its remark. |
