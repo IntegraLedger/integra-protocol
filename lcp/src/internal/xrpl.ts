@@ -43,7 +43,7 @@ export interface XrplLanded {
   deletedChannels?: readonly string[];
 }
 
-/** The read keys recorded at claim. */
+/** The read keys `reference` returns, with `fromLedger`, the ledger index the transaction search starts from. */
 export interface XrplRef {
   network: XrplNetwork;
   transaction: string;
