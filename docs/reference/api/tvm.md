@@ -315,14 +315,19 @@ Recovers the hash from the payer Jetton wallet's transaction: the comment in its
 
 > **tvmStatus**(`ref`, `reader`): `Promise`\<[`TvmStatus`](#tvmstatus)\>
 
-Reads the head's time first. Then finds the transfer by its body hash on the payer's Jetton wallet and follows its
-`internal_transfer` to the payee's Jetton wallet: settled when both executed without aborting, at the lower
-finality of the two. When the Jetton wallet holds no such transaction, finds the signed request by its body hash on
-the payer's W5 wallet: a W5 transaction that emitted the Jetton transfer is pending `in-flight`, because an internal
-message carries no expiry. W5 refuses the request once `valid_until <= now()`, so only a head read first and past
-`validUntil` answers failed: `expired` when the W5 wallet holds no such transaction, `no-transfer` when one executed
-and emitted nothing, `aborted` when every one aborted. A transaction on any other account is ignored. A failed or
-malformed read, a malformed reference, or a reader for another network is pending `unreadable`. At most three calls.
+Reads the head's time first. Then finds the signed request by its body hash on the payer's W5 wallet: only a W5
+transaction there that did not abort and emitted the Jetton transfer counts, because W5 checks the request's
+signature before any action runs, so a request the payer did not sign sends nothing from that wallet. It follows that
+message to the payer's Jetton wallet, and that wallet's `internal_transfer` to the payee's Jetton wallet: settled
+when both Jetton wallets executed without aborting, at the lower finality of the two. An equal Jetton body executed
+any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
+Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
+emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
+pending `not-found` up to `validUntil`; past it, failed `expired` when the W5 wallet holds no transaction with the
+request, `no-transfer` when one executed and emitted nothing, `aborted` when every one aborted. The payer's Jetton
+wallet's transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an
+aborted delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed
+read, a malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
 
 #### Parameters
 
