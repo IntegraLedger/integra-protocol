@@ -19,7 +19,7 @@ file's `about` names its sources.
 
 | Area | Files | What the rows fix |
 |---|---|---|
-| The core | `core-vectors.json` | The ATR's exact bytes and hash for given inputs, each `assemble` refusal, the https-link rule, and the JSON nesting cap. |
+| The core | `core-vectors.json` | The ATR's exact bytes and hash for given inputs, the https-link rule, the JSON nesting cap, and the `assemble` refusals its rows name. |
 | The buyer gate | `buyer.json` | What a buyer does with an advertised challenge: when it signs, and each decline. |
 | Each pairing | `x402-*.json`, `mpp-*.json`, `acp-checkout.json`, `ucp.json`, `ap2-checkout-mandate.json`, `ack-payment-request.json`, `card.json` | The placed challenge, what the payer signs with H in it, H read back from the payment, and the settlement read. |
 | Shared readers | `sd-jwt.json`, `decoder-caps.json`, `discovery.json`, `a2a-legal-context.json` | The SD-JWT reader, the decoders' limits, the discovery document and the A2A extension. |

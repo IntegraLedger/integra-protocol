@@ -14,8 +14,8 @@ seller assembles the record and advertises its hash; the buyer fetches the recor
 a payment that carries the hash; the seller reads the hash back from the payment and from the settlement.
 
 The package is deterministic and small at its core. It holds no key, signs nothing, calls no network on its own, and
-carries no business or legal logic. What the agreement says is the parties' business; this package makes sure that
-what they agreed is the record the payment is bound to.
+carries no business or legal logic. What the agreement says is the parties' business; this package hashes the record,
+places the hash in the payment and reads it back.
 
 - [Key concepts](#key-concepts)
 - [Install](#install)
@@ -270,24 +270,23 @@ about what the payment proves.
   record is what they agreed;
 - hold keys, sign, move funds, call a facilitator or fetch anything on its own;
 - store ATRs: the seller and the buyer each keep their own copy;
-- verify every signature it reads: each pairing's `proves` names which signatures the rail or network verifies and
-  which this package checks.
+- verify every signature it reads; each pairing's `proves` says what the payment shows.
 
 ## Vectors and conformance
 
 The package ships its test vectors in `vectors/`: one JSON file per entry point or pairing, each with an `about` that
 names where its expected values come from (published specification examples, standard test values, live network reads
-and independent tools). They fix the ATR's exact bytes and hash, each refusal, the link rule, the buyer gate's rows, and
-for each pairing the placed challenge, what the payer signs, H read back, and the settlement read. Any implementation
-that passes them agrees with this one byte for byte. The package's own tests run every file, and the buyer packages in
+and independent tools). They fix the ATR's exact bytes and hash, the link rule, the buyer gate's rows, and for each
+pairing the placed challenge, what the payer signs, H read back and the settlement read, with the refusals they name.
+The package's own tests run every file, and the buyer packages in
 [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) run them from TypeScript and Python.
 
-The LCP profiles this package implements ship in `profiles/`, one Markdown file per profile, each stating its
-binding's rules.
+`profiles/` holds the LCP profiles, one Markdown file per profile, each stating its binding's rules. The profile of
+UCP's x402 payment handler, `ucp-payment-handler-x402.md` with its schema, is a specification with no code in this
+package.
 The documents among them that have an address are served at it, byte for byte, on `lcp.integraledger.com`: the A2A
-extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`; UCP's x402 payment handler at
-`https://lcp.integraledger.com/ucp/x402/2026-10-02`, and the checkout extension `com.integraledger.lcp.with` at
-`https://lcp.integraledger.com/ucp/with/2026-10-02`, each with its schema at `/schema.json` beneath.
+extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and UCP's x402 payment handler at
+`https://lcp.integraledger.com/ucp/x402/2026-10-02`, with its schema at `/schema.json` beneath.
 
 ## Requirements
 
