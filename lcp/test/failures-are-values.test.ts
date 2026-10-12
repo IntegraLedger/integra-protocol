@@ -37,6 +37,7 @@ import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { stellarLocate, stellarStatus } from "../src/stellar.js";
+import { decodeTronTx, encodeTronRaw, tronCarrier, tronRecover, tronStatus } from "../src/tron.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -390,4 +391,46 @@ describe("stellar", () => {
       expect(reader.reads(), String(authDigest)).toBe(0);
     }
   });
+});
+
+describe("tron", () => {
+  reads([
+    ["tronStatus", tronStatus, "x402-exact-tron-lcp-trc20-memo.json", UNREADABLE],
+    ["tronRecover", tronRecover, "x402-exact-tron-lcp-trc20-memo.json", refused("tron/wrong-reader")],
+  ]);
+  answers([["tronCarrier", tronCarrier, [undefined], 0, refused("tron/tx-malformed")]]);
+
+  // V1 is a live mainnet transaction: its decoded fields re-encode to its raw bytes.
+  const V = load("x402-exact-tron-lcp-trc20-memo.json");
+  const d = V.V1.expectDecoded;
+  const bytes = (h: string) => Uint8Array.from(Buffer.from(h, "hex"));
+  const raw = {
+    refBlockBytes: bytes(d.refBlockBytes),
+    refBlockHash: bytes(d.refBlockHash),
+    expiration: BigInt(d.expiration),
+    data: bytes(d.data),
+    owner: bytes(d.owner),
+    contractAddress: bytes(d.contractAddress),
+    callData: bytes(d.callData),
+    timestamp: BigInt(d.timestamp),
+    feeLimit: BigInt(d.feeLimit),
+  };
+  it("encodeTronRaw: V1's decoded fields re-encode to its raw bytes", () => {
+    expect(Buffer.from(encodeTronRaw(raw)).toString("hex")).toBe(V.V1.rawHex);
+  });
+  it("tronCarrier: a raw transaction whose fields are not a TronRaw's is tron/tx-malformed", async () => {
+    expect(await tronCarrier({ raw: { ...raw, callData: d.callData }, rawBytes: bytes(V.V1.rawHex) } as never)).toEqual(
+      refused("tron/tx-malformed"),
+    );
+  });
+  throwsTypeError("encodeTronRaw", [
+    ...NOT_OBJECTS.map((b) => () => encodeTronRaw(b as never)),
+    () => encodeTronRaw({ ...raw, owner: d.owner } as never),
+    () => encodeTronRaw({ ...raw, data: [1, 2] } as never),
+    () => encodeTronRaw({ ...raw, expiration: Number(d.expiration) } as never),
+    () => encodeTronRaw({ ...raw, feeLimit: -1n }),
+    () => encodeTronRaw({ ...raw, timestamp: 1n << 64n }),
+    () => encodeTronRaw({ ...raw, expiration: 1n << 63n }),
+    () => encodeTronRaw({ ...raw, feeLimit: 1n << 63n }),
+  ]);
 });

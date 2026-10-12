@@ -192,8 +192,13 @@ function fieldsOf(b: Uint8Array): Field[] | null {
   return fields;
 }
 
-/** `Transaction.raw` as java-tron serialises it: fields in ascending order, default values omitted. */
+/**
+ * `Transaction.raw` as java-tron serialises it: fields in ascending order, default values omitted. Throws TypeError
+ * when `r` is not an object, a bytes field is not a `Uint8Array`, or `expiration`, `timestamp` or `feeLimit` is not a
+ * bigint from 0 below 2^63, the values `decodeTronTx` reads back.
+ */
 export function encodeTronRaw(r: TronRaw): Uint8Array {
+  if (!isTronRaw(r)) throw new TypeError("not a TronRaw");
   const trigger = message((o) => {
     pushBytes(o, 1, r.owner);
     pushBytes(o, 2, r.contractAddress);
@@ -216,6 +221,15 @@ export function encodeTronRaw(r: TronRaw): Uint8Array {
     pushInt(o, 14, r.timestamp);
     pushInt(o, 18, r.feeLimit);
   });
+}
+
+const RAW_BYTES = ["refBlockBytes", "refBlockHash", "data", "owner", "contractAddress", "callData"] as const;
+const RAW_INTS = ["expiration", "timestamp", "feeLimit"] as const;
+
+function isTronRaw(r: unknown): r is TronRaw {
+  if (!isObject(r)) return false;
+  const int64 = (v: unknown) => typeof v === "bigint" && v >= 0n && v < INT64_LIMIT;
+  return RAW_BYTES.every((k) => r[k] instanceof Uint8Array) && RAW_INTS.every((k) => int64(r[k]));
 }
 
 function encodeTransaction(rawBytes: Uint8Array, signatures: readonly Uint8Array[]): Uint8Array {
@@ -339,8 +353,12 @@ function base58Shape(address: unknown): Uint8Array | null {
 
 // ── The carrier.
 
-/** The hash in the memo of a transaction whose one contract calls `transfer`, and the transaction id. */
+/**
+ * The hash in the memo of a transaction whose one contract calls `transfer`, and the transaction id. A `tx` that is not
+ * `decodeTronTx`'s `{ raw, rawBytes }` is `tron/tx-malformed`.
+ */
 export async function tronCarrier(tx: { raw: TronRaw; rawBytes: Uint8Array }): Promise<{ h: AtrHash; txid: Hex } | Refusal> {
+  if (!isObject(tx) || !isTronRaw(tx.raw) || !(tx.rawBytes instanceof Uint8Array)) return refusal("tron/tx-malformed");
   const call = tx.raw.callData;
   if (call.length !== CALL_DATA_BYTES || hexDigits(call.subarray(0, 4)) !== TRANSFER_SELECTOR) {
     return refusal("tron/not-transfer");
@@ -373,7 +391,9 @@ function memoHash(data: Uint8Array): AtrHash | null {
  * reader is given the txid in lowercase. At most three calls.
  */
 export async function tronStatus(ref: TronRef, reader: TronReader): Promise<TronStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
   const txid = normalHash(ref.txid);
   const asset: unknown = ref.asset;
   if (txid === null || typeof asset !== "string" || !/^41[0-9a-f]{40}$/.test(bare(asset))) {
@@ -417,7 +437,7 @@ async function solidTimestamp(reader: TronReader): Promise<bigint | null> {
 
 /** Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. One call. */
 export async function tronRecover(ref: { network: TronNetwork; txid: Hex }, reader: TronReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("tron/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tron/wrong-reader");
   let tx: { rawDataHex: string } | null;
   try {
     tx = await reader.transaction(ref.txid);
