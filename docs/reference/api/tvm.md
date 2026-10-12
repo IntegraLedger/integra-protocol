@@ -256,24 +256,6 @@ TEP-74's text comment: 32 zero bits, then the UTF-8 of the hash's LCP string. A 
 
 ***
 
-### pairingOf()
-
-> **pairingOf**(`option`): `"x402/exact/tvm"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/tvm"` \| `undefined`
-
-***
-
 ### tvmCarrier()
 
 > **tvmCarrier**(`settlementBoc`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `jettonWallet`: `string`; `payload`: [`TonCell`](#toncell); `requestBodyHash`: `` `0x${string}` ``; `transferBodyHash`: `` `0x${string}` ``; `validUntil`: `number`; `wallet`: `string`; \}

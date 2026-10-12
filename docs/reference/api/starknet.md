@@ -165,7 +165,7 @@ The read keys recorded at claim; `transaction` is added when the facilitator nam
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`StarknetPayment`](#starknetpayment)
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `StarknetPayment`
 
 Takes the signature as 1 to 32 felts.
 
@@ -177,7 +177,7 @@ Takes the signature as 1 to 32 felts.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`StarknetPayment`](#starknetpayment)
+[`Refusal`](index.md#refusal) \| `StarknetPayment`
 
 ## Type Aliases
 
@@ -192,12 +192,6 @@ Lowercase `0x` hex with no leading zero digit, below FELT_P.
 ### StarknetNetwork
 
 > **StarknetNetwork** = `"starknet:SN_MAIN"` \| `"starknet:SN_SEPOLIA"`
-
-***
-
-### StarknetPayment
-
-> **StarknetPayment** = [`X402Payment`](x402.md#x402payment)\<\{ `from`: [`Felt`](#felt); `outsideExecution`: \{ `signature`: readonly [`Felt`](#felt)[]; `typedData`: [`OutsideExecutionTypedData`](#outsideexecutiontypeddata); \}; \}\>
 
 ***
 
@@ -297,24 +291,6 @@ x402's `OutsideExecution` for one `transfer(payTo, amount)` on `asset`, with the
 #### Returns
 
 [`Refusal`](index.md#refusal) \| [`OutsideExecutionTypedData`](#outsideexecutiontypeddata)
-
-***
-
-### pairingOf()
-
-> **pairingOf**(`option`): `"x402/exact/starknet"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/starknet"` \| `undefined`
 
 ***
 
