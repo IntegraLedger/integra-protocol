@@ -61,8 +61,8 @@ once it is on `main`.
 - **Failures are values.** Return a refusal with a `<namespace>/<reason>` code rather than throwing on a caller's
   input, and add every new code to [`docs/reference/refusals.md`](./docs/reference/refusals.md).
 - **Bounded.** Every reader call, decoded value and loop has a limit.
-- **No business or legal logic.** The package checks the binding and nothing else: never amount, payee, asset, timing
-  or payer against the ATR's content.
+- **No business or legal logic.** The package checks the binding; it never judges amount, payee, asset, timing or
+  payer against the ATR's content.
 - **State what a binding proves, and no more.** A pairing's `pattern.proves` says what its payment shows and what it
   does not.
 - **Expected values come from outside the code.** A test or vector takes its expected value from a specification's
