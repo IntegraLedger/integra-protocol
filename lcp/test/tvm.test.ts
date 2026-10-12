@@ -158,11 +158,14 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
-  // bound and reference read the transfer the payer signed and step 4's filter of the echoed option, which names no
-  // amount and no timeout. The payment is V2's, so whatever amount or timeout the option echoes, bound gives the file's
-  // H (FIPS 180-2's "abc") and reference V3's keys; pairingOf and build, which need both, still refuse such an option.
+  // bound and reference read the transfer the payer signed and the echoed option's scheme, network, asset, payTo and
+  // extra, never its amount or timeout. The payment is V2's, so whatever amount or timeout the option echoes, bound
+  // gives the file's H (FIPS 180-2's "abc") and reference V3's keys; pairingOf, read and build, which need both, refuse
+  // such an option.
   it("V3: bound and reference read no amount or timeout from the echoed option", async () => {
     const p = await signed();
+    const doc = exactTvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
+    if ("refused" in doc) throw new Error(doc.code);
     const { maxTimeoutSeconds: _timeout, ...untimed } = placed;
     const echoed = [
       { ...placed, amount: "abc" },
@@ -174,6 +177,7 @@ describe("x402-exact-tvm.json", () => {
       expect(await exactTvm.bound({ ...p, accepted })).toBe(V.V3.expectBound);
       expect(await exactTvm.reference({ ...p, accepted })).toEqual(V.V3.expectReference);
       expect(pairingOf(accepted)).toBeUndefined();
+      expect(exactTvm.read({ ...doc, accepts: [accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
       const built = await exactTvm.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
       expect(built).toEqual({ refused: true, code: "tvm/option-malformed" });
     }
