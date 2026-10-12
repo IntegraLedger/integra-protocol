@@ -504,7 +504,7 @@ again.
 | `mandate_invalid_signature` | A mandate's signature does not verify, or it does not hold exactly one mandate of its type. |
 | `mandate_expired` | A mandate has expired. |
 | `merchant_authorization_invalid` | The `checkout_jwt` is not the business's own signature over a checkout. |
-| `mandate_scope_mismatch` | The checkout mandate commits to another state of the checkout; the payment mandate's `transaction_id`, `payment_amount` or `payee.id` is not this checkout's; or the `nonce` is not keccak256 of `token`. |
+| `mandate_scope_mismatch` | The checkout mandate commits to another state of the checkout. |
 | `agreement_payment_required` | The agreement step's payment has not settled. The `path` is `$.links[?(@.type=='legal_context_agreement')]`. Nothing was taken. |
 
 ## Security Considerations
