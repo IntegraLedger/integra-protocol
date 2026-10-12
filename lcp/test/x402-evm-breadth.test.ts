@@ -649,6 +649,20 @@ describe("recover on the Permit2 pairings", () => {
     }
   });
 
+  it("reads the receipt, the transaction and Permit2's word at two blocks: at most four calls", async () => {
+    const seen: string[] = [];
+    const r = permit2Reader(P2.EV6.transferAt100, P2.EV6, EXACT_PERMIT2_PROXY, []);
+    const counted: EvmReader = {
+      network: r.network,
+      receipt: async (h) => (seen.push("receipt"), r.receipt(h)),
+      blockNumber: async (t) => (seen.push("blockNumber"), r.blockNumber(t)),
+      transaction: async (h) => (seen.push("transaction"), r.transaction(h)),
+      call: async (to, data, block) => (seen.push("call"), r.call(to, data, block)),
+    };
+    expect(await exactPermit2.recover(ref, counted)).toBe(H);
+    expect(seen).toEqual(["receipt", "transaction", "call", "call"]);
+  });
+
   it("a reader for another network, or a ref or reader that is not an object, is evm/wrong-reader, with nothing read", async () => {
     const reader = permit2Reader(P2.EV6.transferAt100, P2.EV6, EXACT_PERMIT2_PROXY, []);
     const wrong = { refused: true, code: "evm/wrong-reader" };
