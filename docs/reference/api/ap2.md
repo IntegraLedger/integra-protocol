@@ -37,7 +37,7 @@ description: "The exports of @integraledger/lcp/ap2."
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-checkout_jwt-1"></a> `checkout_jwt` | `string` | The checkout JWT the presenter names as the latest. |
-| <a id="property-checkout_mandate"></a> `checkout_mandate` | `string` | The closed Checkout Mandate, an SD-JWT as presented. |
+| <a id="property-checkout_mandate"></a> `checkout_mandate` | `string` | The closed Checkout Mandate as presented: one SD-JWT, or AP2's chain of the open mandate's SD-JWT and the closed mandate's, joined by `~~`. |
 
 ***
 
@@ -183,8 +183,11 @@ The payload of a compact JWS, decoded as one JSON object. The signature is never
 
 > **readMandate**(`m`): `Promise`\<[`Refusal`](index.md#refusal) \| [`MandateContent`](#mandatecontent)\>
 
-The closed Checkout Mandate inside an SD-JWT: exactly one resolved object whose `vct` is `mandate.checkout.1`, its
-`checkout_hash`, and its `checkout_jwt` when disclosed.
+The closed Checkout Mandate in a presentation, one SD-JWT or AP2's chain of the open and closed mandates joined by
+`~~` (at most these two hops, each an SD-JWT): exactly one resolved object of the last SD-JWT whose `vct` is
+`mandate.checkout.1`, its `checkout_hash`, and its `checkout_jwt` when disclosed. No signature is verified, nor the
+open mandate's `cnf` delegation to the closed mandate's signer, nor the closed mandate's `sd_hash` or
+`issuer_jwt_hash` link to the open one; the open mandate's constraints are not read.
 
 #### Parameters
 
