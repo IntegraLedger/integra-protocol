@@ -42,8 +42,8 @@ node scripts/docs-reference.mjs --check
   package you just built, runs it, and checks its output against the `text` block that follows it. A change that alters
   what a sample prints updates the sample.
 - `docs-reference.mjs --check` checks the generated reference pages and the README's pairing list against the
-  package. After a change to the registry, the exports or the vectors, run `node scripts/docs-reference.mjs` and
-  commit what it writes.
+  package. After a change to the registry, the exports, the vectors or the refusal codes, run
+  `node scripts/docs-reference.mjs` and commit what it writes.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder.
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
@@ -59,7 +59,9 @@ once it is on `main`.
   binding lives in that pairing's module. Reuse them; never write a second version.
 - **Hash the bytes delivered.** Never parse, re-serialise or canonicalise an ATR before hashing it.
 - **Failures are values.** Return a refusal with a `<namespace>/<reason>` code rather than throwing on a caller's
-  input, and add every new code to [`docs/reference/refusals.md`](./docs/reference/refusals.md).
+  input, keep [`docs/reference/refusals.md`](./docs/reference/refusals.md) listing every code the package returns, and
+  run `node scripts/docs-reference.mjs` and commit what it writes: `lcp/src/internal/codes.ts`, the set of those codes
+  that MPP's `problem` reads.
 - **Bounded.** Every reader call, decoded value and loop has a limit.
 - **No business or legal logic.** The package checks the binding; it never judges amount, payee, asset, timing or
   payer against the ATR's content.

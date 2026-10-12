@@ -86,7 +86,8 @@ true 1
 ```
 
 `parseChallenges(fieldValues)` parses `WWW-Authenticate` field values into challenges, and `problem(code)` gives the
-Payment scheme's problem type and HTTP status for a refusal code.
+Payment scheme's problem type and HTTP status for a refusal code this package returns
+([Answering the buyer](#answering-the-buyer)).
 
 ## The MPP pairings
 
@@ -116,7 +117,9 @@ Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and r
 `status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
 only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
 refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, and `xrpl/not-success` on the XRP
-Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that).
+Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that). A read
+that fails, or cannot yet read the landed payment, is a read to repeat, not a refusal of the payment: the seller asks
+again later.
 
 `bound`, `reference` and `fetchPresented` start from the echoed challenge's H, and require its intent and method to be
 the pairing's (on `usdc`, also the profile `methodDetails.type` names). They do not check the request again: that is
@@ -138,3 +141,28 @@ not H), the deadline, the token and the contract that records the nonce's use, f
 x402's Permit2 pairings.
 
 The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these rules in full.
+
+## Answering the buyer
+
+`problem(code)` maps a refusal code this package returns to the Payment scheme's status codes and problem types, under
+`https://paymentauth.org/problems/`:
+
+| Code | Status | Problem type |
+|---|---|---|
+| `mpp/credential-malformed`, `mpp/request-malformed`, `mpp/opaque-malformed` | 402 | `malformed-credential` |
+| `mpp/id-not-ours` | 402 | `invalid-challenge` |
+| A read to repeat: `tempo/not-found`, `tempo/unreadable`, `svm/not-found`, `svm/unreadable`, `stellar/not-found`, `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`, `xrpl/unreadable`, `hedera/not-found`, `hedera/unreadable` | 500 | `internal-payment-error` |
+| A call that cannot read the payment: `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
+| Every other code this package returns | 402 | `verification-failed` |
+| A code this package does not return | 500 | `internal-payment-error` |
+
+A read to repeat is what a `fetchPresented` returns when its read fails or cannot yet read the landed payment: the
+seller asks again later. On Tempo push and the Hedera session, a reader of another network answers `tempo/unreadable` or
+`hedera/unreadable`, which repeat until the seller changes the reader. A call that cannot read the payment is the
+seller's own call: a reader that is not for the network the challenge or reference names (`<rail>/wrong-reader`), or
+`bound` or `reference` on a push credential before `fetchPresented` has read it (`<rail>/read-first`); on Tempo push,
+`bound` and `reference` before `fetchPresented` answer `mpp/credential-malformed`. The same call gives the same code
+until the seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the
+buyer could pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a
+402, and neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500
+`internal-payment-error`, never a 402.

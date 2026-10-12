@@ -2,12 +2,14 @@
 // Writes the parts of the documentation that are generated from the lcp package: the pairing list in lcp/README.md
 // (between its pairings markers), and the reference pages docs/reference/pairings.md (from the registry,
 // BINDINGS), docs/reference/entry-points.md (from package.json's exports, each module's doc comment, the runtime
-// exports and the emitted declarations) and docs/reference/vectors.md (from the vector files). It also checks that
-// docs/reference/refusals.md lists every code the source names in refusal(…) and refuse(…).
+// exports and the emitted declarations) and docs/reference/vectors.md (from the vector files). It writes
+// lcp/src/internal/codes.ts, the set of codes docs/reference/refusals.md lists, by which `problem` tells the package's
+// own codes from a caller's. It also checks that docs/reference/refusals.md lists every code the source names in
+// refusal(…) and refuse(…).
 //
 // Usage, from the repository root after lcp is built:
-//   node scripts/docs-reference.mjs           write the pages
-//   node scripts/docs-reference.mjs --check   exit 1 when a committed page differs from what the package gives
+//   node scripts/docs-reference.mjs           write the pages and the code set
+//   node scripts/docs-reference.mjs --check   exit 1 when a committed page or the code set differs from what it writes
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -197,9 +199,23 @@ function refusalCodes() {
   const page = join(reference, "refusals.md");
   const listed = new Set();
   if (existsSync(page)) {
-    for (const m of readFileSync(page, "utf8").matchAll(/^\| `([a-z0-9]+\/[a-z0-9-]+)` \|/gm)) listed.add(m[1]);
+    for (const m of readFileSync(page, "utf8").matchAll(/^\| `([a-z0-9]+\/[A-Za-z0-9./-]+)` \|/gm)) listed.add(m[1]);
   }
   return { inSource, listed };
+}
+
+const CODES = join(lcp, "src", "internal", "codes.ts");
+
+/** lcp/src/internal/codes.ts: the codes refusals.md lists, sorted, one to a line. */
+function codesModule(listed) {
+  let s = "/**\n";
+  s += " * Every refusal code the package returns, as `docs/reference/refusals.md` lists them: `problem` tells the package's own\n";
+  s += " * codes from a caller's by this set. `node scripts/docs-reference.mjs` writes this file from that page, and its\n";
+  s += " * `--check` fails when the two differ.\n";
+  s += " */\n";
+  s += "export const REFUSAL_CODES: ReadonlySet<string> = new Set([\n";
+  for (const c of [...listed].sort()) s += `  ${JSON.stringify(c)},\n`;
+  return `${s}]);\n`;
 }
 
 function readmePairings() {
@@ -259,6 +275,21 @@ for (const [name, text] of process.argv.includes("--readme-only") ? [] : pages) 
   }
 }
 const { inSource, listed } = refusalCodes();
+if (!process.argv.includes("--readme-only")) {
+  const codes = codesModule(listed);
+  if (check) {
+    const committed = existsSync(CODES) ? readFileSync(CODES, "utf8") : "";
+    if (committed !== codes) {
+      stale++;
+      console.error("lcp/src/internal/codes.ts differs from the codes docs/reference/refusals.md lists: run node scripts/docs-reference.mjs");
+    } else {
+      console.log(`lcp/src/internal/codes.ts holds the ${listed.size} codes docs/reference/refusals.md lists`);
+    }
+  } else {
+    writeFileSync(CODES, codes);
+    console.log(`wrote lcp/src/internal/codes.ts (${listed.size} codes)`);
+  }
+}
 const missing = [...inSource].filter((c) => !listed.has(c)).sort();
 if (missing.length > 0) {
   stale++;

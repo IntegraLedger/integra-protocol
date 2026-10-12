@@ -20,6 +20,7 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementRefusal } from "./internal/agreement.js";
+import { REFUSAL_CODES } from "./internal/codes.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
 import {
   USDC_PROFILES,
@@ -964,15 +965,63 @@ export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairing): 
 
 // ── Problem types.
 
-const INVALID_CHALLENGE = ["mpp/id-not-ours", "claim/unknown", "claim/in-progress", "claim/paid", "claim/not-this-request"];
 const MALFORMED = ["mpp/credential-malformed", "mpp/request-malformed", "mpp/opaque-malformed"];
+const INVALID_CHALLENGE = ["mpp/id-not-ours"];
+/** The codes a `fetchPresented` returns when its read fails or cannot yet read the landed payment. */
+const READ_TO_REPEAT = [
+  "tempo/not-found",
+  "tempo/unreadable",
+  "svm/not-found",
+  "svm/unreadable",
+  "stellar/not-found",
+  "stellar/unreadable",
+  "xrpl/not-found",
+  "xrpl/not-validated",
+  "xrpl/unreadable",
+  "hedera/not-found",
+  "hedera/unreadable",
+];
+/**
+ * The codes of a call that cannot read the payment: a reader that is not for the network the challenge or reference
+ * names, and `bound` or `reference` on a push credential before `fetchPresented` has read it.
+ */
+const CANNOT_READ = [
+  "svm/wrong-reader",
+  "stellar/wrong-reader",
+  "xrpl/wrong-reader",
+  "hedera/wrong-reader",
+  "svm/read-first",
+  "stellar/read-first",
+  "xrpl/read-first",
+  "hedera/read-first",
+];
 
-/** The MPP problem type and status for a refusal code. */
+/**
+ * The Payment scheme's problem type and HTTP status for a refusal code this package returns, from the scheme's Status
+ * Codes and Error Codes tables, under `https://paymentauth.org/problems/`:
+ * - 402 `malformed-credential`: `mpp/credential-malformed`, `mpp/request-malformed` and `mpp/opaque-malformed`;
+ * - 402 `invalid-challenge`: `mpp/id-not-ours`;
+ * - 500 `internal-payment-error`: a read to repeat, which a `fetchPresented` returns when its read fails or cannot yet
+ *   read the landed payment, so the seller asks again later: `tempo/not-found`, `tempo/unreadable`, `svm/not-found`,
+ *   `svm/unreadable`, `stellar/not-found`, `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`,
+ *   `xrpl/unreadable`, `hedera/not-found` and `hedera/unreadable`;
+ * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
+ *   changes the call: a reader that is not for the network the challenge or reference names (`svm/wrong-reader`,
+ *   `stellar/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound` or `reference` on a push
+ *   credential before `fetchPresented` has read it (`svm/read-first`, `stellar/read-first`, `xrpl/read-first` and
+ *   `hedera/read-first`);
+ * - 402 `verification-failed`: every other code this package returns;
+ * - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
+ *
+ * The seller answers a 402 with a fresh challenge and a 500 with no challenge: a challenge goes out only with a 402.
+ * Neither carries `Payment-Receipt`.
+ */
 export function problem(code: string): { status: 402 | 500; type: string } {
+  if (!REFUSAL_CODES.has(code) || READ_TO_REPEAT.includes(code) || CANNOT_READ.includes(code)) {
+    return { status: 500, type: `${PROBLEM_BASE}internal-payment-error` };
+  }
   if (MALFORMED.includes(code)) return { status: 402, type: `${PROBLEM_BASE}malformed-credential` };
   if (INVALID_CHALLENGE.includes(code)) return { status: 402, type: `${PROBLEM_BASE}invalid-challenge` };
-  if (code === "claim/lapsed") return { status: 402, type: `${PROBLEM_BASE}payment-expired` };
-  if (code === "claim/store-unavailable") return { status: 500, type: `${PROBLEM_BASE}internal-payment-error` };
   return { status: 402, type: `${PROBLEM_BASE}verification-failed` };
 }
 

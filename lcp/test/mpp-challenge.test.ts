@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { encodePacked, keccak256 } from "viem";
 import {
+  chargeHedera,
+  chargeSolana,
+  chargeStellar,
+  chargeXrpl,
   challengeH,
   challengeHash,
   challengeId,
@@ -14,10 +18,19 @@ import {
   place,
   problem,
   read,
+  sessionHedera,
+  tempoPush,
   tie,
   type MppChallenge,
+  type MppCredential,
 } from "../src/mpp.js";
-import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, realm } from "./mpp-fixtures.js";
+import { ReaderError } from "../src/evm.js";
+import type { HederaEvmReader, HederaReader } from "../src/hedera.js";
+import type { StellarReader } from "../src/stellar.js";
+import type { SvmLanded, SvmReader } from "../src/svm.js";
+import type { XrplReader } from "../src/xrpl.js";
+import { REFUSAL_CODES } from "../src/internal/codes.js";
+import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, load, readerFor, realm } from "./mpp-fixtures.js";
 
 const sha256 = (s: string) => "0x" + createHash("sha256").update(s).digest("hex");
 
@@ -75,8 +88,10 @@ describe("mpp-challenge.json", () => {
     expect(got).toEqual([{ id: 'x"y', realm: "r", method: "evm", intent: "charge", request: "e30" }]);
   });
 
-  it("MV10: problem types", () => {
-    for (const row of V.MV10.rows) expect(problem(row.code)).toEqual(row.expect);
+  // MPP's Status Codes and Error Codes tables (draft-httpauth-payment-01 at 08e7dd87, lines 168-176 and 852-864) give
+  // each class its status and type.
+  it("MV10: problem's status and type for each class of code", () => {
+    for (const row of V.MV10.rows) expect([row.code, problem(row.code)]).toEqual([row.code, row.expect]);
   });
 
   it("MV14: the agreement URL in opaque", async () => {
@@ -220,4 +235,242 @@ describe("mpp-challenge.json", () => {
       if (Array.isArray(placed)) expect([r.case, network(placed[0]!)]).toEqual([r.case, r.expect]);
     }
   });
+});
+
+// `problem` maps the codes this package returns, and only those. The statuses and types are MPP's Status Codes and
+// Error Codes tables (draft-httpauth-payment-01 at 08e7dd87, lines 168-176 and 852-864); MV10 gives a row of each
+// class.
+describe("problem", () => {
+  type Row = { code: string; expect: { status: number; type: string } };
+  const rows = V.MV10.rows as Row[];
+  const expectOf = (code: string) => rows.find((r) => r.code === code)!.expect;
+  const internal = expectOf("mpp/not-a-code");
+  const verificationFailed = expectOf("mpp/nonce-not-challenge-hash");
+  const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
+
+  it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
+    // 11 reads to repeat, and 8 calls that cannot read the payment: the four wrong-reader and four read-first codes.
+    expect(answered500.length).toBe(19);
+    for (const code of REFUSAL_CODES) {
+      const p = problem(code);
+      const row = rows.find((r) => r.code === code);
+      if (row !== undefined) expect([code, p]).toEqual([code, row.expect]);
+      else expect([code, p]).toEqual([code, verificationFailed]);
+    }
+  });
+
+  it("answers a code the package does not return with 500 internal-payment-error, whatever its namespace", () => {
+    const foreign = [
+      "claim/read-unavailable",
+      "door/unavailable",
+      "x402/anything",
+      "MPP/CREDENTIAL-MALFORMED",
+      "mpp/id-not-ours/",
+      "",
+    ];
+    for (const code of foreign) expect([code, problem(code)]).toEqual([code, internal]);
+    for (const code of [undefined, null, 402, {}]) expect(problem(code as never)).toEqual(internal);
+  });
+
+  // A pushed payment the reader cannot read yet answers 500 and no challenge, so the buyer is not asked to pay again; a
+  // revert answers 402, since nothing moved. Each credential is its vector file's buyer row as presented.
+  it("a push the seller's reader cannot read yet answers 500; a revert answers 402", async () => {
+    const tempo = load("mpp-charge-tempo-push.json");
+    const tempoCredential = tempo.buyer.rows[1].input.presented as MppCredential;
+    const reverted = { ...tempo.MV13.receipt, status: 0 as const };
+    const tempoAnswers = async (r: Parameters<typeof readerFor>[1]) => {
+      const out = await tempoPush.fetchPresented(tempoCredential, readerFor("eip155:42431", r));
+      return "refused" in out ? [out.code, problem(out.code)] : out;
+    };
+    expect(await tempoAnswers(null)).toEqual(["tempo/not-found", internal]);
+    expect(await tempoAnswers("reader-error")).toEqual(["tempo/unreadable", internal]);
+    expect(await tempoAnswers(reverted)).toEqual(["tempo/reverted", verificationFailed]);
+
+    const hedera = load("mpp-session-hedera-solana-xrpl.json");
+    const hederaCredential = hedera.buyer.rows[1].input.presented as MppCredential;
+    const hederaAnswers = async (r: Parameters<typeof readerFor>[1]) => {
+      const reader = readerFor("hedera:testnet", r) as unknown as HederaEvmReader;
+      const out = await sessionHedera.fetchPresented(hederaCredential, reader);
+      return "refused" in out ? [out.code, problem(out.code)] : out;
+    };
+    expect(await hederaAnswers(null)).toEqual(["hedera/not-found", internal]);
+    expect(await hederaAnswers("reader-error")).toEqual(["hedera/unreadable", internal]);
+    const hederaReverted = { status: 0 as const, blockNumber: "100", logs: [] };
+    expect(await hederaAnswers(hederaReverted)).toEqual(["hedera/reverted", verificationFailed]);
+  });
+
+  // Solana's, Stellar's, XRPL's and the Hedera charge's push reads, one case per arm: a read that fails, finds no
+  // transaction, or finds an XRPL transaction not yet in a validated ledger, a reader of another network, and `bound`
+  // on the push credential before fetchPresented has read it answer 500 and no challenge; a landed transaction that
+  // failed answers 402 verification-failed. Each credential is its vector file's B6 buyer row's challenge as presented,
+  // with that file's push payload. The failed transactions are the files' agreedRefusals rows (Solana's meta.err, XRPL's
+  // tecPATH_DRY), the Hedera reads its fetchPresented rows, and the other network the rail's mainnet; the codes are
+  // those rows', `<rail>/wrong-reader` for another network, and the files' "not yet fetched" refusals rows (Hedera's
+  // push.expectWithout) for `bound` before fetchPresented.
+  const SO = load("mpp-charge-solana.json");
+  const ST = load("mpp-charge-stellar.json");
+  const XR = load("mpp-charge-xrpl.json");
+  const HE = load("mpp-charge-hedera.json");
+  const pushed = (file: typeof SO, payload: MppCredential["payload"]): MppCredential => ({
+    challenge: file.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.challenge,
+    payload,
+  });
+  const agreed = (file: typeof SO, code: string) => file.agreedRefusals.rows.find((r: { expect: string }) => r.expect === code);
+  const notYetFetched = (file: typeof SO) => file.refusals.find((r: { case: string }) => r.case.endsWith("not yet fetched"));
+  const failing = async (): Promise<never> => {
+    throw new ReaderError("transport");
+  };
+
+  const solanaPush = pushed(SO, { type: "signature", signature: SO.push.txid });
+  const solana = (transaction: SvmReader["transaction"], network = SO.push.network): SvmReader => ({
+    network,
+    transaction,
+    signatures: async () => [],
+    blockhashValid: async () => true,
+    firstAvailableBlock: async () => 0n,
+    account: failing,
+  });
+  const solanaLanded = (err: unknown): SvmLanded => ({
+    wire: Uint8Array.from(Buffer.from(SO.push.landedWireBase64, "base64")),
+    err,
+    loaded: { writable: [], readonly: [] },
+    inner: [],
+  });
+
+  const stellarPush = pushed(ST, ST.refusals[0].payload);
+  const stellar = (transaction: StellarReader["transaction"], network: StellarReader["network"] = "stellar:testnet"): StellarReader => ({
+    network,
+    transaction,
+    transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
+    latestLedger: async () => 1000,
+  });
+
+  const xrplPush = pushed(XR, XR.refusals[0].payload);
+  const xrpl = (tx: XrplReader["tx"], network: XrplReader["network"] = "xrpl:1"): XrplReader => ({
+    network,
+    tx,
+    txBlob: async () => XR.V3.blob,
+    validatedLedger: async () => 1000,
+  });
+  const xrplLanded = (validated: boolean, result: string) => async () => ({ validated, result, ledgerIndex: 990, transactionType: "Payment" });
+
+  const hederaPush = pushed(HE, { type: "hash", transactionId: HE.push.transactionId });
+  const hederaRow = (rowCase: string) => HE.fetchPresented.rows.find((r: { case: string }) => r.case === rowCase);
+  const hedera = (rowCase: string): HederaReader => {
+    const row = hederaRow(rowCase);
+    return {
+      network: row.readerNetwork ?? HE.fetchPresented.reader,
+      transactions: async () => (row.throws === true ? failing() : row.entries),
+    };
+  };
+
+  const arms: [string, () => Promise<unknown>, string, { status: number; type: string }][] = [
+    ["mpp/charge/solana: no transaction at confirmed", () => chargeSolana.fetchPresented(solanaPush, solana(async () => null)), "svm/not-found", internal],
+    ["mpp/charge/solana: the read fails", () => chargeSolana.fetchPresented(solanaPush, solana(failing)), "svm/unreadable", internal],
+    [
+      "mpp/charge/solana: the landed transaction carries an error",
+      () => chargeSolana.fetchPresented(solanaPush, solana(async () => solanaLanded(agreed(SO, "svm/err").err))),
+      "svm/err",
+      verificationFailed,
+    ],
+    [
+      "mpp/charge/solana: a reader of another network",
+      () => chargeSolana.fetchPresented(solanaPush, solana(async () => solanaLanded(null), "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp")),
+      "svm/wrong-reader",
+      internal,
+    ],
+    [
+      "mpp/charge/solana: bound on the push credential before fetchPresented",
+      () => chargeSolana.bound(pushed(SO, notYetFetched(SO).payload)),
+      notYetFetched(SO).expect,
+      internal,
+    ],
+    [
+      "mpp/charge/stellar: no transaction",
+      () => chargeStellar.fetchPresented(stellarPush, stellar(async () => ({ status: "NOT_FOUND", oldestLedger: 1 }))),
+      "stellar/not-found",
+      internal,
+    ],
+    ["mpp/charge/stellar: the read fails", () => chargeStellar.fetchPresented(stellarPush, stellar(failing)), "stellar/unreadable", internal],
+    [
+      "mpp/charge/stellar: the ledger records the transaction FAILED",
+      () => chargeStellar.fetchPresented(stellarPush, stellar(async () => ({ status: "FAILED", envelopeXdr: ST.V3.envelope, ledger: 990, oldestLedger: 1 }))),
+      "stellar/tx-failed",
+      verificationFailed,
+    ],
+    [
+      "mpp/charge/stellar: a reader of another network",
+      () => chargeStellar.fetchPresented(stellarPush, stellar(failing, "stellar:pubnet")),
+      "stellar/wrong-reader",
+      internal,
+    ],
+    [
+      "mpp/charge/stellar: bound on the push credential before fetchPresented",
+      () => chargeStellar.bound(pushed(ST, notYetFetched(ST).payload)),
+      notYetFetched(ST).expect,
+      internal,
+    ],
+    [
+      "mpp/charge/xrpl: no transaction",
+      () => chargeXrpl.fetchPresented(xrplPush, xrpl(async () => ({ notFound: true, searchedAll: true }))),
+      "xrpl/not-found",
+      internal,
+    ],
+    ["mpp/charge/xrpl: the read fails", () => chargeXrpl.fetchPresented(xrplPush, xrpl(failing)), "xrpl/unreadable", internal],
+    [
+      "mpp/charge/xrpl: the transaction is not yet in a validated ledger",
+      () => chargeXrpl.fetchPresented(xrplPush, xrpl(xrplLanded(false, "tesSUCCESS"))),
+      "xrpl/not-validated",
+      internal,
+    ],
+    [
+      "mpp/charge/xrpl: the validated result is not tesSUCCESS",
+      () => chargeXrpl.fetchPresented(xrplPush, xrpl(xrplLanded(true, agreed(XR, "xrpl/not-success").result))),
+      "xrpl/not-success",
+      verificationFailed,
+    ],
+    [
+      "mpp/charge/xrpl: a reader of another network",
+      () => chargeXrpl.fetchPresented(xrplPush, xrpl(failing, "xrpl:0")),
+      "xrpl/wrong-reader",
+      internal,
+    ],
+    [
+      "mpp/charge/xrpl: bound on the push credential before fetchPresented",
+      () => chargeXrpl.bound(pushed(XR, notYetFetched(XR).payload)),
+      notYetFetched(XR).expect,
+      internal,
+    ],
+    [
+      "mpp/charge/hedera: the mirror node holds no such transaction",
+      () => chargeHedera.fetchPresented(hederaPush, hedera("the mirror node holds no such transaction")),
+      hederaRow("the mirror node holds no such transaction").expect,
+      internal,
+    ],
+    [
+      "mpp/charge/hedera: the read fails",
+      () => chargeHedera.fetchPresented(hederaPush, hedera("the read fails")),
+      hederaRow("the read fails").expect,
+      internal,
+    ],
+    [
+      "mpp/charge/hedera: a reader of another network",
+      () => chargeHedera.fetchPresented(hederaPush, hedera("a reader of another network")),
+      hederaRow("a reader of another network").expect,
+      internal,
+    ],
+    [
+      "mpp/charge/hedera: bound on the push credential before fetchPresented",
+      () => chargeHedera.bound(hederaPush),
+      HE.push.expectWithout,
+      internal,
+    ],
+  ];
+  for (const [arm, fetched, code, answer] of arms) {
+    it(`${arm}: ${code}, answered ${answer.status}`, async () => {
+      const out = (await fetched()) as MppCredential | { refused: true; code: string } | string;
+      const refused = typeof out === "object" && out !== null && "refused" in out;
+      expect(refused ? [out.code, problem(out.code)] : out).toEqual([code, answer]);
+    });
+  }
 });
