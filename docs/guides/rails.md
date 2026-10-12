@@ -158,6 +158,11 @@ has no authorization entry to name, so its `reference` names the transaction and
 account, and is otherwise pending, never failed: there is no expiration ledger to pass, and `stellarLocate` has
 nothing to search for.
 
+On Sui, a node keeps only recent history, so an absent transaction can be one the endpoint has pruned.
+`suiStatus(ref, reader, position)` takes the checkpoint from which you need history, such as the latest checkpoint when
+the payment is requested, and answers failed `expired` only when the epoch is past the transaction's bound and the
+endpoint holds transactions from that checkpoint or earlier; otherwise an absent transaction is pending `not-found`.
+
 A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
 time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
 payment up, so a payment that lands between the two reads, or a reader whose sources disagree between them, never
@@ -181,7 +186,7 @@ transfer lands, however late, because an internal message carries no expiry.
 | NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` | `final` when the status is `FINAL`, else `optimistic` |
 | Polkadot Asset Hub | `PolkadotReader` | Sidecar's extrinsic by block and index, a block's raw extrinsics, the finalized head | `finalized` or `head` |
 | Starknet | `StarknetReader` | `starknet_getTransactionReceipt` with its `Transfer` events, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
-| Sui | `SuiReader` | the transaction by digest, with the current epoch | the checkpoint |
+| Sui | `SuiReader` | the transaction by digest, with the current epoch and the first checkpoint the endpoint holds transactions from | the checkpoint |
 | Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level; `gettransactionbyid` | `solidified` or `head` |
 | TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the signed W5 request's), by message hash (the Jetton transfer the W5 transaction sent, then the `internal_transfer` it led to) and by hash | `confirmed` or `finalized` |
 | Stacks | `StacksReader` | the origin's confirmed nonce, read first; the transaction by id; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |

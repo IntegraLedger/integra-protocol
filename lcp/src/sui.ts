@@ -54,11 +54,13 @@ export interface SuiExecuted {
  * Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects with `ReaderError`.
  * `read` is one request, so one snapshot:
  * `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}}}
- * checkpoint{epoch{epochId}}}`, where the last field is the latest checkpoint's epoch.
+ * checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}}}`.
+ * `epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first checkpoint from which the endpoint holds
+ * transactions (the available range's inclusive lower bound), or null when the endpoint states none.
  */
 export interface SuiReader {
   readonly network: SuiNetwork;
-  read(digest: string): Promise<{ tx: SuiExecuted | null; epoch: bigint }>;
+  read(digest: string): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null }>;
 }
 
 export interface SuiRef {
@@ -158,19 +160,25 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
 }
 
 /**
- * Reads the recorded digest. A failed read, or a reader for another network, is pending. An absent transaction is
- * expired once the latest epoch is past its bound; a present one must be these bytes carrying this hash, and its
- * effects' status decides. One call.
+ * Reads the recorded digest. A failed read, or a reader for another network, is pending. `position` is the checkpoint
+ * from which the caller needs the endpoint's history: one at or before every checkpoint the payment could have
+ * executed in, such as the latest checkpoint when the payment is requested. An absent transaction is expired once the
+ * latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
+ * pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. A
+ * present one must be these bytes carrying this hash, and its effects' status decides. A `position` that is not a
+ * non-negative bigint is pending `unreadable`. One call.
  */
-export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader): Promise<SuiStatus> {
+export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint): Promise<SuiStatus> {
   if (peer === undefined || reader.network !== ref.network) return { state: "pending", why: "unreadable" };
   const untilEpoch = decimalBelow(ref.untilEpoch, U64_LIMIT);
   if (untilEpoch === undefined) return { state: "pending", why: "unreadable" };
+  if (typeof position !== "bigint" || position < 0n) return { state: "pending", why: "unreadable" };
   const answer = await readOnce(reader, ref.digest);
   if (answer === null) return { state: "pending", why: "unreadable" };
-  const { tx, epoch } = answer;
+  const { tx, epoch, firstCheckpoint } = answer;
   if (tx === null) {
-    return epoch > untilEpoch ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+    const holds = firstCheckpoint !== null && firstCheckpoint <= position;
+    return epoch > untilEpoch && holds ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
   }
   if (suiDigest(tx.transactionBcs) !== ref.digest) return { state: "pending", why: "unreadable" };
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
@@ -373,7 +381,7 @@ function suiDigest(bytes: Uint8Array): string | undefined {
 async function readOnce(
   reader: SuiReader,
   digest: string,
-): Promise<{ tx: SuiExecuted | null; epoch: bigint } | null> {
+): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null } | null> {
   let answer: unknown;
   try {
     answer = await reader.read(digest);
@@ -381,11 +389,14 @@ async function readOnce(
     return null;
   }
   if (!isObject(answer) || typeof answer["epoch"] !== "bigint") return null;
+  const epoch = answer["epoch"];
+  const firstCheckpoint = answer["firstCheckpoint"];
+  if (firstCheckpoint !== null && typeof firstCheckpoint !== "bigint") return null;
   const tx = answer["tx"];
-  if (tx === null) return { tx: null, epoch: answer["epoch"] };
+  if (tx === null) return { tx: null, epoch, firstCheckpoint };
   if (!isObject(tx) || !(tx["transactionBcs"] instanceof Uint8Array)) return null;
   if (tx["status"] !== "SUCCESS" && tx["status"] !== "FAILURE") return null;
   if (tx["checkpoint"] !== null && typeof tx["checkpoint"] !== "bigint") return null;
   if (tx["transactionBcs"].length > MAX_TX_BYTES) return null;
-  return { tx: tx as unknown as SuiExecuted, epoch: answer["epoch"] };
+  return { tx: tx as unknown as SuiExecuted, epoch, firstCheckpoint };
 }

@@ -39,11 +39,14 @@ describe("without @mysten/sui", () => {
       network: "sui:testnet" as const,
       async read() {
         calls++;
-        return { tx: null, epoch: 1n };
+        return { tx: null, epoch: 1n, firstCheckpoint: 0n };
       },
     };
     expect(await exactSui.recover({ network: "sui:testnet", digest: V.V2.tx.digest }, reader)).toEqual(refused);
-    expect(await exactSui.status({ ...V.V4.ref }, reader)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactSui.status({ ...V.V4.ref }, reader, BigInt(V.V4.position))).toEqual({
+      state: "pending",
+      why: "unreadable",
+    });
     expect(calls).toBe(0);
   });
 });

@@ -1,5 +1,6 @@
 // Expected values come from vectors/x402-exact-sui.json: its V2 bytes and recipe R, a real testnet
-// transaction read over GraphQL, and Python's hashlib Blake2b digests. Nothing here is a snapshot of this code.
+// transaction read over GraphQL, Python's hashlib Blake2b digests, and Sui's GraphQL schema for the endpoint's
+// available range. Nothing here is a snapshot of this code.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { Transaction } from "@mysten/sui/transactions";
@@ -21,6 +22,7 @@ const O = V.fixed.O;
 const LINK: string = V.fixed.link;
 const REQUIRED: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [O] };
 const TX: Record<string, string> = { V1: V.V1.tx.transactionBase64, V2: V.V2.tx.transactionBase64 };
+const POSITION = BigInt(V.V4.position);
 
 function bytesOf(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -32,7 +34,13 @@ function payment(transaction: string, accepted = O): SuiPaymentPayload {
 
 type Answer = { tx: string; status: "SUCCESS" | "FAILURE"; checkpoint: string } | null;
 
-function reader(network: string, answer: Answer | "error", epoch = "1234"): SuiReader & { calls: number } {
+/** A scripted reader. `firstCheckpoint` is the endpoint's available range's first checkpoint; null states none. */
+function reader(
+  network: string,
+  answer: Answer | "error",
+  epoch = "1234",
+  firstCheckpoint: string | null = null,
+): SuiReader & { calls: number } {
   const r = {
     network: network as SuiReader["network"],
     calls: 0,
@@ -45,6 +53,7 @@ function reader(network: string, answer: Answer | "error", epoch = "1234"): SuiR
             ? null
             : { transactionBcs: bytesOf(TX[answer.tx]!), status: answer.status, checkpoint: BigInt(answer.checkpoint) },
         epoch: BigInt(epoch),
+        firstCheckpoint: firstCheckpoint === null ? null : BigInt(firstCheckpoint),
       };
     },
   };
@@ -105,7 +114,10 @@ describe("V2 · carried", () => {
     const ref = throughJson(await exactSui.reference(p));
     expect(ref).toEqual(V.V2.expectReference);
     const r = reader(V.V4.ref.network, { tx: "V2", status: "SUCCESS", checkpoint: "7" });
-    expect(plain(await exactSui.status({ ...(ref as SuiRef), h: H }, r))).toEqual({ state: "settled", checkpoint: "7" });
+    expect(plain(await exactSui.status({ ...(ref as SuiRef), h: H }, r, POSITION))).toEqual({
+      state: "settled",
+      checkpoint: "7",
+    });
   });
 });
 
@@ -148,11 +160,32 @@ describe("V4 · status and recover", () => {
   for (const row of V.V4.status) {
     it(`status: ${row.case}`, async () => {
       const ref = refOf({ ...V.V4.ref, network: row.refNetwork ?? V.V4.ref.network });
-      const r = reader(row.readerNetwork ?? V.V4.ref.network, row.readerError ? "error" : row.answer, row.epoch);
-      expect(plain(await exactSui.status(ref, r))).toEqual(row.expect);
+      const network = row.readerNetwork ?? V.V4.ref.network;
+      const r = reader(network, row.readerError ? "error" : row.answer, row.epoch, row.firstCheckpoint ?? null);
+      expect(plain(await exactSui.status(ref, r, POSITION))).toEqual(row.expect);
       expect(r.calls).toBeLessThanOrEqual(1);
     });
   }
+  // SuiReader: the answer's firstCheckpoint is a bigint or null; anything else is a malformed answer, and status takes
+  // a non-negative bigint position. Pending `unreadable` is the interface's answer to a malformed read or call.
+  it("status: a firstCheckpoint that is neither a bigint nor null, or a position that is not a non-negative bigint", async () => {
+    const ref = refOf(V.V4.ref);
+    for (const firstCheckpoint of [undefined, "5", 5]) {
+      const r = {
+        network: "sui:testnet" as const,
+        async read() {
+          return { tx: null, epoch: 1235n, firstCheckpoint } as never;
+        },
+      };
+      expect(await exactSui.status(ref, r, POSITION)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await exactSui.recover(ref, r)).toEqual({ refused: true, code: "sui/unreadable" });
+    }
+    for (const position of [undefined, 5, "5", -1n]) {
+      const r = reader(V.V4.ref.network, null, "1235", "0");
+      expect(await exactSui.status(ref, r, position as never)).toEqual({ state: "pending", why: "unreadable" });
+      expect(r.calls).toBe(0);
+    }
+  });
   for (const row of V.V4.recover) {
     it(`recover: ${row.case}`, async () => {
       const r = reader(V.V4.ref.network, row.answer);
@@ -174,7 +207,7 @@ describe("V4 · status and recover", () => {
 describe("plant", () => {
   it("an aborted transaction with V2's digest and bytes is failed aborted, never settled", async () => {
     const r = reader(V.V4.ref.network, V.plant.answer, V.plant.epoch);
-    expect(plain(await exactSui.status(refOf(V.V4.ref), r))).toEqual(V.plant.expect);
+    expect(plain(await exactSui.status(refOf(V.V4.ref), r, POSITION))).toEqual(V.plant.expect);
   });
 });
 

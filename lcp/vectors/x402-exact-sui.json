@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.31.3. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter.",
+ "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.31.3. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter. V4's status rows read with position 5, the checkpoint from which the caller needs the endpoint's history. A reader answer's firstCheckpoint is the endpoint's serviceConfig.availableRange(type: \"Query\", field: \"transaction\").first, which Sui's GraphQL schema defines as the \"Inclusive lower checkpoint for which data is available\"; a row that gives none answers null, an endpoint that states no range. An absent transaction past its epoch bound is expired only while the endpoint holds transactions from the position or earlier.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
@@ -88,6 +88,7 @@
    "untilEpoch": "1234",
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
+  "position": "5",
   "status": [
    {
     "case": "SUCCESS, checkpoint 7",
@@ -112,9 +113,10 @@
     }
    },
    {
-    "case": "no transaction, epoch 1235",
+    "case": "no transaction, epoch 1235, the endpoint holding transactions from checkpoint 5",
     "answer": null,
     "epoch": "1235",
+    "firstCheckpoint": "5",
     "expect": {
      "state": "failed",
      "why": "expired"
@@ -154,6 +156,26 @@
     "expect": {
      "state": "pending",
      "why": "unreadable"
+    }
+   },
+   {
+    "case": "no transaction, epoch 1235, the endpoint holding transactions only from checkpoint 6",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "6",
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "no transaction, epoch 1235, the endpoint stating no available range",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
     }
    }
   ],
