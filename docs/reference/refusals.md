@@ -603,7 +603,7 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
 | `polkadot/transaction-malformed` | `polkadotRecover` is given a transaction reference that is not a `<block hash>-<index>` timepoint. |
-| `polkadot/unreadable` | The Polkadot reader threw, returned block extrinsics that are not an array, or returned a record of the canonical block that is not an extrinsic's. |
+| `polkadot/unreadable` | The Polkadot reader threw, returned block extrinsics that are not an array, a finalized height that is not a bigint, or a record of the canonical block that is not an extrinsic's. |
 | `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names. |
 
 ## starknet

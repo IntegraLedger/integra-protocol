@@ -359,18 +359,6 @@
     "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144",
     "expect": "polkadot/remark-not-lcp",
     "source": "profile rule 3: R is the 77 ASCII bytes lcp:sha256: followed by H, and rule 1 writes H as 0x lowercase hex; frame_system's remark_with_event emits Remarked with hash = BlakeTwo256 of the remark's bytes as signed, so an upper-case remark's event never carries the hash of H's LCP string"
-   },
-   {
-    "case": "the raw extrinsic at the timepoint is a bare system.remark_with_event of the remark, with no transfer",
-    "raw": "0xe9028400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
-    "expect": "polkadot/call-not-profile",
-    "source": "profile rule 3: the call is exactly utility.batch_all([assets.transfer_keep_alive(asset, Id(payTo), amount), system.remark_with_event(R)]); the call is frame_system's remark_with_event (call_index 7) around V3's signed preamble, SCALE by hand"
-   },
-   {
-    "case": "the raw extrinsic at the timepoint is a utility.force_batch of the transfer and the remark",
-    "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002804083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
-    "expect": "polkadot/call-not-profile",
-    "source": "profile rule 3, as above; pallet_utility's force_batch (call_index 4) carries on after a call fails, where batch_all applies both calls or neither; V2's call with its call index changed from 2 to 4"
    }
   ],
   "recoverReads": [
@@ -483,6 +471,86 @@
     },
     "expect": "polkadot/no-transfer",
     "source": "pallet_utility's batch (call_index 0) of frame_system's remark_with_event (7) and remark (0), whose data is V2's call, around V3's signed preamble, SCALE by hand; frame_system's remark emits no event and moves nothing, so the record has Remarked and no Transferred; the hash is b2sum -l 256"
+   },
+   {
+    "case": "the raw extrinsic at the timepoint is a bare system.remark_with_event of the remark, with no transfer",
+    "finalized": "100",
+    "raw": "0xe9028400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "change": {
+     "hash": "0x596737cbb5e1b7521c855c65e4e9cd8675c8f95c9d1bfc7eaa2413e28f524ae3",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": "polkadot/call-not-profile",
+    "source": "profile rule 3: the call is exactly utility.batch_all([assets.transfer_keep_alive(asset, Id(payTo), amount), system.remark_with_event(R)]); the call is frame_system's remark_with_event (call_index 7) around V3's signed preamble, SCALE by hand; the hash is b2sum -l 256"
+   },
+   {
+    "case": "the raw extrinsic at the timepoint is a utility.force_batch of the transfer and the remark",
+    "finalized": "100",
+    "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002804083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "change": {
+     "hash": "0x5d58102bbe8d2ae01da361d043dfcc5c102aa59be83d142cfbf9956b317cf012",
+     "events": [
+      {
+       "pallet": "utility",
+       "method": "ItemFailed",
+       "data": [
+        {}
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompletedWithErrors",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": "polkadot/call-not-profile",
+    "source": "profile rule 3, as above; pallet_utility's force_batch (call_index 4) carries on after a call fails, where batch_all applies both calls or neither; V2's call with its call index changed from 2 to 4; the hash is b2sum -l 256"
    }
   ]
  },
