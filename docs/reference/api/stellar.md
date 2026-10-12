@@ -70,9 +70,15 @@ Bounded, read-only calls against one network's RPC. Every failure rejects with `
 
 > **transfers**(`f`): `Promise`\<\{ `complete`: `boolean`; `cursor?`: `string`; `events`: readonly `object`[]; `oldestLedger`: `number`; \}\>
 
-One page of SEP-41 `transfer` events of `asset` to `toBase` between two ledgers, with each event's `to_muxed_id`.
-`cursor` is present while more pages remain. `complete` is false when the RPC reports events disabled.
-`oldestLedger` is the oldest ledger the RPC still holds.
+One page of SEP-41 `transfer` events of `asset` to `toBase` from `fromLedger` through `toLedger`, both inclusive,
+with each event's `to_muxed_id`. `stellarLocate` passes the authorization entry's expiration ledger as `toLedger`,
+and the entry can still be used in that ledger. `cursor` is present while more pages remain: until the search has
+read through `toLedger`. `complete` is false when the RPC reports events disabled. `oldestLedger` is the oldest
+ledger the RPC still holds. Stellar RPC's `getEvents` treats `endLedger` as exclusive, takes a cursor or a ledger
+range but not both, and scans a bounded number of ledgers per call (10,000 in stellar-rpc), so a reader over it
+sends `startLedger: fromLedger` and `endLedger: toLedger + 1` on the first page and only the cursor on later pages,
+and returns a `cursor` until `getEvents` has scanned through `toLedger`, whether or not a page holds events. A cursor
+page can scan past `toLedger`, so the reader keeps only the events through `toLedger`.
 
 ###### Parameters
 
@@ -272,11 +278,12 @@ elements and map entries. The walk keeps its own stack.
 
 > **stellarLocate**(`ref`, `reader`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
 
-Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` to
-the entry's expiration, keeping those whose muxed id is `toId`, each read as `stellarStatus` reads its named
-transaction. `complete` is true only when every page was read, the reader reported events enabled on each, the RPC
-still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed candidate whose
-transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50 candidates.
+Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` through
+the entry's expiration ledger, both inclusive, keeping those whose muxed id is `toId`, each read as `stellarStatus`
+reads its named transaction. `complete` is true only when every page was read, the reader reported events enabled on
+each, the RPC still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed
+candidate whose transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50
+candidates.
 
 #### Parameters
 
