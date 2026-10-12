@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MppChallenge, MppCredential } from "../src/mpp.js";
 import { chargeXrpl, sessionXrpl } from "../src/mpp.js";
-import { exactXrpl, type XrplPaymentPayload } from "../src/x402-exact-xrpl.js";
+import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import { decodeBlob } from "../src/xrpl.js";
 
 const calls = vi.hoisted(() => ({ decode: 0 }));
@@ -36,7 +36,7 @@ describe("the nesting cap is checked before the codec decodes", () => {
   it("XC5: the largest blob, nesting to level 1010, is refused without a decode", async () => {
     expect(XC5.blob.length).toBe(4096);
     expect(await decodeBlob(XC5.blob)).toEqual(refused("xrpl/blob-malformed"));
-    const p: XrplPaymentPayload = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: XC5.blob } };
+    const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: XC5.blob } };
     expect(await exactXrpl.reference(p)).toEqual(refused("xrpl/blob-malformed"));
     expect(await exactXrpl.bound(p)).toEqual(refused("xrpl/blob-malformed"));
     expect(calls.decode).toBe(0);
@@ -51,7 +51,7 @@ describe("the nesting cap is checked before the codec decodes", () => {
 
 describe("one decode per presented payment", () => {
   it("x402/exact/xrpl: reference, then bound, then reference again on one payment", async () => {
-    const p: XrplPaymentPayload = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: X.V2.blob } };
+    const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: X.V2.blob } };
     expect(await exactXrpl.reference(p)).toEqual(X.V2.expectReference);
     expect(await exactXrpl.bound(p)).toBe(X.V2.expectBound);
     expect(await exactXrpl.reference(p)).toEqual(X.V2.expectReference);
@@ -59,7 +59,7 @@ describe("one decode per presented payment", () => {
   });
 
   it("x402/exact/xrpl: another blob on the same payload is decoded afresh", async () => {
-    const p: XrplPaymentPayload = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: X.V2.blob } };
+    const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: X.V2.blob } };
     expect(await exactXrpl.bound(p)).toBe(X.V2.expectBound);
     p.payload.signedTxBlob = X.V3.blob;
     expect(await exactXrpl.bound(p)).toEqual(refused("xrpl/carrier-mismatch"));
@@ -85,7 +85,7 @@ describe("one decode per presented payment", () => {
 
   it("a multi-signed blob is refused on every read, from one decode", async () => {
     const row = X.multisigned.rows[0];
-    const p: XrplPaymentPayload = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: row.blob } };
+    const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: row.blob } };
     expect(await exactXrpl.reference(p)).toEqual(refused(row.expect));
     expect(await exactXrpl.bound(p)).toEqual(refused(row.expect));
     expect(calls.decode).toBe(1);

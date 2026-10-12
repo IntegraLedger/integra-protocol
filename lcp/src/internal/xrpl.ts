@@ -7,6 +7,7 @@
 import { hash, toLcpString, toRawBytes, type AtrHash } from "../core.js";
 import { isObject } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 
 /** CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295. */
 export type XrplNetwork = `xrpl:${number}`;
@@ -60,6 +61,18 @@ export type XrplStatus =
 export interface XrplUnsigned<P> {
   request: { kind: "xrpl-tx"; txJson: XrplTxJson };
   complete(signedBlob: string): P | Refusal;
+}
+
+/**
+ * A payment on `x402/exact/xrpl`: the wallet's signed blob, hex. `../x402-exact-xrpl.ts` returns it from `complete`,
+ * and the root names it among the payments `Presented` covers; no entry point exports the name.
+ */
+export interface XrplPaymentPayload {
+  x402Version: 2;
+  resource?: PaymentRequired["resource"];
+  accepted: PaymentRequirements;
+  payload: { signedTxBlob: string };
+  extensions?: PaymentRequired["extensions"];
 }
 
 export const MAX_BLOB_HEX = 4096;

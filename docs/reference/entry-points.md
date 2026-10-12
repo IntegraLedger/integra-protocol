@@ -476,7 +476,7 @@ import { exactXrpl, pairingOf } from "@integraledger/lcp/x402-exact-xrpl";
 
 **Values (2):** `exactXrpl`, `pairingOf`.
 
-**Types (2):** `XrplChoice`, `XrplPaymentPayload`.
+**Types (1):** `XrplChoice`.
 
 ## `@integraledger/lcp/x402-upto-solana`
 

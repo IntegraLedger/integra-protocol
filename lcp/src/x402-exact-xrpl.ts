@@ -11,6 +11,7 @@ import {
   sameInvoice,
   x402InvoiceId,
   xrplStatus,
+  type XrplPaymentPayload,
   type XrplRef,
   type XrplTxJson,
   type XrplUnsigned,
@@ -38,15 +39,6 @@ const ID = "x402/exact/xrpl" as const;
 const AMOUNT = /^[0-9]+(\.[0-9]+)?$/;
 const DROPS = /^[1-9][0-9]{0,16}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
-
-/** A payment on this pairing: the wallet's signed blob, hex. */
-export interface XrplPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { signedTxBlob: string };
-  extensions?: PaymentRequired["extensions"];
-}
 
 export interface XrplChoice {
   required: PaymentRequired;

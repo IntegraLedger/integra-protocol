@@ -7,14 +7,14 @@ import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
 import type { AtrHash } from "../src/index.js";
 import { decodeBlob, mppInvoiceId, x402InvoiceId, xrplStatus, type XrplReader, type XrplRef } from "../src/xrpl.js";
-import { exactXrpl, pairingOf, type XrplPaymentPayload } from "../src/x402-exact-xrpl.js";
+import { exactXrpl, pairingOf } from "../src/x402-exact-xrpl.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.option;
 const refused = (code: string) => ({ refused: true, code });
-const payment = (blob: string, accepted: PaymentRequirements): XrplPaymentPayload => ({
+const payment = (blob: string, accepted: PaymentRequirements) => ({
   x402Version: 2,
   accepted,
   payload: { signedTxBlob: blob },

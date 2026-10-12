@@ -41,6 +41,7 @@ import type { AptosPaymentPayload } from "./internal/aptos.js";
 import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import type { CasperPaymentPayload } from "./internal/casper.js";
 import type { SuiPaymentPayload } from "./internal/sui.js";
+import type { XrplPaymentPayload } from "./internal/xrpl.js";
 import { exactLnbtc, exactLnbtcNamed, lnbtcPairingOf, type LnPaymentPayload } from "./lightning.js";
 import { MPP_BINDINGS, type MppCredential } from "./mpp.js";
 import { exactNear, type NearPayment } from "./near.js";
@@ -54,7 +55,7 @@ import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exa
 import { batchCloudflare, batchEvm, batchSvm, type BatchPaymentPayload, type CloudflarePaymentPayload } from "./x402-batch-settlement.js";
 import { exactSvm, type SvmPaymentPayload } from "./x402-exact-solana.js";
 import { exactStellar, type StellarPaymentPayload } from "./x402-exact-stellar.js";
-import { exactXrpl, type XrplPaymentPayload } from "./x402-exact-xrpl.js";
+import { exactXrpl } from "./x402-exact-xrpl.js";
 import { type UptoSvmPaymentPayload, uptoSvm } from "./x402-upto-solana.js";
 
 /** An x402 pairing of scheme and rail. */
