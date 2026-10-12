@@ -42,7 +42,7 @@ Some pairings carry members for their own shape of payment:
 
 | Member | Where | What it does |
 |---|---|---|
-| `carrier` | pairings that place H in the option or request | The path of the field that carries H, or `null` where no option field does. |
+| `carrier` | some pairings | Where H is placed in the option or request, that field's path; `null` where nothing in the option carries it; on Hedera, the transaction field (x402) or `challenge` (MPP). |
 | `channel` | channels, sessions and subscriptions | `kind` classifies a later payment as the opening, a payment within, or the close; `ref` names the channel; `boundWithin` reads H from a payment within, where one carries it; `until` gives the channel's end, where it has one. |
 | `buildWithin` | channels and sessions | Builds a later payment within an open channel. |
 | `closeRef` | sessions and subscriptions | The read keys of the channel's close. |
