@@ -61,7 +61,8 @@
      "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
      "nonce": "101",
-     "maxBlockHeight": "200000060"
+     "maxBlockHeight": "200000060",
+     "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb"
     }
    }
   ],
