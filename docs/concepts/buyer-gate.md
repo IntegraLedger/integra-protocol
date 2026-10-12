@@ -5,9 +5,9 @@ description: Compare the served bytes with the hash before anything is signed.
 
 # The buyer gate
 
-The **buyer gate** is the buyer-side check that compares the served bytes with H before anything is signed. It is the
-one step that makes paying mean agreeing: the buyer signs only a payment bound to a record it has fetched, hashed and
-kept.
+The **buyer gate** is the buyer-side check that compares the served bytes with H before anything is signed. Where the
+payment carries H, it is the one step that makes paying mean agreeing: the buyer signs only a payment bound to a record
+it has fetched, hashed and kept. Where the buyer's signature does not carry H, the pairing's record says so.
 
 ```mermaid
 sequenceDiagram
