@@ -106,8 +106,8 @@ The read keys recorded at claim.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-asset-1"></a> `asset` | `string` | - |
-| <a id="property-authdigest"></a> `authDigest` | `` `0x${string}` `` | - |
-| <a id="property-expiration"></a> `expiration` | `number` | - |
+| <a id="property-authdigest"></a> `authDigest?` | `` `0x${string}` `` | SHA-256 of the payer's authorization entry's `HashIDPreimage`. Absent, with `expiration`, for an MPP push payment the payer authorized as the transaction's source account: `transaction` then names the instrument. |
+| <a id="property-expiration"></a> `expiration?` | `number` | The entry's expiration ledger. Absent with `authDigest`. |
 | <a id="property-fromledger"></a> `fromLedger` | `number` | - |
 | <a id="property-network-1"></a> `network` | [`StellarNetwork`](#stellarnetwork) | - |
 | <a id="property-tobase-1"></a> `toBase` | `string` | - |
@@ -158,7 +158,8 @@ The base64 XDR of the transaction with the entry signed.
 
 > **StellarStatus** = \{ `ledger`: `number`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"transaction-failed"` \| `"not-this-instrument"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"expired"`; \}
 
-What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded.
+What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded, or, for a
+ref without `authDigest`, the named transaction succeeded as the transfer the payer authorized as its source account.
 `pending`: nothing final yet; `why` names what the named transaction read as (`not-found`, `transaction-failed`, a
 successful transaction that is `not-this-instrument`) or that a read failed (`unreadable`). `failed` is final:
 `expired`, the ledger is past the entry's expiration and a complete search finds no transaction that used it.
@@ -202,7 +203,10 @@ with address credentials (`sorobanCredentialsAddress` or `sorobanCredentialsAddr
 The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's
 contract, `to` and amount are the signed invocation's. The base64 is read strictly (RFC 4648 §4, zero padding bits),
 and the XDR must be consumed whole. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
-passphrase: the V1 form, or for V2 the form with the address.
+passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
+without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
+credential, once its transaction landed, reads a payer that authorized the transfer as the transaction's source
+account.
 
 #### Parameters
 
@@ -283,7 +287,8 @@ the entry's expiration ledger, both inclusive, keeping those whose muxed id is `
 reads its named transaction. `complete` is true only when every page was read, the reader reported events enabled on
 each, the RPC still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed
 candidate whose transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50
-candidates.
+candidates. A ref without `authDigest` or `expiration` names its transaction and has no entry to search for:
+`complete` is false.
 
 #### Parameters
 
@@ -310,7 +315,10 @@ transaction that is not found, failed, or succeeded with another entry is pendin
 ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
 transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
 incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
-or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well.
+or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
+without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
+`expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
+there is no expiration ledger to pass.
 
 #### Parameters
 
