@@ -107,11 +107,20 @@ export function decodeSuiTx(base64: string): SuiTx | Refusal {
   if (bytes === "malformed") return refusal("sui/tx-malformed");
 
   let data: ReturnType<typeof SuiBcs.TransactionData.parse>;
+  let epoch: bigint | null = null;
   try {
     data = bcs.TransactionData.parse(bytes);
+    // @mysten/sui reads an `Epoch` expiration as a JavaScript number, exact only up to 2^53 - 1, where Sui's epoch is
+    // a u64. The expiration is the transaction's last field, so the epoch is read as a u64 from the last eight bytes,
+    // and the round trip below holds only when those bytes are that field.
+    let value: Parameters<typeof SuiBcs.TransactionData.serialize>[0] = data;
+    if (data.$kind === "V1" && data.V1.expiration.$kind === "Epoch") {
+      epoch = BigInt(bcs.U64.parse(bytes.subarray(bytes.length - 8)));
+      value = { V1: { ...data.V1, expiration: { Epoch: epoch.toString() } } };
+    }
     // BCS has one encoding per value: bytes that do not serialise back to themselves carry trailing or
     // non-canonical data.
-    if (!sameBytes(bcs.TransactionData.serialize(data).toBytes(), bytes)) return refusal("sui/tx-malformed");
+    if (!sameBytes(bcs.TransactionData.serialize(value).toBytes(), bytes)) return refusal("sui/tx-malformed");
   } catch {
     return refusal("sui/tx-malformed");
   }
@@ -137,7 +146,7 @@ export function decodeSuiTx(base64: string): SuiTx | Refusal {
 
   const exp = v1.expiration;
   let untilEpoch: bigint | null = null;
-  if (exp.$kind === "Epoch") untilEpoch = BigInt(exp.Epoch);
+  if (exp.$kind === "Epoch") untilEpoch = epoch;
   else if (exp.$kind === "ValidDuring" && exp.ValidDuring.maxEpoch !== null) untilEpoch = BigInt(exp.ValidDuring.maxEpoch);
   else if (exp.$kind === "Validity" && exp.Validity.maxEpoch !== null) untilEpoch = BigInt(exp.Validity.maxEpoch);
 

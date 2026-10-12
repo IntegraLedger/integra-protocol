@@ -1,9 +1,10 @@
 // Expected values come from vectors/x402-exact-sui.json: its V2 bytes and recipe R, a real testnet
 // transaction read over GraphQL, Python's hashlib Blake2b digests, and Sui's GraphQL schema for the endpoint's
-// available range. Nothing here is a snapshot of this code.
+// available range; and from @mysten/sui 2.31.3, which builds a transaction and gives its digest. Nothing here is a
+// snapshot of this code.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, TransactionDataBuilder } from "@mysten/sui/transactions";
 import { ReaderError } from "../src/evm.js";
 import { pairingOf } from "../src/index.js";
 import { decodeSuiTx, exactSui, suiCarrier, type SuiReader, type SuiRef } from "../src/sui.js";
@@ -68,18 +69,52 @@ function plain(v: unknown): unknown {
   return JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 }
 
+/** Recipe R, with the expiration `Epoch(epoch)`. */
+async function recipeR(epoch: number | string): Promise<Uint8Array> {
+  const tx = new Transaction();
+  tx.setSender(V.fixed.sender);
+  tx.pure(bytesOf(Buffer.from(H.slice(2), "hex").toString("base64")));
+  const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(10000)]);
+  tx.transferObjects([coin!], tx.pure.address(V.fixed.payTo));
+  tx.setGasPrice(1000);
+  tx.setGasBudget(5000000);
+  tx.setGasPayment([]);
+  tx.setExpiration({ Epoch: epoch });
+  return tx.build();
+}
+
 describe("recipe R", () => {
   it("@mysten/sui 2.31.3 builds the vector's V2 bytes", async () => {
-    const tx = new Transaction();
-    tx.setSender(V.fixed.sender);
-    tx.pure(bytesOf(Buffer.from(H.slice(2), "hex").toString("base64")));
-    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(10000)]);
-    tx.transferObjects([coin!], tx.pure.address(V.fixed.payTo));
-    tx.setGasPrice(1000);
-    tx.setGasBudget(5000000);
-    tx.setGasPayment([]);
-    tx.setExpiration({ Epoch: 1234 });
-    expect(Buffer.from(await tx.build()).toString("base64")).toBe(V.V2.tx.transactionBase64);
+    expect(Buffer.from(await recipeR(1234)).toString("base64")).toBe(V.V2.tx.transactionBase64);
+  });
+});
+
+// Sui's epoch is a u64 (`EpochId`), so `Epoch(e)` takes any value up to 2^64 - 1. @mysten/sui builds such a
+// transaction, writing e as the last eight bytes, little-endian, and gives its digest.
+describe("an Epoch expiration above 2^53 - 1", () => {
+  for (const e of ["9007199254740993", "18446744073709551615"]) {
+    it(`Epoch(${e}) decodes to that epoch, and the reference records it`, async () => {
+      const bytes = await recipeR(e);
+      const tail = Buffer.alloc(8);
+      tail.writeBigUInt64LE(BigInt(e));
+      expect(Buffer.from(bytes.subarray(bytes.length - 8)).equals(tail)).toBe(true);
+      const b64 = Buffer.from(bytes).toString("base64");
+      const tx = decodeSuiTx(b64);
+      if ("refused" in tx) throw new Error(tx.code);
+      expect(tx.untilEpoch).toBe(BigInt(e));
+      expect(tx.digest).toBe(TransactionDataBuilder.getDigestFromBytes(bytes));
+      expect(suiCarrier(tx)).toBe(H);
+      expect(throughJson(await exactSui.reference(payment(b64)))).toEqual({
+        network: O.network,
+        digest: tx.digest,
+        untilEpoch: e,
+      });
+    });
+  }
+  it("the same bytes with one byte appended are not TransactionData", async () => {
+    const bytes = await recipeR("9007199254740993");
+    const longer = Buffer.concat([bytes, Uint8Array.of(0)]).toString("base64");
+    expect(decodeSuiTx(longer)).toEqual({ refused: true, code: "sui/tx-malformed" });
   });
 });
 
