@@ -218,7 +218,8 @@ function hederaChain(network: string): 295 | 296 {
 
 /**
  * The opening's receipt, read by `payload.txHash`, with its logs from the escrow added as `landed`. No receipt is
- * `hedera/not-found`, a failed read `hedera/unreadable`, and a revert `hedera/reverted`: reads to repeat.
+ * `hedera/not-found` and a failed read `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert is
+ * `hedera/reverted`: nothing moved.
  */
 async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
   const e = opening(presented, HEDERA);
