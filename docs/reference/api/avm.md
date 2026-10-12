@@ -153,7 +153,8 @@ Algorand signed transaction nests three (the signed transaction, its transaction
 > **avmCarrier**(`p`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `lastValid`: `bigint`; `txid`: `string`; \}
 
 The payment transaction of an x402 Algorand payload: `paymentGroup[paymentIndex]`, decoded as a signed asset
-transfer whose note is an LCP string. Gives the hash, the transaction id and the last valid round.
+transfer whose note is an LCP string. Gives the hash, the transaction id and the last valid round. Without algosdk,
+`avm/peer-missing`.
 
 #### Parameters
 

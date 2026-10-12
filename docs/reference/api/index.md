@@ -59,25 +59,6 @@ the checks on that carrier.
 
 ***
 
-### PresentedOn
-
-What the buyer presents as payment, per surface: the union of the payment types of every pairing on it. Every
-pairing's `bound` and `reference` take `unknown` and check what they are given.
-
-#### Properties
-
-| Property | Type | Description |
-| ------ | ------ | ------ |
-| <a id="property-ack"></a> `ack` | [`Json`](#json) | ACK defines no payer signature; its `bound` refuses whatever is presented. |
-| <a id="property-acp"></a> `acp` | [`Presented`](acp.md#presented) | - |
-| <a id="property-ap2"></a> `ap2` | [`Presented`](ap2.md#presented) | - |
-| <a id="property-card"></a> `card` | [`TapPresented`](card.md#tappresented) \| [`ViImmediate`](card.md#viimmediate) \| [`ViAutonomous`](card.md#viautonomous) | - |
-| <a id="property-mpp"></a> `mpp` | [`MppCredential`](mpp.md#mppcredential) | - |
-| <a id="property-ucp"></a> `ucp` | [`Presented`](ap2.md#presented) | - |
-| <a id="property-x402"></a> `x402` | [`PaymentPayload`](x402.md#paymentpayload) \| [`HederaPaymentPayload`](hedera.md#hederapaymentpayload) \| [`ExecutorPaymentPayload`](hedera.md#executorpaymentpayload) \| `XrplPaymentPayload` \| [`LnPaymentPayload`](lightning.md#lnpaymentpayload) \| `AptosPaymentPayload` \| [`AvmPaymentPayload`](avm.md#avmpaymentpayload) \| `CardanoPaymentPayload` \| `CasperPaymentPayload` \| [`CcdPaymentPayload`](ccd.md#ccdpaymentpayload) \| `PolkadotPaymentPayload` \| `SuiPaymentPayload` \| [`NearPayment`](near.md#nearpayment) \| [`StarknetPayment`](starknet.md#starknetpayment) \| [`TronPayment`](tron.md#tronpayment) \| [`TvmPayment`](tvm.md#tvmpayment) \| [`BatchPaymentPayload`](x402-batch-settlement.md#batchpaymentpayload) \| [`CloudflarePaymentPayload`](x402-batch-settlement.md#cloudflarepaymentpayload) \| [`SvmPaymentPayload`](x402-exact-solana.md#svmpaymentpayload) \| [`StellarPaymentPayload`](x402-exact-stellar.md#stellarpaymentpayload) \| [`UptoSvmPaymentPayload`](x402-upto-solana.md#uptosvmpaymentpayload) | - |
-
-***
-
 ### PushMode
 
 The optional member of a push-mode pairing: the transaction its credential names, or undefined.
@@ -98,47 +79,6 @@ The optional member of a push-mode pairing: the transaction its credential names
 
 `string` \| `undefined`
 
-***
-
-### TieRequestOn
-
-The request a surface's `tie` takes with its options: x402's request commitment; the others' `tie` takes none.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-ack-1"></a> `ack` | `never` |
-| <a id="property-acp-1"></a> `acp` | `never` |
-| <a id="property-ap2-1"></a> `ap2` | `never` |
-| <a id="property-card-1"></a> `card` | `never` |
-| <a id="property-mpp-1"></a> `mpp` | `never` |
-| <a id="property-ucp-1"></a> `ucp` | `never` |
-| <a id="property-x402-1"></a> `x402` | [`RequestCommitment`](x402.md#requestcommitment) |
-
-***
-
-### TxSpelling
-
-The optional member of a pairing whose rail spells one transaction id more than one way: the id in the one spelling
-a record keeps.
-
-#### Methods
-
-##### txId()?
-
-> `optional` **txId**(`tx`): `string`
-
-###### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `tx` | `string` |
-
-###### Returns
-
-`string`
-
 ## Type Aliases
 
 ### AtrHash
@@ -151,7 +91,7 @@ a record keeps.
 
 ### Binding
 
-> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & [`PushMode`](#pushmode) & [`CarrierAfterH`](#carrierafterh) & [`TxSpelling`](#txspelling) & [`Authorizer`](#authorizer)
+> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & [`PushMode`](#pushmode) & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
 
 A pairing of protocol, scheme and rail.
 
@@ -192,23 +132,9 @@ An MPP pairing of intent and method.
 
 ***
 
-### PairingOn
-
-> **PairingOn**\<`S`\> = `Extract`\<[`PairingId`](#pairingid), `` `${S}/${string}` ``\>
-
-The pairing ids of one surface.
-
-#### Type Parameters
-
-| Type Parameter |
-| ------ |
-| `S` *extends* [`Surface`](#surface) |
-
-***
-
 ### Presented
 
-> **Presented** = [`PresentedOn`](#presentedon)\[[`Surface`](#surface)\]
+> **Presented** = `PresentedOn`\[`Surface`\]
 
 What the buyer presents as payment.
 
@@ -229,14 +155,6 @@ A refusal returned as a value. `code` is `<entry point>/<reason>`.
 
 ***
 
-### Surface
-
-> **Surface** = keyof [`PresentedOn`](#presentedon)
-
-The surfaces: a pairing id's first "/" segment.
-
-***
-
 ### X402Binding
 
 > **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactLnbtc`](lightning.md#exactlnbtc) \| *typeof* [`exactLnbtcNamed`](lightning.md#exactlnbtcnamed) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactStellar`](x402-exact-stellar.md#exactstellar) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
@@ -250,14 +168,6 @@ An x402 pairing of scheme and rail.
 > `const` **BINDINGS**: readonly [`Binding`](#binding)[]
 
 Every pairing this package implements.
-
-***
-
-### MAX\_JSON\_DEPTH
-
-> `const` **MAX\_JSON\_DEPTH**: `64` = `64`
-
-The deepest nesting of arrays and objects in any JSON this package writes or reads.
 
 ## Functions
 
@@ -319,25 +229,6 @@ primitive written as `JSON.stringify` writes it. Refuses what `digestJson` refus
 #### Returns
 
 `string` \| [`CoreRefusal`](#corerefusal)
-
-***
-
-### canonicalTx()
-
-> **canonicalTx**(`binding`, `tx`): `string`
-
-A transaction id as a record keeps it: the pairing's `txId`, where it has one, else the id unchanged.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `binding` | [`Binding`](#binding) \| `undefined` |
-| `tx` | `string` |
-
-#### Returns
-
-`string`
 
 ***
 
@@ -455,25 +346,6 @@ Anything else is false.
 
 ***
 
-### isHashWithNonHttpsLink()
-
-> **isHashWithNonHttpsLink**(`info`): `boolean`
-
-True for a structured form's inner object that `fromLegalContext` would decode except that its one link, in either
-spelling, is a link of another scheme (`isOtherSchemeLink`).
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `info` | `unknown` |
-
-#### Returns
-
-`boolean`
-
-***
-
 ### isHttpsLink()
 
 > **isHttpsLink**(`s`): `s is string`
@@ -532,25 +404,6 @@ ever passed on as one.
 
 ***
 
-### jsonWithinDepth()
-
-> **jsonWithinDepth**(`text`): `boolean`
-
-True when no array or object in JSON text is nested more than `MAX_JSON_DEPTH` deep. Brackets inside strings are
-skipped; nothing else about the text is checked.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `text` | `string` |
-
-#### Returns
-
-`boolean`
-
-***
-
 ### newAtrId()
 
 > **newAtrId**(): `string`
@@ -565,7 +418,7 @@ A random RFC 9562 version 4 UUID, lowercase.
 
 ### pairingOf()
 
-> **pairingOf**(`option`): [`PairingOn`](#pairingon)\<`"x402"`\> \| `undefined`
+> **pairingOf**(`option`): `PairingOn`\<`"x402"`\> \| `undefined`
 
 The x402 pairing that serves an option: a Lightning option's by `lnbtcPairingOf`, which names `x402/exact/lnbtc` for
 an option whose invoice is not yet written; else the first x402 pairing in `BINDINGS` whose `read` offers it, on a
@@ -579,7 +432,7 @@ document holding that option alone. Undefined when none does.
 
 #### Returns
 
-[`PairingOn`](#pairingon)\<`"x402"`\> \| `undefined`
+`PairingOn`\<`"x402"`\> \| `undefined`
 
 ***
 
@@ -606,7 +459,7 @@ readonly [`MppPairing`](mpp.md#mpppairing)[]
 
 > **parseJson**(`text`): `unknown`
 
-The value of JSON text nested at most `MAX_JSON_DEPTH` deep; undefined for text that is deeper or is not JSON.
+The value of JSON text nested at most 64 levels deep; undefined for text that is deeper or is not JSON.
 
 #### Parameters
 
