@@ -32,21 +32,6 @@ The payload x402's Sui scheme defines.
 
 ***
 
-### SuiPaymentPayload
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions"></a> `extensions?` | `object` |
-| <a id="property-payload"></a> `payload` | [`SuiPayload`](#suipayload) |
-| <a id="property-resource"></a> `resource?` | `object` |
-| `resource.url` | `string` |
-| <a id="property-x402version"></a> `x402Version` | `2` |
-
-***
-
 ### SuiReader
 
 Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects with `ReaderError`.
@@ -88,7 +73,7 @@ transactions (the available range's inclusive lower bound), or null when the end
 | ------ | ------ | ------ |
 | <a id="property-digest"></a> `digest` | `string` | - |
 | <a id="property-network-1"></a> `network` | [`SuiNetwork`](#suinetwork) | - |
-| <a id="property-untilepoch"></a> `untilEpoch` | `string` | The last epoch the transaction can execute in, as a decimal string. |
+| <a id="property-untilepoch"></a> `untilEpoch` | `string` \| `null` | The last epoch the transaction can execute in, as a decimal string, or null when it sets no maximum epoch. |
 
 ***
 
@@ -125,7 +110,7 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ##### complete()
 
-> **complete**(`signed`): [`Refusal`](index.md#refusal) \| [`SuiPaymentPayload`](#suipaymentpayload)
+> **complete**(`signed`): [`Refusal`](index.md#refusal) \| `SuiPaymentPayload`
 
 ###### Parameters
 
@@ -135,7 +120,7 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`SuiPaymentPayload`](#suipaymentpayload)
+[`Refusal`](index.md#refusal) \| `SuiPaymentPayload`
 
 ## Type Aliases
 
@@ -193,42 +178,6 @@ The hash carried by exactly one unused `Pure` input of exactly 32 bytes.
 
 ***
 
-### suiOptionCheck()
-
-> **suiOptionCheck**(`option`): [`Refusal`](index.md#refusal) \| `undefined`
-
-The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | `unknown` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| `undefined`
-
-***
-
-### suiPairingOf()
-
-> **suiPairingOf**(`option`): `"x402/exact/sui"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/sui"` \| `undefined`
-
-***
-
 ### suiRecover()
 
 > **suiRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
@@ -258,9 +207,10 @@ Reads the recorded digest. A failed read, or a reader for another network, is pe
 from which the caller needs the endpoint's history: one at or before every checkpoint the payment could have
 executed in, such as the latest checkpoint when the payment is requested. An absent transaction is expired once the
 latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
-pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. A
-present one must be these bytes carrying this hash, and its effects' status decides. A `position` that is not a
-non-negative bigint is pending `unreadable`. One call.
+pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. One
+with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
+bytes carrying this hash, and its effects' status decides. A `position` that is not a non-negative bigint is pending
+`unreadable`. One call.
 
 #### Parameters
 
