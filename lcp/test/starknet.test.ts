@@ -134,6 +134,49 @@ describe("x402-exact-starknet.json", () => {
     expect(await starknetLandedNonce(REF, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
     const underReverted = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer"));
     expect(await starknetLandedNonce(REF, readerFor(underReverted))).toEqual({ refused: true, code: "starknet/not-found" });
+    const below = V.S5.status.filter((r: { case: string }) => r.case.startsWith("the payer's transfer one call below the execute"));
+    expect(below.map((r: { expect: unknown }) => r.expect)).toEqual([
+      { state: "settled", finality: "ACCEPTED_ON_L2", blockNumber: "900" },
+      { state: "failed", why: "not-this-instrument" },
+    ]);
+    expect(await starknetLandedNonce(REF, readerFor(below[0]))).toBe(V.S5.landedNonce.expect);
+    expect(await starknetLandedNonce(REF, readerFor(below[1]))).toEqual({ refused: true, code: "starknet/not-found" });
+  });
+
+  // x402's settlement step 4 (scheme_exact_starknet.md at 0cb1a1f0) counts the one Transfer the payer's account emits,
+  // wherever in the execution the account makes the call; the trace walk reads every call below the execute.
+  it("S5: a transfer nested below the execute is read through each intermediate call, once", async () => {
+    const row = V.S5.status[0];
+    const execute: StarknetInvocation = row.trace.calls[0];
+    const transfer: StarknetInvocation = execute.calls[0]!;
+    const under = (calls: StarknetInvocation[]) => ({ ...row.trace, calls: [{ ...execute, calls }] });
+    const frame = (contract: Felt, selector: Felt, calls: StarknetInvocation[]): StarknetInvocation => ({
+      contract,
+      selector,
+      calldata: execute.calldata,
+      reverted: false,
+      calls,
+    });
+    // An account that runs its outside execution as a library call of its own class: two frames, both on the payer's
+    // account, carry the selector and the nonce, and the transfer below them is one payment.
+    const twoFrames = under([frame(REF.from, SELECTOR_EXECUTE_FROM_OUTSIDE_V2, [transfer])]);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: twoFrames })))).toEqual(row.expect);
+    expect(await starknetLandedNonce(REF, readerFor({ receipt: row.receipt, trace: twoFrames }))).toBe(V.S5.landedNonce.expect);
+    // Two levels down, through two intermediate calls on the payer's account.
+    const deeper = under([frame(REF.from, row.trace.selector, [frame(REF.from, row.trace.selector, [transfer])])]);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: deeper })))).toEqual(row.expect);
+    // The plant one call down: the nested transfer is on another contract.
+    const elsewhere = under([frame(REF.from, row.trace.selector, [{ ...transfer, contract: V.plant.trace.calls[0].calls[0].contract }])]);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: elsewhere })))).toEqual(V.plant.expect);
+    // Another contract in the middle makes the transfer from its own balance: the receipt's Transfer is not the payer's.
+    const stranger: Felt = "0x777";
+    const fromStranger = under([frame(stranger, row.trace.selector, [transfer])]);
+    const event = row.receipt.events[0];
+    const receipt = { ...row.receipt, events: [{ ...event, keys: [event.keys[0], stranger, event.keys[2]] }] };
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt, trace: fromStranger })))).toEqual({
+      state: "failed",
+      why: "not-this-instrument",
+    });
   });
 
   it("S1: the Transfer event's first key is sn_keccak(\"Transfer\")", () => {

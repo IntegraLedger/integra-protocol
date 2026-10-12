@@ -256,10 +256,10 @@ function word(v: bigint): Uint8Array {
 /**
  * Reads the named transaction's receipt. A `SUCCEEDED` receipt must emit exactly one `Transfer` event from
  * `ref.asset` whose sender is `ref.from`, and that transfer must have this payment's identity, else failed
- * `not-this-instrument`. Then its trace must hold exactly one `execute_from_outside_v2` whose calldata carries this
- * nonce and whose direct call is `transfer` on `ref.asset` with this identity, no invocation on the path to either
- * having reverted. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout, or a
- * reader for another network is pending. Two calls.
+ * `not-this-instrument`. Then its trace must hold exactly one `transfer` call on `ref.asset` with this identity
+ * nested, at any depth, below an `execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path
+ * to either having reverted. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout,
+ * or a reader for another network is pending. Two calls.
  */
 export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
@@ -318,7 +318,8 @@ async function transferEmitted(
 
 /**
  * The nonce that landed in the named transaction for this transfer, for a party holding the ATR to compare with the
- * hash's low 250 bits. It is found by the transfer's identity on `ref.asset`, not by the recorded nonce.
+ * hash's low 250 bits: the nonce of the `execute_from_outside_v2` below which, at any depth, a `transfer` call on
+ * `ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce.
  */
 export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<Felt | Refusal> {
   if (reader.network !== ref.network) return refusal("starknet/wrong-reader");
@@ -340,9 +341,11 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
 }
 
 /**
- * The nonces of the `execute_from_outside_v2` invocations in the trace whose direct `transfer` call on `asset` has the
- * reference's identity digest, filtered to `nonce` when it is given. A reverted invocation's whole subtree is skipped:
- * a failed call's descendants keep `is_reverted: false`, and their effects are rolled back with it.
+ * The landed nonces of the `transfer` calls on `asset` nested at any depth below an `execute_from_outside_v2`
+ * invocation in the trace: for each such call, each distinct nonce of an enclosing invocation, filtered to `nonce` when
+ * it is given, for which the call's identity digest, with that invocation's contract as the sender, is the
+ * reference's. A reverted invocation's whole subtree is skipped: a failed call's descendants keep `is_reverted: false`,
+ * and their effects are rolled back with it.
  */
 async function matches(
   ref: { transaction: Felt; asset: Felt; idDigest: Hex; nonce: Felt | undefined },
@@ -361,26 +364,31 @@ async function matches(
   const execute = BigInt(SELECTOR_EXECUTE_FROM_OUTSIDE_V2);
   const transfer = BigInt(SELECTOR_TRANSFER);
   const found: bigint[] = [];
-  const stack: { inv: StarknetInvocation; depth: number }[] = [{ inv: root, depth: 1 }];
+  type Execute = { contract: Felt; landed: bigint };
+  const stack: { inv: StarknetInvocation; depth: number; above: readonly Execute[] }[] = [{ inv: root, depth: 1, above: [] }];
   let visited = 0;
   while (stack.length > 0) {
-    const { inv, depth } = stack.pop()!;
+    const { inv, depth, above } = stack.pop()!;
     if (!isInvocation(inv) || depth > MAX_DEPTH || ++visited > MAX_INVOCATIONS) return "unreadable";
     if (inv.reverted) continue;
-    if (feltValue(inv.selector) === execute) {
-      const landed = feltValue(inv.calldata[1]);
-      if (landed !== undefined && (nonce === undefined || landed === nonce)) {
-        for (const call of inv.calls) {
-          if (!isInvocation(call) || call.reverted) continue;
-          if (feltValue(call.contract) !== asset || feltValue(call.selector) !== transfer) continue;
-          const [to, low, high] = call.calldata.map(feltValue);
-          if (to === undefined || low === undefined || high === undefined || low >= U128 || high >= U128) continue;
-          const digest = await starknetIdDigest(inv.contract, feltOf(to), low + high * U128);
-          if (!isRefusal(digest) && digest === ref.idDigest) found.push(landed);
+    const selector = feltValue(inv.selector);
+    if (above.length > 0 && selector === transfer && feltValue(inv.contract) === asset) {
+      const [to, low, high] = inv.calldata.map(feltValue);
+      if (to !== undefined && low !== undefined && high !== undefined && low < U128 && high < U128) {
+        const nonces = new Set<bigint>();
+        for (const e of above) {
+          const digest = await starknetIdDigest(e.contract, feltOf(to), low + high * U128);
+          if (!isRefusal(digest) && digest === ref.idDigest) nonces.add(e.landed);
         }
+        found.push(...nonces);
       }
     }
-    for (const c of inv.calls) stack.push({ inv: c, depth: depth + 1 });
+    let below = above;
+    if (selector === execute) {
+      const landed = feltValue(inv.calldata[1]);
+      if (landed !== undefined && (nonce === undefined || landed === nonce)) below = [...above, { contract: inv.contract, landed }];
+    }
+    for (const c of inv.calls) stack.push({ inv: c, depth: depth + 1, above: below });
   }
   return found;
 }
