@@ -19,6 +19,16 @@ import {
   redeemedLeafRecover,
   transferDigest,
 } from "../src/evm.js";
+import {
+  authCaptureEip3009,
+  authCapturePermit2,
+  exactEip3009,
+  exactErc7710,
+  exactErc7710Salt,
+  exactPermit2,
+  requestCommitment,
+  uptoPermit2,
+} from "../src/x402.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const H: AtrHash = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
@@ -146,4 +156,17 @@ describe("evm", () => {
       }
     }
   });
+});
+
+describe("x402 over EVM", () => {
+  answers([
+    ["exactEip3009.build", exactEip3009.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactPermit2.build", exactPermit2.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["uptoPermit2.build", uptoPermit2.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactErc7710.build", exactErc7710.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactErc7710Salt.build", exactErc7710Salt.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["authCaptureEip3009.build", authCaptureEip3009.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["authCapturePermit2.build", authCapturePermit2.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["requestCommitment", requestCommitment, [undefined], 0, refused("x402/request-target-invalid")],
+  ]);
 });

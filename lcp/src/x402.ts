@@ -192,7 +192,9 @@ const HEX_BODY = /^0x[0-9a-fA-F]*$/;
  * SHA-256 over the body bytes exactly as received.
  */
 export async function requestCommitment(r: HttpRequest): Promise<RequestCommitment | Refusal> {
-  if (typeof r.method !== "string" || typeof r.target !== "string") return refusal("x402/request-target-invalid");
+  if (!isObject(r) || typeof r.method !== "string" || typeof r.target !== "string") {
+    return refusal("x402/request-target-invalid");
+  }
   if (!(r.body instanceof Uint8Array)) return refusal("x402/request-target-invalid");
   if (r.target.length > MAX_TARGET || r.body.length > MAX_BODY) return refusal("x402/request-too-large");
   if (!r.target.startsWith("/") || !isVisibleAscii(r.target)) return refusal("x402/request-target-invalid");
@@ -429,6 +431,7 @@ function evmNames(id: X402PairingId): OptionFilter {
 
 /** The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. */
 async function build(choice: X402Choice, h: AtrHash): Promise<Unsigned | Refusal> {
+  if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
   if (!isObject(required) || required.x402Version !== 2) return refusal("x402/not-v2");
   if (!Array.isArray(required.accepts) || required.accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
@@ -788,6 +791,7 @@ function choiceOf(
   choice: X402Choice,
   h: AtrHash,
 ): { chainId: number; deadline: bigint; h: AtrHash } | Refusal {
+  if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
   if (!isObject(required) || required.x402Version !== 2) return refusal("x402/not-v2");
   if (!Array.isArray(required.accepts) || required.accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
