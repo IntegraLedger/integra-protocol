@@ -5,16 +5,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { Transaction } from "@mysten/sui/transactions";
 import { ReaderError } from "../src/evm.js";
-import {
-  decodeSuiTx,
-  exactSui,
-  suiCarrier,
-  suiPairingOf,
-  type SuiPaymentPayload,
-  type SuiReader,
-  type SuiRef,
-} from "../src/sui.js";
-import type { PaymentRequired } from "../src/x402.js";
+import { pairingOf } from "../src/index.js";
+import { decodeSuiTx, exactSui, suiCarrier, type SuiReader, type SuiRef } from "../src/sui.js";
+import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
 const H: `0x${string}` = V.fixed.H;
@@ -28,7 +21,7 @@ function bytesOf(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
-function payment(transaction: string, accepted = O): SuiPaymentPayload {
+function payment(transaction: string, accepted = O) {
   return { x402Version: 2, accepted, payload: { signature: "AAAA", transaction } };
 }
 
@@ -213,16 +206,17 @@ describe("plant", () => {
 
 describe("the pairing's filter", () => {
   it("takes the three named networks and the option's forms", () => {
-    expect(suiPairingOf(O)).toBe("x402/exact/sui");
-    for (const network of ["sui:mainnet", "sui:devnet"]) expect(suiPairingOf({ ...O, network })).toBe("x402/exact/sui");
-    expect(suiPairingOf({ ...O, extra: { paymentFlow: "authorization" } })).toBe("x402/exact/sui");
-    expect(suiPairingOf({ ...O, extra: { paymentFlow: "upfront" } })).toBeUndefined();
-    expect(suiPairingOf({ ...O, extra: { assetTransferMethod: "eip3009" } })).toBeUndefined();
-    expect(suiPairingOf({ ...O, payTo: O.payTo.toUpperCase().replace("0X", "0x") })).toBeUndefined();
-    expect(suiPairingOf({ ...O, asset: "SUI" })).toBeUndefined();
-    expect(suiPairingOf({ ...O, amount: "18446744073709551616" })).toBeUndefined();
-    expect(suiPairingOf({ ...O, amount: "18446744073709551615" })).toBe("x402/exact/sui");
-    expect(suiPairingOf({ ...O, network: "eip155:84532" })).toBeUndefined();
+    const pays = (o: PaymentRequirements) => pairingOf(o) === "x402/exact/sui";
+    expect(pays(O)).toBe(true);
+    for (const network of ["sui:mainnet", "sui:devnet"]) expect(pays({ ...O, network })).toBe(true);
+    expect(pays({ ...O, extra: { paymentFlow: "authorization" } })).toBe(true);
+    expect(pays({ ...O, extra: { paymentFlow: "upfront" } })).toBe(false);
+    expect(pays({ ...O, extra: { assetTransferMethod: "eip3009" } })).toBe(false);
+    expect(pays({ ...O, payTo: O.payTo.toUpperCase().replace("0X", "0x") })).toBe(false);
+    expect(pays({ ...O, asset: "SUI" })).toBe(false);
+    expect(pays({ ...O, amount: "18446744073709551616" })).toBe(false);
+    expect(pays({ ...O, amount: "18446744073709551615" })).toBe(true);
+    expect(pays({ ...O, network: "eip155:84532" })).toBe(false);
   });
   it("refuses an unnamed sui network as network-malformed", async () => {
     expect(await exactSui.bound(payment(V.V2.tx.transactionBase64, { ...O, network: "sui:localnet" }))).toEqual({

@@ -338,9 +338,9 @@ import { decodeSuiTx, exactSui, suiCarrier, … } from "@integraledger/lcp/sui";
 
 **Pairings:** `x402/exact/sui`.
 
-**Values (7):** `decodeSuiTx`, `exactSui`, `suiCarrier`, `suiOptionCheck`, `suiPairingOf`, `suiRecover`, `suiStatus`.
+**Values (5):** `decodeSuiTx`, `exactSui`, `suiCarrier`, `suiRecover`, `suiStatus`.
 
-**Types (9):** `SuiExecuted`, `SuiNetwork`, `SuiPayload`, `SuiPaymentPayload`, `SuiReader`, `SuiRef`, `SuiStatus`, `SuiTx`, `SuiUnsigned`.
+**Types (8):** `SuiExecuted`, `SuiNetwork`, `SuiPayload`, `SuiReader`, `SuiRef`, `SuiStatus`, `SuiTx`, `SuiUnsigned`.
 
 ## `@integraledger/lcp/svm`
 

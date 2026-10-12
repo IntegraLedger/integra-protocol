@@ -9,6 +9,7 @@ import { blake2b } from "@noble/hashes/blake2.js";
 import type { bcs as SuiBcs } from "@mysten/sui/bcs";
 import { fromRawBytes, toRawBytes, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import type { SuiPaymentPayload } from "./internal/sui.js";
 import { base64Bytes, decimalBelow, sameBytes, toBase64, U64_LIMIT } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -79,14 +80,6 @@ export type SuiStatus =
 export interface SuiPayload {
   signature: string;
   transaction: string;
-}
-
-export interface SuiPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: SuiPayload;
-  extensions?: PaymentRequired["extensions"];
 }
 
 /** What `build` hands the payer's wallet, and how it checks what comes back. */
@@ -209,7 +202,7 @@ export async function suiRecover(
 }
 
 /** The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not. */
-export function suiOptionCheck(option: unknown): Refusal | undefined {
+function suiOptionCheck(option: unknown): Refusal | undefined {
   if (!isObject(option) || option["scheme"] !== "exact") return refusal("x402/option-not-this-pairing");
   const network = option["network"];
   if (typeof network !== "string" || !network.startsWith("sui:")) return refusal("x402/option-not-this-pairing");
@@ -229,11 +222,6 @@ export function suiOptionCheck(option: unknown): Refusal | undefined {
 
 /** The filter step over `suiOptionCheck`. */
 const suiFilter: OptionFilter = (o) => suiOptionCheck(o) ?? true;
-
-/** This pairing's id for an option it can pay, or undefined. */
-export function suiPairingOf(option: PaymentRequirements): typeof ID | undefined {
-  return suiOptionCheck(option) === undefined ? ID : undefined;
-}
 
 function advertise(
   doc: PaymentRequired,
