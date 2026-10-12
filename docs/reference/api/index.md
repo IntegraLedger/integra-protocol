@@ -401,7 +401,8 @@ The lowercase hash of exactly 32 raw bytes, or null.
 
 > **hash**(`bytes`): `Promise`\<`` `0x${string}` ``\>
 
-SHA-256 over the bytes as given, as `0x` and lowercase hex.
+SHA-256 over the bytes as given, as `0x` and lowercase hex. Rejects with a TypeError when `bytes` is not a
+`Uint8Array`.
 
 #### Parameters
 
