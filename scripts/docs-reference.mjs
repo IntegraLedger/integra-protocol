@@ -101,7 +101,7 @@ function pairingsPage() {
     "binding, where one does. [Binding](../concepts/binding.md) explains each field.\n\n";
   for (const surface of surfaces) {
     s += `## ${code(surface)}\n\n`;
-    s += "| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |\n";
+    s += "| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |\n";
     s += "|---|---|---|---|---|---|---|---|\n";
     for (const b of rows.filter((x) => x.id.split("/")[0] === surface)) {
       const p = b.pattern;

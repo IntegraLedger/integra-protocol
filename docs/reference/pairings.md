@@ -11,26 +11,26 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 ## `ack`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `native-field` | no | no | no | no | [`ack/payment-request`](../../lcp/profiles/ack-payment-request.md) |
 
 ## `acp`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `acp/checkout/delegated` | `delegated` from `@integraledger/lcp/acp` | `native-field` | no | no | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
 | `acp/checkout/undelegated` | `undelegated` from `@integraledger/lcp/acp` | `http-advisory` | no | no | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
 
 ## `ap2`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `ap2/checkout-mandate` | `checkoutMandate` from `@integraledger/lcp/ap2` | `opaque-challenge` | yes | no | no | no | [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) |
 
 ## `card`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `card/mastercard-vi/autonomous` | `viAutonomous` from `@integraledger/lcp/card` | `id-reuse` | yes | no | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
 | `card/mastercard-vi/immediate` | `viImmediate` from `@integraledger/lcp/card` | `id-reuse` | yes | no | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
@@ -39,7 +39,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 ## `mpp`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `mpp/charge/card` | `chargeCard` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
 | `mpp/charge/evm/authorization` | `evmAuthorization` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
@@ -70,7 +70,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 ## `ucp`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `ucp/booking/ap2-mandate` | `bookingAp2Mandate` from `@integraledger/lcp/ucp` | `opaque-challenge` | yes | no | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
 | `ucp/booking/unsigned` | `bookingUnsigned` from `@integraledger/lcp/ucp` | `http-advisory` | no | no | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
@@ -79,7 +79,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 ## `x402`
 
-| Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `x402/auth-capture/eip155/eip3009` | `authCaptureEip3009` from `@integraledger/lcp/x402` | `id-reuse` | yes | yes | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
 | `x402/auth-capture/eip155/permit2` | `authCapturePermit2` from `@integraledger/lcp/x402` | `id-reuse` | yes | yes | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
