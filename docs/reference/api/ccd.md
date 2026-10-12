@@ -7,18 +7,6 @@ description: "The exports of @integraledger/lcp/ccd."
 
 ## Interfaces
 
-### CcdChoice
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-now"></a> `now` | `number` |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) |
-
-***
-
 ### CcdReader
 
 Bounded, read-only calls against one network's node. Every failure rejects with `ReaderError`.
@@ -99,7 +87,7 @@ The read keys recorded at claim.
 
 ##### complete()
 
-> **complete**(`signedTransaction`): [`Refusal`](index.md#refusal) \| [`CcdPaymentPayload`](#ccdpaymentpayload)
+> **complete**(`signedTransaction`): [`Refusal`](index.md#refusal) \| `CcdPaymentPayload`
 
 Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@concordium/web-sdk`,
 `JSON.parse(Transaction.toJSONString(tx))`. A value that is not a JSON object is `ccd/transaction-malformed`.
@@ -112,7 +100,7 @@ Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@con
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`CcdPaymentPayload`](#ccdpaymentpayload)
+[`Refusal`](index.md#refusal) \| `CcdPaymentPayload`
 
 ## Type Aliases
 
@@ -127,23 +115,6 @@ Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@con
 > **CcdNetwork** = `` `ccd:${string}` ``
 
 CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash.
-
-***
-
-### CcdPaymentPayload
-
-> **CcdPaymentPayload** = `object`
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted-1"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions"></a> `extensions?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"extensions"`\] |
-| <a id="property-payload"></a> `payload` | `object` |
-| `payload.signedTransaction` | `object` |
-| <a id="property-resource"></a> `resource?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"resource"`\] |
-| <a id="property-x402version"></a> `x402Version` | `2` |
 
 ***
 
@@ -214,25 +185,6 @@ hash.
 #### Returns
 
 `Uint8Array`
-
-***
-
-### ccdOption()
-
-> **ccdOption**(`o`): `o is PaymentRequirements`
-
-The pairing's filter: an `exact` option on a `ccd:` network, for CCD or a token symbol, whose `payTo` and
-`extra.feePayer` are base58check account addresses.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `o` | `unknown` |
-
-#### Returns
-
-`o is PaymentRequirements`
 
 ***
 
