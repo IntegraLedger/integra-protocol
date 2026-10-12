@@ -587,10 +587,11 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
 /**
  * The opening's settlement: `evmStatus` on the reference, and then the payer's transfer must be among the logs between
  * the channel contract's previous `Deposited` log and the channel's own `Deposited`. The contract collects a deposit and
- * then emits `ChannelCreated`, on a channel's first deposit, and `Deposited`, so those logs are the deposit call's. The
- * transfer counts when its `from`, `to` and `value` hash to the reference's digest. A matching transfer elsewhere in
- * the transaction, such as the payer's deposit into another channel beside a gift into this one, is failed
- * `transfer-not-found`. A reference without this pairing's `Deposited` binding log from the channel contract and its
+ * then emits `ChannelCreated`, on a channel's first deposit, and `Deposited`, and its deposits do not nest, so those
+ * logs hold that deposit call's transfers. The transfer counts when its `from`, `to` and `value` hash to the
+ * reference's digest. A matching transfer elsewhere in the transaction, such as the payer's deposit into another
+ * channel beside a gift into this one, is failed `transfer-not-found`; a matching transfer the transaction makes
+ * between the previous deposit call and this one is read as this deposit's. A reference without this pairing's `Deposited` binding log from the channel contract and its
  * `from,to,value` transfer log is pending `unreadable`, and nothing is read. At most three calls.
  */
 async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
