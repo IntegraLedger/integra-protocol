@@ -1160,7 +1160,7 @@
      "state": "settled",
      "consensus": "1755500003.000000001"
     },
-    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'An HTS token list carries no fee distribution, so there `payTo` MUST be the only credit' and 'the net credit to `payTo` in `asset` equals `amount` exactly'; the fee is HBAR, in the parent's transfers"
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
    },
    {
     "case": "the payee is the fee payer, on an HTS token",
@@ -1215,7 +1215,7 @@
      "state": "settled",
      "consensus": "1755500003.000000001"
     },
-    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'An HTS token list carries no fee distribution, so there `payTo` MUST be the only credit' and 'the net credit to `payTo` in `asset` equals `amount` exactly'; the fee is HBAR, in the parent's transfers"
+    "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
    },
    {
     "case": "an HBAR user entry without charged_tx_fee",
