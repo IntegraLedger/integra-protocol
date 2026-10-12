@@ -184,18 +184,18 @@ describe("V2 · reference from the wire", () => {
     expect(await exactAptos.reference(payment(signedWire(raw(script))))).toEqual({ refused: true, code: V.V2.script.expect });
   });
   it("a module, function or struct name with a leading U+FEFF is not a Move identifier", async () => {
-    // Move identifiers are ASCII letters, digits and underscores (move-core-types, identifier.rs), so the bytes
-    // EF BB BF before a name make a name that is not the transfer the scheme names. The code is the vector's row.
+    // Move identifiers are ASCII (aptos-core, move-core-types identifier.rs, `is_valid`), so the bytes EF BB BF before
+    // a name make it no identifier. The code is the vector's row.
     const named = (r: { case: string }) => r.case.startsWith("a module, function or struct name");
     const row = V.agreedRefusals.rows.find(named);
     const bom = "\uFEFF";
-    const struct = new TypeTagStruct(
-      new StructTag(AccountAddress.ONE, new Identifier(`${bom}fungible_asset`), new Identifier("Metadata"), []),
-    );
+    const struct = (m: string, n: string) =>
+      new TypeTagStruct(new StructTag(AccountAddress.ONE, new Identifier(m), new Identifier(n), []));
     const payloads = [
       transferPayload(`${bom}primary_fungible_store`),
       transferPayload("primary_fungible_store", `${bom}transfer`),
-      transferPayload("primary_fungible_store", "transfer", struct),
+      transferPayload("primary_fungible_store", "transfer", struct(`${bom}fungible_asset`, "Metadata")),
+      transferPayload("primary_fungible_store", "transfer", struct("fungible_asset", `${bom}Metadata`)),
     ];
     for (const payload of payloads) {
       for (const wire of [referenceWire(raw(payload)), signedWire(raw(payload))]) {
