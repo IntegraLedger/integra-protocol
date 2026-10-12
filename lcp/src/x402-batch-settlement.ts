@@ -409,6 +409,7 @@ function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
 
 /** The opening's two authorizations: the deposit's token authorization, then the voucher. */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isId(EVM_ID)));
   if (ok !== true) return ok;
   const { accepted, required } = c;
@@ -497,6 +498,7 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
 
 /** A later voucher, or a refund, for a channel opened under `h`. */
 async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned | Refusal> {
+  if (!isObject(w)) return refusal("x402/not-v2");
   const ok = chosen(w.required, w.accepted, filterOf(isId(EVM_ID)));
   if (ok !== true) return ok;
   const config = w.channelConfig;
@@ -615,6 +617,7 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
  * `unreadable`, and nothing is read. At most three calls.
  */
 async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
+  if (!isObject(ref) || !isObject(reader)) return { state: "pending", why: "unreadable" };
   const binding = ref.bindingLog;
   const t = ref.transferLog;
   const fromContract = typeof binding === "object" && binding !== null && sameBytes(binding.address, BATCH_SETTLEMENT);
@@ -649,7 +652,7 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
 
 /** Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. */
 async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
   const chainId = chainIdOf(ref.network);
   if (chainId === undefined) return refusal("evm/network-malformed");
   let receipt: EvmReceipt | null;
@@ -889,10 +892,12 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
  * transaction ends with two v3 Memo instructions: `extra.memo`, then x402's binding memo for `extra.receiverAuthorizer`.
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isId(SVM_ID)));
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted) || BigInt(accepted.amount) >= U64_LIMIT) return refusal("x402/option-malformed");
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const extra = accepted.extra!;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
@@ -973,6 +978,7 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
  * channel (writable), then one Memo v3 with `extra.memo` when the option carries one.
  */
 async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigned | Refusal> {
+  if (!isObject(w)) return refusal("x402/not-v2");
   const ok = chosen(w.required, w.accepted, filterOf(isId(SVM_ID)));
   if (ok !== true) return ok;
   const config = w.channelConfig;
@@ -1118,6 +1124,7 @@ async function cfBuild(
   c: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<CloudflarePaymentPayload | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isId(CF_ID)));
   if (ok !== true) return ok;
   const lc = legalContextOf(c.required.extensions);

@@ -22,6 +22,7 @@ import {
   permit2Status,
   permit2TypedData,
   redeemedLeafRecover,
+  TRANSFER_TOPIC,
   transferDigest,
 } from "../src/evm.js";
 import {
@@ -50,6 +51,7 @@ import {
 } from "../src/svm.js";
 import { decodeTronTx, encodeTronRaw, tronCarrier, tronRecover, tronStatus } from "../src/tron.js";
 import { exactTvm, tvmRecover } from "../src/tvm.js";
+import { BATCH_SETTLEMENT, batchCloudflare, batchEvm, batchSvm, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -496,5 +498,52 @@ describe("svm", () => {
     const tx = { signatures: [], message: new Uint8Array(0), keys: [], instructions: [null], blockhash: new Uint8Array(32) };
     expect(svmCarrier(tx as never)).toEqual(refused("svm/tx-malformed"));
     expect(channelInstruction(tx as never)).toEqual(refused("svm/tx-malformed"));
+  });
+});
+
+describe("x402 batch settlement", () => {
+  reads([
+    ["batchEvm.status", batchEvm.status, "x402-exact-eip155-eip3009.json", UNREADABLE],
+    ["batchEvm.recover", batchEvm.recover, "x402-exact-eip155-eip3009.json", refused("evm/wrong-reader")],
+  ]);
+  it("batchEvm.status: a reader that is not an object, beside the reference its reference writes, answers pending unreadable", async () => {
+    const V = load("x402-batch-settlement.json");
+    const ref = {
+      network: `eip155:${V.fixed.evm.chainId}`,
+      transaction: `0x${"ab".repeat(32)}`,
+      bindingLog: { address: BATCH_SETTLEMENT, topic0: DEPOSITED_TOPIC, index: 1, value: V.EB1.channelId },
+      transferLog: { address: V.fixed.evm.token, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: V.EB7.transferDigest },
+    };
+    const quiet = quietReader(ref.network);
+    expect(await batchEvm.status(ref as never, quiet as never)).toEqual({ state: "pending", why: "not-found" });
+    expect(quiet.reads()).toBe(1);
+    for (const bad of MALFORMED) expect(await batchEvm.status(ref as never, bad as never), String(bad)).toEqual(UNREADABLE);
+  });
+  answers([
+    ["batchEvm.build", batchEvm.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["batchEvm.buildWithin", batchEvm.buildWithin, [undefined, H], 0, refused("x402/not-v2")],
+    ["batchCloudflare.build", batchCloudflare.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["batchSvm.build", batchSvm.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["batchSvm.buildWithin", batchSvm.buildWithin, [undefined, H], 0, refused("x402/not-v2")],
+  ]);
+  it("batchSvm.build refuses an H that is not a 32-byte hash as x402/payload-malformed", async () => {
+    const V = load("x402-batch-settlement.json");
+    const S = V.fixed.svm;
+    const doc = batchSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [S.option] }, V.fixed.H, V.fixed.link, S.option);
+    if ("refused" in doc) throw new Error(doc.code);
+    const choice = {
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: S.payer,
+      payerAuthorizer: S.payer,
+      deposit: BigInt(S.deposit),
+      salt: 42n,
+      openSlot: BigInt(S.openSlot),
+      tokenProgram: S.tokenProgram,
+      recentBlockhash: S.blockhash,
+    };
+    for (const bad of [null, "0x12", H.slice(0, 64)]) {
+      expect(await batchSvm.build(choice, bad as AtrHash), String(bad)).toEqual(refused("x402/payload-malformed"));
+    }
   });
 });
