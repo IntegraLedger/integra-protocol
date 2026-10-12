@@ -17,7 +17,7 @@ import {
   type StellarRef,
   type StellarUnsigned,
 } from "./internal/stellar.js";
-import { isObject } from "./fields.js";
+import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -112,10 +112,12 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * Nothing reaches the signer unless every one holds.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
   if (ok !== true) return ok;
   const { accepted } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!Number.isSafeInteger(c.currentLedger) || c.currentLedger < 0) return refusal("stellar/tx-malformed");
   const m = unmux(accepted.payTo);
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");

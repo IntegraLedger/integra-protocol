@@ -15,7 +15,7 @@ import {
   type XrplTxJson,
   type XrplUnsigned,
 } from "./internal/xrpl.js";
-import { isObject } from "./fields.js";
+import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -105,10 +105,12 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /** The Payment for the wallet to sign, with `InvoiceID` = SHA-256 of the option's `extra.invoiceId`. */
 async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymentPayload> | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (accepted.extra!["invoiceId"] !== toLcpString(h)) return refusal("xrpl/carrier-mismatch");
   const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
   const ticket = accepted.extra!["assetTransferMethod"] === "ticketSequence";

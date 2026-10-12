@@ -21,7 +21,7 @@ import {
   type SvmRef,
   type SvmTx,
 } from "./internal/svm.js";
-import { isObject } from "./fields.js";
+import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -121,10 +121,12 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /** The v0 message the payer signs for the chosen option, whose one memo is the option's `extra.memo`. */
 async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const memo = accepted.extra!["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
   if (c.tokenProgram !== TOKEN && c.tokenProgram !== TOKEN_2022) return refusal("svm/input-malformed");

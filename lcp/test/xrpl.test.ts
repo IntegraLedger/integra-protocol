@@ -73,6 +73,14 @@ describe("x402-exact-xrpl.json", () => {
     expect(await exactXrpl.bound(completed)).toBe(H);
   });
 
+  it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {
+    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [V.V2.accepted] };
+    for (const bad of [null, "0x12", H.slice(2), `lcp:sha256:${H}`]) {
+      const got = await exactXrpl.build({ required, accepted: V.V2.accepted, ...V.V2.build }, bad as AtrHash);
+      expect(got, String(bad)).toEqual({ refused: true, code: "x402/payload-malformed" });
+    }
+  });
+
   it("V3: the MPP blob's hash and InvoiceID", async () => {
     const d = await decodeBlob(V.V3.blob);
     if ("refused" in d) throw new Error(d.code);

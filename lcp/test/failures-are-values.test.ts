@@ -19,6 +19,10 @@ import {
   redeemedLeafRecover,
   transferDigest,
 } from "../src/evm.js";
+import { exactSvm } from "../src/x402-exact-solana.js";
+import { exactStellar } from "../src/x402-exact-stellar.js";
+import { exactXrpl } from "../src/x402-exact-xrpl.js";
+import { uptoSvm } from "../src/x402-upto-solana.js";
 import {
   authCaptureEip3009,
   authCapturePermit2,
@@ -168,5 +172,14 @@ describe("x402 over EVM", () => {
     ["authCaptureEip3009.build", authCaptureEip3009.build, [undefined, H], 0, refused("x402/not-v2")],
     ["authCapturePermit2.build", authCapturePermit2.build, [undefined, H], 0, refused("x402/not-v2")],
     ["requestCommitment", requestCommitment, [undefined], 0, refused("x402/request-target-invalid")],
+  ]);
+});
+
+describe("x402 over Solana, XRPL and Stellar", () => {
+  answers([
+    ["exactSvm.build", exactSvm.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["uptoSvm.build", uptoSvm.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactXrpl.build", exactXrpl.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactStellar.build", exactStellar.build, [undefined, H], 0, refused("x402/not-v2")],
   ]);
 });

@@ -82,6 +82,21 @@ describe("x402-exact-solana.json", () => {
     expect(pairingOf(O)).toBe("x402/exact/solana");
   });
 
+  it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {
+    const doc = advertised();
+    const choice = {
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: V.fixed.payer,
+      decimals: V.fixed.decimals,
+      tokenProgram: V.fixed.tokenProgram,
+      recentBlockhash: V.fixed.blockhash,
+    };
+    for (const bad of [null, "0x12", H.slice(2), `lcp:sha256:${H}`]) {
+      expect(await exactSvm.build(choice, bad as AtrHash), String(bad)).toEqual({ refused: true, code: "x402/payload-malformed" });
+    }
+  });
+
   it("defaultComputeBudget: build without a compute unit limit or price writes the default prefix", async () => {
     const doc = advertised();
     const u = await exactSvm.build(

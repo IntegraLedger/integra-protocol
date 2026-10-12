@@ -123,6 +123,15 @@ describe("x402-exact-stellar.json", () => {
     expect(u.complete(sig)).toBe(V.V2.expectEnvelope);
   });
 
+  it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {
+    const accepted: PaymentRequirements = V.V3.accepted;
+    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
+    const choice = { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer };
+    for (const bad of [null, "0x12", H.slice(2), `lcp:sha256:${H}`]) {
+      expect(await exactStellar.build(choice, bad as AtrHash), String(bad)).toEqual({ refused: true, code: "x402/payload-malformed" });
+    }
+  });
+
   it("V3: bound and reference", async () => {
     expect(Buffer.from(V.V3.envelope, "base64").length).toBe(V.V3.envelopeLength);
     const p: StellarPaymentPayload = {

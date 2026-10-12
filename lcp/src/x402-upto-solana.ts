@@ -23,7 +23,7 @@ import {
   TOKEN_2022,
   type SvmRef,
 } from "./internal/svm.js";
-import { isObject } from "./fields.js";
+import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
@@ -142,10 +142,12 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /** The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const extra = accepted.extra!;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");

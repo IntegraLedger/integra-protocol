@@ -132,6 +132,24 @@ describe("x402-upto-solana.json", () => {
     );
   });
 
+  it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {
+    const doc = uptoSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
+    if ("refused" in doc) throw new Error(doc.code);
+    const choice = {
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: V.fixed.payer,
+      nonce: BigInt(V.fixed.nonce),
+      openSlot: BigInt(V.fixed.openSlot),
+      now: V.fixed.now,
+      tokenProgram: V.fixed.tokenProgram,
+      recentBlockhash: V.fixed.blockhash,
+    };
+    for (const bad of [null, "0x12", H.slice(2), `lcp:sha256:${H}`]) {
+      expect(await uptoSvm.build(choice, bad as AtrHash), String(bad)).toEqual({ refused: true, code: "x402/payload-malformed" });
+    }
+  });
+
   it("EU4: bound and reference of the vector's wire; advertise without a flow", async () => {
     expect(b64(V.EU3.wireBase64).length).toBe(V.EU3.wireLength);
     const p = payment(V.EU3.wireBase64, V.EU4.accepted);
