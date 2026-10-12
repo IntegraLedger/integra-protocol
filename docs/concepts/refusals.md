@@ -1,12 +1,13 @@
 ---
 title: Refusals
-description: Every failure is a value with a code.
+description: Every refusal is a value with a code.
 ---
 
 # Refusals
 
-Failures are values. A function in this package returns its result, or a **refusal**: a plain object that names what
-is wrong with its input.
+Failures are values. A function in this package whose type carries a refusal returns its result, or a **refusal**: a
+plain object that names what is wrong with its input. A `status` answers a pending state instead, and the writers that
+only encode a value you supply throw ([What throws](#what-throws)).
 
 ```ts no-check
 type Refusal = { refused: true; code: string };
@@ -49,19 +50,48 @@ package would otherwise hand back to you unchanged is refused as malformed when 
 `casper/payload-malformed` for a Casper payment. Every other entry point reads a presented value only for the members
 its pairing defines, and returns either a value it built or its own refusal.
 
-## Where the core throws
+## What throws
 
-Four core functions take a value the caller controls completely, and throw a `TypeError` when it is wrong. `hash`
-rejects with one when its argument is not a `Uint8Array`: a `Buffer` or a `Uint8Array` from another realm is hashed,
-and a string, an array, an `ArrayBuffer`, another typed array or a Proxy is not. `toLcpString`, `toLegalContext` and
-`toRawBytes` throw when the hash is not 32 bytes, and `toLegalContext` also when the link is not an `https` URL. Their
-`from…` counterparts return `null` instead of throwing.
+A writer encodes a value you supply, and its type carries no refusal: it throws a `TypeError` on an argument outside
+its type. In the core, `hash` rejects with one when its argument is not a `Uint8Array`: a `Buffer` or a `Uint8Array`
+from another realm is hashed, and a string, an array, an `ArrayBuffer`, another typed array or a Proxy is not.
+`toLcpString`, `toLegalContext` and `toRawBytes` throw when the hash is not 32 bytes, and `toLegalContext` also when
+the link is not an `https` URL. Their `from…` counterparts return `null` instead of throwing.
+
+The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which are asynchronous, reject):
+
+- on a hash that is not 32 bytes: `ccdMemo` and `pltMemo`, `muxedId` and `muxedFor` (also on a base that is not a `G…`
+  account), `mppInvoiceId` and `x402InvoiceId`, and `sessionSalt`;
+- on a Hedera value outside its type: `txIdText` and `txIdMirror` (an id that is not an account `shard.realm.num`, a
+  non-negative bigint `seconds` and `nanos` from 0 to 999,999,999), `hederaChannelId` (an address that is not `0x` and
+  40 hex digits, a salt that is not a 32-byte hash, a chain id other than 295 and 296) and `hederaVoucher` (the same
+  for the channel, and a `cumulative` that is not a bigint that fits a uint128);
+- on a field of the wrong type: `encodeTronRaw`, `encodeProfileCall` (a call `decodeProfileCall` would not give back),
+  `openInstructionData` and `channelVoucherMessage`, and `sessionProof` on a null or missing argument;
+- on bytes that are not a `Uint8Array`: `extrinsicHash`, `stacksTxid`, and `svmDigest` on a transaction whose message
+  is not one;
+- on a network other than `starknet:SN_MAIN` and `starknet:SN_SEPOLIA`: `chainIdFelt`.
+
+These exports throw a `TypeError` too:
+
+- on a null or missing argument: `jsonWithinDepth` (its text), `msgpackWithinCaps` (its bytes), `carriesBinding` (its
+  log or binding log), `isGuardTransfer` and `transferParts` (their log), `paymentWith` (its document), `withExtra`
+  (its option), and `svmCloseStatus` (its ref or reader), which rejects;
+- on any argument outside its type: `approveCalldata` and `openCalldata`, `mppSvmCarrier` (a transaction that is not a
+  decoded one), `offeredAt` (an `accepts` that is not an array) and `withOption` (a document whose `accepts` is not an
+  array).
+
+Every other function answers a caller's input with a value, never a throw: a refusal, a pending state, `false` or
+`{ complete: false }` from a read, or, for `unplaced`, its argument itself when that is not an option.
 
 ## Readers
 
 The functions that read a rail (`status`, `recover`, `fetchPresented`) take a reader you supply, so the network calls
 are yours. A reader that fails, times out or answers for another network is never a failed payment: `status` returns
-a pending state with the reason `unreadable`, and a later read can settle it.
+a pending state with the reason `unreadable`, and a later read can settle it. A ref or reader that is not an object is
+read the same way, with nothing read: `status` is pending `unreadable`, and `recover` refuses with the code it gives a
+reader for another network (`<namespace>/wrong-reader` on most rails), except on `mpp/charge/usdc/stacks`, which
+refuses `stacks/unreadable`.
 
 ## Next
 

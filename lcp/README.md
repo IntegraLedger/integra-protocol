@@ -157,9 +157,10 @@ the signed nonce is H: true
 ```
 
 Each pairing's functions return their result or a refusal, `{ refused: true, code }`, whose code names what is wrong,
-such as `x402/link-not-https`. `isRefusal(result)` tells the two apart. Only the package makes refusals: a value you
-pass in is never returned to you as one, whatever members it carries
-([refusals](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/concepts/refusals.md)).
+such as `x402/link-not-https`, and never throw on what they are given. `isRefusal(result)` tells the two apart. The
+writers that only encode a value you supply, such as `toLcpString`, throw a `TypeError` on an argument outside their
+type instead. Only the package makes refusals: a value you pass in is never returned to you as one, whatever members it
+carries ([refusals](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/concepts/refusals.md)).
 
 ## Guides
 

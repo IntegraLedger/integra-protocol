@@ -5,9 +5,13 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 
 # Refusal codes
 
-Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 483 codes the package can return, by namespace.
-CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
+Every function in this package whose type carries a refusal answers a failure with a value, `{ refused: true, code }`,
+and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). A `recover` given a ref or reader that
+is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
+which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
+`TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
+This page lists all 483 codes the package can return, by namespace. CI checks that every code the source names in
+`refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
 |---|---|---|
@@ -105,13 +109,13 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 | `x402/nonce-not-payment` | A presented `auth-capture` payment's signed nonce does not decode, or is not the escrow payment hash recomputed from the option's terms, the salt and the expiry. |
 | `x402/not-an-opening` | `bound` or `reference` refuses a presented payment that is not a channel opening: its payload `type` is not `deposit`, or its channel instruction is not `open`. |
 | `x402/not-bound-within` | The SVM batch pairing's `channel.boundWithin` always refuses, because a voucher within the channel carries no hash. |
-| `x402/not-v2` | The payment document given to `advertise`, `read` or `build`, or the payment presented to `bound` or `reference`, is not an object whose `x402Version` is 2. |
+| `x402/not-v2` | The payment document given to `advertise`, `read` or `build`, or the payment presented to `bound` or `reference`, is not an object whose `x402Version` is 2, or the choice given to `build` or `buildWithin` is not an object. |
 | `x402/option-malformed` | The document's `accepts` is not an array of at most 32 options, an option this pairing names lacks what the pairing needs to pay it (a valid amount, asset, `payTo`, positive `maxTimeoutSeconds`, token name and version, or its scheme's required `extra` members), or the buyer's choice given to `build` carries an invalid payer address, `now`, key, nonce, sequence, deposit or amount. |
 | `x402/option-not-in-document` | The option given to `advertise` or chosen in `build` is not one of the document's `accepts`, compared by identity or RFC 8785 form. |
 | `x402/option-not-this-pairing` | The option offered, chosen or presented (as the payment's `accepted`) is not one this pairing serves: its scheme, network, asset transfer method, payment flow or fields belong to another pairing or to none. |
 | `x402/payload-malformed` | The presented EIP-3009 payment carries a `refused` member, the presented payment's `accepted` or `payload` is not an object or lacks a member the pairing reads (authorization, Permit2 authorization, delegation fields, transaction, channel config, voucher or deposit), a member does not decode to a valid address, amount, deadline or digest, or H given to `build` is not a valid ATR hash. |
 | `x402/permission-context-malformed` | The ERC-7710 `permissionContext` given to `complete` is not hex of at most 32 KiB, or at the salt level it does not decode as a list of delegations. |
-| `x402/request-target-invalid` | `requestCommitment` refuses a request whose method or target is not a string, whose body is not a `Uint8Array`, or whose target does not start with `/` or contains a character outside visible ASCII. |
+| `x402/request-target-invalid` | `requestCommitment` refuses a request that is not an object, or whose method or target is not a string, whose body is not a `Uint8Array`, or whose target does not start with `/` or contains a character outside visible ASCII. |
 | `x402/request-too-large` | `requestCommitment` refuses a request target longer than 8192 characters or a body larger than 1 MiB. |
 | `x402/salt-malformed` | A presented `auth-capture` payment's `salt`, or its `saltNonce` when the option binds a receiver authorizer or policy, is not `0x` followed by 64 hex digits. |
 | `x402/salt-not-bound` | A presented `auth-capture` payment's `salt` is not the commitment of its `saltNonce` to the option's receiver authorizer and policy. |
@@ -314,8 +318,8 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`).
 | `evm/ambiguous` | An EVM `recover` finds more than one candidate hash in the transaction: several distinct `AuthorizationUsed` nonces, several distinct leaf salts, or several `ChannelCreated` logs. |
 | `evm/amount-malformed` | An amount given to an EVM typed-data, digest or payment-hash helper is not an unsigned integer within its type's width (uint256, or uint120 for an escrow `maxAmount`). |
 | `evm/channel-id-mismatch` | `batchChannelCreated` finds that the channel id computed from a `ChannelCreated` log's data is not the id in its topic. |
-| `evm/field-malformed` | A value given to an EVM helper is not what the ABI or EIP-712 type requires: an address, uint256, bytes32, time bound or fee outside its width, an empty or oversized Permit2 batch, an invalid witness type, a permission context or `ChannelCreated` log that does not decode strictly, or a malformed channel config. |
-| `evm/network-malformed` | A network is not an `eip155:<chain id>` CAIP-2 name, or a chain id given to `eip3009TypedData`, `permit2TypedData` or `batchChannelId` is not a positive safe integer. |
+| `evm/field-malformed` | A value given to an EVM helper is not what the ABI or EIP-712 type requires: an address, uint256, bytes32, time bound or fee outside its width, an empty or oversized Permit2 batch, an invalid witness type, a permission context or `ChannelCreated` log that does not decode strictly, a malformed channel config, or an argument to `transferDigest` or `paymentHash` that is not an object. |
+| `evm/network-malformed` | A network is not an `eip155:<chain id>` CAIP-2 name, or a chain id given to `eip3009TypedData`, `permit2TypedData` or `batchChannelId` is not a positive safe integer, or the argument to `eip3009TypedData` or `permit2TypedData` is not an object. |
 | `evm/no-authorization-use` | `eip3009Recover` finds no `AuthorizationUsed` log from the asset in the transaction. |
 | `evm/no-channel-created` | The EVM batch pairing's `recover` finds no `ChannelCreated` log from the batch-settlement contract in the transaction. |
 | `evm/no-leaf` | `redeemedLeafRecover` finds no `RedeemedDelegation` log from the DelegationManager whose delegate is the redeemer or the wildcard. |
@@ -376,7 +380,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/peer-missing` | The optional peer dependency `@solana/kit` cannot be loaded to build a Solana message. |
 | `svm/proof-not-challenge` | The MPP Solana session credential's `authentication.challengeId` is not the echoed challenge's id, or a `use` credential carries no such proof. |
 | `svm/read-first` | An MPP Solana `signature` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
-| `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed), or an MPP `bundle` credential's `transactions` is not an array within the bound. |
+| `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed), or an MPP `bundle` credential's `transactions` is not an array within the bound, or `svmCarrier` or `channelInstruction` is given a transaction that is not a decoded one. |
 | `svm/tx-too-large` | A Solana transaction, or its base64 text, exceeds the wire size bound. |
 | `svm/unreadable` | The Solana reader threw or returned a landed transaction that is not well formed. |
 | `svm/wrong-reader` | The Solana reader answers for a different network than the reference or challenge names. |
@@ -491,7 +495,7 @@ Aptos (`@integraledger/lcp/aptos`).
 | `aptos/network-malformed` | An Aptos option's network starts with `aptos:` but names no known chain. |
 | `aptos/not-an-x402-transfer` | The Aptos transaction, or the committed transaction a reader returns, is not a call to the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments (two addresses and a u64 amount). |
 | `aptos/not-entry-function` | The Aptos transaction's payload is not an entry function call. |
-| `aptos/tx-malformed` | `decodeAptosTx` is given text that is not base64 of an Aptos `RawTransaction` prefix (in BCS or x402's reference JSON form) that reads to the end of its fields, or a prefix with a module, function or struct name that is not an ASCII letter or underscore followed by up to 254 ASCII letters, digits and underscores (a leading U+FEFF included). |
+| `aptos/tx-malformed` | `decodeAptosTx` is given text that is not base64 of an Aptos `RawTransaction` prefix (in BCS or x402's reference JSON form) that reads to the end of its fields, or a prefix with a module, function or struct name that is not an ASCII letter or underscore followed by up to 254 ASCII letters, digits and underscores (a leading U+FEFF included), or `aptosIdDigest` is given an instrument that is not an object whose sequence number is a bigint and whose type arguments and arguments are arrays. |
 | `aptos/tx-too-large` | `decodeAptosTx` is given a transaction larger than the size bound. |
 
 ## cardano
@@ -522,7 +526,7 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/address-malformed` | A Casper `from` or `to` address, or the payer given to `build`, is not a valid Casper account or package address. |
 | `casper/amount-malformed` | A Casper amount is not a uint256. |
 | `casper/key-tag-mismatch` | The public key and signature given to the Casper `complete` carry different algorithm tags. |
-| `casper/network-malformed` | A Casper network given to `cep3009TypedData` is not a Casper CAIP-2 name. |
+| `casper/network-malformed` | A Casper network given to `cep3009TypedData` is not a Casper CAIP-2 name, or its argument is not an object. |
 | `casper/no-authorization-call` | The executed Casper transaction holds no authorization call on the asset carrying a nonce. |
 | `casper/not-executed` | The Casper transaction the reference names has not executed. |
 | `casper/not-found` | The Casper reader found no transaction for the reference. |
@@ -604,7 +608,7 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
 | `polkadot/transaction-malformed` | `polkadotRecover` is given a transaction reference that is not a `<block hash>-<index>` timepoint. |
 | `polkadot/unreadable` | The Polkadot reader threw, returned block extrinsics that are not an array, a finalized height that is not a bigint, or a record of the canonical block that is not an extrinsic's. |
-| `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names. |
+| `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names, or the reference given to `polkadotLocate` has an `extrinsicHash` that is not `0x` and 64 hex digits. |
 
 ## starknet
 
@@ -615,7 +619,7 @@ Starknet (`@integraledger/lcp/starknet`).
 | `starknet/ambiguous` | The Starknet transaction holds matching transfers with more than one nonce. |
 | `starknet/caller-forbidden` | The Starknet option's fee payer is zero or the any-caller value, or the paying account is the fee payer itself. |
 | `starknet/felt-malformed` | A Starknet fee payer, asset, `payTo`, nonce, payer account or `from` is not a valid felt. |
-| `starknet/network-malformed` | A Starknet network is not one of the Starknet networks this package supports. |
+| `starknet/network-malformed` | A Starknet network is not one of the Starknet networks this package supports, or the argument to `outsideExecution` is not an object. |
 | `starknet/no-legal-context` | The Starknet payment echoes no decodable `extensions.legalContext.info`. |
 | `starknet/nonce-not-bound` | The Starknet signed `Nonce` is not the low 250 bits of the echoed hash. |
 | `starknet/not-found` | The Starknet reader found no receipt, or no transfer matching the reference in it. |
@@ -639,7 +643,7 @@ Sui (`@integraledger/lcp/sui`).
 | `sui/not-found` | The Sui reader found no transaction for the digest. |
 | `sui/not-programmable` | The Sui transaction is not `TransactionData` V1 with a programmable transaction kind. |
 | `sui/peer-missing` | The optional peer dependency `@mysten/sui` cannot be loaded. |
-| `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, or a `Pure` input that is not valid base64 within the bound. |
+| `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, or a `Pure` input that is not valid base64 within the bound, or `suiCarrier` is given a transaction that is not a decoded one. |
 | `sui/tx-too-large` | `decodeSuiTx` is given a transaction larger than the size bound. |
 | `sui/unreadable` | The Sui reader failed, or returned a transaction whose digest is not the reference's or that does not decode. |
 | `sui/wrong-reader` | The Sui reader answers for a different network than the reference names. |
@@ -661,7 +665,7 @@ Tron (`@integraledger/lcp/tron`).
 | `tron/option-malformed` | A TRON option's amount is not a uint256 or its `maxTimeoutSeconds` is outside 1 to the allowed maximum. |
 | `tron/raw-not-canonical` | The TRON raw data does not re-encode to the bytes received. |
 | `tron/signature-malformed` | A TRON transaction carries no signature, too many, or one that is not 65 bytes, or the signature given to `complete` is not 65 bytes with a recovery byte of 0, 1, 27 or 28. |
-| `tron/tx-malformed` | A TRON transaction is not lowercase hex of a protobuf `Transaction` whose raw data decodes with in-range fields, the raw bytes a recovery reads do not hash to the transaction id, or the reference block or time given to `build` is invalid. |
+| `tron/tx-malformed` | A TRON transaction is not lowercase hex of a protobuf `Transaction` whose raw data decodes with in-range fields, the raw bytes a recovery reads do not hash to the transaction id, or the reference block or time given to `build` is invalid, or `tronCarrier` is given a transaction that is not `decodeTronTx`'s `{ raw, rawBytes }`. |
 | `tron/tx-too-large` | A TRON transaction's hex exceeds the size bound. |
 | `tron/unreadable` | The TRON reader threw or returned a transaction whose raw data is not hex within the bound. |
 | `tron/wrong-reader` | The TRON reader answers for a different network than the reference names. |
@@ -700,7 +704,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 | `ln/expires-after-invoice` | The MPP challenge's `expires` is later than the invoice's own expiry. |
 | `ln/field-length` | The invoice's `h` or `m` field is not 32 bytes. |
 | `ln/field-repeated` | The invoice carries more than one `h` field or more than one `m` field. |
-| `ln/invoice-malformed` | A BOLT11 invoice is missing or not a string, mixes case, or does not decode (bech32 checksum, prefix, field lengths, exactly one payment hash, expiry width). |
+| `ln/invoice-malformed` | A BOLT11 invoice is missing or not a string, mixes case, or does not decode (bech32 checksum, prefix, field lengths, exactly one payment hash, expiry width), or `invoiceH` is given a decoded invoice that is not an object with a `tags` array. |
 | `ln/invoice-not-named` | The invoice-named pairing's `build` finds that the ATR's `x402` slot does not name the option's invoice, or that the ATR is not one JSON object whose first members are `atrVersion`, `id` and `x402` with no member name repeated. |
 | `ln/invoice-too-large` | A BOLT11 invoice exceeds 8 KiB or carries more tagged fields than the bound. |
 | `ln/no-description-hash` | The invoice has no `h` (description hash) field. |

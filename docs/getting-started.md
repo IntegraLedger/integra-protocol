@@ -61,8 +61,10 @@ console.log(atr.atrHash);
 This page fixes the id so your output matches. For a real transaction, pass `newAtrId()`, a random RFC 9562 UUID:
 the fresh id makes every H unique, even for identical terms.
 
-Every function in the package returns its result or a [refusal](./concepts/refusals.md), a value with a code, so
-check `isRefusal(result)` before you use a result.
+Every function in the package that can refuse returns its result or a [refusal](./concepts/refusals.md), a value with
+a code, so check `isRefusal(result)` before you use a result. The writers that only encode a value you supply, such as
+`toLcpString`, throw a `TypeError` on an argument outside their type instead
+([what throws](./concepts/refusals.md#what-throws)).
 
 ## 2. Compare the bytes with H
 
