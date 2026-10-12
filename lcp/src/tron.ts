@@ -84,7 +84,7 @@ export type TronStatus =
   | { state: "pending"; why: "not-found" | "unreadable" }
   | { state: "failed"; why: "contract-failed" | "no-transfer" | "expired"; result?: string };
 
-export interface TronChoice {
+interface TronChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   /** The payer's base58check address. */
