@@ -14,7 +14,7 @@ description: "The exports of @integraledger/lcp/hedera."
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-asset"></a> `asset` | `string` | - |
-| <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | - |
+| <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | `hederaIdDigest` of the payer. |
 | <a id="property-network"></a> `network` | [`HederaNetwork`](#hederanetwork) | - |
 | <a id="property-settleby"></a> `settleBy` | `number` | Unix seconds: claim time plus `maxTimeoutSeconds`. |
 | <a id="property-transaction"></a> `transaction?` | `string` | The facilitator's `SettlementResponse.transaction`, mirror form. |
@@ -424,9 +424,9 @@ Reads the merged consensus record of the named transaction: the user entry must 
 change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
 HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token rows are whole, and on HBAR the fee the
 user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
-reads as what it paid or received. Exactly one account must be debited, and a credit of the same magnitude must give
-the recorded digest. A transfer list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending
-`unreadable`.
+reads as what it paid or received. Exactly one account must be debited, by at least one unit, and its digest must be
+the recorded one: the payment is the named transaction's debit of the payer. Payee and amount are not read. A transfer
+list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`.
 
 #### Parameters
 
@@ -479,17 +479,15 @@ The Hedera request checks a charge challenge must pass before it is placed.
 
 ### hederaIdDigest()
 
-> **hederaIdDigest**(`payer`, `payTo`, `amount`): `Promise`\<`` `0x${string}` ``\>
+> **hederaIdDigest**(`payer`): `Promise`\<`` `0x${string}` ``\>
 
-the core's hash over the ASCII of `payer,payTo,amount`: the identity of one transfer, never shown in the clear.
+The core's hash over the ASCII of `payer`: the payer's identity, never shown in the clear.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `payer` | `string` |
-| `payTo` | `string` |
-| `amount` | `string` |
 
 #### Returns
 
