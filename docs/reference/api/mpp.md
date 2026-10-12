@@ -222,7 +222,7 @@ The settlement read keys of these pairings.
 | `opened.channel` | `` `0x${string}` `` | - | - |
 | `opened.h` | `` `0x${string}` `` | - | - |
 | `opened.version` | `"v2"` \| `"v1"` | - | - |
-| <a id="property-opens"></a> `opens?` | `object` | The opening of an EVM session that the payer broadcast as a call: a call to `escrow` of `OPEN_V1_SELECTOR` whose salt is `h`, and whose sender, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`. | - |
+| <a id="property-opens"></a> `opens?` | `object` | The opening of an EVM session of type `hash` or `permit2`: the escrow's open call whose salt is `h`, and whose payer, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`. | - |
 | `opens.chainId` | `number` | - | - |
 | `opens.channel` | `` `0x${string}` `` | - | - |
 | `opens.escrow` | `` `0x${string}` `` | - | - |
@@ -634,7 +634,7 @@ Every MPP pairing `pairingsOf` can name.
 
 ### SessionStatus
 
-> **SessionStatus** = [`EvmBreadthStatus`](evm.md#evmbreadthstatus) \| \{ `state`: `"pending"`; `why`: `"not-a-close"`; \} \| \{ `state`: `"failed"`; `why`: `"open-call-not-found"`; \}
+> **SessionStatus** = [`EvmBreadthStatus`](evm.md#evmbreadthstatus) \| \{ `state`: `"pending"`; `why`: `"not-a-close"` \| `"open-call-not-found"`; \} \| \{ `state`: `"failed"`; `why`: `"open-call-not-found"`; \}
 
 ***
 
@@ -1263,8 +1263,11 @@ cannot be read.
 
 `evmStatus` on the named logs, then, where `ref.opened` is present, one `ChannelOpened` log from `opened.address`
 naming the channel: on v2 its data word 3 (the salt) is `h`; on v1 the channel id recomputed from the event with
-salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction must be the open call `opens`
-describes, read by `eth_getTransactionByHash`, else failed `open-call-not-found`. Where `ref.closes` is present, the
+salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction, read by `eth_getTransactionByHash`,
+must be sent to the escrow and hold its open call for the channel: `open` from the payer, or `openWithPermit2` with
+the payer as its `from`. An open call sent to the escrow that opens another channel is failed `open-call-not-found`
+where `ref.settleBy` is absent and pending where it is present; any other transaction, one sent through an ERC-4337
+EntryPoint included, is pending `open-call-not-found`. Where `ref.closes` is present, the
 succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
 whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
 succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
