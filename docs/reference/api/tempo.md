@@ -195,10 +195,14 @@ keccak256("TransferWithMemo(address,address,uint256,bytes32)")
 
 ### decodeKeyAuthorization()
 
-> **decodeKeyAuthorization**(`signed`): [`Refusal`](index.md#refusal) \| \{ `digest`: `` `0x${string}` ``; `keyId`: `` `0x${string}` ``; `witness?`: `` `0x${string}` ``; \}
+> **decodeKeyAuthorization**(`signed`): [`Refusal`](index.md#refusal) \| \{ `allowedCalls`: `object`[]; `digest`: `` `0x${string}` ``; `keyId`: `` `0x${string}` ``; `limits`: `object`[]; `witness?`: `` `0x${string}` ``; \}
 
 Reads a signed key authorization: an RLP list of the authorization (3 to 9 items) and a byte-string signature. The
-digest is keccak256 over the authorization's bytes as received. The witness is item 6, 32 bytes, when present.
+digest is keccak256 over the authorization's bytes as received. The witness is item 6, 32 bytes, when present. The
+scope the payer signed is item 4, the limits (each a 20-byte token, a limit and, when non-zero, a period; an absent
+period is 0), and item 5, the allowed calls (each a 20-byte target and its selector rules, each a 4-byte selector and
+20-byte recipients). An absent item and an empty list both read as an empty list, though Tempo gives them opposite
+meanings (absent: no limit or no call restriction; empty: no spending or no calls).
 
 #### Parameters
 
@@ -208,7 +212,7 @@ digest is keccak256 over the authorization's bytes as received. The witness is i
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| \{ `digest`: `` `0x${string}` ``; `keyId`: `` `0x${string}` ``; `witness?`: `` `0x${string}` ``; \}
+[`Refusal`](index.md#refusal) \| \{ `allowedCalls`: `object`[]; `digest`: `` `0x${string}` ``; `keyId`: `` `0x${string}` ``; `limits`: `object`[]; `witness?`: `` `0x${string}` ``; \}
 
 ***
 
