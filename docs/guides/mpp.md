@@ -130,7 +130,8 @@ carries H (`externalId`, or the XRP Ledger's `methodDetails.invoiceId`), and `ex
 deadline, and refuses one of those that is malformed, with the code `advertise` gives it. On every pairing but
 Lightning's, `bound`, `reference` and `fetchPresented` refuse a `methodDetails` that is present and not an object with
 `mpp/request-malformed`, as `advertise` does, and never read it as empty, except the Hedera charge's `bound`, which
-reads no request member, and a `fetchPresented` given a signed transaction, which returns it as given.
+reads no request member, the EVM `transaction` and `hash` charges' `bound`, which always refuses
+(`mpp/no-signed-place`), and a `fetchPresented` given a signed transaction, which returns it as given.
 
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
