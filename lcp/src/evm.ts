@@ -211,11 +211,12 @@ export type EvmStatus =
  * itself states no order. The `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and
  * before the token's next `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the
  * token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` log is failed
- * `authorization-not-used`; no paired `Transfer` that `transferLog` identifies is failed `transfer-not-found`. A token
- * that emits the `Transfer` first and executes two authorizations of one payer with different terms in one transaction
- * can read one of them failed. The finality is the highest block mark at or above the receipt's block. A failed read, a
- * reader for another network, or a `transferLog` that is not one is pending `unreadable`, never failed. At most three
- * calls.
+ * `authorization-not-used`; no paired `Transfer` that `transferLog` identifies is failed `transfer-not-found`. On a
+ * token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
+ * pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
+ * use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
+ * receipt's block. A failed read, a reader for another network, or a `transferLog` that is not one is pending
+ * `unreadable`, never failed. At most three calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },

@@ -150,6 +150,8 @@ describe("x402-exact-eip155-eip3009.json", () => {
       "batch",
       "transferFirst",
       "transferFirstBatch",
+      "transferFirstTwoPayers",
+      "transferBeforeAnotherUse",
     ]);
   });
 

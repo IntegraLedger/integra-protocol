@@ -65,9 +65,9 @@ use. After the facilitator settles, `status` reads the settlement transaction th
 `recover` reads H back from that transaction alone.
 
 `status` settles a named transaction only when it is this payment's: its receipt must hold the token's
-`AuthorizationUsed` log whose nonce is H and the `Transfer` that same authorization produced, the first from the
-authorizer after that log in the token's order ([the x402 guide](./x402.md#a-named-transaction) gives the rule), whose
-payer, payee and value hash to the reference's digest. Anything else is `failed`, with the reason, and a failed read is
+`AuthorizationUsed` log whose nonce is H and the `Transfer` that same authorization produced, the one from the
+authorizer that log order pairs with it ([the x402 guide](./x402.md#a-named-transaction) gives the rule), whose payer,
+payee and value hash to the reference's digest. Anything else is `failed`, with the reason, and a failed read is
 `pending`.
 
 Before any transaction is named, `authorizer(payment)` gives the account whose signature authorises the transfer, and
