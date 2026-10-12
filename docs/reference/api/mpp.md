@@ -1197,7 +1197,24 @@ A Tempo subscription challenge's id is the bare base64url of H.
 
 > **problem**(`code`): `object`
 
-The MPP problem type and status for a refusal code.
+The Payment scheme's problem type and HTTP status for a refusal code this package returns, from the scheme's Status
+Codes and Error Codes tables, under `https://paymentauth.org/problems/`:
+- 402 `malformed-credential`: `mpp/credential-malformed`, `mpp/request-malformed` and `mpp/opaque-malformed`;
+- 402 `invalid-challenge`: `mpp/id-not-ours`;
+- 500 `internal-payment-error`: a read to repeat, which a `fetchPresented` returns when its read fails or cannot yet
+  read the landed payment, so the seller asks again later: `tempo/not-found`, `tempo/unreadable`, `svm/not-found`,
+  `svm/unreadable`, `stellar/not-found`, `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`,
+  `xrpl/unreadable`, `hedera/not-found` and `hedera/unreadable`;
+- 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
+  changes the call: a reader that is not for the network the challenge or reference names (`svm/wrong-reader`,
+  `stellar/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound` or `reference` on a push
+  credential before `fetchPresented` has read it (`svm/read-first`, `stellar/read-first`, `xrpl/read-first` and
+  `hedera/read-first`);
+- 402 `verification-failed`: every other code this package returns;
+- 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
+
+The seller answers a 402 with a fresh challenge and a 500 with no challenge: a challenge goes out only with a 402.
+Neither carries `Payment-Receipt`.
 
 #### Parameters
 
