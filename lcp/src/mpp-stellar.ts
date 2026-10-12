@@ -67,8 +67,8 @@ function presentedXdr(payload: { [k: string]: Json }): string | Refusal {
 
 /**
  * The binding of a credential: H, the checked challenge, and the payment read from its transaction. A `hash` credential
- * whose transaction carries no address entry of the payer, under a request with `feePayer` false, is read as a payer
- * that authorized the transfer as the transaction's source account; that transaction is the instrument, so the
+ * whose transaction carries no address entry of the payer, under a request with `feePayer` false or absent, is read as
+ * a payer that authorized the transfer as the transaction's source account; that transaction is the instrument, so the
  * credential's `hash` must name it.
  */
 function bindingOf(
@@ -105,10 +105,10 @@ function bindingOf(
  * not yet submitted, the operation carries exactly one address-credential entry of the payer. For a `hash` credential,
  * whose transaction landed, the entry is the payer's first address-credential entry whose `rootInvocation` is the
  * operation's `transfer`, byte for byte; other entries of the payer are not read. A `hash` credential whose transaction
- * carries no address entry of the payer, under a request with `feePayer` false, binds H when the payer is the source
- * account of the transaction and of its operation and an entry with source-account credentials is that `transfer`: the
- * payer signed the whole transaction, `to` included. With `feePayer` true, or for a `transaction` credential, such a
- * payment is `stellar/no-address-auth`.
+ * carries no address entry of the payer, under a request with `feePayer` false or absent, binds H when the payer is the
+ * source account of the transaction and of its operation and an entry with source-account credentials is that
+ * `transfer`: the payer signed the whole transaction, `to` included. With `feePayer` true, or for a `transaction`
+ * credential, such a payment is `stellar/no-address-auth`.
  * The authorization's signature is not verified here; the network verifies it when the entry is used.
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {

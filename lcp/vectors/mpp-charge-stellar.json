@@ -197,7 +197,7 @@
   ]
  },
  "sourceAccount": {
-  "about": "Push (a hash credential) under a request with methodDetails.feePayer false, where the payer submits the transaction as its source account and authorizes the transfer with sorobanCredentialsSourceAccount, the credential simulation gives a payer that is the source: such an entry carries no signature of its own, and the transaction's signature, which the network verifies, covers the whole transaction, to included. The transaction is the instrument: reference records it by transaction, with no authDigest or expiration, and status settles on that transaction's SUCCESS with that shape and is otherwise pending. x402 (scheme_exact_stellar: auth entries MUST use an address-based credential type), the sponsored flow (feePayer true) and a transaction credential keep refusing stellar/no-address-auth. The envelopes were written with @stellar/stellar-sdk 17.1.0 from x402-exact-stellar.json's V3 envelope: the transaction's source account set, the entry's credentials set to sorobanCredentialsSourceAccount, and the transaction signed by the source's key with its Transaction.sign on testnet; each hash is the SDK's Transaction.hash. The challenge is the place section's with methodDetails.feePayer false, its request computed with Python 3 json and base64url.",
+  "about": "Push (a hash credential) under a request whose methodDetails.feePayer is false or absent, where the payer submits the transaction as its source account and authorizes the transfer with sorobanCredentialsSourceAccount, the credential simulation gives a payer that is the source: such an entry carries no signature of its own, and the transaction's signature, which the network verifies, covers the whole transaction, to included. A source-account entry authorizes the source account of the operation that carries it, its own when it names one and otherwise the transaction's, so the payer must be both; and, as before anything lands, the entry's rootInvocation is the operation's transfer with no sub-invocations. The transaction is the instrument: reference records it by transaction, with no authDigest or expiration; status settles on that transaction's SUCCESS with that shape and is otherwise pending; stellarLocate has no entry to search for. x402 (scheme_exact_stellar: auth entries MUST use an address-based credential type), the sponsored flow (draft-stellar-charge-00: \"Servers MUST reject `type=\"hash\"` credentials when the challenge specifies `feePayer: true`\") and a transaction credential keep refusing stellar/no-address-auth. The envelopes were written with @stellar/stellar-sdk 17.1.0 from x402-exact-stellar.json's V3 envelope: the entry's credentials set to sorobanCredentialsSourceAccount and the sources set as each write says, naming each account by the byte its Ed25519 seed repeats (05 is the payer) and whether the entry's rootInvocation carries a copy of the transfer as a sub-invocation; every source named signs with its Transaction.sign on testnet, and each hash is its Transaction.hash. The challenge is the place section's with methodDetails.feePayer false, its request computed with Python 3 json and base64url.",
   "challenge": {
    "realm": "api.seller.example",
    "method": "stellar",
@@ -209,6 +209,9 @@
   },
   "envelope": "AAAAAgAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAGAUFvxAAAAQHZ8CimhFEbntlMEQitqV1GFNoIBSc23hUFNAZHP1iLJSoZGTa/m5OAoBustKEBua9bhAZWgxOCIFRD08+ksFAM=",
   "hash": "866b00a9a169ca9701589714097314c75b4a7aab33bfc44bd7e40bb89f63e85a",
+  "write": {
+   "source": "05"
+  },
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "stellar:testnet",
@@ -274,8 +277,46 @@
     "type": "hash",
     "envelope": "AAAAAgAAAADqSmxj4pxSCr71UHsTLsX5lUd2rr6+e5JCHuppFEbSLAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAEURtIsAAAAQGWdJsQ+vIBnBgJzxlkZW77SoljoxucacVUcu4I0g5J8HgZA5bp3F6OCLDjf1Rmb8OQztef5Fb2OglqTvacNygc=",
     "hash": "0e3932a089bee4219720b1948615f0edb47e0caa9384375a347ad72d9d878017",
+    "write": {
+     "source": "07"
+    },
     "expect": "stellar/no-address-auth"
+   },
+   {
+    "case": "the same transfer and entry in a transaction whose source account is the payer and whose operation names the account of Ed25519 seed 07x32 as its source, both signing, pushed under this challenge: the entry authorizes that account, not the payer",
+    "challenge": "sourceAccount",
+    "type": "hash",
+    "envelope": "AAAAAgAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iwAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAKAUFvxAAAAQJNFtmbLlx4nDzc3UFHAFhXzUqIHGCDyl7+JRvO9iqx+dcIf1PDngUBqMz1uT4d4gQljZJb1foF8ta6leXsg4AIURtIsAAAAQOK+jmNoPCgpGZitnJ0ThbmTcybRvjJjl+rop4zpBD4It8Cs59stNvEaVo+6d2BXDZgQMYIafQI0qoQo8ED7FQU=",
+    "hash": "520ebcfbed3b33b62d56e6df5e79f821c3b897c8515096cab25ea1b0a8b6b500",
+    "write": {
+     "source": "05",
+     "operationSource": "07"
+    },
+    "expect": "stellar/no-address-auth"
+   },
+   {
+    "case": "the payer as the transaction's source, with a source-account entry whose rootInvocation carries a copy of the transfer as a sub-invocation, pushed under this challenge",
+    "challenge": "sourceAccount",
+    "type": "hash",
+    "envelope": "AAAAAgAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABgFBb8QAAAEBIYLRYOBJuhBXYmWktYaFePABkKPKm7BguTiVvbu1y1AfAkwqyPWlpTTpOylNyZhNUJWtQ8Xs/P6gGs8aO3UYB",
+    "hash": "029bd388e56b156acf33cd537149c8524c3669a2e0c59196f4bc3a83d2dc6d45",
+    "write": {
+     "source": "05",
+     "subInvocation": true
+    },
+    "expect": "stellar/no-address-auth"
+   },
+   {
+    "case": "a hash credential under this challenge carrying this envelope as its transaction, whose hash is not 64 hexadecimal digits (draft-stellar-charge-00: hash is the Stellar transaction hash, a 64-character hex string)",
+    "challenge": "sourceAccount",
+    "type": "hash",
+    "hash": "not-a-transaction-hash",
+    "carriesTransaction": true,
+    "expect": "mpp/credential-malformed"
    }
-  ]
+  ],
+  "expectLocate": {
+   "complete": false
+  }
  }
 }

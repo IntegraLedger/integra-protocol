@@ -118,7 +118,8 @@ export interface StellarRef {
 }
 
 /**
- * What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded.
+ * What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded, or, for a
+ * ref without `authDigest`, the named transaction succeeded as the transfer the payer authorized as its source account.
  * `pending`: nothing final yet; `why` names what the named transaction read as (`not-found`, `transaction-failed`, a
  * successful transaction that is `not-this-instrument`) or that a read failed (`unreadable`). `failed` is final:
  * `expired`, the ledger is past the entry's expiration and a complete search finds no transaction that used it.

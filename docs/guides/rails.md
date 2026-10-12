@@ -146,6 +146,14 @@ treats `endLedger` as exclusive and scans at most 10,000 ledgers per call, so a 
 has scanned through `toLedger`, even when a page holds no events, and keeps only the events through `toLedger`, since
 a cursor page can scan past it.
 
+An MPP Stellar push payment (a `hash` credential, under a request whose `feePayer` is false or absent) may come from a
+payer that submits the transaction as its source account and authorizes the transfer with a source-account credential
+instead of an address entry: the transaction's signature covers the whole transaction, `to` included. Such a payment
+has no authorization entry to name, so its `reference` names the transaction and carries no `authDigest` or
+`expiration`. `status` settles when that transaction succeeded as the transfer the payer authorized as its source
+account, and is otherwise pending, never failed: there is no expiration ledger to pass, and `stellarLocate` has
+nothing to search for.
+
 A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
 time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
 payment up, so a payment that lands between the two reads, or a reader whose sources disagree between them, never

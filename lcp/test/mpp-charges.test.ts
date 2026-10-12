@@ -37,7 +37,7 @@ import {
 import { MEMO_V3 } from "../src/svm.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
-import type { StellarReader, StellarRef } from "../src/stellar.js";
+import { stellarLocate, type StellarReader, type StellarRef } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
@@ -358,21 +358,28 @@ describe("mpp-charge-stellar.json", () => {
       latestLedger: async () => latest,
     });
 
-    it("@stellar/stellar-sdk 17.1.0 writes the envelopes from V3's, and the challenge is the place section's with feePayer false", () => {
-      const write = (seed: string) => {
-        const source = Keypair.fromRawEd25519Seed(Buffer.from(seed, "hex"));
+    it("@stellar/stellar-sdk 17.1.0 writes each envelope from V3's as its write says, and the challenge is the place section's with feePayer false", () => {
+      type Write = { source: string; operationSource?: string; subInvocation?: boolean };
+      const key = (b: string) => Keypair.fromRawEd25519Seed(Buffer.from(b.repeat(32), "hex"));
+      const write = (w: Write) => {
         const env = stellarXdr.TransactionEnvelope.fromXdr(XST.V3.envelope, "base64").toXdrObject();
         if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
-        env.v1.tx.sourceAccount = { type: 0, ed25519: Uint8Array.from(source.rawPublicKey()) };
-        const auth = env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth;
-        auth[0] = { credentials: { type: 0 }, rootInvocation: auth[0]!.rootInvocation };
+        env.v1.tx.sourceAccount = { type: 0, ed25519: Uint8Array.from(key(w.source).rawPublicKey()) };
+        const op = env.v1.tx.operations[0]!;
+        if (w.operationSource !== undefined) op.sourceAccount = { type: 0, ed25519: Uint8Array.from(key(w.operationSource).rawPublicKey()) };
+        if (op.body.type !== 24) throw new Error("not an invocation");
+        const auth = op.body.invokeHostFunctionOp.auth;
+        const root = auth[0]!.rootInvocation;
+        const subInvocations = w.subInvocation === true ? [{ function: root.function, subInvocations: [] }] : [];
+        auth[0] = { credentials: { type: 0 }, rootInvocation: { function: root.function, subInvocations } };
         const tx = TransactionBuilder.fromXDR(stellarXdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64"), Networks.TESTNET);
-        tx.sign(source);
+        for (const b of new Set([w.source, ...(w.operationSource !== undefined ? [w.operationSource] : [])])) tx.sign(key(b));
         return { envelope: tx.toEnvelope().toXDR("base64"), hash: Buffer.from(tx.hash()).toString("hex") };
       };
-      expect(write(XST.fixed.payerSeed)).toEqual({ envelope: S.envelope, hash: S.hash });
-      const other = S.refusals.find((r: { envelope?: string }) => r.envelope !== undefined);
-      expect(write("07".repeat(32))).toEqual({ envelope: other.envelope, hash: other.hash });
+      expect(S.write.source).toBe(XST.fixed.payerSeed.slice(0, 2));
+      const written = [S, ...S.refusals.filter((r: { write?: Write }) => r.write !== undefined)];
+      expect(written.length).toBe(4);
+      for (const w of written) expect(write(w.write), w.case).toEqual({ envelope: w.envelope, hash: w.hash });
       const request = (c: MppChallenge) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
       const { request: _r, ...rest } = S.challenge;
       expect({ ...placed, ...rest }).toEqual(placed);
@@ -394,20 +401,30 @@ describe("mpp-charge-stellar.json", () => {
         expect(await chargeStellar.status(named, readerOf(S.hash, answer)), row.case).toEqual(row.expect);
       }
       const sourceLanded = { status: "SUCCESS", envelope: S.envelope, ledger: 990 };
+      const listing: StellarReader = {
+        ...readerOf(S.hash, sourceLanded),
+        transfers: async () => ({ events: [{ txHash: S.hash, toMuxedId: BigInt(named.toId) }], complete: true, oldestLedger: 0 }),
+      };
+      expect(await stellarLocate(named, listing)).toEqual(S.expectLocate);
       expect(await chargeStellar.status(XST.V5.ref, readerOf(XST.V5.ref.transaction, sourceLanded, 995))).toEqual({
         state: "pending",
         why: "not-this-instrument",
       });
     });
 
-    it("refusals: the sponsored flow, a transaction credential, another source account, and x402", async () => {
+    it("refusals: the sponsored flow, a transaction credential, another source account, a sub-invocation, a malformed hash, and x402", async () => {
       for (const row of S.refusals) {
+        const challenge = challengeOf(row.challenge);
         const envelope: string = row.envelope ?? S.envelope;
         const hash: string = row.hash ?? S.hash;
-        let presented: MppCredential = credential(challengeOf(row.challenge), { type: "transaction", transaction: envelope });
-        if (row.type === "hash") {
+        let presented: MppCredential = credential(challenge, { type: "transaction", transaction: envelope });
+        if (row.type === "hash" && row.carriesTransaction === true) {
+          presented = credential(challenge, { type: "hash", hash, transaction: envelope });
+          const reader = readerOf(hash, { status: "SUCCESS", envelope, ledger: 990 });
+          expect(await chargeStellar.fetchPresented(credential(challenge, { type: "hash", hash }), reader), row.case).toEqual(refused(row.expect));
+        } else if (row.type === "hash") {
           const fetched = await chargeStellar.fetchPresented(
-            credential(challengeOf(row.challenge), { type: "hash", hash }),
+            credential(challenge, { type: "hash", hash }),
             readerOf(hash, { status: "SUCCESS", envelope, ledger: 990 }),
           );
           if ("refused" in fetched) throw new Error(fetched.code);
