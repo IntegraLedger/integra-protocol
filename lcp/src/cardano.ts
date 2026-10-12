@@ -84,7 +84,6 @@ export interface CardanoUnsigned {
 const ID = "x402/exact/cardano" as const;
 const MAX_TX_BYTES = 64 * 1024;
 const MAX_DEPTH = 64;
-const MAX_NONCE = 256;
 const NETWORKS: Readonly<Record<string, CardanoNetwork>> = {
   "cardano:mainnet": "cardano:mainnet",
   "cardano:preprod": "cardano:preprod",
@@ -274,7 +273,7 @@ async function presentedTx(presented: unknown): Promise<{ network: CardanoNetwor
   if (isRefusal(parts)) return parts;
   const { transaction, nonce } = parts.payload;
   if (typeof transaction !== "string") return refusal("x402/payload-malformed");
-  if (typeof nonce !== "string" || nonce.length > MAX_NONCE) return refusal("x402/payload-malformed");
+  if (typeof nonce !== "string") return refusal("x402/payload-malformed");
   const tx = await decodeCardanoTx(transaction);
   if (isRefusal(tx)) return tx;
   return { network: NETWORKS[parts.accepted.network]!, tx };

@@ -123,6 +123,21 @@ describe("V2 · bound and reference", () => {
     const r = await exactCardano.reference(payment(V.V2.transactionBase64, { ...O, network: "cip34:0-1" }));
     expect(throughJson(r)).toEqual(V.V2.expectReference);
   });
+  // x402's Cardano scheme: the nonce is "a UTXO reference (`txHash#index`) that is also one of the transaction's
+  // inputs", which the facilitator checks (verification rule 5). bound reads the signed body and its metadata only.
+  it("bound and reference take a string nonce of any length; a nonce that is not a string is refused", async () => {
+    const withNonce = (nonce: unknown) => ({
+      ...payment(V.V2.transactionBase64),
+      payload: { transaction: V.V2.transactionBase64, nonce },
+    });
+    for (const nonce of ["n".repeat(257), "n".repeat(4096)]) {
+      expect(await exactCardano.bound(withNonce(nonce))).toBe(V.V2.expectBound);
+      expect(throughJson(await exactCardano.reference(withNonce(nonce)))).toEqual(V.V2.expectReference);
+    }
+    for (const nonce of [7, null, undefined]) {
+      expect(await exactCardano.bound(withNonce(nonce))).toEqual(refused("x402/payload-malformed"));
+    }
+  });
 });
 
 describe("V3 · the real rail", () => {
