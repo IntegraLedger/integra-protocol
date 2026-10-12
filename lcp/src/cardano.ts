@@ -61,7 +61,7 @@ export interface CardanoReader {
 export interface CardanoRef {
   network: CardanoNetwork;
   txId: Hex;
-  /** The last slot the transaction can land in, as a decimal string. */
+  /** The slot from which the transaction cannot land (body key 3, `invalid_hereafter`), as a decimal string. */
   ttlSlot: string;
 }
 
