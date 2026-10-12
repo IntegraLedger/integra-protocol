@@ -1275,8 +1275,10 @@ succeeded transaction must be a call to that escrow whose calldata starts with o
 whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
 succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
 failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
-`KeyRevoked` log naming that account and key, else failed `binding-log-not-found`; a `revokes` that is not an object
-whose `account` and `keyId` are addresses is pending `unreadable`, with no call made. At most four calls.
+`KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. An `opens` that is not an object
+whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, or a `revokes`
+that is not an object whose `account` and `keyId` are addresses, is pending `unreadable`, with no call made. At most
+four calls.
 
 #### Parameters
 
