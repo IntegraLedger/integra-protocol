@@ -19,7 +19,7 @@ import {
   wordAt,
   type Hex,
 } from "./evm-abi.js";
-import { chainIdOf, isAddress, isUint256, normalHash, uint256Of } from "./fields.js";
+import { chainIdOf, isAddress, isObject, isUint256, normalHash, uint256Of } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export type { Hex } from "./evm-abi.js";
@@ -60,6 +60,7 @@ export function eip3009TypedData(a: {
   validBefore: bigint;
   nonce: AtrHash;
 }): Eip3009TypedData | Refusal {
+  if (!isObject(a)) return refusal("evm/network-malformed");
   const chainId = chainIdOf(a.network);
   if (chainId === undefined) return refusal("evm/network-malformed");
   const value = uint256Of(a.value);
@@ -215,14 +216,20 @@ export type EvmStatus =
  * token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
  * pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
  * use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
- * receipt's block. A failed read, a reader for another network, or a `transferLog` that is not one is pending
- * `unreadable`, never failed. At most three calls.
+ * receipt's block. A failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an
+ * `asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`, never failed. At most
+ * three calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
   reader: EvmReader,
 ): Promise<EvmStatus> {
-  if (reader.network !== ref.network || !isTransferLog(ref.transferLog)) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network || !isTransferLog(ref.transferLog)) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (normalHash(ref.transaction) === null || normalHash(ref.h) === null || !isAddress(ref.asset)) {
+    return { state: "pending", why: "unreadable" };
+  }
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -248,7 +255,7 @@ export async function eip3009Status(
  * that `asset` emitted in it. One call.
  */
 export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -486,6 +493,7 @@ function readDelegations(b: Uint8Array): Delegation[] | undefined {
  * big-endian uint256. `authorizationIdDigest(from, to, value)` equals `transferDigest({from, to, value})`.
  */
 export async function transferDigest(v: { from?: Hex; to?: Hex; value?: bigint }): Promise<Hex | Refusal> {
+  if (!isObject(v)) return refusal("evm/field-malformed");
   const parts: Uint8Array[] = [];
   if (v.from !== undefined) {
     if (!isAddress(v.from)) return refusal("evm/field-malformed");
@@ -568,7 +576,8 @@ export type EvmBreadthStatus =
  * word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
  * is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
  * redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
- * finality mark reached. At most three calls.
+ * finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
+ * present and not of the form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const read = await matchedTransfers(ref, reader);
@@ -590,6 +599,7 @@ export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * the same block, by spending the permit or by invalidating the nonce, is read as paying. At most six calls.
  */
 export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
+  if (!isObject(ref)) return { state: "pending", why: "unreadable" };
   const auth = ref.authorization;
   if (!isPullAuthorization(auth) || auth.scheme !== "permit2" || !isTransferLog(ref.transferLog)) {
     return { state: "pending", why: "unreadable" };
@@ -652,7 +662,12 @@ async function matchedTransfers(
   ref: EvmRef & { transaction: Hex },
   reader: EvmReader,
 ): Promise<{ receipt: EvmReceipt; transfers: { from: Hex; to: Hex; value: bigint }[] } | EvmBreadthStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (normalHash(ref.transaction) === null) return { state: "pending", why: "unreadable" };
+  if (ref.bindingLog !== undefined && !isBindingLog(ref.bindingLog)) return { state: "pending", why: "unreadable" };
+  if (ref.transferLog !== undefined && !isTransferLog(ref.transferLog)) return { state: "pending", why: "unreadable" };
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -757,6 +772,15 @@ function isPullAuthorization(a: unknown): a is PullAuthorization {
   );
 }
 
+/** True for a binding log with an address, a 32-byte `topic0` and `value`, and a topic index 1–3 or a data word. */
+function isBindingLog(b: unknown): b is NonNullable<EvmRef["bindingLog"]> {
+  if (typeof b !== "object" || b === null) return false;
+  const r = b as Record<string, unknown>;
+  const word = r["dataWord"];
+  const at = "index" in r ? [1, 2, 3].includes(r["index"] as number) : Number.isSafeInteger(word) && (word as number) >= 0;
+  return isAddress(r["address"]) && bytesOf(r["topic0"])?.length === 32 && bytesOf(r["value"])?.length === 32 && at;
+}
+
 /** True for a `TransferLog` whose members are well formed. */
 function isTransferLog(t: unknown): t is TransferLog {
   if (typeof t !== "object" || t === null) return false;
@@ -856,7 +880,7 @@ export async function redeemedLeafRecover(
   ref: { network: Eip155; transaction: Hex },
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -923,7 +947,7 @@ export function permit2TypedData(a: {
   verifyingContract?: Hex;
   witness?: { type: string; fields: readonly Field[]; value: { [k: string]: Json } };
 }): Permit2TypedData | Refusal {
-  if (!Number.isSafeInteger(a.chainId) || a.chainId <= 0) return refusal("evm/network-malformed");
+  if (!isObject(a) || !Number.isSafeInteger(a.chainId) || a.chainId <= 0) return refusal("evm/network-malformed");
   const verifyingContract = a.verifyingContract ?? PERMIT2;
   if (!isAddress(verifyingContract) || !isAddress(a.spender)) return refusal("evm/field-malformed");
   if (!isUint256(a.nonce) || !isUint256(a.deadline)) return refusal("evm/field-malformed");
@@ -931,7 +955,7 @@ export function permit2TypedData(a: {
   const entries = list ?? [a.permitted as { token: Hex; amount: bigint }];
   if (entries.length === 0 || entries.length > 32) return refusal("evm/field-malformed");
   for (const p of entries) {
-    if (!isAddress(p.token)) return refusal("evm/field-malformed");
+    if (!isObject(p) || !isAddress(p.token)) return refusal("evm/field-malformed");
     if (!isUint256(p.amount)) return refusal("evm/amount-malformed");
   }
   const tokenPermissions: Field[] = [
@@ -1018,7 +1042,9 @@ export function bindSalt(receiverAuthorizer: Hex, policy: Hex, h: AtrHash): Hex 
  * With `payer` zero it is x402's `signatureNonce`.
  */
 export function paymentHash(chainId: number, escrow: Hex, p: PaymentInfo): Hex | Refusal {
-  if (!Number.isSafeInteger(chainId) || chainId <= 0 || !isAddress(escrow)) return refusal("evm/field-malformed");
+  if (!Number.isSafeInteger(chainId) || chainId <= 0 || !isAddress(escrow) || !isObject(p)) {
+    return refusal("evm/field-malformed");
+  }
   for (const a of [p.operator, p.payer, p.receiver, p.token, p.feeReceiver]) {
     if (!isAddress(a)) return refusal("evm/field-malformed");
   }

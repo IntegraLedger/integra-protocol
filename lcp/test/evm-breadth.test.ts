@@ -112,7 +112,7 @@ describe("decodePermissionContext bounds", () => {
 describe("evmStatus", () => {
   const ref = {
     network: "eip155:84532" as const,
-    transferLog: { address: USDC, topic0: TRANSFER_TOPIC as Hex, identity: "from,to" as const, digest: "0x" as Hex },
+    transferLog: { address: USDC, topic0: TRANSFER_TOPIC as Hex, identity: "from,to" as const, digest: word(0n) },
   };
   it("a failed read, a reader for another network, and no receipt are pending", async () => {
     expect(await evmStatus({ ...ref, transaction: TX }, reader("error"))).toEqual({ state: "pending", why: "unreadable" });
