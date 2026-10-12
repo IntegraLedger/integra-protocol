@@ -122,7 +122,8 @@ Ledger, which it reads only once the transaction is in a validated ledger (`xrpl
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
 authorises the pull, and its reference's `authorization` names the nonce the payer signed (the challenge-derived value,
 not H), the deadline, the token and the contract that records the nonce's use, for `authorizationUsed` in
-`@integraledger/lcp/evm`. `status` on `mpp/charge/evm/permit2` reads that record at the receipt's block, as on x402's
-Permit2 pairings.
+`@integraledger/lcp/evm`. `status` on `mpp/charge/evm/permit2` requires the named transaction to carry that nonce as
+32 bytes anywhere in its input, and reads that record set at the receipt's block and unset at the block before, as on
+x402's Permit2 pairings.
 
 The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these rules in full.

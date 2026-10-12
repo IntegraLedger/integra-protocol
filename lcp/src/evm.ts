@@ -543,8 +543,8 @@ export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set at the receipt's block and
  * unset at the block before it, so that the nonce is spent in that block. A transaction without the nonce, or a nonce
  * unused at the receipt's block or used before it, is failed `nonce-not-used`. A failed call is pending `unreadable`.
- * A payer who writes the nonce into a transaction of its own and spends the permit elsewhere in the same block is read
- * as paying. At most six calls.
+ * A payer who writes the nonce into a transaction of its own that makes the reference's transfer, and uses the nonce in
+ * the same block, by spending the permit or by invalidating the nonce, is read as paying. At most six calls.
  */
 export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const auth = ref.authorization;
