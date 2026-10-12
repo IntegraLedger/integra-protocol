@@ -81,7 +81,7 @@ Bounded, read-only calls against one network's endpoint. Every failure rejects w
 
 ### XrplRef
 
-The read keys recorded at claim.
+The read keys `reference` returns, with `fromLedger`, the ledger index the transaction search starts from.
 
 #### Properties
 
@@ -202,25 +202,6 @@ no blob within `MAX_BLOB_HEX` holds more.
 
 ## Functions
 
-### cancelAfterOf()
-
-> **cancelAfterOf**(`blobHex`): `number` \| `undefined`
-
-The `CancelAfter` (field 36 of type UInt32) of a signed blob, read from the canonical field order: every UInt16
-field, then every UInt32 field in field-code order, precede all others. Undefined when the blob has none.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `blobHex` | `string` |
-
-#### Returns
-
-`number` \| `undefined`
-
-***
-
 ### decodeBlob()
 
 > **decodeBlob**(`hex`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `hash`: `string`; `tx`: [`XrplTxJson`](#xrpltxjson); \}\>
@@ -320,27 +301,6 @@ The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as 
 #### Returns
 
 `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
-
-***
-
-### xrplCloseStatus()
-
-> **xrplCloseStatus**(`ref`, `reader`): `Promise`\<[`XrplCloseStatus`](#xrplclosestatus)\>
-
-Reads a reported close: validated with the channel among the transaction's deleted `PayChannel` entries is settled;
-validated without it is failed `not-a-close`; otherwise pending. A ref whose channel is not 64 hex digits is pending
-`unreadable`, with nothing read. One call.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `ref` | [`XrplCloseRef`](#xrplcloseref) |
-| `reader` | [`XrplReader`](#xrplreader) |
-
-#### Returns
-
-`Promise`\<[`XrplCloseStatus`](#xrplclosestatus)\>
 
 ***
 
