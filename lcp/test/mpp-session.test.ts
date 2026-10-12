@@ -17,7 +17,7 @@ import {
 } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
 import { Transaction as TempoTransaction } from "viem/tempo";
-import { TRANSFER_TOPIC, transferDigest, type EvmLog } from "../src/evm.js";
+import { TRANSFER_TOPIC, transferDigest, type EvmLog, type EvmReader } from "../src/evm.js";
 import {
   challengeId,
   evmChannelId,
@@ -40,6 +40,7 @@ import {
   CHANNEL_OPENED_V1_TOPIC,
   CHANNEL_OPENED_V2_TOPIC,
   KEY_AUTHORIZATION_WITNESS_TOPIC,
+  KEY_AUTHORIZED_TOPIC,
   KEY_REVOKED_TOPIC,
   OPEN_V1_SELECTOR,
   OPEN_V2_SELECTOR,
@@ -541,13 +542,72 @@ describe("mpp-subscription-tempo.json", () => {
         to: "0x89b2134890a170c97762b6aca097db78cad7a8e6d49f1436869aa987eb90eb2b",
       },
     });
-    expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel)).toEqual({
+    expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer)).toEqual({
       network: "eip155:42431",
-      bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_REVOKED_TOPIC, index: 2, value: topicOf(f.accessKey) },
+      revokes: { account: f.payer.toLowerCase(), keyId: f.accessKey.toLowerCase() },
     });
+    expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel)).toEqual({ refused: true, code: "mpp/input-malformed" });
     // Profile mpp/session rule 1: "a Tempo `subscription` challenge's id is exactly the base64url (no padding) of H".
     const positioned = { ...cred, challenge: { ...cred.challenge, id: challengeId(H, 0) as string } };
     expect(await subscriptionTempo.bound(positioned)).toEqual({ refused: true, code: "mpp/id-not-ours" });
+  });
+
+  // Tempo's AccountKeychain precompile interface (IAccountKeychain): KeyAuthorizationWitness(address indexed account,
+  // bytes32 indexed witness), KeyAuthorized(address indexed account, address indexed publicKey, ...) and
+  // KeyRevoked(address indexed account, address indexed publicKey), each from the keychain precompile.
+  it("the close is the keychain's KeyRevoked of the access key by the account the activation registered it for", async () => {
+    const other = "0x7777777777777777777777777777777777777777" as const;
+    const log = (topic0: string, ...topics: string[]): EvmLog => ({ address: ACCOUNT_KEYCHAIN, topics: [topic0, ...topics] as `0x${string}`[], data: "0x" });
+    const activation = {
+      status: 1 as const,
+      blockNumber: 90n,
+      logs: [
+        log(KEY_AUTHORIZATION_WITNESS_TOPIC, topicOf(f.payer), H),
+        log(KEY_AUTHORIZED_TOPIC, topicOf(f.payer), topicOf(f.accessKey)),
+      ],
+    };
+    const u = (await subscriptionTempo.build({ challenge: ch, from: f.payer, now: f.now }, H)) as KeyAuthorizationUnsigned;
+    const ref = (await subscriptionTempo.reference(u.complete(await sig65(u.request.digest)) as MppCredential)) as SessionRef;
+    const found = subscriptionTempo.keySearch(ref, activation, H) as SessionRef;
+    expect(found.accessKey?.account).toBe(f.payer.toLowerCase());
+    const close = subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, found.accessKey!.account) as SessionRef;
+    const statusOf = (...logs: EvmLog[]) =>
+      sessionStatus({ ...close, transaction: `0x${"77".repeat(32)}` }, readerFor("eip155:42431", { status: 1, blockNumber: "90", logs }));
+    expect(await statusOf(log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(f.accessKey)))).toMatchObject({ state: "settled" });
+    for (const logs of [
+      [log(KEY_REVOKED_TOPIC, topicOf(other), topicOf(f.accessKey))],
+      [log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(other))],
+      [{ ...log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(f.accessKey)), address: other }],
+      [],
+    ]) {
+      expect(await statusOf(...logs)).toEqual({ state: "failed", why: "binding-log-not-found" });
+    }
+    expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, "0x1234" as `0x${string}`)).toEqual({ refused: true, code: "mpp/input-malformed" });
+  });
+
+  // CONTRIBUTING.md, "Failures are values": status answers a caller's ref it cannot read as pending unreadable, as it
+  // answers a ref that is not an object, and makes no reader call for it.
+  it("a close ref whose revokes is not an account and a key address reads as pending unreadable, with no call made", async () => {
+    const close = subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer) as SessionRef;
+    const calls = { n: 0 };
+    const settled = readerFor("eip155:42431", { status: 1, blockNumber: "90", logs: [] });
+    const counting: EvmReader = {
+      network: settled.network,
+      receipt: async (tx) => (calls.n++, settled.receipt(tx)),
+      blockNumber: async (tag) => (calls.n++, settled.blockNumber(tag)),
+      transaction: async (tx) => (calls.n++, settled.transaction(tx)),
+      call: async (to, data, block) => (calls.n++, settled.call(to, data, block)),
+    };
+    for (const revokes of [
+      null,
+      "0x7777777777777777777777777777777777777777",
+      { account: f.payer },
+      { keyId: "0x7777777777777777777777777777777777777777" },
+    ]) {
+      const ref = { ...close, revokes, transaction: `0x${"77".repeat(32)}` } as unknown as SessionRef & { transaction: `0x${string}` };
+      expect(await sessionStatus(ref, counting), JSON.stringify(revokes)).toEqual({ state: "pending", why: "unreadable" });
+    }
+    expect(calls.n).toBe(0);
   });
 
   it("L2: a live key authorization on Moderato", async () => {

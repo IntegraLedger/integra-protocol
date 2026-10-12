@@ -132,6 +132,8 @@ export interface SessionRef extends EvmRef {
    * the read keys of a transfer made under the key for that account.
    */
   accessKey?: { keyId: Hex; token: Hex; to: Hex; account?: Hex };
+  /** The close of a subscription: the account keychain's `KeyRevoked` whose topic 1 is `account` and topic 2 `keyId`. */
+  revokes?: { account: Hex; keyId: Hex };
 }
 
 export type SessionStatus =
@@ -400,12 +402,15 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
  * succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
  * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
  * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
- * failed `binding-log-not-found`. At most four calls.
+ * failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
+ * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`; a `revokes` that is not an object
+ * whose `account` and `keyId` are addresses is pending `unreadable`, with no call made. At most four calls.
  */
 export async function sessionStatus(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionStatus> {
   if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
     return { state: "pending", why: "unreadable" };
   }
+  if (ref.revokes !== undefined && !readableRevokes(ref.revokes)) return { state: "pending", why: "unreadable" };
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
     network: reader.network,
@@ -419,6 +424,11 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
   if (s.state === "settled" && ref.closes !== undefined) return closeRead(s, ref.transaction, ref.closes, reader);
   if (s.state === "settled" && ref.accessKey?.account !== undefined) {
     return spentUnder((seen as EvmReceipt | null)?.logs ?? [], ref.accessKey) ? s : { state: "failed", why: "binding-log-not-found" };
+  }
+  if (s.state === "settled" && ref.revokes !== undefined) {
+    const { account, keyId } = ref.revokes;
+    const revoked = keychainLog((seen as EvmReceipt | null)?.logs ?? [], KEY_REVOKED_TOPIC, [account, keyId]);
+    return revoked ? s : { state: "failed", why: "binding-log-not-found" };
   }
   if (s.state !== "settled" || ref.opened === undefined) return s;
   const o = ref.opened;
@@ -452,12 +462,23 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
   return opened ? s : { state: "failed", why: "binding-log-not-found" };
 }
 
+/** Whether `revokes` is an object whose `account` and `keyId` are addresses, as `closeRef` writes it. */
+function readableRevokes(revokes: unknown): boolean {
+  return isObject(revokes) && isAddress(revokes["account"]) && isAddress(revokes["keyId"]);
+}
+
 /** Whether the logs hold the account keychain's `AccessKeySpend` naming the key's account, key id and token. */
 function spentUnder(logs: readonly EvmLog[], k: NonNullable<SessionRef["accessKey"]>): boolean {
-  if (!isAddress(k.account) || !isAddress(k.keyId) || !isAddress(k.token)) return false;
-  const topics = [ACCESS_KEY_SPEND_TOPIC, ...[k.account, k.keyId, k.token].map((a) => hexOf(addressWord(a)))];
+  return keychainLog(logs, ACCESS_KEY_SPEND_TOPIC, [k.account, k.keyId, k.token]);
+}
+
+/** Whether the logs hold an account keychain log whose topics are exactly `topic0` and these addresses, padded. */
+function keychainLog(logs: readonly EvmLog[], topic0: Hex, addresses: readonly unknown[]): boolean {
+  if (!addresses.every(isAddress)) return false;
+  const topics = [topic0, ...addresses.map((a) => hexOf(addressWord(a as Hex)))];
   return logs.some(
-    (l) => sameBytes(l.address, ACCOUNT_KEYCHAIN) && l.topics.length === 4 && topics.every((t, i) => sameBytes(l.topics[i], t)),
+    (l) =>
+      sameBytes(l.address, ACCOUNT_KEYCHAIN) && l.topics.length === topics.length && topics.every((t, i) => sameBytes(l.topics[i], t)),
   );
 }
 
@@ -1194,16 +1215,19 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
   };
 }
 
-function subscriptionCloseRef(chosen: MppChallenge, _channel: string): SessionRef | Refusal {
+/**
+ * The close keys of a subscription: the account keychain's `KeyRevoked` naming `account`, the payer's account, and the
+ * issued challenge's access key. The account is the one the activation registered the key for, which `keySearch` reads
+ * from the activation's receipt as `accessKey.account`; without an address it is refused `mpp/input-malformed`.
+ */
+function subscriptionCloseRef(chosen: MppChallenge, _channel: string, account?: Hex): SessionRef | Refusal {
   const p = paramsOf(chosen);
   if (isRefusal(p)) return p;
   const key = p.details["accessKey"];
   const address = isObject(key) ? key["accessKeyAddress"] : undefined;
   if (!isAddress(address)) return refusal("mpp/access-key-malformed");
-  return {
-    network: p.network,
-    bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_REVOKED_TOPIC, index: 2, value: hexOf(addressWord(address)) },
-  };
+  if (!isAddress(account)) return refusal("mpp/input-malformed");
+  return { network: p.network, revokes: { account: account.toLowerCase() as Hex, keyId: address.toLowerCase() as Hex } };
 }
 
 // ── The records.
