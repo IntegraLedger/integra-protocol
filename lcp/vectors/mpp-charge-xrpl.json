@@ -130,7 +130,7 @@
     "expect": "mpp/carrier-not-challenge"
    },
    {
-    "case": "build with a malformed account, fee, sequence or lastLedgerSequence",
+    "case": "build with an account that is not a string, or a malformed fee, sequence or lastLedgerSequence",
     "expect": "mpp/input-malformed"
    }
   ]
