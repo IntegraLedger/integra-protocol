@@ -35,6 +35,7 @@ import {
 } from "../src/hedera.js";
 import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
+import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -357,4 +358,18 @@ describe("polkadot", () => {
     ["polkadotRecover", polkadotRecover, file, refused("polkadot/wrong-reader")],
     ["polkadotLocate", polkadotLocate, file, refused("polkadot/wrong-reader"), 0n, 1n],
   ]);
+});
+
+describe("starknet", () => {
+  reads([
+    ["starknetStatus", starknetStatus, "x402-exact-starknet.json", UNREADABLE],
+    ["starknetLandedNonce", starknetLandedNonce, "x402-exact-starknet.json", refused("starknet/wrong-reader")],
+  ]);
+  answers([["outsideExecution", outsideExecution, [undefined], 0, refused("starknet/network-malformed")]]);
+  it("chainIdFelt: each network's chain id, the short string of its reference (Starknet's SN_MAIN and SN_SEPOLIA)", () => {
+    expect(chainIdFelt("starknet:SN_MAIN")).toBe("0x534e5f4d41494e");
+    expect(chainIdFelt("starknet:SN_SEPOLIA")).toBe("0x534e5f5345504f4c4941");
+  });
+  const notNetworks = [...NOT_OBJECTS, "starknet:XYZ", "eip155:1", "starknet:sn_main"];
+  throwsTypeError("chainIdFelt", notNetworks.map((n) => () => chainIdFelt(n as never)));
 });

@@ -152,8 +152,9 @@ export function snNonce(h: AtrHash): Felt | Refusal {
   return feltOf(BigInt(nh) & MASK_250);
 }
 
-/** The network's reference as a short-string felt. */
+/** The network's reference as a short-string felt. Throws TypeError on a network that is not a `StarknetNetwork`. */
 export function chainIdFelt(n: StarknetNetwork): Felt {
+  if (!NETWORKS.includes(n)) throw new TypeError("not a Starknet network");
   return feltOf(shortString(n.slice("starknet:".length))!);
 }
 
@@ -187,7 +188,7 @@ export function outsideExecution(a: {
   executeBefore: number;
   nonce: Felt;
 }): OutsideExecutionTypedData | Refusal {
-  if (!NETWORKS.includes(a.network)) return refusal("starknet/network-malformed");
+  if (!isObject(a) || !NETWORKS.includes(a.network)) return refusal("starknet/network-malformed");
   const feePayer = feltValue(a.feePayer);
   const asset = feltValue(a.asset);
   const payTo = feltValue(a.payTo);
@@ -266,6 +267,8 @@ function word(v: bigint): Uint8Array {
  */
 export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
   if (
+    !isObject(ref) ||
+    !isObject(reader) ||
     reader.network !== ref.network ||
     normalHash(ref.idDigest) === null ||
     feltValue(ref.from) === undefined ||
@@ -333,7 +336,7 @@ async function transferEmitted(
  * `ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce.
  */
 export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<Felt | Refusal> {
-  if (reader.network !== ref.network) return refusal("starknet/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("starknet/wrong-reader");
   let receipt: StarknetReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
