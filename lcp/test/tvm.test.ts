@@ -258,7 +258,8 @@ describe("x402-exact-tvm.json", () => {
   // the signature before any action runs (wallet_v5.fc), so no transaction of the payer's W5 wallet sends its Jetton
   // transfer. An equal Jetton body executed on the payer's Jetton wallet some other way, and delivered, is not the
   // payment: pending `not-found` up to `validUntil`, then failed `expired`, or `no-transfer` when the W5 wallet ran the
-  // request and sent nothing (step 9's head rule), never settled.
+  // request and sent nothing (the head read first decides, since wallet_v5.fc refuses a request at or past its
+  // `valid_until`), never settled.
   it("plant: a Jetton transfer the payer's W5 wallet never sent is never the payment", async () => {
     const u = await exactTvm.build(choice(), H);
     if ("refused" in u) throw new Error(u.code);
