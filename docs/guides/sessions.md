@@ -260,6 +260,13 @@ channel, account)` takes the account the activation registered the key for, whic
 activation's receipt as `accessKey.account`; without it, `closeRef` refuses `mpp/input-malformed`. Another account's
 revocation of the same key is not this close.
 
+The `mpp/subscription/tempo` activation is read by what the payer signed in the key authorization: its `reference`
+names the `Transfer` of the authorization's one limit token, which is also its one allowed-call target, to its one
+recipient, identified by the recipient alone, and `accessKey` carries the same token and recipient for `keySearch`. The
+request's amount, currency and recipient are not read. An authorization that names more than one token or recipient,
+or none, is refused `tempo/key-authorization-malformed`. A selector rule with no recipients allows any recipient, so
+the authorization does not name exactly one, and it is refused the same way.
+
 On `x402/batch-settlement/eip155`, the opening's `status` counts the payer's deposit only from the call that deposited
 into this channel. The channel contract collects a deposit and then emits `Deposited` for the channel, so the payer's
 transfer must be among the logs between the contract's previous `Deposited` and the channel's own. A gift into the

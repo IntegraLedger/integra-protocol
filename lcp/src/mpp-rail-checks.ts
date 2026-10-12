@@ -72,6 +72,21 @@ function utf8Length(s: string): number {
   return new TextEncoder().encode(s).length;
 }
 
+/** A charge request's `externalId` as NEAR Intents carries it: absent or a string. */
+export function isExternalId(v: unknown): boolean {
+  return v === undefined || typeof v === "string";
+}
+
+/** MPP Solana's `externalId`, which the payer signs as a memo: absent, or a string of at most 566 bytes. */
+export function isSolanaExternalId(v: unknown): boolean {
+  return v === undefined || (typeof v === "string" && utf8Length(v) <= MAX_MEMO_BYTES);
+}
+
+/** MPP XRPL's `methodDetails.invoiceId`: absent, or 64 hex digits. */
+export function isXrplInvoiceId(v: unknown): boolean {
+  return v === undefined || (typeof v === "string" && HEX64.test(v));
+}
+
 /** The CAIP-2 network of MPP Solana's `methodDetails.network` (absent: mainnet), null for `localnet`. */
 export function solanaNetworkOf(details: Obj, required: boolean): SolanaNetwork | null | Refusal {
   const n = details["network"];
@@ -133,13 +148,20 @@ export function solanaChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Re
   if (!isU64Positive(r["amount"]) || !(r["currency"] === "sol" || isKey(r["currency"])) || !isKey(r["recipient"])) {
     return refusal("mpp/request-malformed");
   }
-  const ext = r["externalId"];
-  if (ext !== undefined && (typeof ext !== "string" || utf8Length(ext) > MAX_MEMO_BYTES)) {
-    return refusal("mpp/request-malformed");
-  }
+  if (!isSolanaExternalId(r["externalId"])) return refusal("mpp/request-malformed");
   if (d["feePayer"] !== undefined && typeof d["feePayer"] !== "boolean") return refusal("mpp/request-malformed");
   if (d["feePayer"] === true && !isKey(d["feePayerKey"])) return refusal("mpp/request-malformed");
   return ["mpp/charge/solana"];
+}
+
+/** A charge challenge's `methodDetails.feePayer`: absent or a boolean. */
+export function isFeePayer(v: unknown): v is boolean | undefined {
+  return v === undefined || typeof v === "boolean";
+}
+
+/** A Stellar account (`G…`) or its muxed form (`M…`), as a `charge` challenge's `recipient` is. */
+export function isStellarRecipient(v: unknown): v is string {
+  return typeof v === "string" && (STELLAR_ACCOUNT.test(v) || STELLAR_MUXED.test(v));
 }
 
 /**
@@ -154,12 +176,11 @@ export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairing[] | R
     !isDecimal(r["amount"]) ||
     typeof r["currency"] !== "string" ||
     !STELLAR_CONTRACT.test(r["currency"]) ||
-    typeof to !== "string" ||
-    !(STELLAR_ACCOUNT.test(to) || STELLAR_MUXED.test(to))
+    !isStellarRecipient(to)
   ) {
     return refusal("stellar/option-malformed");
   }
-  if (d["feePayer"] !== undefined && typeof d["feePayer"] !== "boolean") return refusal("stellar/option-malformed");
+  if (!isFeePayer(d["feePayer"])) return refusal("stellar/option-malformed");
   return ["mpp/charge/stellar"];
 }
 
@@ -182,8 +203,7 @@ export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refu
   ) {
     return refusal("mpp/request-malformed");
   }
-  const inv = d["invoiceId"];
-  if (inv !== undefined && (typeof inv !== "string" || !HEX64.test(inv))) return refusal("mpp/request-malformed");
+  if (!isXrplInvoiceId(d["invoiceId"])) return refusal("mpp/request-malformed");
   for (const k of ["destinationTag", "sourceTag"]) {
     if (d[k] !== undefined && !isUint32(d[k])) return refusal("mpp/request-malformed");
   }
@@ -209,7 +229,7 @@ export function nearIntentsChargePairings(r: Obj, d: Obj): readonly MppPairing[]
     !CAIP2.test(d["originNetwork"]) ||
     typeof d["destinationNetwork"] !== "string" ||
     !CAIP2.test(d["destinationNetwork"]) ||
-    (r["externalId"] !== undefined && typeof r["externalId"] !== "string") ||
+    !isExternalId(r["externalId"]) ||
     (d["depositMemo"] !== undefined && d["depositMemo"] !== null && typeof d["depositMemo"] !== "string")
   ) {
     return refusal("mpp/request-malformed");

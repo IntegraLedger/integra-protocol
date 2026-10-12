@@ -21,7 +21,14 @@ import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementRefusal } from "./internal/agreement.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
-import { cardChargePairings, stripeChargePairings, stripeSubscriptionPairings, usdcChargePairings } from "./mpp-method-checks.js";
+import {
+  USDC_PROFILES,
+  cardChargePairings,
+  stripeChargePairings,
+  stripeSubscriptionPairings,
+  usdcChargePairings,
+  usdcProfile,
+} from "./mpp-method-checks.js";
 import {
   hederaChargePairings,
   hederaSessionPairings,
@@ -886,20 +893,62 @@ export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]
 }
 
 /**
- * The echoed challenge of a credential for `pairing`: H from `challengeBound`, and the challenge checked as placed and
- * naming `pairing`.
+ * An echoed challenge as a credential presents it: the request decoded, with no member of it checked. Each pairing
+ * reads, and checks, only the request members its own read keys or derivation use.
+ */
+export interface Echoed {
+  challenge: MppChallenge & { id: string };
+  request: { [k: string]: Json };
+  /** `methodDetails`; empty when the request has none. */
+  details: { [k: string]: Json };
+  /**
+   * Unix seconds of `expires`; undefined when the challenge carries none; `mpp/expires-required`, the code `advertise`
+   * gives, when it carries one that does not read as a date. A member that reads `expires` refuses with that code.
+   */
+  expires: number | undefined | Refusal;
+}
+
+/**
+ * The echoed challenge of a credential for `pairing`: H from `challengeBound`, and the challenge's intent and method,
+ * which must be `pairing`'s, with, on `usdc`, the profile `methodDetails.type` names. The request's checks are not run
+ * again here: they are `advertise`'s and `build`'s.
  */
 export function echoedFor(
   c: unknown,
   pairing: MppPairing,
-): { h: AtrHash; checked: Checked; payload: { [k: string]: Json } } | Refusal {
+): { h: AtrHash; checked: Echoed; payload: { [k: string]: Json } } | Refusal {
   const b = challengeBound(c);
   if (isRefusal(b)) return b;
   const credential = c as MppCredential;
-  const checked = checkChallenge(credential.challenge, true);
-  if (isRefusal(checked)) return checked;
-  if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-  return { h: b.h, checked, payload: credential.payload };
+  const [, intent, method] = pairing.split("/");
+  if (credential.challenge.intent !== intent || credential.challenge.method !== method) return refusal("mpp/not-this-pairing");
+  const echoed = echoedOf(credential.challenge as MppChallenge & { id: string }, b.request);
+  if (isRefusal(echoed)) return echoed;
+  if (method === "usdc") {
+    const profile = usdcProfile(echoed.details);
+    if (isRefusal(profile)) return profile;
+    if (USDC_PROFILES[profile.type] !== pairing) return refusal("mpp/not-this-pairing");
+  }
+  return { h: b.h, checked: echoed, payload: credential.payload };
+}
+
+/**
+ * The `Echoed` of a challenge and its decoded request. A `methodDetails` that is present and not an object is
+ * `mpp/request-malformed`, the code `advertise` gives it; it is never read as empty.
+ */
+export function echoedOf(challenge: MppChallenge & { id: string }, request: { [k: string]: Json }): Echoed | Refusal {
+  const md = request["methodDetails"];
+  if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
+  const details = (md ?? {}) as { [k: string]: Json };
+  const at = typeof challenge.expires === "string" ? unixOf(challenge.expires) : undefined;
+  const expires = challenge.expires === undefined ? undefined : (at ?? refusal("mpp/expires-required"));
+  return { challenge, request, details, expires };
+}
+
+/** The request member `key` as an address, else `mpp/request-malformed`. */
+export function requestAddress(e: Echoed, key: string): Hex | Refusal {
+  const v = e.request[key];
+  return isAddress(v) ? v : refusal("mpp/request-malformed");
 }
 
 /** The buyer's chosen challenge for `pairing`, checked as placed, whose id derives from `h`. */

@@ -30,8 +30,10 @@ import {
   pairingsOf,
   place,
   read,
+  requestAddress,
   tie,
   type Checked,
+  type Echoed,
   type MppChallenge,
   type MppChoice,
   type MppCredential,
@@ -143,7 +145,7 @@ export function usdcGatewaySalt(i: GatewaySaltInput): Hex | Refusal {
 
 // ── Shared steps.
 
-function profileOf(c: Checked): { [k: string]: Json } {
+function profileOf(c: Checked | Echoed): { [k: string]: Json } {
   const p = c.details[String(c.details["type"])];
   return isObject(p) ? (p as { [k: string]: Json }) : {};
 }
@@ -231,7 +233,7 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
 }
 
 /** H from the echoed challenge, once the authorization's nonce equals `usdcNonce` over it, by bytes. */
-async function evmBinding(input: unknown): Promise<{ h: AtrHash; checked: Checked; nonce: Hex } | Refusal> {
+async function evmBinding(input: unknown): Promise<{ h: AtrHash; checked: Echoed; nonce: Hex } | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
   const e = echoedFor(credential, EVM);
@@ -264,11 +266,14 @@ async function evmReference(input: unknown): Promise<EvmRef | Refusal> {
   if (!isAddress(p["from"]) || !isAddress(p["to"]) || value === undefined || validBefore === undefined) {
     return refusal("mpp/credential-malformed");
   }
+  const currency = requestAddress(b.checked, "currency");
+  if (isRefusal(currency)) return currency;
+  const chainId = profileOf(b.checked)["chainId"];
+  if (typeof chainId !== "number" || !Number.isSafeInteger(chainId) || chainId <= 0) return refusal("mpp/request-malformed");
   const digest = await transferDigest({ from: p["from"], to: p["to"], value });
   if (isRefusal(digest)) return digest;
-  const currency = str(b.checked.request["currency"]) as Hex;
   return {
-    network: `eip155:${profileOf(b.checked)["chainId"] as number}`,
+    network: `eip155:${chainId}`,
     settleBy: validBefore.toString(),
     bindingLog: { address: currency, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: b.nonce },
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
@@ -319,7 +324,7 @@ export const chargeUsdcEvm = Object.freeze({
 
 export const chargeUsdcSolana = solanaChargePairing({
   id: SOLANA,
-  details: (c: Checked) => profileOf(c),
+  details: (c: Checked | Echoed) => profileOf(c),
   networkRequired: true,
   occupied: "mpp/carrier-occupied",
 });
@@ -422,7 +427,7 @@ type Decoded = ReturnType<StacksPeer["deserializeTransaction"]>;
  */
 async function stacksBinding(
   input: unknown,
-): Promise<{ h: AtrHash; checked: Checked; wire: Uint8Array; tx: Decoded; peer: StacksPeer } | Refusal> {
+): Promise<{ h: AtrHash; checked: Echoed; wire: Uint8Array; tx: Decoded; peer: StacksPeer } | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
   const e = echoedFor(credential, STACKS);
@@ -556,7 +561,8 @@ function decimalOf(v: unknown): string | undefined {
  * H from the echoed challenge, once the signed burn intent's TransferSpec salt equals `usdcGatewaySalt` over the
  * challenge and the credential's own values, by bytes. The layout read is `authorization.format` absent or
  * `circle-gateway-v1`, and `authorization.transfer` a SignedBurnIntent `{burnIntent: {maxBlockHeight, maxFee, spec},
- * signature}`; anything else is `mpp/gateway-unread`. No signature is verified and no value is compared.
+ * signature}`; anything else is `mpp/gateway-unread`. The request's `recipient`, which the salt's preimage carries, is a
+ * string, else `mpp/request-malformed`, the code `advertise` gives. No signature is verified and no value is compared.
  */
 async function gatewayBound(input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
@@ -597,6 +603,8 @@ async function gatewayBound(input: unknown): Promise<AtrHash | Refusal> {
   }
   const requestHash = await usdcRequestHash(credential.challenge.request);
   if (isRefusal(requestHash)) return requestHash;
+  const recipient = e.checked.request["recipient"];
+  if (typeof recipient !== "string") return refusal("mpp/request-malformed");
   const expected = usdcGatewaySalt({
     id: credential.challenge.id,
     realm: credential.challenge.realm,
@@ -605,7 +613,7 @@ async function gatewayBound(input: unknown): Promise<AtrHash | Refusal> {
     destinationNetwork,
     sourceDepositor: source,
     sourceSigner,
-    recipient: str(e.checked.request["recipient"]),
+    recipient,
     destinationRecipient,
     amount,
     maxFee,

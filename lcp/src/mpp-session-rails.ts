@@ -68,6 +68,7 @@ import {
   read,
   tie,
   type Checked,
+  type Echoed,
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
@@ -199,8 +200,16 @@ const LATER =
 
 // ── mpp/session/hedera.
 
-function hederaEscrow(checked: Checked): Hex {
-  return (checked.details["escrowContract"] as string).toLowerCase() as Hex;
+/** `methodDetails.escrowContract`, lowercase, else `mpp/request-malformed`. */
+function hederaEscrow(checked: Checked | Echoed): Hex | Refusal {
+  const escrow = checked.details["escrowContract"];
+  return isAddress(escrow) ? (escrow.toLowerCase() as Hex) : refusal("mpp/request-malformed");
+}
+
+/** `methodDetails.channelProgram` of a Solana session challenge, else `svm/input-malformed`. */
+function channelProgram(checked: Checked | Echoed): string | Refusal {
+  const program = checked.details["channelProgram"];
+  return typeof program === "string" && keyBytes(program) !== null ? program : refusal("svm/input-malformed");
 }
 
 function hederaChain(network: string): 295 | 296 {
@@ -216,6 +225,8 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   if (isRefusal(e)) return e;
   const network = hederaSessionNetworkOf(e.checked.details);
   if (isRefusal(network)) return network;
+  const escrow = hederaEscrow(e.checked);
+  if (isRefusal(escrow)) return escrow;
   if (reader.network !== network) return refusal("hedera/unreadable");
   const tx = normalHash(e.payload["txHash"]);
   if (tx === null) return refusal("mpp/credential-malformed");
@@ -228,7 +239,6 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   if (receipt === null) return refusal("hedera/not-found");
   if (!isObject(receipt) || !Array.isArray(receipt.logs) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
   if (receipt.status === 0) return refusal("hedera/reverted");
-  const escrow = hederaEscrow(e.checked);
   const logs = receipt.logs.filter((l) => sameBytes(l.address.toLowerCase(), escrow)).slice(0, MAX_LANDED_LOGS);
   return { ...presented, landed: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
 }
@@ -247,6 +257,7 @@ async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
   const channel = normalHash(e.payload["channelId"]);
   if (channel === null) return refusal("mpp/credential-malformed");
   const escrow = hederaEscrow(e.checked);
+  if (isRefusal(escrow)) return escrow;
   const opened = landed.logs.filter(
     (l) =>
       isLog(l) &&
@@ -285,13 +296,15 @@ async function hederaReference(input: unknown): Promise<HederaSessionRef | Refus
   if (isRefusal(e)) return e;
   const network = hederaSessionNetworkOf(e.checked.details);
   if (isRefusal(network)) return network;
+  const escrow = hederaEscrow(e.checked);
+  if (isRefusal(escrow)) return escrow;
   const tx = normalHash(e.payload["txHash"]);
   const channel = normalHash(e.payload["channelId"]);
   if (tx === null || channel === null) return refusal("mpp/credential-malformed");
   return {
     network,
     transaction: tx as Hex,
-    bindingLog: { address: hederaEscrow(e.checked), topic0: CHANNEL_OPENED_TOPIC, index: 1, value: channel as Hex },
+    bindingLog: { address: escrow, topic0: CHANNEL_OPENED_TOPIC, index: 1, value: channel as Hex },
   };
 }
 
@@ -343,6 +356,7 @@ function hederaCloseRef(chosen: MppChallenge, channel: string): Omit<HederaClose
   const c = normalHash(channel);
   if (c === null) return refusal("mpp/credential-malformed");
   const escrow = hederaEscrow(checked);
+  if (isRefusal(escrow)) return escrow;
   return {
     phase: "close",
     network,
@@ -367,6 +381,7 @@ async function hederaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Heder
   if (isRefusal(network)) return network;
   const chainId = hederaChain(network);
   const escrow = hederaEscrow(checked);
+  if (isRefusal(escrow)) return escrow;
   const currency = (checked.request["currency"] as string).toLowerCase() as Hex;
   const recipient = (checked.request["recipient"] as string).toLowerCase() as Hex;
   const channelId = hederaChannelId({
@@ -432,7 +447,9 @@ async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
   if (isRefusal(network)) return network;
   const channelId = normalHash(o.payload["channelId"]);
   if (channelId === null) return refusal("mpp/credential-malformed");
-  const typedData = hederaVoucher({ channelId: channelId as Hex, escrow: hederaEscrow(o.checked), chainId: hederaChain(network) }, w.cumulativeAmount);
+  const escrow = hederaEscrow(o.checked);
+  if (isRefusal(escrow)) return escrow;
+  const typedData = hederaVoucher({ channelId: channelId as Hex, escrow, chainId: hederaChain(network) }, w.cumulativeAmount);
   const challenge = { ...w.challenge };
   const { action } = w;
   const cumulativeAmount = w.cumulativeAmount.toString();
@@ -454,14 +471,16 @@ function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
 }
 
 /** The opening's checks: the one `open` of the challenge's program, its salt H's first 8 bytes, its channel the payload's. */
-function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Checked; tx: SvmTx } | Refusal {
+function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Echoed; tx: SvmTx; program: string } | Refusal {
   const e = opening(presented, SOLANA);
   if (isRefusal(e)) return e;
+  const program = channelProgram(e.checked);
+  if (isRefusal(program)) return program;
   const tx = solanaOpenTx(e.payload);
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
-  const open = openOf(tx, e.checked.details["channelProgram"] as string);
+  const open = openOf(tx, program);
   if (isRefusal(open)) return open;
   if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
   const declared = keyBytes(e.payload["channelId"]);
@@ -470,7 +489,7 @@ function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Checked
   if (auth !== undefined && (!isObject(auth) || auth["challengeId"] !== presented.challenge.id)) {
     return refusal("svm/proof-not-challenge");
   }
-  return { h: e.h, checked: e.checked, tx };
+  return { h: e.h, checked: e.checked, tx, program };
 }
 
 async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -493,7 +512,7 @@ async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot">
   const network = solanaNetworkOf(o.checked.details, true);
   if (network === null) return refusal("svm/network-undeclared");
   if (isRefusal(network)) return network;
-  const open = openOf(o.tx, o.checked.details["channelProgram"] as string);
+  const open = openOf(o.tx, o.program);
   if (isRefusal(open)) return open;
   const ref = await svmReference(network, o.tx);
   return isRefusal(ref) ? ref : { ...ref, channel: open.channel };
@@ -546,7 +565,9 @@ function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef
   if (isRefusal(network)) return network;
   const c = keyBytes(channel);
   if (c === null) return refusal("mpp/credential-malformed");
-  return { phase: "close", network, program: checked.details["channelProgram"] as string, channel: keyString(c) };
+  const program = channelProgram(checked);
+  if (isRefusal(program)) return program;
+  return { phase: "close", network, program, channel: keyString(c) };
 }
 
 /**
@@ -602,7 +623,7 @@ async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
   const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64);
   if (isRefusal(o)) return o;
   if (o.checked.details["voucherSigner"] === "operator") return refusal("mpp/within-action-not-built");
-  const signer = openSigner(o.tx, o.checked.details["channelProgram"] as string);
+  const signer = openSigner(o.tx, o.program);
   if (isRefusal(signer)) return signer;
   const channel = keyBytes(w.opening.payload["channelId"]);
   if (channel === null) return refusal("mpp/credential-malformed");
@@ -669,7 +690,7 @@ function xrplLcpMemo(tx: XrplTxJson): AtrHash | Refusal {
  */
 async function xrplOpening(
   presented: MppCredential,
-): Promise<{ h: AtrHash; checked: Checked; tx: XrplTxJson; hash: string; blob: string } | Refusal> {
+): Promise<{ h: AtrHash; checked: Echoed; tx: XrplTxJson; hash: string; blob: string } | Refusal> {
   const e = opening(presented, XRPL);
   if (isRefusal(e)) return e;
   const blob = e.payload["transaction"];

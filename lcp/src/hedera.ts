@@ -1086,11 +1086,13 @@ function fromBase64Url(s: unknown): Uint8Array {
 }
 
 /**
- * The CAIP-2 network of a charge request: `methodDetails.chainId` 295 or 296; absent, `defaultNetwork`.
+ * The CAIP-2 network of a charge request: `methodDetails.chainId` 295 or 296; absent, `defaultNetwork`. A
+ * `methodDetails` that is present and not an object is `mpp/request-malformed`, the code `advertise` gives it.
  */
 function chargeNetwork(request: MppHederaRequest, defaultNetwork?: HederaNetwork): HederaNetwork | Refusal {
   if (!isObject(request)) return refusal("hedera/option-malformed");
   const md = request["methodDetails"];
+  if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
   const chainId = isObject(md) ? md["chainId"] : undefined;
   if (chainId === undefined) return defaultNetwork !== undefined && isHederaNetwork(defaultNetwork) ? defaultNetwork : refusal("hedera/chain-id-unnamed");
   return hederaNetworkOfChainId(chainId);

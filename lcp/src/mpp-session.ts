@@ -36,21 +36,23 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
-  challengeBound,
   challengeIdH,
   checkChallenge,
   credentialOf,
   decodeObject,
   deepFreeze,
   didPkhAddress,
+  echoedFor,
   isChallengeShape,
   isHexBytes,
   isObject,
   place,
   read,
+  requestAddress,
   tie,
   unixOf,
   type Checked,
+  type Echoed,
   type MppChallenge,
   type MppChoice,
   type MppCredential,
@@ -277,6 +279,13 @@ interface Params {
   details: { [k: string]: Json };
 }
 
+/**
+ * The chain, escrow and protocol version an EVM or Tempo session or subscription challenge names. A `methodDetails`
+ * that is present and not an object is `mpp/request-malformed`, never read as empty. On a Tempo session,
+ * `sessionProtocol` is absent, `v1` or `v2`, else `mpp/session-protocol`, and a missing `chainId` reads as Tempo's
+ * default chain on v1 only: a v2 session without `chainId` or `escrowContract` is `mpp/chain-id-required`, the codes
+ * `advertise` gives.
+ */
 function paramsOf(c: unknown): Params | Refusal {
   if (!isObject(c) || typeof c["request"] !== "string") return refusal("mpp/credential-malformed");
   const method = c["method"];
@@ -287,16 +296,23 @@ function paramsOf(c: unknown): Params | Refusal {
   const request = decodeObject(c["request"]);
   if (request === undefined) return refusal("mpp/request-malformed");
   const md = request["methodDetails"];
-  const details = isObject(md) ? (md as { [k: string]: Json }) : {};
+  if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
+  const details = (md ?? {}) as { [k: string]: Json };
+  const tempoSession = method === "tempo" && intent === "session";
+  const protocol = details["sessionProtocol"];
+  if (tempoSession && protocol !== undefined && protocol !== "v1" && protocol !== "v2") return refusal("mpp/session-protocol");
+  if (tempoSession && protocol === "v2" && (details["chainId"] === undefined || details["escrowContract"] === undefined)) {
+    return refusal("mpp/chain-id-required");
+  }
   const rawChain = details["chainId"];
   const chainId =
     typeof rawChain === "number" && Number.isSafeInteger(rawChain) && rawChain > 0
       ? rawChain
-      : method === "tempo" && intent === "session" && rawChain === undefined
+      : tempoSession && protocol !== "v2" && rawChain === undefined
         ? TEMPO_V1_DEFAULT_CHAIN
         : undefined;
   if (chainId === undefined) return refusal("mpp/chain-id-required");
-  const version = details["sessionProtocol"] === "v2" ? "v2" : "v1";
+  const version = protocol === "v2" ? "v2" : "v1";
   const escrow = details["escrowContract"];
   if (intent === "session" && !isAddress(escrow)) return refusal("mpp/escrow-malformed");
   return {
@@ -330,16 +346,12 @@ function offerFor(choice: MppChoice, h: AtrHash, pairing: ChannelId): Checked | 
   return checked;
 }
 
+/** H from an echoed challenge of `pairing`'s intent and method, with the echoed challenge and the payload. */
 function echoed(
   presented: MppCredential,
   pairing: ChannelId,
-): { h: AtrHash; checked: Checked; payload: { [k: string]: Json } } | Refusal {
-  const b = challengeBound(presented);
-  if (isRefusal(b)) return b;
-  const checked = checkChallenge(presented.challenge, true);
-  if (isRefusal(checked)) return checked;
-  if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-  return { h: b.h, checked, payload: presented.payload };
+): { h: AtrHash; checked: Echoed; payload: { [k: string]: Json } } | Refusal {
+  return echoedFor(presented, pairing);
 }
 
 /** MPP's `place`, with the agreement URL in `opaque` when one is given. */
@@ -541,12 +553,21 @@ function evmKind(presented: MppCredential): "open" | "within" | "close" | Refusa
   return refusal("mpp/session-action");
 }
 
-/** The EVM opening's checked values: payer, salt H, signer and the channel id's agreement with them. */
+/**
+ * The EVM opening's checked values: payer, salt H, signer and the channel id's agreement with them. Of the request it
+ * reads the chain, the escrow, the recipient and the currency, which give the channel id.
+ */
 function evmOpened(
   presented: MppCredential,
-): { h: AtrHash; checked: Checked; opening: Opening; payer: Hex; escrow: Hex; auth: { [k: string]: Json } } | Refusal {
+): { h: AtrHash; params: Params; payee: Hex; token: Hex; opening: Opening; payer: Hex; escrow: Hex; auth: { [k: string]: Json } } | Refusal {
   const e = echoed(presented, SESSION_EVM);
   if (isRefusal(e)) return e;
+  const params = paramsOf(presented.challenge);
+  if (isRefusal(params)) return params;
+  const payee = requestAddress(e.checked, "recipient");
+  if (isRefusal(payee)) return payee;
+  const token = requestAddress(e.checked, "currency");
+  if (isRefusal(token)) return token;
   const opening = evmOpening(e.payload);
   if (isRefusal(opening)) return opening;
   const { type, o } = opening;
@@ -565,16 +586,8 @@ function evmOpened(
     if (!isAddress(auth["from"])) return refusal("mpp/credential-malformed");
     payer = auth["from"];
   }
-  const escrow = str(e.checked.details["escrowContract"]) as Hex;
-  const expect = evmChannelId({
-    payer,
-    payee: str(e.checked.request["recipient"]) as Hex,
-    token: str(e.checked.request["currency"]) as Hex,
-    salt: e.h,
-    authorizedSigner: signer,
-    escrow,
-    chainId: e.checked.details["chainId"] as number,
-  });
+  const escrow = params.escrow;
+  const expect = evmChannelId({ payer, payee, token, salt: e.h, authorizedSigner: signer, escrow, chainId: params.chainId });
   const channel = normalHash(e.payload["channelId"]);
   if (typeof expect !== "string" || channel === null || !sameBytes(channel, expect)) {
     return refusal("mpp/channel-not-bound");
@@ -583,8 +596,8 @@ function evmOpened(
     const nonce = keccakHex(
       concat([
         addressWord(payer),
-        addressWord(str(e.checked.request["recipient"]) as Hex),
-        addressWord(str(e.checked.request["currency"]) as Hex),
+        addressWord(payee),
+        addressWord(token),
         bytes32Word(e.h),
         addressWord(signer),
       ]),
@@ -596,7 +609,7 @@ function evmOpened(
     const wSalt = isObject(w) ? normalHash(w["salt"]) : null;
     if (wSalt === null || !hashEquals(wSalt, e.h)) return refusal("mpp/salt-not-this-hash");
   }
-  return { h: e.h, checked: e.checked, opening, payer, escrow, auth };
+  return { h: e.h, params, payee, token, opening, payer, escrow, auth };
 }
 
 async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -611,8 +624,8 @@ async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
   if (isRefusal(presented)) return presented;
   const o = evmOpened(presented);
   if (isRefusal(o)) return o;
-  const currency = str(o.checked.request["currency"]) as Hex;
-  const network = `eip155:${o.checked.details["chainId"] as number}` as const;
+  const currency = o.token;
+  const network = o.params.network;
   if (o.opening.type === "hash") {
     const transaction = normalHash(o.opening.o["hash"]);
     if (transaction === null) return refusal("mpp/credential-malformed");
@@ -659,10 +672,10 @@ async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
 }
 
 /** The open call an opening's reference names: the escrow, the payload's channel, H and the chain. */
-function opensOf(o: { h: AtrHash; checked: Checked; escrow: Hex }, presented: MppCredential): NonNullable<SessionRef["opens"]> | Refusal {
+function opensOf(o: { h: AtrHash; params: Params; escrow: Hex }, presented: MppCredential): NonNullable<SessionRef["opens"]> | Refusal {
   const channel = normalHash(presented.payload["channelId"]);
   if (channel === null) return refusal("mpp/credential-malformed");
-  return { escrow: o.escrow, channel: channel as Hex, h: o.h, chainId: o.checked.details["chainId"] as number };
+  return { escrow: o.escrow, channel: channel as Hex, h: o.h, chainId: o.params.chainId };
 }
 
 async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
@@ -889,7 +902,7 @@ async function evmBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWith
   if (isRefusal(o)) return o;
   const channelId = normalHash(w.opening.payload["channelId"]);
   if (channelId === null) return refusal("mpp/credential-malformed");
-  const chainId = o.checked.details["chainId"] as number;
+  const chainId = o.params.chainId;
   const typedData = voucherData("EVM Payment Channel", "uint128", chainId, o.escrow, channelId as Hex, w.cumulativeAmount);
   return withinUnsigned(w, typedData, channelId as Hex);
 }
@@ -968,7 +981,7 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
 /** The one `open` call to the escrow in the signed transaction, with its salt word equal to H. */
 function tempoOpened(
   presented: MppCredential,
-): { h: AtrHash; checked: Checked; params: Params; validBefore: bigint | null; channel: Hex } | Refusal {
+): { h: AtrHash; checked: Echoed; params: Params; validBefore: bigint | null; channel: Hex } | Refusal {
   const e = echoed(presented, SESSION_TEMPO);
   if (isRefusal(e)) return e;
   if (e.payload["action"] !== "open" || e.payload["type"] !== "transaction") return refusal("mpp/not-an-opening");
@@ -1005,15 +1018,24 @@ async function tempoBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(o) ? o : o.h;
 }
 
+/**
+ * The read keys of the session's opening: the escrow's `ChannelOpened` naming the channel. `settleBy` is the opening
+ * transaction's `validBefore`, else the challenge's `expires`; with neither, or with an `expires` read there that is
+ * not a date, it is `mpp/expires-required`.
+ */
 async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const o = tempoOpened(presented);
   if (isRefusal(o)) return o;
   const topic0 = o.params.version === "v2" ? CHANNEL_OPENED_V2_TOPIC : CHANNEL_OPENED_V1_TOPIC;
+  const expires = o.validBefore === null ? o.checked.expires : undefined;
+  if (isRefusal(expires)) return expires;
+  const settleBy = o.validBefore ?? (expires === undefined ? undefined : BigInt(expires));
+  if (settleBy === undefined) return refusal("mpp/expires-required");
   return {
     network: o.params.network,
-    settleBy: (o.validBefore ?? BigInt(o.checked.expires)).toString(),
+    settleBy: settleBy.toString(),
     search: { address: o.params.escrow, topics: [topic0, o.channel] },
     opened: { address: o.params.escrow, version: o.params.version, channel: o.channel, h: o.h, chainId: o.params.chainId },
   };
@@ -1127,7 +1149,9 @@ function subscriptionKind(presented: MppCredential): "open" | "within" | "close"
   return p["type"] === "keyAuthorization" ? "open" : refusal("mpp/session-action");
 }
 
-function subscriptionWitness(presented: MppCredential): { h: AtrHash; checked: Checked; keyId: Hex } | Refusal {
+function subscriptionWitness(
+  presented: MppCredential,
+): { h: AtrHash; checked: Echoed; keyId: Hex; key: Exclude<ReturnType<typeof decodeKeyAuthorization>, Refusal> } | Refusal {
   const e = echoed(presented, SUBSCRIPTION);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "keyAuthorization") return refusal("mpp/not-an-opening");
@@ -1137,7 +1161,28 @@ function subscriptionWitness(presented: MppCredential): { h: AtrHash; checked: C
   if (isRefusal(k)) return k;
   if (k.witness === undefined) return refusal("tempo/no-witness");
   if (!hashEquals(k.witness, e.h)) return refusal("tempo/witness-not-bound");
-  return { h: e.h, checked: e.checked, keyId: k.keyId };
+  return { h: e.h, checked: e.checked, keyId: k.keyId, key: k };
+}
+
+/**
+ * The token and the recipient the payer signed in the key authorization: its one limit token, which is also the one
+ * target of its allowed calls, and the one recipient across their selector rules, lowercase. A selector rule with no
+ * recipients allows any recipient, so the authorization does not name exactly one. Any other scope is
+ * `tempo/key-authorization-malformed`.
+ */
+function signedScope(k: Pick<TempoKeyAuthorization, "limits" | "allowedCalls">): { token: Hex; recipient: Hex } | Refusal {
+  if (k.allowedCalls.some((c) => c.selectorRules.some((r) => r.recipients.length === 0))) {
+    return refusal("tempo/key-authorization-malformed");
+  }
+  const tokens = new Set(k.limits.map((l) => l.token.toLowerCase()));
+  const targets = new Set(k.allowedCalls.map((c) => c.target.toLowerCase()));
+  const recipients = new Set(k.allowedCalls.flatMap((c) => c.selectorRules.flatMap((r) => r.recipients.map((x) => x.toLowerCase()))));
+  const [token] = tokens;
+  const [recipient] = recipients;
+  if (tokens.size !== 1 || targets.size !== 1 || recipients.size !== 1 || !targets.has(token!)) {
+    return refusal("tempo/key-authorization-malformed");
+  }
+  return { token: token as Hex, recipient: recipient as Hex };
 }
 
 async function subscriptionBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -1147,23 +1192,28 @@ async function subscriptionBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(w) ? w : w.h;
 }
 
+/**
+ * The activation's read keys, from what the payer signed: the keychain's `KeyAuthorizationWitness` carrying H, and the
+ * `Transfer` of the key authorization's token to its recipient (`signedScope`), identified by the recipient alone.
+ * `accessKey` records the key with that token and recipient for `keySearch`. Of the request it reads only the chain.
+ */
 async function subscriptionReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const w = subscriptionWitness(presented);
   if (isRefusal(w)) return w;
-  const r = w.checked.request;
-  const currency = str(r["currency"]) as Hex;
-  const digest = await transferDigest({ to: str(r["recipient"]) as Hex, value: BigInt(str(r["amount"])) });
-  if (typeof digest !== "string") return digest;
-  const to = await transferDigest({ to: str(r["recipient"]) as Hex });
+  const p = paramsOf(presented.challenge);
+  if (isRefusal(p)) return p;
+  const scope = signedScope(w.key);
+  if (isRefusal(scope)) return scope;
+  const to = await transferDigest({ to: scope.recipient });
   if (typeof to !== "string") return to;
   return {
-    network: `eip155:${w.checked.details["chainId"] as number}`,
+    network: p.network,
     bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: w.h },
-    transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "to,value", digest },
+    transferLog: { address: scope.token, topic0: TRANSFER_TOPIC, identity: "to", digest: to },
     search: { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, w.h] },
-    accessKey: { keyId: w.keyId, token: currency, to },
+    accessKey: { keyId: w.keyId, token: scope.token, to },
   };
 }
 

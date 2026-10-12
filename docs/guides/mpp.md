@@ -118,6 +118,17 @@ only the transaction's hash or signature, `fetchPresented(credential, reader)` r
 refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, and `xrpl/not-success` on the XRP
 Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that).
 
+`bound`, `reference` and `fetchPresented` start from the echoed challenge's H, and require its intent and method to be
+the pairing's (on `usdc`, also the profile `methodDetails.type` names). They do not check the request again: that is
+`advertise`'s and `build`'s. On the EVM, Tempo, `usdc`, Solana, Stellar, XRP Ledger and NEAR Intents charges, the EVM,
+Tempo, Hedera, Solana and XRP Ledger sessions, and the Tempo subscription, each reads only the request members its own
+read keys or derivation use, such as the network or chain, the currency, the recipient, the escrow, the member that
+carries H (`externalId`, or the XRP Ledger's `methodDetails.invoiceId`), and `expires` where it is the payment's
+deadline, and refuses one of those that is malformed, with the code `advertise` gives it. On every pairing but
+Lightning's, `bound`, `reference` and `fetchPresented` refuse a `methodDetails` that is present and not an object with
+`mpp/request-malformed`, as `advertise` does, and never read it as empty, except the Hedera charge's `bound`, which
+reads no request member, and a `fetchPresented` given a signed transaction, which returns it as given.
+
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
 authorises the pull, and its reference's `authorization` names the nonce the payer signed (the challenge-derived value,

@@ -253,9 +253,19 @@ export function encodeKeyAuthorization(a: TempoKeyAuthorization, signature?: Hex
 
 /**
  * Reads a signed key authorization: an RLP list of the authorization (3 to 9 items) and a byte-string signature. The
- * digest is keccak256 over the authorization's bytes as received. The witness is item 6, 32 bytes, when present.
+ * digest is keccak256 over the authorization's bytes as received. The witness is item 6, 32 bytes, when present. The
+ * scope the payer signed is item 4, the limits (each a 20-byte token, a limit and, when non-zero, a period; an absent
+ * period is 0), and item 5, the allowed calls (each a 20-byte target and its selector rules, each a 4-byte selector and
+ * 20-byte recipients). An absent item and an empty list both read as an empty list, though Tempo gives them opposite
+ * meanings (absent: no limit or no call restriction; empty: no spending or no calls).
  */
-export function decodeKeyAuthorization(signed: Hex): { witness?: Hex; digest: Hex; keyId: Hex } | Refusal {
+export function decodeKeyAuthorization(signed: Hex): {
+  witness?: Hex;
+  digest: Hex;
+  keyId: Hex;
+  limits: TempoKeyAuthorization["limits"];
+  allowedCalls: TempoKeyAuthorization["allowedCalls"];
+} | Refusal {
   const bad = refusal("tempo/key-authorization-malformed");
   const b = bytesOf(signed, MAX_KEY_AUTHORIZATION_BYTES);
   if (b === undefined) return bad;
@@ -270,6 +280,9 @@ export function decodeKeyAuthorization(signed: Hex): { witness?: Hex; digest: He
     const l = auth.items[i];
     if (l !== undefined && !withinScopes(l, i === 5)) return bad;
   }
+  const limits = limitsOf(auth.items[4]);
+  const allowedCalls = allowedCallsOf(auth.items[5]);
+  if (limits === undefined || allowedCalls === undefined) return bad;
   const w = auth.items[6];
   let witness: Hex | undefined;
   if (w !== undefined) {
@@ -277,7 +290,52 @@ export function decodeKeyAuthorization(signed: Hex): { witness?: Hex; digest: He
     if (w.bytes.length === 32) witness = hexOf(w.bytes);
   }
   const digest = keccakHex(auth.raw);
-  return witness === undefined ? { digest, keyId: hexOf(keyId.bytes) } : { witness, digest, keyId: hexOf(keyId.bytes) };
+  const read = { digest, keyId: hexOf(keyId.bytes), limits, allowedCalls };
+  return witness === undefined ? read : { witness, ...read };
+}
+
+/** The items of an RLP list, or none for an absent item or an empty byte string. */
+function itemsOf(l: RlpItem | undefined): RlpItem[] {
+  return l === undefined || l.kind !== "list" ? [] : l.items;
+}
+
+/** A byte string of `n` bytes, as hex. */
+function fixedBytes(i: RlpItem | undefined, n: number): Hex | undefined {
+  return i !== undefined && i.kind === "bytes" && i.bytes.length === n ? hexOf(i.bytes) : undefined;
+}
+
+/** The limits: `[token, limit, period]` each, or `[token, limit]` for a limit whose period is 0. */
+function limitsOf(l: RlpItem | undefined): TempoKeyAuthorization["limits"] | undefined {
+  const out: TempoKeyAuthorization["limits"] = [];
+  for (const item of itemsOf(l)) {
+    if (item.kind !== "list" || (item.items.length !== 2 && item.items.length !== 3)) return undefined;
+    const token = fixedBytes(item.items[0], 20);
+    const limit = rlpUint(item.items[1]);
+    const period = item.items.length === 3 ? rlpUint(item.items[2]) : 0n;
+    if (token === undefined || limit === undefined || period === undefined) return undefined;
+    out.push({ token, limit, period });
+  }
+  return out;
+}
+
+/** The allowed calls: `[target, [[selector, [recipient, …]], …]]` each. */
+function allowedCallsOf(l: RlpItem | undefined): TempoKeyAuthorization["allowedCalls"] | undefined {
+  const out: TempoKeyAuthorization["allowedCalls"] = [];
+  for (const scope of itemsOf(l)) {
+    if (scope.kind !== "list") return undefined;
+    const target = fixedBytes(scope.items[0], 20);
+    if (target === undefined) return undefined;
+    const selectorRules: TempoKeyAuthorization["allowedCalls"][number]["selectorRules"] = [];
+    for (const rule of itemsOf(scope.items[1])) {
+      if (rule.kind !== "list") return undefined;
+      const selector = fixedBytes(rule.items[0], 4);
+      const recipients = itemsOf(rule.items[1]).map((r) => fixedBytes(r, 20));
+      if (selector === undefined || !recipients.every((r) => r !== undefined)) return undefined;
+      selectorRules.push({ selector, recipients: recipients as Hex[] });
+    }
+    out.push({ target, selectorRules });
+  }
+  return out;
 }
 
 /** True for a list of at most 16 entries; for `allowed_calls`, also at most 16 rules per scope and 16 recipients per rule. */

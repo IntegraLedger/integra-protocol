@@ -24,11 +24,11 @@ import {
   read,
   tie,
   withoutCarrier,
-  type Checked,
+  type Echoed,
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { xrplNetworkOf } from "./mpp-rail-checks.js";
+import { isXrplInvoiceId, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -61,11 +61,16 @@ function presentedBlob(payload: { [k: string]: Json }): string | Refusal {
   return typeof blob === "string" ? blob : refusal("xrpl/blob-malformed");
 }
 
+/**
+ * The echoed challenge's binding: its `methodDetails.invoiceId`, read as `advertise` reads it (absent, or 64 hex digits,
+ * else `mpp/request-malformed`), and the signed Payment's `InvoiceID`, which must equal it and the challenge's H.
+ */
 async function bindingOf(
   credential: MppCredential,
-): Promise<{ h: AtrHash; checked: Checked; tx: XrplTxJson; hash: string } | Refusal> {
+): Promise<{ h: AtrHash; checked: Echoed; tx: XrplTxJson; hash: string } | Refusal> {
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;
+  if (!isXrplInvoiceId(e.checked.details["invoiceId"])) return refusal("mpp/request-malformed");
   const blob = presentedBlob(e.payload);
   if (isRefusal(blob)) return blob;
   const decoded = await decodePresented(e.payload, blob);

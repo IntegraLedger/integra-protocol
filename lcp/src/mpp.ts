@@ -36,16 +36,22 @@ import {
   checkAttribution,
   checkChallenge,
   credentialOf,
+  decodeObject,
   deepFreeze,
   didPkhAddress,
+  echoedFor,
+  echoedOf,
+  isChallengeShape,
   isHexBytes,
   isObject,
   pairingsOf,
   place,
   pushedField,
   read,
+  requestAddress,
   tie,
   type Checked,
+  type Echoed,
   type MppChallenge,
   type MppChoice,
   type MppCredential,
@@ -252,17 +258,12 @@ function offerFor(choice: MppChoice, h: AtrHash, pairing: ChargeId): Checked | R
   return checked;
 }
 
-/** H from an echoed challenge that offers `pairing`, with the checked challenge and the payload. */
+/** H from an echoed challenge of `pairing`'s intent and method, with the echoed challenge and the payload. */
 function echoed(
   presented: MppCredential,
   pairing: ChargeId,
-): { h: AtrHash; checked: Checked; payload: { [k: string]: Json } } | Refusal {
-  const b = challengeBound(presented);
-  if (isRefusal(b)) return b;
-  const checked = checkChallenge(presented.challenge, true);
-  if (isRefusal(checked)) return checked;
-  if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-  return { h: b.h, checked, payload: presented.payload };
+): { h: AtrHash; checked: Echoed; payload: { [k: string]: Json } } | Refusal {
+  return echoedFor(presented, pairing);
 }
 
 /** MPP's `place` for `pairing`, with the agreement URL in `opaque` when one is given. */
@@ -288,6 +289,16 @@ function unplaced(option: MppChallenge): Json {
 function chainOf(c: Checked): number {
   const id = c.details["chainId"];
   return typeof id === "number" ? id : TEMPO_DEFAULT_CHAIN;
+}
+
+/**
+ * The chain an echoed EVM or Tempo charge pays on: `methodDetails.chainId`, a positive integer, or on Tempo, when it is
+ * absent, Tempo's default. Anything else is `mpp/request-malformed`.
+ */
+function echoedChain(e: Echoed): number | Refusal {
+  const id = e.details["chainId"];
+  if (id === undefined && e.challenge.method === "tempo") return TEMPO_DEFAULT_CHAIN;
+  return typeof id === "number" && Number.isSafeInteger(id) && id > 0 ? id : refusal("mpp/request-malformed");
 }
 
 /**
@@ -407,24 +418,32 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
   };
 }
 
-async function authorizationBound(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
+function authorizationBinding(presented: MppCredential): { h: AtrHash; checked: Echoed } | Refusal {
   const e = echoed(presented, AUTHORIZATION);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "authorization") return refusal("mpp/credential-type");
   if (normalHash(e.payload["nonce"]) === null) return refusal("mpp/credential-malformed");
   const expect = challengeHash(presented.challenge.id, presented.challenge.realm);
   if (!sameBytes(e.payload["nonce"], expect)) return refusal("mpp/nonce-not-challenge-hash");
-  return e.h;
+  return { h: e.h, checked: e.checked };
+}
+
+async function authorizationBound(input: unknown): Promise<AtrHash | Refusal> {
+  const presented = credentialOf(input);
+  if (isRefusal(presented)) return presented;
+  const b = authorizationBinding(presented);
+  return isRefusal(b) ? b : b.h;
 }
 
 async function authorizationReference(input: unknown): Promise<EvmRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
-  const h = await authorizationBound(presented);
-  if (typeof h !== "string") return h;
-  const c = checkChallenge(presented.challenge, true) as Checked;
+  const b = authorizationBinding(presented);
+  if (isRefusal(b)) return b;
+  const currency = requestAddress(b.checked, "currency");
+  if (isRefusal(currency)) return currency;
+  const chainId = echoedChain(b.checked);
+  if (isRefusal(chainId)) return chainId;
   const p = presented.payload;
   const value = uint256Of(p["value"]);
   const validBefore = uint256Of(p["validBefore"]);
@@ -433,10 +452,9 @@ async function authorizationReference(input: unknown): Promise<EvmRef | Refusal>
   }
   const digest = await transferDigest({ from: p["from"], to: p["to"], value });
   if (typeof digest !== "string") return digest;
-  const currency = str(c.request["currency"]) as Hex;
   const nonce = challengeHash(presented.challenge.id, presented.challenge.realm);
   return {
-    network: `eip155:${chainOf(c)}`,
+    network: `eip155:${chainId}`,
     settleBy: validBefore.toString(),
     bindingLog: { address: currency, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: nonce },
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
@@ -513,9 +531,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
   };
 }
 
-async function permit2Bound(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
+function permit2Binding(presented: MppCredential): { h: AtrHash; checked: Echoed } | Refusal {
   const e = echoed(presented, PERMIT2_ID);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "permit2") return refusal("mpp/credential-type");
@@ -523,15 +539,27 @@ async function permit2Bound(input: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(w) || normalHash(w["challengeHash"]) === null) return refusal("mpp/credential-malformed");
   const expect = challengeHash(presented.challenge.id, presented.challenge.realm);
   if (!sameBytes(w["challengeHash"], expect)) return refusal("mpp/witness-not-challenge-hash");
-  return e.h;
+  return { h: e.h, checked: e.checked };
+}
+
+async function permit2Bound(input: unknown): Promise<AtrHash | Refusal> {
+  const presented = credentialOf(input);
+  if (isRefusal(presented)) return presented;
+  const b = permit2Binding(presented);
+  return isRefusal(b) ? b : b.h;
 }
 
 async function permit2Reference(input: unknown): Promise<EvmRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
-  const h = await permit2Bound(presented);
-  if (typeof h !== "string") return h;
-  const c = checkChallenge(presented.challenge, true) as Checked;
+  const b = permit2Binding(presented);
+  if (isRefusal(b)) return b;
+  const currency = requestAddress(b.checked, "currency");
+  if (isRefusal(currency)) return currency;
+  const chainId = echoedChain(b.checked);
+  if (isRefusal(chainId)) return chainId;
+  const permit2 = b.checked.details["permit2Address"];
+  if (permit2 !== undefined && !isAddress(permit2)) return refusal("mpp/request-malformed");
   const from = didPkhAddress(presented.source);
   if (from === undefined) return refusal("mpp/source-required");
   const p = presented.payload;
@@ -545,15 +573,13 @@ async function permit2Reference(input: unknown): Promise<EvmRef | Refusal> {
   }
   const digest = await transferDigest({ from, to: first["to"], value });
   if (typeof digest !== "string") return digest;
-  const currency = str(c.request["currency"]) as Hex;
-  const permit2 = c.details["permit2Address"];
   return {
-    network: `eip155:${chainOf(c)}`,
+    network: `eip155:${chainId}`,
     settleBy: deadline.toString(),
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
     authorization: {
       scheme: "permit2",
-      at: isAddress(permit2) ? permit2 : PERMIT2,
+      at: permit2 ?? PERMIT2,
       nonce: challengeHash(presented.challenge.id, presented.challenge.realm),
       deadline: deadline.toString(),
       asset: currency,
@@ -616,20 +642,28 @@ async function noSignedPlace(presented: unknown): Promise<AtrHash | Refusal> {
  * The read keys of a payment with no claim, from the challenge and the credential's `source`: the network, `asset` =
  * the challenge's `currency`, the token whose transfer `transferPresent` reads, and `transferLog`, which identifies
  * that transfer by its sender alone (identity `from`): the payer, the address of the credential's `did:pkh` `source`,
- * else `mpp/source-required`. Nothing the payer signed carries H.
+ * else `mpp/source-required`. Nothing the payer signed carries H. Of the request it reads only `currency` and
+ * `methodDetails.chainId`, each refused `mpp/request-malformed` when it is not an address or a positive integer, as is
+ * a `methodDetails` that is not an object.
  */
 async function networkReference(presented: unknown): Promise<(EvmRef & { asset: Hex }) | Refusal> {
-  if (!isObject(presented) || !isObject(presented["challenge"])) return refusal("mpp/credential-malformed");
-  const c = checkChallenge(presented["challenge"], true);
-  if (isRefusal(c)) return c;
+  if (!isObject(presented) || !isChallengeShape(presented["challenge"])) return refusal("mpp/credential-malformed");
+  const c = presented["challenge"];
   if (c.method !== "evm" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
+  const request = decodeObject(c.request);
+  if (request === undefined) return refusal("mpp/request-malformed");
+  const e = echoedOf(c as MppChallenge & { id: string }, request);
+  if (isRefusal(e)) return e;
+  const asset = requestAddress(e, "currency");
+  if (isRefusal(asset)) return asset;
+  const chainId = echoedChain(e);
+  if (isRefusal(chainId)) return chainId;
   const from = didPkhAddress(presented["source"]);
   if (from === undefined) return refusal("mpp/source-required");
   const digest = await transferDigest({ from });
   if (typeof digest !== "string") return digest;
-  const asset = str(c.request["currency"]) as Hex;
   return {
-    network: `eip155:${chainOf(c)}`,
+    network: `eip155:${chainId}`,
     asset,
     transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from", digest },
   };
@@ -672,9 +706,11 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
 /** The one signed `transferWithMemo` call to `currency` whose memo is this challenge's attribution memo. */
 function signedMemoCall(
   presented: MppCredential,
-): { h: AtrHash; checked: Checked; memo: Hex; to: Hex; value: bigint; validBefore: bigint | null } | Refusal {
+): { h: AtrHash; checked: Echoed; memo: Hex; to: Hex; value: bigint; validBefore: bigint | null } | Refusal {
   const e = echoed(presented, MEMO);
   if (isRefusal(e)) return e;
+  const currency = requestAddress(e.checked, "currency");
+  if (isRefusal(currency)) return currency;
   if (e.payload["type"] !== "transaction") return refusal("mpp/credential-type");
   const sig = e.payload["signature"];
   if (typeof sig !== "string" || sig.length % 2 !== 0 || !/^0x[0-9a-fA-F]*$/.test(sig)) {
@@ -683,7 +719,6 @@ function signedMemoCall(
   if ((sig.length - 2) / 2 > MAX_WIRE) return refusal("tempo/tx-too-large");
   const tx = decodeTempoTx(bytesOf(sig)!);
   if (isRefusal(tx)) return tx;
-  const currency = str(e.checked.request["currency"]);
   const { realm, id } = presented.challenge;
   const found: { memo: Hex; to: Hex; value: bigint }[] = [];
   for (const call of tx.calls) {
@@ -706,20 +741,31 @@ async function memoBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(m) ? m : m.h;
 }
 
+/**
+ * The read keys of the signed memo transfer. `settleBy` is the transaction's `validBefore`; where it sets none, the
+ * challenge's `expires`, and none where the challenge carries none. An `expires` read there that is not a date is
+ * `mpp/expires-required`.
+ */
 async function memoReference(input: unknown): Promise<EvmRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const m = signedMemoCall(presented);
   if (isRefusal(m)) return m;
-  return memoRef(m.checked, m.memo, m.to, m.value, m.validBefore ?? BigInt(m.checked.expires));
+  if (m.validBefore !== null) return memoRef(m.checked, m.memo, m.to, m.value, m.validBefore);
+  const expires = m.checked.expires;
+  if (isRefusal(expires)) return expires;
+  return memoRef(m.checked, m.memo, m.to, m.value, expires === undefined ? undefined : BigInt(expires));
 }
 
-async function memoRef(c: Checked, memo: Hex, to: Hex, value: bigint, settleBy?: bigint): Promise<EvmRef | Refusal> {
+async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: bigint): Promise<EvmRef | Refusal> {
+  const currency = requestAddress(c, "currency");
+  if (isRefusal(currency)) return currency;
+  const chainId = echoedChain(c);
+  if (isRefusal(chainId)) return chainId;
   const digest = await transferDigest({ to, value });
   if (typeof digest !== "string") return digest;
-  const currency = str(c.request["currency"]) as Hex;
   return {
-    network: `eip155:${chainOf(c)}`,
+    network: `eip155:${chainId}`,
     ...(settleBy === undefined ? {} : { settleBy: settleBy.toString() }),
     bindingLog: { address: currency, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: memo },
     transferLog: { address: currency, topic0: TRANSFER_WITH_MEMO_TOPIC, identity: "to,value", digest },
@@ -744,23 +790,27 @@ async function pushFetchPresented(presented: MppCredential, reader: EvmReader): 
   if (presented.payload["type"] !== "hash") return refusal("mpp/credential-type");
   const hash = normalHash(presented.payload["hash"]);
   if (hash === null) return refusal("mpp/credential-malformed");
-  const c = checkChallenge(presented.challenge, true);
-  if (isRefusal(c)) return c;
-  const receipt = await readReceipt(`eip155:${chainOf(c)}`, hash, reader);
+  const e = echoed(presented, PUSH);
+  if (isRefusal(e)) return e;
+  const currency = requestAddress(e.checked, "currency");
+  if (isRefusal(currency)) return currency;
+  const chainId = echoedChain(e.checked);
+  if (isRefusal(chainId)) return chainId;
+  const receipt = await readReceipt(`eip155:${chainId}`, hash, reader);
   if (isRefusal(receipt)) return receipt;
-  const currency = str(c.request["currency"]);
   const logs = receipt.logs.filter((l) => sameBytes(l.address, currency));
   return { ...presented, landed: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
 }
 
 /** The one landed `TransferWithMemo` from `currency` whose memo topic is this challenge's attribution memo. */
-function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Checked; log: EvmLog } | Refusal {
+function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Echoed; currency: Hex; log: EvmLog } | Refusal {
   const e = echoed(presented, PUSH);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "hash") return refusal("mpp/credential-type");
   const landed = (presented as Partial<LandedCredential>).landed;
   if (!isObject(landed) || !Array.isArray(landed.logs)) return refusal("mpp/credential-malformed");
-  const currency = str(e.checked.request["currency"]) as Hex;
+  const currency = requestAddress(e.checked, "currency");
+  if (isRefusal(currency)) return currency;
   const { realm, id } = presented.challenge;
   const found = landed.logs.filter(
     (l) =>
@@ -774,7 +824,7 @@ function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Checked
   );
   if (found.length === 0) return refusal("tempo/memo-not-bound");
   if (found.length > 1) return refusal("tempo/ambiguous");
-  return { h: e.h, checked: e.checked, log: found[0]! };
+  return { h: e.h, checked: e.checked, currency, log: found[0]! };
 }
 
 async function pushBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -789,8 +839,7 @@ async function pushReference(input: unknown): Promise<EvmRef | Refusal> {
   if (isRefusal(presented)) return presented;
   const m = landedMemoLog(presented);
   if (isRefusal(m)) return m;
-  const currency = str(m.checked.request["currency"]) as Hex;
-  const parts = transferParts(m.log, currency, TRANSFER_WITH_MEMO_TOPIC);
+  const parts = transferParts(m.log, m.currency, TRANSFER_WITH_MEMO_TOPIC);
   if (parts === undefined) return refusal("mpp/credential-malformed");
   return memoRef(m.checked, normalHash(m.log.topics[3])!, parts.to, parts.value);
 }

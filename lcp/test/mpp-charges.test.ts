@@ -441,6 +441,22 @@ describe("mpp-charge-stellar.json", () => {
       const x402 = { x402Version: 2, accepted: XST.V3.accepted, payload: { transaction: S.envelope }, extensions: XST.V3.extensions };
       expect(await exactStellar.bound(x402)).toEqual(refused(XST.agreedRefusals.rows[3].expect));
     });
+
+    // The code advertise gives the same request (pairingsOf): an MPP Stellar charge's feePayer is absent or a boolean.
+    it("a feePayer that is present and not a boolean is stellar/option-malformed, as advertise gives it", async () => {
+      const reader = readerOf(S.hash, { status: "SUCCESS", envelope: S.envelope, ledger: 990 });
+      for (const feePayer of ["true", 0, null]) {
+        const request = JSON.parse(Buffer.from(S.challenge.request, "base64url").toString("utf8"));
+        request.methodDetails.feePayer = feePayer;
+        const challenge = { ...S.challenge, request: Buffer.from(canonicalJson(request) as string, "utf8").toString("base64url") };
+        const { id: _id, opaque: _opaque, ...offer } = challenge;
+        expect(pairingsOf(offer), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
+        const fetched = await chargeStellar.fetchPresented(credential(challenge, { type: "hash", hash: S.hash }), reader);
+        if ("refused" in fetched) throw new Error(fetched.code);
+        expect(await chargeStellar.bound(fetched), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
+        expect(await chargeStellar.reference(fetched), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
+      }
+    });
   });
 
   it("push: fetchPresented refuses a transaction the reader reports FAILED", async () => {

@@ -38,10 +38,11 @@ import {
   tie,
   withoutCarrier,
   type Checked,
+  type Echoed,
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { solanaNetworkOf } from "./mpp-rail-checks.js";
+import { isSolanaExternalId, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -50,8 +51,8 @@ const ID = "mpp/charge/solana" as const;
 /** What differs between the Solana charges of MPP's `solana` method and of `usdc`'s Solana profile. */
 export interface SolanaCharge<Id extends "mpp/charge/solana" | "mpp/charge/usdc/solana"> {
   id: Id;
-  /** The Solana details object of a checked challenge. */
-  details(c: Checked): { [k: string]: Json };
+  /** The Solana details object of a challenge. */
+  details(c: Checked | Echoed): { [k: string]: Json };
   /** Whether the details must name `network`. */
   networkRequired: boolean;
   /** The refusal for an issued `externalId` that holds another value. */
@@ -139,12 +140,18 @@ function presentedTx(payload: { [k: string]: Json }, transactionOnly: boolean): 
   return isRefusal(wire) ? wire : decodeSvmTx(wire);
 }
 
+/**
+ * The echoed challenge's binding: its request's `externalId`, read as `advertise` reads it (absent, or a string of at
+ * most 566 bytes, else `mpp/request-malformed`), and the signed transaction's one LCP memo, which must equal it and
+ * name the challenge's H.
+ */
 function bindingOf(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
   credential: MppCredential,
-): { h: AtrHash; checked: Checked; tx: SvmTx } | Refusal {
+): { h: AtrHash; checked: Echoed; tx: SvmTx } | Refusal {
   const e = echoedFor(credential, spec.id);
   if (isRefusal(e)) return e;
+  if (!isSolanaExternalId(e.checked.request["externalId"])) return refusal("mpp/request-malformed");
   const tx = presentedTx(e.payload, spec.transactionOnly);
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);

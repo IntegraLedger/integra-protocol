@@ -14,17 +14,22 @@ import {
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
+import { isExternalId } from "./mpp-rail-checks.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const ID = "mpp/charge/nearintents" as const;
 
-/** H from the echoed challenge's `externalId`, for a push credential (`type="hash"`) whose challenge names that H. */
+/**
+ * H from the echoed challenge's `externalId`, for a push credential (`type="hash"`) whose challenge names that H. An
+ * `externalId` that is neither absent nor a string is `mpp/request-malformed`, the code `advertise` gives it.
+ */
 async function bound(credential: unknown): Promise<AtrHash | Refusal> {
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;
-  if (e.payload["type"] !== "hash") return refusal("near/not-hash-credential");
   const ext = e.checked.request["externalId"];
+  if (!isExternalId(ext)) return refusal("mpp/request-malformed");
+  if (e.payload["type"] !== "hash") return refusal("near/not-hash-credential");
   const h = typeof ext === "string" ? fromLcpString(ext) : null;
   if (h === null) return refusal("near/memo-not-lcp");
   if (!hashEquals(h, e.h)) return refusal("mpp/carrier-not-challenge");

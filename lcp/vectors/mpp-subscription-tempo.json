@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/subscription/tempo and the tempo entry point's key authorizations. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and its ox 0.14.45 on Node 24.21.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L2 is a live key authorization on Tempo Moderato (eip155:42431), transaction 0x6c1cdc57bf5a4a98961b7897cac3212636eea551540ab3b32038c45f9d3d8d1c, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs.",
+ "about": "Vectors for mpp/subscription/tempo and the tempo entry point's key authorizations. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and its ox 0.14.45 on Node 24.21.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L2 is a live key authorization on Tempo Moderato (eip155:42431), transaction 0x6c1cdc57bf5a4a98961b7897cac3212636eea551540ab3b32038c45f9d3d8d1c, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs. L2's key authorization limits pathUSD, its one allowed-call target, and allows transferTo, its one recipient, under each of its selector rules; expectTransferDigest is GNU coreutils sha256sum over transferTo's 20 bytes.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0x88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
@@ -49,7 +49,9 @@
   "expectRefChannel": "0xf383803b48152ceff65b585aaf22fd9b709e7347ff066760612c0f45d98bc656"
  },
  "SUB3": {
-  "expectTransferDigest": "0xebdac024ef6a20d75d1e37e6ce8d7d8f775c8fcaec753aef416f8f93cddb529a"
+  "about": "reference identifies the activation's Transfer by what the payer signed: its address is SUB1's limit token, which is also its allowed-call target (pathUSD), and its identity is the allowed-call recipient alone. The digest is GNU coreutils sha256sum over the recipient's 20 bytes: printf '%s' 742d35Cc6634C0532925a3b844Bc9e7595f8fE00 | xxd -r -p | sha256sum.",
+  "expectToken": "0x20c0000000000000000000000000000000000000",
+  "expectTransferDigest": "0x89b2134890a170c97762b6aca097db78cad7a8e6d49f1436869aa987eb90eb2b"
  },
  "L2": {
   "raw": "0x76f9026682a5bf843b9aca008505d21dba00837a1200f87ef87c9420c000000000000000000000000000000000000080b86495777d5900000000000000000000000019e7e376e7c213b7e7e7e46cc70a5dd086daff2a00000000000000000000000000000000000000000000000000000000000f42401f9d696a0db28c02c9dbe650935df49b3ddf3d1c52defdcb0bb687693311260bc0a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80846ab552e7809420c0000000000000000000000000000000000000f84380a087dc8d8000668260f604f51adac44cc12b2aa08a6d6f0ec38e1a65e5c500b85da0248dcf7edaa171797823d28bd6ed791dd85cdd9527f7c6810d31ffce78ca96dec0f8f6f8b182a5bf80940eb572b06a9465e52c826fd87d477d1503d0aca7846abe8d53dedd9420c0000000000000000000000000000000000000830f424083015180f851f84f9420c0000000000000000000000000000000000000f838db84a9059cbbd59419e7e376e7c213b7e7e7e46cc70a5dd086daff2adb8495777d59d59419e7e376e7c213b7e7e7e46cc70a5dd086daff2aa089805562ec3803f2ac422686063591f695401172408deed3db719581cd313351b84144fa02a2f70b98bd5fd9e04837802def027db9994d490ef5e965dfa826411d132e0916adee852523a191d0b0afc87abb7bb29a401205d936445e558d227228621bb85604586aa23098d508baf2835faa5ff45834b457854c76bb54769a90c8e41829ddc90a26f651794fef6b8c655b0c13e2d11e1e2435c06e44e25624f2a7032e133c7eb609e6251ee8b7df57e8838e038e6ca22d19864a1b",
@@ -129,8 +131,8 @@
    "suffix": "ccb00ee7"
   },
   "transferTo": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
-  "transferValue": "1000000",
-  "expectTransferDigest": "0x7c2241361a4bc222bbb465ba7df1fb47e85d83681c9b653116183db1ce4491ba",
+  "transferToken": "0x20c0000000000000000000000000000000000000",
+  "expectTransferDigest": "0xc706a87c68af6d1f57426e23e5d66c2f3c121be5299dac94f043267397c903c0",
   "expectSettled": {
    "state": "settled",
    "finality": "finalized"

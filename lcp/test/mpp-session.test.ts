@@ -532,15 +532,10 @@ describe("mpp-subscription-tempo.json", () => {
     expect(ref).toEqual({
       network: "eip155:42431",
       bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: H },
-      transferLog: { address: f.pathUSD, topic0: TRANSFER_TOPIC, identity: "to,value", digest: U.SUB3.expectTransferDigest },
+      transferLog: { address: U.SUB3.expectToken, topic0: TRANSFER_TOPIC, identity: "to", digest: U.SUB3.expectTransferDigest },
       search: { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, H] },
-      // The key's read keys: the signed authorization's key id, the token, and the recipient's digest,
-      // `printf 742d35Cc6634C0532925a3b844Bc9e7595f8fE00 | xxd -r -p | sha256sum`.
-      accessKey: {
-        keyId: f.accessKey.toLowerCase(),
-        token: f.pathUSD,
-        to: "0x89b2134890a170c97762b6aca097db78cad7a8e6d49f1436869aa987eb90eb2b",
-      },
+      // The key's read keys: the signed authorization's key id, its token and its recipient's digest.
+      accessKey: { keyId: f.accessKey.toLowerCase(), token: U.SUB3.expectToken, to: U.SUB3.expectTransferDigest },
     });
     expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer)).toEqual({
       network: "eip155:42431",
@@ -550,6 +545,77 @@ describe("mpp-subscription-tempo.json", () => {
     // Profile mpp/session rule 1: "a Tempo `subscription` challenge's id is exactly the base64url (no padding) of H".
     const positioned = { ...cred, challenge: { ...cred.challenge, id: challengeId(H, 0) as string } };
     expect(await subscriptionTempo.bound(positioned)).toEqual({ refused: true, code: "mpp/id-not-ours" });
+  });
+
+  // Tempo's key authorization wire (tempoxyz/tempo, crates/primitives/src/transaction/key_authorization.rs): a limit is
+  // `TokenLimitWire { token: Address, limit: U256, period: Option<NonZeroU64> }` under `#[rlp(trailing(canonical))]`, so a
+  // one-time limit (period 0) is `[token, limit]`; Tempo's test `test_token_limit_legacy_decode_defaults_period_to_zero`
+  // decodes `[token, limit]` with period 0.
+  it("a limit encoded [token, limit] decodes with period 0, and bound gives H", async () => {
+    const base = authOf(U.SUB1.authorization, H);
+    const unsigned = encodeKeyAuthorization(base) as Uint8Array;
+    const items = fromRlp(toHex(unsigned)) as (ViemHex | ViemHex[][])[];
+    const [limit] = base.limits;
+    items[4] = [[limit!.token, toHex(limit!.limit)]];
+    const authorization = toRlp(items as never);
+    const signed = toRlp([fromRlp(authorization) as never, await sig65(keccak256(authorization))]);
+    const k = decodeKeyAuthorization(signed);
+    if ("refused" in k) throw new Error(k.code);
+    expect(k.limits).toEqual([{ token: limit!.token, limit: limit!.limit, period: 0n }]);
+    const credential: MppCredential = { challenge: ch, source: `did:pkh:eip155:42431:${f.payer}`, payload: { type: "keyAuthorization", signature: signed } };
+    expect(await subscriptionTempo.bound(credential)).toBe(H);
+  });
+
+  it("SUB1: the activation is identified by the token and recipient the payer signed, never the request's", async () => {
+    const other = "0x7777777777777777777777777777777777777777" as const;
+    const credentialOf = async (a: TempoKeyAuthorization): Promise<MppCredential> => {
+      const unsigned = encodeKeyAuthorization(a) as Uint8Array;
+      const signed = encodeKeyAuthorization(a, await sig65(keccak256(unsigned))) as Uint8Array;
+      return { challenge: ch, source: `did:pkh:eip155:42431:${f.payer}`, payload: { type: "keyAuthorization", signature: toHex(signed) } };
+    };
+    const base = authOf(U.SUB1.authorization, H);
+    const k = decodeKeyAuthorization(toHex(encodeKeyAuthorization(base, `0x${"11".repeat(65)}`) as Uint8Array));
+    if ("refused" in k) throw new Error(k.code);
+    const lower = (v: unknown) => JSON.parse(JSON.stringify(withBigints(v)).toLowerCase());
+    expect(lower({ limits: k.limits, allowedCalls: k.allowedCalls })).toEqual(lower({ limits: base.limits, allowedCalls: base.allowedCalls }));
+    // A recipient the payer signed other than the request's: the read keys follow the signature.
+    const toOther = { ...base, allowedCalls: [{ target: f.pathUSD, selectorRules: [{ selector: "0x95777d59" as const, recipients: [other] }] }] };
+    const ref = (await subscriptionTempo.reference(await credentialOf(toOther))) as SessionRef;
+    const digest = await transferDigest({ to: other });
+    expect(ref.transferLog).toEqual({ address: f.pathUSD, topic0: TRANSFER_TOPIC, identity: "to", digest });
+    expect(ref.accessKey).toEqual({ keyId: f.accessKey.toLowerCase(), token: f.pathUSD, to: digest });
+    // A transfer of any amount of the signed token to the signed recipient is the activation's.
+    const transfer = { address: f.pathUSD, topics: [TRANSFER_TOPIC, topicOf(f.payer), topicOf(other)], data: wordOf(1n) };
+    const witness = { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, topicOf(f.payer), H], data: "0x" as const };
+    const status = await sessionStatus(
+      { ...ref, transaction: `0x${"77".repeat(32)}` },
+      readerFor("eip155:42431", { status: 1, blockNumber: "90", logs: [witness, transfer] as EvmLog[] }),
+    );
+    expect(status).toMatchObject({ state: "settled" });
+    // An authorization naming no single token, as its limit and its target, and no single recipient is not read.
+    // Tempo's SelectorRule (crates/primitives/src/transaction/key_authorization.rs): "Recipient allowlist. Empty means no
+    // recipient restriction", so a rule with no recipients beside one naming the request's recipient names no single one.
+    const malformed = { refused: true, code: "tempo/key-authorization-malformed" };
+    const anyRecipient = {
+      ...base,
+      allowedCalls: [
+        {
+          target: f.pathUSD,
+          selectorRules: [
+            { selector: "0xa9059cbb" as const, recipients: [] },
+            { selector: "0x95777d59" as const, recipients: [f.recipient] },
+          ],
+        },
+      ],
+    };
+    const twoRecipients = { ...base, allowedCalls: [{ target: f.pathUSD, selectorRules: [{ selector: "0x95777d59" as const, recipients: [f.recipient, other] }] }] };
+    const otherTarget = { ...base, allowedCalls: [{ target: other, selectorRules: base.allowedCalls[0]!.selectorRules }] };
+    const twoTokens = { ...base, limits: [...base.limits, { token: other, limit: 1n, period: 86400n }] };
+    for (const a of [twoRecipients, otherTarget, twoTokens, anyRecipient, { ...base, limits: [] }, { ...base, allowedCalls: [] }]) {
+      const c = await credentialOf(a);
+      expect(await subscriptionTempo.bound(c)).toBe(H);
+      expect(await subscriptionTempo.reference(c)).toEqual(malformed);
+    }
   });
 
   // Tempo's AccountKeychain precompile interface (IAccountKeychain): KeyAuthorizationWitness(address indexed account,
@@ -625,14 +691,18 @@ describe("mpp-subscription-tempo.json", () => {
     const tx = "0x6c1cdc57bf5a4a98961b7897cac3212636eea551540ab3b32038c45f9d3d8d1c" as const;
     expect(await witnessRecover({ network: "eip155:42431", transaction: tx }, reader)).toBe(k.witness);
     expect(await subscriptionTempo.recover({ network: "eip155:42431", transaction: tx }, reader)).toBe(k.witness);
-    const digest = await transferDigest({ to: U.L2.transferTo, value: BigInt(U.L2.transferValue) });
+    // The scope the payer signed: one limit token, the one allowed-call target, and one recipient across its rules.
+    expect(new Set(k.limits.map((l) => l.token))).toEqual(new Set([U.L2.transferToken]));
+    expect(new Set(k.allowedCalls.map((c) => c.target))).toEqual(new Set([U.L2.transferToken]));
+    expect(new Set(k.allowedCalls.flatMap((c) => c.selectorRules.flatMap((r) => r.recipients)))).toEqual(new Set([U.L2.transferTo]));
+    const digest = await transferDigest({ to: U.L2.transferTo });
     expect(digest).toBe(U.L2.expectTransferDigest);
     const status = await sessionStatus(
       {
         network: "eip155:42431",
         transaction: tx,
         bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: k.witness! },
-        transferLog: { address: f.pathUSD, topic0: TRANSFER_TOPIC, identity: "to,value", digest: digest as `0x${string}` },
+        transferLog: { address: U.L2.transferToken, topic0: TRANSFER_TOPIC, identity: "to", digest: digest as `0x${string}` },
       },
       reader,
     );
