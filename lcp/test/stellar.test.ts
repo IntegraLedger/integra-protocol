@@ -310,19 +310,20 @@ describe("x402-exact-stellar.json", () => {
 
     /**
      * getEvents over one transfer event at `landedIn`, the latest ledger being `latest`: `endLedger` exclusive, at most
-     * SCAN ledgers a call, and the returned cursor the last ledger scanned.
+     * SCAN ledgers a call, each event with its ledger, and the returned cursor the last ledger scanned.
      */
     function getEvents(landedIn: number, latest: number, q: { startLedger: number; endLedger: number } | { cursor: string }) {
       const start = "cursor" in q ? Number(q.cursor) + 1 : q.startLedger;
       const end = Math.min("cursor" in q ? Infinity : q.endLedger, start + SCAN, latest + 1);
       const ref = refOf(V.V5.ref);
-      const events = landedIn >= start && landedIn < end ? [{ txHash: listedTx, toMuxedId: BigInt(ref.toId) }] : [];
+      const events = landedIn >= start && landedIn < end ? [{ txHash: listedTx, toMuxedId: BigInt(ref.toId), ledger: landedIn }] : [];
       return { events, cursor: String(end - 1) };
     }
 
     /**
      * A reader over that getEvents whose window ends at `toLedger` (inclusive) or at `toLedger - 1` (`endLedger` set to
-     * `toLedger`), returning a cursor until getEvents has scanned through the window's last ledger.
+     * `toLedger`), returning a cursor until getEvents has scanned through the window's last ledger and keeping only the
+     * events through it.
      */
     function readerOver(ref: StellarRef, landedIn: number, inclusive: boolean, calls: object[]): StellarReader {
       const latest = ref.expiration + 5;
@@ -336,7 +337,8 @@ describe("x402-exact-stellar.json", () => {
           calls.push(f);
           const last = inclusive ? f.toLedger : f.toLedger - 1;
           const r = getEvents(landedIn, latest, f.cursor !== undefined ? { cursor: f.cursor } : { startLedger: f.fromLedger, endLedger: last + 1 });
-          return { events: r.events, ...(Number(r.cursor) < last ? { cursor: r.cursor } : {}), complete: true, oldestLedger: 1 };
+          const events = r.events.filter((e) => e.ledger <= last).map(({ txHash, toMuxedId }) => ({ txHash, toMuxedId }));
+          return { events, ...(Number(r.cursor) < last ? { cursor: r.cursor } : {}), complete: true, oldestLedger: 1 };
         },
         latestLedger: async () => latest,
       };

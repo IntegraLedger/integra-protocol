@@ -143,7 +143,8 @@ only when that search is complete and finds none. The search runs through the ex
 entry is still valid: `transfers` takes `fromLedger` through `toLedger`, both inclusive. Stellar RPC's `getEvents`
 treats `endLedger` as exclusive and scans at most 10,000 ledgers per call, so a reader over it sends
 `endLedger: toLedger + 1` on the first page, only the cursor after that, and returns a `cursor` until `getEvents`
-has scanned through `toLedger`, even when a page holds no events.
+has scanned through `toLedger`, even when a page holds no events, and keeps only the events through `toLedger`, since
+a cursor page can scan past it.
 
 A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
 time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the

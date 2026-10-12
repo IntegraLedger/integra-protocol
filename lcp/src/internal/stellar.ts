@@ -78,7 +78,8 @@ export interface StellarReader {
    * ledger the RPC still holds. Stellar RPC's `getEvents` treats `endLedger` as exclusive, takes a cursor or a ledger
    * range but not both, and scans a bounded number of ledgers per call (10,000 in stellar-rpc), so a reader over it
    * sends `startLedger: fromLedger` and `endLedger: toLedger + 1` on the first page and only the cursor on later pages,
-   * and returns a `cursor` until `getEvents` has scanned through `toLedger`, whether or not a page holds events.
+   * and returns a `cursor` until `getEvents` has scanned through `toLedger`, whether or not a page holds events. A cursor
+   * page can scan past `toLedger`, so the reader keeps only the events through `toLedger`.
    */
   transfers(f: {
     asset: string;
