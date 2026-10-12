@@ -27,7 +27,7 @@ no-downgrade` and `strictDepBuilds: true`, and every dependency is pinned to an 
 
 ## Checking your change
 
-CI runs these, and a pull request must pass all of them:
+Run these before you open a pull request:
 
 ```sh
 pnpm -r --if-present run build
@@ -48,6 +48,10 @@ node scripts/docs-reference.mjs --check
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.
+
+CI runs the commands above and the rest of `.github/workflows/ci.yml` on every push to `main` and when dispatched by
+hand. No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change once it is on
+`main`.
 
 ## The rules the code follows
 
@@ -76,9 +80,11 @@ with `git commit -s`, which appends:
 Signed-off-by: Your Name <you@example.com>
 ```
 
-using the name and email of your git configuration. CI checks every commit pushed for a `Signed-off-by:` trailer, and
-refuses a commit message with a `Co-authored-by:` trailer or one that names an AI assistant. To sign off commits you
-already made, run `git rebase --signoff origin/main` and force-push your branch.
+using the name and email of your git configuration. On every push to `main`, CI reads every commit in `main`'s history
+except one merge commit, exempt by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message
+matches the agent pattern in `.github/workflows/ci.yml` (`Co-authored-by`, `generated with` and the names it lists, in
+any case). It runs after the push and cannot hold a commit back, so sign off every commit before you open a pull
+request. To sign off commits you already made, run `git rebase --signoff origin/main` and force-push your branch.
 
 ## Pull requests
 
