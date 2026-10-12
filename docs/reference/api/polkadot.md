@@ -224,7 +224,9 @@ The profile's call, exactly, with canonical compacts and no trailing byte.
 
 > **encodeProfileCall**(`c`): `Uint8Array`
 
-`batch_all([transfer_keep_alive(assetId, Id(dest), amount), remark_with_event(remark)])`
+`batch_all([transfer_keep_alive(assetId, Id(dest), amount), remark_with_event(remark)])`, the inverse of
+`decodeProfileCall`. Throws TypeError on a call that `decodeProfileCall` never gives: `assetId` must be an integer
+from 0 to 2^32 − 1, `dest` 32 bytes, `amount` a bigint from 0 to 2^128 − 1, and `remark` 77 bytes.
 
 #### Parameters
 
