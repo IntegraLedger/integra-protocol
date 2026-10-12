@@ -187,6 +187,31 @@ describe("V5 plants: refusals", () => {
       expect(reads).toBe(1);
       expect(out.atrHash).toBe(row.expectHash);
     }
+    // A Uint8Array subclass whose length accessor answers one byte more on its first read, or one byte less after it:
+    // the size is read from the array itself, so V1's own bytes are checked and written.
+    for (const [first, later] of [
+      [1, 0],
+      [0, -1],
+    ] as const) {
+      class Shifting extends Uint8Array {
+        reads = 0;
+      }
+      Object.defineProperty(Shifting.prototype, "length", {
+        get(this: Shifting) {
+          return this.byteLength + (this.reads++ === 0 ? first : later);
+        },
+      });
+      const shifting = new Shifting(terms[1]);
+      expect([shifting.length, shifting.length]).not.toEqual([shifting.byteLength, shifting.byteLength]);
+      const out = await assemble(v1.id!, v1.binding!, [[terms[0], new Shifting(terms[1])], content[1]!]);
+      if ("refused" in out) throw new Error(out.code);
+      expect(out.atrHash).toBe(row.expectHash);
+    }
+    // A Proxy over V1's bytes is not a Uint8Array: core/content-not-json, the code for party content that is not one.
+    expect(await assemble(v1.id!, v1.binding!, [[terms[0], new Proxy(terms[1], {})], content[1]!])).toEqual({
+      refused: true,
+      code: "core/content-not-json",
+    });
   });
   it("V5l a binding member behind an accessor is read once, in the walk that checks and writes it", async () => {
     const row = refusalOf("V5l");
@@ -214,6 +239,8 @@ describe("V5 plants: refusals", () => {
     const out = await assemble(v1.id!, ["bind", value as never], []);
     if ("refused" in out) throw new Error(out.code);
     expect(reads).toBe(1);
+    // V1's head layout (atrVersion, id, the binding slot) holding the binding part JSON.stringify writes for
+    // {toJSON: "x"}: a toJSON member that holds a string is written as a member.
     expect(new TextDecoder().decode(out.bytes)).toBe(`{"atrVersion":"1","id":"${v1.id}","bind":{"toJSON":"x"}}`);
   });
 });

@@ -63,8 +63,8 @@ export function newAtrId(): string {
  * 7. The assembled length is at most the limit (`core/too-large`).
  * 8. Each party's bytes, in order, are one JSON value (`core/content-not-json`).
  *
- * Each input is read once: each array's length and members, each party's name and bytes, and each member of the
- * binding value, in the one walk that checks the value and writes it. What is checked is what is written, an input
+ * Each input is read once: each array's length and members, each party's name, bytes and size, and each member of
+ * the binding value, in the one walk that checks the value and writes it. What is checked is what is written, an input
  * behind an accessor included.
  */
 export async function assemble(
@@ -109,12 +109,13 @@ export async function assemble(
   if (value === undefined) return refuse("core/binding-not-json");
   const head = utf8.encode(`{"atrVersion":"1","id":${JSON.stringify(id)},${JSON.stringify(bindingSlot)}:${value}`);
 
+  const sizes = parts.map(byteCount);
   let total = head.length + 1;
-  for (let i = 0; i < parts.length; i++) total += names[i]!.length + parts[i]!.length;
+  for (let i = 0; i < parts.length; i++) total += names[i]!.length + sizes[i]!;
   if (total > limit) return refuse("core/too-large");
 
-  for (const bytes of parts) {
-    if (!isOneJsonValue(bytes)) return refuse("core/content-not-json");
+  for (let i = 0; i < parts.length; i++) {
+    if (!isOneJsonValue(parts[i]!, sizes[i]!)) return refuse("core/content-not-json");
   }
 
   const out = new Uint8Array(total);
@@ -124,7 +125,7 @@ export async function assemble(
     out.set(names[i]!, at);
     at += names[i]!.length;
     out.set(parts[i]!, at);
-    at += parts[i]!.length;
+    at += sizes[i]!;
   }
   out[at] = 0x7d;
   return { bytes: out, atrHash: await hash(out) };
@@ -141,6 +142,13 @@ function isPair(x: unknown): x is readonly [unknown, unknown] {
  */
 function isBytes(x: unknown): x is Uint8Array {
   return ArrayBuffer.isView(x) && (x instanceof Uint8Array || x.constructor?.name === "Uint8Array");
+}
+
+const typedArrayLength = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), "length")!.get!;
+
+/** The number of bytes in `b`, read from the array itself; a `length` accessor a subclass defines is never called. */
+function byteCount(b: Uint8Array): number {
+  return typedArrayLength.call(b) as number;
 }
 
 /**
@@ -215,14 +223,13 @@ function writeJson(v: unknown, depth: number, integersOnly: boolean, sorted: boo
 }
 
 /**
- * True when `b` is valid UTF-8 without a leading byte-order mark and holds exactly one RFC 8259 JSON value, with
- * optional surrounding whitespace and at most 64 levels of nesting. The value is scanned, never built.
+ * True when `b`, of `n` bytes, is valid UTF-8 without a leading byte-order mark and holds exactly one RFC 8259 JSON
+ * value, with optional surrounding whitespace and at most 64 levels of nesting. The value is scanned, never built.
  */
-function isOneJsonValue(b: Uint8Array): boolean {
-  if (b.length >= 3 && b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) return false;
-  if (!isUtf8(b)) return false;
+function isOneJsonValue(b: Uint8Array, n: number): boolean {
+  if (n >= 3 && b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) return false;
+  if (!isUtf8(b, n)) return false;
 
-  const n = b.length;
   const stack: number[] = [];
   let i = 0;
 
@@ -388,9 +395,11 @@ function isHexByte(c: number | undefined): boolean {
   return c !== undefined && ((c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66));
 }
 
-/** Well-formed UTF-8 as Unicode's Table 3-7 defines it: no overlong forms, no surrogates, nothing above U+10FFFF. */
-function isUtf8(b: Uint8Array): boolean {
-  const n = b.length;
+/**
+ * True when `b`, of `n` bytes, is well-formed UTF-8 as Unicode's Table 3-7 defines it: no overlong forms, no
+ * surrogates, nothing above U+10FFFF.
+ */
+function isUtf8(b: Uint8Array, n: number): boolean {
   let i = 0;
   while (i < n) {
     const c = b[i]!;
