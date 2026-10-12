@@ -132,8 +132,10 @@ calls against one network's endpoint. The package makes those calls and nothing 
 credentials, the timeouts and the retries are yours. Each `status` makes a bounded number of calls.
 
 A reader that throws, times out, or answers for another network never makes a payment failed: `status` answers
-pending, with the reason `unreadable`, and a later read can settle it. Failed means the rail itself says so: a
-reverted, aborted or expired transaction, or one that does not carry this payment.
+pending, with the reason `unreadable`, and a later read can settle it. So does a reference without the log carrying H
+that its pairing's own `reference` always names, on the EVM pairings that name one: the hash cannot be checked, and
+nothing is read. Failed means the rail itself says so: a reverted, aborted or expired transaction, or one that does
+not carry this payment.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another

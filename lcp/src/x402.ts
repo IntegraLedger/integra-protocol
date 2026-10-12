@@ -32,7 +32,6 @@ import {
   eip3009Recover,
   eip3009Status,
   eip3009TypedData,
-  evmStatus,
   paymentHash,
   permit2Status,
   permit2TypedData,
@@ -54,6 +53,7 @@ import {
 import { bytesOf } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { AGREEMENT_URL, agreementIn, agreementRefusal } from "./internal/agreement.js";
+import { boundStatus } from "./internal/evm-status.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export type { Eip3009TypedData } from "./evm.js";
@@ -1289,6 +1289,9 @@ function authCaptureReference(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
   };
 }
 
+/** The escrow events an auth-capture reference names as its binding log, in either deployment. */
+const ESCROW_EVENTS = [PAYMENT_AUTHORIZED_TOPIC, ESCROW["v1.1"].chargedTopic, ESCROW["v1.0"].chargedTopic] as const;
+
 /**
  * The payer of a presented auth-capture payment, lowercase: the token authorization's `from`, which the escrow's
  * payment hash commits to and the collector pulls from.
@@ -1454,7 +1457,7 @@ export const exactErc7710Salt = binding(
     bound: erc7710SaltBound,
     reference: erc7710Reference(ERC7710_SALT),
     authorizer: erc7710SaltAuthorizer,
-    status: evmStatus,
+    status: boundStatus([REDEEMED_DELEGATION_TOPIC]),
     recover: redeemedLeafRecover,
   },
 );
@@ -1478,7 +1481,7 @@ export const authCaptureEip3009 = binding(
     bound: authCaptureBound(AC_EIP3009),
     reference: authCaptureReference(AC_EIP3009),
     authorizer: authCaptureAuthorizer(AC_EIP3009),
-    status: evmStatus,
+    status: boundStatus(ESCROW_EVENTS),
   },
 );
 
@@ -1501,7 +1504,7 @@ export const authCapturePermit2 = binding(
     bound: authCaptureBound(AC_PERMIT2),
     reference: authCaptureReference(AC_PERMIT2),
     authorizer: authCaptureAuthorizer(AC_PERMIT2),
-    status: evmStatus,
+    status: boundStatus(ESCROW_EVENTS),
   },
 );
 

@@ -64,6 +64,7 @@ import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { readReceipt } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { boundStatus } from "./internal/evm-status.js";
 import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -853,7 +854,7 @@ export const evmAuthorization = Object.freeze({
   bound: authorizationBound,
   reference: authorizationReference,
   authorizer: authorizationAuthorizer,
-  status: evmStatus,
+  status: boundStatus([AUTHORIZATION_USED_TOPIC]),
 });
 
 export const evmPermit2 = Object.freeze({
@@ -939,7 +940,7 @@ export const tempoMemo = Object.freeze({
   build: tempoBuild(MEMO),
   bound: memoBound,
   reference: memoReference,
-  status: evmStatus,
+  status: boundStatus([TRANSFER_WITH_MEMO_TOPIC]),
 });
 
 export const tempoPush = Object.freeze({
@@ -963,7 +964,7 @@ export const tempoPush = Object.freeze({
     const hash = pushedField(presented, "hash", "hash");
     return hash === undefined ? undefined : (normalHash(hash) ?? undefined);
   },
-  status: evmStatus,
+  status: boundStatus([TRANSFER_WITH_MEMO_TOPIC]),
   fetchPresented: pushFetchPresented,
 });
 

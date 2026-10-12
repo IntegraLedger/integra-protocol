@@ -12,12 +12,12 @@ import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
   eip3009TypedData,
-  evmStatus,
   transferDigest,
   type Eip3009TypedData,
   type EvmRef,
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
+import { boundStatus } from "./internal/evm-status.js";
 import { keyString } from "./internal/svm.js";
 import {
   b64uDecode,
@@ -312,7 +312,7 @@ export const chargeUsdcEvm = Object.freeze({
   bound: evmBound,
   reference: evmReference,
   authorizer: evmAuthorizer,
-  status: evmStatus,
+  status: boundStatus([AUTHORIZATION_USED_TOPIC]),
 });
 
 // ── mpp/charge/usdc/solana.

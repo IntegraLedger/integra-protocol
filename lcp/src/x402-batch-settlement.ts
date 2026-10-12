@@ -22,7 +22,6 @@ import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
   carriesBinding,
-  evmStatus,
   permit2TypedData,
   receiveTypedData,
   transferDigest,
@@ -38,6 +37,7 @@ import {
   type ReceiveTypedData,
 } from "./evm.js";
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
+import { boundStatus } from "./internal/evm-status.js";
 import {
   channelInstruction,
   channelPda,
@@ -591,16 +591,15 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
  * logs hold that deposit call's transfers. The transfer counts when its `from`, `to` and `value` hash to the
  * reference's digest. A matching transfer elsewhere in the transaction, such as the payer's deposit into another
  * channel beside a gift into this one, is failed `transfer-not-found`; a matching transfer the transaction makes
- * between the previous deposit call and this one is read as this deposit's. A reference without this pairing's `Deposited` binding log from the channel contract and its
- * `from,to,value` transfer log is pending `unreadable`, and nothing is read. At most three calls.
+ * between the previous deposit call and this one is read as this deposit's. A reference without this pairing's
+ * well-formed `Deposited` binding log from the channel contract and its `from,to,value` transfer log is pending
+ * `unreadable`, and nothing is read. At most three calls.
  */
 async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const binding = ref.bindingLog;
   const t = ref.transferLog;
-  const deposited =
-    typeof binding === "object" && binding !== null && sameBytes(binding.address, BATCH_SETTLEMENT) &&
-    sameBytes(binding.topic0, DEPOSITED_TOPIC);
-  if (!deposited || typeof t !== "object" || t === null || t.identity !== "from,to,value") {
+  const fromContract = typeof binding === "object" && binding !== null && sameBytes(binding.address, BATCH_SETTLEMENT);
+  if (!fromContract || typeof t !== "object" || t === null || t.identity !== "from,to,value") {
     return { state: "pending", why: "unreadable" };
   }
   let seen: EvmReceipt | null = null;
@@ -611,7 +610,7 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
     transaction: (tx) => reader.transaction(tx),
     call: (to, data, block) => reader.call(to, data, block),
   };
-  const s = await evmStatus(ref, watching);
+  const s = await boundStatus([DEPOSITED_TOPIC])(ref, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
   let start = 0;
