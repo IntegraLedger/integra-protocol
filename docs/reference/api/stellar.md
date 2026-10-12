@@ -68,16 +68,17 @@ Bounded, read-only calls against one network's RPC. Every failure rejects with `
 
 ##### transfers()
 
-> **transfers**(`f`): `Promise`\<\{ `complete`: `boolean`; `cursor?`: `string`; `events`: readonly `object`[]; `oldestLedger`: `number`; \}\>
+> **transfers**(`f`): `Promise`\<\{ `complete`: `boolean`; `cursor?`: `string`; `events`: readonly `object`[]; `latestLedger`: `number`; `oldestLedger`: `number`; \}\>
 
 One page of SEP-41 `transfer` events of `asset` to `toBase` from `fromLedger` through `toLedger`, both inclusive,
 with each event's `to_muxed_id`. `stellarLocate` passes the authorization entry's expiration ledger as `toLedger`,
 and the entry can still be used in that ledger. `cursor` is present while more pages remain: until the search has
 read through `toLedger`. `complete` is false when the RPC reports events disabled. `oldestLedger` is the oldest
-ledger the RPC still holds. Stellar RPC's `getEvents` treats `endLedger` as exclusive, takes a cursor or a ledger
-range but not both, and scans a bounded number of ledgers per call (10,000 in stellar-rpc), so a reader over it
-sends `startLedger: fromLedger` and `endLedger: toLedger + 1` on the first page and only the cursor on later pages,
-and returns a `cursor` until `getEvents` has scanned through `toLedger`, whether or not a page holds events. A cursor
+ledger the RPC still holds, and `latestLedger` the latest ledger it held when it answered (`getEvents`'
+`latestLedger`). Stellar RPC's `getEvents` treats `endLedger` as exclusive, takes a cursor or a ledger range but
+not both, and scans a bounded number of ledgers per call (10,000 in stellar-rpc), so a reader over it sends
+`startLedger: fromLedger` and `endLedger: toLedger + 1` on the first page and only the cursor on later pages, and
+returns a `cursor` until `getEvents` has scanned through `toLedger`, whether or not a page holds events. A cursor
 page can scan past `toLedger`, so the reader keeps only the events through `toLedger`.
 
 ###### Parameters
@@ -93,7 +94,7 @@ page can scan past `toLedger`, so the reader keeps only the events through `toLe
 
 ###### Returns
 
-`Promise`\<\{ `complete`: `boolean`; `cursor?`: `string`; `events`: readonly `object`[]; `oldestLedger`: `number`; \}\>
+`Promise`\<\{ `complete`: `boolean`; `cursor?`: `string`; `events`: readonly `object`[]; `latestLedger`: `number`; `oldestLedger`: `number`; \}\>
 
 ***
 
@@ -284,11 +285,12 @@ elements and map entries. The walk keeps its own stack.
 
 Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` through
 the entry's expiration ledger, both inclusive, keeping those whose muxed id is `toId`, each read as `stellarStatus`
-reads its named transaction. `complete` is true only when every page was read, the reader reported events enabled on
-each, the RPC still held `fromLedger` (`oldestLedger` ≤ `fromLedger`), and every candidate was read: a listed
-candidate whose transaction is not found, or cannot be read, leaves the search incomplete. At most 10 pages and 50
-candidates. A ref without `authDigest` or `expiration` names its transaction and has no entry to search for:
-`complete` is false.
+reads its named transaction. A candidate that settles is `found`, on any page. With none found, `complete` is true
+only when every page was read, the reader reported events enabled on each, the RPC still held `fromLedger`
+(`oldestLedger` ≤ `fromLedger`) and had reached the expiration ledger (`latestLedger` ≥ `expiration`), and every
+candidate was read: a listed candidate whose transaction is not found, or cannot be read, leaves the search
+incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
+has no entry to search for: `complete` is false.
 
 #### Parameters
 
@@ -313,12 +315,13 @@ entry `ref.authDigest` names. A landed transaction is read by the payer's first 
 it are not read. Otherwise the entry can still be used by another transaction until its expiration ledger, so a named
 transaction that is not found, failed, or succeeded with another entry is pending. The read is final only past that
 ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
-transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
-incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
-or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
-without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
-`expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
-there is no expiration ledger to pass.
+transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
+`latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
+is never read as absence. A failed read, or a reader for another network, is pending. One call when the named
+transaction settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s
+calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as the transaction's source
+account, with no `expiration` either) is settled when the named transaction succeeded as that transfer, and is
+otherwise pending: there is no expiration ledger to pass.
 
 #### Parameters
 

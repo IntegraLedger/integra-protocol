@@ -40,7 +40,11 @@ An unmined transaction: `pending`, or one of the `dropped_…` states.
 
 ### StacksReader
 
-Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError.
+Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. `height` is the block
+height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from the node that gave the
+answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and before a lookup that
+answers `notFound`, so the lookup is at or above it. It is null when the reader cannot read it from that node, and an
+answer naming no height never reads an unknown transaction as failed.
 
 #### Properties
 
@@ -68,7 +72,7 @@ The tenure height of the block at `height`.
 
 ##### confirmedNonce()
 
-> **confirmedNonce**(`principal`): `Promise`\<`bigint` \| `null`\>
+> **confirmedNonce**(`principal`): `Promise`\<\{ `height`: `bigint` \| `null`; `nonce`: `bigint` \| `null`; \}\>
 
 The principal's last confirmed nonce, or null when it has none.
 
@@ -80,7 +84,7 @@ The principal's last confirmed nonce, or null when it has none.
 
 ###### Returns
 
-`Promise`\<`bigint` \| `null`\>
+`Promise`\<\{ `height`: `bigint` \| `null`; `nonce`: `bigint` \| `null`; \}\>
 
 ##### tipTenure()
 
@@ -94,9 +98,9 @@ The tip's tenure height.
 
 ##### transaction()
 
-> **transaction**(`txid`): `Promise`\<[`StacksLanded`](#stackslanded) \| [`StacksMempool`](#stacksmempool) \| `null`\>
+> **transaction**(`txid`): `Promise`\<[`StacksLanded`](#stackslanded) \| [`StacksMempool`](#stacksmempool) \| \{ `height`: `bigint` \| `null`; `notFound`: `true`; \}\>
 
-The transaction by its `0x`-prefixed id, with its function arguments; null when the API does not know it.
+The transaction by its `0x`-prefixed id, with its function arguments; `notFound` when the API does not know it.
 
 ###### Parameters
 
@@ -106,7 +110,7 @@ The transaction by its `0x`-prefixed id, with its function arguments; null when 
 
 ###### Returns
 
-`Promise`\<[`StacksLanded`](#stackslanded) \| [`StacksMempool`](#stacksmempool) \| `null`\>
+`Promise`\<[`StacksLanded`](#stackslanded) \| [`StacksMempool`](#stacksmempool) \| \{ `height`: `bigint` \| `null`; `notFound`: `true`; \}\>
 
 ***
 
@@ -190,7 +194,7 @@ H from a memo argument that is `(some <32-byte buffer>)`, or null.
 > **stacksRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
-A wrong reader is `stacks/wrong-reader`, a failed read or an answer of neither documented shape `stacks/unreadable`,
+A wrong reader is `stacks/wrong-reader`, a failed read or an answer of no documented shape `stacks/unreadable`,
 an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`, and no
 `(some <32 bytes>)` memo of that call `stacks/no-memo`.
 
@@ -215,13 +219,15 @@ an unknown or unmined transaction `stacks/not-found`, any other status `stacks/n
 > **stacksStatus**(`ref`, `reader`): `Promise`\<[`StacksStatus`](#stacksstatus)\>
 
 The payment's settlement, in at most four reader calls. The origin's confirmed nonce is read first, then the
-transaction. A wrong reader, a failed transaction read, or an answer of neither documented shape is pending
+transaction. A wrong reader, a failed transaction read, or an answer of no documented shape is pending
 `unreadable`. A mined transaction must be the origin's at its nonce, calling the contract's `transfer` with `(some H)`
 as its fourth argument, else failed `not-this-instrument`; then the API's `status` decides. A mined transaction's
 answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
 two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
 failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
-was read at the API's tip, so `block`. A failed or malformed nonce read then is pending `unreadable`.
+was read at the API's tip, so `block`. An unknown transaction counts so only when the lookup names a height at or
+above the one the nonce read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is
+pending `not-found`. A failed or malformed nonce read then is pending `unreadable`.
 
 #### Parameters
 

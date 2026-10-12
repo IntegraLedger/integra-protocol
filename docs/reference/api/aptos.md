@@ -94,9 +94,11 @@ Bounded, read-only calls against one network's REST endpoint. Every failure reje
 
 ##### bySequence()
 
-> **bySequence**(`sender`, `n`): `Promise`\<[`AptosCommitted`](#aptoscommitted) \| `null`\>
+> **bySequence**(`sender`, `n`): `Promise`\<[`AptosCommitted`](#aptoscommitted) \| \{ `notFound`: `true`; `timestampUsecs`: `bigint`; \}\>
 
-`GET /v1/accounts/{sender}/transactions?start=n&limit=1`, kept only when its `sequence_number` is n.
+`GET /v1/accounts/{sender}/transactions?start=n&limit=1`, kept only when its `sequence_number` is n. When there is
+none, `notFound` with `timestampUsecs`: the ledger timestamp of that answer, its `X-Aptos-Ledger-TimestampUsec`
+header.
 
 ###### Parameters
 
@@ -107,7 +109,7 @@ Bounded, read-only calls against one network's REST endpoint. Every failure reje
 
 ###### Returns
 
-`Promise`\<[`AptosCommitted`](#aptoscommitted) \| `null`\>
+`Promise`\<[`AptosCommitted`](#aptoscommitted) \| \{ `notFound`: `true`; `timestampUsecs`: `bigint`; \}\>
 
 ##### ledger()
 
@@ -245,8 +247,10 @@ This pairing's id for an option it can pay, or undefined.
 
 Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
 identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
-transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. A
-failed read, or a reader for another network, is pending. At most three calls.
+transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. The
+ledger is read first: failed `expired` only when its timestamp is past `expiresAt` and the lookup by sequence number
+finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
+is pending `not-found`. A failed read, or a reader for another network, is pending. At most three calls.
 
 #### Parameters
 

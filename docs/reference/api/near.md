@@ -49,9 +49,9 @@ Bounded, read-only calls against one network's RPC. Every failure rejects with `
 
 ##### accessKeyNonce()
 
-> **accessKeyNonce**(`account`, `publicKey`): `Promise`\<`bigint` \| `null`\>
+> **accessKeyNonce**(`account`, `publicKey`): `Promise`\<\{ `blockHeight`: `bigint`; `nonce`: `bigint`; \} \| `null`\>
 
-`view_access_key` at "final": the key's nonce; null: no such key.
+`view_access_key` at "final": the key's nonce and the `block_height` of the block whose state it reads; null: no such key.
 
 ###### Parameters
 
@@ -62,7 +62,7 @@ Bounded, read-only calls against one network's RPC. Every failure rejects with `
 
 ###### Returns
 
-`Promise`\<`bigint` \| `null`\>
+`Promise`\<\{ `blockHeight`: `bigint`; `nonce`: `bigint`; \} \| `null`\>
 
 ##### finalHeight()
 
@@ -229,9 +229,10 @@ arguments whose `memo` is an LCP string. The bytes must be exactly the borsh enc
 
 > **nearLapsed**(`ref`, `reader`): `Promise`\<`boolean`\>
 
-True only when the delegate action can never execute: the final height is past `maxBlockHeight` and the key's
-nonce is below the action's. A key that does not exist is false, because a key deleted after the delegate
-executed gives the same answer. Two calls; a failed read is false.
+True only when the delegate action can never execute: the final height, read first, is past `maxBlockHeight`, and
+the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
+the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
+executed gives the same answer. Two calls; a failed or malformed read is false.
 
 #### Parameters
 

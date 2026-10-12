@@ -70,9 +70,12 @@ Bounded, read-only calls against one network's FullNode and SolidityNode. Every 
 
 ##### info()
 
-> **info**(`txid`, `level`): `Promise`\<[`TronInfo`](#troninfo) \| `null`\>
+> **info**(`txid`, `level`): `Promise`\<[`TronInfo`](#troninfo) \| \{ `notFound`: `true`; `timestamp`: `bigint` \| `null`; \}\>
 
-`/walletsolidity/gettransactioninfobyid` ("solid") or `/wallet/gettransactioninfobyid` ("head"); null: none.
+`/walletsolidity/gettransactioninfobyid` ("solid") or `/wallet/gettransactioninfobyid` ("head"). When the node does
+not know the transaction, `notFound` with `timestamp`: the time in milliseconds of the latest block at that level
+on the node that answered (`/walletsolidity/getnowblock` or `/wallet/getnowblock`), read from that same node before
+the lookup, or null when the reader cannot read it from that node. A lookup naming no time never reads failed.
 
 ###### Parameters
 
@@ -83,7 +86,7 @@ Bounded, read-only calls against one network's FullNode and SolidityNode. Every 
 
 ###### Returns
 
-`Promise`\<[`TronInfo`](#troninfo) \| `null`\>
+`Promise`\<[`TronInfo`](#troninfo) \| \{ `notFound`: `true`; `timestamp`: `bigint` \| `null`; \}\>
 
 ##### solidHead()
 
@@ -340,7 +343,9 @@ Recovers the hash from the transaction id alone: the memo of the transaction who
 Reads the latest solidified block first, then the transaction by id: at the Solidity node, then at the FullNode's
 head. Settled when its receipt result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as
 `expired` only when that earlier solidified block is two slots past the expiration and neither lookup finds the
-transaction. A failed read, or a reader for another network, is pending. At most three calls.
+transaction, each naming a block time at or past that earlier block's: a lookup whose node lags the block read first,
+or that names no time, is pending `not-found`. A failed read, an answer of neither documented shape, or a reader for
+another network is pending `unreadable`. At most three calls.
 
 #### Parameters
 

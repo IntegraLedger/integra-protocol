@@ -103,9 +103,13 @@ GET /api/v3/transactions?hash=…
 
 ##### byInBody()
 
-> **byInBody**(`bodyHash`): `Promise`\<readonly [`TonTx`](#tontx)[]\>
+> **byInBody**(`bodyHash`): `Promise`\<\{ `headUtime`: `number` \| `null`; `transactions`: readonly [`TonTx`](#tontx)[]; \}\>
 
-GET /api/v3/transactionsByMessage?body_hash=…&direction=in
+GET /api/v3/transactionsByMessage?body_hash=…&direction=in, with `headUtime`: the `gen_utime` of a masterchain
+block through which the index that answered holds every block, read from that same index before the lookup, or null
+when the reader cannot read it from that index. `masterchainInfo`'s `last` can be ahead of an earlier block the
+index has not finished writing, so on its own it does not name such a block. A lookup naming no time never reads
+`expired` or `aborted`.
 
 ###### Parameters
 
@@ -115,7 +119,7 @@ GET /api/v3/transactionsByMessage?body_hash=…&direction=in
 
 ###### Returns
 
-`Promise`\<readonly [`TonTx`](#tontx)[]\>
+`Promise`\<\{ `headUtime`: `number` \| `null`; `transactions`: readonly [`TonTx`](#tontx)[]; \}\>
 
 ##### byInMessage()
 
@@ -323,11 +327,14 @@ when both Jetton wallets executed without aborting, at the lower finality of the
 any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
 Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
 emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
-pending `not-found` up to `validUntil`; past it, failed `expired` when the W5 wallet holds no transaction with the
-request, `no-transfer` when one executed and emitted nothing, `aborted` when every one aborted. The payer's Jetton
-wallet's transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an
-aborted delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed
-read, a malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
+pending `not-found` up to `validUntil`; past it, failed `no-transfer` when one executed and emitted nothing, and
+failed `expired` when the W5 wallet holds no transaction with the request, or `aborted` when every one aborted, only
+when the lookup names an indexed time at or past the head read first: an internal request that aborts leaves its
+seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
+`validUntil`, and an index that lags that head, or names no time, is pending `not-found`. The payer's Jetton wallet's
+transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted
+delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed read, a
+malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
 
 #### Parameters
 

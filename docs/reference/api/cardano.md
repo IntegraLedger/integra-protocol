@@ -51,7 +51,10 @@ The payload x402's Cardano scheme defines.
 ### CardanoReader
 
 Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`. `slotAt` answers
-the slot of the block at a height, or null when the indexer holds no block at it.
+the slot of the block at a height, or null when the indexer holds no block at it. `transaction` answers `notFound`
+when the indexer does not hold the transaction, with `slot`: the slot of the latest block the indexer that answered
+held, read from that same indexer before the lookup, or null when the reader cannot read it from that indexer. A
+lookup naming no slot never reads failed.
 
 #### Properties
 
@@ -85,7 +88,7 @@ the slot of the block at a height, or null when the indexer holds no block at it
 
 ##### transaction()
 
-> **transaction**(`txId`, `withCbor`): `Promise`\<[`CardanoOnChain`](#cardanoonchain) \| `null`\>
+> **transaction**(`txId`, `withCbor`): `Promise`\<[`CardanoOnChain`](#cardanoonchain) \| \{ `notFound`: `true`; `slot`: `bigint` \| `null`; \}\>
 
 ###### Parameters
 
@@ -96,7 +99,7 @@ the slot of the block at a height, or null when the indexer holds no block at it
 
 ###### Returns
 
-`Promise`\<[`CardanoOnChain`](#cardanoonchain) \| `null`\>
+`Promise`\<[`CardanoOnChain`](#cardanoonchain) \| \{ `notFound`: `true`; `slot`: `bigint` \| `null`; \}\>
 
 ***
 
@@ -259,13 +262,15 @@ Reads the hash back from the included transaction alone, by its id. One call.
 
 > **cardanoStatus**(`ref`, `reader`, `depth`): `Promise`\<[`CardanoStatus`](#cardanostatus)\>
 
-Reads the recorded id. A failed read, or a reader for another network, is pending. `depth` is the number of newer
-blocks at which the caller takes a settlement as final. An absent transaction is expired once the slot of the block
-`depth` below the tip is past its TTL, so a rollback of fewer than `depth` blocks never turns a payment that landed
-into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, or the
-reader holds no block at that height, it is pending `not-found`. A present one fails only when the ledger marks it
-invalid. A `depth` that is not a non-negative bigint is pending `unreadable`. At most three calls: `slotAt` only for
-an absent transaction once the tip's slot is past the TTL, and not at `depth` 0, where the tip is that block.
+Reads the tip first, then the recorded id. A failed read, or a reader for another network, is pending. `depth` is
+the number of newer blocks at which the caller takes a settlement as final. An absent transaction is expired once the
+slot of the block `depth` below the tip is past its TTL and the lookup names a slot at or past the tip's, so a
+rollback of fewer than `depth` blocks, or a lookup that lags the tip read first, never turns a payment that landed
+into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, the
+reader holds no block at that height, or the lookup names an earlier slot or none, it is pending `not-found`. A
+present one fails only when the ledger marks it invalid. A `depth` that is not a non-negative bigint is pending
+`unreadable`. At most three calls: `slotAt` only for an absent transaction once the tip's slot is past the TTL and
+the lookup covers the tip, and not at `depth` 0, where the tip is that block.
 
 #### Parameters
 
