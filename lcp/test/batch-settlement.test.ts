@@ -1,5 +1,6 @@
 // Runs x402-batch-settlement.json through the x402-batch-settlement and svm entry points. Every expected value is the
-// file's, except the pairingOf test's, which are the x402 SVM batch-settlement option table's, as its name says. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
+// file's, except the pairingOf test's, which are the x402 SVM batch-settlement option table's, as its name says. A
+// durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
 // x402-exact-solana.json's nonce; its digest is node:crypto's SHA-256 of kit's message.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
