@@ -228,7 +228,7 @@
   "expect": "xrpl/no-invoice-id"
  },
  "agreedRefusals": {
-  "about": "Refusal codes the XRPL specification leaves to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes the XRPL specification leaves to the implementation. The TypeScript and Python implementations both apply every row but the peer-missing and recover rows, which the TypeScript implementation alone applies: the Python one has no codec peer to load and no recover.",
   "rows": [
    {
     "case": "decodeBlob when ripple-binary-codec is not installed",
