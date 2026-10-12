@@ -185,6 +185,11 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(V.EB7.plantOtherContract.receipt))).toEqual(
       V.EB7.plantOtherContract.expect,
     );
+    for (const row of [V.EB7.fullCall, V.EB7.plantGiftBesideDeposit, V.EB7.plantShortBesideDeposit]) {
+      const s = await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(row.receipt));
+      expect(JSON.parse(JSON.stringify(s, (_, v) => (typeof v === "bigint" ? v.toString() : v))), row.case).toEqual(row.expect);
+    }
+    expect(V.EB7.fullCall.receipt.logs[2]).toEqual(V.EB8.log);
   });
 
   it("EB8: recover", async () => {

@@ -21,11 +21,14 @@ import {
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
+  carriesBinding,
   evmStatus,
   permit2TypedData,
   receiveTypedData,
   transferDigest,
+  transferParts,
   type Eip155,
+  type EvmBreadthStatus,
   type EvmLog,
   type EvmReader,
   type EvmReceipt,
@@ -581,6 +584,53 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
   };
 }
 
+/**
+ * The opening's settlement: `evmStatus` on the reference, with the payer's transfer counted only from the deposit call
+ * that emitted the channel's `Deposited` log. The channel contract collects a deposit and then emits `Deposited`, so
+ * that call's transfers lie after the contract's previous `Deposited` log and before this one, and one of them must
+ * be the payer's transfer whose `from`, `to` and `value` hash to the reference's digest. A matching transfer elsewhere
+ * in the transaction, such as the payer's deposit into another channel beside a gift into this one, is failed
+ * `transfer-not-found`. A reference without this pairing's `Deposited` binding log from the channel contract and its
+ * `from,to,value` transfer log is pending `unreadable`, and nothing is read. At most three calls.
+ */
+async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
+  if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
+    return { state: "pending", why: "unreadable" };
+  }
+  const binding = ref.bindingLog;
+  const t = ref.transferLog;
+  const deposited =
+    typeof binding === "object" && binding !== null && sameBytes(binding.address, BATCH_SETTLEMENT) &&
+    sameBytes(binding.topic0, DEPOSITED_TOPIC);
+  if (!deposited || typeof t !== "object" || t === null || t.identity !== "from,to,value") {
+    return { state: "pending", why: "unreadable" };
+  }
+  let seen: EvmReceipt | null = null;
+  const watching: EvmReader = {
+    network: reader.network,
+    receipt: async (tx) => (seen = await reader.receipt(tx)),
+    blockNumber: (tag) => reader.blockNumber(tag),
+    transaction: (tx) => reader.transaction(tx),
+    call: (to, data, block) => reader.call(to, data, block),
+  };
+  const s = await evmStatus(ref, watching);
+  if (s.state !== "settled") return s;
+  const logs = (seen as EvmReceipt | null)?.logs ?? [];
+  let start = 0;
+  for (let i = 0; i < logs.length; i++) {
+    const log = logs[i]!;
+    if (!sameBytes(log.address, binding.address) || !sameBytes(log.topics[0], binding.topic0)) continue;
+    if (carriesBinding(log, binding)) {
+      for (let j = start; j < i; j++) {
+        const p = transferParts(logs[j]!, t.address, t.topic0);
+        if (p !== undefined && sameBytes(await transferDigest(p), t.digest)) return s;
+      }
+    }
+    start = i + 1;
+  }
+  return { state: "failed", why: "transfer-not-found" };
+}
+
 /** Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. */
 async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -649,7 +699,7 @@ export const batchEvm = Object.freeze({
   buildWithin: evmBuildWithin,
   bound: evmBound,
   reference: evmReference,
-  status: evmStatus,
+  status: evmDepositStatus,
   recover: evmRecover,
   channel: Object.freeze({
     kind: evmKind,
