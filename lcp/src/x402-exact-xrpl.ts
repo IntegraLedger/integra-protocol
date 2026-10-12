@@ -40,7 +40,7 @@ const AMOUNT = /^[0-9]+(\.[0-9]+)?$/;
 const DROPS = /^[1-9][0-9]{0,16}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 
-export interface XrplChoice {
+interface XrplChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   account: string;
