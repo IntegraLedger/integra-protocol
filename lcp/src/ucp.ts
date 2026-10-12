@@ -111,7 +111,10 @@ export interface UcpBinding<Id extends string, O extends Option> {
   bound(presented: unknown): Promise<AtrHash | Refusal>;
 }
 
-/** The checkout's shape as the pairings read it: an object of at most 1 MiB as JSON, with an `id` of 1–256. */
+/**
+ * The checkout's shape as the pairings read it: an object of at most 1 MiB as JSON, nested at most 64 levels, with an
+ * `id` of 1–256.
+ */
 function checkoutOf(doc: unknown): Checkout | Refusal {
   if (!isObject(doc)) return refusal("ucp/checkout-malformed");
   const size = jsonBytes(doc);

@@ -197,7 +197,7 @@ ACK Payment Requests and receipts (`@integraledger/lcp/ack`).
 | `ack/option-malformed` | `advertise` refuses a payment option that is not an object with a non-empty string `id`. |
 | `ack/receipt-malformed` | `fromReceipt` refuses a `credentialSubject` that is not a serialisable JSON object or whose embedded `paymentRequestToken` does not carry an `id` in LCP's string form. |
 | `ack/token-malformed` | `read` refuses a 402 body that is not a serialisable JSON object, a `paymentRequestToken` that is not a compact JWS with a JSON object payload, or a token payload whose `paymentOptions` is not an array. |
-| `ack/too-large` | `read` refuses a 402 body over 64 KiB, a token over 16384 characters or more than 16 payment options, and `fromReceipt` refuses a `credentialSubject` over 64 KiB. |
+| `ack/too-large` | `read` refuses a 402 body over 64 KiB, a token over 16384 characters or more than 16 payment options, and `fromReceipt` refuses a `credentialSubject` over 64 KiB; a body or `credentialSubject` nested more than 64 levels deep is refused the same way. |
 
 ## acp
 
@@ -219,7 +219,7 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 | `acp/nothing-to-sign` | `build` of `acp/checkout/undelegated` always refuses, because a handler that does not require `delegate_payment` gives the buyer nothing to sign. |
 | `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`. |
 | `acp/session-malformed` | `advertise` or `read` refuses a checkout session that is not a serialisable JSON object, or (in `advertise`) whose `metadata` is present but not an object. |
-| `acp/too-large` | The checkout session exceeds 1 MiB or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
+| `acp/too-large` | The checkout session exceeds 1 MiB or is nested more than 64 levels deep, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
 
 ## ap2
 
@@ -263,7 +263,7 @@ UCP checkouts and bookings (`@integraledger/lcp/ucp`).
 | `ucp/nothing-to-sign` | `build` of the unsigned checkout and booking pairings always refuses, because the buyer signs nothing. |
 | `ucp/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout` or `booking` as the pairing requires, a string of 1 to 256 characters. |
 | `ucp/option-not-this-checkout` | `advertise` finds that the option names a checkout or booking other than the document's `id`. |
-| `ucp/too-large` | The checkout exceeds 1 MiB as JSON, its `id` exceeds 256 characters, or its `links` holds, or after `advertise` would hold, more than 64 entries. |
+| `ucp/too-large` | The checkout exceeds 1 MiB as JSON or is nested more than 64 levels deep, its `id` exceeds 256 characters, or its `links` holds, or after `advertise` would hold, more than 64 entries. |
 
 ## card
 
@@ -308,7 +308,7 @@ The A2A extension (`@integraledger/lcp/a2a`).
 | `a2a/link-not-https` | The link to the seller's copy, given to `place` or found by `read`, is an absolute URL whose scheme is not `https`. |
 | `a2a/no-legal-context` | `read` finds no legal context under any extension URI in the task's `metadata`. |
 | `a2a/no-signed-place` | The exported `binding` value: A2A signs nothing per transaction, so every request for an A2A pairing gets this refusal. |
-| `a2a/too-large` | The legal context value written by `place` or found by `read` under the extension URI is larger than 4096 bytes of JSON. |
+| `a2a/too-large` | The legal context value written by `place` or found by `read` under the extension URI is larger than 4096 bytes of JSON, or is nested more than 64 levels deep. |
 
 ## evm
 

@@ -1,5 +1,5 @@
 /** Shape checks for JSON objects, EVM and hash values, shared by the entry points. */
-import { canonicalJson, fromRawBytes, toRawBytes, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, fromRawBytes, MAX_JSON_DEPTH, toRawBytes, type AtrHash, type Json } from "./core.js";
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -69,12 +69,27 @@ export function sameJson(a: unknown, b: unknown): boolean {
 
 const utf8 = new TextEncoder();
 
-/** The UTF-8 length of `v` written by `JSON.stringify`, or undefined when `v` cannot be written. */
+/**
+ * The UTF-8 length of `v` written by `JSON.stringify`, or undefined when `v` cannot be written. A value in which
+ * objects and arrays nest more than 64 levels measures `Infinity`, over every size limit: the walk stops at the 65th
+ * level, so the answer is the same on every host, whatever its stack.
+ */
 export function jsonBytes(v: unknown): number | undefined {
+  const levels = new WeakMap<object, number>();
+  let deep = false;
   try {
-    const s = JSON.stringify(v);
+    const s = JSON.stringify(v, function (this: object, _key: string, value: unknown): unknown {
+      if (typeof value !== "object" || value === null) return value;
+      const level = (levels.get(this) ?? 0) + 1;
+      if (level > MAX_JSON_DEPTH) {
+        deep = true;
+        throw new RangeError("nested too deep");
+      }
+      levels.set(value, level);
+      return value;
+    });
     return typeof s === "string" ? utf8.encode(s).length : undefined;
   } catch {
-    return undefined;
+    return deep ? Number.POSITIVE_INFINITY : undefined;
   }
 }

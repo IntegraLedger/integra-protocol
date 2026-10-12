@@ -1,13 +1,18 @@
-// The one JSON nesting cap: vectors/core-vectors.json `jsonDepth` (64 levels), run on the core reader and on the
-// entry points that read JSON text. At 64 each reads on; at 65 each refuses with its own code for JSON it cannot read.
+// The one JSON nesting cap: vectors/core-vectors.json `jsonDepth` (64 levels), run on the core reader, on the entry
+// points that read JSON text, and on those that measure a JSON value they are given. At 64 each reads on; at 65 each
+// refuses: a reader of text with its own code for JSON it cannot read, a measure with its own code for too large.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { paymentRequest } from "../src/ack.js";
+import { read as readA2a, A2A_EXTENSION_URIS } from "../src/a2a.js";
+import { fromReceipt, paymentRequest } from "../src/ack.js";
+import { delegated } from "../src/acp.js";
+import { checkoutMandate } from "../src/ap2.js";
 import { viImmediate } from "../src/card.js";
 import { jsonWithinDepth, MAX_JSON_DEPTH, parseJson } from "../src/core.js";
 import { parse as parseDiscovery } from "../src/discovery.js";
 import { atrNamesInvoice } from "../src/lightning.js";
 import { usdcRequestHash } from "../src/mpp-usdc.js";
+import { unsigned } from "../src/ucp.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const D = load("core-vectors.json").jsonDepth as { max: number; rows: { name: string; case: string; text: string; accept: boolean }[] };
@@ -71,4 +76,34 @@ describe("each entry point that reads JSON text reads 64 levels and refuses 65",
     expect(viImmediate.read(token(64) as never)).toEqual({ h: H, link: L });
     expect(viImmediate.read(token(65) as never)).toEqual(refused("card/too-large"));
   });
+});
+
+// A value given in code is measured as JSON.stringify writes it. Objects with numeric member names, as JSON.parse
+// builds them, are what V8 writes by recursion, so past some depth the host's stack, not a rule, would answer. Each
+// entry point counts the levels as it writes, and stops at the 65th.
+describe("each entry point that measures a JSON value measures 64 levels and refuses 65 as too large", () => {
+  const value = (n: number) => JSON.parse('{"1":'.repeat(n - 1) + "[]" + "}".repeat(n - 1));
+  const token = jws(`{"id":"lcp:sha256:${H}","paymentOptions":[]}`);
+  const lc = { type: "sha256", value: H, legalContextUrl: L };
+  const session = delegated.advertise({ currency: "usd" }, H, L, { requires_delegate_payment: true });
+  const checkout = (x: unknown) => ({ id: "chk_1", links: [{ type: "legal_context", url: L, title: `lcp:sha256:${H}` }], x });
+  // Each case puts the deep value one level inside what the entry point measures: n counts every level measured.
+  const cases: [string, string, (x: unknown) => unknown][] = [
+    ["acp read", "acp/too-large", (x) => delegated.read({ ...session, x } as never)],
+    ["acp advertise", "acp/too-large", (x) => delegated.advertise({ currency: "usd", x } as never, H, L, { requires_delegate_payment: true })],
+    ["ack read", "ack/too-large", (x) => paymentRequest.read({ paymentRequestToken: token, legalContext: lc, x } as never)],
+    ["ack fromReceipt", "ack/too-large", (x) => fromReceipt({ paymentRequestToken: token, x })],
+    ["ucp read", "ucp/too-large", (x) => unsigned.read(checkout(x) as never)],
+    ["ucp advertise", "ucp/too-large", (x) => unsigned.advertise({ id: "chk_1", x } as never, H, L, { checkout: "chk_1" })],
+    ["ap2 advertise", "ap2/too-large", (x) => checkoutMandate.advertise({ id: "chk_1", x } as never, H, L, { checkout: "chk_1" })],
+    ["a2a read", "a2a/too-large", (x) => readA2a({ id: "t1", metadata: { [A2A_EXTENSION_URIS[0]!]: { ...lc, x } } } as never)],
+  ];
+  for (const [name, code, f] of cases) {
+    it(`${name}: 64 levels are measured; 65, 1,000 and 100,000 are ${code}`, () => {
+      const at64 = f(value(63));
+      expect(at64).not.toEqual(refused(code));
+      expect(typeof at64 === "object" && at64 !== null && "refused" in at64).toBe(false);
+      for (const n of [65, 1000, 100_000]) expect(f(value(n - 1))).toEqual(refused(code));
+    });
+  }
 });
