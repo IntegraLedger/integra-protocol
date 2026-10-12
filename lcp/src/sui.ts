@@ -96,19 +96,38 @@ const PAY_TO = /^0x[0-9a-f]{64}$/;
 const IDENT = "[A-Za-z_][A-Za-z0-9_]*";
 const COIN_TYPE = new RegExp(`^0x[0-9a-fA-F]{1,64}::${IDENT}::${IDENT}$`);
 const DIGEST_PREFIX = new TextEncoder().encode("TransactionData::");
+/**
+ * Sui's `max_type_argument_depth`, 16: Sui's transaction checks refuse a type with a node at that depth, the outermost
+ * node at depth 1.
+ */
+const TYPE_DEPTH_LIMIT = 16;
+const PRIMITIVE_TYPES: ReadonlySet<string> = new Set(["address", "bool", "signer", "u8", "u16", "u32", "u64", "u128", "u256"]);
+/** A vector type and a struct type as @mysten/sui writes them, and reads them back to serialise them. */
+const VECTOR_TYPE = /^vector<(.+)>$/;
+const STRUCT_TYPE = /^([^:]+)::([^:]+)::([^<]+)(<(.+)>)?/;
 
-/** Decodes a base64 `TransactionData` V1 with a programmable kind. */
+/**
+ * Decodes a base64 `TransactionData` V1 with a programmable kind. A programmable transaction with a type (a call's
+ * type argument, a vector's element type, a funds withdrawal's type) that has a node at depth 16, Sui's type depth
+ * limit, is `sui/tx-malformed`, the code of bytes that do not decode: @mysten/sui decodes a type by recursion, and the
+ * bound gives the same answer whether this host's stack would hold the type or not. A V1 `TransactionData` of another
+ * kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded.
+ */
 export function decodeSuiTx(base64: string): SuiTx | Refusal {
   if (peer === undefined) return refusal("sui/peer-missing");
   const { bcs } = peer;
   const bytes = base64Bytes(base64, MAX_TX_BYTES);
   if (bytes === "too-large") return refusal("sui/tx-too-large");
   if (bytes === "malformed") return refusal("sui/tx-malformed");
+  // TransactionData opens with two BCS enum tags: its version, V1 (0), and its kind, ProgrammableTransaction (0), one
+  // byte each. Another kind is answered from its tag before its body is decoded: the bound below reads no type of it.
+  if (bytes.length > 1 && bytes[0] === 0 && bytes[1] !== 0) return refusal("sui/not-programmable");
 
   let data: ReturnType<typeof SuiBcs.TransactionData.parse>;
   let epoch: bigint | null = null;
   try {
     data = bcs.TransactionData.parse(bytes);
+    if (!typesOf(data).every(typeWithinDepth)) return refusal("sui/tx-malformed");
     // @mysten/sui reads an `Epoch` expiration as a JavaScript number, exact only up to 2^53 - 1, where Sui's epoch is
     // a u64. The expiration is the transaction's last field, so the epoch is read as a u64 from the last eight bytes,
     // and the round trip below holds only when those bytes are that field.
@@ -368,6 +387,66 @@ function commandArguments(c: ParsedCommand): readonly ParsedArgument[] {
     case "Publish":
       return [];
   }
+}
+
+/**
+ * The types a programmable transaction carries: each call's type arguments, each vector's element type, and each funds
+ * withdrawal's type. None for any other kind.
+ */
+function typesOf(data: ReturnType<typeof SuiBcs.TransactionData.parse>): readonly string[] {
+  if (data.$kind !== "V1" || data.V1.kind.$kind !== "ProgrammableTransaction") return [];
+  const { inputs, commands } = data.V1.kind.ProgrammableTransaction;
+  const out: string[] = [];
+  for (const input of inputs) {
+    if (input.$kind === "FundsWithdrawal") out.push(input.FundsWithdrawal.typeArg.Balance);
+  }
+  for (const command of commands) {
+    if (command.$kind === "MoveCall") out.push(...command.MoveCall.typeArguments);
+    else if (command.$kind === "MakeMoveVec" && command.MakeMoveVec.type !== null) out.push(command.MakeMoveVec.type);
+  }
+  return out;
+}
+
+/**
+ * True when every node of `type`, as @mysten/sui writes a type, sits at a depth below `TYPE_DEPTH_LIMIT`. The walk
+ * reads the text one level at a time the way @mysten/sui reads it back, keeps its own list and stops at the limit: a
+ * primitive, `vector<T>`, or `address::module::name` followed by `<T, U, …>` when the struct has type parameters, split
+ * on the commas outside angle brackets. Text that reads as no type is not within the limit.
+ */
+function typeWithinDepth(type: string): boolean {
+  const todo: [string, number][] = [[type, 1]];
+  for (let next = todo.pop(); next !== undefined; next = todo.pop()) {
+    const [t, depth] = next;
+    if (depth >= TYPE_DEPTH_LIMIT) return false;
+    if (PRIMITIVE_TYPES.has(t)) continue;
+    const vector = VECTOR_TYPE.exec(t);
+    if (vector !== null) {
+      todo.push([vector[1]!, depth + 1]);
+      continue;
+    }
+    const struct = STRUCT_TYPE.exec(t);
+    if (struct === null) return false;
+    if (struct[5] !== undefined) for (const p of typeParameters(struct[5])) todo.push([p, depth + 1]);
+  }
+  return true;
+}
+
+/** `a, b<c, d>` split on the commas outside angle brackets, each part trimmed. */
+function typeParameters(s: string): string[] {
+  const out: string[] = [];
+  let level = 0;
+  let start = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === "<") level++;
+    else if (c === ">") level--;
+    else if (c === "," && level === 0) {
+      out.push(s.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  out.push(s.slice(start).trim());
+  return out;
 }
 
 /** The digest, or undefined without the peer. */

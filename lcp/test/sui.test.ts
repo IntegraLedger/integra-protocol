@@ -4,6 +4,7 @@
 // snapshot of this code.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { bcs } from "@mysten/sui/bcs";
 import { Transaction, TransactionDataBuilder } from "@mysten/sui/transactions";
 import { ReaderError } from "../src/evm.js";
 import { pairingOf } from "../src/index.js";
@@ -115,6 +116,87 @@ describe("an Epoch expiration above 2^53 - 1", () => {
     const bytes = await recipeR("9007199254740993");
     const longer = Buffer.concat([bytes, Uint8Array.of(0)]).toString("base64");
     expect(decodeSuiTx(longer)).toEqual({ refused: true, code: "sui/tx-malformed" });
+  });
+});
+
+// Sui's transaction checks refuse a type with a node at depth 16, the outermost node at depth 1: the protocol
+// config's `max_type_argument_depth` is 16 in every version, and sui-types' `type_input_validity_check` requires each
+// node's depth below it for a call's type arguments and a vector's element type; a funds withdrawal's `Balance<T>`
+// holds at most 16 nodes (`max_accumulator_type_nodes`), so its T holds at most 15 (MystenLabs/sui 2d56d0e,
+// crates/sui-protocol-config/src/lib.rs, crates/sui-types/src/transaction.rs and accumulator_root.rs). @mysten/sui
+// 2.31.3 writes each transaction; its one type is then written by hand, as BCS writes a TypeTag (a
+// vector is the byte 0x06 before its element type, `u8` is 0x01), so that building the deepest ones reads no stack.
+describe("a type nested to Sui's type depth limit", () => {
+  const ADDR = `0x${"11".repeat(32)}`;
+  const pure = { Pure: { bytes: bytesOf(Buffer.from(H.slice(2), "hex").toString("base64")) } };
+  const serialize = (inputs: unknown[], commands: unknown[]) =>
+    Buffer.from(
+      bcs.TransactionData.serialize({
+        V1: {
+          kind: { ProgrammableTransaction: { inputs, commands } },
+          sender: ADDR,
+          gasData: { payment: [], owner: ADDR, price: "1000", budget: "5000000" },
+          expiration: { None: true },
+        },
+      } as never).toBytes(),
+    );
+  const shapes: Record<string, (type: string) => Buffer> = {
+    "a call's type argument": (type) =>
+      serialize([pure], [{ MoveCall: { package: "0x2", module: "m", function: "f", typeArguments: [type], arguments: [] } }]),
+    "a vector's element type": (type) => serialize([pure], [{ MakeMoveVec: { type, elements: [] } }]),
+    "a funds withdrawal's type": (type) =>
+      serialize(
+        [pure, { FundsWithdrawal: { reservation: { MaxAmountU64: "1" }, typeArg: { Balance: type }, withdrawFrom: { Sender: true } } }],
+        [],
+      ),
+  };
+  /**
+   * The transaction with its one type replaced by `vector<…<u8>>` with `levels` nodes: the type's byte is the one byte
+   * in which the transaction with a `u16` type (0x08) and with a `u32` type (0x09) differ.
+   */
+  const nested = (shape: (type: string) => Buffer, levels: number): string => {
+    const a = shape("u16");
+    const b = shape("u32");
+    const at = a.findIndex((x, i) => x !== b[i]);
+    expect([a.length, a[at], b[at], a.subarray(at + 1).equals(b.subarray(at + 1))]).toEqual([b.length, 0x08, 0x09, true]);
+    const type = Buffer.concat([Buffer.alloc(levels - 1, 0x06), Uint8Array.of(0x01)]);
+    return Buffer.concat([a.subarray(0, at), type, a.subarray(at + 1)]).toString("base64");
+  };
+  const vectors = (n: number, inner: string) => `${"vector<".repeat(n)}${inner}${">".repeat(n)}`;
+  for (const [name, shape] of Object.entries(shapes)) {
+    it(`${name}: 15 levels decode and carry H; 16, 1,000 and 20,000 are sui/tx-malformed`, async () => {
+      expect(nested(shape, 15)).toBe(shape(vectors(14, "u8")).toString("base64"));
+      const ok = decodeSuiTx(nested(shape, 15));
+      if ("refused" in ok) throw new Error(ok.code);
+      expect(suiCarrier(ok)).toBe(H);
+      for (const levels of [16, 1000, 20_000]) {
+        expect(decodeSuiTx(nested(shape, levels))).toEqual({ refused: true, code: "sui/tx-malformed" });
+        expect(await exactSui.bound(payment(nested(shape, levels)))).toEqual({ refused: true, code: "sui/tx-malformed" });
+      }
+    });
+  }
+  // Sui's TransactionKind lists ProgrammableSystemTransaction tenth from zero, with a programmable transaction's body
+  // (MystenLabs/sui 2d56d0e, crates/sui-types/src/transaction.rs): the same bytes with that tag are that kind.
+  it("another kind is sui/not-programmable at every depth of its types", () => {
+    const call = shapes["a call's type argument"]!;
+    for (const levels of [15, 16, 1000, 20_000]) {
+      const system = Buffer.from(nested(call, levels), "base64");
+      expect([system[0], system[1]]).toEqual([0, 0]);
+      system[1] = 10;
+      expect(decodeSuiTx(system.toString("base64"))).toEqual({ refused: true, code: "sui/not-programmable" });
+    }
+  });
+  it("a struct's type parameters sit one level below it, each counted on its own", async () => {
+    const call = shapes["a call's type argument"]!;
+    const S = "0x0000000000000000000000000000000000000000000000000000000000000002::m::S";
+    const at15 = `${S}<u8, ${vectors(13, "u8")}>`;
+    const at16 = `${S}<u8, ${vectors(14, "u8")}>`;
+    const deepFirst = `${S}<${vectors(14, "u8")}, u8>`;
+    expect(suiCarrier(decodeSuiTx(call(at15).toString("base64")) as never)).toBe(H);
+    expect(suiCarrier(decodeSuiTx(call(`${S}<${S}<${vectors(12, "u8")}>>`).toString("base64")) as never)).toBe(H);
+    for (const type of [at16, deepFirst, `${S}<${S}<${vectors(13, "u8")}>>`]) {
+      expect(decodeSuiTx(call(type).toString("base64"))).toEqual({ refused: true, code: "sui/tx-malformed" });
+    }
   });
 });
 

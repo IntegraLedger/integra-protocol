@@ -650,7 +650,7 @@ Sui (`@integraledger/lcp/sui`).
 | `sui/not-found` | The Sui reader found no transaction for the digest. |
 | `sui/not-programmable` | The Sui transaction is not `TransactionData` V1 with a programmable transaction kind. |
 | `sui/peer-missing` | The optional peer dependency `@mysten/sui` cannot be loaded. |
-| `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, or a `Pure` input that is not valid base64 within the bound, or `suiCarrier` is given a transaction that is not a decoded one. |
+| `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, a programmable transaction with a type (a call's type argument, a vector's element type, a funds withdrawal's type) nested 16 levels deep, Sui's type depth limit, or a `Pure` input that is not valid base64 within the bound, or `suiCarrier` is given a transaction that is not a decoded one. |
 | `sui/tx-too-large` | `decodeSuiTx` is given a transaction larger than the size bound. |
 | `sui/unreadable` | The Sui reader failed, or returned a transaction whose digest is not the reference's or that does not decode. |
 | `sui/wrong-reader` | The Sui reader answers for a different network than the reference names. |
