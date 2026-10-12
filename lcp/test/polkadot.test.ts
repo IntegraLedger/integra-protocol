@@ -2,14 +2,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { blake2b } from "@noble/hashes/blake2.js";
-import { toLcpString, type AtrHash } from "../src/index.js";
+import { pairingOf, toLcpString, type AtrHash } from "../src/index.js";
 import {
   decodeProfileCall,
   encodeProfileCall,
   exactPolkadotRemark,
   extrinsicHash,
   polkadotLocate,
-  polkadotPairingOf,
   polkadotStatus,
   splitSigned,
   ss58Decode,
@@ -271,8 +270,9 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   });
 
   it("the option filter, advertise and read", () => {
-    expect(polkadotPairingOf(O)).toBe("x402/exact/polkadot/lcp-assets-remark");
+    expect(pairingOf(O)).toBe("x402/exact/polkadot/lcp-assets-remark");
     for (const row of V.options) {
+      expect(pairingOf(row.option), row.case).toBeUndefined();
       const doc = { ...required, accepts: [row.option] };
       expect(exactPolkadotRemark.advertise(doc, H, V.fixed.link, row.option), row.case).toEqual({ refused: true, code: row.expect });
     }

@@ -286,7 +286,7 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 
 **Pairings:** `x402/exact/polkadot/lcp-assets-remark`.
 
-**Values (12):** `CALL`, `decodeProfileCall`, `encodeProfileCall`, `exactPolkadotRemark`, `extrinsicHash`, `LCP_ASSETS_REMARK`, `polkadotLocate`, `polkadotPairingOf`, `polkadotRecover`, `polkadotStatus`, `splitSigned`, `ss58Decode`.
+**Values (11):** `CALL`, `decodeProfileCall`, `encodeProfileCall`, `exactPolkadotRemark`, `extrinsicHash`, `LCP_ASSETS_REMARK`, `polkadotLocate`, `polkadotRecover`, `polkadotStatus`, `splitSigned`, `ss58Decode`.
 
 **Types (7):** `PolkadotExtrinsic`, `PolkadotNetwork`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`.
 

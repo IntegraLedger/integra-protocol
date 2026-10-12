@@ -319,11 +319,6 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   return isRefusal(dest) ? dest : true;
 }
 
-/** The pairing's id for an option it can pay, or undefined. */
-export function polkadotPairingOf(o: PaymentRequirements): typeof ID | undefined {
-  return check(o) === true ? ID : undefined;
-}
-
 function advertise(
   doc: PaymentRequired,
   h: AtrHash,
