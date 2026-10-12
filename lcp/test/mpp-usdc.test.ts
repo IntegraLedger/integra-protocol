@@ -25,6 +25,7 @@ import { b64u, fromB64u, load, withBigints } from "./mpp-fixtures.js";
 const EVM = load("mpp-charge-usdc-evm.json");
 const SOL = load("mpp-charge-usdc-solana.json");
 const GW = load("mpp-charge-usdc-gateway.json");
+const STX = load("mpp-charge-usdc-stacks.json");
 const F = EVM.fixed;
 const keccakJcs = (v: unknown) => `0x${sha3.keccak256(canonicalize(v)!)}`;
 
@@ -135,11 +136,13 @@ describe("mpp/charge/usdc/evm (M3)", () => {
   });
 });
 
-// usdc's EVM and Gateway profiles read no `externalId` (their builds take none, and their derivations hash the request
-// as issued); the Solana profile carries the LCP memo in it, as the Solana charge does, so only there is it checked.
+// usdc's EVM, Stacks and Gateway profiles read no `externalId` (their builds take none, and their derivations hash the
+// request as issued); the Solana profile carries the LCP memo in it, as the Solana charge does, so only there is it
+// checked.
 describe("externalId is checked only where it is the carrier", () => {
   for (const [name, requestJson, pairing] of [
     ["evm", EVM.M3.requestJson, "mpp/charge/usdc/evm"],
+    ["stacks", JSON.stringify(STX.fixed.request), "mpp/charge/usdc/stacks"],
     ["gateway", GW.M5.requestJson, "mpp/charge/usdc/gateway"],
   ] as const) {
     it(`${name}: an externalId of null or a number names the pairing`, () => {
