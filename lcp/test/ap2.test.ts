@@ -157,7 +157,7 @@ describe("ap2-checkout-mandate.json", () => {
     }
   });
 
-  it("bound checks the mandate against the checkout JWT presented beside it, not the seller's latest", async () => {
+  it("bound checks the mandate against the checkout JWT presented beside it", async () => {
     // The seller's latest JWT is the plant's re-issued checkout; the buyer's copy is J, the one M commits to and the
     // one the buyer's complete() presents.
     const r = checkoutMandate.read(J);
