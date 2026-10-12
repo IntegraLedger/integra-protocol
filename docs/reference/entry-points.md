@@ -498,7 +498,7 @@ XRP Ledger rail pieces: the signed Payment blob, its `InvoiceID` carrying the AT
 import { decodeBlob, mppInvoiceId, x402InvoiceId, … } from "@integraledger/lcp/xrpl";
 ```
 
-**Values (10):** `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_DEPTH`, `XRPL_MAX_FIELDS`, `xrplChannelId`, `xrplClaim`, `xrplCloseStatus`, `xrplOpenStatus`, `xrplStatus`.
+**Values (9):** `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_DEPTH`, `XRPL_MAX_FIELDS`, `xrplChannelId`, `xrplClaim`, `xrplOpenStatus`, `xrplStatus`.
 
 **Types (9):** `XrplCloseRef`, `XrplCloseStatus`, `XrplLanded`, `XrplNetwork`, `XrplReader`, `XrplRef`, `XrplStatus`, `XrplTxJson`, `XrplUnsigned`.
 

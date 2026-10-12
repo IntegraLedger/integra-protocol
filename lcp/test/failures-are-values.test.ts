@@ -35,6 +35,7 @@ import {
   txIdText,
 } from "../src/hedera.js";
 import { BINDINGS } from "../src/index.js";
+import { xrplCloseStatus } from "../src/internal/xrpl-session.js";
 import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
 import {
   chargeCard,
@@ -81,7 +82,7 @@ import {
   requestCommitment,
   uptoPermit2,
 } from "../src/x402.js";
-import { xrplCloseStatus, xrplOpenStatus, xrplStatus } from "../src/xrpl.js";
+import { xrplOpenStatus, xrplStatus } from "../src/xrpl.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const H: AtrHash = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";

@@ -12,5 +12,5 @@ export type {
   XrplTxJson,
   XrplUnsigned,
 } from "./internal/xrpl.js";
-export { xrplChannelId, xrplClaim, xrplCloseStatus, xrplOpenStatus } from "./internal/xrpl-session.js";
+export { xrplChannelId, xrplClaim, xrplOpenStatus } from "./internal/xrpl-session.js";
 export type { XrplCloseRef, XrplCloseStatus } from "./internal/xrpl-session.js";
