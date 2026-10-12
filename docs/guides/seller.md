@@ -44,8 +44,9 @@ If the write fails, send no challenge: a buyer that cannot fetch the record decl
 
 ## 3. Advertise H
 
-`advertise(doc, h, link, offer)` returns a copy of the challenge with `extensions.legalContext` set to
-`{"type":"sha256","value":H,"legalContextUrl":link}`, and leaves every other extension and every option as they were.
+`advertise(doc, h, link, offer)` returns a copy of the challenge with `extensions.legalContext.info` set to
+`{"type":"sha256","value":H,"legalContextUrl":link}`, beside its `schema`, and leaves every other extension and every
+option as they were.
 On pairings that carry H in the option itself, such as `x402/exact/solana` (`extra.memo`), it also places H there.
 
 ## 4. Check the payment
