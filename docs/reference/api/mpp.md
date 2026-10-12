@@ -1132,7 +1132,8 @@ it, with that method's default where it names one. A method whose challenge name
 
 > **pairingsOf**(`c`): [`Refusal`](index.md#refusal) \| readonly [`MppPairing`](#mpppairing)[]
 
-Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered.
+Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. A
+Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money.
 
 #### Parameters
 
