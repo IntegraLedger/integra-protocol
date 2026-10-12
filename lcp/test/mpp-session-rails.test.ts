@@ -395,7 +395,40 @@ describe("mpp/session/xrpl", () => {
     const withCancel = encodeXrpl({ ...(decodeXrpl(V.XS2.blob) as object), CancelAfter: V.XS2.cancelAfter });
     expect(cancelAfterOf(withCancel)).toBe(V.XS2.cancelAfter);
     expect(sessionXrpl.channel.until(open(withCancel))).toBe(V.XS2.expectUntil);
-    expect(await sessionXrpl.recover({ network: "xrpl:1", transaction: V.XS2.expectHash }, reader({ notFound: true, searchedAll: true }, V.XS2.blob))).toBe(H);
+    expect(await sessionXrpl.recover({ network: "xrpl:1", transaction: V.XS2.expectHash }, reader(V.XS4.rows[0].landed, V.XS2.blob))).toBe(H);
+  });
+
+  // XS4's rows are the file's landed shapes and their status; a tec result is a final failure that claimed the fee
+  // (xrpl.org, "tec Codes"), and only a validated ledger's result is final (xrpl.org, "Finality of Results").
+  it("XS4: recover gives XS2's memo only for the opening status reads settled, in at most two calls", async () => {
+    const ref = await sessionXrpl.reference(open(V.XS2.blob));
+    if ("refused" in ref) throw new Error(ref.code);
+    const counted = (landed: XrplLanded) => {
+      const calls = { n: 0 };
+      const r = reader(landed, V.XS2.blob);
+      const each: XrplReader = {
+        ...r,
+        tx: async (h, range) => (calls.n++, r.tx(h, range)),
+        txBlob: async (h) => (calls.n++, r.txBlob(h)),
+      };
+      return { calls, r: each };
+    };
+    const recoverWhen: Record<string, string> = { "claimed-fee": "xrpl/not-success", "not-this-instrument": "xrpl/not-channel-create" };
+    for (const row of V.XS4.rows) {
+      const { calls, r } = counted(row.landed);
+      const status = await sessionXrpl.status({ ...ref, fromLedger: 900 }, r);
+      expect(status, row.case).toEqual(row.expect);
+      calls.n = 0;
+      const recovered = await sessionXrpl.recover({ network: ref.network, transaction: ref.transaction }, r);
+      expect(recovered, row.case).toEqual(row.expect.state === "settled" ? V.XS2.expectBound : refused(recoverWhen[row.expect.why]!));
+      expect(calls.n, row.case).toBeLessThanOrEqual(2);
+    }
+    const unvalidated = { ...V.XS4.rows[0].landed, validated: false };
+    expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(unvalidated, V.XS2.blob))).toEqual({ state: "pending", why: "not-validated" });
+    expect(await sessionXrpl.recover(ref, reader(unvalidated, V.XS2.blob))).toEqual(refused("xrpl/not-validated"));
+    expect(await sessionXrpl.recover(ref, reader({ notFound: true, searchedAll: true }, V.XS2.blob))).toEqual(refused("xrpl/not-found"));
+    const failing: XrplReader = { ...reader(V.XS4.rows[0].landed, V.XS2.blob), tx: async () => { throw new ReaderError("transport"); } };
+    expect(await sessionXrpl.recover(ref, failing)).toEqual(refused("xrpl/unreadable"));
   });
 
   it("build gives XS2's decoded fields other than the signature; the first claim is XS3's", async () => {

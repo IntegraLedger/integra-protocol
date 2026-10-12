@@ -429,7 +429,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/not-channel-create` | The XRPL session opening or the transaction a recovery reads is not a `PaymentChannelCreate`, or `xrplChannelId` or `xrplClaim` is given a malformed address, sequence, channel id or amount. |
 | `xrpl/not-found` | The XRPL reader found no transaction for the reference. |
 | `xrpl/not-payment` | The XRPL signed blob presented for a charge is not a `Payment`. |
-| `xrpl/not-success` | The validated XRPL transaction a recovery reads is not a `Payment` with result `tesSUCCESS`, or the one an MPP XRPL `hash` credential names has a result other than `tesSUCCESS`. |
+| `xrpl/not-success` | The validated XRPL transaction a recovery reads has a result other than `tesSUCCESS`, or is not the `Payment` a charge's recovery reads; or the one an MPP XRPL `hash` credential names has a result other than `tesSUCCESS`. |
 | `xrpl/not-validated` | The XRPL transaction the reference, or an MPP XRPL `hash` credential, names is not yet in a validated ledger. |
 | `xrpl/peer-missing` | The optional peer dependency `ripple-binary-codec` cannot be loaded to decode a blob. |
 | `xrpl/read-first` | An MPP XRPL `hash` credential carries no blob yet; the seller reads it by hash before `bound`. |

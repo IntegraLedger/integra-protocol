@@ -743,9 +743,25 @@ async function xrplStatusOf(
   return "phase" in ref ? xrplCloseStatus(ref, reader) : xrplOpenStatus(ref, reader);
 }
 
-/** Zero-party: the one LCP memo of the landed opening, read by its signed blob. */
+/**
+ * Zero-party: the one LCP memo of the opening, read by its signed blob, when a validated ledger holds the transaction
+ * with `tesSUCCESS` as a `PaymentChannelCreate`, as `status` settles it. Not found is `xrpl/not-found`; not yet
+ * validated is `xrpl/not-validated`; another result is `xrpl/not-success`; another type is `xrpl/not-channel-create`.
+ * Two calls.
+ */
 async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, reader: XrplReader): Promise<AtrHash | Refusal> {
   if (reader.network !== ref.network) return refusal("xrpl/wrong-reader");
+  let landed: Awaited<ReturnType<XrplReader["tx"]>>;
+  try {
+    landed = await reader.tx(ref.transaction, null);
+  } catch {
+    return refusal("xrpl/unreadable");
+  }
+  if (typeof landed !== "object" || landed === null) return refusal("xrpl/unreadable");
+  if ("notFound" in landed) return refusal("xrpl/not-found");
+  if (landed.validated !== true) return refusal("xrpl/not-validated");
+  if (landed.result !== "tesSUCCESS") return refusal("xrpl/not-success");
+  if (landed.transactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
   let blob: string | null;
   try {
     blob = await reader.txBlob(ref.transaction);
