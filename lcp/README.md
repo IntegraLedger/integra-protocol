@@ -7,10 +7,11 @@ agentic checkouts and card networks, across every chain and rail they settle on.
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/IntegraLedger/integra-protocol/blob/main/lcp/LICENSE)
 ![Node >=26.10.0](https://img.shields.io/badge/node-%3E%3D26.10.0-brightgreen)
 
-`@integraledger/lcp` is the reference implementation of the **Legal Context Protocol (LCP)**: the pattern in which
-the payment carries the hash of the agreement's record, so paying is agreeing to that exact record. The seller
-assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and signs a
-payment that carries the hash; the seller reads the hash back from the payment and from the settlement.
+`@integraledger/lcp` is the reference implementation of the **Legal Context Protocol (LCP)**: the pattern in which the
+hash of the agreement's record is bound into the payment, so that where the payment the buyer approves carries the hash,
+that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. The
+seller assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and signs
+a payment that carries the hash; the seller reads the hash back from the payment and from the settlement.
 
 The package is deterministic and small at its core. It holds no key, signs nothing, calls no network on its own, and
 carries no business or legal logic. What the agreement says is the parties' business; this package makes sure that
@@ -32,7 +33,7 @@ what they agreed is the record the payment is bound to.
 |---|---|
 | **Agentic Transaction Record (ATR)** | The agreement's record, a JSON document the seller serves. |
 | **ATR hash (H)** | SHA-256 over the ATR's exact bytes. |
-| **Legal Context Protocol (LCP)** | The pattern this package implements: the payment carries H, so paying is agreeing to that exact record. |
+| **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
 | **Binding** | How H rides in a pairing's payment: the field its specification defines. |
 | **Buyer gate** | The buyer-side check that compares the served bytes with H before anything is signed. |

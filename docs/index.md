@@ -6,8 +6,9 @@ description: "The Legal Context Protocol reference implementation: the ATR, its 
 # Overview
 
 When one AI agent buys from another, it reads terms, perhaps negotiates, and pays. The **Legal Context Protocol
-(LCP)** makes the payment prove what was agreed: the payment carries the hash of the agreement's record, so paying is
-agreeing to that exact record.
+(LCP)** binds the payment to the agreement's record: where the payment the buyer approves carries the record's hash, it
+shows which exact record the buyer approved, and that approval is the buyer's acceptance of that record; where it does
+not, the pairing's statement of what it proves says so.
 
 [`@integraledger/lcp`](https://github.com/IntegraLedger/integra-protocol/tree/main/lcp) is its reference
 implementation, for TypeScript and JavaScript. It assembles the record, hashes it, and binds the hash into payments on
@@ -52,7 +53,7 @@ These pages use each term in one sense:
 |---|---|
 | **Agentic Transaction Record (ATR)** | The agreement's record, a JSON document the seller serves. |
 | **ATR hash (H)** | SHA-256 over the ATR's exact bytes. |
-| **Legal Context Protocol (LCP)** | The pattern this package implements: the payment carries H, so paying is agreeing to that exact record. |
+| **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
 | **Binding** | How H rides in a pairing's payment: the field its specification defines. |
 | **Buyer gate** | The buyer-side check that compares the served bytes with H before anything is signed. |

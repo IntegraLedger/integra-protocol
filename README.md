@@ -1,13 +1,15 @@
 # integra-protocol
 
 The reference implementation of the **Legal Context Protocol (LCP)**: an agreement's record, its hash, and that hash
-bound into the payment, so paying is agreeing to that exact record.
+bound into the payment, so that where the payment the buyer approves carries the hash, that approval is the buyer's
+acceptance of that exact record; where it does not, the pairing's statement of what it proves says so.
 
-An AI agent that buys from another agent reads terms, negotiates and pays. LCP makes the payment prove what was
-agreed. The seller assembles the agreement's record, the **Agentic Transaction Record (ATR)**, and advertises its
-SHA-256 hash, **H**, in the payment challenge. The buyer fetches the record, checks that it hashes to H, and signs a
-payment that carries H in the field its protocol or rail provides. Anyone holding the record can then match it to the
-payment, and on most rails to the settlement on chain.
+An AI agent that buys from another agent reads terms, negotiates and pays. LCP binds the payment to the agreement's
+record: where the payment carries the record's hash, it shows which exact record the buyer approved. The seller
+assembles the agreement's record, the **Agentic Transaction Record (ATR)**, and advertises its SHA-256 hash, **H**, in
+the payment challenge. The buyer fetches the record, checks that it hashes to H, and signs a payment that carries H in
+the field its protocol or rail provides. Anyone holding the record can then match it to the payment, and on most rails
+to the settlement on chain.
 
 This repository holds [`@integraledger/lcp`](./lcp), which implements that binding for x402, MPP, ACP, UCP, AP2, ACK,
 Visa TAP, Mastercard Verifiable Intent and A2A, across EVM chains, Solana, Stellar, the XRP Ledger, Hedera, Algorand,
