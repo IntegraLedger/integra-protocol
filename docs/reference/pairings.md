@@ -13,7 +13,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 | Pairing | Export | Pattern | Buyer signs H | H on chain | Public proof | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `native-field` | no | no | no | no |  |
+| `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `native-field` | no | no | no | no | [`ack/payment-request`](../../lcp/profiles/ack-payment-request.md) |
 
 ## `acp`
 

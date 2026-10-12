@@ -144,6 +144,7 @@ function unplaced(option: AckPaymentOption): AckPaymentOption {
 const pattern: LcpPattern = Object.freeze({
   pattern: "native-field",
   canonical: true,
+  profile: ID,
   buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,

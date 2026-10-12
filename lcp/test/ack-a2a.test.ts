@@ -89,6 +89,11 @@ describe("ack-payment-request.json", () => {
     expect(pr.unplaced(K.fixed.O)).toBe(K.fixed.O);
   });
 
+  it("the pattern names the profile published as profiles/ack-payment-request.md", () => {
+    const profile = readFileSync(new URL("../profiles/ack-payment-request.md", import.meta.url), "utf8");
+    expect(profile.startsWith(`**LCP profile \`${pr.pattern.profile}\`.**`)).toBe(true);
+  });
+
   it("refusal codes left to the implementation", async () => {
     for (const row of K.agreedRefusals.rows) {
       expect(await run(row.call, expand(row.args) as unknown[]), row.case).toEqual(row.expect);
