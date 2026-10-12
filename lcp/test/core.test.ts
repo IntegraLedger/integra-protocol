@@ -11,13 +11,13 @@ import {
   fromRawBytes,
   hash,
   hashEquals,
-  isHashWithNonHttpsLink,
   newAtrId,
   toLcpString,
   toLegalContext,
   toRawBytes,
   type Json,
 } from "../src/index.js";
+import { isHashWithNonHttpsLink } from "../src/core.js";
 
 type Vector = {
   name: string;

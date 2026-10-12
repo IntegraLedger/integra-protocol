@@ -10,7 +10,6 @@ export {
   fromRawBytes,
   hash,
   hashEquals,
-  isHashWithNonHttpsLink,
   isHttpsLink,
   isOtherSchemeLink,
   jsonWithinDepth,
