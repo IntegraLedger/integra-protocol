@@ -35,7 +35,9 @@ pnpm dev         # serve it locally with live reload
   repository into links to that file on GitHub. A link to a page that does not exist fails the build.
 - Type-checks every ```` ```ts ```` block with Twoslash, against `../lcp/dist` and `viem`; a type
   error fails the build. A block whose meta carries `no-check` is highlighted only. Blocks in the
-  generated API pages are not checked.
+  generated API pages are not checked. Twoslash runs on the TypeScript 7 that `fumadocs-twoslash`
+  depends on; the TypeScript 6.0.3 in `devDependencies` is for TypeDoc (`pnpm run api`), whose
+  supported TypeScript range ends at 6.0.
 - Renders ```` ```mermaid ```` blocks as diagrams.
 - Writes `/llms.txt`, `/llms-full.txt`, each page as Markdown at `/md/<path>.md`, the search index,
   `sitemap.xml`, `robots.txt` and `/.well-known/security.txt`.
