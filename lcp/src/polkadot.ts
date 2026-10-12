@@ -9,6 +9,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -21,7 +22,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 export type PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1" | "polkadot:67f9723393ef76214df0118c34bbbd3d";
@@ -87,10 +87,6 @@ export type PolkadotStatus =
       height: bigint;
       transaction: string;
     };
-
-/** The x402 payload: the signed extrinsic and its call, lowercase hex. */
-export type PolkadotPayload = { extrinsic: Hex; call: Hex };
-export type PolkadotPaymentPayload = X402Payment<PolkadotPayload>;
 
 /** The call the payer's signer wraps in an extrinsic, and how that extrinsic completes the payment. */
 export interface PolkadotUnsigned {

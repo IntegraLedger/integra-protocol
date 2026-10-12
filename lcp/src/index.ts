@@ -40,12 +40,13 @@ import { exactHedera, exactHederaExecutor, type ExecutorPaymentPayload, type Hed
 import type { AptosPaymentPayload } from "./internal/aptos.js";
 import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import type { CasperPaymentPayload } from "./internal/casper.js";
+import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import type { SuiPaymentPayload } from "./internal/sui.js";
 import type { XrplPaymentPayload } from "./internal/xrpl.js";
 import { exactLnbtc, exactLnbtcNamed, lnbtcPairingOf, type LnPaymentPayload } from "./lightning.js";
 import { MPP_BINDINGS, type MppCredential } from "./mpp.js";
 import { exactNear, type NearPayment } from "./near.js";
-import { exactPolkadotRemark, type PolkadotPaymentPayload } from "./polkadot.js";
+import { exactPolkadotRemark } from "./polkadot.js";
 import { exactStarknet, type StarknetPayment } from "./starknet.js";
 import { exactSui } from "./sui.js";
 import { exactTronMemo, type TronPayment } from "./tron.js";
