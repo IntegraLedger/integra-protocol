@@ -115,7 +115,7 @@ pnpm -r --if-present run test
 # The shared vectors, byte-exact
 pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.test.ts
 
-# Every code sample in the READMEs and docs/ compiles, runs and prints what the page shows
+# The TypeScript samples in the READMEs and docs/ not marked no-check compile, run and print what the page shows
 node scripts/docs-samples.mjs
 
 # The generated reference pages and the README's pairing list match the package
