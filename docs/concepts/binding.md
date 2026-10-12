@@ -69,7 +69,7 @@ Where the buyer's approval does not sign H, the record says so, and says what th
 > approval, and the buyer's payment payload echoed this ATR's hash in the x402 legalContext extension. The buyer's
 > delegation does not sign the hash, and the settlement transaction does not carry it.
 
-This example prints the pattern record of every pairing whose buyer does not sign H:
+This example checks that some pairings' buyer does not sign H, `mpp/charge/stripe` among them:
 
 ```ts
 import { BINDINGS } from "@integraledger/lcp";
