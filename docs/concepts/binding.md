@@ -61,12 +61,13 @@ Each pairing's `pattern` record states what a payment through it shows, and neve
 | `proves` | One paragraph stating what the payment shows and what it does not. |
 
 Where the buyer's approval does not sign H, the record says so, and says what the payment does show. For example,
-`x402/exact/eip155/permit2` states:
+`x402/exact/eip155/erc7710`, whose `buyerSigns` is `false`, states (the record fills in `<network>` and
+`<transaction>`):
 
-> The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 proxy as spender
-> and the payee in the witness. Permit2 verified the signature when the proxy executed the transfer, and the hash is
-> in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show that amount,
-> payee, asset or timing match the ATR's content.
+> Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>,
+> recorded in <transaction>. The ATR was assembled, written to the seller's storage and linked in the challenge before
+> approval, and the buyer's payment payload echoed this ATR's hash in the x402 legalContext extension. The buyer's
+> delegation does not sign the hash, and the settlement transaction does not carry it.
 
 This example prints the pattern record of every pairing whose buyer does not sign H:
 
