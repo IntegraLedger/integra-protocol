@@ -437,7 +437,7 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
 /** Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. One call. */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
   if (peer === undefined) return refusal(PEER_MISSING);
-  if (reader.network !== ref.network) return refusal("tvm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tvm/wrong-reader");
   let tx: TonTx | null;
   try {
     tx = await reader.byHash(ref.transaction);
@@ -526,9 +526,9 @@ export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
   return check(option) === true ? ID : undefined;
 }
 
-/** The option without `extra.forwardPayload`, where the hash rides. */
+/** The option without `extra.forwardPayload`, where the hash rides; a value that is not an option, unchanged. */
 function unplaced(option: PaymentRequirements): PaymentRequirements {
-  if (!isObject(option.extra) || !("forwardPayload" in option.extra)) return option;
+  if (!isObject(option) || !isObject(option.extra) || !("forwardPayload" in option.extra)) return option;
   const { forwardPayload: _placed, ...extra } = option.extra;
   return { ...option, extra };
 }

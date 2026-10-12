@@ -38,6 +38,7 @@ import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { stellarLocate, stellarStatus } from "../src/stellar.js";
 import { decodeTronTx, encodeTronRaw, tronCarrier, tronRecover, tronStatus } from "../src/tron.js";
+import { exactTvm, tvmRecover } from "../src/tvm.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -433,4 +434,11 @@ describe("tron", () => {
     () => encodeTronRaw({ ...raw, expiration: 1n << 63n }),
     () => encodeTronRaw({ ...raw, feeLimit: 1n << 63n }),
   ]);
+});
+
+describe("tvm", () => {
+  reads([["tvmRecover", tvmRecover, "x402-exact-tvm.json", refused("tvm/wrong-reader")]]);
+  it("exactTvm.unplaced hands back a value that is not an option unchanged", () => {
+    for (const bad of MALFORMED) expect(exactTvm.unplaced(bad as never), String(bad)).toBe(bad);
+  });
 });
