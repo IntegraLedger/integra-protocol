@@ -148,10 +148,9 @@ describe("mpp/charge/usdc/solana", () => {
   });
 
   it("unplaced gives the challenge as issued: its request without externalId", () => {
-    const p = placedWith(chargeUsdcSolana, c);
-    const u = chargeUsdcSolana.unplaced(p);
-    expect(JSON.parse(fromB64u(u.request))).toEqual(S.request);
-    expect({ ...u, request: c.request }).toEqual({ ...p, request: c.request });
+    const jcs = issued(canonicalize(S.request)!);
+    const p = placedWith(chargeUsdcSolana, jcs);
+    expect(chargeUsdcSolana.unplaced(p)).toEqual({ ...p, request: jcs.request });
   });
 
   it("bound and reference of the Solana charge's V2 wire are that file's", async () => {
