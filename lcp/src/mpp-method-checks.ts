@@ -101,7 +101,8 @@ export function usdcProfile(d: Obj): { type: string; details: Obj } | Refusal {
 /**
  * `charge` on `usdc`: the active profile, `amount` a positive integer string, `recipient` a string, and what each
  * profile's build reads: EVM `chainId` and addresses; the Solana charge's checks on the Solana details, whose `network`
- * is required; Stacks `chainId` and the token contract; Gateway's CAIP-2 networks and fee cap.
+ * is required, and on `externalId`, its carrier; Stacks `chainId` and the token contract; Gateway's CAIP-2 networks and
+ * fee cap. No other profile reads `externalId`.
  */
 export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly MppPairing[] | Refusal {
   const profile = usdcProfile(d);
@@ -110,7 +111,6 @@ export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly M
   if (typeof r["amount"] !== "string" || !POSITIVE.test(r["amount"]) || typeof r["recipient"] !== "string") {
     return refusal("mpp/request-malformed");
   }
-  if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
   switch (profile.type) {
     case "evm": {
       if (!isPositiveInt(p["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"])) {
