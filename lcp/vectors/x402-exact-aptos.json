@@ -354,6 +354,46 @@
     }
    },
    {
+    "case": "bySequence the real answer with hash 0x44\u202644 and expiration_timestamp_secs 1790300955: a retry of the same transfer at sequence 218 with another expiry",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300955",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "expect": {
+     "state": "failed",
+     "why": "superseded"
+    }
+   },
+   {
     "case": "both null, ledger time 1790300895 s",
     "ref": {
      "network": "aptos:1",

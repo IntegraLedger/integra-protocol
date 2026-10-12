@@ -52,14 +52,18 @@ function transferPayload(): TransactionPayload {
   );
 }
 
-function raw(payload = transferPayload(), chainId: number = F.chainId): RawTransaction {
+function raw(
+  payload = transferPayload(),
+  chainId: number = F.chainId,
+  expiresAt: bigint = BigInt(F.expiresAt),
+): RawTransaction {
   return new RawTransaction(
     AccountAddress.from(F.sender),
     BigInt(F.sequenceNumber),
     payload,
     BigInt(F.maxGasAmount),
     BigInt(F.gasUnitPrice),
-    BigInt(F.expiresAt),
+    expiresAt,
     new ChainId(chainId),
   );
 }
@@ -194,6 +198,29 @@ describe("V4 · status", () => {
       expect(r.calls).toBeLessThanOrEqual(3);
     });
   }
+  it("a retry with another expiry has the same idDigest, and its commit settles only its own row", async () => {
+    // Aptos takes each sequence number once, so once the retry commits at 218 the first signed transaction never can:
+    // the vector's retry row.
+    const retry = V.V4.status.find((r: { case: string }) => r.case.includes("a retry"));
+    const committed = retry.bySequence as AptosCommitted;
+    const first = await exactAptos.reference(payment(signedWire(raw())));
+    const second = await exactAptos.reference(
+      payment(signedWire(raw(transferPayload(), F.chainId, BigInt(committed.expiration_timestamp_secs)))),
+    );
+    if ("refused" in first) throw new Error(first.code);
+    if ("refused" in second) throw new Error(second.code);
+    expect(first).toEqual(V.V2.expectReference);
+    expect(second).toEqual({ ...V.V2.expectReference, expiresAt: committed.expiration_timestamp_secs });
+    const at: Row = { ledgerUsecs: retry.ledgerUsecs, bySequence: committed };
+    expect(plain(await exactAptos.status(first, reader(at)))).toEqual(retry.expect);
+    const named = { ...first, transaction: committed.hash as `0x${string}` };
+    expect(plain(await exactAptos.status(named, reader({ ...at, byHash: committed })))).toEqual(retry.expect);
+    expect(plain(await exactAptos.status(second, reader(at)))).toEqual({
+      state: "settled",
+      version: committed.version,
+      transaction: committed.hash,
+    });
+  });
   it("a reader for another network, or a ledger for another chain, is unreadable", async () => {
     const row = V.V4.status[0];
     expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:2"))).toEqual({ state: "pending", why: "unreadable" });

@@ -2,7 +2,7 @@
  * Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer
  * carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to
  * the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified
- * by a digest of the transfer the payer signed.
+ * by a digest of the transfer the payer signed and by the expiry it signed.
  */
 import { digestJson, parseJson, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
@@ -201,8 +201,9 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
 
 /**
  * Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
- * identifies it by the transfer's digest. Only `success` decides a committed, matching transaction. A failed read,
- * or a reader for another network, is pending. At most three calls.
+ * identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
+ * transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. A
+ * failed read, or a reader for another network, is pending. At most three calls.
  */
 export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<AptosStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -221,7 +222,7 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
       if (named !== null && named.type === "pending_transaction") return { state: "pending", why: "in-mempool" };
       if (named !== null) {
         if (!isCommitted(named)) return unreadable;
-        if (await matches(named, ref, chainId)) return decided(named);
+        if (await matches(named, ref, expiresAt, chainId)) return decided(named);
       }
     }
 
@@ -235,7 +236,7 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
     if (longAddress(found.sender) !== ref.sender.toLowerCase() || found.sequence_number !== sequenceNumber.toString()) {
       return unreadable;
     }
-    if (!(await matches(found, ref, chainId))) return { state: "failed", why: "superseded" };
+    if (!(await matches(found, ref, expiresAt, chainId))) return { state: "failed", why: "superseded" };
     return decided(found);
   } catch {
     return unreadable;
@@ -377,9 +378,13 @@ export const exactAptos = Object.freeze({
   status: aptosStatus,
 });
 
-async function matches(t: AptosCommitted, ref: AptosRef, chainId: number): Promise<boolean> {
+/**
+ * True when the committed transaction is the one the payer signed: its transfer hashes to the ref's digest, and its
+ * expiry is the ref's.
+ */
+async function matches(t: AptosCommitted, ref: AptosRef, expiresAt: bigint, chainId: number): Promise<boolean> {
   const i = committedInstrument(t, chainId);
-  if (isRefusal(i)) return false;
+  if (isRefusal(i) || i.expiresAt !== expiresAt) return false;
   const d = await aptosIdDigest(i);
   return !isRefusal(d) && d === ref.idDigest.toLowerCase();
 }
