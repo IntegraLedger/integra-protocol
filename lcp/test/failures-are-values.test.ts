@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { aptosIdDigest, aptosStatus } from "../src/aptos.js";
 import { avmRecover, avmStatus } from "../src/avm.js";
+import { cardanoRecover, cardanoStatus } from "../src/cardano.js";
 import { casperRecover, casperStatus, cep3009TypedData, exactCasper } from "../src/casper.js";
 import { ccdRecover, ccdStatus, exactCcd } from "../src/ccd.js";
 import { type AtrHash } from "../src/core.js";
@@ -216,4 +217,20 @@ describe("avm", () => {
     ["avmStatus", avmStatus, "x402-exact-algorand.json", UNREADABLE],
     ["avmRecover", avmRecover, "x402-exact-algorand.json", refused("avm/wrong-reader")],
   ]);
+});
+
+describe("cardano", () => {
+  reads([
+    ["cardanoStatus", cardanoStatus, "x402-exact-cardano.json", UNREADABLE, 0n],
+    ["cardanoRecover", cardanoRecover, "x402-exact-cardano.json", refused("cardano/wrong-reader")],
+  ]);
+  it("cardanoRecover: a ref whose txId is not a string is cardano/unreadable when the reader answers a transaction", async () => {
+    const V = load("x402-exact-cardano.json");
+    const cbor = Uint8Array.from(Buffer.from(V.V2.transactionBase64, "base64"));
+    const reader = { network: V.V5.ref.network, transaction: async () => ({ blockHeight: 1n, slot: 1n, valid: true, cbor }) };
+    expect(await cardanoRecover(V.V5.ref, reader as never)).toBe(V.V5.recover[0].expect);
+    for (const txId of [undefined, null, 5]) {
+      expect(await cardanoRecover({ ...V.V5.ref, txId } as never, reader as never), String(txId)).toEqual(refused("cardano/unreadable"));
+    }
+  });
 });

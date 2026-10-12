@@ -150,7 +150,7 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
  */
 export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, depth: bigint): Promise<CardanoStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
-  if (reader.network !== ref.network) return unreadable;
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return unreadable;
   const txId = normalHash(ref.txId);
   const ttlSlot = typeof ref.ttlSlot === "string" && DECIMAL.test(ref.ttlSlot) ? BigInt(ref.ttlSlot) : undefined;
   if (txId === null || ttlSlot === undefined) return unreadable;
@@ -183,7 +183,7 @@ export async function cardanoRecover(
   ref: { network: CardanoNetwork; txId: Hex },
   reader: CardanoReader,
 ): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("cardano/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("cardano/wrong-reader");
   let tx: unknown;
   try {
     tx = await reader.transaction(ref.txId, true);
@@ -196,7 +196,7 @@ export async function cardanoRecover(
   if (!(tx.cbor instanceof Uint8Array) || tx.cbor.length > MAX_TX_BYTES) return refusal("cardano/unreadable");
   const decoded = decodeBytes(tx.cbor);
   if (isRefusal(decoded)) return decoded;
-  if (decoded.txId !== ref.txId.toLowerCase()) return refusal("cardano/unreadable");
+  if (typeof ref.txId !== "string" || decoded.txId !== ref.txId.toLowerCase()) return refusal("cardano/unreadable");
   return decoded.h;
 }
 
