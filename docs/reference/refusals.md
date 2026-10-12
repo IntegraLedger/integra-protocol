@@ -10,7 +10,7 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 486 codes the package can return, by namespace. CI checks that every code the source names in
+This page lists all 487 codes the package can return, by namespace. CI checks that every code the source names in
 `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -25,7 +25,7 @@ This page lists all 486 codes the package can return, by namespace. CI checks th
 | [`ucp`](#ucp) | 13 | UCP checkouts and bookings (`@integraledger/lcp/ucp`). |
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
-| [`evm`](#evm) | 14 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
+| [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
@@ -323,11 +323,12 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`).
 | `evm/no-authorization-use` | `eip3009Recover` finds no `AuthorizationUsed` log from the asset in the transaction. |
 | `evm/no-channel-created` | The EVM batch pairing's `recover` finds no `ChannelCreated` log from the batch-settlement contract in the transaction. |
 | `evm/no-leaf` | `redeemedLeafRecover` finds no `RedeemedDelegation` log from the DelegationManager whose delegate is the redeemer or the wildcard. |
+| `evm/no-open-call` | The `mpp/session/evm` `recover` finds that the transaction's own call is not an escrow open call (`open`, `openWithAuthorization` or `openWithPermit2`, with a recipient and the leading argument words), or that the receipt holds no `Transfer` of the call's token from its payer into the called contract. An opening sent through an ERC-4337 EntryPoint is refused so. |
 | `evm/no-permit2-settle` | The Permit2 pairings' `recover` finds no call of the scheme's x402 proxy (`settle` or `settleWithPermit`, with an address in the permit's token word and in the owner word) at any offset of the transaction's input with a `Transfer` in the receipt that the call's token emits from the call's owner. A transaction whose input carries the call but whose receipt holds no such `Transfer` is refused so, whether the owner's nonce was spent elsewhere in the block or cancelled by the owner. |
 | `evm/nonce-not-used` | The Permit2 pairings' `recover` finds that Permit2 did not mark the proxy call's nonce used for its owner in the receipt's block: the bit is unset at that block, or already set at the block before. |
 | `evm/not-found` | The reader found no receipt for the transaction the reference names, or, where an EVM `recover` reads the transaction itself, no transaction. |
 | `evm/reverted` | The transaction the reference names reverted. |
-| `evm/unreadable` | The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction. |
+| `evm/unreadable` | The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction, or the `mpp/session/evm` `recover` read calldata longer than 131,072 bytes. |
 | `evm/wrong-reader` | The reader passed to an EVM `recover` or `status` answers for a different network than the reference names. |
 
 ## tempo
@@ -336,7 +337,7 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 
 | Code | Meaning |
 |---|---|
-| `tempo/ambiguous` | More than one candidate carries the binding: several `transferWithMemo` calls or logs with the challenge's attribution memo, several `KeyAuthorizationWitness` logs, or several accounts whose key authorization carried H. |
+| `tempo/ambiguous` | More than one candidate carries the binding: several `transferWithMemo` calls or logs with the challenge's attribution memo, several `KeyAuthorizationWitness` logs, several accounts whose key authorization carried H, or `ChannelOpened` logs of the TIP-20 channel reserve giving more than one salt. |
 | `tempo/descriptor-mismatch` | A Tempo v2 session descriptor is missing or malformed (a non-address party, an invalid salt, nonce hash or chain), its channel id is not the payload's `channelId`, or its `salt` is not H. |
 | `tempo/key-authorization-malformed` | A Tempo key authorization does not encode or decode as the bounded RLP structure (items, limits, scopes, witness and signature), or the subscription credential's `signature` is not a string, or, for the `mpp/subscription/tempo` `reference`, the authorization does not name exactly one token, as its limit and its allowed-call target, and exactly one recipient. |
 | `tempo/key-not-authorized` | `keyAccount` finds that the receipt has no `KeyAuthorized` log registering the key for the account whose key authorization carried H. |
@@ -345,7 +346,7 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/no-witness` | The Tempo subscription's key authorization carries no witness, or a receipt holds no `KeyAuthorizationWitness` log (for `witnessRecover`, or naming H for `keyAccount`). |
 | `tempo/not-found` | The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
 | `tempo/open-ambiguous` | The signed Tempo session opening has more than one `open` call to the challenge's escrow contract. |
-| `tempo/open-not-found` | The signed Tempo session opening has no `open` call to the challenge's escrow contract. |
+| `tempo/open-not-found` | The signed Tempo session opening has no `open` call to the challenge's escrow contract, or the receipt the `mpp/session/tempo` `recover` reads holds no `ChannelOpened` of the TIP-20 channel reserve, whose data carries the salt (a v1 escrow's `ChannelOpened` carries none). |
 | `tempo/reverted` | The Tempo transaction reverted. |
 | `tempo/salt-not-bound` | The salt word of the Tempo session opening's `open` call is not H. |
 | `tempo/tx-malformed` | A Tempo transaction does not decode as a type-`0x76` RLP envelope with the expected fields and at most the allowed calls, `memoCalldata` is given an invalid recipient, amount or memo, `expiringNonceHash` is given a sender that is not an address, or a Tempo session opening's `open` call input has the wrong length. |

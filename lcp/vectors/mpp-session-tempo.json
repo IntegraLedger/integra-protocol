@@ -175,7 +175,7 @@
   "buyerSigns": true,
   "claims": true,
   "onChain": true,
-  "zeroPartyRecoverable": false,
+  "zeroPartyRecoverable": true,
   "forwardIndexable": false,
   "publicProof": true,
   "proves": "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer signed a Tempo transaction whose one call to the channel escrow opens a channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The escrow's ChannelOpened event names the channel, whose id commits to the salt; on the TIP-1034 escrow the event also carries the salt itself. This does not show that amount, payee, asset or timing match the ATR's content. Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each voucher signs a commitment to this ATR's hash."

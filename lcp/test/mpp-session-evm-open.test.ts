@@ -206,3 +206,109 @@ describe("ES9 permit2: the Permit2 opening reads the escrow's openWithPermit2", 
     });
   }
 });
+
+// `recover` reads the same transactions with no reference: the salt of the transaction's own open call, whichever of
+// the draft's three open functions it calls, where the receipt shows the escrow pulling the deposit from the call's
+// payer. The calldata is the file's, or viem's encoding of the draft's `openWithAuthorization`.
+describe("ES9 recover: the salt of the opening's own open call", () => {
+  const refused = (code: string) => ({ refused: true, code });
+  const recoverOf = (tx: EvmTransaction | null | "error", receipt?: Receipt) =>
+    sessionEvm.recover({ network: `eip155:${f.chainId}`, transaction: R.hash }, reader(tx, receipt));
+
+  it("the hash opening's cases: the open call's salt where the escrow pulled the payer's deposit, else evm/no-open-call", async () => {
+    const expected = [
+      H, // the payer's open call to the escrow, salt H
+      refused("evm/no-open-call"), // a plain transfer
+      H2, // the payer's open call whose salt is H2
+      refused("evm/no-open-call"), // sent by another account: the deposit pulled is the payer's, not its sender's
+      H, // another payee
+      refused("evm/no-open-call"), // sent to the token: the deposit went to the escrow, not the called contract
+      refused("evm/no-open-call"), // one byte short of the five words
+      H, // a data suffix after the arguments
+      refused("evm/not-found"), // no transaction
+    ];
+    expect(R.cases.length).toBe(expected.length);
+    for (const [i, row] of R.cases.entries()) expect(await recoverOf(row.transaction), row.case).toEqual(expected[i]);
+  });
+
+  it("an opening sent through an ERC-4337 EntryPoint is refused evm/no-open-call, where status leaves it pending", async () => {
+    for (const row of R.entryPoint.cases) {
+      expect(await recoverOf(row.transaction, row.receipt), row.case).toEqual(refused("evm/no-open-call"));
+      expect(row.expect, row.case).toEqual({ state: "pending", why: "open-call-not-found" });
+    }
+  });
+
+  it("the Permit2 opening: the salt of openWithPermit2, whose payer is its from", async () => {
+    const P = R.permit2;
+    const OPEN_WITH_PERMIT2 = parseAbi([
+      "function openWithPermit2(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner, address from, uint256 nonce, uint256 deadline, bytes signature)",
+    ]);
+    const first = P.cases[0];
+    expect(await recoverOf(first.transaction, first.receipt), first.case).toBe(H);
+    const { args } = decodeFunctionData({ abi: OPEN_WITH_PERMIT2, data: first.transaction.input });
+    const other = encodeFunctionData({
+      abi: OPEN_WITH_PERMIT2,
+      functionName: "openWithPermit2",
+      args: [args[0], args[1], args[2], args[3], args[4], "0x7777777777777777777777777777777777777777", args[6], args[7], args[8]],
+    });
+    const fromOther = { ...first.transaction, input: other };
+    expect(await recoverOf(fromOther, first.receipt)).toEqual(refused("evm/no-open-call"));
+    const plain = P.cases.find((row: { transaction?: EvmTransaction }) => row.transaction?.input.startsWith("0xa9059cbb"));
+    expect(await recoverOf(plain.transaction, plain.receipt), plain.case).toEqual(refused("evm/no-open-call"));
+    const padded = P.cases.find((row: { signatureBytes?: number }) => row.signatureBytes !== undefined);
+    const { args: a } = decodeFunctionData({ abi: OPEN_WITH_PERMIT2, data: first.transaction.input });
+    const long = encodeFunctionData({
+      abi: OPEN_WITH_PERMIT2,
+      functionName: "openWithPermit2",
+      args: [a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], `0x${"11".repeat(padded.signatureBytes)}`],
+    });
+    expect(await recoverOf({ ...first.transaction, input: long }, first.receipt), padded.case).toEqual(refused("evm/unreadable"));
+  });
+
+  it("the authorization opening: the salt of openWithAuthorization, whose payer is its from", async () => {
+    const OPEN_WITH_AUTHORIZATION = parseAbi([
+      "function openWithAuthorization(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner, address from, uint256 validAfter, uint256 validBefore, bytes32 nonce, bytes signature)",
+    ]);
+    const input = encodeFunctionData({
+      abi: OPEN_WITH_AUTHORIZATION,
+      functionName: "openWithAuthorization",
+      args: [f.recipient, f.usdc, BigInt(f.deposit), H, ZERO, f.payer, 0n, 1790000060n, E.ES3.expectNonce, SIGNATURE],
+    });
+    const relayer = "0x6666666666666666666666666666666666666666" as Hex;
+    expect(await recoverOf({ from: relayer, to: f.escrow, input })).toBe(H);
+    expect(await recoverOf({ from: relayer, to: f.usdc, input })).toEqual(refused("evm/no-open-call"));
+  });
+
+  it("reads the receipt and the transaction: at most two calls, one where the receipt is a revert", async () => {
+    const counted = (r: EvmReader) => {
+      const seen: string[] = [];
+      const c: EvmReader = {
+        network: r.network,
+        receipt: async (h) => (seen.push("receipt"), r.receipt(h)),
+        blockNumber: async (tag) => (seen.push("blockNumber"), r.blockNumber(tag)),
+        transaction: async (h) => (seen.push("transaction"), r.transaction(h)),
+        call: async (to, data, block) => (seen.push("call"), r.call(to, data, block)),
+      };
+      return { c, seen };
+    };
+    const ref = { network: `eip155:${f.chainId}`, transaction: R.hash as Hex };
+    const opened = counted(reader(R.cases[0].transaction));
+    expect(await sessionEvm.recover(ref, opened.c)).toBe(H);
+    expect(opened.seen).toEqual(["receipt", "transaction"]);
+    const reverted = counted(reader(R.cases[0].transaction, { ...R.receipt, status: 0 }));
+    expect(await sessionEvm.recover(ref, reverted.c)).toEqual(refused("evm/reverted"));
+    expect(reverted.seen).toEqual(["receipt"]);
+  });
+
+  it("a revert, no receipt, a failed read and a reader for another network", async () => {
+    const tx = R.cases[0].transaction;
+    expect(await recoverOf(tx, { ...R.receipt, status: 0 })).toEqual(refused("evm/reverted"));
+    expect(await recoverOf("error")).toEqual(refused("evm/unreadable"));
+    expect(await sessionEvm.recover({ network: `eip155:${f.chainId}`, transaction: `0x${"99".repeat(32)}` }, reader(tx))).toEqual(
+      refused("evm/not-found"),
+    );
+    expect(await sessionEvm.recover({ network: "eip155:1", transaction: R.hash }, reader(tx))).toEqual(refused("evm/wrong-reader"));
+    expect(await sessionEvm.recover(null as never, reader(tx))).toEqual(refused("evm/wrong-reader"));
+    expect(await recoverOf({ ...tx, to: null })).toEqual(refused("evm/no-open-call"));
+  });
+});

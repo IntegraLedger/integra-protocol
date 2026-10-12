@@ -463,6 +463,62 @@ describe("mpp-session-tempo.json", () => {
     expect(status.state).toBe("settled");
   });
 
+  it("recover: the salt of the live v2 opening's ChannelOpened, the salt its signed open call carries", async () => {
+    const block = BigInt(T.L1.receipt.blockNumber);
+    const ref = { network: "eip155:42431", transaction: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1" as `0x${string}` };
+    const salt = (await sessionTempo.recover(ref, readerFor("eip155:42431", T.L1.receipt, block, block))) as string;
+    affix(salt, T.L1.expectSalt);
+    const tx = decodeTempoTx(toBytes(T.L1.raw));
+    if ("refused" in tx) throw new Error(tx.code);
+    const open = tx.calls.find((c) => toHex(c.input.subarray(0, 4)) === OPEN_V2_SELECTOR)!;
+    expect(salt).toBe(toHex(open.input.subarray(4 + 128, 4 + 160)));
+  });
+
+  it("recover reads only the receipt: one call", async () => {
+    const block = BigInt(T.L1.receipt.blockNumber);
+    const ref = { network: "eip155:42431", transaction: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1" as `0x${string}` };
+    const live = readerFor("eip155:42431", T.L1.receipt, block, block);
+    const seen: string[] = [];
+    const counting: EvmReader = {
+      network: live.network,
+      receipt: async (tx) => (seen.push("receipt"), live.receipt(tx)),
+      blockNumber: async (tag) => (seen.push("blockNumber"), live.blockNumber(tag)),
+      transaction: async (tx) => (seen.push("transaction"), live.transaction(tx)),
+      call: async (to, data, at) => (seen.push("call"), live.call(to, data, at)),
+    };
+    expect(await sessionTempo.recover(ref, counting)).toBe(await sessionTempo.recover(ref, live));
+    expect(seen).toEqual(["receipt"]);
+  });
+
+  it("recover: only the channel reserve's ChannelOpened gives the salt; a v1 opening's event carries none", async () => {
+    // ITIP20ChannelReserve's ChannelOpened (tempo tips/verify, TIP-1034): salt is data word 3. The v1 escrow's
+    // ChannelOpened (draft-tempo-session-00) carries no salt.
+    const opened = (address: string, salt: `0x${string}`): EvmLog => ({
+      address: address as `0x${string}`,
+      topics: [CHANNEL_OPENED_V2_TOPIC, T.TS3.expectChannelId, topicOf(f.payer), topicOf(f.recipient)],
+      data: concat([wordOf(0n), topicOf(f.pathUSD), wordOf(0n), salt as ViemHex, T.TS2.expectNonceHash as ViemHex, wordOf(deposit)]) as ViemHex,
+    });
+    const v1: EvmLog = {
+      address: f.escrowV1,
+      topics: [CHANNEL_OPENED_V1_TOPIC, T.TS5.expectChannelId, topicOf(f.payer), topicOf(f.recipient)],
+      data: concat([topicOf(f.pathUSD), wordOf(0n), wordOf(deposit)]),
+    };
+    const ref = { network: "eip155:42431", transaction: `0x${"77".repeat(32)}` as `0x${string}` };
+    const run = (logs: EvmLog[], status: 0 | 1 = 1) => sessionTempo.recover(ref, readerFor("eip155:42431", { status, blockNumber: "100", logs }));
+    expect(TIP20_CHANNEL_RESERVE.toLowerCase()).toBe(f.escrowV2.toLowerCase());
+    expect(await run([opened(f.escrowV2, H)])).toBe(H);
+    expect(await run([opened(f.escrowV2, H), opened(f.escrowV2, H)])).toBe(H);
+    expect(await run([opened(f.escrowV2, H), opened(f.escrowV2, H2)])).toEqual({ refused: true, code: "tempo/ambiguous" });
+    expect(await run([opened("0x20c0000000000000000000000000000000000001", H)])).toEqual({ refused: true, code: "tempo/open-not-found" });
+    expect(await run([v1])).toEqual({ refused: true, code: "tempo/open-not-found" });
+    expect(await run([opened(f.escrowV2, H)], 0)).toEqual({ refused: true, code: "tempo/reverted" });
+    expect(await sessionTempo.recover(ref, readerFor("eip155:42431", null))).toEqual({ refused: true, code: "tempo/not-found" });
+    // A reader for another network, and a ref that is not an object, answer as the subscription's recover does.
+    const other = readerFor("eip155:4217", { status: 1, blockNumber: "100", logs: [opened(f.escrowV2, H)] });
+    expect(await sessionTempo.recover(ref, other)).toEqual(await witnessRecover(ref, other));
+    expect(await sessionTempo.recover(null as never, other)).toEqual(await witnessRecover(null as never, other));
+  });
+
   it("plant 1: an opening whose signed salt is another ATR's hash", async () => {
     const ch = placed(V2);
     const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));

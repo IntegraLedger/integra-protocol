@@ -59,11 +59,11 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
 | `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes |  |
-| `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | no | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/hedera` | `sessionHedera` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/session/lightning` | `sessionLightning` from `@integraledger/lcp/lightning` | `native-field` | no | no | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | `mpp/session/solana` | `sessionSolana` from `@integraledger/lcp/mpp` | `truncated-field` | no | yes | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | no | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/xrpl` | `sessionXrpl` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/subscription/stripe` | `subscriptionStripe` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
 | `mpp/subscription/tempo` | `subscriptionTempo` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes |  |

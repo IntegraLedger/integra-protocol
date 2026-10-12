@@ -267,12 +267,14 @@ console.log(recoverable.sort().join("\n"));
 ```
 
 ```text
-25
+27
 mpp/charge/solana
 mpp/charge/usdc/solana
 mpp/charge/usdc/stacks
 mpp/charge/xrpl
+mpp/session/evm
 mpp/session/hedera
+mpp/session/tempo
 mpp/session/xrpl
 mpp/subscription/tempo
 x402/batch-settlement/eip155
@@ -305,6 +307,14 @@ Where H is only in calldata, `recover` reads the transaction as well as its rece
   whether a settlement or the owner's `invalidateUnorderedNonces` set it: any transaction of that block whose input
   carries a call with the same nonce and owner, and whose receipt holds a `Transfer` from that owner emitted by the
   contract that call names as its token, gives H. `status` with the ATR's reference tells which transaction paid.
+- `mpp/session/evm` reads the salt of the escrow's open call (`open`, `openWithAuthorization` or `openWithPermit2`)
+  that the transaction itself makes, where the receipt holds a `Transfer` of the call's token, of any value, from the
+  call's payer into the called contract. It refuses an opening sent through an ERC-4337 EntryPoint
+  (`evm/no-open-call`), whose calldata does not show which contract the account called.
+
+`mpp/session/tempo` reads only the receipt: the salt is data word 3 of the `ChannelOpened` log of the TIP-20 channel
+reserve (TIP-1034). A v1 escrow's `ChannelOpened` carries no salt, and the reader does not show a Tempo transaction's
+calls, so a v1 opening is refused (`tempo/open-not-found`).
 
 ## Where the payment is not a public proof
 

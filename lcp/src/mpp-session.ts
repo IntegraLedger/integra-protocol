@@ -23,6 +23,9 @@ import {
   PERMIT2,
   TRANSFER_TOPIC,
   evmStatus,
+  isLog,
+  isReceipt,
+  transferParts,
   permit2TypedData,
   receiveTypedData,
   transferDigest,
@@ -58,6 +61,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
+import { readReceipt } from "./receipt.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   ACCESS_KEY_SPEND_TOPIC,
@@ -70,6 +74,7 @@ import {
   KEY_REVOKED_TOPIC,
   OPEN_V1_SELECTOR,
   OPEN_V2_SELECTOR,
+  TIP20_CHANNEL_RESERVE,
   TRANSFER_WITH_MEMO_SELECTOR,
   decodeKeyAuthorization,
   decodeTempoTx,
@@ -223,6 +228,10 @@ const MAX_WIRE = 65_536;
 const OPEN_CALL_BYTES = 164;
 /** keccak256("openWithPermit2(address,address,uint128,bytes32,address,address,uint256,uint256,bytes)")[0..4]. */
 const OPEN_WITH_PERMIT2_SELECTOR = "0x70981fe5";
+/**
+ * keccak256("openWithAuthorization(address,address,uint128,bytes32,address,address,uint256,uint256,bytes32,bytes)")[0..4].
+ */
+const OPEN_WITH_AUTHORIZATION_SELECTOR = "0xb82a39ba";
 /**
  * The calldata an opening's read decodes, at most 128 KiB, go-ethereum's transaction pool maximum for a whole
  * transaction (`core/txpool/legacypool/legacypool.go`, `txMaxSize = 4 * txSlotSize // 128KB`); a longer one is pending
@@ -930,6 +939,84 @@ async function openRead(
   return { state: "pending", why: "open-call-not-found" };
 }
 
+/**
+ * Recovers H from an EVM session's opening transaction alone: the salt, argument word 3, of the escrow's open call the
+ * transaction makes, whichever of `open`, `openWithAuthorization` and `openWithPermit2` it calls; each takes `payee,
+ * token, deposit, salt, authorizedSigner` first, and the two relayed ones the payer as `from` next. The transaction is
+ * read as `status` reads an opening (`eth_getTransactionByHash`): its own call must be the open call, with a recipient
+ * and calldata that starts with one of the three selectors and holds those words, and the receipt must hold a
+ * `Transfer` of the call's token, of any value, from its payer (the transaction's sender for `open`, else `from`) into
+ * the called contract; else `evm/no-open-call`. A transaction sent through an ERC-4337 EntryPoint is refused so: the
+ * account's calldata does not show which contract the account called. A reader for another network, or a ref or reader
+ * that is not an object, is `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is
+ * `evm/reverted`; a failed read, a malformed receipt or transaction, or calldata longer than `MAX_CALLDATA` is
+ * `evm/unreadable`. At most two calls.
+ */
+async function evmRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+  let receipt: EvmReceipt | null;
+  let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
+  try {
+    receipt = await reader.receipt(ref.transaction);
+  } catch {
+    return refusal("evm/unreadable");
+  }
+  if (receipt === null) return refusal("evm/not-found");
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
+  if (receipt.status === 0) return refusal("evm/reverted");
+  try {
+    tx = await reader.transaction(ref.transaction);
+  } catch {
+    return refusal("evm/unreadable");
+  }
+  if (tx === null) return refusal("evm/not-found");
+  const readable = isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, MAX_CALLDATA);
+  if (!readable) return refusal("evm/unreadable");
+  const input = bytesOf(tx.input)!;
+  const selector = input.length >= OPEN_CALL_BYTES ? hexOf(input.subarray(0, 4)) : undefined;
+  if (tx.to === null || selector === undefined) return refusal("evm/no-open-call");
+  const args = input.subarray(4);
+  const relayed = selector === OPEN_WITH_AUTHORIZATION_SELECTOR || selector === OPEN_WITH_PERMIT2_SELECTOR;
+  if (selector !== OPEN_V1_SELECTOR && !relayed) return refusal("evm/no-open-call");
+  const payer = relayed ? addressAt(args, 5) : (tx.from.toLowerCase() as Hex);
+  const token = addressAt(args, 1);
+  const escrow = tx.to;
+  const pulled =
+    payer !== undefined &&
+    token !== undefined &&
+    receipt.logs.some((l) => {
+      const t = transferParts(l, token, TRANSFER_TOPIC);
+      return t !== undefined && sameBytes(t.from, payer) && sameBytes(t.to, escrow);
+    });
+  return pulled ? (hexOf(wordAt(args, 3)!) as AtrHash) : refusal("evm/no-open-call");
+}
+
+/**
+ * Recovers H from a Tempo session's opening transaction alone: the salt, data word 3, of the `ChannelOpened` log that
+ * the TIP-20 channel reserve (TIP-1034, `TIP20_CHANNEL_RESERVE`) emits in the receipt. A v1 escrow's `ChannelOpened`
+ * carries no salt, and its open call sits among the Tempo transaction's calls, which the reader does not show: a v1
+ * opening, like a receipt with no such log, is `tempo/open-not-found`. Logs giving more than one salt are
+ * `tempo/ambiguous`. A ref that is not an object, a reader for another network or a failed read is `tempo/unreadable`,
+ * no receipt `tempo/not-found` and a revert `tempo/reverted`, as `readReceipt` answers. One call.
+ */
+async function tempoRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
+  if (!isObject(ref)) return refusal("tempo/unreadable");
+  const receipt = await readReceipt(ref.network, ref.transaction, reader);
+  if (isRefusal(receipt)) return receipt;
+  const salts = new Set<string>();
+  for (const l of receipt.logs) {
+    if (!sameBytes(l.address, TIP20_CHANNEL_RESERVE) || l.topics.length !== 4 || !sameBytes(l.topics[0], CHANNEL_OPENED_V2_TOPIC)) {
+      continue;
+    }
+    const data = bytesOf(l.data);
+    const salt = data === undefined ? undefined : wordAt(data, 3);
+    if (salt !== undefined) salts.add(hexOf(salt));
+  }
+  if (salts.size === 0) return refusal("tempo/open-not-found");
+  if (salts.size > 1) return refusal("tempo/ambiguous");
+  return [...salts][0]! as AtrHash;
+}
+
 /** The address in word `i` of `args`, or undefined. */
 function addressAt(args: Uint8Array, i: number): Hex | undefined {
   const w = wordAt(args, i);
@@ -1353,7 +1440,7 @@ function sessionPattern(proves: string): LcpPattern {
     profile: "mpp/session/evm-tempo",
     buyerSigns: true,
     onChain: true,
-    zeroPartyRecoverable: false,
+    zeroPartyRecoverable: true,
     forwardIndexable: false,
     publicProof: true,
     proves,
@@ -1402,6 +1489,7 @@ export const sessionEvm = Object.freeze({
   bound: evmBound,
   reference: evmReference,
   status: sessionStatus,
+  recover: evmRecover,
   landedTx: evmLandedTx,
   closeRef: evmCloseRef,
   channel: Object.freeze({ kind: evmKind, ref: refFrom, boundWithin: notBoundWithin, until: noEnd }),
@@ -1427,6 +1515,7 @@ export const sessionTempo = Object.freeze({
   bound: tempoBound,
   reference: tempoReference,
   status: sessionStatus,
+  recover: tempoRecover,
   closeRef: tempoCloseRef,
   channel: Object.freeze({ kind: tempoKind, ref: refFrom, boundWithin: tempoBoundWithin, until: noEnd }),
 });

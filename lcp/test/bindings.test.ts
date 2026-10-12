@@ -80,3 +80,16 @@ describe("BINDINGS", () => {
     expect(BINDINGS).toContain(exactTronMemo);
   });
 });
+
+// LCP §8.3's Zero-party recoverable property, atrHash reconstructed from the settlement transaction hash alone: a
+// pairing declares zeroPartyRecoverable exactly where it has the recover that does so.
+describe("recover and zeroPartyRecoverable", () => {
+  it("every pairing has recover exactly where its pattern says H is recoverable from the chain alone", () => {
+    const differ = BINDINGS.filter((b) => ("recover" in b && typeof b.recover === "function") !== b.pattern.zeroPartyRecoverable);
+    expect(differ.map((b) => b.id)).toEqual([]);
+    for (const id of ["x402/exact/eip155/permit2", "x402/upto/eip155/permit2", "mpp/session/evm", "mpp/session/tempo"]) {
+      const b = BINDINGS.find((x) => x.id === id)!;
+      expect(b.pattern.zeroPartyRecoverable, id).toBe(true);
+    }
+  });
+});
