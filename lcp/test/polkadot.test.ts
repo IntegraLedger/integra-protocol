@@ -123,6 +123,12 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
       ["{}", {}],
     ];
     for (const [name, c] of outside) expect(() => encodeProfileCall(c as never), name).toThrow(TypeError);
+    // A member read twice could pass the check with one value and be encoded with another.
+    let reads = 0;
+    const shifting = { ...ok, get amount() { return reads++ === 0 ? 10000n : -1n; } };
+    const once = decodeProfileCall(encodeProfileCall(shifting));
+    if ("refused" in once) throw new Error(once.code);
+    expect([once.amount, reads]).toEqual([10000n, 1]);
   });
 
   it("V3: complete, bound and reference of the accepted extrinsic, and the refusals", async () => {

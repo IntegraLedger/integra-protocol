@@ -213,18 +213,20 @@ export function ss58Decode(address: string): Uint8Array | Refusal {
  * from 0 to 2^32 − 1, `dest` 32 bytes, `amount` a bigint from 0 to 2^128 − 1, and `remark` 77 bytes.
  */
 export function encodeProfileCall(c: ProfileCall): Uint8Array {
+  if (!isObject(c)) throw new TypeError("not a profile call");
+  // Each member is read once, so what is checked is what is encoded.
+  const { assetId, dest, amount, remark } = c;
   if (
-    !isObject(c) ||
-    !Number.isSafeInteger(c.assetId) ||
-    c.assetId < 0 ||
-    BigInt(c.assetId) >= U32_LIMIT ||
-    !(c.dest instanceof Uint8Array) ||
-    c.dest.length !== 32 ||
-    typeof c.amount !== "bigint" ||
-    c.amount < 0n ||
-    c.amount >= U128_LIMIT ||
-    !(c.remark instanceof Uint8Array) ||
-    c.remark.length !== REMARK_LENGTH
+    !Number.isSafeInteger(assetId) ||
+    assetId < 0 ||
+    BigInt(assetId) >= U32_LIMIT ||
+    !(dest instanceof Uint8Array) ||
+    dest.length !== 32 ||
+    typeof amount !== "bigint" ||
+    amount < 0n ||
+    amount >= U128_LIMIT ||
+    !(remark instanceof Uint8Array) ||
+    remark.length !== REMARK_LENGTH
   ) {
     throw new TypeError("not a profile call");
   }
@@ -232,13 +234,13 @@ export function encodeProfileCall(c: ProfileCall): Uint8Array {
     CALL.batchAll,
     [0x08],
     CALL.transferKeepAlive,
-    compact(BigInt(c.assetId)),
+    compact(BigInt(assetId)),
     [0x00],
-    c.dest,
-    compact(c.amount),
+    dest,
+    compact(amount),
     CALL.remarkWithEvent,
-    compact(BigInt(c.remark.length)),
-    c.remark,
+    compact(BigInt(remark.length)),
+    remark,
   );
 }
 
