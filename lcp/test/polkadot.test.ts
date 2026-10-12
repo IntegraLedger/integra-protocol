@@ -188,6 +188,15 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     expect(await recoverWith(toHex(at))).toEqual({ refused: true, code: "polkadot/hash-mismatch" });
   });
 
+  // The genesis hash that names a network is implicit data of the signed payload (frame_system's CheckGenesis signed
+  // extension), never a byte of the extrinsic: V3's bytes under a Westend Asset Hub option keep their hash and asset
+  // and take the option's network.
+  it("V3: reference takes the network from the accepted option, and the hash and asset from the signed bytes", async () => {
+    const westend = { ...O, network: "polkadot:67f9723393ef76214df0118c34bbbd3d" };
+    const presented = { x402Version: 2 as const, accepted: westend, payload: { extrinsic: V.V3.extrinsic, call: V.V2.expectCall } };
+    expect(await exactPolkadotRemark.reference(presented as never)).toEqual({ ...V.V3.expectReference, network: westend.network });
+  });
+
   it("V4: the remark hash", () => {
     const remark = new TextEncoder().encode(toLcpString(H));
     expect(toHex(blake2b(remark, { dkLen: 32 }))).toBe(V.V4.expectRemarkHash);

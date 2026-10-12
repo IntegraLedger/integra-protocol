@@ -65,7 +65,9 @@ export interface PolkadotReader {
   finalizedHeight(): Promise<bigint>;
 }
 
-/** The read keys recorded at claim, computed from the signed bytes. */
+/**
+ * The read keys: the accepted option's network, and the extrinsic's hash and the call's asset from the signed bytes.
+ */
 export interface PolkadotRef {
   network: PolkadotNetwork;
   extrinsicHash: Hex;
@@ -413,7 +415,7 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(c) ? c : c.h;
 }
 
-/** The network, the extrinsic's hash and the call's asset, from the signed bytes. */
+/** The accepted option's network, and the extrinsic's hash and the call's asset from the signed bytes. */
 async function reference(presented: unknown): Promise<PolkadotRef | Refusal> {
   const c = carriedOf(presented);
   if (isRefusal(c)) return c;
