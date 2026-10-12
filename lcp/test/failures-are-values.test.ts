@@ -37,6 +37,17 @@ import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { stellarLocate, stellarStatus } from "../src/stellar.js";
+import {
+  channelInstruction,
+  channelPda,
+  svmCarrier,
+  svmChannelStatus,
+  svmDigest,
+  svmLocate,
+  svmNonceMoved,
+  svmRecover,
+  svmStatus,
+} from "../src/svm.js";
 import { decodeTronTx, encodeTronRaw, tronCarrier, tronRecover, tronStatus } from "../src/tron.js";
 import { exactTvm, tvmRecover } from "../src/tvm.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
@@ -450,4 +461,40 @@ describe("xrpl", () => {
     ["xrplOpenStatus", xrplOpenStatus, "x402-exact-xrpl.json", UNREADABLE],
     ["xrplCloseStatus", xrplCloseStatus, "x402-exact-xrpl.json", UNREADABLE],
   ]);
+});
+
+describe("svm", () => {
+  const file = "x402-exact-solana.json";
+  reads([
+    ["svmStatus", svmStatus, file, UNREADABLE],
+    ["svmChannelStatus", svmChannelStatus, file, UNREADABLE],
+    ["svmRecover", svmRecover, file, refused("svm/wrong-reader")],
+    ["svmNonceMoved", svmNonceMoved, file, false],
+    ["svmLocate", svmLocate, file, { complete: false }, H],
+  ]);
+  answers([
+    ["svmCarrier", svmCarrier, [undefined], 0, refused("svm/tx-malformed")],
+    ["channelInstruction", channelInstruction, [undefined], 0, refused("svm/tx-malformed")],
+    ["channelPda", channelPda, [undefined], 0, refused("svm/input-malformed")],
+  ]);
+  it("svmStatus: a ref whose digest is not a string reads nothing", async () => {
+    const ref = refIn(file);
+    for (const digest of [null, 1, {}]) {
+      const reader = quietReader(ref.network);
+      expect(await svmStatus({ ...ref, digest } as never, reader as never), String(digest)).toEqual(UNREADABLE);
+      expect(reader.reads(), String(digest)).toBe(0);
+    }
+  });
+  it("svmDigest rejects, never throws, on a transaction that is not one", async () => {
+    for (const bad of MALFORMED) {
+      let p: Promise<unknown> | undefined;
+      expect(() => (p = svmDigest(bad as never))).not.toThrow();
+      await expect(p).rejects.toThrow(TypeError);
+    }
+  });
+  it("svmCarrier and channelInstruction: a transaction whose instructions are not objects is svm/tx-malformed", () => {
+    const tx = { signatures: [], message: new Uint8Array(0), keys: [], instructions: [null], blockhash: new Uint8Array(32) };
+    expect(svmCarrier(tx as never)).toEqual(refused("svm/tx-malformed"));
+    expect(channelInstruction(tx as never)).toEqual(refused("svm/tx-malformed"));
+  });
 });

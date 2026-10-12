@@ -8,6 +8,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { base58 } from "@scure/base";
 import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
+import { isObject } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
 /** CAIP-2: `solana:` and 32 base58 characters. */
@@ -171,6 +172,13 @@ const TOKEN_2022_BYTES = base58.decode(TOKEN_2022);
 const SYSTEM_BYTES = base58.decode(SYSTEM);
 const RECENT_BLOCKHASHES_BYTES = base58.decode(RECENT_BLOCKHASHES);
 
+/** True for the shape `decodeSvmTx` gives: arrays of keys and instructions, each instruction with data and accounts. */
+function isTx(tx: unknown): tx is SvmTx {
+  if (!isObject(tx) || !Array.isArray(tx["keys"]) || !Array.isArray(tx["instructions"])) return false;
+  const isIx = (ix: unknown) => isObject(ix) && ix["data"] instanceof Uint8Array && Array.isArray(ix["accounts"]);
+  return tx["instructions"].every(isIx);
+}
+
 function sameBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
   if (a === undefined || a.length !== b.length) return false;
   let d = 0;
@@ -281,9 +289,10 @@ function decode(wire: Uint8Array): Decoded | Refusal {
 /**
  * The one top-level Memo instruction (v3 or v4) and the ATR hash its UTF-8 data carries in LCP string form. None, or
  * more than one, is `svm/memo-count`. The memo must be `toLcpString(h)` exactly, in lowercase hex; the same hash in
- * any other spelling is `svm/carrier-not-canonical`.
+ * any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded transaction is `svm/tx-malformed`.
  */
 export function svmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
+  if (!isTx(tx)) return refusal("svm/tx-malformed");
   const memos = memoData(tx);
   if (memos.length !== 1) return refusal("svm/memo-count");
   return memoCarrier(memos[0]!);
@@ -317,8 +326,11 @@ export function canonicalCarrier(h: AtrHash, memo: string): { h: AtrHash; memo: 
   return memo === toLcpString(h) ? { h, memo } : refusal("svm/carrier-not-canonical");
 }
 
-/** SHA-256 over the message bytes every signer signed. */
-export function svmDigest(tx: SvmTx): Promise<Hex> {
+/**
+ * SHA-256 over the message bytes every signer signed. Rejects with a TypeError when `tx` is not an object whose
+ * `message` is a `Uint8Array`.
+ */
+export async function svmDigest(tx: SvmTx): Promise<Hex> {
   return hash(tx.message);
 }
 
@@ -650,9 +662,10 @@ function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
 /**
  * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
  * without error, and must carry a token or SOL transfer. A failed read, or a reader for another network, is pending.
- * A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first available block is
- * at or before `fromSlot`, is read once more at `finalized`; still not found, it is failed `nonce-moved`: the message
- * can never land. At most two calls, or five for a durable-nonce reference.
+ * A ref whose `digest` is not a string is pending `unreadable`, with nothing read. A durable-nonce transaction that is
+ * not found, once `svmNonceMoved` holds and the node's first available block is at or before `fromSlot`, is read once
+ * more at `finalized`; still not found, it is failed `nonce-moved`: the message can never land. At most two calls, or
+ * five for a durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
   return settledBy(ref, reader, (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer"));
@@ -672,7 +685,9 @@ export async function settledBy<W extends string>(
   | { state: "pending"; why: "not-found" | "unreadable" }
   | { state: "failed"; why: "err" | "not-this-instrument" | "nonce-moved" | W }
 > {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network || typeof ref.digest !== "string") {
+    return { state: "pending", why: "unreadable" };
+  }
   let read = await landedAt(reader, ref.transaction);
   if (read === undefined) return { state: "pending", why: "unreadable" };
   if (read === null && ref.nonce !== undefined && (await nonceLapsed(ref, reader))) {
@@ -694,15 +709,15 @@ export async function settledBy<W extends string>(
  * True when the durable nonce `ref.nonce` records is spent or gone: a `finalized` read of the nonce account, at a
  * context slot at least 150 slots past `fromSlot`, finds no account, an account the System program does not own, an
  * account that is not an initialized nonce account, or an initialized current-version nonce account holding another
- * value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce` and
- * a reader for another network are false. One call.
+ * value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce`, a
+ * ref or reader that is not an object and a reader for another network are false. One call.
  *
  * The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. So
  * a durable-nonce reference with no named transaction lapses when this reads true and a `svmLocate` that starts after
  * it is complete with nothing found.
  */
 export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<boolean> {
-  if (reader.network !== ref.network) return false;
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return false;
   const nonce: unknown = ref.nonce;
   if (typeof nonce !== "object" || nonce === null) return false;
   const { account, value } = nonce as SvmNonce;
@@ -750,7 +765,8 @@ async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<boolean> {
  * is given), at most 50 per pass.
  * `complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
  * `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
- * leaves the search incomplete.
+ * leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is `complete`
+ * false, with nothing read.
  */
 export async function svmLocate(
   ref: SvmRef,
@@ -758,7 +774,7 @@ export async function svmLocate(
   h: AtrHash,
   status: (ref: SvmRef & { transaction: string }, reader: SvmReader) => Promise<{ state: string; why?: string }> = svmStatus,
 ): Promise<{ found?: string; complete: boolean }> {
-  if (reader.network !== ref.network) return { complete: false };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return { complete: false };
   if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return { complete: false };
   if (ref.channel !== undefined && !isKey(ref.channel)) return { complete: false };
   const address = ref.channel ?? ref.feePayer;
@@ -818,7 +834,7 @@ export async function landedTransaction(
   ref: { network: SolanaNetwork; transaction: string },
   reader: SvmReader,
 ): Promise<SvmTx | Refusal> {
-  if (reader.network !== ref.network) return refusal("svm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
   const read = await landedAt(reader, ref.transaction);
   if (read === undefined) return refusal("svm/unreadable");
   if (read === null) return refusal("svm/not-found");
@@ -870,6 +886,7 @@ export function channelPda(a: {
   salt: bigint;
   openSlot: bigint;
 }): string | Refusal {
+  if (!isObject(a)) return refusal("svm/input-malformed");
   const keys = [a.payer, a.payee, a.mint, a.signer].map(keyBytes);
   if (keys.some((k) => k === null) || !isU64(a.salt) || !isU64(a.openSlot)) return refusal("svm/input-malformed");
   const pda = findPda(
@@ -945,8 +962,12 @@ const CHANNEL_KINDS: { readonly [d: number]: readonly [ChannelIx["kind"], number
   5: ["request_close", 2, 1],
 };
 
-/** The transaction's one top-level payment-channels instruction, by its discriminator. */
+/**
+ * The transaction's one top-level payment-channels instruction, by its discriminator. A `tx` that is not a decoded
+ * transaction is `svm/tx-malformed`.
+ */
 export function channelInstruction(tx: SvmTx): ChannelIx | Refusal {
+  if (!isTx(tx)) return refusal("svm/tx-malformed");
   const found = tx.instructions.filter((ix) => sameBytes(tx.keys[ix.program], PAYMENT_CHANNELS_BYTES));
   if (found.length === 0) return refusal("svm/no-channel-instruction");
   if (found.length > 1) return refusal("svm/channel-instruction");
