@@ -1,11 +1,14 @@
-// The EVM session's `hash` opening read, from mpp-session-evm.json's ES9. draft-evm-session-00 (tempoxyz/mpp-specs at
-// 08e7dd87) defines the escrow's `open(address payee, address token, uint128 deposit, bytes32 salt, address
-// authorizedSigner)` and no opening event; the channel id is keccak256(abi.encode(payer, payee, token, salt,
-// authorizedSigner, escrow, chainId)), where the payer is the account that calls `open`. Every expected value is the
+// The EVM session's `hash` and `permit2` opening reads, from mpp-session-evm.json's ES9. draft-evm-session-00
+// (tempoxyz/mpp-specs at 08e7dd87) defines the escrow's `open(address payee, address token, uint128 deposit, bytes32
+// salt, address authorizedSigner)` and `openWithPermit2(..., address from, ...)`, and no opening event; the channel id is
+// keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainId)), where the payer is the account
+// that calls `open`, or `openWithPermit2`'s `from`. A hash opening is sent "either directly or through an ERC-4337
+// EntryPoint-mediated UserOperation" (the draft's open verification); the account's calldata does not show which contract
+// the account called, so one sent through an EntryPoint reads as pending, never failed. Every expected value is the
 // file's; viem 2.56.8 encodes the calldata independently here.
-import { encodeFunctionData, parseAbi, type Hex } from "viem";
+import { decodeFunctionData, encodeFunctionData, parseAbi, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
-import { ReaderError, type EvmReader, type EvmTransaction } from "../src/evm.js";
+import { ReaderError, type EvmLog, type EvmReader, type EvmTransaction } from "../src/evm.js";
 import { place, sessionEvm, type MppChallenge, type MppCredential, type SessionRef } from "../src/mpp.js";
 import { H, challenge, link, load, withBigints } from "./mpp-fixtures.js";
 
@@ -18,11 +21,13 @@ const SIGNATURE = `0x${"11".repeat(65)}` as Hex;
 const OPEN = parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]);
 const ZERO = "0x0000000000000000000000000000000000000000";
 
-function reader(tx: EvmTransaction | null | "error"): EvmReader {
+type Receipt = { status: 0 | 1; blockNumber: string; logs: EvmLog[] };
+
+function reader(tx: EvmTransaction | null | "error", receipt: Receipt = R.receipt): EvmReader {
   return {
     network: `eip155:${f.chainId}`,
     receipt: async (hash) =>
-      hash === R.hash ? { status: R.receipt.status, blockNumber: BigInt(R.receipt.blockNumber), logs: R.receipt.logs } : null,
+      hash === R.hash ? { status: receipt.status, blockNumber: BigInt(receipt.blockNumber), logs: receipt.logs } : null,
     blockNumber: async () => BigInt(R.finalized),
     transaction: async (hash) => {
       if (tx === "error") throw new ReaderError("transport");
@@ -34,20 +39,33 @@ function reader(tx: EvmTransaction | null | "error"): EvmReader {
   };
 }
 
-/** The hash opening of a channel for `h`: the challenge placed with `h`, then `build`, completed with ES9's hash. */
-async function opening(h: Hex): Promise<MppCredential> {
+/** The hash opening of a channel for `h` and `from`: the challenge placed with `h`, then `build`, completed with ES9's hash. */
+async function opening(h: Hex, from: Hex = f.payer): Promise<MppCredential> {
   const ch = (place([challenge("evm", "session", f.request)], h, link, challenge("evm", "session", f.request)) as (MppChallenge & { id: string })[])[0]!;
-  const u = await sessionEvm.build({ challenge: ch, from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType: "hash" }, h);
+  const u = await sessionEvm.build({ challenge: ch, from, now: f.now, deposit: BigInt(f.deposit), credentialType: "hash" }, h);
   if ("refused" in u) throw new Error(u.code);
   const c = u.complete(R.hash, SIGNATURE);
   if ("refused" in c) throw new Error(c.code);
   return c;
 }
 
-async function statusOf(cred: MppCredential, tx: EvmTransaction | null | "error") {
+/** The authorization or Permit2 opening of the channel for H, signed off by fixed bytes; no check reads a signature. */
+async function signedOpening(credentialType: "authorization" | "permit2"): Promise<MppCredential> {
+  const ch = (place([challenge("evm", "session", f.request)], H, link, challenge("evm", "session", f.request)) as (MppChallenge & { id: string })[])[0]!;
+  const u = await sessionEvm.build(
+    { challenge: ch, from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType, tokenDomain: f.tokenDomain },
+    H,
+  );
+  if ("refused" in u || u.funding.kind !== "eip712") throw new Error("not eip712");
+  const c = u.complete(SIGNATURE, SIGNATURE);
+  if ("refused" in c) throw new Error(c.code);
+  return c;
+}
+
+async function statusOf(cred: MppCredential, tx: EvmTransaction | null | "error", receipt?: Receipt) {
   const ref = (await sessionEvm.reference(cred)) as SessionRef;
-  const transaction = sessionEvm.landedTx(cred) as Hex;
-  return withBigints(await sessionEvm.status({ ...ref, transaction }, reader(tx)));
+  const transaction = (sessionEvm.landedTx(cred) ?? R.hash) as Hex;
+  return withBigints(await sessionEvm.status({ ...ref, transaction }, reader(tx, receipt)));
 }
 
 describe("ES9: the hash opening's settlement read", () => {
@@ -57,6 +75,8 @@ describe("ES9: the hash opening's settlement read", () => {
     expect(R.cases[0].transaction.input).toBe(open(f.recipient, H));
     expect(R.cases[2].transaction.input).toBe(open(f.recipient, H2));
     expect(R.cases[4].transaction.input).toBe(open("0x7777777777777777777777777777777777777777", H));
+    // ERC-8021's data suffix ends in this 16-byte marker (ox 0.14.45, erc8021 `ercSuffix`).
+    expect(R.cases[7].transaction.input).toBe(`${open(f.recipient, H)}80218021802180218021802180218021`);
   });
 
   it("the reference names the escrow, the channel, H and the chain, beside the payer-to-escrow transfer", async () => {
@@ -97,18 +117,70 @@ describe("ES9: the hash opening's settlement read", () => {
     expect(await statusOf(await opening(H), noSender)).toEqual({ state: "pending", why: "unreadable" });
   });
 
-  it("an authorization or Permit2 opening's reference names no open call", async () => {
-    for (const credentialType of ["authorization", "permit2"] as const) {
-      const ch = (place([challenge("evm", "session", f.request)], H, link, challenge("evm", "session", f.request)) as (MppChallenge & { id: string })[])[0]!;
-      const u = await sessionEvm.build(
-        { challenge: ch, from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType, tokenDomain: f.tokenDomain },
-        H,
-      );
-      if ("refused" in u || u.funding.kind !== "eip712") throw new Error("not eip712");
-      const c = u.complete(SIGNATURE, SIGNATURE);
-      if ("refused" in c) throw new Error(c.code);
-      const ref = (await sessionEvm.reference(c)) as SessionRef;
-      expect(ref.opens, credentialType).toBeUndefined();
-    }
+  it("the authorization opening's reference names no open call; its AuthorizationUsed nonce commits to H", async () => {
+    const ref = (await sessionEvm.reference(await signedOpening("authorization"))) as SessionRef;
+    expect(ref.opens).toBeUndefined();
+    expect(ref.bindingLog?.value).toBe(E.ES3.expectNonce);
   });
+});
+
+describe("ES9 entryPoint: the hash opening sent through an ERC-4337 EntryPoint reads as pending", () => {
+  const P = R.entryPoint;
+
+  it("the reference names the account's channel", async () => {
+    const ref = (await sessionEvm.reference(await opening(H, P.account))) as SessionRef;
+    expect(ref.opens).toEqual({ escrow: f.escrow, channel: P.expectChannelId, h: H, chainId: f.chainId });
+  });
+
+  for (const row of P.cases) {
+    it(row.case, async () => {
+      expect(await statusOf(await opening(H, P.account), row.transaction, row.receipt)).toEqual(row.expect);
+    });
+  }
+});
+
+describe("ES9 permit2: the Permit2 opening reads the escrow's openWithPermit2", () => {
+  const P = R.permit2;
+  const OPEN_WITH_PERMIT2 = parseAbi([
+    "function openWithPermit2(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner, address from, uint256 nonce, uint256 deadline, bytes signature)",
+  ]);
+
+  it("the reference names the escrow, the channel, H and the chain, beside the deadline and the transfer", async () => {
+    const ref = (await sessionEvm.reference(await signedOpening("permit2"))) as SessionRef;
+    expect(ref.opens).toEqual({ escrow: f.escrow, channel: E.ES1.expectChannelId, h: H, chainId: f.chainId });
+    expect(ref.settleBy).toBe("1790000060");
+    expect(ref.transferLog?.digest).toBe(E.ES7.expectIdentity);
+  });
+
+  it("the first case's input is viem's encoding of the draft's openWithPermit2 with the payer as from", () => {
+    const { args } = decodeFunctionData({ abi: OPEN_WITH_PERMIT2, data: P.cases[0].transaction.input });
+    expect([args[0], args[1], args[3], args[4], args[5]]).toEqual([f.recipient, f.usdc, H, ZERO, f.payer]);
+  });
+
+  /** A row's transaction; a row with `signatureBytes` takes the first case's call with a signature of that many bytes. */
+  const transactionOf = (row: { transaction: EvmTransaction; signatureBytes?: number }): EvmTransaction => {
+    if (row.signatureBytes === undefined) return row.transaction;
+    const { args } = decodeFunctionData({ abi: OPEN_WITH_PERMIT2, data: P.cases[0].transaction.input });
+    const signature = `0x${"11".repeat(row.signatureBytes)}` as Hex;
+    const [payee, token, deposit, salt, signer, from, nonce, deadline] = args;
+    const input = encodeFunctionData({
+      abi: OPEN_WITH_PERMIT2,
+      functionName: "openWithPermit2",
+      args: [payee, token, deposit, salt, signer, from, nonce, deadline, signature],
+    });
+    return { ...row.transaction, input };
+  };
+
+  // go-ethereum's transaction pool admits a transaction of at most 128 KiB (core/txpool/legacypool/legacypool.go,
+  // txMaxSize = 4 * txSlotSize); the read decodes at most that much calldata.
+  it("the padded case's calldata is longer than 131,072 bytes", () => {
+    const padded = P.cases.find((row: { signatureBytes?: number }) => row.signatureBytes !== undefined);
+    expect((transactionOf(padded).input.length - 2) / 2).toBeGreaterThan(131_072);
+  });
+
+  for (const row of P.cases) {
+    it(row.case, async () => {
+      expect(await statusOf(await signedOpening("permit2"), transactionOf(row), row.receipt)).toEqual(row.expect);
+    });
+  }
 });

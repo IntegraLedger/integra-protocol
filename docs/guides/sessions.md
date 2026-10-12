@@ -262,14 +262,26 @@ transfer must be among the logs between the contract's previous `Deposited` and 
 channel beside the payer's deposit into another channel, or the payer's short deposit into it beside a deposit
 elsewhere, reads as failed, with the reason `transfer-not-found`.
 
-An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim. Its `reference`
-carries `opens`: the escrow, the channel, H and the chain. `status` then reads the transaction itself, through the
-reader's `transaction` (`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles
-only when it is the escrow's `open(address payee, address token, uint128 deposit, bytes32 salt, address
-authorizedSigner)`, sent to the escrow, with H as its salt, and whose sender, payee, token and authorized signer give
-the channel id. The payer is then the account that signed the call, not the credential's `source`. Any other
-transaction, such as a plain token transfer to the escrow, or another channel's opening, reads as failed, with the
-reason `open-call-not-found`. The deposit is not read.
+An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim; one of type
+`permit2` is sent by the seller's server, which names its transaction to `status`. Both references carry `opens`: the
+escrow, the channel, H and the chain. `status` then reads the transaction itself, through the reader's `transaction`
+(`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles only when it holds the
+escrow's open call for the channel, with H as its salt:
+
+- the escrow's `open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)` in its
+  first 164 bytes of calldata, sent to the escrow, whose sender is the payer; or
+- the escrow's `openWithPermit2(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner,
+  address from, uint256 nonce, uint256 deadline, bytes signature)`, sent to the escrow, whose `from` is the payer.
+
+In each, the payer, payee, token and authorized signer give the channel id, and the payer is read from the chain, not
+from the credential's `source`. Calldata past the call's arguments, such as a data suffix a wallet appends, is not
+read. An open call sent to the escrow that opens another channel reads as failed, with the
+reason `open-call-not-found`, on a `hash` opening, whose named transaction is the payment; on a `permit2` opening, which
+can land until its deadline, it reads as pending. Any other transaction, such as a plain token transfer to the
+escrow, reads as pending, with the reason `open-call-not-found`, never as failed. A transaction sent through an ERC-4337
+EntryPoint reads as pending, with the reason `open-call-not-found`: the account's calldata does not show which contract
+the account called. The deposit is not read. Calldata longer than 131,072 bytes, go-ethereum's transaction pool
+maximum, reads as pending, with the reason `unreadable`.
 
 ## Next
 

@@ -5,7 +5,19 @@
  * request is classified by `channel.kind`, and on Tempo v2 `channel.boundWithin` reads its descriptor's salt.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
-import { addressWord, bytes32Word, bytesOf, concat, hexOf, keccakHex, sameBytes, uintWord, type Hex } from "./evm-abi.js";
+import {
+  addressOfWord,
+  addressWord,
+  bytes32Word,
+  bytesOf,
+  concat,
+  hexOf,
+  keccakHex,
+  sameBytes,
+  uintWord,
+  wordAt,
+  type Hex,
+} from "./evm-abi.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   PERMIT2,
@@ -109,9 +121,8 @@ export interface SessionRef extends EvmRef {
   transaction?: Hex;
   opened?: { address: Hex; version: "v1" | "v2"; channel: Hex; h: AtrHash; chainId: number };
   /**
-   * The opening of an EVM session that the payer broadcast as a call: a call to `escrow` of `OPEN_V1_SELECTOR` whose
-   * salt is `h`, and whose sender, payee, token and authorized signer, with `h`, the escrow and `chainId`, give
-   * `channel`.
+   * The opening of an EVM session of type `hash` or `permit2`: the escrow's open call whose salt is `h`, and whose
+   * payer, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`.
    */
   opens?: { escrow: Hex; channel: Hex; h: AtrHash; chainId: number };
   /** The close of an EVM session: a call to `escrow` of one of `EVM_CLOSE_SELECTORS` naming `channel`. */
@@ -125,7 +136,7 @@ export interface SessionRef extends EvmRef {
 
 export type SessionStatus =
   | EvmBreadthStatus
-  | { state: "pending"; why: "not-a-close" }
+  | { state: "pending"; why: "not-a-close" | "open-call-not-found" }
   | { state: "failed"; why: "open-call-not-found" };
 
 /**
@@ -206,6 +217,14 @@ const MAX_SIGNATURE = 8192;
 const MAX_WIRE = 65_536;
 /** `open(address,address,uint128,bytes32,address)`: the selector and five words. */
 const OPEN_CALL_BYTES = 164;
+/** keccak256("openWithPermit2(address,address,uint128,bytes32,address,address,uint256,uint256,bytes)")[0..4]. */
+const OPEN_WITH_PERMIT2_SELECTOR = "0x70981fe5";
+/**
+ * The calldata an opening's read decodes, at most 128 KiB, go-ethereum's transaction pool maximum for a whole
+ * transaction (`core/txpool/legacypool/legacypool.go`, `txMaxSize = 4 * txSlotSize // 128KB`); a longer one is pending
+ * `unreadable`.
+ */
+const MAX_CALLDATA = 131_072;
 const U96 = 1n << 96n;
 const U128 = 1n << 128n;
 const KEY_TYPES = { secp256k1: 0, p256: 1, webAuthn: 2 } as const;
@@ -373,8 +392,11 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
 /**
  * `evmStatus` on the named logs, then, where `ref.opened` is present, one `ChannelOpened` log from `opened.address`
  * naming the channel: on v2 its data word 3 (the salt) is `h`; on v1 the channel id recomputed from the event with
- * salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction must be the open call `opens`
- * describes, read by `eth_getTransactionByHash`, else failed `open-call-not-found`. Where `ref.closes` is present, the
+ * salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction, read by `eth_getTransactionByHash`,
+ * must be sent to the escrow and hold its open call for the channel: `open` from the payer, or `openWithPermit2` with
+ * the payer as its `from`. An open call sent to the escrow that opens another channel is failed `open-call-not-found`
+ * where `ref.settleBy` is absent and pending where it is present; any other transaction, one sent through an ERC-4337
+ * EntryPoint included, is pending `open-call-not-found`. Where `ref.closes` is present, the
  * succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
  * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
  * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
@@ -393,7 +415,7 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     call: (to, data, block) => reader.call(to, data, block),
   };
   const s = await evmStatus(ref, watching);
-  if (s.state === "settled" && ref.opens !== undefined) return openRead(s, ref.transaction, ref.opens, reader);
+  if (s.state === "settled" && ref.opens !== undefined) return openRead(s, ref, ref.opens, reader);
   if (s.state === "settled" && ref.closes !== undefined) return closeRead(s, ref.transaction, ref.closes, reader);
   if (s.state === "settled" && ref.accessKey?.account !== undefined) {
     return spentUnder((seen as EvmReceipt | null)?.logs ?? [], ref.accessKey) ? s : { state: "failed", why: "binding-log-not-found" };
@@ -575,13 +597,13 @@ async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
     if (transaction === null) return refusal("mpp/credential-malformed");
     const digest = await transferDigest({ from: o.payer, to: o.escrow });
     if (typeof digest !== "string") return digest;
-    const channel = normalHash(presented.payload["channelId"]);
-    if (channel === null) return refusal("mpp/credential-malformed");
+    const opens = opensOf(o, presented);
+    if (isRefusal(opens)) return opens;
     return {
       network,
       transaction: transaction as Hex,
       transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to", digest },
-      opens: { escrow: o.escrow, channel: channel as Hex, h: o.h, chainId: o.checked.details["chainId"] as number },
+      opens,
     };
   }
   if (o.opening.type === "authorization") {
@@ -605,11 +627,21 @@ async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
   if (value === undefined || deadline === undefined) return refusal("mpp/credential-malformed");
   const digest = await transferDigest({ from: o.payer, to: o.escrow, value });
   if (typeof digest !== "string") return digest;
+  const opens = opensOf(o, presented);
+  if (isRefusal(opens)) return opens;
   return {
     network,
     settleBy: deadline.toString(),
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
+    opens,
   };
+}
+
+/** The open call an opening's reference names: the escrow, the payload's channel, H and the chain. */
+function opensOf(o: { h: AtrHash; checked: Checked; escrow: Hex }, presented: MppCredential): NonNullable<SessionRef["opens"]> | Refusal {
+  const channel = normalHash(presented.payload["channelId"]);
+  if (channel === null) return refusal("mpp/credential-malformed");
+  return { escrow: o.escrow, channel: channel as Hex, h: o.h, chainId: o.checked.details["chainId"] as number };
 }
 
 async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
@@ -763,45 +795,68 @@ async function closeRead(
 }
 
 /**
- * A succeeded transaction read as an EVM session's opening, by `eth_getTransactionByHash`: sent to the escrow, with
- * 164 bytes of calldata `open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)`,
- * its salt `h`, and `evmChannelId` over the transaction's sender, the call's payee, token and authorized signer, `h`,
- * the escrow and the chain equal to the channel. The deposit is not read.
+ * A succeeded transaction read as an EVM session's opening, by `eth_getTransactionByHash`: sent to the escrow, it holds
+ * the escrow's open call for the channel. The call is `open(address payee, address token, uint128 deposit, bytes32
+ * salt, address authorizedSigner)` in its first 164 bytes of calldata, whose payer is the transaction's sender, or
+ * `openWithPermit2(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner, address from,
+ * uint256 nonce, uint256 deadline, bytes signature)`, whose payer is its `from`. Calldata past the arguments is not
+ * read: the escrow's function does not read it, and a wallet may append a data suffix there. Its salt is `h`, and `evmChannelId`
+ * over the payer, the call's payee, token and authorized signer, `h`, the escrow and the chain is the channel. Such a
+ * call that does not open the channel is failed `open-call-not-found` where `settleBy` is absent (the named transaction
+ * is the payment), and pending `open-call-not-found` where the opening can land until `settleBy`.
+ *
+ * Any other transaction is pending `open-call-not-found`, never failed. A transaction sent through an ERC-4337
+ * EntryPoint is one of them: the account's calldata does not show which contract the account called. Calldata longer
+ * than `MAX_CALLDATA` is pending `unreadable`. The deposit is not read.
  */
 async function openRead(
   settled: SessionStatus,
-  transaction: Hex,
+  ref: SessionRef & { transaction: Hex },
   opens: NonNullable<SessionRef["opens"]>,
   reader: EvmReader,
 ): Promise<SessionStatus> {
   let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
   try {
-    tx = await reader.transaction(transaction);
+    tx = await reader.transaction(ref.transaction);
   } catch {
     return { state: "pending", why: "unreadable" };
   }
   if (tx === null) return { state: "pending", why: "not-found" };
-  const readable = isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, Infinity);
+  const readable = isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, MAX_CALLDATA);
   if (!readable) return { state: "pending", why: "unreadable" };
-  const input = bytesOf(tx.input, OPEN_CALL_BYTES);
-  if (input?.length !== OPEN_CALL_BYTES) return { state: "failed", why: "open-call-not-found" };
-  const word = (i: number) => input.subarray(4 + 32 * i, 4 + 32 * (i + 1));
-  /** An ABI address word: 12 zero bytes, then the address. */
-  const address = (i: number) => (word(i).subarray(0, 12).every((b) => b === 0) ? hexOf(word(i).subarray(12)) : undefined);
-  const payee = address(0);
-  const token = address(1);
-  const signer = address(4);
+  const input = bytesOf(tx.input)!;
+  const selector = input.length >= 4 ? hexOf(input.subarray(0, 4)) : undefined;
+  const args = input.subarray(4);
+  const to = tx.to?.toLowerCase();
+  if (to === opens.escrow.toLowerCase() && (selector === OPEN_V1_SELECTOR || selector === OPEN_WITH_PERMIT2_SELECTOR)) {
+    const payer = selector === OPEN_V1_SELECTOR ? (input.length >= OPEN_CALL_BYTES ? tx.from : undefined) : addressAt(args, 5);
+    if (payer !== undefined && opensChannel(args, payer, opens)) return settled;
+    return ref.settleBy === undefined ? { state: "failed", why: "open-call-not-found" } : { state: "pending", why: "open-call-not-found" };
+  }
+  return { state: "pending", why: "open-call-not-found" };
+}
+
+/** The address in word `i` of `args`, or undefined. */
+function addressAt(args: Uint8Array, i: number): Hex | undefined {
+  const w = wordAt(args, i);
+  return w === undefined ? undefined : addressOfWord(w);
+}
+
+/**
+ * Whether the arguments of an escrow open call, whose first five words are `payee, token, deposit, salt,
+ * authorizedSigner`, open `opens.channel` for `payer`: the salt word is `opens.h`, and `evmChannelId` over them gives the
+ * channel.
+ */
+function opensChannel(args: Uint8Array, payer: Hex, opens: NonNullable<SessionRef["opens"]>): boolean {
+  const salt = wordAt(args, 3);
+  const payee = addressAt(args, 0);
+  const token = addressAt(args, 1);
+  const signer = addressAt(args, 4);
+  if (salt === undefined || payee === undefined || token === undefined || signer === undefined || !sameBytes(hexOf(salt), opens.h)) {
+    return false;
+  }
   const { escrow, chainId, channel, h } = opens;
-  const opening =
-    tx.to !== null &&
-    sameBytes(tx.to, escrow) &&
-    hexOf(input.subarray(0, 4)) === OPEN_V1_SELECTOR &&
-    sameBytes(hexOf(word(3)), h) &&
-    payee !== undefined &&
-    token !== undefined &&
-    signer !== undefined &&
-    sameBytes(evmChannelId({ payer: tx.from, payee, token, salt: h, authorizedSigner: signer, escrow, chainId }), channel);
-  return opening ? settled : { state: "failed", why: "open-call-not-found" };
+  return sameBytes(evmChannelId({ payer, payee, token, salt: h, authorizedSigner: signer, escrow, chainId }), channel);
 }
 
 /**
@@ -1196,11 +1251,11 @@ export const sessionEvm = Object.freeze({
       "signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over " +
       "the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and " +
       "the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's " +
-      "deposit to the escrow. Where the payer sent the open call, the seller read that call: it is to the escrow, its " +
-      "salt is this ATR's hash, and its sender, payee, token and authorized signer give this channel id, so the payer " +
-      "is the account that signed it. Where the opening is an EIP-3009 authorization or a Permit2 transfer, the " +
-      "seller's server verified that the transaction created this channel. This does not show that amount, payee, " +
-      "asset or timing match the ATR's content. " +
+      "deposit to the escrow. Where the payer sent the open call, or a relayer sent the escrow's Permit2 opening, the " +
+      "seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and " +
+      "authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the " +
+      "transfer. Where the opening is an EIP-3009 authorization, the seller's server verified that the transaction " +
+      "created this channel. This does not show that amount, payee, asset or timing match the ATR's content. " +
       LATER_VOUCHERS,
   ),
   claims: true as const,
