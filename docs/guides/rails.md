@@ -133,9 +133,11 @@ credentials, the timeouts and the retries are yours. Each `status` makes a bound
 
 A reader that throws, times out, or answers for another network never makes a payment failed: `status` answers
 pending, with the reason `unreadable`, and a later read can settle it. So does a reference without the log carrying H
-that its pairing's own `reference` always names, on the EVM pairings that name one: the hash cannot be checked, and
-nothing is read. Failed means the rail itself says so: a reverted, aborted or expired transaction, or one that does
-not carry this payment.
+or its commitment that the pairing's own `reference` always names, on `x402/exact/eip155/erc7710-salt`,
+`x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
+`mpp/charge/evm/authorization`, `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` and `mpp/charge/usdc/evm`: the hash
+cannot be checked, and nothing is read. Failed means the rail itself says so: a reverted, aborted or expired
+transaction, or one that does not carry this payment.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
