@@ -15,7 +15,8 @@ The package holds 67 pairings on seven surfaces: `x402`, `mpp`, `acp`, `ucp`, `a
 
 ## The members
 
-Every pairing has these members. The types differ per surface; the roles do not.
+Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: the buyer's deposit carries
+nothing of that pairing. The types differ per surface; the roles do not.
 
 | Member | Side | What it does |
 |---|---|---|
