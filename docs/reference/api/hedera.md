@@ -173,6 +173,7 @@ The Mirror Node's `Transaction` entry: the fields read here.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
+| <a id="property-charged_tx_fee"></a> `charged_tx_fee?` | `number` | The fee charged to the transaction's fee payer, in tinybars; its `transfers` row includes it. |
 | <a id="property-consensus_timestamp"></a> `consensus_timestamp` | `string` | - |
 | <a id="property-memo_base64"></a> `memo_base64` | `string` \| `null` | - |
 | <a id="property-nonce"></a> `nonce` | `number` | - |
@@ -421,8 +422,11 @@ id, valid duration, memo and exact bytes. Every body of a list must share id and
 
 Reads the merged consensus record of the named transaction: the user entry must be SUCCESS; each account's net
 change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
-HBAR transfers and the fee payer left out; exactly one other account must be debited, and a credit of the same
-magnitude must give the recorded digest. A transfer list that is not an array is pending `unreadable`.
+HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token rows are whole, and on HBAR the fee the
+user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
+reads as what it paid or received. Exactly one account must be debited, and a credit of the same magnitude must give
+the recorded digest. A transfer list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending
+`unreadable`.
 
 #### Parameters
 
