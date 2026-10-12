@@ -12,6 +12,7 @@ import { canonicalJson, fromLcpString, hash, hashEquals, toLcpString, type AtrHa
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
+import type { CcdPaymentPayload } from "./internal/ccd.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -62,14 +63,6 @@ export type CcdStatus =
   | { state: "settled"; finality: "finalized" }
   | { state: "pending"; why: "not-found" | "received" | "committed" | "unreadable" }
   | { state: "failed"; why: "rejected" | "not-this-instrument" };
-
-export type CcdPaymentPayload = {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { signedTransaction: { [k: string]: Json } };
-  extensions?: PaymentRequired["extensions"];
-};
 
 export interface CcdChoice {
   required: PaymentRequired;

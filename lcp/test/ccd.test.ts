@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import * as cborg from "cborg";
 import bs58check from "bs58check";
-import type { AtrHash } from "../src/index.js";
+import type { AtrHash, Refusal } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
 import { LEGAL_CONTEXT_SCHEMA, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import {
@@ -15,7 +15,6 @@ import {
   memoCarrier,
   pltMemo,
   type CcdItem,
-  type CcdPaymentPayload,
   type CcdReader,
   type CcdUnsigned,
 } from "../src/ccd.js";
@@ -24,6 +23,8 @@ import { counting } from "./fixtures/counting-reader.js";
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-ccd.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.O;
+/** The payment `complete` returns. */
+type Payment = Exclude<ReturnType<CcdUnsigned["complete"]>, Refusal>;
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const bytes = (h: string) => Uint8Array.from(Buffer.from(h, "hex"));
 const required = (o: PaymentRequirements = O): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
@@ -120,7 +121,7 @@ describe("x402/exact/ccd", () => {
   describe("D3: bound's refusals", () => {
     for (const row of V.D3.rows) {
       it(row.case, async () => {
-        const payment = set(V.D3[row.base].payment, row.set) as CcdPaymentPayload;
+        const payment = set(V.D3[row.base].payment, row.set);
         expect(await exactCcd.bound(payment)).toEqual(row.expect);
       });
     }
@@ -128,11 +129,11 @@ describe("x402/exact/ccd", () => {
 
   describe("D3: the wire form only", () => {
     type WireRow = { case: string; base: "ccd" | "plt"; bigints?: string[]; asText?: boolean; expect: unknown };
-    const presented = (row: WireRow): CcdPaymentPayload => {
+    const presented = (row: WireRow): Payment => {
       const payment = structuredClone(V.D3[row.base].payment);
       if (row.asText) payment.payload.signedTransaction = JSON.stringify(payment.payload.signedTransaction);
       const changes = Object.fromEntries((row.bigints ?? []).map((path) => [path, BigInt(pathValue(payment, path) as number)]));
-      return set(payment, changes) as CcdPaymentPayload;
+      return set(payment, changes) as Payment;
     };
     for (const row of V.D3.wireForm.rows as WireRow[]) {
       it(row.case, async () => {
@@ -158,7 +159,7 @@ describe("x402/exact/ccd", () => {
     const rows = V.D4.rows as Row[];
     for (const row of rows) {
       it(row.case, async () => {
-        const payment = set(V.D3[row.base].payment, row.set) as CcdPaymentPayload;
+        const payment = set(V.D3[row.base].payment, row.set);
         expect(await exactCcd.bound(payment)).toBe(row.expectBound);
         expect(await exactCcd.reference(payment)).toEqual(row.expectReference);
       });
@@ -246,7 +247,7 @@ describe("x402/exact/ccd", () => {
     const tx = V.D3.ccd.payment.payload.signedTransaction;
     const payment = u.complete(tx);
     expect(payment).toEqual(V.D3.ccd.payment);
-    expect(await exactCcd.bound(payment as CcdPaymentPayload)).toBe(H);
+    expect(await exactCcd.bound(payment)).toBe(H);
     const plt = (await exactCcd.build(
       { required: required(V.fixed.OPlt), accepted: V.fixed.OPlt, now: V.fixed.now },
       H,

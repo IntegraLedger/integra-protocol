@@ -194,7 +194,7 @@ import { accountBytes, ccdIdDigest, ccdMemo, … } from "@integraledger/lcp/ccd"
 
 **Values (9):** `accountBytes`, `ccdIdDigest`, `ccdMemo`, `ccdOption`, `ccdRecover`, `ccdStatus`, `exactCcd`, `memoCarrier`, `pltMemo`.
 
-**Types (9):** `CcdChoice`, `CcdItem`, `CcdNetwork`, `CcdPaymentPayload`, `CcdReader`, `CcdRef`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
+**Types (8):** `CcdChoice`, `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
 
 ## `@integraledger/lcp/discovery`
 
