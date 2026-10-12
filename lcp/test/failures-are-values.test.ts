@@ -51,6 +51,7 @@ import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { stellarLocate, stellarStatus } from "../src/stellar.js";
+import { decodeSuiTx, suiCarrier, suiRecover, suiStatus } from "../src/sui.js";
 import {
   channelInstruction,
   channelPda,
@@ -628,5 +629,22 @@ describe("lightning", () => {
   ]);
   it("exactLnbtc.unplaced hands back a value that is not an option unchanged", () => {
     for (const bad of MALFORMED) expect(exactLnbtc.unplaced(bad as never), String(bad)).toBe(bad);
+  });
+});
+
+describe("sui", () => {
+  reads([
+    ["suiStatus", suiStatus, "x402-exact-sui.json", UNREADABLE, 0n],
+    ["suiRecover", suiRecover, "x402-exact-sui.json", refused("sui/wrong-reader")],
+  ]);
+  answers([["suiCarrier", suiCarrier, [undefined], 0, refused("sui/tx-malformed")]]);
+  it("suiCarrier: a transaction whose unused Pure inputs are not an array of byte arrays is sui/tx-malformed", () => {
+    const V2 = load("x402-exact-sui.json").V2;
+    const tx = decodeSuiTx(V2.tx.transactionBase64);
+    if ("refused" in tx) throw new Error(tx.code);
+    expect(suiCarrier(tx)).toBe(V2.expectBound);
+    for (const unusedPure of [undefined, "0x1234", [null], [H]]) {
+      expect(suiCarrier({ ...tx, unusedPure } as never), String(unusedPure)).toEqual(refused("sui/tx-malformed"));
+    }
   });
 });

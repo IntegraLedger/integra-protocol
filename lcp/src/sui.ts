@@ -152,8 +152,14 @@ export function decodeSuiTx(base64: string): SuiTx | Refusal {
   return { bytes, digest: suiDigest(bytes)!, unusedPure, untilEpoch };
 }
 
-/** The hash carried by exactly one unused `Pure` input of exactly 32 bytes. */
+/**
+ * The hash carried by exactly one unused `Pure` input of exactly 32 bytes. A `tx` that is not a decoded transaction, an
+ * object whose `unusedPure` is an array of `Uint8Array`s, is `sui/tx-malformed`.
+ */
 export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
+  if (!isObject(tx) || !Array.isArray(tx.unusedPure) || !tx.unusedPure.every((b) => b instanceof Uint8Array)) {
+    return refusal("sui/tx-malformed");
+  }
   if (tx.unusedPure.length === 0) return refusal("sui/hash-not-carried");
   if (tx.unusedPure.length > 1) return refusal("sui/ambiguous");
   const h = fromRawBytes(tx.unusedPure[0]!);
@@ -171,7 +177,9 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
  * `unreadable`. One call.
  */
 export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint): Promise<SuiStatus> {
-  if (peer === undefined || reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (peer === undefined || !isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
   const untilEpoch = ref.untilEpoch === null ? null : decimalBelow(ref.untilEpoch, U64_LIMIT);
   if (untilEpoch === undefined) return { state: "pending", why: "unreadable" };
   if (typeof position !== "bigint" || position < 0n) return { state: "pending", why: "unreadable" };
@@ -199,7 +207,7 @@ export async function suiRecover(
   reader: SuiReader,
 ): Promise<AtrHash | Refusal> {
   if (peer === undefined) return refusal("sui/peer-missing");
-  if (reader.network !== ref.network) return refusal("sui/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("sui/wrong-reader");
   const answer = await readOnce(reader, ref.digest);
   if (answer === null) return refusal("sui/unreadable");
   const { tx } = answer;
