@@ -398,6 +398,239 @@ describe("x402-upto-eip155-permit2.json", () => {
   });
 });
 
+// `recover` on the Permit2 pairings reads the transactions EV6 names. The settle and settleWithPermit calls are viem's
+// encodings of the proxies' functions (x402 contracts/evm/src/x402ExactPermit2Proxy.sol, x402UptoPermit2Proxy.sol), and
+// H is the files' (SHA-256 of "abc", FIPS 180-2).
+const SETTLE_WITH_PERMIT_EXACT = [
+  {
+    type: "function",
+    name: "settleWithPermit",
+    stateMutability: "nonpayable",
+    outputs: [],
+    inputs: [
+      {
+        name: "permit2612",
+        type: "tuple",
+        components: [
+          { name: "value", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+          { name: "r", type: "bytes32" },
+          { name: "s", type: "bytes32" },
+          { name: "v", type: "uint8" },
+        ],
+      },
+      ...SETTLE_EXACT[0].inputs,
+    ],
+  },
+] as const;
+
+describe("recover on the Permit2 pairings", () => {
+  const ref = { network: P2.EV6.reader.network as `eip155:${string}`, transaction: P2.EV6.transaction as Hex };
+  const recoverRow = async (b: typeof exactPermit2 | typeof uptoPermit2, row: Permit2Row, ev: any, to: Hex) => {
+    const calls: { to: string; data: string; block: string }[] = [];
+    const got = await b.recover({ ...ref, network: ev.reader.network, transaction: ev.transaction }, permit2Reader(row, ev, to, calls));
+    return { got, calls };
+  };
+
+  it("EV6: H from the settle call in the transaction, directly or in a batch, where status settles; a refusal that names why where it does not", async () => {
+    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const expectations: [string, string | { refused: true; code: string }, number][] = [
+      ["transferAt100", H, 2],
+      ["batched", H, 2],
+      ["nonceUnused", { refused: true, code: "evm/nonce-not-used" }, 1],
+      ["usedBefore", { refused: true, code: "evm/nonce-not-used" }, 2],
+      ["plainTransfer", { refused: true, code: "evm/no-permit2-settle" }, 0],
+      ["callFails", { refused: true, code: "evm/unreadable" }, 1],
+      ["transactionNone", { refused: true, code: "evm/not-found" }, 0],
+      ["transactionFails", { refused: true, code: "evm/unreadable" }, 0],
+      ["reverted", { refused: true, code: "evm/reverted" }, 0],
+      ["none", { refused: true, code: "evm/not-found" }, 0],
+    ];
+    for (const [name, expected, n] of expectations) {
+      const row = P2.EV6[name];
+      const { got, calls } = await recoverRow(exactPermit2, row, P2.EV6, EXACT_PERMIT2_PROXY);
+      expect(got, row.case ?? name).toEqual(expected);
+      expect(calls, row.case ?? name).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, n));
+      if (["transferAt100", "batched", "nonceUnused", "usedBefore", "plainTransfer"].includes(name)) {
+        const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, []));
+        expect(s.state === "settled", name).toBe(got === H);
+      }
+    }
+  });
+
+  it("EV6 upto: H from the upto proxy's settle call; a plain transfer above the cap carries none", async () => {
+    const cases: [string, string | { refused: true; code: string }][] = [
+      ["oneUnitUsed", H],
+      ["oneUnitUnused", { refused: true, code: "evm/nonce-not-used" }],
+      ["aboveCapPlain", { refused: true, code: "evm/no-permit2-settle" }],
+    ];
+    for (const [name, expected] of cases) {
+      const { got } = await recoverRow(uptoPermit2, UP.EV6[name], UP.EV6, UPTO_PERMIT2_PROXY);
+      expect(got, UP.EV6[name].case).toEqual(expected);
+    }
+  });
+
+  it("each pairing reads only its own proxy's calls: the exact settle is not the upto pairing's, nor the upto settle the exact pairing's", async () => {
+    const asUpto = { ...UP.EV6.oneUnitUsed, input: "exactSettle" };
+    const exactInput = { ...UP.EV6, inputs: { ...UP.EV6.inputs, exactSettle: P2.EV6.inputs.settle } };
+    expect((await recoverRow(uptoPermit2, asUpto, exactInput, UPTO_PERMIT2_PROXY)).got).toEqual({ refused: true, code: "evm/no-permit2-settle" });
+    const asExact = { ...P2.EV6.transferAt100, input: "uptoSettle" };
+    const uptoInput = { ...P2.EV6, inputs: { ...P2.EV6.inputs, uptoSettle: UP.EV6.inputs.settle } };
+    expect((await recoverRow(exactPermit2, asExact, uptoInput, EXACT_PERMIT2_PROXY)).got).toEqual({ refused: true, code: "evm/no-permit2-settle" });
+  });
+
+  it("settleWithPermit: the nonce is read after the EIP-2612 permit's five words", async () => {
+    const p = await signed(exactPermit2, P2.fixed);
+    const a = (p.payload as any).permit2Authorization;
+    const input = encodeFunctionData({
+      abi: SETTLE_WITH_PERMIT_EXACT,
+      functionName: "settleWithPermit",
+      args: [
+        { value: BigInt(a.permitted.amount), deadline: BigInt(a.deadline), r: `0x${"11".repeat(32)}`, s: `0x${"22".repeat(32)}`, v: 27 },
+        { permitted: { token: a.permitted.token, amount: BigInt(a.permitted.amount) }, nonce: BigInt(a.nonce), deadline: BigInt(a.deadline) },
+        a.from,
+        { to: a.witness.to, validAfter: BigInt(a.witness.validAfter) },
+        (p.payload as any).signature,
+      ],
+    });
+    expect(offsetsOf(input, H)).toEqual([4 + 7 * 32]);
+    const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, withPermit: input } };
+    const { got, calls } = await recoverRow(exactPermit2, { ...P2.EV6.transferAt100, input: "withPermit" }, ev, EXACT_PERMIT2_PROXY);
+    expect(got).toBe(H);
+    expect(calls).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore]);
+  });
+
+  /** The exact proxy's `settle` of EV1's signed permit, with `nonce`, `owner` and `token` in place of its own. */
+  const settleWith = async (nonce: bigint, owner?: Hex, token?: Hex) => {
+    const p = await signed(exactPermit2, P2.fixed);
+    const a = (p.payload as any).permit2Authorization;
+    return encodeFunctionData({
+      abi: SETTLE_EXACT,
+      functionName: "settle",
+      args: [
+        { permitted: { token: token ?? a.permitted.token, amount: BigInt(a.permitted.amount) }, nonce, deadline: BigInt(a.deadline) },
+        owner ?? a.from,
+        { to: a.witness.to, validAfter: BigInt(a.witness.validAfter) },
+        (p.payload as any).signature,
+      ],
+    });
+  };
+  /** Multicall3's `aggregate3` over the exact proxy, each call with its `allowFailure`. */
+  const batch = (calls: [Hex, boolean][]) =>
+    encodeFunctionData({
+      abi: MULTICALL3,
+      functionName: "aggregate3",
+      args: [calls.map(([callData, allowFailure]) => ({ target: EXACT_PERMIT2_PROXY, allowFailure, callData }))],
+    });
+
+  it("a batch spending two permits with different nonces is ambiguous; the same call twice is one", async () => {
+    const [h, h1] = [await settleWith(BigInt(H)), await settleWith(BigInt(H) ^ 1n)];
+    const ev = { ...P2.EV6, inputs: { two: batch([[h, false], [h1, false]]), same: batch([[h, false], [h, false]]) } };
+    const two = await recoverRow(exactPermit2, { ...P2.EV6.transferAt100, input: "two" }, ev, EXACT_PERMIT2_PROXY);
+    expect(two).toEqual({ got: { refused: true, code: "evm/ambiguous" }, calls: [] });
+    expect((await recoverRow(exactPermit2, { ...P2.EV6.transferAt100, input: "same" }, ev, EXACT_PERMIT2_PROXY)).got).toBe(H);
+  });
+
+  // x402's proxy settles only through Permit2: `_settle` refuses a zero amount and a zero owner and calls
+  // `permitWitnessTransferFrom` (x402 contracts/evm/src/x402BasePermit2Proxy.sol :117-136, f8f83309), which uses the
+  // owner's nonce and calls the permit token's `transferFrom(owner, to, amount)` (Uniswap permit2
+  // src/SignatureTransfer.sol :51-68, cc56ad0f); an ERC-20 token emits `Transfer(from, to, value)` for every transfer
+  // (EIP-20, "Transfer"). A transaction that only carries the call's bytes holds no such log.
+  const used = P2.EV6.transferAt100;
+  const fromWord = (a: string) => `0x${"0".repeat(24)}${a.slice(2).toLowerCase()}` as Hex;
+  const OTHER_OWNER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
+  const withLogs = (logs: EvmReceipt["logs"], input: string) => ({ ...used, receipt: { ...used.receipt, logs }, input });
+
+  it("a copy of the settle call whose receipt holds no Transfer of its token from its owner is evm/no-permit2-settle, where status finds no transfer", async () => {
+    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const payerTransfer = used.receipt.logs[0];
+    const anything = encodeFunctionData({ abi: parseAbi(["function anything(bytes blob)"]), functionName: "anything", args: [P2.EV6.inputs.settle] });
+    const settled = { address: EXACT_PERMIT2_PROXY, topics: [keccak256(toBytes("Settled()"))], data: "0x" as Hex };
+    const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, anything } };
+    const rows: [string, Permit2Row][] = [
+      ["the call's bytes sent in another transaction, with no logs", withLogs([], "settle")],
+      ["the call's bytes inside another call's bytes argument", withLogs([], "anything")],
+      [
+        "beside a settlement of another owner's permit through the proxy",
+        withLogs([{ ...payerTransfer, topics: [TRANSFER_TOPIC, fromWord(OTHER_OWNER), payerTransfer.topics[2]] }, settled], "settle"),
+      ],
+      ["with the owner's Transfer of another token", withLogs([{ ...payerTransfer, address: `0x${"ee".repeat(20)}` }], "settle")],
+    ];
+    for (const [name, row] of rows) {
+      expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY), name).toEqual({
+        got: { refused: true, code: "evm/no-permit2-settle" },
+        calls: [],
+      });
+      const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []));
+      expect(s, name).toEqual({ state: "failed", why: "transfer-not-found" });
+    }
+  });
+
+  // Permit2's `invalidateUnorderedNonces(wordPos, mask)` sets the caller's bits and emits
+  // `UnorderedNonceInvalidation(address indexed owner, uint256 word, uint256 mask)` (Uniswap permit2
+  // src/SignatureTransfer.sol :129-134, src/interfaces/ISignatureTransfer.sol :19, cc56ad0f): the nonce reads used at
+  // that block, and no permit is spent.
+  it("the cancelling transaction of a permit, carrying the settle call with no Transfer from the owner, is evm/no-permit2-settle, though Permit2's bit is set in its block", async () => {
+    const wordPos = BigInt(H) >> 8n;
+    const mask = 1n << (BigInt(H) & 0xffn);
+    expect(BigInt(used.nonceBitmap)).toBe(mask);
+    const cancel = encodeFunctionData({
+      abi: parseAbi(["function invalidateUnorderedNonces(uint256 wordPos, uint256 mask)"]),
+      functionName: "invalidateUnorderedNonces",
+      args: [wordPos, mask],
+    });
+    const invalidation = {
+      address: PERMIT2,
+      topics: [keccak256(toBytes("UnorderedNonceInvalidation(address,uint256,uint256)")), fromWord(P2.fixed.payer)],
+      data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [wordPos, mask]),
+    };
+    const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, cancel: cancel + P2.EV6.inputs.settle.slice(2) } };
+    const got = await recoverRow(exactPermit2, withLogs([invalidation], "cancel"), ev, EXACT_PERMIT2_PROXY);
+    expect(got).toEqual({ got: { refused: true, code: "evm/no-permit2-settle" }, calls: [] });
+  });
+
+  // Multicall3's `aggregate3` with `allowFailure` catches a failing call (mds1/multicall src/Multicall3.sol), so a
+  // batch can carry a settle-shaped call that spent nothing.
+  it("a settle call of another owner beside the settlement, with no Transfer from that owner, is not read: H, where status settles", async () => {
+    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const decoy = await settleWith(BigInt(H) ^ 1n, `0x${"dd".repeat(20)}`);
+    const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, decoy: batch([[await settleWith(BigInt(H)), false], [decoy, true]]) } };
+    const row = { ...used, input: "decoy" };
+    expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY)).toEqual({ got: H, calls: [P2.EV6.expectCall, P2.EV6.expectCallBefore] });
+    const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []));
+    expect(s.state).toBe("settled");
+  });
+
+  it("a call with the settlement's nonce and owner but another token word, after the settlement in a batch, does not hide it: H, where status settles", async () => {
+    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const otherToken = await settleWith(BigInt(H), undefined, `0x${"ee".repeat(20)}`);
+    const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, after: batch([[await settleWith(BigInt(H)), false], [otherToken, true]]) } };
+    const row = { ...used, input: "after" };
+    expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY)).toEqual({ got: H, calls: [P2.EV6.expectCall, P2.EV6.expectCallBefore] });
+    const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []));
+    expect(s.state).toBe("settled");
+  });
+
+  it("a malformed receipt is evm/unreadable: a block number below zero, or a log entry that is not a log", async () => {
+    const rows: [string, Permit2Row][] = [
+      ["block number -1", { ...used, receipt: { ...used.receipt, blockNumber: "-1" } }],
+      ["a null log entry", withLogs([...used.receipt.logs, null as never], "settle")],
+    ];
+    for (const [name, row] of rows) {
+      const got = await recoverRow(exactPermit2, row, P2.EV6, EXACT_PERMIT2_PROXY);
+      expect(got, name).toEqual({ got: { refused: true, code: "evm/unreadable" }, calls: [] });
+    }
+  });
+
+  it("a reader for another network, or a ref or reader that is not an object, is evm/wrong-reader, with nothing read", async () => {
+    const reader = permit2Reader(P2.EV6.transferAt100, P2.EV6, EXACT_PERMIT2_PROXY, []);
+    const wrong = { refused: true, code: "evm/wrong-reader" };
+    expect(await exactPermit2.recover({ ...ref, network: "eip155:1" }, reader)).toEqual(wrong);
+    expect(await exactPermit2.recover(null as never, reader)).toEqual(wrong);
+    expect(await uptoPermit2.recover(ref, null as never)).toEqual(wrong);
+  });
+});
+
 describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json", () => {
   const f: Fixed = ES.fixed;
   const L = ES.fixed.leaf;
@@ -746,6 +979,9 @@ describe("the records", () => {
     expect(exactErc7710.claims).toBe(false);
     expect(exactErc7710.pattern.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
     expect(exactErc7710Salt.recover).toBeDefined();
-    expect("recover" in exactPermit2).toBe(false);
+    for (const b of [exactPermit2, uptoPermit2]) {
+      expect(b.recover, b.id).toBeDefined();
+      expect(b.pattern.zeroPartyRecoverable, b.id).toBe(true);
+    }
   });
 });

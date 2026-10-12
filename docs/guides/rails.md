@@ -267,7 +267,7 @@ console.log(recoverable.sort().join("\n"));
 ```
 
 ```text
-23
+25
 mpp/charge/solana
 mpp/charge/usdc/solana
 mpp/charge/usdc/stacks
@@ -283,6 +283,7 @@ x402/exact/casper
 x402/exact/ccd
 x402/exact/eip155/eip3009
 x402/exact/eip155/erc7710-salt
+x402/exact/eip155/permit2
 x402/exact/hedera
 x402/exact/near
 x402/exact/polkadot/lcp-assets-remark
@@ -290,8 +291,20 @@ x402/exact/solana
 x402/exact/sui
 x402/exact/tron/lcp-trc20-memo
 x402/exact/tvm
+x402/upto/eip155/permit2
 x402/upto/solana
 ```
+
+Where H is only in calldata, `recover` reads the transaction as well as its receipt:
+
+- `x402/exact/eip155/permit2` and `x402/upto/eip155/permit2` read the Permit2 nonce of the scheme's x402 proxy call
+  (`settle` or `settleWithPermit`) found at any byte offset of the transaction's input, directly or inside a batched
+  call or an ERC-4337 bundle, where the receipt holds a `Transfer` that the call's token emits from the call's owner
+  (its recipient and value are not compared), and where Permit2 marks that nonce used for the owner in the receipt's
+  block and not before, the Permit2 read `status` makes. No signature is checked, and Permit2's mark is per block,
+  whether a settlement or the owner's `invalidateUnorderedNonces` set it: any transaction of that block whose input
+  carries a call with the same nonce and owner, and whose receipt holds a `Transfer` from that owner emitted by the
+  contract that call names as its token, gives H. `status` with the ATR's reference tells which transaction paid.
 
 ## Where the payment is not a public proof
 

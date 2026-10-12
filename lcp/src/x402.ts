@@ -27,30 +27,36 @@ import {
   TRANSFER_TOPIC,
   UPTO_PERMIT2_PROXY,
   authorizationIdDigest,
+  authorizationUsed,
   bindSalt,
   decodePermissionContext,
   eip3009Recover,
   eip3009Status,
   eip3009TypedData,
+  isLog,
+  isReceipt,
   paymentHash,
   permit2Status,
   permit2TypedData,
   receiveTypedData,
   redeemedLeafRecover,
   transferDigest,
+  transferParts,
   type Eip155,
   type Eip3009Ref,
   type Eip3009TypedData,
   type EvmBreadthStatus,
   type EvmReader,
+  type EvmReceipt,
   type EvmRef,
+  type EvmTransaction,
   type Field,
   type Hex,
   type PaymentInfo,
   type Permit2TypedData,
   type ReceiveTypedData,
 } from "./evm.js";
-import { bytesOf } from "./evm-abi.js";
+import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { AGREEMENT_URL, agreementIn, agreementRefusal } from "./internal/agreement.js";
 import { boundStatus } from "./internal/evm-status.js";
@@ -956,6 +962,117 @@ function permit2Authorizer(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
   };
 }
 
+/**
+ * The calls through which each scheme's x402 proxy spends a permit (x402's `x402ExactPermit2Proxy` and
+ * `x402UptoPermit2Proxy`): the selector, the argument word where the permit (`token`, `amount`, `nonce`, `deadline`)
+ * starts, and the owner's argument word. `settleWithPermit` puts the EIP-2612 permit's five words first; the `upto`
+ * proxy puts the settled amount after the permit.
+ */
+const PROXY_SETTLES: { readonly [id in typeof PERMIT2_EXACT | typeof PERMIT2_UPTO]: readonly ProxySettle[] } = {
+  [PERMIT2_EXACT]: [
+    // settle(((address,uint256),uint256,uint256),address,(address,uint256),bytes)
+    { selector: "0x13cd3b53", permit: 0, owner: 4 },
+    // settleWithPermit((uint256,uint256,bytes32,bytes32,uint8),((address,uint256),uint256,uint256),address,(address,uint256),bytes)
+    { selector: "0xfa340378", permit: 5, owner: 9 },
+  ],
+  [PERMIT2_UPTO]: [
+    // settle(((address,uint256),uint256,uint256),uint256,address,(address,address,uint256),bytes)
+    { selector: "0xff11e7b4", permit: 0, owner: 5 },
+    // settleWithPermit((uint256,uint256,bytes32,bytes32,uint8),((address,uint256),uint256,uint256),uint256,address,(address,address,uint256),bytes)
+    { selector: "0x016c1748", permit: 5, owner: 10 },
+  ],
+};
+
+type ProxySettle = { selector: Hex; permit: number; owner: number };
+
+/**
+ * Recovers H from a Permit2 settlement transaction alone: the Permit2 nonce of the scheme's proxy call that spent the
+ * permit. It reads the transaction's input by `eth_getTransactionByHash`, as `permit2Status` does, and finds the call
+ * at any byte offset, where `permit2Status` finds the nonce: at offset 0 for a direct call to the proxy and further in
+ * for a batched call or an ERC-4337 bundle, by its selector, with an address in its permit's `token` word and in its
+ * owner word. A call counts only where the receipt holds a `Transfer` log emitted by that token whose `from` is that
+ * owner: the proxy settles only through Permit2's transfer of a non-zero amount from the owner, and the log's recipient
+ * and value are not compared. Exactly one such call (by nonce and owner) must be there, else `evm/no-permit2-settle`
+ * for none and `evm/ambiguous` for more; and, as `permit2Status` requires, `nonceBitmap(owner, nonce >> 8)` on Permit2
+ * must have bit `nonce & 0xff` set at the receipt's block and unset at the block before, else `evm/nonce-not-used`. No
+ * signature is checked, and Permit2's bitmap shows only that the owner's nonce was used in that block, by a settlement
+ * or by the owner's `invalidateUnorderedNonces`, not in which transaction: any transaction of that block, the owner's
+ * cancelling one included, whose input carries a call with the same nonce and owner, and whose receipt holds a
+ * `Transfer` from that owner emitted by the contract that call names as its token, gives H. `status` with the ATR's
+ * reference tells which transaction paid. A reader for another network, or a ref or reader that is not an object, is
+ * `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read,
+ * a malformed receipt or `nonceBitmap` answer, or an input that is not hex bytes is `evm/unreadable`. At most four
+ * calls.
+ */
+function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
+  const settles = PROXY_SETTLES[id];
+  return async (ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> => {
+    if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+    let receipt: EvmReceipt | null;
+    let tx: EvmTransaction | null;
+    try {
+      receipt = await reader.receipt(ref.transaction);
+    } catch {
+      return refusal("evm/unreadable");
+    }
+    if (receipt === null) return refusal("evm/not-found");
+    if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
+    if (receipt.status === 0) return refusal("evm/reverted");
+    try {
+      tx = await reader.transaction(ref.transaction);
+    } catch {
+      return refusal("evm/unreadable");
+    }
+    if (tx === null) return refusal("evm/not-found");
+    const input = isObject(tx) ? bytesOf(tx.input) : undefined;
+    if (input === undefined) return refusal("evm/unreadable");
+    const logs = receipt.logs;
+    const anchored = proxySettlesIn(input, settles).filter((c) =>
+      logs.some((l) => {
+        const t = transferParts(l, c.token, TRANSFER_TOPIC);
+        return t !== undefined && sameBytes(t.from, c.owner);
+      }),
+    );
+    const found = [...new Map(anchored.map((c) => [`${c.nonce}${c.owner}`, c] as const)).values()];
+    if (found.length === 0) return refusal("evm/no-permit2-settle");
+    if (found.length > 1) return refusal("evm/ambiguous");
+    const { nonce, owner, token, deadline } = found[0]!;
+    const used = { network: ref.network, authorization: { scheme: "permit2" as const, at: PERMIT2, nonce, deadline, asset: token } };
+    const block = receipt.blockNumber;
+    const after = await authorizationUsed(used, owner, block, reader);
+    if (isRefusal(after)) return refusal("evm/unreadable");
+    if (!after) return refusal("evm/nonce-not-used");
+    const before = block === 0n ? false : await authorizationUsed(used, owner, block - 1n, reader);
+    if (isRefusal(before)) return refusal("evm/unreadable");
+    return before ? refusal("evm/nonce-not-used") : nonce;
+  };
+}
+
+/** The distinct (nonce, owner, token) proxy calls among `settles` that start at any offset of `input`. */
+function proxySettlesIn(
+  input: Uint8Array,
+  settles: readonly ProxySettle[],
+): { nonce: AtrHash; owner: Hex; token: Hex; deadline: string }[] {
+  const out = new Map<string, { nonce: AtrHash; owner: Hex; token: Hex; deadline: string }>();
+  const selectors = settles.map((x) => bytesOf(x.selector)!);
+  for (let at = 0; at + 4 <= input.length; at++) {
+    const i = selectors.findIndex((sel) => sel.every((b, j) => input[at + j] === b));
+    if (i < 0) continue;
+    const s = settles[i]!;
+    const args = input.subarray(at + 4);
+    const tokenWord = wordAt(args, s.permit);
+    const nonceWord = wordAt(args, s.permit + 2);
+    const deadlineWord = wordAt(args, s.permit + 3);
+    const ownerWord = wordAt(args, s.owner);
+    const token = tokenWord === undefined ? undefined : addressOfWord(tokenWord);
+    const owner = ownerWord === undefined ? undefined : addressOfWord(ownerWord);
+    if (token === undefined || owner === undefined || nonceWord === undefined || deadlineWord === undefined) continue;
+    const nonce = hexOf(nonceWord) as AtrHash;
+    out.set(`${nonce}${owner}${token}`, { nonce, owner, token, deadline: uintOf(deadlineWord).toString() });
+  }
+  return [...out.values()];
+}
+
 // ── `exact` over ERC-7710: the unsigned level and the salt level.
 
 async function erc7710Build(choice: X402Choice, h: AtrHash): Promise<X402Unsigned | Refusal> {
@@ -1373,7 +1490,7 @@ export const exactPermit2 = binding(
     profile: PERMIT2_EXACT,
     buyerSigns: true,
     onChain: true,
-    zeroPartyRecoverable: false,
+    zeroPartyRecoverable: true,
     forwardIndexable: false,
     publicProof: true,
     proves: PERMIT2_PROVES,
@@ -1385,6 +1502,7 @@ export const exactPermit2 = binding(
     reference: permit2Reference(PERMIT2_EXACT),
     authorizer: permit2Authorizer(PERMIT2_EXACT),
     status: permit2Status,
+    recover: permit2Recover(PERMIT2_EXACT),
   },
 );
 
@@ -1396,7 +1514,7 @@ export const uptoPermit2 = binding(
     profile: PERMIT2_UPTO,
     buyerSigns: true,
     onChain: true,
-    zeroPartyRecoverable: false,
+    zeroPartyRecoverable: true,
     forwardIndexable: false,
     publicProof: true,
     proves: PERMIT2_PROVES + " The amount settled is the facilitator's, at most the signed maximum.",
@@ -1408,6 +1526,7 @@ export const uptoPermit2 = binding(
     reference: permit2Reference(PERMIT2_UPTO),
     authorizer: permit2Authorizer(PERMIT2_UPTO),
     status: permit2Status,
+    recover: permit2Recover(PERMIT2_UPTO),
   },
 );
 

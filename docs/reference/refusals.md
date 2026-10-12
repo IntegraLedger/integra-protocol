@@ -10,7 +10,7 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 484 codes the package can return, by namespace. CI checks that every code the source names in
+This page lists all 486 codes the package can return, by namespace. CI checks that every code the source names in
 `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -25,7 +25,7 @@ This page lists all 484 codes the package can return, by namespace. CI checks th
 | [`ucp`](#ucp) | 13 | UCP checkouts and bookings (`@integraledger/lcp/ucp`). |
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
-| [`evm`](#evm) | 12 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
+| [`evm`](#evm) | 14 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
 | [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
@@ -315,7 +315,7 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`).
 
 | Code | Meaning |
 |---|---|
-| `evm/ambiguous` | An EVM `recover` finds more than one candidate hash in the transaction: several distinct `AuthorizationUsed` nonces, several distinct leaf salts, or several `ChannelCreated` logs. |
+| `evm/ambiguous` | An EVM `recover` finds more than one candidate hash in the transaction: several distinct `AuthorizationUsed` nonces, several distinct leaf salts, several `ChannelCreated` logs, or, on the Permit2 pairings, several calls of the scheme's x402 proxy, each with its token's `Transfer` from its owner in the receipt, that differ in nonce or owner. |
 | `evm/amount-malformed` | An amount given to an EVM typed-data, digest or payment-hash helper is not an unsigned integer within its type's width (uint256, or uint120 for an escrow `maxAmount`). |
 | `evm/channel-id-mismatch` | `batchChannelCreated` finds that the channel id computed from a `ChannelCreated` log's data is not the id in its topic. |
 | `evm/field-malformed` | A value given to an EVM helper is not what the ABI or EIP-712 type requires: an address, uint256, bytes32, time bound or fee outside its width, an empty or oversized Permit2 batch, an invalid witness type, a permission context or `ChannelCreated` log that does not decode strictly, a malformed channel config, or an argument to `transferDigest` or `paymentHash` that is not an object. |
@@ -323,9 +323,11 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`).
 | `evm/no-authorization-use` | `eip3009Recover` finds no `AuthorizationUsed` log from the asset in the transaction. |
 | `evm/no-channel-created` | The EVM batch pairing's `recover` finds no `ChannelCreated` log from the batch-settlement contract in the transaction. |
 | `evm/no-leaf` | `redeemedLeafRecover` finds no `RedeemedDelegation` log from the DelegationManager whose delegate is the redeemer or the wildcard. |
-| `evm/not-found` | The reader found no receipt for the transaction the reference names. |
+| `evm/no-permit2-settle` | The Permit2 pairings' `recover` finds no call of the scheme's x402 proxy (`settle` or `settleWithPermit`, with an address in the permit's token word and in the owner word) at any offset of the transaction's input with a `Transfer` in the receipt that the call's token emits from the call's owner. A transaction whose input carries the call but whose receipt holds no such `Transfer` is refused so, whether the owner's nonce was spent elsewhere in the block or cancelled by the owner. |
+| `evm/nonce-not-used` | The Permit2 pairings' `recover` finds that Permit2 did not mark the proxy call's nonce used for its owner in the receipt's block: the bit is unset at that block, or already set at the block before. |
+| `evm/not-found` | The reader found no receipt for the transaction the reference names, or, where an EVM `recover` reads the transaction itself, no transaction. |
 | `evm/reverted` | The transaction the reference names reverted. |
-| `evm/unreadable` | The reader threw, or returned a receipt or log that is not well formed, when an EVM `recover` read the transaction. |
+| `evm/unreadable` | The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction. |
 | `evm/wrong-reader` | The reader passed to an EVM `recover` or `status` answers for a different network than the reference names. |
 
 ## tempo

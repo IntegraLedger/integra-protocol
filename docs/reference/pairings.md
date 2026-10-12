@@ -94,7 +94,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
 | `x402/exact/eip155/erc7710` | `exactErc7710` from `@integraledger/lcp/x402` | `http-advisory` | no | no | no | no |  |
 | `x402/exact/eip155/erc7710-salt` | `exactErc7710Salt` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
-| `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | no | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
+| `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
 | `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `native-field` | yes | yes | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `http-advisory` | no | no | no | no |  |
 | `x402/exact/lnbtc` | `exactLnbtc` from `@integraledger/lcp/lightning` | `native-field` | no | no | no | no | [`x402/exact/lnbtc`](../../lcp/profiles/x402-exact-lnbtc.md) |
@@ -108,7 +108,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `native-field` | yes | yes | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `native-field` | yes | yes | yes | yes |  |
 | `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `id-reuse` | yes | yes | yes | no |  |
-| `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | no | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
+| `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
 | `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `native-field` | yes | yes | yes | yes |  |
 
 ## What each binding proves
