@@ -495,10 +495,10 @@ import { pairingOf, uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 XRP Ledger rail pieces: the signed Payment blob, its `InvoiceID` carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, and settlement read by that hash through a bounded reader.
 
 ```ts no-check
-import { cancelAfterOf, decodeBlob, mppInvoiceId, … } from "@integraledger/lcp/xrpl";
+import { decodeBlob, mppInvoiceId, x402InvoiceId, … } from "@integraledger/lcp/xrpl";
 ```
 
-**Values (11):** `cancelAfterOf`, `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_DEPTH`, `XRPL_MAX_FIELDS`, `xrplChannelId`, `xrplClaim`, `xrplCloseStatus`, `xrplOpenStatus`, `xrplStatus`.
+**Values (10):** `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_DEPTH`, `XRPL_MAX_FIELDS`, `xrplChannelId`, `xrplClaim`, `xrplCloseStatus`, `xrplOpenStatus`, `xrplStatus`.
 
 **Types (9):** `XrplCloseRef`, `XrplCloseStatus`, `XrplLanded`, `XrplNetwork`, `XrplReader`, `XrplRef`, `XrplStatus`, `XrplTxJson`, `XrplUnsigned`.
 

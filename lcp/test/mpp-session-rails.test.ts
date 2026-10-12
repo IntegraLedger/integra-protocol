@@ -25,7 +25,7 @@ import { ReaderError } from "../src/evm.js";
 import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
 import { issuedDigest, pairingsOf, sessionHedera, sessionSolana, sessionXrpl, type MppChallenge, type MppCredential } from "../src/mpp.js";
 import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocate, type SvmLanded, type SvmReader } from "../src/svm.js";
-import { cancelAfterOf, decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
+import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
@@ -402,7 +402,6 @@ describe("mpp/session/xrpl", () => {
     expect(await sessionXrpl.channel.ref(open(V.XS2.blob))).toEqual({ network: "xrpl:1", channel: V.XS2.expectChannel });
     expect(sessionXrpl.channel.until(open(V.XS2.blob))).toBeUndefined();
     const withCancel = encodeXrpl({ ...(decodeXrpl(V.XS2.blob) as object), CancelAfter: V.XS2.cancelAfter });
-    expect(cancelAfterOf(withCancel)).toBe(V.XS2.cancelAfter);
     expect(sessionXrpl.channel.until(open(withCancel))).toBe(V.XS2.expectUntil);
     expect(await sessionXrpl.recover({ network: "xrpl:1", transaction: V.XS2.expectHash }, reader(V.XS4.rows[0].landed, V.XS2.blob))).toBe(H);
   });
