@@ -238,7 +238,8 @@ function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | nu
  * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
  * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
  * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
- * empty relayer list, a reader for another network, or a ref whose nonce or digest is malformed is pending.
+ * empty relayer list, a reader for another network, a ref whose nonce, asset or digest is malformed, or a delegate
+ * whose arguments are not base64 is pending.
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
   if (reader.network !== ref.network || !Array.isArray(reader.relayers) || reader.relayers.length === 0) {
@@ -249,17 +250,21 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
   if (outcome === null) return { state: "pending", why: "not-found" };
   const dg = outcome.delegate;
   const nonce = u64Of(ref.nonce);
-  if (nonce === null || normalHash(ref.argsDigest) === null) return { state: "pending", why: "unreadable" };
+  if (nonce === null || typeof ref.asset !== "string" || !ACCOUNT.test(ref.asset) || normalHash(ref.argsDigest) === null) {
+    return { state: "pending", why: "unreadable" };
+  }
   if (
     dg === null ||
     dg.senderId !== ref.payer ||
     dg.publicKey !== ref.publicKey ||
     dg.nonce !== nonce ||
     dg.receiverId !== ref.asset ||
-    dg.methodName !== "ft_transfer" ||
-    !BASE64.test(dg.argsBase64) ||
-    !hashEquals(await hash(Uint8Array.from(Buffer.from(dg.argsBase64, "base64"))), ref.argsDigest)
+    dg.methodName !== "ft_transfer"
   ) {
+    return { state: "failed", why: "not-this-instrument" };
+  }
+  if (!BASE64.test(dg.argsBase64)) return { state: "pending", why: "unreadable" };
+  if (!hashEquals(await hash(Uint8Array.from(Buffer.from(dg.argsBase64, "base64"))), ref.argsDigest)) {
     return { state: "failed", why: "not-this-instrument" };
   }
   const byToken = outcome.receipts.filter((r) => r.executor === ref.asset);

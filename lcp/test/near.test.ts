@@ -153,6 +153,20 @@ describe("x402-exact-near.json", () => {
     expect(await exactNear.status({ ...REF, argsDigest: "0x12" as never }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
     const upper = `0x${argsDigest.slice(2).toUpperCase()}` as const;
     expect(await exactNear.status({ ...REF, argsDigest: upper }, readerFor(settled))).toEqual(settled.expect);
+    // NEAR account ids are 2 to 64 characters of lowercase letters, digits, ".", "_" and "-", so this ref names no token.
+    expect(await exactNear.status({ ...REF, asset: "USDC.testnet" }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  // nearcore's RPC gives a function call's args as base64; an answer that is not base64 is a reader fault, so the read
+  // is pending, never failed, once the delegate's sender, key, nonce, receiver and method are the ref's.
+  it("V3: a delegate whose args are not base64 is unreadable, after the instrument's other members", async () => {
+    const settled = V.V3.status[0];
+    const garbled = (delegate: object) => ({ ...settled, outcome: { ...settled.outcome, delegate: { ...settled.outcome.delegate, ...delegate } } });
+    expect(await exactNear.status(REF, readerFor(garbled({ argsBase64: "not base64!" })))).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactNear.status(REF, readerFor(garbled({ argsBase64: "not base64!", nonce: "102" })))).toEqual({
+      state: "failed",
+      why: "not-this-instrument",
+    });
   });
 
   it("plant: a successful outer transaction is not the payment when the token's receipt fails", async () => {
