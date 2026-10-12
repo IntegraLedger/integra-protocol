@@ -33,21 +33,6 @@ The payload x402's Cardano scheme defines.
 
 ***
 
-### CardanoPaymentPayload
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions"></a> `extensions?` | `object` |
-| <a id="property-payload"></a> `payload` | [`CardanoPayload`](#cardanopayload) |
-| <a id="property-resource"></a> `resource?` | `object` |
-| `resource.url` | `string` |
-| <a id="property-x402version"></a> `x402Version` | `2` |
-
-***
-
 ### CardanoReader
 
 Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`. `slotAt` answers
@@ -110,7 +95,7 @@ lookup naming no slot never reads failed.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-network-1"></a> `network` | [`CardanoNetwork`](#cardanonetwork) | - |
-| <a id="property-ttlslot"></a> `ttlSlot` | `string` | The last slot the transaction can land in, as a decimal string. |
+| <a id="property-ttlslot"></a> `ttlSlot` | `string` | The slot from which the transaction cannot land (body key 3, `invalid_hereafter`), as a decimal string. |
 | <a id="property-txid"></a> `txId` | `` `0x${string}` `` | - |
 
 ***
@@ -142,7 +127,7 @@ lookup naming no slot never reads failed.
 
 ##### complete()
 
-> **complete**(`signed`): `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoPaymentPayload`](#cardanopaymentpayload)\>
+> **complete**(`signed`): `Promise`\<[`Refusal`](index.md#refusal) \| `CardanoPaymentPayload`\>
 
 ###### Parameters
 
@@ -152,7 +137,7 @@ lookup naming no slot never reads failed.
 
 ###### Returns
 
-`Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoPaymentPayload`](#cardanopaymentpayload)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| `CardanoPaymentPayload`\>
 
 ## Type Aliases
 
@@ -198,42 +183,6 @@ not a 32-byte hash is `x402/payload-malformed`.
 #### Returns
 
 `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
-
-***
-
-### cardanoOptionCheck()
-
-> **cardanoOptionCheck**(`option`): [`Refusal`](index.md#refusal) \| `undefined`
-
-The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | `unknown` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| `undefined`
-
-***
-
-### cardanoPairingOf()
-
-> **cardanoPairingOf**(`option`): `"x402/exact/cardano"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/cardano"` \| `undefined`
 
 ***
 

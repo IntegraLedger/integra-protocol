@@ -28,19 +28,6 @@ One executed contract call, as the reader reports it.
 
 ***
 
-### CasperChoice
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-from"></a> `from` | `string` |
-| <a id="property-now"></a> `now` | `number` |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) |
-
-***
-
 ### CasperReader
 
 Bounded, read-only calls against one network's node. Every failure rejects with `ReaderError`.
@@ -101,7 +88,7 @@ The read keys recorded at claim.
 
 ##### complete()
 
-> **complete**(`publicKey`, `signature`): [`Refusal`](index.md#refusal) \| [`CasperPaymentPayload`](#casperpaymentpayload)
+> **complete**(`publicKey`, `signature`): [`Refusal`](index.md#refusal) \| `CasperPaymentPayload`
 
 Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256k1.
 
@@ -114,7 +101,7 @@ Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`CasperPaymentPayload`](#casperpaymentpayload)
+[`Refusal`](index.md#refusal) \| `CasperPaymentPayload`
 
 ***
 
@@ -151,47 +138,11 @@ Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256
 
 ***
 
-### CasperAuthorization
-
-> **CasperAuthorization** = `object`
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-from-1"></a> `from` | `string` |
-| <a id="property-nonce"></a> `nonce` | `string` |
-| <a id="property-to"></a> `to` | `string` |
-| <a id="property-validafter"></a> `validAfter` | `string` |
-| <a id="property-validbefore"></a> `validBefore` | `string` |
-| <a id="property-value"></a> `value` | `string` |
-
-***
-
 ### CasperNetwork
 
 > **CasperNetwork** = `` `casper:${string}` ``
 
 CAIP-2: `casper:` and the chainspec name.
-
-***
-
-### CasperPaymentPayload
-
-> **CasperPaymentPayload** = `object`
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted-1"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions"></a> `extensions?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"extensions"`\] |
-| <a id="property-payload"></a> `payload` | `object` |
-| `payload.authorization` | [`CasperAuthorization`](#casperauthorization) |
-| `payload.publicKey` | `string` |
-| `payload.signature` | `string` |
-| <a id="property-resource"></a> `resource?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"resource"`\] |
-| <a id="property-x402version"></a> `x402Version` | `2` |
 
 ***
 
@@ -240,24 +191,6 @@ SHA-256 over the 33 + 33 bytes of the two addresses and the value as a 32-byte b
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-***
-
-### casperOption()
-
-> **casperOption**(`o`): `o is PaymentRequirements`
-
-The pairing's filter: an `exact` option on a `casper:` network that `build` can turn into typed data.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `o` | `unknown` |
-
-#### Returns
-
-`o is PaymentRequirements`
 
 ***
 

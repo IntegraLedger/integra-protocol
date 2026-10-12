@@ -48,22 +48,6 @@ The transfer the payer signed, in one normal form shared by the signed bytes and
 
 ***
 
-### AptosPaymentPayload
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions"></a> `extensions?` | `object` |
-| <a id="property-payload-1"></a> `payload` | `object` |
-| `payload.transaction` | `string` |
-| <a id="property-resource"></a> `resource?` | `object` |
-| `resource.url` | `string` |
-| <a id="property-x402version"></a> `x402Version` | `2` |
-
-***
-
 ### AptosReader
 
 Bounded, read-only calls against one network's REST endpoint. Every failure rejects with `ReaderError`.
@@ -152,7 +136,7 @@ header.
 
 ##### complete()
 
-> **complete**(`signed`): [`Refusal`](index.md#refusal) \| [`AptosPaymentPayload`](#aptospaymentpayload)
+> **complete**(`signed`): [`Refusal`](index.md#refusal) \| `AptosPaymentPayload`
 
 ###### Parameters
 
@@ -163,7 +147,7 @@ header.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`AptosPaymentPayload`](#aptospaymentpayload)
+[`Refusal`](index.md#refusal) \| `AptosPaymentPayload`
 
 ## Type Aliases
 
@@ -202,42 +186,6 @@ SHA-256 over the RFC 8785 form of `{sender, sequenceNumber, function, typeArgume
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-***
-
-### aptosOptionCheck()
-
-> **aptosOptionCheck**(`option`): [`Refusal`](index.md#refusal) \| `undefined`
-
-The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | `unknown` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| `undefined`
-
-***
-
-### aptosPairingOf()
-
-> **aptosPairingOf**(`option`): `"x402/exact/aptos"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/aptos"` \| `undefined`
 
 ***
 
