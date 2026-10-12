@@ -160,6 +160,8 @@ export function decodeAptosTx(transaction: string): AptosInstrument | Refusal {
 
 /** SHA-256 over the RFC 8785 form of `{sender, sequenceNumber, function, typeArguments, arguments}`. */
 export async function aptosIdDigest(i: AptosInstrument): Promise<Hex | Refusal> {
+  if (!isObject(i) || typeof i.sequenceNumber !== "bigint") return refusal("aptos/tx-malformed");
+  if (!Array.isArray(i.typeArguments) || !Array.isArray(i.arguments)) return refusal("aptos/tx-malformed");
   return digestJson({
     sender: i.sender,
     sequenceNumber: i.sequenceNumber.toString(),
@@ -215,6 +217,7 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
  */
 export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<AptosStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
+  if (!isObject(ref) || !isObject(reader)) return unreadable;
   const chainId = chainOf(ref.network);
   if (reader.network !== ref.network || chainId === undefined) return unreadable;
   const sequenceNumber = decimalBelow(ref.sequenceNumber, U64_LIMIT);

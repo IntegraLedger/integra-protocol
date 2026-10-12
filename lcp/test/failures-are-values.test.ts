@@ -7,6 +7,7 @@
 // replaced argument is a value from the rail's vector file.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { aptosIdDigest, aptosStatus } from "../src/aptos.js";
 import { casperRecover, casperStatus, cep3009TypedData, exactCasper } from "../src/casper.js";
 import { ccdRecover, ccdStatus, exactCcd } from "../src/ccd.js";
 import { type AtrHash } from "../src/core.js";
@@ -198,4 +199,13 @@ describe("casper and ccd", () => {
     ["exactCcd.build", exactCcd.build, [undefined, H], 0, refused("x402/not-v2")],
     ["cep3009TypedData", cep3009TypedData, [undefined], 0, refused("casper/network-malformed")],
   ]);
+});
+
+describe("aptos", () => {
+  reads([["aptosStatus", aptosStatus, "x402-exact-aptos.json", UNREADABLE]]);
+  answers([["aptosIdDigest", aptosIdDigest, [undefined], 0, refused("aptos/tx-malformed")]]);
+  it("aptosIdDigest: an instrument whose sequence number is not a bigint is aptos/tx-malformed", async () => {
+    const i = { sender: "0x1", sequenceNumber: "7", function: "0x1::f::g", typeArguments: [], arguments: [] };
+    expect(await aptosIdDigest(i as never)).toEqual(refused("aptos/tx-malformed"));
+  });
 });
