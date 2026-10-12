@@ -6,16 +6,16 @@
  * two-element disclosure or none. Refusal codes are the caller's.
  */
 import { MAX_JSON_DEPTH, type Json } from "./core.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { type Refusal } from "./refusal.js";
 
 type JsonObject = { [k: string]: Json };
 
 /** The refusal each failure class returns, as the calling entry point names it. */
-export interface SdJwtCodes {
-  malformed: string;
-  sdAlgUnsupported: string;
-  unreferenced: string;
-  tooLarge: string;
+export interface SdJwtRefusals {
+  malformed(): Refusal;
+  sdAlgUnsupported(): Refusal;
+  unreferenced(): Refusal;
+  tooLarge(): Refusal;
 }
 
 export interface SdJwtBounds {
@@ -122,12 +122,12 @@ interface Disclosure {
 /** Reads an SD-JWT presentation and resolves its disclosures. No signature is verified. */
 export async function readSdJwt(
   token: unknown,
-  codes: SdJwtCodes,
+  refusals: SdJwtRefusals,
   bounds: SdJwtBounds = DEFAULT_BOUNDS,
 ): Promise<SdJwt | Refusal> {
-  const malformed = refusal(codes.malformed);
+  const malformed = refusals.malformed();
   if (typeof token !== "string") return malformed;
-  if (token.length > bounds.maxBytes) return refusal(codes.tooLarge);
+  if (token.length > bounds.maxBytes) return refusals.tooLarge();
   if (!PRESENTATION.test(token)) return malformed;
 
   const parts = token.split("~");
@@ -137,17 +137,17 @@ export async function readSdJwt(
   const keyBinding = last === "" ? null : last.includes(".") ? last : undefined;
   if (keyBinding === undefined) return malformed;
   const disclosures = parts.slice(1, -1);
-  if (disclosures.length > bounds.maxDisclosures) return refusal(codes.tooLarge);
+  if (disclosures.length > bounds.maxDisclosures) return refusals.tooLarge();
 
   const segments = jwsSegments(jwt);
   if (segments === null) return malformed;
   const header = decodeJsonSegment(segments[0]);
   const payload = decodeJsonSegment(segments[1]);
   if (!isJsonObject(header) || !isJsonObject(payload)) return malformed;
-  if (!withinDepth(header) || !withinDepth(payload)) return refusal(codes.tooLarge);
+  if (!withinDepth(header) || !withinDepth(payload)) return refusals.tooLarge();
 
   const alg = payload["_sd_alg"];
-  if (alg !== undefined && alg !== "sha-256") return refusal(codes.sdAlgUnsupported);
+  if (alg !== undefined && alg !== "sha-256") return refusals.sdAlgUnsupported();
 
   const byDigest = new Map<string, Disclosure>();
   for (const d of disclosures) {
@@ -155,7 +155,7 @@ export async function readSdJwt(
     const decoded = decodeJsonSegment(d);
     if (!Array.isArray(decoded)) return malformed;
     const arr = decoded as readonly Json[];
-    if (!withinDepth(decoded)) return refusal(codes.tooLarge);
+    if (!withinDepth(decoded)) return refusals.tooLarge();
     let disclosure: Disclosure;
     if (arr.length === 3 && typeof arr[0] === "string" && typeof arr[1] === "string") {
       disclosure = { name: arr[1], value: arr[2]!, used: false };
@@ -170,8 +170,8 @@ export async function readSdJwt(
   }
 
   const referenced = new Set<string>();
-  type Outcome = { ok: true; value: Json } | { ok: false; code: string };
-  const fail = (code: string): Outcome => ({ ok: false, code });
+  type Outcome = { ok: true; value: Json } | { ok: false; answer: () => Refusal };
+  const fail = (answer: () => Refusal): Outcome => ({ ok: false, answer });
 
   const resolve = (v: Json, level: number): Outcome => {
     if (v === null || typeof v !== "object") return { ok: true, value: v };
@@ -180,14 +180,14 @@ export async function readSdJwt(
       for (const el of v as readonly Json[]) {
         if (isJsonObject(el) && Object.keys(el).length === 1 && "..." in el) {
           const digest = el["..."];
-          if (typeof digest !== "string") return fail(codes.malformed);
-          if (referenced.has(digest)) return fail(codes.malformed);
+          if (typeof digest !== "string") return fail(refusals.malformed);
+          if (referenced.has(digest)) return fail(refusals.malformed);
           referenced.add(digest);
           const d = byDigest.get(digest);
           if (d === undefined) continue;
-          if (d.name !== undefined) return fail(codes.malformed);
+          if (d.name !== undefined) return fail(refusals.malformed);
           d.used = true;
-          if (level + 1 > RESOLUTION_DEPTH) return fail(codes.tooLarge);
+          if (level + 1 > RESOLUTION_DEPTH) return fail(refusals.tooLarge);
           const r = resolve(d.value, level + 1);
           if (!r.ok) return r;
           out.push(r.value);
@@ -210,17 +210,17 @@ export async function readSdJwt(
     }
     const sd = o["_sd"];
     if (sd === undefined) return { ok: true, value: out };
-    if (!Array.isArray(sd)) return fail(codes.malformed);
+    if (!Array.isArray(sd)) return fail(refusals.malformed);
     for (const digest of sd as readonly Json[]) {
-      if (typeof digest !== "string") return fail(codes.malformed);
+      if (typeof digest !== "string") return fail(refusals.malformed);
       const d = byDigest.get(digest);
       if (d === undefined || d.name === undefined) continue;
-      if (referenced.has(digest)) return fail(codes.malformed);
+      if (referenced.has(digest)) return fail(refusals.malformed);
       referenced.add(digest);
       const name = d.name;
-      if (name === "_sd" || name === "..." || Object.hasOwn(out, name)) return fail(codes.malformed);
+      if (name === "_sd" || name === "..." || Object.hasOwn(out, name)) return fail(refusals.malformed);
       d.used = true;
-      if (level + 1 > RESOLUTION_DEPTH) return fail(codes.tooLarge);
+      if (level + 1 > RESOLUTION_DEPTH) return fail(refusals.tooLarge);
       const r = resolve(d.value, level + 1);
       if (!r.ok) return r;
       setOwn(out, name, r.value);
@@ -229,8 +229,8 @@ export async function readSdJwt(
   };
 
   const r = resolve(payload, 0);
-  if (!r.ok) return refusal(r.code);
-  for (const d of byDigest.values()) if (!d.used) return refusal(codes.unreferenced);
+  if (!r.ok) return r.answer();
+  for (const d of byDigest.values()) if (!d.used) return refusals.unreferenced();
   const resolved = r.value as JsonObject;
   delete resolved["_sd_alg"];
   return { jwt, header, payload, resolved, disclosures, keyBinding };

@@ -68,6 +68,17 @@ describe("BOLT11", () => {
     expect(section(light, "metadata")).toBe(e.metadata);
     expect(bolt11.decode(V.L4.invoice).payeeNodeKey).toBe(V.L4.expectPayee);
   });
+
+  // BOLT11's published example "Please make a donation of any amount" (mpp-session-lightning.json's returnInvoice)
+  // carries a description and neither an h nor an m field, as light-bolt11-decoder reads it too.
+  it("invoiceH: an invoice without the field is ln/no-description-hash or ln/no-metadata", async () => {
+    const invoice: string = load("mpp-session-lightning.json").fixed.returnInvoice;
+    expect(section(lightDecode(invoice), "description_hash")).toBeUndefined();
+    expect(section(lightDecode(invoice), "metadata")).toBeUndefined();
+    const donation = (await decodeBolt11(invoice)) as Bolt11;
+    expect(invoiceH(donation, "h")).toEqual({ refused: true, code: "ln/no-description-hash" });
+    expect(invoiceH(donation, "m")).toEqual({ refused: true, code: "ln/no-metadata" });
+  });
 });
 
 describe("x402/exact/lnbtc", () => {
@@ -96,6 +107,8 @@ describe("x402/exact/lnbtc", () => {
     expect(payment).toEqual(V.L5.payment);
     expect(await exactLnbtc.bound(payment)).toBe(V.L5.expectBound);
     expect(await exactLnbtc.reference(payment)).toEqual(V.L5.expectReference);
+    const plain = set<unknown>(payment, { "accepted.extra.invoice": V.fixed.x402ExampleInvoice });
+    expect(await exactLnbtc.reference(plain)).toEqual(V.L5.withExampleInvoice.expect);
   });
 
   describe("refusal codes left to the implementation", () => {
@@ -154,6 +167,7 @@ describe("x402/exact/lnbtc/invoice-named", () => {
     expect(await exactLnbtcNamed.reference(N.L6.payment)).toEqual(N.L6.expectReference);
     const withL4 = set<unknown>(N.L6.payment, { "accepted.extra.invoice": N.fixed.L4 });
     expect(await exactLnbtcNamed.bound(withL4)).toEqual(N.L6.withL4.expect);
+    expect(await exactLnbtcNamed.reference(withL4)).toEqual(N.L6.withL4.expect);
     const bare = set<unknown>(N.L6.payment, { extensions: undefined });
     expect(await exactLnbtcNamed.bound(bare)).toEqual(N.L6.withoutExtensions.expect);
   });

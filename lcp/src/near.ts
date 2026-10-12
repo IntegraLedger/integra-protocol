@@ -35,7 +35,6 @@ const peer: { crypto: typeof NearCrypto; tx: typeof NearTransactions; borsh: typ
   ([crypto, tx, borsh]) => ({ crypto, tx, borsh }),
   () => undefined,
 );
-const PEER_MISSING = "near/peer-missing";
 
 /** x402's NEAR network identifiers. */
 export type NearNetwork = "near:mainnet" | "near:testnet";
@@ -176,7 +175,7 @@ function carrierOf(signedDelegateAction: string): {
   asset: string;
   args: Uint8Array;
 } | Refusal {
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("near/peer-missing");
   if (typeof signedDelegateAction !== "string") return refusal("near/sda-malformed");
   if (signedDelegateAction.length > MAX_SDA_BASE64) return refusal("near/sda-too-large");
   if (signedDelegateAction.length === 0 || !BASE64.test(signedDelegateAction)) return refusal("near/sda-malformed");
@@ -392,7 +391,7 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /** The delegate action for the chosen option: one `ft_transfer` whose memo is the hash's LCP string. */
 async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal> {
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("near/peer-missing");
   const { PublicKey } = peer.crypto;
   const { SignedDelegate, Signature, actionCreators, buildDelegateAction, encodeDelegateAction, encodeSignedDelegate } = peer.tx;
   if (!isObject(c)) return refusal("x402/option-malformed");

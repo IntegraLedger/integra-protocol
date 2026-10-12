@@ -57,7 +57,7 @@ export interface SolanaCharge<Id extends "mpp/charge/solana" | "mpp/charge/usdc/
   /** Whether the details must name `network`. */
   networkRequired: boolean;
   /** The refusal for an issued `externalId` that holds another value. */
-  occupied: string;
+  occupied(): Refusal;
   /** Whether the only credential accepted is `type="transaction"` (pull mode); `bundle` and `signature` are refused. */
   transactionOnly: boolean;
 }
@@ -66,7 +66,7 @@ const SOLANA: SolanaCharge<typeof ID> = {
   id: ID,
   details: (c) => c.details,
   networkRequired: false,
-  occupied: "svm/carrier-occupied",
+  occupied: () => refusal("svm/carrier-occupied"),
   transactionOnly: false,
 };
 const MAX_BUNDLE = 8;
@@ -388,7 +388,7 @@ function advertise(
     h,
     link,
     offer,
-    (issued) => (issued === undefined || issued === memo ? memo : refusal(spec.occupied)),
+    (issued) => (issued === undefined || issued === memo ? memo : spec.occupied()),
     agreementUrl,
   );
 }

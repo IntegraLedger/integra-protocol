@@ -17,7 +17,7 @@ import {
   type Json,
 } from "./core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
-import { AGREEMENT_URL_SNAKE, agreementIn, agreementRefusal } from "./internal/agreement.js";
+import { AGREEMENT_URL_SNAKE, agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -99,10 +99,13 @@ function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption,
   }
   const id = normalHash(h);
   if (id === null) return refusal("acp/legal-context-malformed");
-  if (!isHttpsLink(link)) return refusal(isOtherSchemeLink(link) ? "acp/link-not-https" : "acp/legal-context-malformed");
+  if (!isHttpsLink(link)) {
+    return isOtherSchemeLink(link) ? refusal("acp/link-not-https") : refusal("acp/legal-context-malformed");
+  }
   if (link.length > MAX_LINK) return refusal("acp/legal-context-malformed");
-  const agreementFaulted = agreementRefusal("acp", agreementUrl);
-  if (agreementFaulted !== undefined) return agreementFaulted;
+  const agreementFaulted = agreementUrlFault(agreementUrl);
+  if (agreementFaulted?.fault === "link-not-https") return refusal("acp/link-not-https");
+  if (agreementFaulted !== undefined) return refusal("acp/legal-context-malformed");
   const present = doc["id"];
   if (present !== undefined && !(typeof present === "string" && hashEquals(present, id))) {
     return refusal("acp/id-conflict");
@@ -140,7 +143,8 @@ function read(doc: Session): { h: AtrHash; link: string; agreement?: string; off
   if (decoded.url.length > MAX_LINK) return refusal("acp/legal-context-malformed");
   if (!hashEquals(decoded.h, h)) return refusal("acp/legal-context-conflict");
   const agreement = agreementIn(lc);
-  if (typeof agreement === "object") return refusal(`acp/${agreement.fault}`);
+  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("acp/link-not-https");
+  if (typeof agreement === "object") return refusal("acp/legal-context-malformed");
   return agreement === undefined
     ? { h, link: decoded.url, offer: { session: doc } }
     : { h, link: decoded.url, agreement, offer: { session: doc } };

@@ -321,6 +321,24 @@ describe("slot names and content form", () => {
     });
     expect(await assemble(id, ["bind", {}], [["bind", utf8("1")]])).toEqual({ refused: true, code: "core/slot-reserved" });
   });
+  // The binding's slot name follows the same rule, before any party slot is read (docs/reference/refusals.md,
+  // core/slot-name and core/slot-reserved).
+  it("refuses a binding slot name outside the set, and atrVersion and id as the binding's slot", async () => {
+    for (const slot of ["-x", "a b", "a".repeat(65), ""]) {
+      expect([slot, await assemble(id, [slot, {}], [])]).toEqual([slot, { refused: true, code: "core/slot-name" }]);
+    }
+    for (const slot of ["atrVersion", "id"]) {
+      expect([slot, await assemble(id, [slot, {}], [])]).toEqual([slot, { refused: true, code: "core/slot-reserved" }]);
+    }
+  });
+  // A limit that is not a non-negative safe integer is refused before anything is written (docs/reference/refusals.md,
+  // core/too-large).
+  it("refuses a maxBytes limit that is not a non-negative safe integer", async () => {
+    for (const maxBytes of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 53, "190"]) {
+      const out = await assemble(id, ["bind", {}], [["a", utf8("1")]], { maxBytes: maxBytes as number });
+      expect([String(maxBytes), out]).toEqual([String(maxBytes), { refused: true, code: "core/too-large" }]);
+    }
+  });
   it("refuses a duplicate slot", async () => {
     expect(await assemble(id, ["bind", {}], [["a", utf8("1")], ["a", utf8("2")]])).toEqual({
       refused: true,

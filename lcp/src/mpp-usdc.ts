@@ -326,7 +326,7 @@ export const chargeUsdcSolana = solanaChargePairing({
   id: SOLANA,
   details: (c: Checked | Echoed) => profileOf(c),
   networkRequired: true,
-  occupied: "mpp/carrier-occupied",
+  occupied: () => refusal("mpp/carrier-occupied"),
 });
 
 // ── mpp/charge/usdc/stacks.

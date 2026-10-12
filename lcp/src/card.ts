@@ -12,10 +12,19 @@
  */
 import { fromLegalContext, hashEquals, isHashWithNonHttpsLink, isHttpsLink, isOtherSchemeLink, toLcpString, type AtrHash } from "./core.js";
 import { normalHash } from "./fields.js";
-import { agreementIn, agreementRefusal } from "./internal/agreement.js";
+import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
-import { decodeJsonSegment, disclosureDigest, jwsSegments, readSdJwt, b64urlDecode, withinDepth, type SdJwt } from "./sd-jwt.js";
+import {
+  b64urlDecode,
+  decodeJsonSegment,
+  disclosureDigest,
+  jwsSegments,
+  readSdJwt,
+  withinDepth,
+  type SdJwt,
+  type SdJwtRefusals,
+} from "./sd-jwt.js";
 
 export { disclosureDigest } from "./sd-jwt.js";
 
@@ -96,11 +105,11 @@ const PAYER_TAG = "agent-payer-auth";
 const CHECKOUT_VCT = "mandate.checkout.1";
 const PAYMENT_VCT = "mandate.payment.1";
 const OPEN_CHECKOUT_VCT = "mandate.checkout.open.1";
-const SD_JWT_CODES = {
-  malformed: "card/vi-malformed",
-  sdAlgUnsupported: "card/vi-malformed",
-  unreferenced: "card/vi-disclosure-unreferenced",
-  tooLarge: "card/too-large",
+const SD_JWT_REFUSALS: SdJwtRefusals = {
+  malformed: () => refusal("card/vi-malformed"),
+  sdAlgUnsupported: () => refusal("card/vi-malformed"),
+  unreferenced: () => refusal("card/vi-disclosure-unreferenced"),
+  tooLarge: () => refusal("card/too-large"),
 };
 const SD_JWT_BOUNDS = { maxBytes: MAX_VI_LAYER, maxDisclosures: MAX_VI_DISCLOSURES };
 
@@ -136,10 +145,13 @@ function advertise(
   agreementUrl?: string,
 ): CardValues | Refusal {
   if (!isOption(offer)) return refusal("card/option-malformed");
-  if (!isHttpsLink(link)) return refusal(isOtherSchemeLink(link) ? "card/link-not-https" : "card/legal-context-malformed");
+  if (!isHttpsLink(link)) {
+    return isOtherSchemeLink(link) ? refusal("card/link-not-https") : refusal("card/legal-context-malformed");
+  }
   if (link.length > MAX_LINK) return refusal("card/legal-context-malformed");
-  const agreementFaulted = agreementRefusal("card", agreementUrl);
-  if (agreementFaulted !== undefined) return agreementFaulted;
+  const agreementFaulted = agreementUrlFault(agreementUrl);
+  if (agreementFaulted?.fault === "link-not-https") return refusal("card/link-not-https");
+  if (agreementFaulted !== undefined) return refusal("card/legal-context-malformed");
   const value = normalHash(h);
   if (value === null) return refusal("card/legal-context-malformed");
   const legalContext: CardValues["legalContext"] =
@@ -207,7 +219,8 @@ function withAgreement(
 ): { h: AtrHash; link: string; agreement?: string } | Refusal {
   if (isRefusal(r)) return r;
   const agreement = agreementIn(o["legalContext"]);
-  if (typeof agreement === "object") return refusal(`card/${agreement.fault}`);
+  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("card/link-not-https");
+  if (typeof agreement === "object") return refusal("card/legal-context-malformed");
   return agreement === undefined ? r : { ...r, agreement };
 }
 
@@ -320,7 +333,7 @@ async function viAutonomousBound(presented: unknown): Promise<AtrHash | Refusal>
   if (typeof l1 !== "string") return refusal("card/vi-malformed");
   if (l1.length > MAX_VI_LAYER) return refusal("card/too-large");
   if (user.payload["sd_hash"] !== (await disclosureDigest(l1))) return refusal("card/vi-sd-hash-mismatch");
-  const issued = await readSdJwt(l1, SD_JWT_CODES, SD_JWT_BOUNDS);
+  const issued = await readSdJwt(l1, SD_JWT_REFUSALS, SD_JWT_BOUNDS);
   if (isRefusal(issued)) return issued;
   const userKey = jwkOf(issued.payload["cnf"]);
   if (userKey === null) return refusal("card/vi-key-malformed");
@@ -340,7 +353,7 @@ async function readLayer(s: unknown, typ: string): Promise<SdJwt | Refusal> {
   const parts = s.split("~");
   if (parts.length < 3 || parts[parts.length - 1] !== "") return refusal("card/vi-malformed");
   if (parts.length - 2 > MAX_VI_DISCLOSURES) return refusal("card/too-large");
-  const layer = await readSdJwt(s, SD_JWT_CODES, SD_JWT_BOUNDS);
+  const layer = await readSdJwt(s, SD_JWT_REFUSALS, SD_JWT_BOUNDS);
   if (isRefusal(layer)) return layer;
   if (layer.header["alg"] !== "ES256" || layer.header["typ"] !== typ) return refusal("card/vi-typ");
   const delegated = layer.payload["delegate_payload"];

@@ -19,7 +19,7 @@ import {
 } from "./core.js";
 import { deepFreeze, jsonBytes, normalHash, sameJson } from "./fields.js";
 import type { LcpPattern } from "./index.js";
-import { AGREEMENT_URL, agreementIn, agreementRefusal } from "./internal/agreement.js";
+import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   decodeJsonSegment,
@@ -29,7 +29,7 @@ import {
   readSdJwt,
   withinDepth,
   type SdJwt,
-  type SdJwtCodes,
+  type SdJwtRefusals,
 } from "./sd-jwt.js";
 
 export const CHECKOUT_VCT = "mandate.checkout.1";
@@ -72,11 +72,11 @@ const MAX_HOPS = 2;
 const MAX_ID = 256;
 const MAX_LINK = 2048;
 const CHECKOUT_HASH = /^[A-Za-z0-9_-]{43}$/;
-const MANDATE_CODES: SdJwtCodes = {
-  malformed: "ap2/mandate-malformed",
-  sdAlgUnsupported: "ap2/sd-alg-unsupported",
-  unreferenced: "ap2/disclosure-unreferenced",
-  tooLarge: "ap2/too-large",
+const MANDATE_REFUSALS: SdJwtRefusals = {
+  malformed: () => refusal("ap2/mandate-malformed"),
+  sdAlgUnsupported: () => refusal("ap2/sd-alg-unsupported"),
+  unreferenced: () => refusal("ap2/disclosure-unreferenced"),
+  tooLarge: () => refusal("ap2/too-large"),
 };
 
 
@@ -114,10 +114,10 @@ async function closedHop(m: unknown): Promise<SdJwt | Refusal> {
   const hops = m.split("~~", MAX_HOPS + 1);
   if (hops.length > MAX_HOPS) return refusal("ap2/mandate-malformed");
   for (const hop of hops.slice(0, -1)) {
-    const open = await readSdJwt(`${hop}~`, MANDATE_CODES);
+    const open = await readSdJwt(`${hop}~`, MANDATE_REFUSALS);
     if (isRefusal(open)) return open;
   }
-  return readSdJwt(hops[hops.length - 1], MANDATE_CODES);
+  return readSdJwt(hops[hops.length - 1], MANDATE_REFUSALS);
 }
 
 /**
@@ -197,10 +197,13 @@ function advertise(
   if (typeof id !== "string" || id.length === 0) return refusal("ap2/checkout-id-missing");
   if (id.length > MAX_ID) return refusal("ap2/too-large");
   if (id !== offer.checkout) return refusal("ap2/option-not-this-checkout");
-  if (!isHttpsLink(link)) return refusal(isOtherSchemeLink(link) ? "ap2/link-not-https" : "ap2/legal-context-malformed");
+  if (!isHttpsLink(link)) {
+    return isOtherSchemeLink(link) ? refusal("ap2/link-not-https") : refusal("ap2/legal-context-malformed");
+  }
   if (link.length > MAX_LINK) return refusal("ap2/legal-context-malformed");
-  const agreementFaulted = agreementRefusal("ap2", agreementUrl);
-  if (agreementFaulted !== undefined) return agreementFaulted;
+  const agreementFaulted = agreementUrlFault(agreementUrl);
+  if (agreementFaulted?.fault === "link-not-https") return refusal("ap2/link-not-https");
+  if (agreementFaulted !== undefined) return refusal("ap2/legal-context-malformed");
   if (normalHash(h) === null) return refusal("ap2/legal-context-malformed");
   const camel = toLegalContext(h, link).legalContext;
   const info = agreementUrl === undefined ? camel : { ...camel, [AGREEMENT_URL]: agreementUrl };
@@ -225,7 +228,8 @@ function read(doc: Jws): { h: AtrHash; link: string; agreement?: string; offer: 
   const r = readCheckout(doc);
   if (isRefusal(r)) return r;
   const agreement = agreementIn(r.offer.payload["legalContext"]);
-  if (typeof agreement === "object") return refusal(`ap2/${agreement.fault}`);
+  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("ap2/link-not-https");
+  if (typeof agreement === "object") return refusal("ap2/legal-context-malformed");
   return agreement === undefined ? r : { h: r.h, link: r.link, agreement, offer: r.offer };
 }
 

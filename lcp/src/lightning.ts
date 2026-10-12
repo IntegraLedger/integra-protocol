@@ -103,7 +103,7 @@ export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
   if (!isObject(b) || !Array.isArray(b.tags)) return refusal("ln/invoice-malformed");
   const type = FIELD[field];
   const count = b.tags.filter((t) => t === type).length;
-  if (count === 0) return refusal(field === "h" ? "ln/no-description-hash" : "ln/no-metadata");
+  if (count === 0) return field === "h" ? refusal("ln/no-description-hash") : refusal("ln/no-metadata");
   if (count > 1) return refusal("ln/field-repeated");
   const bytes = field === "h" ? b.descriptionHash : b.metadata;
   const h = bytes === null ? null : fromRawBytes(bytes);
@@ -425,7 +425,7 @@ async function x402Reference(presented: unknown, want: boolean): Promise<LnRef |
   if (!isLnOption(accepted)) return refusal("x402/option-not-this-pairing");
   const b = decode(accepted.extra.invoice);
   if (isRefusal(b)) return b;
-  if (b.tags.includes(FIELD.m) !== want) return refusal(want ? "ln/no-metadata" : "ln/not-this-pairing");
+  if (b.tags.includes(FIELD.m) !== want) return want ? refusal("ln/no-metadata") : refusal("ln/not-this-pairing");
   return { network: accepted.network, paymentHash: hex(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
 }
 

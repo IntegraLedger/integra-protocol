@@ -31,29 +31,30 @@ export interface LegalContextDocument {
 }
 
 type Kind = "terms" | "string" | "hash" | "boolean" | "clause" | Members;
-type Members = readonly (readonly [string, Kind])[];
+/** Each member's name, its kind, and the refusal for a value that is not of its kind. */
+type Members = readonly (readonly [string, Kind, () => Refusal])[];
 
 const DISPUTE: Members = [
-  ["method", "string"],
-  ["jurisdiction", "string"],
-  ["contact", "string"],
-  ["clauseId", "clause"],
-  ["source", "string"],
-  ["catalog", "string"],
+  ["method", "string", () => refusal("discovery/member-malformed/disputeResolution.method")],
+  ["jurisdiction", "string", () => refusal("discovery/member-malformed/disputeResolution.jurisdiction")],
+  ["contact", "string", () => refusal("discovery/member-malformed/disputeResolution.contact")],
+  ["clauseId", "clause", () => refusal("discovery/clause-id-malformed")],
+  ["source", "string", () => refusal("discovery/member-malformed/disputeResolution.source")],
+  ["catalog", "string", () => refusal("discovery/member-malformed/disputeResolution.catalog")],
 ];
 const CONTACT: Members = [
-  ["legal", "string"],
-  ["technical", "string"],
+  ["legal", "string", () => refusal("discovery/member-malformed/contact.legal")],
+  ["technical", "string", () => refusal("discovery/member-malformed/contact.technical")],
 ];
 const DOCUMENT: Members = [
-  ["terms", "terms"],
-  ["termsFormat", "string"],
-  ["atrHash", "hash"],
-  ["acceptanceRequired", "boolean"],
-  ["disputeResolution", DISPUTE],
-  ["returns", "string"],
-  ["contact", CONTACT],
-  ["api", "string"],
+  ["terms", "terms", () => refusal("discovery/member-malformed/terms")],
+  ["termsFormat", "string", () => refusal("discovery/member-malformed/termsFormat")],
+  ["atrHash", "hash", () => refusal("discovery/atr-hash-malformed")],
+  ["acceptanceRequired", "boolean", () => refusal("discovery/member-malformed/acceptanceRequired")],
+  ["disputeResolution", DISPUTE, () => refusal("discovery/member-malformed/disputeResolution")],
+  ["returns", "string", () => refusal("discovery/member-malformed/returns")],
+  ["contact", CONTACT, () => refusal("discovery/member-malformed/contact")],
+  ["api", "string", () => refusal("discovery/member-malformed/api")],
 ];
 
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -69,34 +70,33 @@ function isObject(v: unknown): v is Record<string, unknown> {
  * The checked members of `o` in table order, with `atrHash` in lowercase, or the first refusal. Members the table does
  * not name are left out.
  */
-function check(o: Record<string, unknown>, members: Members, path: string): Record<string, unknown> | Refusal {
+function check(o: Record<string, unknown>, members: Members): Record<string, unknown> | Refusal {
   const out: Record<string, unknown> = {};
-  for (const [name, kind] of members) {
-    const at = path === "" ? name : `${path}.${name}`;
+  for (const [name, kind, malformed] of members) {
     if (!Object.hasOwn(o, name) || o[name] === undefined) {
       if (kind === "terms") return refusal("discovery/terms-missing");
       continue;
     }
     const v = o[name];
     if (kind === "terms") {
-      if (typeof v !== "string") return refusal(`discovery/member-malformed/${at}`);
+      if (typeof v !== "string") return malformed();
       if (!isHttpsLink(v)) return refusal("discovery/terms-not-https");
       out[name] = v;
     } else if (kind === "hash") {
-      if (typeof v !== "string" || !HASH.test(v)) return refusal("discovery/atr-hash-malformed");
+      if (typeof v !== "string" || !HASH.test(v)) return malformed();
       out[name] = fromRawBytes(toRawBytes(v as AtrHash));
     } else if (kind === "clause") {
-      if (typeof v !== "string" || !CLAUSE_ID.test(v)) return refusal("discovery/clause-id-malformed");
+      if (typeof v !== "string" || !CLAUSE_ID.test(v)) return malformed();
       out[name] = v;
     } else if (kind === "boolean") {
-      if (typeof v !== "boolean") return refusal(`discovery/member-malformed/${at}`);
+      if (typeof v !== "boolean") return malformed();
       out[name] = v;
     } else if (kind === "string") {
-      if (typeof v !== "string" || v.length === 0) return refusal(`discovery/member-malformed/${at}`);
+      if (typeof v !== "string" || v.length === 0) return malformed();
       out[name] = v;
     } else {
-      if (!isObject(v)) return refusal(`discovery/member-malformed/${at}`);
-      const inner = check(v, kind, at);
+      if (!isObject(v)) return malformed();
+      const inner = check(v, kind);
       if (isRefusal(inner)) return inner;
       out[name] = inner;
     }
@@ -139,7 +139,7 @@ export function parse(bytes: Uint8Array): { document: LegalContextDocument; igno
     return refusal("discovery/not-json-object");
   }
   if (!isObject(v)) return refusal("discovery/not-json-object");
-  const document = check(v, DOCUMENT, "");
+  const document = check(v, DOCUMENT);
   if (isRefusal(document)) return document;
   const ignored: string[] = [];
   unknown(v, DOCUMENT, "", ignored);
@@ -149,7 +149,7 @@ export function parse(bytes: Uint8Array): { document: LegalContextDocument; igno
 /** The document's bytes: its checked members in table order, `atrHash` in lowercase, and no other member. */
 export function emit(document: LegalContextDocument): Uint8Array | Refusal {
   if (!isObject(document)) return refusal("discovery/not-json-object");
-  const checked = check(document, DOCUMENT, "");
+  const checked = check(document, DOCUMENT);
   if (isRefusal(checked)) return checked;
   const bytes = encoder.encode(write(checked, DOCUMENT));
   if (bytes.length > MAX_DOCUMENT_BYTES) return refusal("discovery/too-large");

@@ -35,10 +35,6 @@ const HEX_DIGITS = "0123456789abcdef";
 
 const utf8 = new TextEncoder();
 
-function refuse(code: CoreRefusal["code"]): CoreRefusal {
-  return refusal(code);
-}
-
 /** A random RFC 9562 version 4 UUID, lowercase. */
 export function newAtrId(): string {
   return crypto.randomUUID();
@@ -74,48 +70,48 @@ export async function assemble(
   limits?: { maxBytes?: number },
 ): Promise<{ bytes: Uint8Array; atrHash: AtrHash } | CoreRefusal> {
   const maxBytes = limits?.maxBytes ?? MIB;
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) return refuse("core/too-large");
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) return refusal("core/too-large");
   const limit = Math.min(maxBytes, MIB);
 
-  if (typeof id !== "string") return refuse("core/binding-not-json");
-  if (!isPair(binding)) return refuse("core/slot-name");
-  if (!Array.isArray(content)) return refuse("core/content-not-json");
+  if (typeof id !== "string") return refusal("core/binding-not-json");
+  if (!isPair(binding)) return refusal("core/slot-name");
+  if (!Array.isArray(content)) return refusal("core/content-not-json");
 
   const bindingSlot: unknown = binding[0];
   const bindingValue: unknown = binding[1];
-  if (typeof bindingSlot !== "string" || !SLOT_NAME.test(bindingSlot)) return refuse("core/slot-name");
-  if (bindingSlot === "atrVersion" || bindingSlot === "id") return refuse("core/slot-reserved");
+  if (typeof bindingSlot !== "string" || !SLOT_NAME.test(bindingSlot)) return refusal("core/slot-name");
+  if (bindingSlot === "atrVersion" || bindingSlot === "id") return refusal("core/slot-reserved");
   const count: number = content.length;
-  if (count > MAX_PARTY_SLOTS) return refuse("core/too-large");
+  if (count > MAX_PARTY_SLOTS) return refusal("core/too-large");
 
   const names: Uint8Array[] = [];
   const parts: Uint8Array[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < count; i++) {
     const entry: unknown = content[i];
-    if (!isPair(entry)) return refuse("core/slot-name");
+    if (!isPair(entry)) return refusal("core/slot-name");
     const slot: unknown = entry[0];
     const bytes: unknown = entry[1];
-    if (typeof slot !== "string" || !SLOT_NAME.test(slot)) return refuse("core/slot-name");
-    if (slot === "atrVersion" || slot === "id" || slot === bindingSlot) return refuse("core/slot-reserved");
-    if (seen.has(slot)) return refuse("core/slot-duplicate");
+    if (typeof slot !== "string" || !SLOT_NAME.test(slot)) return refusal("core/slot-name");
+    if (slot === "atrVersion" || slot === "id" || slot === bindingSlot) return refusal("core/slot-reserved");
+    if (seen.has(slot)) return refusal("core/slot-duplicate");
     seen.add(slot);
-    if (!isBytes(bytes)) return refuse("core/content-not-json");
+    if (!isBytes(bytes)) return refusal("core/content-not-json");
     names.push(utf8.encode(`,${JSON.stringify(slot)}:`));
     parts.push(bytes);
   }
 
   const value = writeJson(bindingValue, 0, true, false);
-  if (value === undefined) return refuse("core/binding-not-json");
+  if (value === undefined) return refusal("core/binding-not-json");
   const head = utf8.encode(`{"atrVersion":"1","id":${JSON.stringify(id)},${JSON.stringify(bindingSlot)}:${value}`);
 
   const sizes = parts.map(byteCount);
   let total = head.length + 1;
   for (let i = 0; i < parts.length; i++) total += names[i]!.length + sizes[i]!;
-  if (total > limit) return refuse("core/too-large");
+  if (total > limit) return refusal("core/too-large");
 
   for (let i = 0; i < parts.length; i++) {
-    if (!isOneJsonValue(parts[i]!, sizes[i]!)) return refuse("core/content-not-json");
+    if (!isOneJsonValue(parts[i]!, sizes[i]!)) return refusal("core/content-not-json");
   }
 
   const out = new Uint8Array(total);
@@ -177,7 +173,7 @@ export async function digestJson(v: Json): Promise<`0x${string}` | CoreRefusal> 
  * primitive written as `JSON.stringify` writes it. Refuses what `digestJson` refuses.
  */
 export function canonicalJson(v: Json): string | CoreRefusal {
-  return writeJson(v, 0, false, true) ?? refuse("core/content-not-json");
+  return writeJson(v, 0, false, true) ?? refusal("core/content-not-json");
 }
 
 /**

@@ -58,7 +58,7 @@ import {
 } from "./evm.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
-import { AGREEMENT_URL, agreementIn, agreementRefusal } from "./internal/agreement.js";
+import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -287,9 +287,12 @@ export function advertiseFor(filter: OptionFilter): X402Advertise {
     const f = isObject(offer) ? filter(offer) : undefined;
     if (f === undefined) return refusal("x402/option-not-this-pairing");
     if (f !== true) return f;
-    if (!isLink(link)) return refusal(isOtherSchemeLink(link) ? "x402/link-not-https" : "x402/legal-context-malformed");
-    const agreementFaulted = agreementRefusal("x402", agreementUrl);
-    if (agreementFaulted !== undefined) return agreementFaulted;
+    if (!isLink(link)) {
+      return isOtherSchemeLink(link) ? refusal("x402/link-not-https") : refusal("x402/legal-context-malformed");
+    }
+    const agreementFaulted = agreementUrlFault(agreementUrl);
+    if (agreementFaulted?.fault === "link-not-https") return refusal("x402/link-not-https");
+    if (agreementFaulted !== undefined) return refusal("x402/legal-context-malformed");
     if (normalHash(h) === null) return refusal("x402/legal-context-malformed");
     const lc = toLegalContext(h, link).legalContext;
     const info = agreementUrl === undefined ? lc : { ...lc, [AGREEMENT_URL]: agreementUrl };
@@ -332,7 +335,8 @@ export function readFor(filter: OptionFilter): (doc: unknown) => X402Read | Refu
     if (isRefusal(lc)) return lc;
     const present = isObject(extensions) ? extensions[LEGAL_CONTEXT] : undefined;
     const agreement = agreementIn(isObject(present) ? present["info"] : undefined);
-    if (typeof agreement === "object") return refusal(`x402/${agreement.fault}`);
+    if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("x402/link-not-https");
+    if (typeof agreement === "object") return refusal("x402/legal-context-malformed");
     const options = (accepts as PaymentRequirements[]).filter((o) => isObject(o) && filter(o) === true);
     if (options.length === 0) return refusal("x402/no-payable-option");
     const offer = { required: doc as PaymentRequired, options };

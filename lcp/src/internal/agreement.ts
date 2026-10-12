@@ -3,7 +3,6 @@
  * in the same object.
  */
 import { isHttpsLink, isOtherSchemeLink } from "../core.js";
-import { refusal, type Refusal } from "../refusal.js";
 
 const MAX_LINK = 2048;
 
@@ -30,9 +29,9 @@ export function agreementFault(url: unknown): AgreementFault {
   return { fault: isOtherSchemeLink(url) ? "link-not-https" : "legal-context-malformed" };
 }
 
-/** Undefined for no agreement URL or an agreement URL; otherwise `<ns>/` and the value's `agreementFault`. */
-export function agreementRefusal(ns: string, url: unknown): Refusal | undefined {
-  return url === undefined || isAgreementUrl(url) ? undefined : refusal(`${ns}/${agreementFault(url).fault}`);
+/** Undefined for no agreement URL or an agreement URL; otherwise the value's `agreementFault`. */
+export function agreementUrlFault(url: unknown): AgreementFault | undefined {
+  return url === undefined || isAgreementUrl(url) ? undefined : agreementFault(url);
 }
 
 /**

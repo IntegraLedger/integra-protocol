@@ -119,3 +119,35 @@ describe("discovery · neither function throws", () => {
     }
   });
 });
+
+// LCP §2.4–§2.5's member tables: a member present with a value that is not of its kind answers
+// `discovery/member-malformed/` and the member's dotted path, the code docs/reference/refusals.md lists for it, from
+// parse and emit alike. 7 is a number, which no member of these kinds takes.
+describe("discovery · a member whose value is not of its kind", () => {
+  const terms = "https://seller.example/terms/v3.md";
+  const paths = [
+    "terms",
+    "termsFormat",
+    "acceptanceRequired",
+    "disputeResolution",
+    "disputeResolution.method",
+    "disputeResolution.jurisdiction",
+    "disputeResolution.contact",
+    "disputeResolution.source",
+    "disputeResolution.catalog",
+    "returns",
+    "contact",
+    "contact.legal",
+    "contact.technical",
+    "api",
+  ];
+  for (const path of paths) {
+    it(path, () => {
+      const [outer, inner] = path.split(".") as [string, string | undefined];
+      const doc: Record<string, unknown> = { terms, [outer]: inner === undefined ? 7 : { [inner]: 7 } };
+      const expected = { refused: true, code: `discovery/member-malformed/${path}` };
+      expect(parse(utf8(JSON.stringify(doc)))).toEqual(expected);
+      expect(emit(doc as unknown as LegalContextDocument)).toEqual(expected);
+    });
+  }
+});

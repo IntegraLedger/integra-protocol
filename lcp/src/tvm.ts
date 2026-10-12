@@ -42,7 +42,6 @@ const peer: typeof TonCore | undefined = await import("@ton/core").then(
   (m) => m,
   () => undefined,
 );
-const PEER_MISSING = "tvm/peer-missing";
 
 /** tvm:<global_id>: tvm:-239 mainnet, tvm:-3 testnet. */
 export type TvmNetwork = `tvm:${number}`;
@@ -147,7 +146,7 @@ const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
 function comment(h: AtrHash): Cell | Refusal {
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("tvm/peer-missing");
   return peer.beginCell().storeUint(0, 32).storeBuffer(Buffer.from(utf8.encode(toLcpString(nh)))).endCell();
 }
 
@@ -170,7 +169,7 @@ function bocOf(c: Cell): string {
  * such as a state init's library code, is left as it is.
  */
 function rootOf(boc: unknown): Cell | Refusal {
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("tvm/peer-missing");
   if (typeof boc !== "string" || boc.length === 0 || !BASE64.test(boc)) return refusal("tvm/boc-malformed");
   const bytes = Buffer.from(boc, "base64");
   if (bytes.length > MAX_BOC_BYTES) return refusal("tvm/boc-too-large");
@@ -436,7 +435,7 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
 
 /** Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. One call. */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("tvm/peer-missing");
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tvm/wrong-reader");
   let tx: TonTx | null;
   try {
@@ -499,7 +498,7 @@ const presentable: OptionFilter = (o) => {
   if (flow !== undefined && flow !== "authorization") return refusal("x402/option-not-this-pairing");
   const m = NETWORK.exec(o.network);
   if (m === null || !Number.isSafeInteger(Number(m[1]))) return refusal("tvm/network-malformed");
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("tvm/peer-missing");
   if (rawAddress(o.asset) === null || rawAddress(o.payTo) === null) return refusal("tvm/option-malformed");
   if (extra?.["areFeesSponsored"] !== true) return refusal("tvm/option-malformed");
   const forwardTon = extra["forwardTonAmount"];
@@ -563,7 +562,7 @@ function carries(option: PaymentRequirements, payload: Cell): boolean {
 
 /** The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
-  if (peer === undefined) return refusal(PEER_MISSING);
+  if (peer === undefined) return refusal("tvm/peer-missing");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, wallet, walletId, seqno, jettonWallet, attachNanotons, now, stateInit } = c;
   const ok = chosen(required, accepted, check);

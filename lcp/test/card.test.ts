@@ -307,6 +307,23 @@ describe("C6 VI Immediate", () => {
     const two = `${jws({ alg: "ES256", typ: "kb-sd-jwt" }, { _sd_alg: "sha-256", delegate_payload: [{ "...": await disclosureDigest(d) }, { "...": VI.printed["D(d3)"] }] })}~${d}~${VI.L3b.split("~")[1]}~`;
     expect(await viImmediate.bound({ l2: two })).toEqual(refused("card/vi-no-checkout-mandate"));
   });
+
+  // The SD-JWT reader under a layer: RFC 9901 sections 4.2.1 and 4.2.2 make each disclosure a base64url-encoded JSON
+  // array, and a payload nested deeper than the package's 64 levels is too large (docs/reference/refusals.md,
+  // card/vi-malformed and card/too-large).
+  it("a disclosure that is not an array is card/vi-malformed; a payload nested too deeply is card/too-large", async () => {
+    const d = VI.L2i.split("~")[1];
+    const ok = { _sd_alg: "sha-256", delegate_payload: [{ "...": await disclosureDigest(d) }] };
+    const notArray = enc({ vct: "mandate.checkout.1" });
+    expect(await viImmediate.bound({ l2: `${jws({ alg: "ES256", typ: "kb-sd-jwt" }, ok)}~${notArray}~` })).toEqual(
+      refused("card/vi-malformed"),
+    );
+    let deep: unknown = 0;
+    for (let i = 0; i < 65; i++) deep = [deep];
+    expect(await viImmediate.bound({ l2: `${jws({ alg: "ES256", typ: "kb-sd-jwt" }, { ...ok, deep })}~${d}~` })).toEqual(
+      refused("card/too-large"),
+    );
+  });
 });
 
 describe("C7 VI Autonomous", () => {

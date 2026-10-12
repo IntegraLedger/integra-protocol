@@ -18,7 +18,7 @@ import {
 import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import { checkoutBinding, checkoutJwtOf, type Presented } from "./ap2.js";
 import type { LcpPattern } from "./index.js";
-import { agreementFault, agreementRefusal, isAgreementUrl } from "./internal/agreement.js";
+import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/agreement.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export const LINK_TYPE = "legal_context";
@@ -66,7 +66,9 @@ export function legalContextLink(c: Checkout): { h: AtrHash; link: string } | Re
   const h = typeof title === "string" ? fromLcpString(title) : null;
   if (h === null) return refusal("ucp/legal-context-malformed");
   const url = entry["url"];
-  if (!isHttpsLink(url)) return refusal(isOtherSchemeLink(url) ? "ucp/link-not-https" : "ucp/legal-context-malformed");
+  if (!isHttpsLink(url)) {
+    return isOtherSchemeLink(url) ? refusal("ucp/link-not-https") : refusal("ucp/legal-context-malformed");
+  }
   if (url.length > MAX_LINK) return refusal("ucp/legal-context-malformed");
   return { h, link: url };
 }
@@ -84,7 +86,9 @@ function agreementLink(c: Checkout): string | undefined | Refusal {
   if (entries.length === 0) return undefined;
   if (entries.length > 1) return refusal("ucp/legal-context-conflict");
   const url = entries[0]!["url"];
-  return isAgreementUrl(url) ? url : refusal(`ucp/${agreementFault(url).fault}`);
+  if (isAgreementUrl(url)) return url;
+  if (agreementFault(url).fault === "link-not-https") return refusal("ucp/link-not-https");
+  return refusal("ucp/legal-context-malformed");
 }
 
 /** The option digest the issuer keeps: SHA-256 over the RFC 8785 form. */
@@ -135,10 +139,13 @@ function advertiseFor(key: "checkout" | "booking") {
     if (isRefusal(c)) return c;
     if (c.id !== (offer as unknown as Record<string, string>)[key]) return refusal("ucp/option-not-this-checkout");
     if (isSigned(c)) return refusal("ucp/already-signed");
-    if (!isHttpsLink(link)) return refusal(isOtherSchemeLink(link) ? "ucp/link-not-https" : "ucp/legal-context-malformed");
+    if (!isHttpsLink(link)) {
+      return isOtherSchemeLink(link) ? refusal("ucp/link-not-https") : refusal("ucp/legal-context-malformed");
+    }
     if (link.length > MAX_LINK) return refusal("ucp/legal-context-malformed");
-    const agreementFaulted = agreementRefusal("ucp", agreementUrl);
-    if (agreementFaulted !== undefined) return agreementFaulted;
+    const agreementFaulted = agreementUrlFault(agreementUrl);
+    if (agreementFaulted?.fault === "link-not-https") return refusal("ucp/link-not-https");
+    if (agreementFaulted !== undefined) return refusal("ucp/legal-context-malformed");
     if (normalHash(h) === null) return refusal("ucp/legal-context-malformed");
     const title = toLcpString(h);
     const links: unknown = c["links"];

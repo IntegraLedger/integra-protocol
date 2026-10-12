@@ -19,7 +19,7 @@ import {
 } from "./core.js";
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
-import { agreementFault, agreementRefusal } from "./internal/agreement.js";
+import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
 import {
@@ -666,9 +666,12 @@ export function place(
   }
   const hash = normalHash(h);
   if (hash === null) return refusal("mpp/challenge-malformed");
-  if (!isLink(link)) return refusal(isOtherSchemeLink(link) ? "mpp/link-not-https" : "mpp/legal-context-malformed");
-  const agreementFaulted = agreementRefusal("mpp", agreementUrl);
-  if (agreementFaulted !== undefined) return agreementFaulted;
+  if (!isLink(link)) {
+    return isOtherSchemeLink(link) ? refusal("mpp/link-not-https") : refusal("mpp/legal-context-malformed");
+  }
+  const agreementFaulted = agreementUrlFault(agreementUrl);
+  if (agreementFaulted?.fault === "link-not-https") return refusal("mpp/link-not-https");
+  if (agreementFaulted !== undefined) return refusal("mpp/legal-context-malformed");
   const checked = checkChallenge(option, false);
   if (isRefusal(checked)) return checked;
   const i = doc.findIndex((c) => sameBound(c, option));
@@ -836,7 +839,10 @@ export function read(
     if (link !== undefined && link !== url) return refusal("mpp/legal-context-conflict");
     const a = map["legalContextAgreementUrl"];
     if (a !== undefined) {
-      if (!isLink(a)) return refusal(`mpp/${agreementFault(a).fault}`);
+      if (!isLink(a)) {
+        if (agreementFault(a).fault === "link-not-https") return refusal("mpp/link-not-https");
+        return refusal("mpp/legal-context-malformed");
+      }
       if (agreement !== undefined && agreement !== a) return refusal("mpp/legal-context-conflict");
       agreement = a;
     }
@@ -845,7 +851,9 @@ export function read(
     challenges.push(c);
   }
   if (h === undefined || link === undefined) {
-    return refusal(notHttps ? "mpp/link-not-https" : malformedLink ? "mpp/legal-context-malformed" : "mpp/no-legal-context");
+    if (notHttps) return refusal("mpp/link-not-https");
+    if (malformedLink) return refusal("mpp/legal-context-malformed");
+    return refusal("mpp/no-legal-context");
   }
   return agreement === undefined ? { h, link, offer: { challenges } } : { h, link, agreement, offer: { challenges } };
 }

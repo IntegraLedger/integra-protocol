@@ -2,18 +2,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Json } from "../src/core.js";
-import { b64urlDecode, b64urlEncode, disclosureDigest, readSdJwt, type SdJwtCodes } from "../src/sd-jwt.js";
+import { refusal } from "../src/refusal.js";
+import { b64urlDecode, b64urlEncode, disclosureDigest, readSdJwt, type SdJwtRefusals } from "../src/sd-jwt.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/sd-jwt.json", import.meta.url), "utf8"));
-const CODES: SdJwtCodes = {
-  malformed: "malformed",
-  sdAlgUnsupported: "sd-alg-unsupported",
-  unreferenced: "unreferenced",
-  tooLarge: "too-large",
+const REFUSALS: SdJwtRefusals = {
+  malformed: () => refusal("malformed"),
+  sdAlgUnsupported: () => refusal("sd-alg-unsupported"),
+  unreferenced: () => refusal("unreferenced"),
+  tooLarge: () => refusal("too-large"),
 };
 
 const read = async (p: string) => {
-  const r = await readSdJwt(p, CODES);
+  const r = await readSdJwt(p, REFUSALS);
   if ("refused" in r) throw new Error(r.code);
   return r;
 };
@@ -35,7 +36,7 @@ describe("sd-jwt.json", () => {
   });
 
   it("C6 plant: a substituted disclosure the signed payload does not reference is refused", async () => {
-    const r = await readSdJwt(V.C6plant.presentation, CODES);
+    const r = await readSdJwt(V.C6plant.presentation, REFUSALS);
     expect(r).toEqual({ refused: true, code: V.C6plant.expect });
     expect(JSON.stringify(r)).not.toContain(V.C6plant.E.slice(2));
   });

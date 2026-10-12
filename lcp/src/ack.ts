@@ -17,7 +17,7 @@ import {
   type Json,
 } from "./core.js";
 import { isObject, jsonBytes, normalHash } from "./fields.js";
-import { agreementIn, agreementRefusal } from "./internal/agreement.js";
+import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { refusal, type Refusal } from "./refusal.js";
 import { decodeJsonSegment, jwsSegments, withinDepth } from "./sd-jwt.js";
 import type { LcpPattern } from "./x402.js";
@@ -70,10 +70,13 @@ function advertise(
   if (!isObject(offer) || typeof offer["id"] !== "string" || offer["id"] === "") return refusal("ack/option-malformed");
   const nh = normalHash(h);
   if (nh === null) return refusal("ack/legal-context-malformed");
-  if (!isHttpsLink(link)) return refusal(isOtherSchemeLink(link) ? "ack/link-not-https" : "ack/legal-context-malformed");
+  if (!isHttpsLink(link)) {
+    return isOtherSchemeLink(link) ? refusal("ack/link-not-https") : refusal("ack/legal-context-malformed");
+  }
   if (link.length > MAX_LINK) return refusal("ack/legal-context-malformed");
-  const agreementFaulted = agreementRefusal("ack", agreementUrl);
-  if (agreementFaulted !== undefined) return agreementFaulted;
+  const agreementFaulted = agreementUrlFault(agreementUrl);
+  if (agreementFaulted?.fault === "link-not-https") return refusal("ack/link-not-https");
+  if (agreementFaulted !== undefined) return refusal("ack/legal-context-malformed");
   const lc = toLegalContext(nh, link).legalContext;
   return {
     paymentRequestId: toLcpString(nh),
@@ -112,7 +115,8 @@ function read(
   if (decoded.url.length > MAX_LINK) return refusal("ack/legal-context-malformed");
   if (!hashEquals(signed, decoded.h)) return refusal("ack/legal-context-conflict");
   const agreement = agreementIn(lc);
-  if (typeof agreement === "object") return refusal(`ack/${agreement.fault}`);
+  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("ack/link-not-https");
+  if (typeof agreement === "object") return refusal("ack/legal-context-malformed");
   const options = payload["paymentOptions"];
   if (!Array.isArray(options)) return refusal("ack/token-malformed");
   if (options.length > MAX_OPTIONS) return refusal("ack/too-large");
