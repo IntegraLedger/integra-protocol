@@ -362,7 +362,8 @@ the core's `hash` over `from`, `to` and `amount` as three 32-byte big-endian wor
 > **starknetLandedNonce**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The nonce that landed in the named transaction for this transfer, for a party holding the ATR to compare with the
-hash's low 250 bits. It is found by the transfer's identity on `ref.asset`, not by the recorded nonce.
+hash's low 250 bits: the nonce of the `execute_from_outside_v2` below which, at any depth, a `transfer` call on
+`ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce.
 
 #### Parameters
 
@@ -383,10 +384,11 @@ hash's low 250 bits. It is found by the transfer's identity on `ref.asset`, not 
 
 Reads the named transaction's receipt. A `SUCCEEDED` receipt must emit exactly one `Transfer` event from
 `ref.asset` whose sender is `ref.from`, and that transfer must have this payment's identity, else failed
-`not-this-instrument`. Then its trace must hold exactly one `execute_from_outside_v2` whose calldata carries this
-nonce and whose direct call is `transfer` on `ref.asset` with this identity, no invocation on the path to either
-having reverted. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout, or a
-reader for another network is pending. Two calls.
+`not-this-instrument`. Then its trace must hold exactly one `transfer` call on `ref.asset` with this identity
+nested, at any depth, below an `execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path
+to either having reverted. A call below such a `transfer` is the token's own execution of it (a library call
+repeats the frame) and is not read as another transfer. A failed read, a malformed answer, an asset `Transfer` event
+of neither standard layout, or a reader for another network is pending. Two calls.
 
 #### Parameters
 
