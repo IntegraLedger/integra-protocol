@@ -50,7 +50,8 @@ The payload x402's Cardano scheme defines.
 
 ### CardanoReader
 
-Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`. `slotAt` answers
+the slot of the block at a height, or null when the indexer holds no block at it.
 
 #### Properties
 
@@ -59,6 +60,20 @@ Bounded, read-only calls against one network's indexer. Every failure rejects wi
 | <a id="property-network"></a> `network` | `readonly` | [`CardanoNetwork`](#cardanonetwork) |
 
 #### Methods
+
+##### slotAt()
+
+> **slotAt**(`blockHeight`): `Promise`\<`bigint` \| `null`\>
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `blockHeight` | `bigint` |
+
+###### Returns
+
+`Promise`\<`bigint` \| `null`\>
 
 ##### tip()
 
@@ -152,7 +167,7 @@ Bounded, read-only calls against one network's indexer. Every failure rejects wi
 
 ### exactCardano
 
-> `const` **exactCardano**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoUnsigned`](#cardanounsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/cardano"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoRef`](#cardanoref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CardanoStatus`](#cardanostatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCardano**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoUnsigned`](#cardanounsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/cardano"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoRef`](#cardanoref)\>; `status`: (`ref`, `reader`, `depth`) => `Promise`\<[`CardanoStatus`](#cardanostatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -242,10 +257,15 @@ Reads the hash back from the included transaction alone, by its id. One call.
 
 ### cardanoStatus()
 
-> **cardanoStatus**(`ref`, `reader`): `Promise`\<[`CardanoStatus`](#cardanostatus)\>
+> **cardanoStatus**(`ref`, `reader`, `depth`): `Promise`\<[`CardanoStatus`](#cardanostatus)\>
 
-Reads the recorded id. A failed read, or a reader for another network, is pending. An absent transaction is
-expired once the tip's slot is past its TTL; a present one fails only when the ledger marks it invalid. Two calls.
+Reads the recorded id. A failed read, or a reader for another network, is pending. `depth` is the number of newer
+blocks at which the caller takes a settlement as final. An absent transaction is expired once the slot of the block
+`depth` below the tip is past its TTL, so a rollback of fewer than `depth` blocks never turns a payment that landed
+into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, or the
+reader holds no block at that height, it is pending `not-found`. A present one fails only when the ledger marks it
+invalid. A `depth` that is not a non-negative bigint is pending `unreadable`. At most three calls: `slotAt` only for
+an absent transaction once the tip's slot is past the TTL, and not at `depth` 0, where the tip is that block.
 
 #### Parameters
 
@@ -253,6 +273,7 @@ expired once the tip's slot is past its TTL; a present one fails only when the l
 | ------ | ------ |
 | `ref` | [`CardanoRef`](#cardanoref) |
 | `reader` | [`CardanoReader`](#cardanoreader) |
+| `depth` | `bigint` |
 
 #### Returns
 

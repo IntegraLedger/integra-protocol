@@ -1,5 +1,6 @@
 // Expected values come from vectors/x402-exact-cardano.json: cbor2 and pycardano encodings, a real preprod
-// transaction read through Koios, and Python's hashlib Blake2b digests. Nothing here is a snapshot of this code.
+// transaction read through Koios, Python's hashlib Blake2b digests, and x402's Cardano scheme for the TTL and the
+// confirmation depth. Nothing here is a snapshot of this code.
 import { describe, expect, it } from "vitest";
 import type { AtrHash } from "../src/core.js";
 import { readFileSync } from "node:fs";
@@ -21,6 +22,7 @@ const H: `0x${string}` = V.fixed.H;
 const O = V.fixed.O;
 const LINK: string = V.fixed.link;
 const TX: Record<string, string> = { V2: V.V2.transactionBase64, V3: V.V3.transactionBase64 };
+const DEPTH = BigInt(V.V5.depth);
 
 function payment(transaction: string, accepted = O): CardanoPaymentPayload {
   return { x402Version: 2, accepted, payload: { transaction, nonce: V.fixed.nonce } };
@@ -33,19 +35,27 @@ function bytesOf(b64: string): Uint8Array {
 type Tip = { blockHeight: string; slot: string };
 type OnChain = { blockHeight: string; slot: string; valid: boolean } | null;
 
+/** A scripted reader. `slotAt` answers `deep`'s slot at `deep`'s height, and null (no block held) at any other. */
 function reader(
   tip: Tip,
   tx: OnChain | "error",
   cbor?: string,
   network = "cardano:preprod",
-): CardanoReader & { calls: number } {
+  deep?: Tip,
+): CardanoReader & { calls: number; heights: bigint[] } {
   const r = {
     network: network as CardanoReader["network"],
     calls: 0,
+    heights: [] as bigint[],
     async tip() {
       r.calls++;
       if (tx === "error") throw new ReaderError("timeout");
       return { blockHeight: BigInt(tip.blockHeight), slot: BigInt(tip.slot) };
+    },
+    async slotAt(blockHeight: bigint) {
+      r.calls++;
+      r.heights.push(blockHeight);
+      return deep !== undefined && BigInt(deep.blockHeight) === blockHeight ? BigInt(deep.slot) : null;
     },
     async transaction(_id: `0x${string}`, withCbor: boolean) {
       r.calls++;
@@ -142,14 +152,51 @@ describe("V4 · refusals", () => {
 describe("V5 · status and recover", () => {
   for (const row of V.V5.status) {
     it(`status: ${row.case}`, async () => {
-      const r = reader(row.tip ?? V.V5.tip, row.readerError ? "error" : row.tx);
-      expect(plain(await exactCardano.status(refOf(V.V5.ref), r))).toEqual(row.expect);
-      expect(r.calls).toBeLessThanOrEqual(2);
+      const r = reader(row.tip ?? V.V5.tip, row.readerError ? "error" : row.tx, undefined, undefined, row.deep);
+      expect(plain(await exactCardano.status(refOf(V.V5.ref), r, DEPTH))).toEqual(row.expect);
+      expect(r.calls).toBeLessThanOrEqual(3);
     });
   }
   it("status: a reader for another network is unreadable", async () => {
     const r = reader(V.V5.tip, V.V5.status[0].tx, undefined, "cardano:preview");
-    expect(await exactCardano.status(refOf(V.V5.ref), r)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactCardano.status(refOf(V.V5.ref), r, DEPTH)).toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  // The block `depth` below the tip decides expiry; above it a block can still be rolled back (x402's Cardano scheme),
+  // so an absent transaction whose expiry that block does not show is pending not-found.
+  const PAST = { blockHeight: "5216538", slot: "134620400" };
+  it("status: slotAt is read only for an absent transaction once the tip's slot is past the TTL", async () => {
+    const included = reader(PAST, V.V5.status[0].tx);
+    expect(plain(await exactCardano.status(refOf(V.V5.ref), included, DEPTH))).toEqual(V.V5.status[0].expect);
+    const early = reader(V.V5.tip, null);
+    expect(await exactCardano.status(refOf(V.V5.ref), early, DEPTH)).toEqual({ state: "pending", why: "not-found" });
+    expect([included.heights, early.heights]).toEqual([[], []]);
+  });
+  it("status: a tip fewer than depth blocks high, or no block held at that height, is pending not-found", async () => {
+    const low = reader({ blockHeight: "19", slot: "134620400" }, null);
+    expect(await exactCardano.status(refOf(V.V5.ref), low, DEPTH)).toEqual({ state: "pending", why: "not-found" });
+    expect(low.heights).toEqual([]);
+    const none = reader(PAST, null);
+    expect(await exactCardano.status(refOf(V.V5.ref), none, DEPTH)).toEqual({ state: "pending", why: "not-found" });
+    expect(none.heights).toEqual([5216518n]);
+  });
+  it("status: depth 0 reads expiry at the tip's own slot, with no slotAt call", async () => {
+    const r = reader(PAST, null);
+    expect(await exactCardano.status(refOf(V.V5.ref), r, 0n)).toEqual({ state: "failed", why: "expired" });
+    expect(r.heights).toEqual([]);
+  });
+  // The interface: a failed read is pending `unreadable`, and so is a call or an answer outside its types.
+  it("status: a failed or malformed slotAt, or a depth that is not a non-negative bigint, is unreadable", async () => {
+    const unreadable = { state: "pending", why: "unreadable" };
+    const failing = { ...reader(PAST, null), slotAt: async () => Promise.reject(new ReaderError("timeout")) };
+    expect(await exactCardano.status(refOf(V.V5.ref), failing, DEPTH)).toEqual(unreadable);
+    const malformed = { ...reader(PAST, null), slotAt: async () => "134620001" as never };
+    expect(await exactCardano.status(refOf(V.V5.ref), malformed, DEPTH)).toEqual(unreadable);
+    for (const depth of [undefined, 20, "20", -1n]) {
+      const r = reader(PAST, null);
+      expect(await exactCardano.status(refOf(V.V5.ref), r, depth as never)).toEqual(unreadable);
+      expect(r.calls).toBe(0);
+    }
   });
   for (const row of V.V5.recover) {
     it(`recover: ${row.case}`, async () => {

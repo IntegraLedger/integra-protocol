@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/cardano pairing: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29\u2026c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder. The V4 rows that carry auxiliaryDataHex were built with cbor2 5.7.1 and hashlib on Python 3.12.3: V2's body with key 7 set to the Blake2b-256 of the hand-assembled auxiliary data given, signed by the Ed25519 key of seed 00x32 (pycardano 0.19.2). CIP-20 lines are compared as their UTF-8 bytes: a repeated key in label 674's map, a repeated label 674, more than one line that reads as the marker when case and a leading byte-order mark (U+FEFF) are ignored, and a marker line not in lower case are each refused, because readers that keep the last of repeated keys (cborg 6.1.2's default decode) or strip a leading byte-order mark would read those messages another way; cborg 6.1.2 with rejectDuplicateMapKeys refuses each repeated-key row.",
+ "about": "Vectors for the x402/exact/cardano pairing: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29\u2026c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder. The V4 rows that carry auxiliaryDataHex were built with cbor2 5.7.1 and hashlib on Python 3.12.3: V2's body with key 7 set to the Blake2b-256 of the hand-assembled auxiliary data given, signed by the Ed25519 key of seed 00x32 (pycardano 0.19.2). CIP-20 lines are compared as their UTF-8 bytes: a repeated key in label 674's map, a repeated label 674, more than one line that reads as the marker when case and a leading byte-order mark (U+FEFF) are ignored, and a marker line not in lower case are each refused, because readers that keep the last of repeated keys (cborg 6.1.2's default decode) or strip a leading byte-order mark would read those messages another way; cborg 6.1.2 with rejectDuplicateMapKeys refuses each repeated-key row. V5's status rows read at depth 20, the newer blocks at which the caller takes a settlement as final (x402's Cardano scheme: \"`1..20` means that at least that many newer canonical blocks exist\"; \"A transaction that appears in the mempool or even in a recent block can be rolled back\"). An absent transaction is expired only once the block that depth below the tip, whose slot the reader answers by height (deep), is past the TTL slot (\"Once the transaction's validity window has closed without the ledger recording it, it can no longer land\").",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -131,6 +131,7 @@
    "blockHeight": "5216538",
    "slot": "134617495"
   },
+  "depth": "20",
   "status": [
    {
     "case": "in block 5216518, valid",
@@ -166,9 +167,29 @@
     }
    },
    {
-    "case": "null with tip slot 134620001",
+    "case": "null with tip slot 134620400, the block 20 below the tip at slot 134620000, not past the TTL",
     "tip": {
      "blockHeight": "5216538",
+     "slot": "134620400"
+    },
+    "deep": {
+     "blockHeight": "5216518",
+     "slot": "134620000"
+    },
+    "tx": null,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "null with tip slot 134620400, the block 20 below the tip at slot 134620001, past the TTL",
+    "tip": {
+     "blockHeight": "5216538",
+     "slot": "134620400"
+    },
+    "deep": {
+     "blockHeight": "5216518",
      "slot": "134620001"
     },
     "tx": null,

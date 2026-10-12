@@ -43,10 +43,14 @@ export interface CardanoOnChain {
   cbor?: Uint8Array;
 }
 
-/** Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`. `slotAt` answers
+ * the slot of the block at a height, or null when the indexer holds no block at it.
+ */
 export interface CardanoReader {
   readonly network: CardanoNetwork;
   tip(): Promise<{ blockHeight: bigint; slot: bigint }>;
+  slotAt(blockHeight: bigint): Promise<bigint | null>;
   transaction(txId: Hex, withCbor: boolean): Promise<CardanoOnChain | null>;
 }
 
@@ -130,25 +134,36 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
 }
 
 /**
- * Reads the recorded id. A failed read, or a reader for another network, is pending. An absent transaction is
- * expired once the tip's slot is past its TTL; a present one fails only when the ledger marks it invalid. Two calls.
+ * Reads the recorded id. A failed read, or a reader for another network, is pending. `depth` is the number of newer
+ * blocks at which the caller takes a settlement as final. An absent transaction is expired once the slot of the block
+ * `depth` below the tip is past its TTL, so a rollback of fewer than `depth` blocks never turns a payment that landed
+ * into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, or the
+ * reader holds no block at that height, it is pending `not-found`. A present one fails only when the ledger marks it
+ * invalid. A `depth` that is not a non-negative bigint is pending `unreadable`. At most three calls: `slotAt` only for
+ * an absent transaction once the tip's slot is past the TTL, and not at `depth` 0, where the tip is that block.
  */
-export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader): Promise<CardanoStatus> {
+export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, depth: bigint): Promise<CardanoStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
   if (reader.network !== ref.network) return unreadable;
   const ttlSlot = typeof ref.ttlSlot === "string" && DECIMAL.test(ref.ttlSlot) ? BigInt(ref.ttlSlot) : undefined;
   if (ttlSlot === undefined) return unreadable;
+  if (typeof depth !== "bigint" || depth < 0n) return unreadable;
+  const notFound = { state: "pending", why: "not-found" } as const;
   try {
     const tip = await reader.tip();
     if (!isObject(tip) || typeof tip.blockHeight !== "bigint" || typeof tip.slot !== "bigint") return unreadable;
     const tx = await reader.transaction(ref.txId, false);
     if (tx === null) {
-      return tip.slot > ttlSlot ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+      if (tip.slot <= ttlSlot || tip.blockHeight < depth) return notFound;
+      const slot = depth === 0n ? tip.slot : await reader.slotAt(tip.blockHeight - depth);
+      if (slot === null) return notFound;
+      if (typeof slot !== "bigint") return unreadable;
+      return slot > ttlSlot ? { state: "failed", why: "expired" } : notFound;
     }
     if (!isOnChain(tx)) return unreadable;
     if (!tx.valid) return { state: "failed", why: "phase-2-invalid" };
-    const depth = tip.blockHeight - tx.blockHeight;
-    return { state: "settled", confirmations: depth > 0n ? depth : 0n, blockHeight: tx.blockHeight };
+    const confirmations = tip.blockHeight - tx.blockHeight;
+    return { state: "settled", confirmations: confirmations > 0n ? confirmations : 0n, blockHeight: tx.blockHeight };
   } catch {
     return unreadable;
   }

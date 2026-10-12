@@ -163,6 +163,11 @@ On Sui, a node keeps only recent history, so an absent transaction can be one th
 the payment is requested, and answers failed `expired` only when the epoch is past the transaction's bound and the
 endpoint holds transactions from that checkpoint or earlier; otherwise an absent transaction is pending `not-found`.
 
+On Cardano, a recent block can still be rolled back. `cardanoStatus(ref, reader, depth)` takes the number of newer
+blocks at which you take a settlement as final, and answers failed `expired` only when the block that many blocks below
+the tip is past the transaction's TTL, so a rollback above that depth leaves a payment that landed pending `not-found`,
+never failed.
+
 A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
 time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
 payment up, so a payment that lands between the two reads, or a reader whose sources disagree between them, never
@@ -180,7 +185,7 @@ transfer lands, however late, because an internal message carries no expiry.
 | Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
 | Algorand | `AvmReader` | the Indexer's transaction search by id | the confirmed round |
 | Aptos | `AptosReader` | the transaction by hash, the sender's transaction by sequence number, the ledger info | the version |
-| Cardano | `CardanoReader` | the chain tip, the transaction by id | the confirmations |
+| Cardano | `CardanoReader` | the chain tip, the transaction by id, the slot of the block at a height | the confirmations |
 | Casper | `CasperReader` | `info_get_transaction` | the finalized block height |
 | Concordium | `CcdReader` | gRPC `GetBlockItemStatus` | `finalized` |
 | NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` | `final` when the status is `FINAL`, else `optimistic` |
