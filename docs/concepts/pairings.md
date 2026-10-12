@@ -26,7 +26,7 @@ nothing of that pairing. The types differ per surface; the roles do not.
 | `unplaced(option)` | seller | The option as the seller issued it, before the pairing's carrier was placed in it. |
 | `tie(...)` | seller | The ATR's binding slot: `[slot, value]`, the values that tie the record to this payment. |
 | `advertise(doc, h, link, offer, agreementUrl?)` | seller | A copy of the challenge or checkout with H, the link and, where the pairing has one, the carrier placed. |
-| `read(doc)` | buyer | H, the link, the agreement URL when one is present, and the options this pairing can pay, from an advertised document. |
+| `read(doc)` | buyer | H, the link, the agreement URL when one is present, and the options from an advertised document: on x402, those this pairing can pay; on MPP, every challenge, whatever its method, and `build` refuses another method's challenge. |
 | `build(choice, h)` | buyer | What the buyer's signer signs, with H in its place, and a `complete` that turns the signature into the payment. |
 | `bound(presented)` | seller | H as it appears in what the buyer presented. |
 
@@ -82,8 +82,8 @@ ack acp ap2 card mpp ucp x402
 
 ## What no pairing serves
 
-`pairingOf` returns `undefined` for an option no pairing serves, and each pairing's `read` refuses a document in
-which it can pay no option (`x402/no-payable-option` on x402). Where a protocol gives the buyer nothing to sign, the
+`pairingOf` returns `undefined` for an option no pairing serves, and each x402 pairing's `read` refuses a document in
+which it can pay no option (`x402/no-payable-option`). Where a protocol gives the buyer nothing to sign, the
 pairing says so instead of inventing a place: ACK's `build` and `bound` refuse `ack/no-signed-place`.
 
 ## Next
