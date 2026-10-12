@@ -34,6 +34,7 @@ import {
   txIdText,
 } from "../src/hedera.js";
 import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
+import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -346,5 +347,14 @@ describe("near", () => {
     ["nearStatus", nearStatus, "x402-exact-near.json", UNREADABLE],
     ["nearRecover", nearRecover, "x402-exact-near.json", refused("near/wrong-reader")],
     ["nearLapsed", nearLapsed, "x402-exact-near.json", false],
+  ]);
+});
+
+describe("polkadot", () => {
+  const file = "x402-exact-polkadot-lcp-assets-remark.json";
+  reads([
+    ["polkadotStatus", polkadotStatus, file, UNREADABLE],
+    ["polkadotRecover", polkadotRecover, file, refused("polkadot/wrong-reader")],
+    ["polkadotLocate", polkadotLocate, file, refused("polkadot/wrong-reader"), 0n, 1n],
   ]);
 });

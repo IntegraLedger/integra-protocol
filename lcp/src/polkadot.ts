@@ -217,9 +217,7 @@ export function encodeProfileCall(c: ProfileCall): Uint8Array {
   // Each member is read once, so what is checked is what is encoded.
   const { assetId, dest, amount, remark } = c;
   if (
-    !Number.isSafeInteger(assetId) ||
-    assetId < 0 ||
-    BigInt(assetId) >= U32_LIMIT ||
+    !isAssetId(assetId) ||
     !(dest instanceof Uint8Array) ||
     dest.length !== 32 ||
     typeof amount !== "bigint" ||
@@ -290,7 +288,10 @@ export function splitSigned(xt: Uint8Array): { signer: Uint8Array; end: number }
   return { signer, end: at + 1 + size };
 }
 
-/** BLAKE2b-256 of the extrinsic's bytes, its length prefix included. */
+/**
+ * BLAKE2b-256 of the extrinsic's bytes, its length prefix included. Throws TypeError when `xt` is not a
+ * `Uint8Array`.
+ */
 export function extrinsicHash(xt: Uint8Array): Hex {
   return toHex(blake256(xt));
 }
@@ -461,6 +462,11 @@ function remarked(x: PolkadotExtrinsic, remark: Uint8Array): boolean {
   return hasEvent(x, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash));
 }
 
+/** An asset id as the call encodes it and `reference` writes it: an integer from 0 below 2^32. */
+function isAssetId(n: unknown): n is number {
+  return Number.isSafeInteger(n) && (n as number) >= 0 && BigInt(n as number) < U32_LIMIT;
+}
+
 /** A `Transferred` event of the asset: its `data[0]` is the asset id, in decimal. */
 function transferred(x: PolkadotExtrinsic, assetId: number): boolean {
   const asset = String(assetId);
@@ -515,13 +521,17 @@ async function finalRecord(
  * is above the finalized height. When the finalized chain holds another block at that height, the extrinsic at the
  * same index of the canonical block is read instead if its hash is the recorded one; otherwise the answer is pending
  * `not-located`. A block the reader does not have is pending `not-found`. A failed read, a bare broadcast hash or a
- * reader for another network is pending.
+ * reader for another network is pending. A ref whose `extrinsicHash` is not `0x` and 64 hex digits, or whose `assetId`
+ * is not an integer from 0 below 2^32, is pending `unreadable`, with nothing read.
  */
 export async function polkadotStatus(
   ref: PolkadotRef & { h: AtrHash; transaction: string },
   reader: PolkadotReader,
 ): Promise<PolkadotStatus> {
-  if (!isObject(reader) || reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (normalHash(ref.extrinsicHash) === null || !isAssetId(ref.assetId)) return { state: "pending", why: "unreadable" };
   if (typeof ref.transaction !== "string") return { state: "pending", why: "unreadable" };
   if (BARE_HASH.test(ref.transaction)) return { state: "pending", why: "not-located" };
   const tp = TIMEPOINT.exec(ref.transaction);
@@ -565,7 +575,7 @@ export async function polkadotRecover(
   ref: { network: PolkadotNetwork; transaction: string },
   reader: PolkadotReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(reader) || reader.network !== ref.network) return refusal("polkadot/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("polkadot/wrong-reader");
   const tp = typeof ref.transaction === "string" ? TIMEPOINT.exec(ref.transaction) : null;
   if (tp === null) return refusal("polkadot/transaction-malformed");
   const block = tp[1]! as Hex;
@@ -602,7 +612,8 @@ export async function polkadotRecover(
  * Finds a payment nobody named, by hashing every extrinsic of each block from `from` to `to` (at most 256 blocks).
  * The first match gives its timepoint, once the block's record at that index has the recorded extrinsic hash. A block
  * that does not exist, or a record at the matched index with another hash (the block at that height changed between
- * the two reads), ends the scan with null.
+ * the two reads), ends the scan with null. A ref or reader that is not an object, a reader for another network, or a
+ * ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reader`, with nothing read.
  */
 export async function polkadotLocate(
   ref: PolkadotRef,
@@ -610,7 +621,9 @@ export async function polkadotLocate(
   from: bigint,
   to: bigint,
 ): Promise<string | null | Refusal> {
-  if (!isObject(reader) || reader.network !== ref.network) return refusal("polkadot/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network || normalHash(ref.extrinsicHash) === null) {
+    return refusal("polkadot/wrong-reader");
+  }
   if (typeof from !== "bigint" || typeof to !== "bigint" || from < 0n || to < from || to - from > MAX_RANGE) {
     return refusal("polkadot/range");
   }

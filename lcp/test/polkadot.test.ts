@@ -164,6 +164,34 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     }
   });
 
+  it("V4: a ref whose extrinsic hash or asset id is not of the form reference writes is pending unreadable, with nothing read", async () => {
+    const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
+    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100" })))).toEqual(V.V4.status[0].expect);
+    for (const [k, v] of [["extrinsicHash", null], ["extrinsicHash", "0x12"], ["assetId", null], ["assetId", "1337"], ["assetId", -1]] as const) {
+      let reads = 0;
+      const counted = new Proxy(readerOf({ finalized: "100" }), {
+        get: (t, p) => (p === "network" ? t.network : (...a: never[]) => (reads++, (t as never as Record<string, (...x: never[]) => unknown>)[p as string]!(...a))),
+      });
+      expect(await polkadotStatus({ ...ref, [k]: v } as never, counted), `${k} ${String(v)}`).toEqual({ state: "pending", why: "unreadable" });
+      expect(reads, `${k} ${String(v)}`).toBe(0);
+    }
+  });
+
+  it("V4: locate refuses a ref whose extrinsic hash is not 0x and 64 hex digits as polkadot/wrong-reader, with nothing read", async () => {
+    const found = V.V4.locate[0];
+    const range = [BigInt(found.from), BigInt(found.to)] as const;
+    expect(await polkadotLocate(V.V4.reference, readerOf({ finalized: "100" }), ...range)).toBe(found.expect);
+    for (const v of [undefined, null, 1, "0x12", V.V4.reference.extrinsicHash.slice(2)]) {
+      let reads = 0;
+      const counted = new Proxy(readerOf({ finalized: "100" }), {
+        get: (t, p) => (p === "network" ? t.network : (...a: never[]) => (reads++, (t as never as Record<string, (...x: never[]) => unknown>)[p as string]!(...a))),
+      });
+      const got = await polkadotLocate({ ...V.V4.reference, extrinsicHash: v } as never, counted, ...range);
+      expect(got, String(v)).toEqual({ refused: true, code: "polkadot/wrong-reader" });
+      expect(reads, String(v)).toBe(0);
+    }
+  });
+
   it("V4: recover and locate", async () => {
     const reader = readerOf({ finalized: "100" });
     const transaction = `${V.V4.block}-${V.V4.index}`;
