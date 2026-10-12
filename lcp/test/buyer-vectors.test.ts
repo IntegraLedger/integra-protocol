@@ -1,11 +1,13 @@
-// The lcp half of buyer.json's rows for the agreement option, content codings, Stellar builds and mpp/session/xrpl
-// amounts: each fixture is what its row says it is, and each build the rows name refuses with the row's code before
-// anything reaches a signer. The gates run the whole rows. Every expected value is the file's.
+// The lcp half of buyer.json's rows for the agreement option and its PAYMENT-REQUIRED header, content codings, Stellar
+// builds, mpp/session/xrpl amounts and the within challenge's opaque: each fixture is what its row says it is, and each
+// build the rows name refuses with the row's code before anything reaches a signer. The gates run the whole rows.
+// Every expected value is the file's.
 import { readFileSync } from "node:fs";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { hash, hashEquals, pairingOf, type AtrHash } from "../src/index.js";
-import { chargeStellar, type MppChallenge } from "../src/mpp.js";
+import { hash, hashEquals, pairingOf, toLcpString, type AtrHash } from "../src/index.js";
+import { chargeStellar, pairingsOf, sessionResume, sessionTempo, type MppChallenge } from "../src/mpp.js";
+import { decodeStringMap } from "../src/mpp-challenge.js";
 import { isRefusal } from "../src/refusal.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
@@ -49,6 +51,28 @@ describe("buyer.json: the agreement option the gate asks approval for", () => {
     const r = row("BA10");
     expect(r.input.advanceMs).toBe((OPTION.maxTimeoutSeconds + 180) * 1000);
     expect(r.expect.paidRequests).toBe(r.input.advanceMs / 1000 / Number(r.input.agreement[1].retryAfter));
+  });
+});
+
+describe("buyer.json BA13: a PAYMENT-REQUIRED without its pad characters is not base64 (RFC 4648 section 3.2)", () => {
+  // RFC 4648 section 4: every quantum of four characters, the last ending in "==" or "=" where the data ends short.
+  const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+  const padded = Buffer.from(JSON.stringify(AG.required), "utf8").toString("base64");
+
+  it("requiredUnpadded is required's base64 with its two trailing pad characters removed", () => {
+    expect(padded.endsWith("==")).toBe(true);
+    expect(AG.requiredUnpadded).toBe(padded.slice(0, -2));
+    expect(BASE64.test(padded)).toBe(true);
+    expect(AG.requiredUnpadded.length % 4).toBe(2);
+    expect(BASE64.test(AG.requiredUnpadded)).toBe(false);
+    expect(JSON.parse(Buffer.from(`${AG.requiredUnpadded}==`, "base64").toString("utf8"))).toEqual(AG.required);
+  });
+
+  it("BA13's 402 sends it as the header, and the gate declines agreement-failed with nothing signed or paid", () => {
+    const r = row("BA13");
+    expect(r.input.agreement).toEqual([{ status: 402, paymentRequiredHeader: "requiredUnpadded" }]);
+    expect(r.input.approve).toBeUndefined();
+    expect(r.expect).toEqual({ decline: "agreement-failed", signCalls: 0, agreementFetches: 1, paidRequests: 0 });
   });
 });
 
@@ -138,4 +162,81 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with
       }
     });
   }
+});
+
+describe("buyer.json BW1 and BW2: the within challenge's opaque, a map whose every value is a string", () => {
+  const T = load("mpp-session-tempo.json");
+  const opening = T.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented;
+  const hold = row("BW1").input.hold as { opening: string; atrHex: string; network: string; channel: string };
+  const control = row("BW1").control.input as { opaqueText: string; doc: MppChallenge[] };
+  const docs: { name: string; opaqueText: string; doc: MppChallenge[] }[] = [
+    { name: "BW1", opaqueText: row("BW1").input.opaqueText, doc: row("BW1").input.doc },
+    ...(row("BW2").input.cases as { case: string; opaqueText: string; doc: MppChallenge[] }[]).map((c) => ({
+      name: `BW2, ${c.case}`,
+      opaqueText: c.opaqueText,
+      doc: c.doc,
+    })),
+  ];
+  // lcp's code for an opaque that is not a flat string map, the refusal mpp-challenge.json agrees for pairingsOf.
+  const OPAQUE_MALFORMED = "mpp/opaque-malformed";
+  // RFC 8785 for these values: object members in code-unit order, no whitespace, integers and ASCII strings as written.
+  const jcs = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(jcs)
+      : typeof v === "object" && v !== null
+        ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, jcs((v as Record<string, unknown>)[k])]))
+        : v;
+
+  it("the hold is the channel mpp-session-tempo.json's B6 opens for the ATR atrHex", async () => {
+    expect(hold.opening).toBe("mpp-session-tempo.json buyer row B6, input.presented");
+    expect(await sessionTempo.channel.kind(opening)).toBe("open");
+    expect(hashEquals((await sessionTempo.bound(opening)) as string, await hash(fromHex(hold.atrHex)))).toBe(true);
+    expect(await sessionTempo.channel.ref(opening)).toEqual({ network: hold.network, channel: hold.channel });
+    expect(row("BW2").input.hold).toBe("as BW1");
+    expect(row("BW2").control).toBe("as BW1");
+  });
+
+  it("each challenge is the seller's own on the held channel: the issued request naming it, JCS", () => {
+    const issued = JSON.parse(T.fixed.requestV2);
+    const without = (c: MppChallenge) => ({ ...c, id: undefined, request: undefined, opaque: undefined });
+    for (const { doc } of [...docs, control]) {
+      expect(doc).toHaveLength(1);
+      const c = doc[0]!;
+      expect(without(c)).toEqual(without(opening.challenge));
+      const text = Buffer.from(c.request, "base64url").toString("utf8");
+      const methodDetails = { ...issued.methodDetails, channelId: hold.channel };
+      expect(JSON.parse(text)).toEqual({ ...issued, methodDetails });
+      expect(text).toBe(JSON.stringify(jcs(JSON.parse(text))));
+      expect(sessionResume(c)).toEqual({ network: hold.network, channel: hold.channel });
+    }
+  });
+
+  for (const d of docs) {
+    it(`${d.name}: opaqueText holds a value that is not a string, lcp reads no map from the opaque, and pairingsOf refuses it`, () => {
+      const opaque = d.doc[0]!.opaque!;
+      expect(Buffer.from(opaque, "base64url").toString("utf8")).toBe(d.opaqueText);
+      expect(d.opaqueText).toBe(JSON.stringify(jcs(JSON.parse(d.opaqueText))));
+      expect(Object.values(JSON.parse(d.opaqueText)).some((v) => typeof v !== "string")).toBe(true);
+      expect(decodeStringMap(opaque)).toBeUndefined();
+      expect(pairingsOf(d.doc[0]!)).toEqual({ refused: true, code: OPAQUE_MALFORMED });
+    });
+  }
+
+  it("the control's opaque is the opening's own: only the LCP members, naming the held H", async () => {
+    const h = await hash(fromHex(hold.atrHex));
+    const opaque = control.doc[0]!.opaque!;
+    expect(opaque).toBe(opening.challenge.opaque);
+    expect(Buffer.from(opaque, "base64url").toString("utf8")).toBe(control.opaqueText);
+    const lcpMembers = { legalContext: toLcpString(h), legalContextUrl: `https://atr.seller.example/${h}` };
+    expect(decodeStringMap(opaque)).toEqual(lcpMembers);
+  });
+
+  it("both rows decline before the signer, and the control signs one voucher in the held channel", () => {
+    for (const name of ["BW1", "BW2"]) {
+      const declined = { decline: "offer-unreadable", detail: OPAQUE_MALFORMED, signCalls: 0 };
+      expect(row(name).expect, name).toEqual(declined);
+    }
+    const voucher = { action: "voucher", channelId: hold.channel };
+    expect(row("BW1").control.expect).toMatchObject({ signCalls: 1, signedPayload: voucher });
+  });
 });
