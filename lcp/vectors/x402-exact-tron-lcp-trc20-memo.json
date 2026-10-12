@@ -346,7 +346,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply every row but the recover rows, which the TypeScript implementation alone applies: the Python one has no recover.",
   "rows": [
    {
     "case": "an option whose network is tron: and the hexadecimal chain id (tron:0x2b6653dc)",
