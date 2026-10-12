@@ -53,6 +53,7 @@ import {
   requestCommitment,
   uptoPermit2,
 } from "../src/x402.js";
+import { xrplCloseStatus, xrplOpenStatus, xrplStatus } from "../src/xrpl.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const H: AtrHash = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
@@ -441,4 +442,12 @@ describe("tvm", () => {
   it("exactTvm.unplaced hands back a value that is not an option unchanged", () => {
     for (const bad of MALFORMED) expect(exactTvm.unplaced(bad as never), String(bad)).toBe(bad);
   });
+});
+
+describe("xrpl", () => {
+  reads([
+    ["xrplStatus", xrplStatus, "x402-exact-xrpl.json", UNREADABLE],
+    ["xrplOpenStatus", xrplOpenStatus, "x402-exact-xrpl.json", UNREADABLE],
+    ["xrplCloseStatus", xrplCloseStatus, "x402-exact-xrpl.json", UNREADABLE],
+  ]);
 });

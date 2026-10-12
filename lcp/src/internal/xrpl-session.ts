@@ -4,6 +4,7 @@
  * by `../xrpl.ts`.
  */
 import { sha256, sha512 } from "@noble/hashes/sha2.js";
+import { isObject } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
 import type { XrplNetwork, XrplReader, XrplRef, XrplStatus } from "./xrpl.js";
 
@@ -127,7 +128,9 @@ export function cancelAfterOf(blobHex: string): number | undefined {
  * calls.
  */
 export async function xrplOpenStatus(ref: Omit<XrplRef, "expect">, reader: XrplReader): Promise<XrplStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
   if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "pending", why: "unreadable" };
   const range = ref.lastLedgerSequence === null ? null : { min: ref.fromLedger, max: ref.lastLedgerSequence };
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
@@ -164,7 +167,9 @@ export async function xrplOpenStatus(ref: Omit<XrplRef, "expect">, reader: XrplR
  * `unreadable`, with nothing read. One call.
  */
 export async function xrplCloseStatus(ref: XrplCloseRef, reader: XrplReader): Promise<XrplCloseStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
   if (typeof ref.channel !== "string" || !HASH256.test(ref.channel)) return { state: "pending", why: "unreadable" };
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {

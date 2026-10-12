@@ -5,6 +5,7 @@
  * The public names are re-exported by `../xrpl.ts`.
  */
 import { hash, toLcpString, toRawBytes, type AtrHash } from "../core.js";
+import { isObject } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
 /** CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295. */
@@ -117,13 +118,19 @@ export function sameInvoice(a: unknown, b: unknown): boolean {
   return typeof a === "string" && typeof b === "string" && HASH256.test(a) && HASH256.test(b) && a.toUpperCase() === b.toUpperCase();
 }
 
-/** Uppercase hex of SHA-256 over the UTF-8 bytes of the hash's LCP string: x402's `InvoiceID` for `extra.invoiceId`. */
+/**
+ * Uppercase hex of SHA-256 over the UTF-8 bytes of the hash's LCP string: x402's `InvoiceID` for `extra.invoiceId`.
+ * Rejects with a TypeError when `h` is not a 32-byte hash.
+ */
 export async function x402InvoiceId(h: AtrHash): Promise<string> {
   const d = await hash(new TextEncoder().encode(toLcpString(h)));
   return d.slice(2).toUpperCase();
 }
 
-/** The hash's 64 hex digits in upper case, without `0x`: MPP's `methodDetails.invoiceId`. */
+/**
+ * The hash's 64 hex digits in upper case, without `0x`: MPP's `methodDetails.invoiceId`. Throws TypeError when `h` is
+ * not a 32-byte hash.
+ */
 export function mppInvoiceId(h: AtrHash): string {
   return upperHex(toRawBytes(h));
 }
@@ -225,6 +232,7 @@ export async function decodePresented(holder: object, hex: unknown): Promise<Dec
  * up in upper case, and invoice ids compare in either case. At most two calls.
  */
 export async function xrplStatus(ref: XrplRef, reader: XrplReader): Promise<XrplStatus> {
+  if (!isObject(ref) || !isObject(reader)) return { state: "pending", why: "unreadable" };
   if (reader.network !== ref.network || typeof ref.expect !== "string" || !HASH256.test(ref.expect)) {
     return { state: "pending", why: "unreadable" };
   }
@@ -265,7 +273,7 @@ export async function xrplInvoiceOf(
   ref: { network: XrplNetwork; transaction: string },
   reader: XrplReader,
 ): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("xrpl/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("xrpl/wrong-reader");
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
     r = await reader.tx(ref.transaction, null);
