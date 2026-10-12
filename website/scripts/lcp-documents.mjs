@@ -27,9 +27,6 @@ export const DOCUMENTS = [
   // UCP's x402 payment handler, com.integraledger.lcp.x402: its specification and its schema.
   { path: "/ucp/x402/2026-10-02", source: "lcp/profiles/ucp-payment-handler-x402.md", type: MARKDOWN },
   { path: "/ucp/x402/2026-10-02/schema.json", source: "lcp/profiles/ucp-payment-handler-x402.schema.json", type: SCHEMA },
-  // UCP's checkout extension com.integraledger.lcp.with: its specification and its schema.
-  { path: "/ucp/with/2026-10-02", source: "lcp/profiles/ucp-checkout-lcp-with.md", type: MARKDOWN },
-  { path: "/ucp/with/2026-10-02/schema.json", source: "lcp/profiles/ucp-checkout-lcp-with.schema.json", type: SCHEMA },
   // LCP's A2A extension: its URI, where A2A says an extension's specification is hosted.
   { path: "/a2a/legal-context/v1", source: "lcp/profiles/a2a-legal-context-v1.md", type: MARKDOWN },
 ];

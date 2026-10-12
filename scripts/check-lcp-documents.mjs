@@ -32,10 +32,8 @@ const NEAR_MISSES = [
   "/ucp/x402/2026-10-02/schema",
   "/ucp/x402/2027-01-01",
   "/ucp/x402/2027-01-01/schema.json",
-  "/ucp/with/",
-  "/ucp/with/2026-10-02/schema",
-  "/ucp/with/2027-01-01",
-  "/ucp/with/2027-01-01/schema.json",
+  "/ucp/with/2026-10-02",
+  "/ucp/with/2026-10-02/schema.json",
   "/a2a/legal-context/",
   "/a2a/legal-context/v2",
 ];
