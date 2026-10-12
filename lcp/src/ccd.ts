@@ -244,7 +244,7 @@ function isItem(v: unknown): v is CcdItem {
  * The pairing's filter: an `exact` option on a `ccd:` network, for CCD or a token symbol, whose `payTo` and
  * `extra.feePayer` are base58check account addresses.
  */
-export function ccdOption(o: unknown): o is PaymentRequirements {
+function ccdOption(o: unknown): o is PaymentRequirements {
   if (!isObject(o)) return false;
   const extra = o["extra"];
   const timeout = o["maxTimeoutSeconds"];
