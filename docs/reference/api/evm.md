@@ -740,10 +740,17 @@ that `asset` emitted in it. One call.
 
 Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
 pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
-third equal to `h`, and the `Transfer` that `transferLog` identifies, whose `from` is that log's authorizer (topic
-1). No such `AuthorizationUsed` log is failed `authorization-not-used`; no such `Transfer` is failed
-`transfer-not-found`. The finality is the highest block mark at or above the receipt's block. A failed read, a reader
-for another network, or a `transferLog` that is not one is pending `unreadable`, never failed. At most three calls.
+third equal to `h`, and the `Transfer` paired with it, which `transferLog` identifies. The pair follows the order in
+which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; ERC-3009
+itself states no order. The `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and
+before the token's next `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the
+token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` log is failed
+`authorization-not-used`; no paired `Transfer` that `transferLog` identifies is failed `transfer-not-found`. On a
+token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
+pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
+use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
+receipt's block. A failed read, a reader for another network, or a `transferLog` that is not one is pending
+`unreadable`, never failed. At most three calls.
 
 #### Parameters
 
@@ -795,12 +802,13 @@ Reads the named transaction. A reader for another network, or a failed read, is 
 `not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
 the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
 Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
-authorization's: the transfer's `from` is the binding log's authorizer (topic 1), else failed `transfer-not-found`.
-Where the binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose
-delegate (data word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The
-transfer's `from` is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one
-root delegator redeemed in one transaction are read alike, so one transfer from it counts for either. Settled
-carries the highest finality mark reached. At most three calls.
+authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired with a use of the binding's
+value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log is the
+DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose delegate (data word 1) is the
+redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from` is then that
+leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator redeemed in one
+transaction are read alike, so one transfer from it counts for either. Settled carries the highest finality mark
+reached. At most three calls.
 
 #### Parameters
 
