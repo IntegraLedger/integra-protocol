@@ -287,7 +287,9 @@ amount as its decimal string. The REST answer carries no chain id, so the caller
 
 Reads the `RawTransaction` prefix of a base64 transaction, in either wire form: the scheme's BCS bytes, or x402's
 reference form, base64 of the JSON `{"transaction": [bytes], "senderAuthenticator": [bytes]}`. Only an entry
-function call to a framework fungible-asset transfer is accepted.
+function call to a framework fungible-asset transfer is accepted. Module, function and struct names are read as
+their exact bytes, a leading U+FEFF included, and each must be an ASCII letter or underscore followed by up to 254
+ASCII letters, digits and underscores, else `aptos/tx-malformed`.
 
 #### Parameters
 
