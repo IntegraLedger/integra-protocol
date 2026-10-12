@@ -302,8 +302,12 @@ The pairing's id for an option it can pay, or undefined.
 
 > **polkadotRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-The hash from the landed extrinsic alone, for anyone holding its timepoint: its raw bytes end with the remark call,
-and the chain's record of it has the same hash, dispatched, with the `Remarked` event. Two calls.
+The hash from the landed extrinsic alone, for anyone holding its timepoint. Its raw bytes must end with the profile
+call, after the signature, whose remark is the hash's LCP string with lowercase hex. The chain's record of it must
+have the same hash; the record read is then chosen as `polkadotStatus` chooses it, and a named block that the
+finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at its height, is
+`polkadot/not-found`. That record must show the extrinsic dispatched with the `Remarked` event for the remark and a
+`Transferred` event of the call's asset. At most four calls.
 
 #### Parameters
 
