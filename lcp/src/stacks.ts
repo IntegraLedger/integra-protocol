@@ -14,7 +14,10 @@ export type StacksNetwork = `stacks:${string}`;
 /** The Clarity serialization of `(some <32-byte buffer>)` before its bytes: `0x0a`, `0x02`, then the length 32. */
 export const MEMO_PREFIX = "0x0a0200000020";
 
-/** SHA-512/256 of a transaction's whole consensus serialization, as `0x` and lowercase hex. */
+/**
+ * SHA-512/256 of a transaction's whole consensus serialization, as `0x` and lowercase hex. Throws TypeError when `wire`
+ * is not a `Uint8Array`.
+ */
 export function stacksTxid(wire: Uint8Array): Hex {
   return hexOf(sha512_256(wire));
 }

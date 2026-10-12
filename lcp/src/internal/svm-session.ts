@@ -29,7 +29,10 @@ export type SvmCloseStatus =
   | { state: "pending"; why: "not-found" | "unreadable" }
   | { state: "failed"; why: "err" | "not-a-close" };
 
-/** H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes are exactly those 8 bytes. */
+/**
+ * H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes are exactly those 8 bytes. Throws
+ * TypeError when `h` is not a 32-byte hash.
+ */
 export function sessionSalt(h: AtrHash): bigint {
   const b = toRawBytes(h);
   let v = 0n;
