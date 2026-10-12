@@ -85,6 +85,9 @@ These pages use each term in one sense:
   [pairings](./reference/pairings.md), [refusal codes](./reference/refusals.md),
   [vector files](./reference/vectors.md) and the [API](./reference/api/index.md).
 
+A citation `LCP §N` names section N of the published
+[Legal Context Protocol v1.0](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md).
+
 Every TypeScript program in these pages is compiled and run against the package in CI, and its output is checked
 against what the page shows.
 

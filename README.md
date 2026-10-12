@@ -85,6 +85,9 @@ The [package README](./lcp/README.md) walks one x402 payment through both sides,
   [refusal codes](./docs/reference/refusals.md), [vector files](./docs/reference/vectors.md),
   [API](./docs/reference/api)
 
+A citation `LCP §N` names section N of the published
+[Legal Context Protocol v1.0](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md).
+
 The same pages are published at [lcp.integraledger.com](https://lcp.integraledger.com), with `llms.txt`,
 `llms-full.txt` and every page as Markdown for AI agents.
 

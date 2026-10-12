@@ -40,6 +40,9 @@ what they agreed is the record the payment is bound to.
 | **Facilitator** | The x402 role that verifies and settles. |
 | **Vectors** | The shared test cases that fix the rules byte for byte across languages. |
 
+A citation `LCP §N` names section N of the published
+[Legal Context Protocol v1.0](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md).
+
 ```mermaid
 sequenceDiagram
   participant B as Buyer
