@@ -134,7 +134,7 @@ jobs:
           npm install -g "$RUNNER_TEMP/pnpm-11.27.1.tgz"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @integraledger/lcp run build
-      - name: Every code sample in the READMEs and docs/ compiles, runs and prints what the page shows
+      - name: The TypeScript samples in the READMEs and docs/ not marked no-check compile, run and print what the page shows
         run: node scripts/docs-samples.mjs
       - name: The generated reference pages and the README's pairing list match the package
         run: node scripts/docs-reference.mjs --check

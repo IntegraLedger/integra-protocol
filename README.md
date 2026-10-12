@@ -100,7 +100,7 @@ The same pages are published at [lcp.integraledger.com](https://lcp.integraledge
 | [`lcp/`](./lcp) | The `@integraledger/lcp` package: `src/`, its tests, `vectors/` and `profiles/`. |
 | [`docs/`](./docs) | The documentation, in Markdown. It is the single source of the documentation site. |
 | [`website/`](./website) | The documentation site app, built from `docs/`. It is not part of any published package. |
-| [`scripts/`](./scripts) | The checks that run every code sample in the READMEs and `docs/`, and regenerate the reference pages. |
+| [`scripts/`](./scripts) | The checks that compile and run the TypeScript samples in the READMEs and `docs/` not marked `no-check`, and regenerate the reference pages. |
 
 ## Building and testing
 
@@ -134,8 +134,9 @@ pnpm build
 
 Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. Every commit is signed off under the
 [Developer Certificate of Origin](https://developercert.org): add `Signed-off-by: Your Name <you@example.com>` with
-`git commit -s`. CI checks the commits on `main` for it after each push. Every code sample in the documentation is
-compiled and run in CI, so a change that alters behaviour updates the samples that show it.
+`git commit -s`. CI checks the commits on `main` for it after each push. The TypeScript samples in the READMEs and
+`docs/` not marked `no-check` are compiled and run in CI after each push to `main`, so a change that alters behaviour
+updates the samples that show it.
 
 This project follows the [Contributor Covenant](./CODE_OF_CONDUCT.md).
 

@@ -38,9 +38,9 @@ node scripts/docs-samples.mjs
 node scripts/docs-reference.mjs --check
 ```
 
-- `docs-samples.mjs` compiles every TypeScript sample in the READMEs and `docs/` against the package you just built,
-  runs it, and checks its output against the `text` block that follows it. A change that alters what a sample prints
-  updates the sample.
+- `docs-samples.mjs` compiles each TypeScript sample in the READMEs and `docs/` not marked `no-check` against the
+  package you just built, runs it, and checks its output against the `text` block that follows it. A change that alters
+  what a sample prints updates the sample.
 - `docs-reference.mjs --check` checks the generated reference pages and the README's pairing list against the
   package. After a change to the registry, the exports or the vectors, run `node scripts/docs-reference.mjs` and
   commit what it writes.
