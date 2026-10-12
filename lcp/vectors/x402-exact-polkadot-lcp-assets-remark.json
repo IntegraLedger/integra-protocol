@@ -177,7 +177,7 @@
     }
    },
    {
-    "case": "the canonical block at 100 holds another extrinsic at index 2: the payment is to be located from the claim position",
+    "case": "the canonical block at 100 holds another extrinsic at index 2: the payment is to be located again (polkadotLocate)",
     "finalized": "100",
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -187,7 +187,7 @@
     }
    },
    {
-    "case": "the canonical block at 100 has nothing at index 2: the payment is to be located from the claim position",
+    "case": "the canonical block at 100 has nothing at index 2: the payment is to be located again (polkadotLocate)",
     "finalized": "100",
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "canonicalMissing": true,

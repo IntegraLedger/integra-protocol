@@ -1,7 +1,7 @@
 // A timepoint whose block left the canonical chain, read from recorded Westend Asset Hub Sidecar answers
 // (test/fixtures/westend-reorg.json). "moved": the canonical block at the named height holds the same extrinsic at the
 // named index, so it counts, at the canonical timepoint. "gone": nothing is at that index on the canonical chain, so
-// the answer asks for the payment to be located again from the claim position.
+// the answer asks for the payment to be located again (polkadotLocate).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AtrHash, Json } from "../src/core.js";
@@ -50,7 +50,7 @@ describe("polkadotStatus on a named block that left the canonical chain (Westend
     });
   });
 
-  it("gone: nothing at the named index on the canonical chain; the payment is to be located from the claim position", async () => {
+  it("gone: nothing at the named index on the canonical chain; the payment is to be located again (polkadotLocate)", async () => {
     expect(await polkadotStatus(refOf(F.gone), readerOf(F.gone))).toEqual({ state: "pending", why: "not-located" });
   });
 
