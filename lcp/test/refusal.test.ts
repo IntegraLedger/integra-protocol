@@ -36,6 +36,16 @@ describe("isRefusal", () => {
     expect(rootIsRefusal).toBe(isRefusal);
   });
 
+  it("is false for a refusal another loaded copy of the module made, and that copy's isRefusal for this one's", async () => {
+    // A query string makes the module loader evaluate the file again: a second copy, as two installs of the package give.
+    const specifier = "../src/refusal.js?second-copy";
+    const second = (await import(specifier)) as typeof import("../src/refusal.js");
+    expect(second.isRefusal).not.toBe(isRefusal);
+    expect(second.isRefusal(second.refusal("x402/not-v2"))).toBe(true);
+    expect(isRefusal(second.refusal("x402/not-v2"))).toBe(false);
+    expect(second.isRefusal(refusal("x402/not-v2"))).toBe(false);
+  });
+
   it("is false for a value of the same shape that the package did not make", () => {
     const made = refusal("x402/not-v2");
     expect(isRefusal({ refused: true, code: "x402/not-v2" })).toBe(false);

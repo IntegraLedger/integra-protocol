@@ -22,8 +22,9 @@ The [refusal code reference](../reference/refusals.md) lists every code with its
 
 ## Checking a result
 
-`isRefusal(result)` is how a caller tells a refusal from a result: it is true only for a refusal this package made, and
-false for every result, the hashes `bound` returns included. Test it before using a result:
+`isRefusal(result)` is how a caller tells a refusal from a result: it is true only for a refusal made by the same loaded
+copy of this package, and false for every result, the hashes `bound` returns included. A refusal from a second copy of
+the package reads as a result, so load one copy. Test it before using a result:
 
 ```ts
 import { assemble, isRefusal, newAtrId } from "@integraledger/lcp";
