@@ -119,7 +119,11 @@ interface Disclosure {
   used: boolean;
 }
 
-/** Reads an SD-JWT presentation and resolves its disclosures. No signature is verified. */
+/**
+ * Reads an SD-JWT presentation and resolves its disclosures. No signature is verified. The resolved payload, each
+ * disclosed value counted where its reference sits, nests at most 64 levels; a deeper one is the caller's `tooLarge`
+ * refusal.
+ */
 export async function readSdJwt(
   token: unknown,
   refusals: SdJwtRefusals,
@@ -173,8 +177,14 @@ export async function readSdJwt(
   type Outcome = { ok: true; value: Json } | { ok: false; answer: () => Refusal };
   const fail = (answer: () => Refusal): Outcome => ({ ok: false, answer });
 
-  const resolve = (v: Json, level: number): Outcome => {
+  /**
+   * `v` resolved, at `level` disclosures deep and at `depth` levels of the resolved value, the payload at 1: a disclosed
+   * value takes the place of the element or member that references it, and the resolved value nests at most 64 levels,
+   * so a deeper one is the caller's `tooLarge` refusal whatever the host's stack.
+   */
+  const resolve = (v: Json, level: number, depth: number): Outcome => {
     if (v === null || typeof v !== "object") return { ok: true, value: v };
+    if (depth > MAX_JSON_DEPTH) return fail(refusals.tooLarge);
     if (Array.isArray(v)) {
       const out: Json[] = [];
       for (const el of v as readonly Json[]) {
@@ -188,11 +198,11 @@ export async function readSdJwt(
           if (d.name !== undefined) return fail(refusals.malformed);
           d.used = true;
           if (level + 1 > RESOLUTION_DEPTH) return fail(refusals.tooLarge);
-          const r = resolve(d.value, level + 1);
+          const r = resolve(d.value, level + 1, depth + 1);
           if (!r.ok) return r;
           out.push(r.value);
         } else {
-          const r = resolve(el, level);
+          const r = resolve(el, level, depth + 1);
           if (!r.ok) return r;
           out.push(r.value);
         }
@@ -204,7 +214,7 @@ export async function readSdJwt(
     const out: JsonObject = {};
     for (const [k, x] of Object.entries(o)) {
       if (k === "_sd") continue;
-      const r = resolve(x, level);
+      const r = resolve(x, level, depth + 1);
       if (!r.ok) return r;
       setOwn(out, k, r.value);
     }
@@ -221,14 +231,14 @@ export async function readSdJwt(
       if (name === "_sd" || name === "..." || Object.hasOwn(out, name)) return fail(refusals.malformed);
       d.used = true;
       if (level + 1 > RESOLUTION_DEPTH) return fail(refusals.tooLarge);
-      const r = resolve(d.value, level + 1);
+      const r = resolve(d.value, level + 1, depth + 1);
       if (!r.ok) return r;
       setOwn(out, name, r.value);
     }
     return { ok: true, value: out };
   };
 
-  const r = resolve(payload, 0);
+  const r = resolve(payload, 0, 1);
   if (!r.ok) return r.answer();
   for (const d of byDigest.values()) if (!d.used) return refusals.unreferenced();
   const resolved = r.value as JsonObject;

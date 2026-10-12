@@ -1,4 +1,5 @@
 // Runs sd-jwt.json through the SD-JWT reader. Every expected value is the file's.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Json } from "../src/core.js";
@@ -49,6 +50,32 @@ describe("sd-jwt.json", () => {
         expect((r.resolved["delegate_payload"] as Json[])[0]).toEqual(row.expectCheckoutMandate);
       }
     }
+  });
+
+  // RFC 9901 §4.2.3: a disclosure's digest is the base64url SHA-256 of its ASCII text (Node's crypto computes it here).
+  // The resolved payload is JSON the package reads, so it nests at most 64 levels (vectors/core-vectors.json
+  // `jsonDepth`), the payload counting 1 and each disclosed value sitting where its reference sits; one level more, or
+  // the 16 chained disclosures the reader admits each nesting 62, is too large, on any host.
+  it("the resolved payload nests at most 64 levels", async () => {
+    const nest = (levels: number, inner: string) => '{"a":'.repeat(levels - 1) + inner + "}".repeat(levels - 1);
+    const sha = (d: string) => createHash("sha256").update(d, "ascii").digest("base64url");
+    const presentation = (payloadLevels: number, values: string[]) => {
+      let ref = "";
+      const disclosures: string[] = [];
+      for (let i = values.length - 1; i >= 0; i--) {
+        const value = ref === "" ? values[i]! : values[i]!.replace("{}", `{"_sd":["${ref}"]}`);
+        const d = Buffer.from(`["s${i}","m${i}",${value}]`).toString("base64url");
+        disclosures.unshift(d);
+        ref = sha(d);
+      }
+      const payload = nest(payloadLevels, `{"_sd":["${ref}"]}`);
+      const jwt = `${Buffer.from('{"alg":"ES256"}').toString("base64url")}.${Buffer.from(payload).toString("base64url")}.sig`;
+      return `${jwt}~${disclosures.join("~")}~`;
+    };
+    expect("refused" in (await readSdJwt(presentation(63, ['{"b":1}']), REFUSALS))).toBe(false);
+    expect(await readSdJwt(presentation(63, ['{"b":{"c":1}}']), REFUSALS)).toEqual({ refused: true, code: "too-large" });
+    const chain = Array.from({ length: 16 }, () => nest(62, "{}"));
+    expect(await readSdJwt(presentation(63, chain), REFUSALS)).toEqual({ refused: true, code: "too-large" });
   });
 
   it("base64url round trip over every byte value", () => {
