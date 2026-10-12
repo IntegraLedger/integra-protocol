@@ -102,8 +102,8 @@ The read keys recorded at claim, taken from the signed body.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-account"></a> `account` | `string` | "shard.realm.num" |
-| <a id="property-nanos"></a> `nanos` | `number` | - |
-| <a id="property-seconds"></a> `seconds` | `bigint` | - |
+| <a id="property-nanos"></a> `nanos` | `number` | An integer from 0 to 999,999,999. |
+| <a id="property-seconds"></a> `seconds` | `bigint` | A non-negative bigint. |
 
 ***
 
@@ -426,7 +426,9 @@ HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token r
 user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
 reads as what it paid or received. Exactly one account must be debited, by at least one unit, and its digest must be
 the recorded one: the payment is the named transaction's debit of the payer. Payee and amount are not read. A transfer
-list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`.
+list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`. A ref whose
+`transaction` is not a Mirror Node transaction id, whose `asset` is not `shard.realm.num` or whose `idDigest` is not
+`0x` and 64 hex digits is pending `unreadable`, with nothing read.
 
 #### Parameters
 
@@ -445,7 +447,8 @@ list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pe
 
 > **hederaChannelId**(`c`): `` `0x${string}` ``
 
-keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainId)), lowercase.
+keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainId)), lowercase. Throws TypeError
+when an address is not `0x` and 40 hex digits, the salt is not a 32-byte hash, or the chain id is not 295 or 296.
 
 #### Parameters
 
@@ -540,7 +543,7 @@ option on another rail.
 Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
 records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
 not this instrument, and any other result is failed with that result. A failed read, or a reader for another
-network, is pending.
+network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read.
 
 #### Parameters
 
@@ -559,7 +562,9 @@ network, is pending.
 
 > **hederaVoucher**(`c`, `cumulative`): [`HederaVoucherTypedData`](#hederavouchertypeddata)
 
-The voucher for `cumulative` on a channel, under the escrow's domain.
+The voucher for `cumulative` on a channel, under the escrow's domain. Throws TypeError when the channel id is not a
+32-byte hash, the escrow not `0x` and 40 hex digits, the chain id not 295 or 296, or `cumulative` not a bigint that
+fits a uint128.
 
 #### Parameters
 
@@ -603,7 +608,7 @@ The escrow's `open(payee, token, deposit, salt, authorizedSigner)` calldata.
 
 > **txIdMirror**(`id`): `string`
 
-"0.0.1235-1700000000-000000000", the Mirror Node's form.
+"0.0.1235-1700000000-000000000", the Mirror Node's form. Throws TypeError on an id that is not a `HederaTxId`.
 
 #### Parameters
 
@@ -621,7 +626,7 @@ The escrow's `open(payee, token, deposit, salt, authorizedSigner)` calldata.
 
 > **txIdText**(`id`): `string`
 
-"0.0.1235@1700000000.000000000"
+"0.0.1235@1700000000.000000000". Throws TypeError on an id that is not a `HederaTxId`.
 
 #### Parameters
 

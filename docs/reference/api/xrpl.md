@@ -248,7 +248,8 @@ an object.
 
 > **mppInvoiceId**(`h`): `string`
 
-The hash's 64 hex digits in upper case, without `0x`: MPP's `methodDetails.invoiceId`.
+The hash's 64 hex digits in upper case, without `0x`: MPP's `methodDetails.invoiceId`. Throws TypeError when `h` is
+not a 32-byte hash.
 
 #### Parameters
 
@@ -267,6 +268,7 @@ The hash's 64 hex digits in upper case, without `0x`: MPP's `methodDetails.invoi
 > **x402InvoiceId**(`h`): `Promise`\<`string`\>
 
 Uppercase hex of SHA-256 over the UTF-8 bytes of the hash's LCP string: x402's `InvoiceID` for `extra.invoiceId`.
+Rejects with a TypeError when `h` is not a 32-byte hash.
 
 #### Parameters
 

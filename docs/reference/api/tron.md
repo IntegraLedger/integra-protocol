@@ -245,7 +245,9 @@ for the fields read.
 
 > **encodeTronRaw**(`r`): `Uint8Array`
 
-`Transaction.raw` as java-tron serialises it: fields in ascending order, default values omitted.
+`Transaction.raw` as java-tron serialises it: fields in ascending order, default values omitted. Throws TypeError
+when `r` is not an object, a bytes field is not a `Uint8Array`, or `expiration`, `timestamp` or `feeLimit` is not a
+bigint from 0 below 2^63, the values `decodeTronTx` reads back.
 
 #### Parameters
 
@@ -299,7 +301,8 @@ Decodes a base58check address to its 21 bytes, which begin 0x41. The checksum is
 
 > **tronCarrier**(`tx`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `txid`: `` `0x${string}` ``; \}\>
 
-The hash in the memo of a transaction whose one contract calls `transfer`, and the transaction id.
+The hash in the memo of a transaction whose one contract calls `transfer`, and the transaction id. A `tx` that is not
+`decodeTronTx`'s `{ raw, rawBytes }` is `tron/tx-malformed`.
 
 #### Parameters
 

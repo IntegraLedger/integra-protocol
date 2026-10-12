@@ -1276,9 +1276,12 @@ whose first argument is that channel, else pending `not-a-close`. Where `ref.acc
 succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
 failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
 `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. An `opens` that is not an object
-whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, or a `revokes`
-that is not an object whose `account` and `keyId` are addresses, is pending `unreadable`, with no call made. At most
-four calls.
+whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, an `opened` that is
+not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h` 32-byte hashes and `chainId` a
+positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
+`accessKey` that is not an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
+present, an address, or a `revokes` that is not an object whose `account` and `keyId` are addresses, is pending
+`unreadable`, with no call made; so is what `evmStatus` reads as `unreadable`. At most four calls.
 
 #### Parameters
 

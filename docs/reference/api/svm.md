@@ -409,7 +409,8 @@ is the memo's UTF-8 bytes. No lookup tables.
 
 > **channelInstruction**(`tx`): [`Refusal`](index.md#refusal) \| [`ChannelIx`](#channelix)
 
-The transaction's one top-level payment-channels instruction, by its discriminator.
+The transaction's one top-level payment-channels instruction, by its discriminator. A `tx` that is not a decoded
+transaction is `svm/tx-malformed`.
 
 #### Parameters
 
@@ -575,7 +576,8 @@ The UTF-8 of the core's `canonicalJson` of `{channelId, domain: "mpp-session-aut
 
 > **sessionSalt**(`h`): `bigint`
 
-H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes are exactly those 8 bytes.
+H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes are exactly those 8 bytes. Throws
+TypeError when `h` is not a 32-byte hash.
 
 #### Parameters
 
@@ -616,7 +618,7 @@ malformed channel id or an out-of-range number is `svm/input-malformed`.
 
 The one top-level Memo instruction (v3 or v4) and the ATR hash its UTF-8 data carries in LCP string form. None, or
 more than one, is `svm/memo-count`. The memo must be `toLcpString(h)` exactly, in lowercase hex; the same hash in
-any other spelling is `svm/carrier-not-canonical`.
+any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded transaction is `svm/tx-malformed`.
 
 #### Parameters
 
@@ -676,7 +678,8 @@ pending `unreadable`, with nothing read. At most two calls.
 
 > **svmDigest**(`tx`): `Promise`\<`` `0x${string}` ``\>
 
-SHA-256 over the message bytes every signer signed.
+SHA-256 over the message bytes every signer signed. Rejects with a TypeError when `tx` is not an object whose
+`message` is a `Uint8Array`.
 
 #### Parameters
 
@@ -701,7 +704,8 @@ every signature is a candidate. Each candidate is read through `status`, the pai
 is given), at most 50 per pass.
 `complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
 `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
-leaves the search incomplete.
+leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is `complete`
+false, with nothing read.
 
 #### Parameters
 
@@ -725,8 +729,8 @@ leaves the search incomplete.
 True when the durable nonce `ref.nonce` records is spent or gone: a `finalized` read of the nonce account, at a
 context slot at least 150 slots past `fromSlot`, finds no account, an account the System program does not own, an
 account that is not an initialized nonce account, or an initialized current-version nonce account holding another
-value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce` and
-a reader for another network are false. One call.
+value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce`, a
+ref or reader that is not an object and a reader for another network are false. One call.
 
 The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. So
 a durable-nonce reference with no named transaction lapses when this reads true and a `svmLocate` that starts after
@@ -772,9 +776,10 @@ Zero-party recovery: the ATR hash in the landed transaction's one memo. One or t
 
 Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
 without error, and must carry a token or SOL transfer. A failed read, or a reader for another network, is pending.
-A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first available block is
-at or before `fromSlot`, is read once more at `finalized`; still not found, it is failed `nonce-moved`: the message
-can never land. At most two calls, or five for a durable-nonce reference.
+A ref whose `digest` is not a string is pending `unreadable`, with nothing read. A durable-nonce transaction that is
+not found, once `svmNonceMoved` holds and the node's first available block is at or before `fromSlot`, is read once
+more at `finalized`; still not found, it is failed `nonce-moved`: the message can never land. At most two calls, or
+five for a durable-nonce reference.
 
 #### Parameters
 

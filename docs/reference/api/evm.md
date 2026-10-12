@@ -749,8 +749,9 @@ token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` 
 token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
 pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
 use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
-receipt's block. A failed read, a reader for another network, or a `transferLog` that is not one is pending
-`unreadable`, never failed. At most three calls.
+receipt's block. A failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an
+`asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`, never failed. At most
+three calls.
 
 #### Parameters
 
@@ -810,7 +811,8 @@ binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log c
 word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
 is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
 redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
-finality mark reached. At most three calls.
+finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
+present and not of the form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
 
 #### Parameters
 

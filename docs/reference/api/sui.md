@@ -164,7 +164,8 @@ Decodes a base64 `TransactionData` V1 with a programmable kind.
 
 > **suiCarrier**(`tx`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
-The hash carried by exactly one unused `Pure` input of exactly 32 bytes.
+The hash carried by exactly one unused `Pure` input of exactly 32 bytes. A `tx` that is not a decoded transaction, an
+object whose `unusedPure` is an array of `Uint8Array`s, is `sui/tx-malformed`.
 
 #### Parameters
 

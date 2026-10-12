@@ -248,7 +248,8 @@ with nothing read.
 
 > **stacksTxid**(`wire`): `` `0x${string}` ``
 
-SHA-512/256 of a transaction's whole consensus serialization, as `0x` and lowercase hex.
+SHA-512/256 of a transaction's whole consensus serialization, as `0x` and lowercase hex. Throws TypeError when `wire`
+is not a `Uint8Array`.
 
 #### Parameters
 

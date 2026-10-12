@@ -202,7 +202,8 @@ SHA-256 over the 32 + 32 bytes of the two accounts and the amount as a 32-byte b
 
 > **ccdMemo**(`h`): `Uint8Array`
 
-The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes.
+The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes. Throws TypeError when `h` is not a 32-byte
+hash.
 
 #### Parameters
 
@@ -302,7 +303,7 @@ read a memo through this one function.
 
 > **pltMemo**(`h`): `Uint8Array`
 
-CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes.
+CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes. Throws as `ccdMemo` does.
 
 #### Parameters
 

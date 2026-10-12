@@ -261,7 +261,7 @@ sn_keccak("transfer")
 
 > **chainIdFelt**(`n`): `` `0x${string}` ``
 
-The network's reference as a short-string felt.
+The network's reference as a short-string felt. Throws TypeError on a network that is not a `StarknetNetwork`.
 
 #### Parameters
 

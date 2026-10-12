@@ -226,7 +226,8 @@ account.
 
 > **muxedFor**(`base`, `h`): `string`
 
-The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `base` is not a `G…` strkey.
+The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `base` is not a `G…` strkey or `h` is not a
+32-byte hash, and when @stellar/stellar-sdk is not installed.
 
 #### Parameters
 
@@ -245,7 +246,7 @@ The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `b
 
 > **muxedId**(`h`): `bigint`
 
-The hash's first 8 bytes, big-endian, as a u64.
+The hash's first 8 bytes, big-endian, as a u64. Throws TypeError when `h` is not a 32-byte hash.
 
 #### Parameters
 
@@ -290,7 +291,8 @@ only when every page was read, the reader reported events enabled on each, the R
 (`oldestLedger` ≤ `fromLedger`) and had reached the expiration ledger (`latestLedger` ≥ `expiration`), and every
 candidate was read: a listed candidate whose transaction is not found, or cannot be read, leaves the search
 incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
-has no entry to search for: `complete` is false.
+has no entry to search for, and a ref whose `authDigest` is not a string names none: `complete` is false. A ref or
+reader that is not an object, or a reader for another network, is `complete` false too, with nothing read.
 
 #### Parameters
 
@@ -317,11 +319,12 @@ transaction that is not found, failed, or succeeded with another entry is pendin
 ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
 transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
 `latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
-is never read as absence. A failed read, or a reader for another network, is pending. One call when the named
-transaction settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s
-calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as the transaction's source
-account, with no `expiration` either) is settled when the named transaction succeeded as that transfer, and is
-otherwise pending: there is no expiration ledger to pass.
+is never read as absence. A failed read, or a reader for another network, is pending, and a ref whose `authDigest` is
+present and not a string is pending `unreadable`, with nothing read. One call when the named transaction settles or
+a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
+without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
+`expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
+there is no expiration ledger to pass.
 
 #### Parameters
 

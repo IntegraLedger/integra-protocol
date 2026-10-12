@@ -244,7 +244,8 @@ from 0 to 2^32 − 1, `dest` 32 bytes, `amount` a bigint from 0 to 2^128 − 1, 
 
 > **extrinsicHash**(`xt`): `` `0x${string}` ``
 
-BLAKE2b-256 of the extrinsic's bytes, its length prefix included.
+BLAKE2b-256 of the extrinsic's bytes, its length prefix included. Throws TypeError when `xt` is not a
+`Uint8Array`.
 
 #### Parameters
 
@@ -265,7 +266,8 @@ BLAKE2b-256 of the extrinsic's bytes, its length prefix included.
 Finds a payment nobody named, by hashing every extrinsic of each block from `from` to `to` (at most 256 blocks).
 The first match gives its timepoint, once the block's record at that index has the recorded extrinsic hash. A block
 that does not exist, or a record at the matched index with another hash (the block at that height changed between
-the two reads), ends the scan with null.
+the two reads), ends the scan with null. A ref or reader that is not an object, a reader for another network, or a
+ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reader`, with nothing read.
 
 #### Parameters
 
@@ -336,7 +338,8 @@ failure alike carry the finality of the read: `finalized` when the finalized cha
 is above the finalized height. When the finalized chain holds another block at that height, the extrinsic at the
 same index of the canonical block is read instead if its hash is the recorded one; otherwise the answer is pending
 `not-located`. A block the reader does not have is pending `not-found`. A failed read, a bare broadcast hash or a
-reader for another network is pending.
+reader for another network is pending. A ref whose `extrinsicHash` is not `0x` and 64 hex digits, or whose `assetId`
+is not an integer from 0 below 2^32, is pending `unreadable`, with nothing read.
 
 #### Parameters
 
