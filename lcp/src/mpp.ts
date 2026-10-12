@@ -802,13 +802,16 @@ async function pushFetchPresented(presented: MppCredential, reader: EvmReader): 
   return { ...presented, landed: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
 }
 
-/** The one landed `TransferWithMemo` from `currency` whose memo topic is this challenge's attribution memo. */
+/**
+ * The one landed `TransferWithMemo` from `currency` whose memo topic is this challenge's attribution memo. A credential
+ * with no landed logs, which `fetchPresented` has not read, is `tempo/read-first`.
+ */
 function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Echoed; currency: Hex; log: EvmLog } | Refusal {
   const e = echoed(presented, PUSH);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "hash") return refusal("mpp/credential-type");
   const landed = (presented as Partial<LandedCredential>).landed;
-  if (!isObject(landed) || !Array.isArray(landed.logs)) return refusal("mpp/credential-malformed");
+  if (!isObject(landed) || !Array.isArray(landed.logs)) return refusal("tempo/read-first");
   const currency = requestAddress(e.checked, "currency");
   if (isRefusal(currency)) return currency;
   const { realm, id } = presented.challenge;

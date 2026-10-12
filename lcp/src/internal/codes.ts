@@ -389,6 +389,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "tempo/not-found",
   "tempo/open-ambiguous",
   "tempo/open-not-found",
+  "tempo/read-first",
   "tempo/reverted",
   "tempo/salt-not-bound",
   "tempo/tx-malformed",

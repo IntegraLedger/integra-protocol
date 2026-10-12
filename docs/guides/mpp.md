@@ -153,7 +153,7 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these ru
 | `mpp/credential-malformed`, `mpp/request-malformed`, `mpp/opaque-malformed` | 402 | `malformed-credential` |
 | `mpp/id-not-ours` | 402 | `invalid-challenge` |
 | A read to repeat: `tempo/not-found`, `tempo/unreadable`, `svm/not-found`, `svm/unreadable`, `stellar/not-found`, `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`, `xrpl/unreadable`, `hedera/not-found`, `hedera/unreadable` | 500 | `internal-payment-error` |
-| A call that cannot read the payment: `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
+| A call that cannot read the payment: `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `tempo/read-first`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
 | Every other code this package returns | 402 | `verification-failed` |
 | A code this package does not return | 500 | `internal-payment-error` |
 
@@ -161,9 +161,8 @@ A read to repeat is what a `fetchPresented` returns when its read fails or canno
 seller asks again later. On Tempo push and the Hedera session, a reader of another network answers `tempo/unreadable` or
 `hedera/unreadable`, which repeat until the seller changes the reader. A call that cannot read the payment is the
 seller's own call: a reader that is not for the network the challenge or reference names (`<rail>/wrong-reader`), or
-`bound` or `reference` on a push credential before `fetchPresented` has read it (`<rail>/read-first`); on Tempo push,
-`bound` and `reference` before `fetchPresented` answer `mpp/credential-malformed`. The same call gives the same code
-until the seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the
-buyer could pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a
-402, and neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500
-`internal-payment-error`, never a 402.
+`bound` or `reference` on a push credential before `fetchPresented` has read it (`<rail>/read-first`). The same call
+gives the same code until the seller changes it. In both, the payment may already have moved, so the seller sends no
+fresh challenge the buyer could pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge
+goes out only with a 402, and neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem`
+gives it 500 `internal-payment-error`, never a 402.

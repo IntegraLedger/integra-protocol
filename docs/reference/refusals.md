@@ -10,7 +10,7 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 487 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 488 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -27,7 +27,7 @@ and the namespace counts below match its rows.
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
-| [`tempo`](#tempo) | 16 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
+| [`tempo`](#tempo) | 17 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
@@ -140,7 +140,7 @@ MPP challenges and credentials, and the checks every MPP pairing shares (`@integ
 | `mpp/challenge-malformed` | A challenge is not challenge-shaped: `parseChallenges` finds a repeated parameter or a missing or empty required one, `place`, `read` or `issuedDigest` is given more than 32 challenges or one without the required members, `challengeId` is given an invalid H or a position outside 0 to 31, a Hedera charge `build` is given a challenge without a string `id` and `realm`, or H or a value to hash cannot be written in its canonical form. |
 | `mpp/channel-named` | A session challenge as issued already names a channel (`channelId`, or an EVM or Tempo `sessionSnapshot`), so it is not a challenge to open one. |
 | `mpp/channel-not-bound` | An EVM session opening's `channelId` is not the channel id computed from the payer, payee, token, H as salt, signer, escrow and chain. |
-| `mpp/credential-malformed` | A credential is not an object with an echoed challenge carrying an `id`, an optional string `source` and a `payload` object, carries a `refused` member, exceeds the credential size bound, or lacks a payload member the pairing reads (signature, nonce, hash, transaction, salt, channel id, authorization fields or landed logs) in the required form; or a signature or hash given to `complete` is not the required hex, or the Lightning `build` choice has no challenge with a string `id`. |
+| `mpp/credential-malformed` | A credential is not an object with an echoed challenge carrying an `id`, an optional string `source` and a `payload` object, carries a `refused` member, exceeds the credential size bound, or lacks a payload member the pairing reads (signature, nonce, hash, transaction, salt, channel id or authorization fields) in the required form; or the Tempo push `reference` finds that the landed `TransferWithMemo` log it matched has no 32-byte sender or recipient topic, or no amount word; or a signature or hash given to `complete` is not the required hex, or the Lightning `build` choice has no challenge with a string `id`. |
 | `mpp/credential-type` | The credential's payload `type` is not one the pairing accepts (such as `transaction`, `hash`, `authorization`, `permit2`, `transfer` or `keyAuthorization`). |
 | `mpp/credential-types` | The challenge's `credentialTypes` is not a non-empty array of types the method defines, or leaves no pairing (EVM `splits` allow only Permit2), or the credential type the buyer asks a session `build` for is not one the challenge lists. |
 | `mpp/escrow-malformed` | An EVM or Tempo session challenge's `methodDetails.escrowContract` is not an address. |
@@ -348,6 +348,7 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/not-found` | The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
 | `tempo/open-ambiguous` | The signed Tempo session opening has more than one `open` call to the challenge's escrow contract. |
 | `tempo/open-not-found` | The signed Tempo session opening has no `open` call to the challenge's escrow contract, or the receipt the `mpp/session/tempo` `recover` reads holds no `ChannelOpened` of the TIP-20 channel reserve, whose data carries the salt (a v1 escrow's `ChannelOpened` carries none). |
+| `tempo/read-first` | An MPP Tempo push `hash` credential carries no landed logs yet; the seller reads it with `fetchPresented` before `bound` or `reference`. |
 | `tempo/reverted` | The Tempo transaction reverted. |
 | `tempo/salt-not-bound` | The salt word of the Tempo session opening's `open` call is not H. |
 | `tempo/tx-malformed` | A Tempo transaction does not decode as a type-`0x76` RLP envelope with the expected fields and at most the allowed calls, `memoCalldata` is given an invalid recipient, amount or memo, `expiringNonceHash` is given a sender that is not an address, or a Tempo session opening's `open` call input has the wrong length. |

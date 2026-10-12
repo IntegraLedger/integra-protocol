@@ -249,8 +249,8 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // 11 reads to repeat, and 8 calls that cannot read the payment: the four wrong-reader and four read-first codes.
-    expect(answered500.length).toBe(19);
+    // 11 reads to repeat, and 9 calls that cannot read the payment: four wrong-reader and five read-first codes.
+    expect(answered500.length).toBe(20);
     for (const code of REFUSAL_CODES) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);
@@ -297,6 +297,20 @@ describe("problem", () => {
     expect(await hederaAnswers("reader-error")).toEqual(["hedera/unreadable", internal]);
     const hederaReverted = { status: 0 as const, blockNumber: "100", logs: [] };
     expect(await hederaAnswers(hederaReverted)).toEqual(["hedera/reverted", verificationFailed]);
+  });
+
+  // Tempo push: `bound` and `reference` on the buyer's credential as sent, before fetchPresented has read the landed
+  // logs, answer tempo/read-first, 500 and no challenge, as MV10's row gives. The credential is the vector file's B6
+  // buyer row without the `landed` member fetchPresented adds; with it, bound reads H (MV13).
+  it("mpp/charge/tempo/push: bound and reference before fetchPresented answer tempo/read-first, 500", async () => {
+    const tempo = load("mpp-charge-tempo-push.json");
+    const presented = tempo.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented;
+    const { landed: _landed, ...asSent } = presented as MppCredential & { landed: unknown };
+    expect(await tempoPush.bound(asSent)).toEqual({ refused: true, code: "tempo/read-first" });
+    expect(await tempoPush.reference(asSent)).toEqual({ refused: true, code: "tempo/read-first" });
+    expect(problem("tempo/read-first")).toEqual(expectOf("tempo/read-first"));
+    expect(expectOf("tempo/read-first")).toEqual(internal);
+    expect(await tempoPush.bound(presented)).toBe(H);
   });
 
   // Solana's, Stellar's, XRPL's and the Hedera charge's push reads, one case per arm: a read that fails, finds no
