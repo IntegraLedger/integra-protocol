@@ -239,7 +239,7 @@
     "expect": "sui/network-malformed"
    },
    {
-    "case": "payload.signature not a string, empty, or over 8192 characters",
+    "case": "payload.signature not a string, or empty",
     "expect": "x402/signature-malformed"
    },
    {

@@ -337,6 +337,20 @@ describe("advertise, read, build and complete", () => {
     });
   });
 
+  // x402's Sui scheme defines `payload.signature` as a string, the user's signature over the transaction, and
+  // states no length; the package never verifies it.
+  it("bound takes a string signature of any length, and refuses an empty or non-string one", async () => {
+    const transaction = V.V2.tx.transactionBase64;
+    const signed = (signature: unknown) => ({ ...payment(transaction), payload: { signature, transaction } });
+    for (const signature of ["A".repeat(8193), "A".repeat(65536)]) expect(await exactSui.bound(signed(signature))).toBe(H);
+    for (const signature of ["", 7, null, undefined]) {
+      expect(await exactSui.bound(signed(signature))).toEqual({
+        refused: true,
+        code: "x402/signature-malformed",
+      });
+    }
+  });
+
   it("the pattern states what the record proves", () => {
     expect(exactSui.pattern).toMatchObject({
       pattern: "native-field",

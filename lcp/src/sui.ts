@@ -91,7 +91,6 @@ export interface SuiUnsigned {
 const ID = "x402/exact/sui" as const;
 /** `max_tx_size_bytes`: 128 KiB. */
 const MAX_TX_BYTES = 128 * 1024;
-const MAX_SIGNATURE = 8192;
 const NETWORKS: readonly string[] = ["sui:mainnet", "sui:testnet", "sui:devnet"];
 const PAY_TO = /^0x[0-9a-f]{64}$/;
 const IDENT = "[A-Za-z_][A-Za-z0-9_]*";
@@ -297,9 +296,7 @@ function presentedTx(presented: unknown): { network: SuiNetwork; tx: SuiTx } | R
   const parts = presentedWith(presented, suiFilter);
   if (isRefusal(parts)) return parts;
   const { signature, transaction } = parts.payload;
-  if (typeof signature !== "string" || signature.length === 0 || signature.length > MAX_SIGNATURE) {
-    return refusal("x402/signature-malformed");
-  }
+  if (typeof signature !== "string" || signature.length === 0) return refusal("x402/signature-malformed");
   if (typeof transaction !== "string") return refusal("x402/payload-malformed");
   const tx = decodeSuiTx(transaction);
   if (isRefusal(tx)) return tx;
