@@ -56,7 +56,7 @@ import { assemble, BINDINGS, canonicalJson, … } from "@integraledger/lcp";
 
 **Values (19):** `assemble`, `BINDINGS`, `canonicalJson`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
-**Types (17):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `PairingOn`, `Presented`, `PresentedOn`, `PushMode`, `Refusal`, `Surface`, `TieRequestOn`, `X402Binding`.
+**Types (13):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `PushMode`, `Refusal`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 

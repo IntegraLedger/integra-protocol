@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BINDINGS, type Binding, type PresentedOn } from "../src/index.js";
+import { BINDINGS, type Binding } from "../src/index.js";
 
 // Every pairing's `bound` and `reference` take `unknown`: a caller holding any Binding calls them with whatever the
 // buyer presented, without a cast. These lines compile only while that holds.
@@ -27,12 +27,6 @@ const JUNK: readonly unknown[] = [
 describe("what a pairing is presented", () => {
   it("every bound and reference takes unknown", () => {
     expect([everyBound, everyReference]).toEqual([true, true]);
-  });
-
-  it("every surface names what its buyers present", () => {
-    const surfaces: Record<keyof PresentedOn, true> = { ack: true, acp: true, ap2: true, card: true, mpp: true, ucp: true, x402: true };
-    const named = new Set(BINDINGS.map((b) => b.id.split("/")[0]!));
-    expect([...named].filter((s) => !(s in surfaces))).toEqual([]);
   });
 
   for (const b of BINDINGS) {

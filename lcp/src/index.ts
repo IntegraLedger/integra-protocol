@@ -49,7 +49,7 @@ import { exactSui } from "./sui.js";
 import { exactTronMemo, type TronPayment } from "./tron.js";
 import { exactTvm, type TvmPayment } from "./tvm.js";
 import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "./ucp.js";
-import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, type RequestCommitment, uptoPermit2 } from "./x402.js";
+import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, uptoPermit2 } from "./x402.js";
 import { batchCloudflare, batchEvm, batchSvm, type BatchPaymentPayload, type CloudflarePaymentPayload } from "./x402-batch-settlement.js";
 import { exactSvm, type SvmPaymentPayload } from "./x402-exact-solana.js";
 import { exactStellar, type StellarPaymentPayload } from "./x402-exact-stellar.js";
@@ -130,13 +130,15 @@ export type Binding = (
   CarrierAfterH &
   Authorizer;
 export type PairingId = Binding["id"];
-/** The surfaces: a pairing id's first "/" segment. */
-export type Surface = keyof PresentedOn;
+type SurfaceOf<I> = I extends `${infer S}/${string}` ? S : never;
+/** The surfaces: each pairing id's first "/" segment. */
+type Surface = SurfaceOf<PairingId>;
 /**
  * What the buyer presents as payment, per surface: the union of the payment types of every pairing on it. Every
- * pairing's `bound` and `reference` take `unknown` and check what they are given.
+ * pairing's `bound` and `reference` take `unknown` and check what they are given. `Presented` indexes it by every
+ * surface, so a pairing on a surface it does not name does not compile.
  */
-export interface PresentedOn {
+interface PresentedOn {
   /** ACK defines no payer signature; its `bound` refuses whatever is presented. */
   ack: Json;
   acp: AcpPresented;
@@ -169,18 +171,8 @@ export interface PresentedOn {
 }
 /** What the buyer presents as payment. */
 export type Presented = PresentedOn[Surface];
-/** The request a surface's `tie` takes with its options: x402's request commitment; the others' `tie` takes none. */
-export interface TieRequestOn {
-  ack: never;
-  acp: never;
-  ap2: never;
-  card: never;
-  mpp: never;
-  ucp: never;
-  x402: RequestCommitment;
-}
 /** The pairing ids of one surface. */
-export type PairingOn<S extends Surface> = Extract<PairingId, `${S}/${string}`>;
+type PairingOn<S extends Surface> = Extract<PairingId, `${S}/${string}`>;
 
 /** Every pairing this package implements. */
 export const BINDINGS: readonly Binding[] = Object.freeze([
