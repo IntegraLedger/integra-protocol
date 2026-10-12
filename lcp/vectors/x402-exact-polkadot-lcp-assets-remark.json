@@ -350,7 +350,7 @@
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "expect": null,
-    "source": "the page's locate returns a timepoint only for the recorded extrinsic hash; Sidecar reads a block by height, so two reads of one height can answer from two blocks"
+    "source": "locate returns a timepoint only for the recorded extrinsic hash; Sidecar reads a block by height, so two reads of one height can answer from two blocks"
    }
   ],
   "recoverRefusals": [
