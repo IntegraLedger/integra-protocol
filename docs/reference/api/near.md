@@ -28,7 +28,7 @@ description: "The exports of @integraledger/lcp/near."
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-delegate"></a> `delegate` | \{ `argsBase64`: `string`; `nonce`: `bigint`; `publicKey`: `string`; `senderId`: `string`; \} \| `null` | - |
+| <a id="property-delegate"></a> `delegate` | \{ `argsBase64`: `string`; `methodName`: `string`; `nonce`: `bigint`; `publicKey`: `string`; `receiverId`: `string`; `senderId`: `string`; \} \| `null` | The delegate action the relayed transaction carries: its `sender_id`, `public_key` and `nonce`, its `receiver_id`, and the `method_name` and base64 `args` of its first action's function call. |
 | <a id="property-receipts"></a> `receipts` | readonly `object`[] | - |
 | <a id="property-status"></a> `status` | `string` | `final_execution_status`. |
 
@@ -100,15 +100,16 @@ added when the facilitator names it.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-asset"></a> `asset` | `string` |
-| <a id="property-maxblockheight"></a> `maxBlockHeight` | `string` |
-| <a id="property-network-1"></a> `network` | [`NearNetwork`](#nearnetwork) |
-| <a id="property-nonce"></a> `nonce` | `string` |
-| <a id="property-payer-1"></a> `payer` | `string` |
-| <a id="property-publickey-1"></a> `publicKey` | `string` |
-| <a id="property-transaction"></a> `transaction?` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-argsdigest"></a> `argsDigest` | `` `0x${string}` `` | SHA-256 of the signed `ft_transfer` arguments' bytes, `0x` and lowercase hex. |
+| <a id="property-asset"></a> `asset` | `string` | - |
+| <a id="property-maxblockheight"></a> `maxBlockHeight` | `string` | - |
+| <a id="property-network-1"></a> `network` | [`NearNetwork`](#nearnetwork) | - |
+| <a id="property-nonce"></a> `nonce` | `string` | - |
+| <a id="property-payer-1"></a> `payer` | `string` | - |
+| <a id="property-publickey-1"></a> `publicKey` | `string` | - |
+| <a id="property-transaction"></a> `transaction?` | `string` | - |
 
 ***
 
@@ -249,7 +250,8 @@ executed gives the same answer. Two calls; a failed read is false.
 
 > **nearRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments.
+Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A delegate
+that calls another method is `near/not-ft-transfer`.
 
 #### Parameters
 
@@ -270,11 +272,15 @@ Recovers the hash from the settlement transaction: the `memo` in its delegated `
 
 > **nearStatus**(`ref`, `reader`): `Promise`\<[`NearStatus`](#nearstatus)\>
 
-Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be this
-instrument and reads the receipts the token contract executed: a failure is failed, a success is settled. Settled
-is `final` only when `final_execution_status` is `FINAL`, every receipt's block then being final; any other status,
-`EXECUTED` included, is `optimistic`. A failed read, an empty relayer list, or a reader for another network is
-pending.
+Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be the
+instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success is
+settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
+`ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
+on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
+the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
+every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
+empty relayer list, a reader for another network, a ref whose nonce, asset or digest is malformed, or a delegate
+whose arguments are not base64 is pending.
 
 #### Parameters
 
