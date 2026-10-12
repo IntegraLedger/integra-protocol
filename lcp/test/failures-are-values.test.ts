@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { aptosIdDigest, aptosStatus } from "../src/aptos.js";
+import { avmRecover, avmStatus } from "../src/avm.js";
 import { casperRecover, casperStatus, cep3009TypedData, exactCasper } from "../src/casper.js";
 import { ccdRecover, ccdStatus, exactCcd } from "../src/ccd.js";
 import { type AtrHash } from "../src/core.js";
@@ -208,4 +209,11 @@ describe("aptos", () => {
     const i = { sender: "0x1", sequenceNumber: "7", function: "0x1::f::g", typeArguments: [], arguments: [] };
     expect(await aptosIdDigest(i as never)).toEqual(refused("aptos/tx-malformed"));
   });
+});
+
+describe("avm", () => {
+  reads([
+    ["avmStatus", avmStatus, "x402-exact-algorand.json", UNREADABLE],
+    ["avmRecover", avmRecover, "x402-exact-algorand.json", refused("avm/wrong-reader")],
+  ]);
 });

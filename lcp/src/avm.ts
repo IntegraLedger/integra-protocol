@@ -399,7 +399,9 @@ function carriedOf(presented: unknown): { h: AtrHash; txid: string; lastValid: b
  * pending. A failed read, or a reader for another network, is pending.
  */
 export async function avmStatus(ref: AvmRef, reader: AvmReader): Promise<AvmStatus> {
-  if (!isObject(reader) || reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
   if (typeof ref.lastValid !== "string" || !ASSET.test(ref.lastValid)) return { state: "pending", why: "unreadable" };
   let answer: Awaited<ReturnType<AvmReader["search"]>>;
   try {
@@ -418,7 +420,7 @@ export async function avmRecover(
   ref: { network: AlgorandNetwork; txid: string },
   reader: AvmReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(reader) || reader.network !== ref.network) return refusal("avm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("avm/wrong-reader");
   let answer: Awaited<ReturnType<AvmReader["search"]>>;
   try {
     answer = await reader.search(ref.txid);
