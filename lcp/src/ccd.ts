@@ -110,12 +110,15 @@ const TEXT_PREFIX = new Uint8Array([0x78, 0x4d]);
 const TAG24_PREFIX = new Uint8Array([0xd8, 0x18, 0x58, 0x4f]);
 const utf8 = new TextEncoder();
 
-/** The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes. */
+/**
+ * The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes. Throws TypeError when `h` is not a 32-byte
+ * hash.
+ */
 export function ccdMemo(h: AtrHash): Uint8Array {
   return concat(TEXT_PREFIX, utf8.encode(toLcpString(h)));
 }
 
-/** CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes. */
+/** CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes. Throws as `ccdMemo` does. */
 export function pltMemo(h: AtrHash): Uint8Array {
   return concat(TAG24_PREFIX, ccdMemo(h));
 }
@@ -167,7 +170,10 @@ export async function ccdIdDigest(sender: Uint8Array, receiver: Uint8Array, amou
  * or `idDigest` is not `0x` and 64 hex digits is pending `unreadable`, with nothing read; hashes compare in either case.
  */
 export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash }, reader: CcdReader): Promise<CcdStatus> {
-  if (reader.network !== ref.network || normalHash(ref.h) === null || normalHash(ref.idDigest) === null) {
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (normalHash(ref.h) === null || normalHash(ref.idDigest) === null) {
     return { state: "pending", why: "unreadable" };
   }
   let it: CcdItem | null;
@@ -190,7 +196,7 @@ export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash 
 
 /** The hash from a settlement block item alone: its one memo-carrying transfer's memo, through `memoCarrier`. */
 export async function ccdRecover(ref: { network: CcdNetwork; transaction: string }, reader: CcdReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("ccd/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("ccd/wrong-reader");
   let it: CcdItem | null;
   try {
     it = await reader.item(ref.transaction);
@@ -273,6 +279,7 @@ const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filterOf(ccdO
 
 /** What the buyer's wallet assembles and signs: one transfer to `payTo` whose memo carries the hash. */
 async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(ccdOption));
   if (wrong !== true) return wrong;
   const { required, accepted, now } = c;

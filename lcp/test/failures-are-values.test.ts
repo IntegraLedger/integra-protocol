@@ -7,6 +7,8 @@
 // replaced argument is a value from the rail's vector file.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { casperRecover, casperStatus, cep3009TypedData, exactCasper } from "../src/casper.js";
+import { ccdRecover, ccdStatus, exactCcd } from "../src/ccd.js";
 import { type AtrHash } from "../src/core.js";
 import {
   eip3009Recover,
@@ -181,5 +183,19 @@ describe("x402 over Solana, XRPL and Stellar", () => {
     ["uptoSvm.build", uptoSvm.build, [undefined, H], 0, refused("x402/not-v2")],
     ["exactXrpl.build", exactXrpl.build, [undefined, H], 0, refused("x402/not-v2")],
     ["exactStellar.build", exactStellar.build, [undefined, H], 0, refused("x402/not-v2")],
+  ]);
+});
+
+describe("casper and ccd", () => {
+  reads([
+    ["casperStatus", casperStatus, "x402-exact-casper.json", UNREADABLE],
+    ["casperRecover", casperRecover, "x402-exact-casper.json", refused("casper/wrong-reader")],
+    ["ccdStatus", ccdStatus, "x402-exact-ccd.json", UNREADABLE],
+    ["ccdRecover", ccdRecover, "x402-exact-ccd.json", refused("ccd/wrong-reader")],
+  ]);
+  answers([
+    ["exactCasper.build", exactCasper.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactCcd.build", exactCcd.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["cep3009TypedData", cep3009TypedData, [undefined], 0, refused("casper/network-malformed")],
   ]);
 });

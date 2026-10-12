@@ -129,7 +129,9 @@ export function cep3009TypedData(a: {
   validBefore: bigint;
   nonce: AtrHash;
 }): Cep3009TypedData | Refusal {
-  if (typeof a.network !== "string" || !NETWORK.test(a.network)) return refusal("casper/network-malformed");
+  if (!isObject(a) || typeof a.network !== "string" || !NETWORK.test(a.network)) {
+    return refusal("casper/network-malformed");
+  }
   if (typeof a.asset !== "string" || !PACKAGE.test(a.asset)) return refusal("casper/option-malformed");
   if (!isName(a.name) || !isName(a.version)) return refusal("casper/option-malformed");
   if (!isAddress(a.from) || !isAddress(a.to)) return refusal("casper/address-malformed");
@@ -190,7 +192,9 @@ export async function casperStatus(
   ref: CasperRef & { transaction: string; h: AtrHash },
   reader: CasperReader,
 ): Promise<CasperStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
   const asset: unknown = ref.asset;
   if (normalHash(ref.h) === null || normalHash(ref.idDigest) === null || typeof asset !== "string" || !PACKAGE.test(asset)) {
     return { state: "pending", why: "unreadable" };
@@ -222,7 +226,7 @@ export async function casperRecover(
   ref: { network: CasperNetwork; asset: PackageHash; transaction: string },
   reader: CasperReader,
 ): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("casper/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("casper/wrong-reader");
   let call: CasperCall | null;
   try {
     call = await reader.transaction(ref.transaction);
@@ -287,6 +291,7 @@ const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filterOf(casp
 
 /** The CEP-3009 authorization the payer signs for the chosen option, with the hash as its nonce. */
 async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(casperOption));
   if (wrong !== true) return wrong;
   const { required, accepted, from, now } = c;
