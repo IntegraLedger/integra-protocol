@@ -1,4 +1,4 @@
-// Runs the MPP Hedera charge vector file through the hedera entry point. Every expected value is the file's.
+// Runs the MPP Hedera charge vector file through the hedera entry point. Every expected value is the file's, or names its source.
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -156,7 +156,7 @@ describe("mpp-charge-hedera.json", () => {
     for (const row of V.requests) expect(hederaChargeRequest(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
   });
 
-  it("eight splits build ten token transfer entries, the most a Hedera transaction carries (tokenTransfers.maxLen 10)", async () => {
+  it("eight splits build ten token transfer entries, the most a Hedera transaction carries (hiero-consensus-node LedgerConfig tokenTransfers.maxLen, default 10)", async () => {
     const splits = Array.from({ length: 8 }, (_, i) => ({ recipient: `0.0.${70000 + i}`, amount: "1" }));
     const request = { ...V.fixed.request, splits };
     expect(hederaChargeRequest(placed(request))).toBe(true);
