@@ -100,11 +100,11 @@ base58 for `solana-message` and `ed25519-raw`.
 | ------ | ------ | ------ |
 | <a id="property-accepted-3"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
 | <a id="property-channelconfig"></a> `channelConfig` | [`Json`](index.md#json) | Exactly as sent at the opening. |
-| <a id="property-computeunitlimit-1"></a> `computeUnitLimit?` | `number` | SVM refund: the Compute Budget values, 200 000 units and 1 microlamport when absent. |
+| <a id="property-computeunitlimit-1"></a> `computeUnitLimit?` | `number` | SVM refund's `request_close`: the Compute Budget values, 200 000 units and 1 microlamport when absent. |
 | <a id="property-computeunitprice-1"></a> `computeUnitPrice?` | `bigint` | - |
 | <a id="property-maxclaimableamount"></a> `maxClaimableAmount` | `bigint` | - |
-| <a id="property-recentblockhash-1"></a> `recentBlockhash?` | `string` | SVM refund: the blockhash to use when the option carries no `extra.recentBlockhash`. |
-| <a id="property-refund"></a> `refund?` | `object` | A refund. EVM: its amount, absent for a full refund. SVM: `{}`, a full refund whose `request_close` is built here. |
+| <a id="property-recentblockhash-1"></a> `recentBlockhash?` | `string` | SVM refund: the blockhash of its `request_close`. Given, the refund carries that transaction, which x402 sends only on a retry after `invalid_batch_settlement_svm_receiver_binding_unavailable`. |
+| <a id="property-refund"></a> `refund?` | `object` | A refund. EVM: its amount, absent for a full refund. SVM: `{}`, a full refund carrying the voucher for `maxClaimableAmount`, the server's accepted cumulative amount, and, with `recentBlockhash`, a payer-signed `request_close` built here. |
 | `refund.amount?` | `bigint` | - |
 | <a id="property-required-2"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
 
@@ -311,7 +311,8 @@ The ERC-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 au
 
 > **pairingOf**(`option`): [`BatchPairingId`](#batchpairingid) \| `undefined`
 
-The batch-settlement pairing an option names, or undefined.
+The batch-settlement pairing an option names, or undefined. A Solana option names `extra.receiverAuthorizer` and
+client voucher signing (`extra.voucherSigner` absent or `"client"`).
 
 #### Parameters
 
