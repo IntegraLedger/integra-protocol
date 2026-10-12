@@ -1,14 +1,14 @@
 ---
 title: Rails
-description: Where the ATR hash rides on each chain and payment network, and how each rail's settlement is read.
+description: Where the ATR hash rides on each chain and on Lightning, and how each rail's settlement is read.
 ---
 
 # Rails
 
 A **rail** is where the payment settles: an EVM chain, Solana, the XRP Ledger, a Lightning node. x402 and MPP each
 define how a payment is authorized on a rail, and each rail offers different fields a payment can carry: a nonce, a
-memo, a note, a salt, an invoice field. This page gives, for every rail this package supports, the field H rides in,
-the pairings that use it, and how the settlement is read.
+memo, a note, a salt, an invoice field. This page gives, for every chain and Lightning rail this package supports, the
+field H rides in, the pairings that use it, and how the settlement is read.
 
 Each rail's pieces are in their own entry point, such as `@integraledger/lcp/evm` or `@integraledger/lcp/sui`: the
 signed form the payer produces, where H sits in it, and the settlement read. The pairings that use a rail are

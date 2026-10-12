@@ -92,4 +92,4 @@ request, as well as to the parties' content.
 ## Next
 
 - [Pairings](./pairings.md): the members of a pairing.
-- [Rails](../guides/rails.md): where H rides on each chain and payment network.
+- [Rails](../guides/rails.md): where H rides on each chain and on Lightning.

@@ -70,7 +70,7 @@ These pages use each term in one sense:
 | Building a buyer | [Buyer](./guides/buyer.md) and [the buyer gate](./concepts/buyer-gate.md). |
 | Selling by channel, session or subscription | [Channels, sessions and subscriptions](./guides/sessions.md). |
 | Working on one protocol | [x402](./guides/x402.md), [MPP](./guides/mpp.md), or [agentic checkouts](./guides/checkouts.md) for ACP, UCP, AP2, ACK, card networks and A2A. |
-| Working on one chain | [Rails](./guides/rails.md): the field H rides in on each chain and network. |
+| Working on one chain | [Rails](./guides/rails.md): the field H rides in on each chain and on Lightning. |
 | Publishing your terms | [Discovery](./guides/discovery.md): the document at `/.well-known/legal-context.json`. |
 | Implementing LCP in another language | [Vectors](./concepts/vectors.md) and the [vector files](./reference/vectors.md). |
 
