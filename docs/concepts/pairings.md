@@ -47,7 +47,6 @@ Some pairings carry members for their own shape of payment:
 | `buildWithin` | channels and sessions | Builds a later payment within an open channel. |
 | `closeRef` | sessions and subscriptions | The read keys of the channel's close. |
 | `landedTx`, `fetchPresented` | push-mode pairings | The transaction a credential names, and the credential completed with that landed transaction; `fetchPresented` refuses a landed transaction that failed. |
-| `txId` | rails that spell one transaction id several ways | The one spelling a record keeps. `canonicalTx(binding, tx)` applies it. |
 | `advertiseBeforeCarrier` | pairings whose carrier the seller writes after H | `advertise`'s checks and placement, without the checks on that carrier. |
 
 ## The registry

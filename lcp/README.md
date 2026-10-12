@@ -204,7 +204,6 @@ Each entry point is imported by its subpath. The core:
 | `BINDINGS` | Every pairing this package implements. |
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
 | `pairingsOfPlaced(challenge)` | The MPP pairings a placed MPP challenge offers. |
-| `canonicalTx(binding, tx)` | A transaction id in the one spelling a record keeps. |
 
 The protocol and rail entry points:
 

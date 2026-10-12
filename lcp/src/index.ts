@@ -101,13 +101,6 @@ export interface CarrierAfterH {
   advertiseBeforeCarrier?(doc: never, h: AtrHash, link: string, offer: never, agreementUrl?: string): unknown;
 }
 /**
- * The optional member of a pairing whose rail spells one transaction id more than one way: the id in the one spelling
- * a record keeps.
- */
-export interface TxSpelling {
-  txId?(tx: string): string;
-}
-/**
  * The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
  * whose signature authorises the pull, from the presented payment, as lowercase hex. With the pairing's `reference`,
  * whose `authorization` names the nonce, the deadline and the token, it is what a settlement reader needs to read the
@@ -135,7 +128,6 @@ export type Binding = (
 ) &
   PushMode &
   CarrierAfterH &
-  TxSpelling &
   Authorizer;
 export type PairingId = Binding["id"];
 /** The surfaces: a pairing id's first "/" segment. */
@@ -237,12 +229,6 @@ export const BINDINGS: readonly Binding[] = Object.freeze([
 ]);
 
 const PROBE_CONTEXT = { info: toLegalContext(`0x${"00".repeat(32)}`, "https://pairing.invalid/").legalContext, schema: LEGAL_CONTEXT_SCHEMA };
-
-/** A transaction id as a record keeps it: the pairing's `txId`, where it has one, else the id unchanged. */
-export function canonicalTx(binding: Binding | undefined, tx: string): string {
-  const f = (binding as TxSpelling | undefined)?.txId;
-  return typeof f === "function" ? f(tx) : tx;
-}
 
 /**
  * The x402 pairing that serves an option: a Lightning option's by `lnbtcPairingOf`, which names `x402/exact/lnbtc` for

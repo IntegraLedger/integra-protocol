@@ -728,30 +728,6 @@ const pattern: LcpPattern = deepFreeze({
     "amount, payee, asset or timing match the ATR's content.",
 });
 
-const TX_HEX = /^(?:0x)?[0-9a-fA-F]{64}$/;
-const TX_BASE64 = /^[A-Za-z0-9+/_-]{43}=?$/;
-
-/**
- * A TON transaction hash in one spelling: lowercase hex without `0x` (x402's TON scheme gives `transaction` as
- * "Transaction hash (64-character hex string)"), whether it is given in hex, or in the base64 or base64url of its 32
- * bytes that TON Center answers. Any other string is returned unchanged.
- */
-export function tvmTxId(tx: string): string {
-  if (typeof tx !== "string") return tx;
-  if (TX_HEX.test(tx)) return tx.replace(/^0x/, "").toLowerCase();
-  if (!TX_BASE64.test(tx)) return tx;
-  let binary: string;
-  try {
-    binary = atob(tx.replace(/-/g, "+").replace(/_/g, "/").replace(/=?$/, "="));
-  } catch {
-    return tx;
-  }
-  if (binary.length !== 32) return tx;
-  let hex = "";
-  for (let i = 0; i < binary.length; i += 1) hex += binary.charCodeAt(i).toString(16).padStart(2, "0");
-  return hex;
-}
-
 export const exactTvm = Object.freeze({
   id: ID,
   pattern,
@@ -766,6 +742,5 @@ export const exactTvm = Object.freeze({
   reference,
   status: tvmStatus,
   recover: tvmRecover,
-  txId: tvmTxId,
 });
 

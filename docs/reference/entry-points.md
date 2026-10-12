@@ -11,7 +11,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 
 | Entry point | What it holds |
 |---|---|
-| [`@integraledger/lcp`](#integraledgerlcp) | The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, and the registry of every pairing (`BINDINGS`, `pairingOf`, `canonicalTx`). |
+| [`@integraledger/lcp`](#integraledgerlcp) | The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, and the registry of every pairing (`BINDINGS`, `pairingOf`). |
 | [`@integraledger/lcp/a2a`](#integraledgerlcpa2a) | The LCP extension for A2A: the ATR hash and the link to the seller's copy delivered in a Task's `metadata`, keyed by the extension's URI. A2A signs nothing per transaction, so this is a carrier and exports no pairing. Pure; no I/O. |
 | [`@integraledger/lcp/ack`](#integraledgerlcpack) | ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. Pure; no I/O. No token or receipt signature is verified here. |
 | [`@integraledger/lcp/acp`](#integraledgerlcpacp) | ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`, with the link beside it in the session's `metadata.legal_context`, and, where the handler requires `delegate_payment`, as the allowance's `checkout_session_id`. Pure; no I/O. Nothing here signs or verifies a signature. |
@@ -48,15 +48,15 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 
 ## `@integraledger/lcp`
 
-The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, and the registry of every pairing (`BINDINGS`, `pairingOf`, `canonicalTx`).
+The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, and the registry of every pairing (`BINDINGS`, `pairingOf`).
 
 ```ts no-check
 import { assemble, BINDINGS, canonicalJson, … } from "@integraledger/lcp";
 ```
 
-**Values (20):** `assemble`, `BINDINGS`, `canonicalJson`, `canonicalTx`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (19):** `assemble`, `BINDINGS`, `canonicalJson`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
-**Types (18):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `PairingOn`, `Presented`, `PresentedOn`, `PushMode`, `Refusal`, `Surface`, `TieRequestOn`, `TxSpelling`, `X402Binding`.
+**Types (17):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `PairingOn`, `Presented`, `PresentedOn`, `PushMode`, `Refusal`, `Surface`, `TieRequestOn`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -376,7 +376,7 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 **Pairings:** `x402/exact/tron/lcp-trc20-memo`.
 
-**Values (14):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `pairingOf`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`, `tronTxId`.
+**Values (13):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `pairingOf`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
 
 **Types (9):** `TronChoice`, `TronInfo`, `TronNetwork`, `TronPayment`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
 
@@ -390,7 +390,7 @@ import { exactTvm, lcpComment, OP, … } from "@integraledger/lcp/tvm";
 
 **Pairings:** `x402/exact/tvm`.
 
-**Values (8):** `exactTvm`, `lcpComment`, `OP`, `pairingOf`, `tvmCarrier`, `tvmRecover`, `tvmStatus`, `tvmTxId`.
+**Values (7):** `exactTvm`, `lcpComment`, `OP`, `pairingOf`, `tvmCarrier`, `tvmRecover`, `tvmStatus`.
 
 **Types (9):** `TonCell`, `TonTx`, `TvmChoice`, `TvmNetwork`, `TvmPayment`, `TvmReader`, `TvmRef`, `TvmStatus`, `TvmUnsigned`.
 

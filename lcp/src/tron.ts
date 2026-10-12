@@ -638,16 +638,6 @@ const pattern: LcpPattern = deepFreeze({
     "transaction. This does not show that amount, payee, token or timing match the ATR's content.",
 });
 
-const TX_HEX = /^(?:0x)?[0-9a-fA-F]{64}$/;
-
-/**
- * A Tron transaction id in one spelling: lowercase hex without `0x`, the SHA-256 of `raw_data` as the node's `txID`
- * gives it, whether it is given with or without `0x` and in either case. Any other string is returned unchanged.
- */
-export function tronTxId(tx: string): string {
-  return typeof tx === "string" && TX_HEX.test(tx) ? tx.replace(/^0x/, "").toLowerCase() : tx;
-}
-
 export const exactTronMemo = Object.freeze({
   id: ID,
   pattern,
@@ -662,7 +652,6 @@ export const exactTronMemo = Object.freeze({
   reference,
   status: tronStatus,
   recover: tronRecover,
-  txId: tronTxId,
 });
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
