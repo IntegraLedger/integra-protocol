@@ -15,7 +15,6 @@ import {
   tronAddress,
   tronCarrier,
   type TronInfo,
-  type TronPayment,
   type TronReader,
   type TronRef,
 } from "../src/tron.js";
@@ -39,7 +38,7 @@ const txOf = (rawHex: string, sigHex: string) => {
   len.push(n);
   return hex(Uint8Array.from([0x0a, ...len, ...raw, 0x12, 0x41, ...bytes(sigHex)]));
 };
-const payment = (transaction: string): TronPayment => ({
+const payment = (transaction: string) => ({
   x402Version: 2,
   resource: V.fixed.resource,
   accepted: O,
@@ -127,7 +126,8 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
 
     const paid = u.complete(signature);
     expect(paid).toEqual(V.V2.expectPayload);
-    const d = decodeTronTx((paid as TronPayment).payload.transaction);
+    if ("refused" in paid) throw new Error(paid.code);
+    const d = decodeTronTx(paid.payload.transaction);
     if ("refused" in d) throw new Error(d.code);
     expect(hex(d.rawBytes)).toBe(V.V2.expectRawHex);
     expect(hex(d.raw.refBlockBytes)).toBe(V.V2.expectRefBlockBytes);

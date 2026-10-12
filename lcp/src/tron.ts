@@ -7,6 +7,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
+import type { TronPayment } from "./internal/tron.js";
 import { bytesOfHexDigits, decimalBelow, hexDigits } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -21,7 +22,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 /** CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta. */
@@ -83,8 +83,6 @@ export type TronStatus =
   | { state: "settled"; finality: "solidified" | "head"; blockNumber: bigint }
   | { state: "pending"; why: "not-found" | "unreadable" }
   | { state: "failed"; why: "contract-failed" | "no-transfer" | "expired"; result?: string };
-
-export type TronPayment = X402Payment<{ transaction: string }>;
 
 export interface TronChoice {
   required: PaymentRequired;
