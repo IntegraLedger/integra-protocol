@@ -395,7 +395,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
       .toEqual({ state: "pending", why: "unreadable" });
   });
 
-  it("MV12: a Transfer to the receive-policy guard is failed receive-policy-blocked, never the payment", async () => {
+  it("MV12: the payer's Transfer to the receive-policy guard is failed receive-policy-blocked, never the payment", async () => {
     const keys = await evmHash.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential);
     if ("refused" in keys) throw new Error(keys.code);
     const ref = { ...keys, transaction: HS.MV12.hash };
@@ -411,6 +411,11 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(await evmTransaction.status(ref, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [transfer(HS.MV12.guard)] })))
       .toEqual(HS.MV12.expectBlocked);
     expect(await status([transfer(HS.MV12.guard), transfer(RECIPIENT_E)])).toEqual(HS.MV12.expectSettled);
+    const otherToGuard: EvmLog = {
+      ...transfer(HS.MV12.guard),
+      topics: [TRANSFER_TOPIC, topicOf(HS.MV12.otherSender), topicOf(HS.MV12.guard)],
+    };
+    expect(await status([otherToGuard])).toEqual(HS.MV12.expectOtherSender);
   });
 });
 
