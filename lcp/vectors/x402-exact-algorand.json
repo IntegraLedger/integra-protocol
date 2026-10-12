@@ -55,13 +55,113 @@
   "expectPaymentIndex": 1
  },
  "V3": {
-  "case": "bound and reference of V2's payload, and the refusals",
+  "case": "bound and reference of V2's payload, under the fixed option and under options whose amount or timeout no build could use, and the refusals",
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
    "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
    "lastValid": "67634796"
   },
+  "presentedOptions": [
+   {
+    "case": "V2's payment presented under an option with maxTimeoutSeconds 0: bound and reference read the signed transaction, and the option check they apply (scheme, network, asset, payTo, extra) names no timeout",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "10000",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "lastValid": "67634796"
+    }
+   },
+   {
+    "case": "V2's payment presented under an option with no maxTimeoutSeconds",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "10000",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "lastValid": "67634796"
+    }
+   },
+   {
+    "case": "V2's payment presented under an option whose maxTimeoutSeconds is the string \"60\"",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "10000",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": "60",
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "lastValid": "67634796"
+    }
+   },
+   {
+    "case": "V2's payment presented under an option with amount \"abc\": bound and reference read no amount",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "abc",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "lastValid": "67634796"
+    }
+   },
+   {
+    "case": "V2's payment presented under an option with no amount",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "lastValid": "67634796"
+    }
+   }
+  ],
   "refusals": [
    {
     "case": "the steward client's note",

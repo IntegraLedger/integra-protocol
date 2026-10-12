@@ -475,7 +475,7 @@ Algorand (`@integraledger/lcp/avm`).
 | `avm/not-axfer` | The Algorand payment transaction is not an asset transfer. |
 | `avm/not-found` | The Algorand reader found no transaction for the id. |
 | `avm/note-not-lcp` | The Algorand transaction's note is not UTF-8 carrying an ATR hash in LCP string form. |
-| `avm/option-malformed` | An Algorand option's `extra` is not an object or names a transfer method or flow this pairing does not pay, its asset, `payTo`, fee payer, amount or timeout is invalid, or the buyer's payer or suggested parameters given to `build` are invalid (or `algosdk` is not loaded). |
+| `avm/option-malformed` | An Algorand option's `extra` is not an object or names a transfer method or flow this pairing does not pay, its asset, `payTo` or fee payer is invalid, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid, or the buyer's payer or suggested parameters given to `build` are invalid (or `algosdk` is not loaded). |
 | `avm/signature-malformed` | The signature given to the Algorand `complete` is not 64 bytes. |
 | `avm/txn-malformed` | The Algorand payload has no `paymentGroup` array, the payment entry is not base64 msgpack within the caps that decodes as a signed transaction, its note exceeds the bound, or `algosdk` is not loaded. |
 | `avm/unreadable` | The Algorand reader threw or returned an answer that is not well formed. |

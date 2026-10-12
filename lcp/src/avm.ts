@@ -170,8 +170,13 @@ function isAddress(s: unknown): s is string {
   return typeof s === "string" && s.length === 58 && sdk !== null && sdk.isValidAddress(s);
 }
 
-/** The pairing's option filter. Without algosdk no option is served. */
-function check(o: PaymentRequirements): true | Refusal | undefined {
+/**
+ * The option's scheme, network, asset, `payTo` and `extra` (its fee payer, no transfer method, and no flow other than
+ * `"authorization"`): what `bound` and `reference` require of the option a presented payment echoes. They read the
+ * signed transaction, not the option's amount or timeout, so neither is checked here. Without algosdk no option is
+ * served.
+ */
+function presentable(o: PaymentRequirements): true | Refusal | undefined {
   if (!isObject(o) || typeof o.network !== "string" || !o.network.startsWith("algorand:")) return undefined;
   if (o.scheme !== "exact" || sdk === null) return undefined;
   const extra = o.extra;
@@ -181,14 +186,20 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization") return refusal("avm/option-malformed");
   const feePayer = extra?.["feePayer"];
-  if (
-    uint64Of(o.asset) === undefined ||
-    !isAddress(o.payTo) ||
-    (feePayer !== undefined && !isAddress(feePayer)) ||
-    uint64Of(o.amount) === undefined ||
-    !Number.isSafeInteger(o.maxTimeoutSeconds) ||
-    o.maxTimeoutSeconds <= 0
-  ) {
+  if (uint64Of(o.asset) === undefined || !isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) {
+    return refusal("avm/option-malformed");
+  }
+  return true;
+}
+
+/**
+ * `presentable`, then the amount as a decimal below 2^64 and `maxTimeoutSeconds` a positive safe integer, which `build`
+ * writes into the asset transfer and its last valid round: what `pairingOf`, `advertise`, `read` and `build` require.
+ */
+function check(o: PaymentRequirements): true | Refusal | undefined {
+  const p = presentable(o);
+  if (p !== true) return p;
+  if (uint64Of(o.amount) === undefined || !Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds <= 0) {
     return refusal("avm/option-malformed");
   }
   return true;
@@ -357,15 +368,19 @@ async function build(
 }
 
 /**
- * The hash inside what the payer signed: the payment transaction's note. Amount, receiver, asset, fee payer and
- * sender are not read, and no signature is verified here.
+ * The hash inside what the payer signed: the payment transaction's note. The echoed option needs a valid scheme,
+ * network, asset, `payTo` and `extra`; its amount and timeout are not read. The transaction's amount, receiver,
+ * asset, fee payer and sender are not read, and no signature is verified here.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const carried = carriedOf(presented);
   return isRefusal(carried) ? carried : carried.h;
 }
 
-/** The network, the payment's transaction id and its last valid round, from the signed bytes. */
+/**
+ * The network, the payment's transaction id and its last valid round, from the signed bytes, with the echoed option
+ * checked as `bound` checks it.
+ */
 async function reference(presented: unknown): Promise<AvmRef | Refusal> {
   const carried = carriedOf(presented);
   if (isRefusal(carried)) return carried;
@@ -374,7 +389,7 @@ async function reference(presented: unknown): Promise<AvmRef | Refusal> {
 }
 
 function carriedOf(presented: unknown): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
-  const p = presentedWith(presented, check);
+  const p = presentedWith(presented, presentable);
   if (isRefusal(p)) return p;
   return avmCarrier(p.payload as unknown as AvmPresented);
 }
