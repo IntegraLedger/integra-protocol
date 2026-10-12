@@ -162,6 +162,8 @@ On Sui, a node keeps only recent history, so an absent transaction can be one th
 `suiStatus(ref, reader, position)` takes the checkpoint from which you need history, such as the latest checkpoint when
 the payment is requested, and answers failed `expired` only when the epoch is past the transaction's bound and the
 endpoint holds transactions from that checkpoint or earlier; otherwise an absent transaction is pending `not-found`.
+A transaction that sets no maximum epoch can execute in any later epoch: `reference` records it with a null
+`untilEpoch`, and `suiStatus` never answers `expired` for it.
 
 On Cardano, a recent block can still be rolled back. `cardanoStatus(ref, reader, depth)` takes the number of newer
 blocks at which you take a settlement as final, and answers failed `expired` only when the block that many blocks below

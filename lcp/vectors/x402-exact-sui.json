@@ -65,7 +65,7 @@
    "expectBound": "sui/hash-not-carried"
   },
   {
-   "case": "setExpiration({None: true})",
+   "case": "setExpiration({None: true}): not a refusal; the reference records no epoch bound",
    "tx": {
     "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAA",
     "bytes": 180,
@@ -73,7 +73,11 @@
     "digest": "9x7AxqgfG1R1RCp4zJszPrVx8rKxPSStuGomPTtGWeai"
    },
    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "expectReference": "sui/expiration-unbounded"
+   "expectReference": {
+    "network": "sui:testnet",
+    "digest": "9x7AxqgfG1R1RCp4zJszPrVx8rKxPSStuGomPTtGWeai",
+    "untilEpoch": null
+   }
   },
   {
    "case": "a transaction of 131073 bytes",
@@ -243,15 +247,11 @@
     "expect": "x402/payload-malformed"
    },
    {
-    "case": "the expiration is ValidDuring without maxEpoch, or Validity: untilEpoch is null",
-    "expect": "sui/expiration-unbounded"
-   },
-   {
     "case": "recover on an answer for another digest, even one that failed",
     "expect": "sui/unreadable"
    },
    {
-    "case": "complete with a payload whose bound is not the built hash, or whose reference refuses",
+    "case": "complete with a payload whose bound is not the built hash",
     "expect": "x402/signed-not-bound"
    },
    {
@@ -287,7 +287,11 @@
      "digest": "28fhq3ZbGct7K31dSgPoU7DJsVpbwh3cTpr3hb9BYXFp"
     },
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": "sui/expiration-unbounded"
+    "expectReference": {
+     "network": "sui:testnet",
+     "digest": "28fhq3ZbGct7K31dSgPoU7DJsVpbwh3cTpr3hb9BYXFp",
+     "untilEpoch": null
+    }
    }
   ]
  },

@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 483 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 482 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -35,7 +35,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`). |
 | [`polkadot`](#polkadot) | 18 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 13 | Starknet (`@integraledger/lcp/starknet`). |
-| [`sui`](#sui) | 12 | Sui (`@integraledger/lcp/sui`). |
+| [`sui`](#sui) | 11 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 15 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 19 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`). |
@@ -634,7 +634,6 @@ Sui (`@integraledger/lcp/sui`).
 |---|---|
 | `sui/aborted` | The Sui transaction the reference names executed with status `FAILURE`. |
 | `sui/ambiguous` | The Sui transaction has more than one unused `Pure` input. |
-| `sui/expiration-unbounded` | The Sui transaction sets no maximum epoch, so `reference` has no time by which it settles. |
 | `sui/hash-not-carried` | The Sui transaction has no unused `Pure` input, or its one unused `Pure` input is not 32 bytes. |
 | `sui/network-malformed` | A Sui option's network starts with `sui:` but is not `sui:mainnet`, `sui:testnet` or `sui:devnet`. |
 | `sui/not-found` | The Sui reader found no transaction for the digest. |

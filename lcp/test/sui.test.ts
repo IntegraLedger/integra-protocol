@@ -54,7 +54,7 @@ function reader(
   return r;
 }
 
-function refOf(v: { network: string; digest: string; untilEpoch: string; h: string }): SuiRef & { h: `0x${string}` } {
+function refOf(v: { network: string; digest: string; untilEpoch: string | null; h: string }): SuiRef & { h: `0x${string}` } {
   return { network: v.network as SuiRef["network"], digest: v.digest, untilEpoch: v.untilEpoch, h: v.h as `0x${string}` };
 }
 
@@ -177,8 +177,10 @@ describe("V3 · refusals", () => {
       }
       const bound = await exactSui.bound(payment(b64));
       expect(bound).toEqual(row.expectBound.startsWith("0x") ? row.expectBound : { refused: true, code: row.expectBound });
-      if (row.expectReference !== undefined) {
+      if (typeof row.expectReference === "string") {
         expect(await exactSui.reference(payment(b64))).toEqual({ refused: true, code: row.expectReference });
+      } else if (row.expectReference !== undefined) {
+        expect(throughJson(await exactSui.reference(payment(b64)))).toEqual(row.expectReference);
       }
     });
   }
@@ -211,6 +213,35 @@ describe("V4 · status and recover", () => {
     for (const position of [undefined, 5, "5", -1n]) {
       const r = reader(V.V4.ref.network, null, "1235", "0");
       expect(await exactSui.status(ref, r, position as never)).toEqual({ state: "pending", why: "unreadable" });
+      expect(r.calls).toBe(0);
+    }
+  });
+  // Sui's `TransactionExpiration::None` sets no epoch after which validators refuse the transaction, so an absent one
+  // can still execute: the reference records a null bound, and no epoch makes it expired.
+  it("status: a reference with no epoch bound is never expired", async () => {
+    const unbounded = V.V3.find((r: { case: string }) => r.case.startsWith("setExpiration"));
+    const ref = refOf({ ...V.V4.ref, digest: unbounded.tx.digest, untilEpoch: null });
+    for (const epoch of ["1235", "18446744073709551615"]) {
+      const r = reader(V.V4.ref.network, null, epoch, "0");
+      expect(await exactSui.status(ref, r, POSITION)).toEqual({ state: "pending", why: "not-found" });
+      expect(r.calls).toBe(1);
+    }
+    const bounded = reader(V.V4.ref.network, null, "1235", "0");
+    expect(await exactSui.status(refOf(V.V4.ref), bounded, POSITION)).toEqual({ state: "failed", why: "expired" });
+    const landed = { transactionBcs: bytesOf(unbounded.tx.transactionBase64), status: "SUCCESS" as const, checkpoint: 9n };
+    const r = {
+      network: "sui:testnet" as const,
+      async read() {
+        return { tx: landed, epoch: 99n, firstCheckpoint: 0n };
+      },
+    };
+    expect(plain(await exactSui.status(ref, r, POSITION))).toEqual({ state: "settled", checkpoint: "9" });
+  });
+  it("status: an untilEpoch that is neither a decimal string below 2^64 nor null is pending unreadable", async () => {
+    for (const untilEpoch of [undefined, "", "-1", "18446744073709551616", 1234]) {
+      const r = reader(V.V4.ref.network, null, "1235", "0");
+      const ref = { ...refOf(V.V4.ref), untilEpoch } as never;
+      expect(await exactSui.status(ref, r, POSITION)).toEqual({ state: "pending", why: "unreadable" });
       expect(r.calls).toBe(0);
     }
   });
@@ -298,8 +329,11 @@ describe("advertise, read, build and complete", () => {
     });
     const unbounded = V.V3.find((r: { case: string }) => r.case.startsWith("setExpiration")).tx.transactionBase64;
     expect(u.complete({ signature: "AAAA", transaction: unbounded })).toEqual({
-      refused: true,
-      code: "x402/signed-not-bound",
+      x402Version: 2,
+      resource: V.fixed.resource,
+      accepted: O,
+      payload: { signature: "AAAA", transaction: unbounded },
+      extensions: doc.extensions,
     });
   });
 

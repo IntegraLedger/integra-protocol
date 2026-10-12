@@ -67,8 +67,8 @@ export interface SuiReader {
 export interface SuiRef {
   network: SuiNetwork;
   digest: string;
-  /** The last epoch the transaction can execute in, as a decimal string. */
-  untilEpoch: string;
+  /** The last epoch the transaction can execute in, as a decimal string, or null when it sets no maximum epoch. */
+  untilEpoch: string | null;
 }
 
 export type SuiStatus =
@@ -166,13 +166,14 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
  * from which the caller needs the endpoint's history: one at or before every checkpoint the payment could have
  * executed in, such as the latest checkpoint when the payment is requested. An absent transaction is expired once the
  * latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
- * pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. A
- * present one must be these bytes carrying this hash, and its effects' status decides. A `position` that is not a
- * non-negative bigint is pending `unreadable`. One call.
+ * pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. One
+ * with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
+ * bytes carrying this hash, and its effects' status decides. A `position` that is not a non-negative bigint is pending
+ * `unreadable`. One call.
  */
 export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint): Promise<SuiStatus> {
   if (peer === undefined || reader.network !== ref.network) return { state: "pending", why: "unreadable" };
-  const untilEpoch = decimalBelow(ref.untilEpoch, U64_LIMIT);
+  const untilEpoch = ref.untilEpoch === null ? null : decimalBelow(ref.untilEpoch, U64_LIMIT);
   if (untilEpoch === undefined) return { state: "pending", why: "unreadable" };
   if (typeof position !== "bigint" || position < 0n) return { state: "pending", why: "unreadable" };
   const answer = await readOnce(reader, ref.digest);
@@ -180,7 +181,8 @@ export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader,
   const { tx, epoch, firstCheckpoint } = answer;
   if (tx === null) {
     const holds = firstCheckpoint !== null && firstCheckpoint <= position;
-    return epoch > untilEpoch && holds ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+    const expired = untilEpoch !== null && epoch > untilEpoch && holds;
+    return expired ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
   }
   if (suiDigest(tx.transactionBcs) !== ref.digest) return { state: "pending", why: "unreadable" };
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
@@ -263,9 +265,7 @@ async function build(
     complete(signed: SuiPayload): SuiPaymentPayload | Refusal {
       const payment = paymentWith(required, accepted, signed);
       const got = boundNow(payment);
-      if (isRefusal(got) || got !== expected || isRefusal(referenceNow(payment))) {
-        return refusal("x402/signed-not-bound");
-      }
+      if (isRefusal(got) || got !== expected) return refusal("x402/signed-not-bound");
       return payment;
     },
   };
@@ -276,7 +276,7 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return boundNow(presented);
 }
 
-/** The read keys for this payment: network, digest and the epoch bound. */
+/** The read keys for this payment: network, digest and the epoch bound, null for a transaction that sets none. */
 async function reference(presented: unknown): Promise<SuiRef | Refusal> {
   return referenceNow(presented);
 }
@@ -289,8 +289,8 @@ function boundNow(presented: unknown): AtrHash | Refusal {
 function referenceNow(presented: unknown): SuiRef | Refusal {
   const tx = presentedTx(presented);
   if (isRefusal(tx)) return tx;
-  if (tx.tx.untilEpoch === null) return refusal("sui/expiration-unbounded");
-  return { network: tx.network, digest: tx.tx.digest, untilEpoch: tx.tx.untilEpoch.toString() };
+  const { digest, untilEpoch } = tx.tx;
+  return { network: tx.network, digest, untilEpoch: untilEpoch === null ? null : untilEpoch.toString() };
 }
 
 function presentedTx(presented: unknown): { network: SuiNetwork; tx: SuiTx } | Refusal {
