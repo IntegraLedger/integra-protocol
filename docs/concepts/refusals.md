@@ -74,9 +74,9 @@ The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which ar
 
 These exports throw a `TypeError` too:
 
-- on a null or missing argument: `jsonWithinDepth` (its text), `msgpackWithinCaps` (its bytes), `carriesBinding` (its
-  log or binding log), `isGuardTransfer` and `transferParts` (their log), `paymentWith` (its document), `withExtra`
-  (its option), and `svmCloseStatus` (its ref or reader), which rejects;
+- on a null or missing argument: `msgpackWithinCaps` (its bytes), `carriesBinding` (its log or binding log),
+  `isGuardTransfer` and `transferParts` (their log), `paymentWith` (its document), `withExtra` (its option), and
+  `svmCloseStatus` (its ref or reader), which rejects;
 - on any argument outside its type: `approveCalldata` and `openCalldata`, `mppSvmCarrier` (a transaction that is not a
   decoded one), `offeredAt` (an `accepts` that is not an array) and `withOption` (a document whose `accepts` is not an
   array).

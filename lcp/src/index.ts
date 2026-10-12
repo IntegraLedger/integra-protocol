@@ -12,8 +12,6 @@ export {
   hashEquals,
   isHttpsLink,
   isOtherSchemeLink,
-  jsonWithinDepth,
-  MAX_JSON_DEPTH,
   newAtrId,
   parseJson,
   toLcpString,

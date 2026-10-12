@@ -200,7 +200,7 @@ Each entry point is imported by its subpath. The core:
 | `toRawBytes(h)`, `fromRawBytes(b)` | H as 32 raw bytes, and back. |
 | `isHttpsLink(s)` | The one rule every link to an ATR meets. |
 | `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. |
-| `parseJson(text)`, `jsonWithinDepth(text)`, `MAX_JSON_DEPTH` | JSON reading capped at 64 levels of nesting. |
+| `parseJson(text)` | JSON reading capped at 64 levels of nesting. |
 | `BINDINGS` | Every pairing this package implements. |
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
 | `pairingsOfPlaced(challenge)` | The MPP pairings a placed MPP challenge offers. |

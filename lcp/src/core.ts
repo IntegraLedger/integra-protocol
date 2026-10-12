@@ -377,7 +377,7 @@ export function jsonWithinDepth(text: string): boolean {
   return true;
 }
 
-/** The value of JSON text nested at most `MAX_JSON_DEPTH` deep; undefined for text that is deeper or is not JSON. */
+/** The value of JSON text nested at most 64 levels deep; undefined for text that is deeper or is not JSON. */
 export function parseJson(text: string): unknown {
   if (typeof text !== "string" || !jsonWithinDepth(text)) return undefined;
   try {
