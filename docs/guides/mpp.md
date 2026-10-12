@@ -160,7 +160,8 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these ru
 A read to repeat is what a `fetchPresented` returns when its read fails or cannot yet read the landed payment: the
 seller asks again later. On the Hedera session, a reader of another network answers `hedera/unreadable`, which repeats
 until the seller changes the reader. A call that cannot read the payment is the seller's own call: a reader that is not
-for the network the challenge or reference names (`<rail>/wrong-reader`), or `bound` or `reference` on a push
+for the network the challenge or reference names, or a ref `recover` cannot read: one that is not an object, or on
+XRPL one whose `transaction` is not 64 hex digits (`<rail>/wrong-reader`), or `bound` or `reference` on a push
 credential before `fetchPresented` has read it (`<rail>/read-first`). The same call gives the same code until the
 seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the buyer could
 pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a 402, and
