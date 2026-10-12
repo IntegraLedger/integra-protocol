@@ -15,14 +15,7 @@ import type { AtrHash } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { LEGAL_CONTEXT_SCHEMA, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
-import {
-  CASPER_DOMAIN_TYPEHASH,
-  exactCasper,
-  type CasperCall,
-  type CasperPaymentPayload,
-  type CasperReader,
-  type CasperUnsigned,
-} from "../src/casper.js";
+import { CASPER_DOMAIN_TYPEHASH, exactCasper, type CasperCall, type CasperReader, type CasperUnsigned } from "../src/casper.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-casper.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -34,6 +27,12 @@ async function unsigned(): Promise<CasperUnsigned> {
   const u = await exactCasper.build({ required: required(), accepted: O, from: V.fixed.from, now: V.fixed.now }, H);
   if ("refused" in u) throw new Error(u.code);
   return u;
+}
+
+function completed(u: CasperUnsigned) {
+  const p = u.complete(V.fixed.publicKey, V.fixed.signature);
+  if ("refused" in p) throw new Error(p.code);
+  return p;
 }
 
 type FixtureCall = null | "reader-error" | {
@@ -95,12 +94,12 @@ describe("x402/exact/casper", () => {
   });
 
   it("C2: complete, then bound gives H", async () => {
-    const payment = (await unsigned()).complete(V.fixed.publicKey, V.fixed.signature) as CasperPaymentPayload;
+    const payment = completed(await unsigned());
     expect(payment).toEqual(V.C2.expectPayload);
     expect(await exactCasper.bound(payment)).toBe(V.C2.expectBound);
-    const prefixed = mutate(payment, { "payload.authorization.nonce": H }) as CasperPaymentPayload;
+    const prefixed = mutate(payment, { "payload.authorization.nonce": H });
     expect(await exactCasper.bound(prefixed)).toBe(V.C2.boundOfPrefixedNonce);
-    const upper = mutate(payment, { "payload.authorization.nonce": H.slice(2).toUpperCase() }) as CasperPaymentPayload;
+    const upper = mutate(payment, { "payload.authorization.nonce": H.slice(2).toUpperCase() });
     expect(await exactCasper.bound(upper)).toBe(V.C2.boundOfUpperCaseNonce);
     expect((await unsigned()).complete(V.C2.tagMismatch.publicKey, V.C2.tagMismatch.signature)).toEqual(
       V.C2.tagMismatch.expect,
@@ -108,7 +107,7 @@ describe("x402/exact/casper", () => {
   });
 
   it("C3: reference", async () => {
-    const payment = (await unsigned()).complete(V.fixed.publicKey, V.fixed.signature) as CasperPaymentPayload;
+    const payment = completed(await unsigned());
     expect(await exactCasper.reference(payment)).toEqual(V.C3.expect);
   });
 
@@ -116,7 +115,7 @@ describe("x402/exact/casper", () => {
     type Row = { case: string; mutate: Record<string, string>; expect: { settleBy?: number } };
     for (const row of V.C3.rows as Row[]) {
       it(row.case, async () => {
-        const payment = mutate(V.C2.expectPayload, row.mutate) as CasperPaymentPayload;
+        const payment = mutate(V.C2.expectPayload, row.mutate);
         expect(await exactCasper.reference(payment)).toEqual(row.expect);
       });
     }
@@ -131,7 +130,7 @@ describe("x402/exact/casper", () => {
     it("build signs a validBefore past 2^53-1 for the largest maxTimeoutSeconds the filter admits, and reference records it", async () => {
       const o = { ...O, maxTimeoutSeconds: Number.MAX_SAFE_INTEGER };
       const u = await exactCasper.build({ required: required(o), accepted: o, from: V.fixed.from, now: V.fixed.now }, H);
-      const payment = (u as CasperUnsigned).complete(V.fixed.publicKey, V.fixed.signature) as CasperPaymentPayload;
+      const payment = completed(u as CasperUnsigned);
       expect(BigInt(payment.payload.authorization.validBefore)).toBe(BigInt(V.fixed.now) + BigInt(Number.MAX_SAFE_INTEGER));
       expect(await exactCasper.reference(payment)).toEqual({ ...V.C3.expect, settleBy: Number.MAX_SAFE_INTEGER });
     });
@@ -186,7 +185,7 @@ describe("x402/exact/casper", () => {
     for (const row of V.refusals.rows) {
       it(row.case, async () => {
         if (row.fn === "bound" || row.fn === "reference") {
-          const payment = mutate(V.C2.expectPayload, row.mutate) as CasperPaymentPayload;
+          const payment = mutate(V.C2.expectPayload, row.mutate);
           expect(await exactCasper[row.fn as "bound" | "reference"](payment)).toEqual(row.expect);
         } else if (row.fn === "build") {
           const option = { ...O, ...(row.optionMutate ?? {}) } as PaymentRequirements;

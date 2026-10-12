@@ -5,6 +5,7 @@
 import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
+import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -76,24 +77,7 @@ export type CasperStatus =
   | { state: "pending"; why: "not-found" | "not-executed" | "unreadable" }
   | { state: "failed"; why: "reverted" | "not-this-instrument" };
 
-export type CasperAuthorization = {
-  from: string;
-  to: string;
-  value: string;
-  validAfter: string;
-  validBefore: string;
-  nonce: string;
-};
-
-export type CasperPaymentPayload = {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { authorization: CasperAuthorization; publicKey: string; signature: string };
-  extensions?: PaymentRequired["extensions"];
-};
-
-export interface CasperChoice {
+interface CasperChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   from: CasperAddress;
@@ -265,7 +249,7 @@ function isCall(c: unknown): c is CasperCall {
 }
 
 /** The pairing's filter: an `exact` option on a `casper:` network that `build` can turn into typed data. */
-export function casperOption(o: unknown): o is PaymentRequirements {
+function casperOption(o: unknown): o is PaymentRequirements {
   if (!isObject(o)) return false;
   const extra = o["extra"];
   const timeout = o["maxTimeoutSeconds"];

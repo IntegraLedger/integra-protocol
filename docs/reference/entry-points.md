@@ -173,14 +173,14 @@ import { auxiliaryData, cardanoRecover, cardanoStatus, … } from "@integraledge
 CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments.
 
 ```ts no-check
-import { CASPER_DOMAIN_TYPEHASH, casperIdDigest, casperOption, … } from "@integraledger/lcp/casper";
+import { CASPER_DOMAIN_TYPEHASH, casperIdDigest, casperRecover, … } from "@integraledger/lcp/casper";
 ```
 
 **Pairings:** `x402/exact/casper`.
 
-**Values (7):** `CASPER_DOMAIN_TYPEHASH`, `casperIdDigest`, `casperOption`, `casperRecover`, `casperStatus`, `cep3009TypedData`, `exactCasper`.
+**Values (6):** `CASPER_DOMAIN_TYPEHASH`, `casperIdDigest`, `casperRecover`, `casperStatus`, `cep3009TypedData`, `exactCasper`.
 
-**Types (12):** `CasperAddress`, `CasperAuthorization`, `CasperCall`, `CasperChoice`, `CasperNetwork`, `CasperPaymentPayload`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
+**Types (9):** `CasperAddress`, `CasperCall`, `CasperNetwork`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
 
 ## `@integraledger/lcp/ccd`
 
