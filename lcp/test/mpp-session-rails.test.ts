@@ -439,6 +439,30 @@ describe("mpp/session/xrpl", () => {
     expect(await sessionXrpl.recover(ref, failing)).toEqual(refused("xrpl/unreadable"));
   });
 
+  // A transaction's identifying hash is 64 hex digits (xrpl.org, Basic Data Types, "Hashes"), hex digits name the
+  // same bytes in either case, and decodeBlob writes the hash in upper case. This reader holds XS2's opening and its
+  // blob under the vector file's XS2 hash, which is in upper case, and no other key, so recover settles on the
+  // transaction status settles on.
+  it("XS4: recover looks the opening up in upper case, as status does, and reads nothing for a malformed transaction", async () => {
+    const ref = { network: "xrpl:1" as const, transaction: V.XS2.expectHash as string, lastLedgerSequence: V.XS2.lastLedgerSequence as number };
+    const opened = V.XS4.rows[0];
+    const holding: XrplReader = {
+      network: "xrpl:1",
+      tx: async (hash) => (hash === V.XS2.expectHash ? opened.landed : { notFound: true, searchedAll: true }),
+      txBlob: async (hash) => (hash === V.XS2.expectHash ? V.XS2.blob : null),
+      validatedLedger: async () => V.XS2.lastLedgerSequence + 1,
+    };
+    const lower = ref.transaction.toLowerCase();
+    expect(await sessionXrpl.status({ ...ref, fromLedger: 900, transaction: lower }, holding)).toEqual(opened.expect);
+    expect(await sessionXrpl.recover({ network: ref.network, transaction: lower }, holding)).toBe(V.XS2.expectBound);
+    for (const transaction of [undefined, 7, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
+      const { reader: r, calls } = counting(holding);
+      const malformed = { network: ref.network, transaction } as typeof ref;
+      expect([transaction, await sessionXrpl.recover(malformed, r)]).toEqual([transaction, refused("xrpl/wrong-reader")]);
+      expect(calls).toEqual([]);
+    }
+  });
+
   it("build gives XS2's decoded fields other than the signature; the first claim is XS3's", async () => {
     const u = await sessionXrpl.build(
       {

@@ -438,7 +438,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/peer-missing` | The optional peer dependency `ripple-binary-codec` cannot be loaded to decode a blob. |
 | `xrpl/read-first` | An MPP XRPL `hash` credential carries no blob yet; the seller reads it by hash before `bound`. |
 | `xrpl/unreadable` | The XRPL reader threw or returned a response that is not well formed. |
-| `xrpl/wrong-reader` | The XRPL reader answers for a different network than the reference or challenge names. |
+| `xrpl/wrong-reader` | The XRPL reader answers for a different network than the reference or challenge names, or the reference given to `recover` names a `transaction` that is not 64 hex digits. |
 
 ## hedera
 

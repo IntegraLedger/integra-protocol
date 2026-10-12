@@ -770,13 +770,16 @@ async function xrplStatusOf(
  * Zero-party: the one LCP memo of the opening, read by its signed blob, when a validated ledger holds the transaction
  * with `tesSUCCESS` as a `PaymentChannelCreate`, as `status` settles it. Not found is `xrpl/not-found`; not yet
  * validated is `xrpl/not-validated`; another result is `xrpl/not-success`; another type is `xrpl/not-channel-create`.
- * Two calls.
+ * A ref whose `transaction` is not 64 hex digits is `xrpl/wrong-reader`, with nothing read; the transaction and its
+ * blob are looked up in upper case, as `status` looks the transaction up. Two calls.
  */
 async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, reader: XrplReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("xrpl/wrong-reader");
+  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return refusal("xrpl/wrong-reader");
+  const transaction = ref.transaction.toUpperCase();
   let landed: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
-    landed = await reader.tx(ref.transaction, null);
+    landed = await reader.tx(transaction, null);
   } catch {
     return refusal("xrpl/unreadable");
   }
@@ -787,7 +790,7 @@ async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, r
   if (landed.transactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
   let blob: string | null;
   try {
-    blob = await reader.txBlob(ref.transaction);
+    blob = await reader.txBlob(transaction);
   } catch {
     return refusal("xrpl/unreadable");
   }

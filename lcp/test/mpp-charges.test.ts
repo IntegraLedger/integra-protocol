@@ -39,6 +39,7 @@ import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
 import { stellarLocate, type StellarReader, type StellarRef } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
+import { counting } from "./fixtures/counting-reader.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
 const MC = load("mpp-challenge.json");
@@ -574,6 +575,31 @@ describe("mpp-charge-xrpl.json", () => {
     );
     const missing: XrplReader = { ...readerOf({ validated: true, result: "tesSUCCESS" }), tx: async () => ({ notFound: true, searchedAll: false }) };
     expect(await chargeXrpl.fetchPresented(push, missing)).toEqual(refused("xrpl/not-found"));
+  });
+
+  // recover gives the validated tesSUCCESS Payment's InvoiceID, which MPP's charge sets to H itself. A transaction's
+  // identifying hash is 64 hex digits (xrpl.org, Basic Data Types, "Hashes"), hex digits name the same bytes in
+  // either case, and decodeBlob writes the hash in upper case. This reader holds V3's Payment under that upper-case
+  // hash only, so recover settles on the transaction status settles on.
+  it("recover looks the Payment up in upper case, as status does, and reads nothing for a malformed transaction", async () => {
+    const ref = V.V3.expectReference;
+    const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment", invoiceId: ref.expect };
+    const holding: XrplReader = {
+      network: "xrpl:1",
+      tx: async (h) => (h === ref.transaction ? landed : { notFound: true, searchedAll: true }),
+      txBlob: async () => null,
+      validatedLedger: async () => 1001,
+    };
+    for (const transaction of [ref.transaction, ref.transaction.toLowerCase()]) {
+      expect(await chargeXrpl.status({ ...ref, fromLedger: 980, transaction }, holding)).toEqual({ state: "settled", ledgerIndex: 990 });
+      expect(await chargeXrpl.recover({ network: ref.network, transaction }, holding)).toBe(V.V3.expectBound);
+    }
+    for (const transaction of [undefined, 7, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
+      const { reader, calls } = counting(holding);
+      const malformed = { network: ref.network, transaction } as { network: "xrpl:1"; transaction: string };
+      expect([transaction, await chargeXrpl.recover(malformed, reader)]).toEqual([transaction, refused("xrpl/wrong-reader")]);
+      expect(calls).toEqual([]);
+    }
   });
 
   it("multisigned: bound and reference refuse a blob that carries Signers", async () => {

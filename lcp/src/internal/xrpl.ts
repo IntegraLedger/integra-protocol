@@ -281,15 +281,20 @@ export async function xrplStatus(ref: XrplRef, reader: XrplReader): Promise<Xrpl
   return { state: "pending", why: "unreadable" };
 }
 
-/** Zero-party: the validated `tesSUCCESS` Payment's `InvoiceID`, as a candidate hash. One call. */
+/**
+ * Zero-party: the validated `tesSUCCESS` Payment's `InvoiceID`, as a candidate hash. A ref whose `transaction` is not
+ * 64 hex digits is `xrpl/wrong-reader`, with nothing read; the transaction is looked up in upper case, as `xrplStatus`
+ * looks it up. One call.
+ */
 export async function xrplInvoiceOf(
   ref: { network: XrplNetwork; transaction: string },
   reader: XrplReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("xrpl/wrong-reader");
+  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return refusal("xrpl/wrong-reader");
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
-    r = await reader.tx(ref.transaction, null);
+    r = await reader.tx(ref.transaction.toUpperCase(), null);
   } catch {
     return refusal("xrpl/unreadable");
   }
