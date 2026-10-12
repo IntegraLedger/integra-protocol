@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 67 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, and its `pattern` record: the binding pattern, whether the buyer's signature covers the ATR hash, whether the hash itself is on chain, whether the settlement is a public proof, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each field.
+`BINDINGS` holds 67 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, and its `pattern` record: the binding pattern, whether the buyer's signature covers the ATR hash, whether the binding is visible on a public ledger, whether the settlement is a public proof, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each field.
 
 ## `ack`
 

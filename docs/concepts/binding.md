@@ -51,7 +51,7 @@ Each pairing's `pattern` record states what a payment through it shows, and neve
 |---|---|
 | `pattern` | The binding pattern above. |
 | `buyerSigns` | The buyer's signature covers H, or a value derived from H. |
-| `onChain` | H itself is on chain after settlement. |
+| `onChain` | The binding is visible on a public ledger after settlement (`LCP §8.3`): the settlement carries H, part of it, or a value derived from it. |
 | `publicProof` | Settlement leaves a public record that commits to H. |
 | `zeroPartyRecoverable` | H can be read back from the settled transaction alone, without either party (the pairing's `recover`). |
 | `forwardIndexable` | A search by H finds the settlement. |

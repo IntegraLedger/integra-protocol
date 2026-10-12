@@ -247,8 +247,8 @@ Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to chec
 <!-- pairings:end -->
 
 The [pairings reference](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/pairings.md)
-gives each one's binding pattern, whether the buyer signs H, whether H is on chain, and the sentence its record states
-about what the payment proves.
+gives each one's binding pattern, whether the buyer signs H, whether the binding is visible on a public ledger, and the
+sentence its record states about what the payment proves.
 
 ## What it guarantees, and what it does not
 

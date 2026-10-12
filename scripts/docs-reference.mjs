@@ -96,7 +96,7 @@ function pairingsPage() {
   s +=
     `\`BINDINGS\` holds ${rows.length} pairings on ${surfaces.length} surfaces (${surfaces.map(code).join(", ")}). ` +
     "Each row gives the pairing's id, the export that implements it, and its `pattern` record: the binding pattern, " +
-    "whether the buyer's signature covers the ATR hash, whether the hash itself is on chain, whether the settlement " +
+    "whether the buyer's signature covers the ATR hash, whether the binding is visible on a public ledger, whether the settlement " +
     "is a public proof, whether the hash can be recovered from the chain alone, and the LCP profile that defines the " +
     "binding, where one does. [Binding](../concepts/binding.md) explains each field.\n\n";
   for (const surface of surfaces) {
