@@ -114,6 +114,39 @@ describe("ap2-checkout-mandate.json", () => {
     );
   });
 
+  it("V7: AP2's published chained presentation (checkout_mandate.md line 494; Delegate SD-JWT draft)", async () => {
+    const token: string = V.V7.token;
+    expect(Buffer.byteLength(token)).toBe(V.V7.tokenBytes);
+    expect(createHash("sha256").update(token).digest("hex")).toBe(V.V7.tokenSha256);
+    const hops = token.split("~~");
+    expect(hops.length).toBe(V.V7.expectHops);
+    const [open, last] = hops as [string, string];
+    expect(createHash("sha256").update(last).digest("hex")).toBe(V.V7.expectLastHopSha256);
+    expect(last).toBe(V.V6.token);
+    // The closed hop's sd_hash covers the open hop with its trailing "~", which the chain's "~~" holds.
+    const closedPayload = JSON.parse(Buffer.from(last.split(".")[1]!, "base64url").toString("utf8"));
+    expect(closedPayload.sd_hash).toBe(V.V7.expectSdHash);
+    expect(sha256b64u(`${open}~`)).toBe(V.V7.expectSdHash);
+    const m = await readMandate(token);
+    if ("refused" in m) throw new Error(m.code);
+    expect(m.checkout_hash).toBe(V.V7.expectCheckoutHash);
+    expect(m.checkout_jwt).toBe(V.V6.checkoutJwt);
+    expect(await checkoutJwtOf(token)).toBe(V.V6.checkoutJwt);
+    const b = await checkoutBinding({ checkout_mandate: token, checkout_jwt: V.V6.checkoutJwt });
+    if ("refused" in b) throw new Error(b.code);
+    expect(b.payload["id"]).toBe(V.V6.expectCheckoutId);
+    expect(await checkoutMandate.bound({ checkout_mandate: token, checkout_jwt: V.V6.checkoutJwt })).toEqual(
+      V.V7.expectBound,
+    );
+  });
+
+  it("a chained presentation over 1 MiB is too large, and a non-string mandate is malformed", async () => {
+    const big = `${M.slice(0, -1)}~~${M}${"A".repeat(1_048_577 - 2 * M.length)}`;
+    expect(big.length).toBeGreaterThan(1_048_576);
+    expect(await readMandate(big)).toEqual({ refused: true, code: "ap2/too-large" });
+    expect(await readMandate(["a", "b"])).toEqual({ refused: true, code: "ap2/mandate-malformed" });
+  });
+
   it("plant: a re-issued checkout is not the one the mandate commits to", async () => {
     const reissued = `${b64u(F.jwtHeader)}.${b64u(F.V2Payload.replace("19900", "39800"))}.${F.signature}`;
     expect(reissued).toBe(V.plant.checkoutJwt);

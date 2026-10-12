@@ -1,8 +1,9 @@
 /**
  * UCP checkouts and bookings, and four pairings: the ATR hash and link as one `links[]` entry of type
  * `legal_context` in the checkout response. The `ap2-mandate` pairings read the hash from the checkout inside the
- * buyer's checkout mandate, after AP2's `checkout_hash` check; the `unsigned` pairings have nothing signed to read.
- * Nothing here takes a key, signs or verifies a signature.
+ * buyer's checkout mandate, presented alone or last in AP2's chain after the open mandate, after AP2's
+ * `checkout_hash` check; the `unsigned` pairings have nothing signed to read. Nothing here takes a key, signs, or
+ * verifies a signature, a `cnf` delegation or a link between chained mandates.
  */
 import {
   digestJson,
@@ -214,7 +215,10 @@ async function buildAp2(offer: UcpOffer, h: AtrHash): Promise<Unsigned | Refusal
   };
 }
 
-/** The hash in the checkout inside the buyer's mandate, after AP2's `checkout_hash` check. No signature is verified. */
+/**
+ * The hash in the checkout inside the buyer's closed mandate, presented alone or last in AP2's chain, after AP2's
+ * `checkout_hash` check. No signature, `cnf` delegation or link between chained mandates is verified.
+ */
 async function boundAp2(presented: unknown): Promise<AtrHash | Refusal> {
   const b = await checkoutBinding(presented);
   if (isRefusal(b)) return b;
@@ -255,8 +259,9 @@ function ap2Pattern(noun: "checkout" | "booking"): LcpPattern {
       "(ap2.merchant_authorization, the seller's signature). The buyer's checkout mandate, issued by the platform or " +
       "the user's credential under UCP's AP2 Mandates extension, carries checkout_hash, the SHA-256 of that signed " +
       `${noun}, and the seller read the hash from the ${noun} inside it. The seller did not verify the ` +
-      `mandate's signature; the PSP verifies the payment mandate over the same ${noun} hash. The seller reported the ` +
-      "payment. This does not show that amount, payee or timing match the ATR's content.",
+      "mandate's signature, or, where an open mandate precedes it in a chain, that mandate's signature, its " +
+      `delegation (cnf) or the chain's link; the PSP verifies the payment mandate over the same ${noun} hash. The ` +
+      "seller reported the payment. This does not show that amount, payee or timing match the ATR's content.",
   });
 }
 

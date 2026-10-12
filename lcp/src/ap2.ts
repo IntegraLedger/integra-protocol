@@ -1,7 +1,8 @@
 /**
  * AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the
  * `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout
- * Mandate through `checkout_hash`, and read back from inside the mandate. Nothing here verifies a signature.
+ * Mandate through `checkout_hash`, and read back from inside the mandate. The mandate is presented alone, or last in
+ * AP2's chain after the open mandate. Nothing here verifies a signature, a `cnf` delegation or a link between hops.
  */
 import {
   canonicalJson,
@@ -26,6 +27,7 @@ import {
   jwsSegments,
   readSdJwt,
   withinDepth,
+  type SdJwt,
   type SdJwtCodes,
 } from "./sd-jwt.js";
 
@@ -43,7 +45,10 @@ export interface Ap2Offer {
   checkout: string;
 }
 export interface Presented {
-  /** The closed Checkout Mandate, an SD-JWT as presented. */
+  /**
+   * The closed Checkout Mandate as presented: one SD-JWT, or AP2's chain of the open mandate's SD-JWT and the closed
+   * mandate's, joined by `~~`.
+   */
   checkout_mandate: string;
   /** The checkout JWT the presenter names as the latest. */
   checkout_jwt: Jws;
@@ -59,6 +64,7 @@ export interface Unsigned {
 
 const ID = "ap2/checkout-mandate" as const;
 const MIB = 1_048_576;
+const MAX_HOPS = 2;
 const MAX_ID = 256;
 const MAX_LINK = 2048;
 const CHECKOUT_HASH = /^[A-Za-z0-9_-]{43}$/;
@@ -91,11 +97,34 @@ export function tie(options: readonly CheckoutOption[]): ["ap2", { options: read
 }
 
 /**
- * The closed Checkout Mandate inside an SD-JWT: exactly one resolved object whose `vct` is `mandate.checkout.1`, its
- * `checkout_hash`, and its `checkout_jwt` when disclosed.
+ * The SD-JWT that holds the closed Checkout Mandate. A presentation without `~~` is that SD-JWT. AP2's chained
+ * presentation joins the open mandate's SD-JWT and the closed mandate's with `~~`, in the compact serialization of
+ * the Delegate SD-JWT draft: every hop before the last is an SD-JWT written without its trailing `~`, and the hop after
+ * it stands in its Key Binding JWT's place. A chain has at most two hops, as AP2's checkout chain does. Every hop must
+ * read as an SD-JWT presentation; only the last is returned. No hop's signature, `cnf` key, `sd_hash` or
+ * `issuer_jwt_hash` is verified.
+ */
+async function closedHop(m: unknown): Promise<SdJwt | Refusal> {
+  if (typeof m !== "string") return refusal("ap2/mandate-malformed");
+  if (m.length > MIB) return refusal("ap2/too-large");
+  const hops = m.split("~~", MAX_HOPS + 1);
+  if (hops.length > MAX_HOPS) return refusal("ap2/mandate-malformed");
+  for (const hop of hops.slice(0, -1)) {
+    const open = await readSdJwt(`${hop}~`, MANDATE_CODES);
+    if (isRefusal(open)) return open;
+  }
+  return readSdJwt(hops[hops.length - 1], MANDATE_CODES);
+}
+
+/**
+ * The closed Checkout Mandate in a presentation, one SD-JWT or AP2's chain of the open and closed mandates joined by
+ * `~~` (at most these two hops, each an SD-JWT): exactly one resolved object of the last SD-JWT whose `vct` is
+ * `mandate.checkout.1`, its `checkout_hash`, and its `checkout_jwt` when disclosed. No signature is verified, nor the
+ * open mandate's `cnf` delegation to the closed mandate's signer, nor the closed mandate's `sd_hash` or
+ * `issuer_jwt_hash` link to the open one; the open mandate's constraints are not read.
  */
 export async function readMandate(m: unknown): Promise<MandateContent | Refusal> {
-  const sd = await readSdJwt(m, MANDATE_CODES);
+  const sd = await closedHop(m);
   if (isRefusal(sd)) return sd;
   const found: { [k: string]: Json }[] = [];
   const walk = (v: Json): void => {
@@ -228,7 +257,10 @@ async function build(offer: Ap2Offer, h: AtrHash): Promise<Unsigned | Refusal> {
   };
 }
 
-/** The hash in the checkout the buyer's mandate commits to, lowercase. No signature is verified. */
+/**
+ * The hash in the checkout the buyer's closed mandate commits to, lowercase, the mandate presented alone or last in
+ * AP2's chain. No signature, `cnf` delegation or link between hops is verified.
+ */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const b = await checkoutBinding(presented);
   if (isRefusal(b)) return b;
@@ -262,9 +294,11 @@ const pattern: LcpPattern = deepFreeze({
     "recorded in <transaction>. The buyer's closed AP2 Checkout Mandate carries checkout_hash, the SHA-256 of the " +
     "checkout JWT the seller last sent, and that JWT's payload carries this ATR's hash as its legalContext member. The " +
     "seller read both from inside the mandate. The mandate's signer is the user's trusted surface, or the agent " +
-    "under the user's open mandate. The seller did not verify that signature: AP2 has the Credential Provider " +
-    "verify the Payment Mandate, whose transaction_id is the same hash, before a payment credential issues. The seller " +
-    "reported the payment. This does not show that amount, payee or timing match the ATR's content.",
+    "under the user's open mandate, presented before it in a chain. The seller did not verify that signature, the " +
+    "open mandate's signature or delegation to the agent's key (cnf), or the chain's link between them: AP2 has the " +
+    "Credential Provider verify the Payment Mandate, whose transaction_id is the same hash, before a payment " +
+    "credential issues. The seller reported the payment. This does not show that amount, payee or timing match the " +
+    "ATR's content.",
 });
 
 export const checkoutMandate = Object.freeze({

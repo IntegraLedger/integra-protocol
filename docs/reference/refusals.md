@@ -225,20 +225,20 @@ AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledg
 | `ap2/checkout-hash-mismatch` | `bound` finds that the mandate discloses a `checkout_jwt` different from the presented one. |
 | `ap2/checkout-id-missing` | The checkout payload has no `id`, or its `id` is not a non-empty string. |
 | `ap2/checkout-not-latest` | `bound` finds that the mandate's `checkout_hash` is not the SHA-256 of the presented `checkout_jwt`. |
-| `ap2/disclosure-unreferenced` | The Checkout Mandate carries a disclosure that no digest in its payload references. |
+| `ap2/disclosure-unreferenced` | An SD-JWT of the Checkout Mandate presentation (either hop of a chain) carries a disclosure that no digest in its payload references. |
 | `ap2/hash-not-in-checkout` | `build` finds that the hash in the offer's checkout JWT is not H. |
 | `ap2/jws-malformed` | A checkout JWT (given to `jwsPayload`, `read`, `build` or `bound`, or as a payload to `advertise`) is not a compact JWS whose payload is one JSON object, or `advertise` is given a payload that is not a serialisable JSON object. |
 | `ap2/legal-context-conflict` | `advertise` finds a different `legalContext` already in the checkout payload. |
 | `ap2/legal-context-malformed` | The link or agreement URL given to `advertise` is not a usable `https` URL of at most 2048 characters or H is invalid, or the checkout payload's `legalContext` does not decode, has a link over 2048 characters, or has an agreement URL that is malformed or given in both spellings with different values. |
 | `ap2/link-not-https` | The link or agreement URL given to `advertise`, or the link or agreement URL found in the checkout payload's `legalContext` by `read`, `build` or `bound`, is an absolute URL whose scheme is not `https`. |
-| `ap2/mandate-ambiguous` | The resolved SD-JWT contains more than one object whose `vct` is `mandate.checkout.1`. |
-| `ap2/mandate-malformed` | The Checkout Mandate is not a well-formed SD-JWT presentation (bad segments, disclosures, or a digest referenced twice), its `checkout_hash` is not 43 base64url characters, its `checkout_jwt` is present but not a string, the presentation given to `bound` is not an object, or `checkoutJwtOf` finds no disclosed `checkout_jwt`. |
-| `ap2/no-checkout-mandate` | The resolved SD-JWT contains no object whose `vct` is `mandate.checkout.1`. |
+| `ap2/mandate-ambiguous` | The resolved SD-JWT (the last hop of a chain) contains more than one object whose `vct` is `mandate.checkout.1`. |
+| `ap2/mandate-malformed` | The Checkout Mandate is not a well-formed SD-JWT presentation (bad segments, disclosures, or a digest referenced twice), or is a chain joined by `~~` with more than two hops or a hop that is not one, its `checkout_hash` is not 43 base64url characters, its `checkout_jwt` is present but not a string, the presentation given to `bound` is not an object, or `checkoutJwtOf` finds no disclosed `checkout_jwt`. |
+| `ap2/no-checkout-mandate` | The resolved SD-JWT (the last hop of a chain) contains no object whose `vct` is `mandate.checkout.1`. |
 | `ap2/no-legal-context` | The checkout payload read by `read`, `build` or `bound` has no `legalContext` member. |
 | `ap2/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout`, a string of 1 to 256 characters. |
 | `ap2/option-not-this-checkout` | `advertise` finds that the option's `checkout` is not the payload's `id`. |
-| `ap2/sd-alg-unsupported` | The Checkout Mandate's `_sd_alg` names a digest algorithm other than `sha-256`. |
-| `ap2/too-large` | A checkout JWT, Checkout Mandate or checkout payload exceeds 1 MiB or nests deeper than 64 levels, a mandate carries too many disclosures or nests them too deeply, or a checkout `id` is longer than 256 characters. |
+| `ap2/sd-alg-unsupported` | The `_sd_alg` of an SD-JWT of the Checkout Mandate presentation names a digest algorithm other than `sha-256`. |
+| `ap2/too-large` | A checkout JWT, Checkout Mandate or checkout payload exceeds 1 MiB or nests deeper than 64 levels, an SD-JWT of a mandate carries too many disclosures or nests them too deeply, or a checkout `id` is longer than 256 characters. |
 
 ## ucp
 

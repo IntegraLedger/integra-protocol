@@ -123,6 +123,20 @@ describe("ucp.json", () => {
     expect(await ap2Mandate.bound({ checkout_mandate: token, checkout_jwt: jwt })).toEqual(V.V5.expectBound);
   });
 
+  it("V5: AP2's published chained presentation (ap2-checkout-mandate.json V7) reads as its closed hop", async () => {
+    const chain: string = AP2.V7.token;
+    const jwt: string = AP2.V6.checkoutJwt;
+    for (const p of [ap2Mandate, bookingAp2Mandate]) {
+      expect(await p.bound({ checkout_mandate: chain, checkout_jwt: jwt })).toEqual(V.V5.expectBound);
+    }
+    const signed = { ...V.V2.expectCheckout, ap2: { merchant_authorization: F.merchantAuthorization } } as Checkout;
+    const r = ap2Mandate.read(signed);
+    if ("refused" in r) throw new Error(r.code);
+    const u = await ap2Mandate.build(r.offer, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(await u.complete(chain)).toEqual({ checkout_mandate: chain, checkout_jwt: jwt });
+  });
+
   it("V6: names", () => {
     for (const doc of [V.V6.policies, V.V6.presentation]) {
       expect(legalContextLink(doc)).toEqual(V.V6.expect);

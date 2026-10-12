@@ -130,13 +130,15 @@ the business signs it:
 ```
 
 and, with an agreement URL, a second entry of type `legal_context_agreement`. The option names the checkout or the
-booking by its own `id` (`{ "checkout": "…" }` or `{ "booking": "…" }`), and `tie(options)` records those ids.
+booking by its own `id` (`{ "checkout": "…" }` or `{ "booking": "…" }`), and `tie(options)` records those ids. The
+booking pairings follow UCP's draft lodging booking capability, `dev.ucp.lodging.booking`, at commit
+[`c9a1395b`](https://github.com/Universal-Commerce-Protocol/ucp/tree/c9a1395b5db889dd201ddc982b9a020b3cbef9a7/docs/specification/lodging/booking).
 `advertise` refuses a checkout the business has already signed (`ucp/already-signed`) and one whose `id` is not the
 option's (`ucp/option-not-this-checkout`).
 
 | Pairing | Buyer side | `bound` |
 |---|---|---|
-| `ucp/checkout/ap2-mandate`, `ucp/booking/ap2-mandate` | `read` requires the business's `ap2.merchant_authorization` (`ucp/ap2-not-active` otherwise). `build` returns the checkout unchanged for the buyer's mandate issuer, once its link carries H, and `complete(checkout_mandate)` gives what the buyer presents. | Checks AP2's `checkout_hash` against the checkout inside the buyer's mandate, then reads H from that checkout's `legal_context` link. It verifies no signature. |
+| `ucp/checkout/ap2-mandate`, `ucp/booking/ap2-mandate` | `read` requires the business's `ap2.merchant_authorization` (`ucp/ap2-not-active` otherwise). `build` returns the checkout unchanged for the buyer's mandate issuer, once its link carries H, and `complete(checkout_mandate)` gives what the buyer presents. | Reads the buyer's mandate, one SD-JWT or AP2's chain of the open and closed mandates joined by `~~`, checks AP2's `checkout_hash` against the checkout inside the closed mandate, then reads H from that checkout's `legal_context` link. It verifies no signature, no `cnf` delegation and no link between the chained mandates. |
 | `ucp/checkout/unsigned`, `ucp/booking/unsigned` | `read` gives H and the link. `build` refuses `ucp/nothing-to-sign`: UCP without the AP2 Mandates extension defines no buyer signature. | Refuses `ucp/not-buyer-signed`. |
 
 `legalContextLink(checkout)` reads the one `legal_context` entry of any checkout: two such entries are
@@ -207,9 +209,14 @@ commits to it through `checkout_hash`, the SHA-256 of that JWT. This package put
   returns the Checkout Mandate's required claims: `vct` `"mandate.checkout.1"`, the `checkout_jwt`, and
   `checkout_hash`, the unpadded base64url of SHA-256 over the JWT. The buyer's mandate signer issues the mandate as
   an SD-JWT, and `complete(checkout_mandate)` gives what the buyer presents: the mandate and the JWT.
-- **Seller, on payment.** `bound(presented)` finds the one closed Checkout Mandate in the SD-JWT, checks that its
-  `checkout_hash` is the hash of the presented `checkout_jwt` (`ap2/checkout-not-latest` otherwise), and reads H from
-  that JWT's payload. It verifies no signature.
+- **Seller, on payment.** `bound(presented)` takes the mandate as presented: one SD-JWT or, when the agent pays under
+  the user's open mandate, AP2's chain of the open mandate's SD-JWT and the closed mandate's, joined by `~~`. A chain
+  has at most these two hops, and each must read as an SD-JWT. `bound` finds the one closed Checkout Mandate in the
+  last SD-JWT, checks that its `checkout_hash` is the hash of the presented `checkout_jwt`
+  (`ap2/checkout-not-latest` otherwise), and reads H from that JWT's payload. It verifies no signature, no `cnf`
+  delegation and no `sd_hash` or `issuer_jwt_hash` link between the hops, and does not evaluate the open mandate's
+  constraints. Your AP2 stack verifies the chain: the first SD-JWT with the issuer's key, the closed mandate with the
+  key the open mandate delegates to in `cnf`, its `sd_hash` or `issuer_jwt_hash`, and the open mandate's constraints.
 
 `jwsPayload`, `readMandate` and `checkoutBinding` expose those steps one by one. The LCP profile
 [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) states the rules.
