@@ -244,8 +244,9 @@ This pairing's id for an option it can pay, or undefined.
 > **aptosStatus**(`ref`, `reader`): `Promise`\<[`AptosStatus`](#aptosstatus)\>
 
 Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
-identifies it by the transfer's digest. Only `success` decides a committed, matching transaction. A failed read,
-or a reader for another network, is pending. At most three calls.
+identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
+transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. A
+failed read, or a reader for another network, is pending. At most three calls.
 
 #### Parameters
 
