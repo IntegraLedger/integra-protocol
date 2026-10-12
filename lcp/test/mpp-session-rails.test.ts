@@ -400,7 +400,7 @@ describe("mpp/session/xrpl", () => {
 
   // XS4's rows are the file's landed shapes and their status; a tec result is a final failure that claimed the fee
   // (xrpl.org, "tec Codes"), and only a validated ledger's result is final (xrpl.org, "Finality of Results").
-  it("XS4: recover gives XS2's memo only for the opening status reads settled, in at most two calls", async () => {
+  it("XS4: recover gives XS2's memo only for the opening status reads settled, and reads its blob only then", async () => {
     const ref = await sessionXrpl.reference(open(V.XS2.blob));
     if ("refused" in ref) throw new Error(ref.code);
     const counted = (landed: XrplLanded) => {
@@ -421,7 +421,7 @@ describe("mpp/session/xrpl", () => {
       calls.n = 0;
       const recovered = await sessionXrpl.recover({ network: ref.network, transaction: ref.transaction }, r);
       expect(recovered, row.case).toEqual(row.expect.state === "settled" ? V.XS2.expectBound : refused(recoverWhen[row.expect.why]!));
-      expect(calls.n, row.case).toBeLessThanOrEqual(2);
+      expect(calls.n, row.case).toBe(row.expect.state === "settled" ? 2 : 1);
     }
     const unvalidated = { ...V.XS4.rows[0].landed, validated: false };
     expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(unvalidated, V.XS2.blob))).toEqual({ state: "pending", why: "not-validated" });
