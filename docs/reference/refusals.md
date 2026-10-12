@@ -6,7 +6,7 @@ description: Every refusal code @integraledger/lcp returns, with its meaning.
 # Refusal codes
 
 Every failure in this package is a value, `{ refused: true, code }`, and every code is `<namespace>/<reason>`
-([Refusals](../concepts/refusals.md)). This page lists all 482 codes the package can return, by namespace.
+([Refusals](../concepts/refusals.md)). This page lists all 483 codes the package can return, by namespace.
 CI checks that every code the source names in `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -33,7 +33,7 @@ CI checks that every code the source names in `refusal(…)` or `refuse(…)` is
 | [`casper`](#casper) | 13 | Casper (`@integraledger/lcp/casper`). |
 | [`ccd`](#ccd) | 17 | Concordium (`@integraledger/lcp/ccd`). |
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`). |
-| [`polkadot`](#polkadot) | 18 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
+| [`polkadot`](#polkadot) | 19 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 13 | Starknet (`@integraledger/lcp/starknet`). |
 | [`sui`](#sui) | 11 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
