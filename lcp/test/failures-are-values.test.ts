@@ -34,6 +34,17 @@ import {
   txIdMirror,
   txIdText,
 } from "../src/hedera.js";
+import {
+  chargeCard,
+  chargeNearIntents,
+  chargeSolana,
+  chargeUsdcSolana,
+  chargeXrpl,
+  sessionHedera,
+  sessionSolana,
+  sessionStatus,
+  sessionXrpl,
+} from "../src/mpp.js";
 import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
@@ -544,6 +555,61 @@ describe("x402 batch settlement", () => {
     };
     for (const bad of [null, "0x12", H.slice(0, 64)]) {
       expect(await batchSvm.build(choice, bad as AtrHash), String(bad)).toEqual(refused("x402/payload-malformed"));
+    }
+  });
+});
+
+describe("mpp", () => {
+  reads([
+    ["chargeSolana.recover", chargeSolana.recover, "mpp-charge-solana.json", refused("svm/wrong-reader")],
+    ["sessionHedera.status", sessionHedera.status, "x402-exact-hedera.json", UNREADABLE],
+    ["sessionHedera.recover", sessionHedera.recover, "x402-exact-hedera.json", refused("hedera/unreadable")],
+    ["sessionSolana.status", sessionSolana.status, "x402-exact-solana.json", UNREADABLE],
+    ["sessionXrpl.status", sessionXrpl.status, "x402-exact-xrpl.json", UNREADABLE],
+    ["sessionXrpl.recover", sessionXrpl.recover, "x402-exact-xrpl.json", refused("xrpl/wrong-reader")],
+  ]);
+
+  // Each B2 document advertises H; its first challenge, unplaced, is the seller's offer.
+  const link = "https://seller.example/atr";
+  for (const [name, b, file] of [
+    ["chargeSolana", chargeSolana, "mpp-charge-solana.json"],
+    ["chargeUsdcSolana", chargeUsdcSolana, "mpp-charge-usdc-solana.json"],
+    ["chargeXrpl", chargeXrpl, "mpp-charge-xrpl.json"],
+    ["chargeNearIntents", chargeNearIntents, "mpp-charge-nearintents.json"],
+    ["chargeCard", chargeCard, "mpp-charge-card.json"],
+  ] as const) {
+    it(`${name}.advertise: an H that is not a 32-byte hash is mpp/challenge-malformed`, () => {
+      const doc = load(file).buyer.rows.find((r: { name: string }) => r.name === "B2").input.doc;
+      const offer = (b.unplaced as (o: unknown) => unknown)(doc[0]);
+      for (const bad of [...NOT_OBJECTS, "0x12", H.slice(0, 64)]) {
+        const advertise = b.advertise as (...a: unknown[]) => unknown;
+        expect(advertise([offer], bad, link, offer), String(bad)).toEqual(refused("mpp/challenge-malformed"));
+      }
+    });
+  }
+
+  it("sessionStatus reads a malformed opened, closes or accessKey as pending unreadable, with nothing read", async () => {
+    const E = load("mpp-session-evm.json");
+    const f = E.fixed;
+    const ref = { network: `eip155:${f.chainId}`, transaction: E.ES9.hash };
+    const channel = E.ES1.expectChannelId;
+    const written = {
+      opened: { address: f.escrow, version: "v2", channel, h: H, chainId: f.chainId },
+      closes: { escrow: f.escrow, channel },
+      accessKey: { keyId: f.payer, token: f.usdc, to: E.ES7.expectFromTo, account: f.payer },
+    };
+    for (const [member, value] of Object.entries(written)) {
+      const quiet = quietReader(ref.network);
+      const control = await sessionStatus({ ...ref, [member]: value } as never, quiet as never);
+      expect(control, member).toEqual({ state: "pending", why: "not-found" });
+      expect(quiet.reads(), member).toBe(1);
+      const first = Object.keys(value)[0]!;
+      for (const bad of [null, "0x1234", 1, {}, { ...value, [first]: 5 }]) {
+        const reader = quietReader(ref.network);
+        const answer = await sessionStatus({ ...ref, [member]: bad } as never, reader as never);
+        expect(answer, `${member} ${JSON.stringify(bad)}`).toEqual(UNREADABLE);
+        expect(reader.reads(), `${member} ${JSON.stringify(bad)}`).toBe(0);
+      }
     }
   });
 });

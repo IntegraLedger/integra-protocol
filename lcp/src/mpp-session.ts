@@ -416,9 +416,12 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
  * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
  * failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
  * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. An `opens` that is not an object
- * whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, or a `revokes`
- * that is not an object whose `account` and `keyId` are addresses, is pending `unreadable`, with no call made. At most
- * four calls.
+ * whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, an `opened` that is
+ * not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h` 32-byte hashes and `chainId` a
+ * positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
+ * `accessKey` that is not an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
+ * present, an address, or a `revokes` that is not an object whose `account` and `keyId` are addresses, is pending
+ * `unreadable`, with no call made; so is what `evmStatus` reads as `unreadable`. At most four calls.
  */
 export async function sessionStatus(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionStatus> {
   if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
@@ -426,6 +429,9 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
   }
   if (ref.revokes !== undefined && !readableRevokes(ref.revokes)) return { state: "pending", why: "unreadable" };
   if (ref.opens !== undefined && !readableOpens(ref.opens)) return { state: "pending", why: "unreadable" };
+  if (ref.opened !== undefined && !readableOpened(ref.opened)) return { state: "pending", why: "unreadable" };
+  if (ref.closes !== undefined && !readableCloses(ref.closes)) return { state: "pending", why: "unreadable" };
+  if (ref.accessKey !== undefined && !readableAccessKey(ref.accessKey)) return { state: "pending", why: "unreadable" };
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
     network: reader.network,
@@ -497,6 +503,40 @@ function readableOpens(opens: unknown): boolean {
 /** Whether `revokes` is an object whose `account` and `keyId` are addresses, as `closeRef` writes it. */
 function readableRevokes(revokes: unknown): boolean {
   return isObject(revokes) && isAddress(revokes["account"]) && isAddress(revokes["keyId"]);
+}
+
+/**
+ * Whether `opened` is an object whose `address` is an address, `version` is `v1` or `v2`, `channel` and `h` are 32-byte
+ * hashes and `chainId` is a positive safe integer, as `reference` writes it.
+ */
+function readableOpened(opened: unknown): boolean {
+  if (!isObject(opened)) return false;
+  const chainId = opened["chainId"];
+  return (
+    isAddress(opened["address"]) &&
+    (opened["version"] === "v1" || opened["version"] === "v2") &&
+    normalHash(opened["channel"]) !== null &&
+    normalHash(opened["h"]) !== null &&
+    typeof chainId === "number" &&
+    Number.isSafeInteger(chainId) &&
+    chainId > 0
+  );
+}
+
+/** Whether `closes` is an object whose `escrow` is an address and `channel` a 32-byte hash, as `closeRef` writes it. */
+function readableCloses(closes: unknown): boolean {
+  return isObject(closes) && isAddress(closes["escrow"]) && normalHash(closes["channel"]) !== null;
+}
+
+/**
+ * Whether `accessKey` is an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
+ * present, an address, as `reference` and `keySearch` write it.
+ */
+function readableAccessKey(k: unknown): boolean {
+  if (!isObject(k)) return false;
+  const account = k["account"];
+  const to = normalHash(k["to"]);
+  return isAddress(k["keyId"]) && isAddress(k["token"]) && to !== null && (account === undefined || isAddress(account));
 }
 
 /** Whether the logs hold the account keychain's `AccessKeySpend` naming the key's account, key id and token. */

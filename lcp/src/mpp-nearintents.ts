@@ -4,6 +4,7 @@
  * transaction came first. Settlement is the seller's report.
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash } from "./core.js";
+import { normalHash } from "./fields.js";
 import {
   deepFreeze,
   echoedFor,
@@ -44,6 +45,7 @@ function advertise(
   offer: MppChallenge,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
+  if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
   const value = toLcpString(h);
   return placeCarrier(
     doc,

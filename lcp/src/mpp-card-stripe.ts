@@ -6,6 +6,7 @@
  * channel: one ATR covers every billing period, and its key is the Stripe subscription the activation receipt names.
  */
 import { toLcpString, type AtrHash, type Json } from "./core.js";
+import { normalHash } from "./fields.js";
 import {
   credentialOf,
   decodeObject,
@@ -82,12 +83,8 @@ function advertiseAs(pairing: ConfirmOnly) {
       const ok = stripeMetadataValid(metadata, missing);
       if (ok !== true) return ok;
     }
-    let value: string;
-    try {
-      value = toLcpString(h);
-    } catch {
-      return refusal("mpp/challenge-malformed");
-    }
+    if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
+    const value = toLcpString(h);
     return placeCarrier(
       doc,
       h,

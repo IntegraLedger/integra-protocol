@@ -4,6 +4,7 @@
  */
 import type { AtrHash, Json } from "./core.js";
 import {
+  isAccount,
   muxedFor,
   muxedId,
   readSignedTransfer,
@@ -170,7 +171,7 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
   if (isRefusal(e)) return e;
   const network = networkOf(e.checked);
   if (isRefusal(network)) return network;
-  if (reader.network !== network) return refusal("stellar/wrong-reader");
+  if (!isObject(reader) || reader.network !== network) return refusal("stellar/wrong-reader");
   const hash = credential.payload["hash"];
   if (typeof hash !== "string" || !HASH.test(hash)) return refusal("mpp/credential-malformed");
   let r: Awaited<ReturnType<StellarReader["transaction"]>>;
@@ -247,11 +248,7 @@ function advertise(
     offer,
     (issued) => {
       if (unmux(issued) !== null) return refusal("stellar/carrier-occupied");
-      try {
-        return muxedFor(issued as string, h);
-      } catch {
-        return refusal("stellar/option-malformed");
-      }
+      return isAccount(issued) ? muxedFor(issued, h) : refusal("stellar/option-malformed");
     },
     agreementUrl,
   );

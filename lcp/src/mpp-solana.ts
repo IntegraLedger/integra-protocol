@@ -4,6 +4,7 @@
  * labels, are not read.
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
+import { normalHash } from "./fields.js";
 import {
   COMPUTE_BUDGET,
   MEMO_V3,
@@ -208,7 +209,7 @@ async function fetchPresented(
   const network = solanaNetworkOf(spec.details(e.checked), spec.networkRequired);
   if (network === null) return refusal("svm/network-undeclared");
   if (typeof network !== "string") return network;
-  if (reader.network !== network) return refusal("svm/wrong-reader");
+  if (!isObject(reader) || reader.network !== network) return refusal("svm/wrong-reader");
   const signature = credential.payload["signature"];
   if (!isSignatureText(signature)) return refusal("mpp/credential-malformed");
   let landed: SvmLanded | null;
@@ -230,7 +231,7 @@ function isSignatureText(s: unknown): s is string {
 
 /** Zero-party: the one LCP memo of the landed transaction, read at `finalized`, then `confirmed`. */
 async function recover(ref: { network: SolanaNetwork; transaction: string }, reader: SvmReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("svm/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
   let landed: SvmLanded | null = null;
   try {
     landed = (await reader.transaction(ref.transaction, "finalized")) ?? (await reader.transaction(ref.transaction, "confirmed"));
@@ -380,6 +381,7 @@ function advertise(
   offer: MppChallenge,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
+  if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
   const memo = toLcpString(h);
   return placeCarrier(
     doc,

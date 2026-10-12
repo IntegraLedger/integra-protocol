@@ -227,7 +227,7 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   if (isRefusal(network)) return network;
   const escrow = hederaEscrow(e.checked);
   if (isRefusal(escrow)) return escrow;
-  if (reader.network !== network) return refusal("hedera/unreadable");
+  if (!isObject(reader) || reader.network !== network) return refusal("hedera/unreadable");
   const tx = normalHash(e.payload["txHash"]);
   if (tx === null) return refusal("mpp/credential-malformed");
   let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
@@ -311,7 +311,7 @@ async function hederaReference(input: unknown): Promise<HederaSessionRef | Refus
 /** The opening, read like any EVM payment through the relay; or a reported close, whose `ChannelClosed` names the channel. */
 async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: HederaEvmReader): Promise<EvmBreadthStatus> {
   const evmRef: EvmRef & { transaction: Hex } =
-    "phase" in ref
+    isObject(ref) && "phase" in ref
       ? {
           network: ref.network,
           transaction: ref.transaction,
@@ -323,7 +323,7 @@ async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: Hede
 
 /** Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log naming the channel. */
 async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("hedera/unreadable");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/unreadable");
   let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -554,7 +554,8 @@ async function solanaRef(presented: MppCredential): Promise<{ network: string; c
 }
 
 async function solanaStatus(ref: (SvmRef & { transaction: string }) | SvmCloseRef, reader: SvmReader): Promise<SvmStatus | SvmCloseStatus> {
-  return "phase" in ref ? svmCloseStatus(ref, reader) : svmStatus(ref, reader);
+  if (!isObject(reader)) return { state: "pending", why: "unreadable" };
+  return isObject(ref) && "phase" in ref ? svmCloseStatus(ref, reader) : svmStatus(ref, reader);
 }
 
 function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef, "transaction"> | Refusal {
@@ -761,7 +762,7 @@ async function xrplStatusOf(
   ref: Omit<XrplRef, "expect"> | XrplCloseRef,
   reader: XrplReader,
 ): Promise<XrplStatus | XrplCloseStatus> {
-  return "phase" in ref ? xrplCloseStatus(ref, reader) : xrplOpenStatus(ref, reader);
+  return isObject(ref) && "phase" in ref ? xrplCloseStatus(ref, reader) : xrplOpenStatus(ref, reader);
 }
 
 /**
@@ -771,7 +772,7 @@ async function xrplStatusOf(
  * Two calls.
  */
 async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, reader: XrplReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("xrpl/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("xrpl/wrong-reader");
   let landed: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
     landed = await reader.tx(ref.transaction, null);

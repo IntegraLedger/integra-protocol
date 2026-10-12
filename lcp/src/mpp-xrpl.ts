@@ -3,6 +3,7 @@
  * `methodDetails.invoiceId`, which the payer signs with a single key as the Payment's `InvoiceID`.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
+import { normalHash } from "./fields.js";
 import {
   decodePresented,
   mppInvoiceId,
@@ -128,7 +129,7 @@ async function fetchPresented(credential: MppCredential, reader: XrplReader): Pr
   if (isRefusal(e)) return e;
   const network = xrplNetworkOf(e.checked.details);
   if (typeof network !== "string") return network;
-  if (reader.network !== network) return refusal("xrpl/wrong-reader");
+  if (!isObject(reader) || reader.network !== network) return refusal("xrpl/wrong-reader");
   const hash = credential.payload["hash"];
   if (typeof hash !== "string" || !HASH.test(hash)) return refusal("mpp/credential-malformed");
   let landed: Awaited<ReturnType<XrplReader["tx"]>>;
@@ -219,6 +220,7 @@ function advertise(
   offer: MppChallenge,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
+  if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
   const invoice = mppInvoiceId(h);
   return placeCarrier(
     doc,
