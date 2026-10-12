@@ -311,6 +311,14 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(d.instructions).toEqual(S6.withoutMemo.instructions);
 
     expect(await within(withMemo, { refund: { amount: 5n } })).toEqual(refused(S6.refundWithAmount.expect));
+
+    const lone = { ...withMemo, extra: { ...withMemo.extra, memo: S6.loneSurrogateMemo.memo } } as PaymentRequirements;
+    expect((S6.loneSurrogateMemo.memo as string).isWellFormed()).toBe(false);
+    expect(await within(lone, { recentBlockhash: V.fixed.svm.blockhash })).toEqual(refused(S6.loneSurrogateMemo.expect));
+    // The cooperative refund writes no memo, so the same option builds its voucher.
+    const coop = await within(lone);
+    if ("refused" in coop) throw new Error(coop.code);
+    expect(coop.requests.map((r) => r.kind)).toEqual(["ed25519-raw"]);
   });
 
   it("ES1: PDAs", () => {

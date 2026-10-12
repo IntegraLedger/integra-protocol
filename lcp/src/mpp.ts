@@ -675,9 +675,10 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
     const o = offerFor(choice, h, pairing);
     if (isRefusal(o)) return o;
-    if (choice.clientId !== undefined && typeof choice.clientId !== "string") return refusal("mpp/input-malformed");
+    const clientId: unknown = choice.clientId;
+    if (clientId !== undefined && (typeof clientId !== "string" || !clientId.isWellFormed())) return refusal("mpp/input-malformed");
     const chainId = chainOf(o);
-    const memo = attributionMemo(choice.challenge.realm, choice.challenge.id, choice.clientId);
+    const memo = attributionMemo(choice.challenge.realm, choice.challenge.id, clientId);
     const data = memoCalldata(str(o.request["recipient"]) as Hex, BigInt(str(o.request["amount"])), memo);
     if (typeof data !== "string") return data;
     const challenge = { ...choice.challenge };

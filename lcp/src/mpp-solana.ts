@@ -261,7 +261,8 @@ function u32le(v: number): Uint8Array {
 
 /**
  * The versioned message for a native SOL charge: `SetComputeUnitLimit`, `SetComputeUnitPrice`, System `transfer` of
- * `lamports` from the payer to the recipient, then one v3 Memo instruction carrying `memo`.
+ * `lamports` from the payer to the recipient, then one v3 Memo instruction carrying `memo`'s UTF-8 bytes. A memo that is
+ * not a well-formed string is `svm/input-malformed`, with nothing built.
  */
 async function buildSolMessage(i: {
   feePayer: string;
@@ -273,6 +274,7 @@ async function buildSolMessage(i: {
   computeUnitLimit: number;
   computeUnitPrice: bigint;
 }): Promise<Uint8Array | Refusal> {
+  if (typeof i.memo !== "string" || !i.memo.isWellFormed()) return refusal("svm/input-malformed");
   let kit: typeof import("@solana/kit");
   try {
     kit = await import("@solana/kit");

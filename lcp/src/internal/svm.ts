@@ -509,6 +509,7 @@ function isBuildInput(i: SvmBuildInput): boolean {
     i.amount < U64_LIMIT &&
     isKey(i.recentBlockhash) &&
     typeof i.memo === "string" &&
+    i.memo.isWellFormed() &&
     Number.isInteger(i.computeUnitLimit) &&
     i.computeUnitLimit >= 0 &&
     i.computeUnitLimit <= 0xffffffff &&
@@ -521,7 +522,8 @@ function isBuildInput(i: SvmBuildInput): boolean {
 /**
  * The versioned (v0) message bytes for a token payment: `SetComputeUnitLimit`, `SetComputeUnitPrice`,
  * `TransferChecked` from the payer's associated token account to the payee's, then one v3 Memo instruction whose data
- * is the memo's UTF-8 bytes. No lookup tables.
+ * is the memo's UTF-8 bytes. No lookup tables. A memo that is not a well-formed string (one holding a lone surrogate
+ * has no UTF-8 form) is `svm/input-malformed`, with nothing built.
  */
 export async function buildSvmMessage(i: SvmBuildInput): Promise<Uint8Array | Refusal> {
   if (!isBuildInput(i)) return refusal("svm/input-malformed");
@@ -998,7 +1000,7 @@ export interface ChannelBuildInput {
   mint: string;
   tokenProgram: string;
   recentBlockhash: string;
-  /** The one Memo v3 instruction's text; absent, the message carries no memo. */
+  /** The one Memo v3 instruction's text, a well-formed string; absent, the message carries no memo. */
   memo?: string;
   computeUnitLimit: number;
   computeUnitPrice: bigint;
@@ -1020,7 +1022,8 @@ export interface ChannelBuildInput {
 /**
  * The v0 message for a channel instruction: `SetComputeUnitLimit`, `SetComputeUnitPrice`, the payment-channels
  * instruction with its accounts in the program's order, then one v3 Memo instruction when `memo` is given. The fee
- * payer is also the `open`'s rent payer and payee.
+ * payer is also the `open`'s rent payer and payee. A memo that is not a well-formed string (one holding a lone
+ * surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
  */
 export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Array | Refusal> {
   const memo = typeof i === "object" && i !== null ? i.memo : undefined;
@@ -1038,7 +1041,7 @@ export async function channelMessage(i: ChannelBuildInput, memos: readonly unkno
     !isKey(i.mint) ||
     (i.tokenProgram !== TOKEN && i.tokenProgram !== TOKEN_2022) ||
     !isKey(i.recentBlockhash) ||
-    !memos.every((m) => typeof m === "string") ||
+    !memos.every((m) => typeof m === "string" && m.isWellFormed()) ||
     !Number.isInteger(i.computeUnitLimit) ||
     i.computeUnitLimit < 0 ||
     i.computeUnitLimit > 0xffffffff ||

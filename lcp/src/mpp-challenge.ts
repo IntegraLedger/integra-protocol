@@ -153,7 +153,7 @@ export interface MppChoice {
   tokenDomain?: { name: string; version: string };
   /** permit2 only: the seller server's submitting address. */
   spender?: Hex;
-  /** tempo only: the payer's label in the attribution memo. */
+  /** tempo only: the payer's label in the attribution memo, a well-formed string. */
   clientId?: string;
 }
 
@@ -181,7 +181,9 @@ const MPP_TAG = keccak("mpp").subarray(0, 4);
 
 /**
  * MPP's 32-byte attribution memo: keccak256("mpp")[0..3], `0x01`, keccak256(realm)[0..9], keccak256(clientId)[0..9]
- * or ten zero bytes, then keccak256(challengeId)[0..6], each over the string's UTF-8.
+ * or ten zero bytes, then keccak256(challengeId)[0..6], each over the string's UTF-8. A string that is not well-formed
+ * is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate; the pairings refuse such a realm,
+ * challenge id or client id before they call it.
  */
 export function attributionMemo(realm: string, challengeId: string, clientId?: string): Hex {
   const out = new Uint8Array(32);
@@ -193,7 +195,11 @@ export function attributionMemo(realm: string, challengeId: string, clientId?: s
   return hexOf(out);
 }
 
-/** Checks a memo's tag, version, server id for `realm` and nonce for `challengeId`. The client id is not read. */
+/**
+ * Checks a memo's tag, version, server id for `realm` and nonce for `challengeId`. The client id is not read. A `realm`
+ * or `challengeId` that is not well-formed is hashed as `attributionMemo` hashes it, with U+FFFD for each lone
+ * surrogate; the pairings refuse such a challenge before they call it.
+ */
 export function checkAttribution(memo: string, realm: string, challengeId: string): true | Refusal {
   const m = normalHash(memo);
   if (m === null) return refusal("mpp/attribution-malformed");
@@ -386,7 +392,11 @@ export function challengeIdH(c: { id?: unknown; intent: unknown; method: unknown
   return challengeH(c.id);
 }
 
-/** keccak256(UTF-8(id) ‖ UTF-8(realm)), lowercase: Solidity's `abi.encodePacked(string, string)`. */
+/**
+ * keccak256(UTF-8(id) ‖ UTF-8(realm)), lowercase: Solidity's `abi.encodePacked(string, string)`. A string that is not
+ * well-formed is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate; the pairings refuse such an id
+ * or realm before they call it.
+ */
 export function challengeHash(id: string, realm: string): Hex {
   return keccakHex(`${String(id)}${String(realm)}`);
 }
@@ -429,7 +439,7 @@ export function pairingsOfPlaced(c: MppChallenge): readonly MppPairing[] {
  * The checks of `pairingsOf`. With `placed`, `opaque` may carry the LCP members `place` writes.
  */
 export function checkChallenge(c: unknown, placed: boolean): Checked | Refusal {
-  if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
+  if (!isChallengeShape(c) || !hasHashableRealm(c)) return refusal("mpp/challenge-malformed");
   const key = `${c.intent}/${c.method}`;
   const check = Object.hasOwn(PAIRING_CHECKS, key) ? PAIRING_CHECKS[key] : undefined;
   if (check === undefined) return refusal("mpp/not-this-pairing");
@@ -889,6 +899,7 @@ export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]
   if (!isChallengeShape(c.challenge) || typeof c.challenge.id !== "string") return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
   if (!jsonWithin(c, MAX_CREDENTIAL)) return refusal("mpp/credential-malformed");
+  if (!hasHashableRealm(c.challenge)) return refusal("mpp/challenge-malformed");
   const h = challengeIdH(c.challenge);
   if (typeof h !== "string") return h;
   if (c.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
@@ -1157,6 +1168,14 @@ export function isChallengeShape(c: unknown): c is MppChallenge {
     if (c[k] !== undefined && typeof c[k] !== "string") return false;
   }
   return true;
+}
+
+/**
+ * True when the challenge's `realm` is a well-formed string: the attribution memo, the challenge hash and `usdc`'s
+ * derivations hash its UTF-8, which a string holding a lone surrogate does not have.
+ */
+function hasHashableRealm(c: MppChallenge): boolean {
+  return c.realm.isWellFormed();
 }
 
 /** True when `a` and `b` agree on every bound member, comparing `opaque` by its seller map. */

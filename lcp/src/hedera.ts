@@ -1138,7 +1138,8 @@ async function buildCharge(
     credentialType?: "transaction" | "hash";
   },
 ): Promise<HederaUnsigned | Refusal> {
-  if (!isObject(credentialChallenge) || typeof credentialChallenge.id !== "string" || typeof credentialChallenge.realm !== "string") {
+  const { id, realm }: { id?: unknown; realm?: unknown } = isObject(credentialChallenge) ? credentialChallenge : {};
+  if (typeof id !== "string" || typeof realm !== "string" || !id.isWellFormed() || !realm.isWellFormed()) {
     return refusal("mpp/challenge-malformed");
   }
   const legs = chargeLegs(request);
@@ -1158,13 +1159,13 @@ async function buildCharge(
     typeof c.maxFee !== "bigint" ||
     c.maxFee < 0n ||
     c.maxFee >= UINT64_LIMIT ||
-    (c.clientId !== undefined && typeof c.clientId !== "string") ||
+    (c.clientId !== undefined && (typeof c.clientId !== "string" || !c.clientId.isWellFormed())) ||
     (c.credentialType !== undefined && c.credentialType !== "transaction" && c.credentialType !== "hash") ||
     legs.legs.some((l) => l.account === c.payer)
   ) {
     return refusal("hedera/option-malformed");
   }
-  const memo = attributionMemo(credentialChallenge.realm, credentialChallenge.id, c.clientId);
+  const memo = attributionMemo(realm, id, c.clientId);
   const tokenList = [
     ...lenField(1, entity(legs.currency)),
     ...lenField(2, accountAmount(c.payer, -legs.amount)),

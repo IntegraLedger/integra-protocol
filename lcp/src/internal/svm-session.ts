@@ -79,15 +79,23 @@ export function solanaVoucher(channelId: string, cumulative: bigint, expiresAt?:
   }
 }
 
-/** The UTF-8 of the core's `canonicalJson` of `{channelId, domain: "mpp-session-auth-v1", payer, sessionChallengeId}`. */
+/**
+ * The UTF-8 of the core's `canonicalJson` of `{channelId, domain: "mpp-session-auth-v1", payer, sessionChallengeId}`.
+ * Throws TypeError when `p` is not an object, or when its `channelId`, `payer` or `challengeId` is not a well-formed
+ * string (one holding a lone surrogate has no UTF-8 form): it never returns a message the caller did not write.
+ */
 export function sessionProof(p: { channelId: string; payer: string; challengeId: string }): Uint8Array {
-  const text = canonicalJson({
-    channelId: p.channelId,
-    domain: "mpp-session-auth-v1",
-    payer: p.payer,
-    sessionChallengeId: p.challengeId,
-  });
-  return new TextEncoder().encode(typeof text === "string" ? text : "");
+  const { channelId, payer, challengeId }: { channelId: unknown; payer: unknown; challengeId: unknown } = p;
+  if (!isWellFormed(channelId) || !isWellFormed(payer) || !isWellFormed(challengeId)) {
+    throw new TypeError("sessionProof: channelId, payer and challengeId must be well-formed strings");
+  }
+  const text = canonicalJson({ channelId, domain: "mpp-session-auth-v1", payer, sessionChallengeId: challengeId });
+  if (typeof text !== "string") throw new TypeError("sessionProof: the proof has no canonical JSON form");
+  return new TextEncoder().encode(text);
+}
+
+function isWellFormed(s: unknown): s is string {
+  return typeof s === "string" && s.isWellFormed();
 }
 
 /**

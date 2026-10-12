@@ -68,7 +68,8 @@ The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which ar
   40 hex digits, a salt that is not a 32-byte hash, a chain id other than 295 and 296) and `hederaVoucher` (the same
   for the channel, and a `cumulative` that is not a bigint that fits a uint128);
 - on a field of the wrong type: `encodeTronRaw`, `encodeProfileCall` (a call `decodeProfileCall` would not give back),
-  `openInstructionData` and `channelVoucherMessage`, and `sessionProof` on a null or missing argument;
+  `openInstructionData` and `channelVoucherMessage`, and `sessionProof` on a null or missing argument or a `channelId`,
+  `payer` or `challengeId` that is not a well-formed string, so that it never returns a message you did not write;
 - on bytes that are not a `Uint8Array`: `extrinsicHash`, `stacksTxid`, and `svmDigest` on a transaction whose message
   is not one;
 - on a network other than `starknet:SN_MAIN` and `starknet:SN_SEPOLIA`: `chainIdFelt`.

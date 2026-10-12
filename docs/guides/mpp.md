@@ -112,6 +112,13 @@ Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the at
 the Stellar muxed id), the payment binds H only through those bytes: whoever assembles the ATR can construct a second
 ATR that shares them. Those pairings state this in their `pattern.proves`.
 
+The challenge's `id` and `realm`, and the client id a Tempo or Hedera payer may add to the attribution memo, are hashed
+as UTF-8. A string holding a lone surrogate has no UTF-8 form, so a challenge whose `realm` is not a well-formed string
+is `mpp/challenge-malformed` in `pairingsOf`, `place` and `build`, and in every `bound`, and in each `reference` and
+`fetchPresented` that reads H from a credential's echoed challenge; the Hedera charge `build` refuses such an `id` too.
+The build that takes such a client id refuses it (`mpp/input-malformed` on Tempo, `hedera/option-malformed` on
+Hedera).
+
 Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs. Its
 `bound(credential)` reads H from the echoed challenge and checks that what was signed carries it; `reference` and
 `status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents

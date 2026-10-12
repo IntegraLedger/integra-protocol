@@ -617,6 +617,11 @@
   "refundWithAmount": {
    "case": "refund {amount} on Solana",
    "expect": "svm/input-malformed"
+  },
+  "loneSurrogateMemo": {
+   "case": "the retry, with ES4's option whose extra.memo holds a lone surrogate (U+D800): a string with no UTF-8 form (The Unicode Standard 16.0, section 3.9, D92: UTF-8 encodes no surrogate code point; Python 3's str.encode('utf-8') raises UnicodeEncodeError for it), so the request_close's memo cannot carry the bytes the caller gave, and nothing is built",
+   "memo": "lcp:\ud800",
+   "expect": "svm/input-malformed"
   }
  },
  "ES7": {
