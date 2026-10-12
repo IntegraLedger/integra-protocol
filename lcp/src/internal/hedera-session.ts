@@ -6,6 +6,7 @@
 import type { AtrHash } from "../core.js";
 import { addressWord, bytes32Word, bytesOf, concat, hexOf, keccak, uintWord, type Hex } from "../evm-abi.js";
 import type { EvmReader, EvmRef } from "../evm.js";
+import { isAddress, isObject, normalHash } from "../fields.js";
 
 type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
 
@@ -52,8 +53,15 @@ export type HederaCloseRef = {
   transaction: Hex;
 };
 
-/** keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainId)), lowercase. */
+/**
+ * keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainId)), lowercase. Throws TypeError
+ * when an address is not `0x` and 40 hex digits, the salt is not a 32-byte hash, or the chain id is not 295 or 296.
+ */
 export function hederaChannelId(c: HederaChannelConfig): Hex {
+  if (!isObject(c) || ![c.payer, c.payee, c.token, c.authorizedSigner, c.escrow].every(isAddress)) {
+    throw new TypeError("not a Hedera channel configuration");
+  }
+  if (normalHash(c.salt) === null || !isChainId(c.chainId)) throw new TypeError("not a Hedera channel configuration");
   return hexOf(
     keccak(
       concat([
@@ -69,14 +77,28 @@ export function hederaChannelId(c: HederaChannelConfig): Hex {
   );
 }
 
-/** The voucher for `cumulative` on a channel, under the escrow's domain. */
+/**
+ * The voucher for `cumulative` on a channel, under the escrow's domain. Throws TypeError when the channel id is not a
+ * 32-byte hash, the escrow not `0x` and 40 hex digits, the chain id not 295 or 296, or `cumulative` not a bigint that
+ * fits a uint128.
+ */
 export function hederaVoucher(c: { channelId: Hex; escrow: Hex; chainId: 295 | 296 }, cumulative: bigint): HederaVoucherTypedData {
+  if (!isObject(c) || normalHash(c.channelId) === null || !isAddress(c.escrow) || !isChainId(c.chainId)) {
+    throw new TypeError("not a Hedera channel");
+  }
+  if (typeof cumulative !== "bigint" || cumulative < 0n || cumulative >= 1n << 128n) {
+    throw new TypeError("not a uint128 cumulative amount");
+  }
   return {
     domain: { name: "Hedera Stream Channel", version: "1", chainId: c.chainId, verifyingContract: c.escrow.toLowerCase() as Hex },
     primaryType: "Voucher",
     types: { Voucher: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint128" }] },
     message: { channelId: c.channelId.toLowerCase() as Hex, cumulativeAmount: cumulative },
   };
+}
+
+function isChainId(n: unknown): n is 295 | 296 {
+  return n === 295 || n === 296;
 }
 
 /** `approve(spender, amount)` calldata. */

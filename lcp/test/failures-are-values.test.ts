@@ -24,6 +24,15 @@ import {
   redeemedLeafRecover,
   transferDigest,
 } from "../src/evm.js";
+import {
+  exactHedera,
+  executorStatus,
+  hederaChannelId,
+  hederaStatus,
+  hederaVoucher,
+  txIdMirror,
+  txIdText,
+} from "../src/hedera.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -233,4 +242,100 @@ describe("cardano", () => {
       expect(await cardanoRecover({ ...V.V5.ref, txId } as never, reader as never), String(txId)).toEqual(refused("cardano/unreadable"));
     }
   });
+});
+
+describe("hedera", () => {
+  reads([
+    ["hederaStatus", hederaStatus, "x402-exact-hedera.json", UNREADABLE],
+    ["executorStatus", executorStatus, "x402-exact-hedera-transfer-executor.json", UNREADABLE],
+    ["exactHedera.recover", exactHedera.recover, "x402-exact-hedera.json", refused("hedera/wrong-reader")],
+  ]);
+
+  it("hederaStatus: a ref whose expectMemo is not a string is pending unreadable, with nothing read", async () => {
+    const V = load("x402-exact-hedera.json").V5;
+    let reads = 0;
+    const reader = { network: V.readerNetwork, transactions: async () => (reads++, V.rows[0].entries) };
+    expect(await hederaStatus(V.reference, reader as never)).toEqual(V.rows[0].expect);
+    for (const v of [undefined, null, 1, {}]) {
+      reads = 0;
+      expect(await hederaStatus({ ...V.reference, expectMemo: v }, reader as never), String(v)).toEqual(UNREADABLE);
+      expect(reads, String(v)).toBe(0);
+    }
+  });
+
+  it("executorStatus: a ref whose asset or idDigest is not of the form reference writes is pending unreadable, with nothing read", async () => {
+    const V = load("x402-exact-hedera-transfer-executor.json").status;
+    let reads = 0;
+    const reader = { network: V.readerNetwork, transactions: async () => (reads++, V.rows[0].entries) };
+    expect(await executorStatus(V.reference, reader as never)).toEqual(V.rows[0].expect);
+    const bad: readonly [string, unknown][] = [
+      ["idDigest", undefined],
+      ["idDigest", null],
+      ["idDigest", 1],
+      ["idDigest", "0x12"],
+      ["asset", undefined],
+      ["asset", null],
+      ["asset", "x"],
+    ];
+    for (const [k, v] of bad) {
+      reads = 0;
+      expect(await executorStatus({ ...V.reference, [k]: v }, reader as never), `${k} ${String(v)}`).toEqual(UNREADABLE);
+      expect(reads, `${k} ${String(v)}`).toBe(0);
+    }
+  });
+
+  // The id forms are the Hedera SDK's `TransactionId.toString()` and the Mirror Node REST API's path form.
+  const id = { account: "0.0.1235", seconds: 1700000000n, nanos: 5 };
+  it("txIdText and txIdMirror write a transaction id in its two forms", () => {
+    expect(txIdText(id)).toBe("0.0.1235@1700000000.000000005");
+    expect(txIdMirror(id)).toBe("0.0.1235-1700000000-000000005");
+  });
+  const badIds = [
+    ...NOT_OBJECTS,
+    {},
+    { ...id, account: 1235 },
+    { ...id, account: "1235" },
+    { ...id, seconds: 1700000000 },
+    { ...id, seconds: -1n },
+    { ...id, nanos: -1 },
+    { ...id, nanos: 1_000_000_000 },
+    { ...id, nanos: 0.5 },
+  ];
+  throwsTypeError("txIdText", badIds.map((b) => () => txIdText(b as never)));
+  throwsTypeError("txIdMirror", badIds.map((b) => () => txIdMirror(b as never)));
+
+  const V = load("mpp-session-hedera-solana-xrpl.json");
+  const signer = "0x0000000000000000000000000000000000000000" as const;
+  const config = {
+    payer: V.fixed.payer,
+    payee: V.fixed.payee,
+    token: V.fixed.token,
+    authorizedSigner: signer,
+    escrow: V.fixed.escrow,
+    chainId: 296 as const,
+  };
+  it("hederaChannelId: the vector's channel id", () => {
+    expect(hederaChannelId({ ...config, salt: V.fixed.H })).toBe(V.HS1.expectChannelId);
+  });
+  throwsTypeError("hederaChannelId", [
+    ...NOT_OBJECTS.map((b) => () => hederaChannelId(b as never)),
+    () => hederaChannelId({ ...config, salt: "0x12" } as never),
+    () => hederaChannelId({ ...config, salt: V.fixed.H, payer: "0x12" } as never),
+    () => hederaChannelId({ ...config, salt: V.fixed.H, escrow: V.fixed.H } as never),
+    () => hederaChannelId({ ...config, salt: V.fixed.H, chainId: "x" } as never),
+    () => hederaChannelId({ ...config, salt: V.fixed.H, chainId: 1 } as never),
+  ]);
+  const channel = { channelId: V.HS1.expectChannelId, escrow: V.fixed.escrow, chainId: 296 as const };
+  it("hederaVoucher: the voucher of a channel", () => {
+    expect(hederaVoucher(channel, 5n).message).toEqual({ channelId: V.HS1.expectChannelId.toLowerCase(), cumulativeAmount: 5n });
+  });
+  throwsTypeError("hederaVoucher", [
+    ...NOT_OBJECTS.map((b) => () => hederaVoucher(b as never, 5n)),
+    () => hederaVoucher({ ...channel, channelId: "x" } as never, 5n),
+    () => hederaVoucher({ ...channel, escrow: "x" } as never, 5n),
+    () => hederaVoucher({ ...channel, chainId: 1 } as never, 5n),
+    () => hederaVoucher(channel, 5 as never),
+    () => hederaVoucher(channel, -1n),
+    () => hederaVoucher(channel, 1n << 128n),
+  ]);
 });

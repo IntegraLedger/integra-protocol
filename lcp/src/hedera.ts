@@ -56,18 +56,35 @@ export function hederaNetworkOfChainId(chainId: unknown): HederaNetwork | Refusa
 export interface HederaTxId {
   /** "shard.realm.num" */
   account: string;
+  /** A non-negative bigint. */
   seconds: bigint;
+  /** An integer from 0 to 999,999,999. */
   nanos: number;
 }
 
-/** "0.0.1235@1700000000.000000000" */
+/** "0.0.1235@1700000000.000000000". Throws TypeError on an id that is not a `HederaTxId`. */
 export function txIdText(id: HederaTxId): string {
+  txIdOf(id);
   return `${id.account}@${id.seconds}.${String(id.nanos).padStart(9, "0")}`;
 }
 
-/** "0.0.1235-1700000000-000000000", the Mirror Node's form. */
+/** "0.0.1235-1700000000-000000000", the Mirror Node's form. Throws TypeError on an id that is not a `HederaTxId`. */
 export function txIdMirror(id: HederaTxId): string {
+  txIdOf(id);
   return `${id.account}-${id.seconds}-${String(id.nanos).padStart(9, "0")}`;
+}
+
+/**
+ * Throws TypeError unless `id` is a `HederaTxId`: an account `shard.realm.num`, `seconds` a non-negative bigint, and
+ * `nanos` an integer from 0 to 999,999,999, the range of protobuf's `Timestamp`.
+ */
+function txIdOf(id: unknown): asserts id is HederaTxId {
+  if (!isObject(id) || !isEntity(id["account"])) throw new TypeError("not a Hedera transaction id");
+  const { seconds, nanos } = id;
+  if (typeof seconds !== "bigint" || seconds < 0n) throw new TypeError("not a Hedera transaction id");
+  if (!Number.isInteger(nanos) || (nanos as number) < 0 || (nanos as number) > 999_999_999) {
+    throw new TypeError("not a Hedera transaction id");
+  }
 }
 
 export interface HederaBody {
@@ -513,9 +530,10 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
  * Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
  * records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
  * not this instrument, and any other result is failed with that result. A failed read, or a reader for another
- * network, is pending.
+ * network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read.
  */
 export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promise<HederaStatus> {
+  if (!isObject(ref) || typeof ref.expectMemo !== "string") return { state: "pending", why: "unreadable" };
   const entries = await entriesOf(ref.network, ref.transactionId, reader);
   if (entries === "not-found" || entries === "unreadable") return { state: "pending", why: entries };
   const own = counted(entries);
@@ -537,7 +555,7 @@ async function recover(
   ref: { network: HederaNetwork; transactionId: string },
   reader: HederaReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
   const entries = await entriesOf(ref.network, ref.transactionId, reader);
   if (entries === "unreadable") return refusal("hedera/unreadable");
   if (entries === "not-found") return refusal("hedera/not-found");
@@ -921,14 +939,18 @@ async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refu
  * user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
  * reads as what it paid or received. Exactly one account must be debited, by at least one unit, and its digest must be
  * the recorded one: the payment is the named transaction's debit of the payer. Payee and amount are not read. A transfer
- * list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`.
+ * list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`. A ref whose
+ * `transaction` is not a Mirror Node transaction id, whose `asset` is not `shard.realm.num` or whose `idDigest` is not
+ * `0x` and 64 hex digits is pending `unreadable`, with nothing read.
  */
 export async function executorStatus(
   ref: ExecutorRef & { transaction: string },
   reader: HederaReader,
 ): Promise<HederaStatus> {
+  if (!isObject(ref)) return { state: "pending", why: "unreadable" };
   const id = typeof ref.transaction === "string" ? MIRROR_ID.exec(ref.transaction) : null;
-  if (id === null) return { state: "pending", why: "unreadable" };
+  const idDigest = normalHash(ref.idDigest);
+  if (id === null || idDigest === null || !isEntity(ref.asset)) return { state: "pending", why: "unreadable" };
   const feePayer = id[1]!;
   const entries = await entriesOf(ref.network, ref.transaction, reader);
   if (entries === "not-found" || entries === "unreadable") return { state: "pending", why: entries };
@@ -975,7 +997,7 @@ export async function executorStatus(
   const debited = [...net].filter(([, v]) => v < 0n);
   if (debited.length !== 1) return { state: "failed", why: "not-this-instrument" };
   const [payer] = debited[0]!;
-  return (await hederaIdDigest(payer)) === ref.idDigest.toLowerCase()
+  return (await hederaIdDigest(payer)) === idDigest
     ? { state: "settled", consensus: user.consensus_timestamp }
     : { state: "failed", why: "not-this-instrument" };
 }
