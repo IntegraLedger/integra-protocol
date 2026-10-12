@@ -269,8 +269,9 @@ rollback of fewer than `depth` blocks, or a lookup that lags the tip read first,
 into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, the
 reader holds no block at that height, or the lookup names an earlier slot or none, it is pending `not-found`. A
 present one fails only when the ledger marks it invalid. A `depth` that is not a non-negative bigint is pending
-`unreadable`. At most three calls: `slotAt` only for an absent transaction once the tip's slot is past the TTL and
-the lookup covers the tip, and not at `depth` 0, where the tip is that block.
+`unreadable`, and so is a ref whose `txId` is not `0x` and 64 hex digits, with nothing read; the id is looked up in
+lowercase. At most three calls: `slotAt` only for an absent transaction once the tip's slot is past the TTL and the
+lookup covers the tip, and not at `depth` 0, where the tip is that block.
 
 #### Parameters
 

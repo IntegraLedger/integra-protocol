@@ -262,7 +262,8 @@ The hash from a settlement block item alone: its one memo-carrying transfer's me
 
 Reads the named block item. Settled when it is finalized and successful, with exactly one transfer whose memo
 `memoCarrier` reads as `ref.h` (a PLT memo with tag 24 unwrapped) and whose sender, receiver and amount hash to
-`ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending.
+`ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending. A ref whose `h`
+or `idDigest` is not `0x` and 64 hex digits is pending `unreadable`, with nothing read; hashes compare in either case.
 
 #### Parameters
 

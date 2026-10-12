@@ -334,7 +334,9 @@ seqno unused (wallet_v5.fc commits the seqno only for an external request), so t
 `validUntil`, and an index that lags that head, or names no time, is pending `not-found`. The payer's Jetton wallet's
 transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted
 delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed read, a
-malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
+malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
+network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
+lowercase. At most four calls.
 
 #### Parameters
 

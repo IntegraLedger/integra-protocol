@@ -227,7 +227,9 @@ two, else `block`, and a failed or malformed tenure read counts as `block`. Unmi
 failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
 was read at the API's tip, so `block`. An unknown transaction counts so only when the lookup names a height at or
 above the one the nonce read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is
-pending `not-found`. A failed or malformed nonce read then is pending `unreadable`.
+pending `not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32
+address in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`,
+with nothing read.
 
 #### Parameters
 

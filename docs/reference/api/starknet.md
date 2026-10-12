@@ -388,7 +388,9 @@ Reads the named transaction's receipt. A `SUCCEEDED` receipt must emit exactly o
 nested, at any depth, below an `execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path
 to either having reverted. A call below such a `transfer` is the token's own execution of it (a library call
 repeats the frame) and is not read as another transfer. A failed read, a malformed answer, an asset `Transfer` event
-of neither standard layout, or a reader for another network is pending. Two calls.
+of neither standard layout, or a reader for another network is pending. A ref whose `from`, `asset` or `nonce` is not
+`0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64 hex digits, is pending
+`unreadable`, with nothing read; felts compare as numbers and the digest as a hash, in either case. Two calls.
 
 #### Parameters
 

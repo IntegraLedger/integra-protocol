@@ -326,7 +326,8 @@ The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as 
 > **xrplCloseStatus**(`ref`, `reader`): `Promise`\<[`XrplCloseStatus`](#xrplclosestatus)\>
 
 Reads a reported close: validated with the channel among the transaction's deleted `PayChannel` entries is settled;
-validated without it is failed `not-a-close`; otherwise pending. One call.
+validated without it is failed `not-a-close`; otherwise pending. A ref whose channel is not 64 hex digits is pending
+`unreadable`, with nothing read. One call.
 
 #### Parameters
 
@@ -347,7 +348,9 @@ validated without it is failed `not-a-close`; otherwise pending. One call.
 
 Reads an opening by the hash computed from its signed blob: settled only when a validated ledger holds it with
 `tesSUCCESS` as a `PaymentChannelCreate`; `tec` codes are final failures that claimed the fee; past
-`LastLedgerSequence` with the whole range searched it expired. A failed read is pending. At most two calls.
+`LastLedgerSequence` with the whole range searched it expired. A failed read is pending. A ref whose `transaction` is
+not 64 hex digits is pending `unreadable`, with nothing read; the transaction is looked up in upper case. At most two
+calls.
 
 #### Parameters
 
@@ -368,7 +371,9 @@ Reads an opening by the hash computed from its signed blob: settled only when a 
 
 Reads a transaction by the hash computed from its signed blob. Settled only when a validated ledger holds it with
 `tesSUCCESS` as a Payment whose `InvoiceID` is the one expected; `tec` codes are final failures that claimed the fee;
-past `LastLedgerSequence` with the whole range searched it expired. A failed read is pending. At most two calls.
+past `LastLedgerSequence` with the whole range searched it expired. A failed read is pending. A ref whose
+`transaction` or `expect` is not 64 hex digits is pending `unreadable`, with nothing read; the transaction is looked
+up in upper case, and invoice ids compare in either case. At most two calls.
 
 #### Parameters
 

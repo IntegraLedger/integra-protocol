@@ -656,7 +656,8 @@ discriminator is `open` (1) or `top_up` (3). At most two calls.
 
 Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
 `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel is settled; any other
-landed transaction is failed `not-a-close`. At most two calls.
+landed transaction is failed `not-a-close`. A ref whose program or channel is not the base58 of a 32-byte key is
+pending `unreadable`, with nothing read. At most two calls.
 
 #### Parameters
 
