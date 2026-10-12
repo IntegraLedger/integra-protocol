@@ -37,5 +37,5 @@ The package's one job is the binding between an ATR and a payment, so a vulnerab
 ## What does not
 
 By design, the package does not check amount, payee, asset, timing or payer against the ATR's content, does not hold
-keys, and does not verify every signature it reads; each pairing's `pattern.proves` states which signatures the rail
-or network verifies. A report that relies on one of these is not a vulnerability in this package.
+keys, and does not verify every signature it reads; each pairing's `pattern.proves` says what the payment shows. A
+report that relies on one of these is not a vulnerability in this package.
