@@ -197,6 +197,32 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     expect(await exactPolkadotRemark.reference(presented as never)).toEqual({ ...V.V3.expectReference, network: westend.network });
   });
 
+  // The pairing's proves states that the extrinsic's bytes end with the profile call, not that its call is the profile
+  // call: bound reads the call as the bytes' suffix and decodes nothing before it. Here the extrinsic's own call is
+  // pallet_utility's batch (call index [40, 0]) of a remark_with_event of the hash's LCP string, a
+  // transfer_keep_alive of one unit to the signer, and a remark_with_event whose bytes are the profile call (SCALE
+  // Vec<u8>: a Compact<u32> length, then the bytes). Its bytes still end with the profile call, so it binds.
+  it("V3 nested: an extrinsic whose own call is another batch ending in the profile call's bytes binds H", async () => {
+    const v3 = fromHex(V.V3.extrinsic);
+    const call = fromHex(V.V2.expectCall);
+    const split = splitSigned(v3);
+    if ("refused" in split) throw new Error(split.code);
+    const compact = (n: number) => (n < 64 ? [n << 2] : [((n << 2) | 1) & 0xff, n >> 6]);
+    const remark = [...new TextEncoder().encode(toLcpString(H))];
+    const signer = [...split.signer];
+    const nested = [
+      ...[40, 0, ...compact(3)],
+      ...[0, 7, ...compact(remark.length), ...remark],
+      ...[50, 9, ...compact(Number(O.asset)), 0x00, ...signer, ...compact(1)],
+      ...[0, 7, ...compact(call.length)],
+    ];
+    const body = [...v3.subarray(2, v3.length - call.length), ...nested, ...call];
+    const xt = toHex(Uint8Array.from([...compact(body.length), ...body]));
+    expect(await exactPolkadotRemark.bound(presentedOf(xt, V.V2.expectCall))).toBe(V.V3.expectBound);
+    const ref = await exactPolkadotRemark.reference(presentedOf(xt, V.V2.expectCall));
+    expect(ref).toEqual({ ...V.V3.expectReference, extrinsicHash: extrinsicHash(fromHex(xt)) });
+  });
+
   it("V4: the remark hash", () => {
     const remark = new TextEncoder().encode(toLcpString(H));
     expect(toHex(blake2b(remark, { dkLen: 32 }))).toBe(V.V4.expectRemarkHash);

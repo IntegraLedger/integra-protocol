@@ -651,11 +651,11 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The payer signed one Polkadot Asset Hub extrinsic whose call is an atomic batch of a transfer of the asset and an " +
-    "on-chain remark whose bytes are this ATR's hash in LCP string form. The chain verified the signature, which " +
-    "covers the call, and executed the batch, which applies both calls or neither. Its Remarked event carries the " +
-    "BLAKE2b-256 of the remark, and its Transferred event names the asset, at the finality recorded. This does not " +
-    "show that amount, payee, asset or timing match the ATR's content.",
+    "The payer signed one Polkadot Asset Hub extrinsic whose bytes end with the profile call, the encoding of a batch " +
+    "of a transfer of the asset and a remark whose bytes are this ATR's hash in LCP string form. The chain verified " +
+    "the signature and dispatched the extrinsic, and its record carries a Remarked event with the BLAKE2b-256 of that " +
+    "remark and a Transferred event of the asset, at the finality recorded. This does not show that amount, payee, " +
+    "asset or timing match the ATR's content.",
 });
 
 export const exactPolkadotRemark = Object.freeze({
