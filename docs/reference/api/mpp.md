@@ -1305,9 +1305,11 @@ The binding slot: the distinct challenges among `options`, each with exactly MPP
 > **transferPresent**(`ref`, `reader`): `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>
 
 `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
-topics and `topics[0]` = `Transfer` whose recipient is not `RECEIVE_POLICY_GUARD`. Without one, a `Transfer` from
-`ref.asset` to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`. At most
-three calls.
+topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose recipient is not
+`RECEIVE_POLICY_GUARD`. `ref.transferLog` must identify a `Transfer` from `ref.asset` by its sender alone (identity
+`from`), as the pairing's `reference` records it, else pending `unreadable`. Without such a log, a `Transfer` from
+that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`: another
+account's `Transfer` in the same transaction is not this payment. At most three calls.
 
 #### Parameters
 
