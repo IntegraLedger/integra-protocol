@@ -23,10 +23,9 @@ states the checkout's terms, so paying is agreeing to that record.
    later, offered only on a network where that escrow is deployed.
 5. The handler has no provider. Nothing is needed from anyone but the business, its x402 facilitator and the platform's
    wallet.
-6. Under UCP's AP2 Mandates extension, `dev.ucp.common.payment.ap2_mandate`, the payment carries no H. Its `nonce` is
-   keccak256 of the AP2 payment mandate, which commits to the checkout the business signed, whose `legal_context` link
-   carries H; and the buyer first pays an agreement step whose `nonce` is H.
-   [Under AP2 mandates](#under-ap2-mandates) states the rules.
+6. Under UCP's AP2 Mandates extension, `dev.ucp.common.payment.ap2_mandate`, the buyer's checkout mandate commits to
+   the checkout the business signed, whose `legal_context` link carries H, and the buyer first pays an agreement step
+   whose `nonce` is H. [Under AP2 mandates](#under-ap2-mandates) states the rules.
 
 ## Participants
 
@@ -136,8 +135,7 @@ The response config is an x402 version 2 `PaymentRequired`, with two members add
    business's statement of the checkout's terms: `bodyDigest` is SHA-256 over those bytes. So the ATR names the
    checkout. Under AP2 mandates the slot names the checkout's `id` instead: [Under AP2 mandates](#under-ap2-mandates).
 3. Each option is offered under an x402 pairing of LCP in which the payment carries H, or a value from which H is
-   confirmed. A pairing whose payment carries neither (`http-advisory`) is not offered. Under AP2 mandates the options
-   are `exact` with EIP-3009, and the payment carries the payment mandate's hash.
+   confirmed. A pairing whose payment carries neither (`http-advisory`) is not offered.
 4. The handler's `config` is then the response config for that ATR, and the checkout's `links[]` carries
    `{"type":"legal_context","url":L,"title":"lcp:sha256:"+H}`.
 5. A change to the terms issues a new ATR, with a new H, a new `config` and a new link. A payment carrying an earlier
@@ -252,8 +250,8 @@ On completion the business:
 5. **Checks the binding.** The payment carries the checkout's current H where the LCP profile of the option's pairing
    puts it: for `exact` with EIP-3009, `authorization.nonce` is H; for `auth-capture`, the escrow payment's salt, or
    its salt nonce. A payment carrying an earlier H of this checkout is `agreement-changed`; any other is
-   `not-this-checkout`. Under AP2 mandates the payment carries no H, and rules 5 to 8 of
-   [Under AP2 mandates](#under-ap2-mandates) check the binding.
+   `not-this-checkout`. Under AP2 mandates, rules 5 and 6 of [Under AP2 mandates](#under-ap2-mandates) check the
+   binding.
 6. **Checks the checkout is still open.** One that has expired is `checkout-expired`.
 7. **Settles.** It has the facilitator verify and settle the payment, and maps x402's reasons as [Errors](#errors)
    says.
@@ -264,10 +262,11 @@ On completion the business:
 
 When the checkout negotiates UCP's AP2 Mandates extension, `dev.ucp.common.payment.ap2_mandate`, every checkout
 response carries the business's `ap2.merchant_authorization`, and `complete` carries the buyer's checkout mandate in
-`ap2.checkout_mandate`, as the extension says. The payment then carries no H. It is bound to the payment mandate, the
-payment mandate to the checkout the business signed, and that checkout to H; and an agreement step the buyer pays
-first puts H on chain. These rules replace rules 2 and 3 of [The checkout](#the-checkout) and step 5 of
-[Processing payments](#processing-payments). Every other rule holds.
+`ap2.checkout_mandate`, as the extension says. The checkout mandate commits to the checkout the business signed, and
+that checkout's `legal_context` link carries H; an agreement step the buyer pays first puts H on chain. The payment
+mandate, and how the payment is bound to it, are outside this handler: the business's payment service provider
+verifies the payment mandate as AP2 says. These rules replace rules 2 and 3 of [The checkout](#the-checkout) and step 5
+of [Processing payments](#processing-payments). Every other rule holds.
 
 1. **The ATR** is issued under LCP's `ucp/checkout/ap2-mandate` pairing. Its binding slot is
    `ucp: {options: [{checkout: <id>}]}`, the checkout's own `id`, and it commits to no request.
@@ -276,27 +275,20 @@ first puts H on chain. These rules replace rules 2 and 3 of [The checkout](#the-
 3. **The links.** The checkout's `links[]` carries the `legal_context` link, then
    `{"type":"legal_context_agreement","url":A}`. Both are written before `ap2.merchant_authorization` is computed, so
    the business's signature covers them.
-4. **The options** are `exact` with EIP-3009. The handler's `config` is the response config, and carries H and L as it
-   does without the extension.
-5. **The credential** carries the payment mandate as `token`: AP2's payment mandate exactly as presented, one SD-JWT or
-   a dSD-JWT chain (SD-JWTs joined by `~~`), holding one `mandate.payment.1`. Its `transaction_id` is the checkout
-   mandate's `checkout_hash`, its `payment_amount` the checkout's total and currency, and its `payee.id` the origin of
-   the business's `/.well-known/ucp`.
-6. **The payment is bound to the payment mandate.** The authorization's `nonce` is keccak256 of the UTF-8 bytes of
-   `token`: the whole string as presented, every `~` included. It is never H, whose nonce the agreement step spends.
-7. **The checkout mandate binds H.** The business reads H from the checkout mandate's closed hop, its last SD-JWT, and
+4. **The options.** The handler's `config` is the response config, and carries H and L as it does without the
+   extension.
+5. **The checkout mandate binds H.** The business reads H from the checkout mandate's closed hop, its last SD-JWT, and
    the `checkout_jwt` it discloses, as `ucp/checkout/ap2-mandate`'s `bound` reads them: `checkout_hash` is the
    base64url SHA-256 of `checkout_jwt`, and H is the title of that checkout's `legal_context` link. It is the
    checkout's current H: a checkout mandate over an earlier state of the checkout is `mandate_scope_mismatch`.
-8. **The agreement step comes first.** The business settles the payment only once the agreement step's payment,
+6. **The agreement step comes first.** The business settles the payment only once the agreement step's payment,
    carrying H, has settled. Until then it answers `agreement_payment_required`, and nothing is taken.
 
-On completion the business verifies both mandates, as the extension's Business Verification says and as AP2 has a PSP
-verify a payment mandate: the first SD-JWT of each with the key its `kid` names in the platform's profile `keys[]`,
-each later one with the key the one before it delegates to (`cnf`), and none expired. The checkout mandate's
-`checkout_jwt` is the business's own `ap2.merchant_authorization` with its payload attached, and that payload is the
-checkout's current state: the same `id`, `line_items`, `totals` and `legal_context` link. A refusal is one of
-[the errors under AP2 mandates](#errors).
+On completion the business verifies the checkout mandate, as the extension's Business Verification says: its first
+SD-JWT with the key its `kid` names in the platform's profile `keys[]`, each later one with the key the one before it
+delegates to (`cnf`), and none expired. The checkout mandate's `checkout_jwt` is the business's own
+`ap2.merchant_authorization` with its payload attached, and that payload is the checkout's current state: the same
+`id`, `line_items`, `totals` and `legal_context` link. A refusal is one of [the errors under AP2 mandates](#errors).
 
 #### Example: the checkout's links, under AP2 mandates
 
@@ -464,99 +456,14 @@ When the checkout negotiates the extension, these steps take the place of steps 
 1. **Pay the agreement step first.** Fetch A, the url of the checkout's `legal_context_agreement` link, and check that
    its x402 challenge carries the same H. Pay it, `exact` with EIP-3009 and H as its `nonce`, and wait for its
    receipt, which names H.
-2. **Make the mandates,** once the buyer approves, after checking `ap2.merchant_authorization` as the extension says.
-   The checkout mandate, `mandate.checkout.1`: its `checkout_jwt` is `ap2.merchant_authorization` with its payload
-   attached (the checkout without `ap2`, in RFC 8785 form, base64url), and its `checkout_hash` the base64url SHA-256
-   of `checkout_jwt`. The payment mandate, `mandate.payment.1`: its `transaction_id` is that `checkout_hash`, its
-   `payment_amount` the checkout's total and currency, and its `payee.id` the origin of the business's
-   `/.well-known/ucp`.
-3. **Sign.** Choose one option of `accepts`. The wallet signs it with the `nonce` keccak256 of the UTF-8 bytes of the
-   payment mandate, exactly as it will be presented, and echoes `extensions` unchanged.
-4. **Complete the checkout** with `ap2.checkout_mandate`, and one instrument whose credential carries the payment
-   mandate, exactly as hashed, as `token`.
+2. **Make the checkout mandate,** once the buyer approves, after checking `ap2.merchant_authorization` as the
+   extension says: `mandate.checkout.1`, whose `checkout_jwt` is `ap2.merchant_authorization` with its payload
+   attached (the checkout without `ap2`, in RFC 8785 form, base64url), and whose `checkout_hash` is the base64url
+   SHA-256 of `checkout_jwt`.
+3. **Sign.** Choose one option of `accepts`. The wallet signs it, and echoes `extensions` unchanged.
+4. **Complete the checkout** with `ap2.checkout_mandate`, and one instrument as step 6 says.
 5. **Read the answer** as step 7 says. `agreement_payment_required` means the agreement step's payment has not settled
    yet: complete again with the same payment once it has.
-
-#### Example: the instrument at completion, under AP2 mandates
-
-The checkout of [the links example](#example-the-checkouts-links-under-ap2-mandates). `token` is a payment mandate made
-with AP2's own SDK, a dSD-JWT chain of two SD-JWTs, and the `nonce` is keccak256 of it. `ap2.checkout_mandate`, beside
-`payment`, holds the whole signed checkout and is not shown.
-
-```json
-{
-  "payment": {
-    "instruments": [
-      {
-        "id": "instr_1",
-        "handler_id": "lcp_x402",
-        "type": "x402",
-        "credential": {
-          "type": "x402",
-          "x402Version": 2,
-          "paymentPayload": {
-            "x402Version": 2,
-            "resource": {
-              "url": "https://shop.example/checkout-sessions/chk_123",
-              "description": "House roast, 1 lb",
-              "mimeType": "application/json"
-            },
-            "accepted": {
-              "scheme": "exact",
-              "network": "eip155:84532",
-              "amount": "18000000",
-              "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-              "payTo": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
-              "maxTimeoutSeconds": 300,
-              "extra": {"name": "USDC", "version": "2"}
-            },
-            "payload": {
-              "signature": "0x14f8be3fb47399df25ed00e5c0bf44e7c1097f823ec1a82694e8112a111064712a253b573b3716fba7150ba658d11963007b404b6cdb3c17a651e6c7e3f541d71b",
-              "authorization": {
-                "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-                "to": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
-                "value": "18000000",
-                "validAfter": "0",
-                "validBefore": "1791000000",
-                "nonce": "0xc57e197ef5a7282e55db9cf341d8919f0300920acc16e8f986f672c1fc1bc8dc"
-              }
-            },
-            "extensions": {
-              "legalContext": {
-                "info": {
-                  "type": "sha256",
-                  "value": "0x361389f6b79a94991e87f16550b8a20186ea958dd728b10f148d8ff295ec6775",
-                  "legalContextUrl": "https://shop.example/atr/0x361389f6b79a94991e87f16550b8a20186ea958dd728b10f148d8ff295ec6775"
-                },
-                "schema": {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
-                  "type": "object",
-                  "properties": {
-                    "type": {"const": "sha256"},
-                    "value": {"type": "string", "pattern": "^0x[0-9a-f]{64}$"},
-                    "legalContextUrl": {"type": "string", "pattern": "^https://"}
-                  },
-                  "required": ["type", "value", "legalContextUrl"]
-                }
-              }
-            }
-          },
-          "paymentRequirements": {
-            "scheme": "exact",
-            "network": "eip155:84532",
-            "amount": "18000000",
-            "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-            "payTo": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
-            "maxTimeoutSeconds": 300,
-            "extra": {"name": "USDC", "version": "2"}
-          },
-          "token": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0IiwgImtpZCI6ICJwbGF0Zm9ybS1rZXktMSJ9.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIllDZG1hQWgyc015d1ZHUHhRVjRNQjBNM2NHWnAxYm96aDV1RlJaeEJqY1UifV0sICJfc2RfYWxnIjogInNoYS0yNTYifQ.LwTgRhzXoFljoHuZDeOCuxRFgzKHScwnfN58DJFr2uiBW1OZ97iDsKdzohIc2imC7BSDg3UV8HHAktRBIhU_qg~WyJWdDBiU3ZOZlVNbzJUMDRjZVhUUTJBIiwgeyJ2Y3QiOiAibWFuZGF0ZS5wYXltZW50Lm9wZW4uMSIsICJjb25zdHJhaW50cyI6IFtdLCAiY25mIjogeyJqd2siOiB7ImNydiI6ICJQLTI1NiIsICJrdHkiOiAiRUMiLCAieCI6ICI0S0F2NE43SktHdW5qSjRrOTRNSGc2dGhJbE5KZDdUMnlXU1ZxY19HT1YwIiwgInkiOiAiTEgwV09ROHdjM1NFV3NUUzVDc3JOWGpheVA5WWNTWDZxaTl6eEdPT0tZWSJ9fSwgImlhdCI6IDE3OTA5NjIxNjEsICJleHAiOiAxNzkwOTY1NzYxfV0~~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK3NkLWp3dCJ9.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogImtNZXdJai0zamlqVnZVa2hFcUk0WE11ejRhREU2d0hRRkplYU1RTW5KVk0ifV0sICJpYXQiOiAxNzkwOTYyMTYxLCAiYXVkIjogImh0dHBzOi8vc2hvcC5leGFtcGxlIiwgIm5vbmNlIjogIkJmYnZBQXE2TWFwa1IwTjcwSWpFd2ciLCAic2RfaGFzaCI6ICJlM1dBbjd2bElFQ1Rya0o1RnJPTDZlZnc5eEI2cHROYVFPRjhQVml2YmJZIiwgIl9zZF9hbGciOiAic2hhLTI1NiJ9.uJjV1jdalrmA1b-mVfI8XiEigFtIiGEMEGWzt-WWBxq-0jS4RFwMqjfhnqokpxJUqeW5BWcv3otImKO0ZU-rgw~WyJBMTBUUUdhYWh1bTdTOWN3OUo1VkJ3IiwgeyJ2Y3QiOiAibWFuZGF0ZS5wYXltZW50LjEiLCAidHJhbnNhY3Rpb25faWQiOiAiOEF3a2hGSTJ1d0FzUzhNQWEtU3RUODNCbzhkTFJqYzRKNFBua2V2SUhzbyIsICJwYXllZSI6IHsiaWQiOiAiaHR0cHM6Ly9zaG9wLmV4YW1wbGUiLCAibmFtZSI6ICJTaG9wIEV4YW1wbGUiLCAid2Vic2l0ZSI6ICJodHRwczovL3Nob3AuZXhhbXBsZSJ9LCAicGF5bWVudF9hbW91bnQiOiB7ImFtb3VudCI6IDE4MDAsICJjdXJyZW5jeSI6ICJVU0QifSwgInBheW1lbnRfaW5zdHJ1bWVudCI6IHsiaWQiOiAiaW5zdHJfMSIsICJ0eXBlIjogIng0MDIifX1d~"
-        }
-      }
-    ]
-  }
-}
-```
 
 ## Errors
 
@@ -587,12 +494,12 @@ x402's reasons, as the facilitator returns them:
 `settlement_pending` is not a failure: the checkout is `complete_in_progress`.
 
 Under AP2 mandates, a mandate refused at completion answers with one error whose `code` is the extension's, at the
-mandate's `path` (`$.ap2.checkout_mandate`, or the instrument's `credential.token`), `recoverable`: the checkout stays
-as it was, and the platform may complete again.
+mandate's `path`, `$.ap2.checkout_mandate`, `recoverable`: the checkout stays as it was, and the platform may complete
+again.
 
 | Code | When |
 |---|---|
-| `mandate_required` | `ap2.checkout_mandate`, or the credential's `token`, is missing. |
+| `mandate_required` | `ap2.checkout_mandate` is missing. |
 | `agent_missing_key` | The platform's profile has no key with the `kid` of a mandate's first SD-JWT. |
 | `mandate_invalid_signature` | A mandate's signature does not verify, or it does not hold exactly one mandate of its type. |
 | `mandate_expired` | A mandate has expired. |
@@ -607,13 +514,13 @@ as it was, and the platform may complete again.
 | **Binding required** | The credential is bound to the checkout through H. The payment carries H, and H is the hash of an ATR whose binding slot names the checkout's completion. |
 | **Binding placement** | H is inside the value the payer signs, not beside it. The credential carries no `binding` object, and the business reads none. |
 | **Binding verified** | The platform checks the ATR's bytes against H before it signs. The business checks the payment's H before it settles. |
-| **Binding under AP2 mandates** | The payment's `nonce` commits to the payment mandate, the mandate's `transaction_id` to the checkout the business signed, and that checkout's `legal_context` link to H. H itself is on chain in the agreement step's payment, which settles before the checkout's. |
+| **Binding under AP2 mandates** | The buyer's checkout mandate commits to the checkout the business signed, whose `legal_context` link carries H. H itself is on chain in the agreement step's payment, which settles before the checkout's. |
 | **One claim** | Each ATR carries a random id, so H is unique to it. A payment carrying H completes its checkout once. |
 | **Expiry** | The authorization is valid only inside its own window (`validAfter`, `validBefore`), which the wallet sets within the option's `maxTimeoutSeconds`. An expired checkout takes no payment. |
 | **The payee** | The business settles only an option it offered, so the token goes to that option's `payTo`. |
 | **The bytes delivered** | The platform hashes the bytes it received from L, never a parsed or re-serialised copy. |
 | **What the ATR shows** | Anyone with L can read the ATR, and H is public once the payment settles. The ATR holds only what both parties may show. |
-| **Data residency** | The credential holds the payer's address and signature, and no other personal data. Under AP2 mandates, `token` also holds the payment mandate's claims (the payee, the amount and the instrument) and, in a dSD-JWT chain, the public key each hop delegates to. |
+| **Data residency** | The credential holds the payer's address and signature, and no other personal data. |
 
 ## References
 
