@@ -258,8 +258,9 @@ function word(v: bigint): Uint8Array {
  * `ref.asset` whose sender is `ref.from`, and that transfer must have this payment's identity, else failed
  * `not-this-instrument`. Then its trace must hold exactly one `transfer` call on `ref.asset` with this identity
  * nested, at any depth, below an `execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path
- * to either having reverted. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout,
- * or a reader for another network is pending. Two calls.
+ * to either having reverted. A call below such a `transfer` is the token's own execution of it (a library call
+ * repeats the frame) and is not read as another transfer. A failed read, a malformed answer, an asset `Transfer` event
+ * of neither standard layout, or a reader for another network is pending. Two calls.
  */
 export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
@@ -344,8 +345,9 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
  * The landed nonces of the `transfer` calls on `asset` nested at any depth below an `execute_from_outside_v2`
  * invocation in the trace: for each such call, each distinct nonce of an enclosing invocation, filtered to `nonce` when
  * it is given, for which the call's identity digest, with that invocation's contract as the sender, is the
- * reference's. A reverted invocation's whole subtree is skipped: a failed call's descendants keep `is_reverted: false`,
- * and their effects are rolled back with it.
+ * reference's. A call below such a `transfer` is the token's own execution of it (a library call repeats the frame)
+ * and is not read as another transfer. A reverted invocation's whole subtree is skipped: a failed call's descendants
+ * keep `is_reverted: false`, and their effects are rolled back with it.
  */
 async function matches(
   ref: { transaction: Felt; asset: Felt; idDigest: Hex; nonce: Felt | undefined },
@@ -384,7 +386,8 @@ async function matches(
       }
     }
     let below = above;
-    if (selector === execute) {
+    if (selector === transfer && feltValue(inv.contract) === asset) below = [];
+    else if (selector === execute) {
       const landed = feltValue(inv.calldata[1]);
       if (landed !== undefined && (nonce === undefined || landed === nonce)) below = [...above, { contract: inv.contract, landed }];
     }

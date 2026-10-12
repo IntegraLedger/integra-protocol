@@ -157,11 +157,19 @@ describe("x402-exact-starknet.json", () => {
       reverted: false,
       calls,
     });
-    // An account that runs its outside execution as a library call of its own class: two frames, both on the payer's
-    // account, carry the selector and the nonce, and the transfer below them is one payment.
+    // An account that runs its outside execution as a library call into its implementation class (a proxy account): two
+    // frames, both on the payer's account, carry the selector and the nonce, and the transfer below them is one payment.
     const twoFrames = under([frame(REF.from, SELECTOR_EXECUTE_FROM_OUTSIDE_V2, [transfer])]);
     expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: twoFrames })))).toEqual(row.expect);
     expect(await starknetLandedNonce(REF, readerFor({ receipt: row.receipt, trace: twoFrames }))).toBe(V.S5.landedNonce.expect);
+    // A proxy token: its transfer runs as a library call into its implementation, a frame below the transfer with the
+    // same contract, selector and calldata (blockifier's library_call keeps the caller's storage address; Pathfinder's
+    // from_call_info lists the frame in the caller's calls). It is the token's own execution of the one transfer.
+    const proxyToken = under([{ ...transfer, calls: [{ ...transfer, calls: [] }] }]);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: proxyToken })))).toEqual(row.expect);
+    expect(await starknetLandedNonce(REF, readerFor({ receipt: row.receipt, trace: proxyToken }))).toBe(V.S5.landedNonce.expect);
+    const proxyTokenBelow = under([frame(REF.from, row.trace.selector, [{ ...transfer, calls: [{ ...transfer, calls: [] }] }])]);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: proxyTokenBelow })))).toEqual(row.expect);
     // Two levels down, through two intermediate calls on the payer's account.
     const deeper = under([frame(REF.from, row.trace.selector, [frame(REF.from, row.trace.selector, [transfer])])]);
     expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: deeper })))).toEqual(row.expect);
