@@ -423,6 +423,9 @@ const SETTLE_WITH_PERMIT_EXACT = [
     ],
   },
 ] as const;
+const SETTLE_WITH_PERMIT_UPTO = [
+  { ...SETTLE_WITH_PERMIT_EXACT[0], inputs: [SETTLE_WITH_PERMIT_EXACT[0].inputs[0], ...SETTLE_UPTO[0].inputs] },
+] as const;
 
 describe("recover on the Permit2 pairings", () => {
   const ref = { network: P2.EV6.reader.network as `eip155:${string}`, transaction: P2.EV6.transaction as Hex };
@@ -498,6 +501,30 @@ describe("recover on the Permit2 pairings", () => {
     const { got, calls } = await recoverRow(exactPermit2, { ...P2.EV6.transferAt100, input: "withPermit" }, ev, EXACT_PERMIT2_PROXY);
     expect(got).toBe(H);
     expect(calls).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore]);
+  });
+
+  // x402UptoPermit2Proxy.sol :89-96 (f8f83309): settleWithPermit(EIP2612Permit, PermitTransferFrom, uint256 amount,
+  // address owner, Witness, bytes), so the nonce is argument word 7 and the owner word 10.
+  it("upto settleWithPermit: the nonce is read after the EIP-2612 permit's five words, the owner after the settled amount", async () => {
+    const p = await signed(uptoPermit2, UP.fixed);
+    const a = (p.payload as any).permit2Authorization;
+    const input = encodeFunctionData({
+      abi: SETTLE_WITH_PERMIT_UPTO,
+      functionName: "settleWithPermit",
+      args: [
+        { value: BigInt(a.permitted.amount), deadline: BigInt(a.deadline), r: `0x${"11".repeat(32)}`, s: `0x${"22".repeat(32)}`, v: 27 },
+        { permitted: { token: a.permitted.token, amount: BigInt(a.permitted.amount) }, nonce: BigInt(a.nonce), deadline: BigInt(a.deadline) },
+        1n,
+        a.from,
+        { to: a.witness.to, facilitator: a.witness.facilitator, validAfter: BigInt(a.witness.validAfter) },
+        (p.payload as any).signature,
+      ],
+    });
+    expect(offsetsOf(input, H)).toEqual([4 + 7 * 32]);
+    const ev = { ...UP.EV6, inputs: { ...UP.EV6.inputs, withPermit: input } };
+    const { got, calls } = await recoverRow(uptoPermit2, { ...UP.EV6.oneUnitUsed, input: "withPermit" }, ev, UPTO_PERMIT2_PROXY);
+    expect(got).toBe(H);
+    expect(calls).toEqual([UP.EV6.expectCall, UP.EV6.expectCallBefore]);
   });
 
   /** The exact proxy's `settle` of EV1's signed permit, with `nonce`, `owner` and `token` in place of its own. */
