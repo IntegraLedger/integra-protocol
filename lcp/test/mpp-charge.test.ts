@@ -630,6 +630,15 @@ describe("mpp-charge-tempo-push.json", () => {
     }
   });
 
+  it("the record: every flag the file pins, and the memo's proves with the push's two changes", () => {
+    const { proves, ...flags } = tempoPush.pattern;
+    const pinned = Object.fromEntries(Object.entries(PU.pattern).filter(([k]) => k !== "claims" && k !== "provesRule"));
+    expect(flags).toEqual(pinned);
+    expect(tempoPush.claims).toBe(PU.pattern.claims);
+    expect(proves).toContain("signed and broadcast");
+    expect(proves).toContain("read after the money had moved");
+  });
+
   it("plant: a memo log emitted by another TIP-20 is not this payment's carrier", async () => {
     const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
     if ("refused" in u) throw new Error(u.code);

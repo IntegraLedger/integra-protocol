@@ -46,16 +46,16 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/evm/hash` | `evmHash` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
 | `mpp/charge/evm/permit2` | `evmPermit2` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
 | `mpp/charge/evm/transaction` | `evmTransaction` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/hedera` | `chargeHedera` from `@integraledger/lcp/hedera`<br>`chargeHedera` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | yes | no |  |
+| `mpp/charge/hedera` | `chargeHedera` from `@integraledger/lcp/hedera`<br>`chargeHedera` from `@integraledger/lcp/mpp` | `id-reuse` | no | yes | yes | no |  |
 | `mpp/charge/lightning` | `chargeLightning` from `@integraledger/lcp/lightning` | `native-field` | no | no | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
 | `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/stellar` | `chargeStellar` from `@integraledger/lcp/mpp` | `truncated-field` | no | yes | yes | no |  |
 | `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/tempo/memo` | `tempoMemo` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | yes | no |  |
-| `mpp/charge/tempo/push` | `tempoPush` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | yes | no |  |
+| `mpp/charge/tempo/memo` | `tempoMemo` from `@integraledger/lcp/mpp` | `id-reuse` | no | yes | yes | no |  |
+| `mpp/charge/tempo/push` | `tempoPush` from `@integraledger/lcp/mpp` | `id-reuse` | no | yes | yes | no |  |
 | `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
-| `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `id-reuse` | yes | no | yes | no |  |
+| `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
 | `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
 | `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes |  |

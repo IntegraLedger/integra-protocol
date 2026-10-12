@@ -178,4 +178,10 @@ describe("mpp-charge-hedera.json", () => {
     expect(chargeHedera.pattern.buyerSigns).toBe(false);
     expect(chargeHedera.claims).toBe(true);
   });
+
+  // LCP §8.3.5, Id-Reuse: the memo's nonce, keccak256 of the challenge id that carries H, is a derivation of H on the
+  // public ledger, so the binding is visible there (§8.3's On-chain property) but H is not recovered from it.
+  it("the record is id-reuse and on chain, and not recoverable from the chain alone", () => {
+    expect(chargeHedera.pattern).toMatchObject({ pattern: "id-reuse", onChain: true, zeroPartyRecoverable: false });
+  });
 });

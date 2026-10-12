@@ -975,9 +975,9 @@ export const evmHash = Object.freeze({
 export const tempoMemo = Object.freeze({
   id: MEMO,
   pattern: pattern({
-    pattern: "opaque-challenge",
+    pattern: "id-reuse",
     buyerSigns: false,
-    onChain: false,
+    onChain: true,
     publicProof: true,
     proves: MEMO_PROVES,
   }),
@@ -995,9 +995,9 @@ export const tempoMemo = Object.freeze({
 export const tempoPush = Object.freeze({
   id: PUSH,
   pattern: pattern({
-    pattern: "opaque-challenge",
+    pattern: "id-reuse",
     buyerSigns: false,
-    onChain: false,
+    onChain: true,
     publicProof: true,
     proves: PUSH_PROVES,
   }),

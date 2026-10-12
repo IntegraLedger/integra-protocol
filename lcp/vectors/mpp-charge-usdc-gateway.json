@@ -86,7 +86,7 @@
   "canonical": true,
   "buyerSigns": true,
   "claims": true,
-  "onChain": false,
+  "onChain": true,
   "zeroPartyRecoverable": false,
   "forwardIndexable": false,
   "publicProof": true,

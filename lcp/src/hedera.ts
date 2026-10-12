@@ -1338,10 +1338,10 @@ function unplacedCharge(option: MppChallenge): MppChallenge {
 }
 
 const chargePattern: LcpPattern = deepFreeze({
-  pattern: "opaque-challenge",
+  pattern: "id-reuse",
   canonical: true,
   buyerSigns: false,
-  onChain: false,
+  onChain: true,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
   publicProof: true,

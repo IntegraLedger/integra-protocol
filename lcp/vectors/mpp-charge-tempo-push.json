@@ -76,11 +76,11 @@
   }
  },
  "pattern": {
-  "pattern": "opaque-challenge",
+  "pattern": "id-reuse",
   "canonical": true,
   "buyerSigns": false,
   "claims": true,
-  "onChain": false,
+  "onChain": true,
   "zeroPartyRecoverable": false,
   "forwardIndexable": false,
   "publicProof": true,

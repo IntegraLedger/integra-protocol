@@ -671,7 +671,7 @@ export const chargeUsdcGateway = Object.freeze({
     pattern: "id-reuse",
     canonical: true,
     buyerSigns: true,
-    onChain: false,
+    onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
     publicProof: true,
