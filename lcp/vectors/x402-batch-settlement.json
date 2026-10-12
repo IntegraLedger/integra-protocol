@@ -168,11 +168,20 @@
    "blockNumber": "100"
   },
   "fullCall": {
-   "case": "the deposit call as the ERC-3009 collector makes it: the payer's transfer to the collector, the collector's to the channel contract, ChannelCreated (EB8's log) and Deposited",
+   "case": "the deposit call as the ERC-3009 collector makes it: USDC's AuthorizationUsed for the payer's deposit authorization (EB3's deposit nonce), the payer's transfer to the collector, the collector's to the channel contract, ChannelCreated (EB8's log) and Deposited with its amount and the channel's new balance",
    "receipt": {
     "status": 1,
     "blockNumber": "100",
     "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x20154736b3902f9c5659386a3b8ae1d67bc0ef3e80951b76af04d6ec8334f374"
+      ],
+      "data": "0x"
+     },
      {
       "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "topics": [
@@ -206,7 +215,7 @@
        "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
       ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000000186a0"
      }
     ]
    },

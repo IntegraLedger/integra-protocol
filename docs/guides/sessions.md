@@ -256,6 +256,12 @@ and `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives the read keys
 challenge and the channel, and `status` reads the close through the same reader. On `mpp/session/evm`, a transaction
 that is not a call closing that channel reads as pending, with the reason `not-a-close`.
 
+On `x402/batch-settlement/eip155`, the opening's `status` counts the payer's deposit only from the call that deposited
+into this channel. The channel contract collects a deposit and then emits `Deposited` for the channel, so the payer's
+transfer must be among the logs between the contract's previous `Deposited` and the channel's own. A gift into the
+channel beside the payer's deposit into another channel, or the payer's short deposit into it beside a deposit
+elsewhere, reads as failed, with the reason `transfer-not-found`.
+
 An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim. Its `reference`
 carries `opens`: the escrow, the channel, H and the chain. `status` then reads the transaction itself, through the
 reader's `transaction` (`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles

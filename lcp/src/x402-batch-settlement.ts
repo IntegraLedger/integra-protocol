@@ -585,18 +585,15 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
 }
 
 /**
- * The opening's settlement: `evmStatus` on the reference, with the payer's transfer counted only from the deposit call
- * that emitted the channel's `Deposited` log. The channel contract collects a deposit and then emits `Deposited`, so
- * that call's transfers lie after the contract's previous `Deposited` log and before this one, and one of them must
- * be the payer's transfer whose `from`, `to` and `value` hash to the reference's digest. A matching transfer elsewhere
- * in the transaction, such as the payer's deposit into another channel beside a gift into this one, is failed
+ * The opening's settlement: `evmStatus` on the reference, and then the payer's transfer must be among the logs between
+ * the channel contract's previous `Deposited` log and the channel's own `Deposited`. The contract collects a deposit and
+ * then emits `ChannelCreated`, on a channel's first deposit, and `Deposited`, so those logs are the deposit call's. The
+ * transfer counts when its `from`, `to` and `value` hash to the reference's digest. A matching transfer elsewhere in
+ * the transaction, such as the payer's deposit into another channel beside a gift into this one, is failed
  * `transfer-not-found`. A reference without this pairing's `Deposited` binding log from the channel contract and its
  * `from,to,value` transfer log is pending `unreadable`, and nothing is read. At most three calls.
  */
 async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
-  if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
-    return { state: "pending", why: "unreadable" };
-  }
   const binding = ref.bindingLog;
   const t = ref.transferLog;
   const deposited =
