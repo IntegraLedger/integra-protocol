@@ -16,9 +16,10 @@ proof that the buyer accepted that record.
 1. The credential is the buyer's signed x402 payment, whole: `{type: "x402", x402Version: 2, paymentPayload,
    paymentRequirements}`. It is the credential Finance District's `xyz.fd.prism_payment` handler takes, so a wallet
    that builds one builds the other.
-2. What this handler adds: the payment carries H, the SHA-256 of the ATR's exact bytes, in the place the LCP profile of
-   its x402 pairing defines (for `exact` with EIP-3009, the authorization's `nonce`), and the ATR names the checkout. A
-   payment made for one checkout completes no other, and the settled transaction commits to the terms the buyer read.
+2. What this handler adds, without AP2 mandates: the payment carries H, the SHA-256 of the ATR's exact bytes, in the
+   place the LCP profile of its x402 pairing defines (for `exact` with EIP-3009, the authorization's `nonce`), and the
+   ATR names the checkout. A payment made for one checkout completes no other, and the settled transaction commits to
+   the terms the buyer read.
 3. The checkout carries H as well, in its `links[]`, as `ucp/checkout/legal-context` defines.
 4. Two schemes: `exact`, a payment now; and `auth-capture`, an authorization into an escrow that the business captures
    later, offered only on a network where that escrow is deployed.
@@ -139,8 +140,8 @@ The response config is an x402 version 2 `PaymentRequired`, with two members add
    confirmed. A pairing whose payment carries neither (`http-advisory`) is not offered.
 4. The handler's `config` is then the response config for that ATR, and the checkout's `links[]` carries
    `{"type":"legal_context","url":L,"title":"lcp:sha256:"+H}`.
-5. A change to the terms issues a new ATR, with a new H, a new `config` and a new link. A payment carrying an earlier
-   H does not complete the checkout.
+5. A change to the terms issues a new ATR, with a new H, a new `config` and a new link. Without AP2 mandates, a payment
+   carrying an earlier H does not complete the checkout.
 6. The handler causes no UCP Actions.
 
 #### Example: the ATR's binding slot
@@ -316,8 +317,8 @@ The same checkout under AP2 mandates has its own ATR, whose slot is `ucp`, and s
 ### Prerequisites
 
 1. A wallet that signs x402 version 2 payments for the network and scheme.
-2. The wallet places H as the LCP profile of the option's pairing says. A wallet that draws a random nonce produces a
-   payment this handler refuses (`not-this-checkout`).
+2. Without AP2 mandates, the wallet places H as the LCP profile of the option's pairing says: a wallet that draws a
+   random nonce produces a payment this handler refuses (`not-this-checkout`).
 3. Under AP2 mandates: a key in its profile's `keys[]` that issues the mandates, and a wallet that also pays the
    agreement step.
 
@@ -512,9 +513,9 @@ again.
 
 | Requirement | Description |
 |---|---|
-| **Binding required** | The credential is bound to the checkout through H. The payment carries H, and H is the hash of an ATR whose binding slot names the checkout's completion. |
+| **Binding required** | Without AP2 mandates, the credential is bound to the checkout through H: the payment carries H, and H is the hash of an ATR whose binding slot names the checkout's completion. |
 | **Binding placement** | H is inside the value the payer signs, not beside it. The credential carries no `binding` object, and the business reads none. |
-| **Binding verified** | The platform checks the ATR's bytes against H before it signs. The business checks the payment's H before it settles. |
+| **Binding verified** | The platform checks the ATR's bytes against H before it signs. Without AP2 mandates, the business checks the payment's H before it settles. |
 | **Binding under AP2 mandates** | The buyer's checkout mandate commits to the checkout the business signed, whose `legal_context` link carries H. H itself is on chain in the agreement step's payment, which settles before the checkout's. |
 | **One claim** | Each ATR carries a random id, so H is unique to it. A payment carrying H completes its checkout once. |
 | **Expiry** | The authorization is valid only inside its own window (`validAfter`, `validBefore`), which the wallet sets within the option's `maxTimeoutSeconds`. An expired checkout takes no payment. |
