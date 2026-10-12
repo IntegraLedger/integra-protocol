@@ -502,6 +502,10 @@
     "expect": "aptos/tx-malformed"
    },
    {
+    "case": "a module, function or struct name that is not a Move identifier (ASCII letters, digits and underscores), such as one with a leading U+FEFF",
+    "expect": "aptos/tx-malformed"
+   },
+   {
     "case": "a type argument that is not a struct, or a struct with type arguments",
     "expect": "aptos/not-an-x402-transfer"
    },

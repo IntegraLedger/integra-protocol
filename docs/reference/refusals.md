@@ -491,7 +491,7 @@ Aptos (`@integraledger/lcp/aptos`).
 | `aptos/network-malformed` | An Aptos option's network starts with `aptos:` but names no known chain. |
 | `aptos/not-an-x402-transfer` | The Aptos transaction, or the committed transaction a reader returns, is not a call to the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments (two addresses and a u64 amount). |
 | `aptos/not-entry-function` | The Aptos transaction's payload is not an entry function call. |
-| `aptos/tx-malformed` | `decodeAptosTx` is given text that is not base64 of an Aptos `RawTransaction` prefix (in BCS or x402's reference JSON form) that reads to the end of its fields. |
+| `aptos/tx-malformed` | `decodeAptosTx` is given text that is not base64 of an Aptos `RawTransaction` prefix (in BCS or x402's reference JSON form) that reads to the end of its fields, or a prefix with a module, function or struct name that is not a Move identifier (a leading U+FEFF included). |
 | `aptos/tx-too-large` | `decodeAptosTx` is given a transaction larger than the size bound. |
 
 ## cardano

@@ -108,7 +108,8 @@ const TRANSFERS: readonly string[] = [
 /**
  * Reads the `RawTransaction` prefix of a base64 transaction, in either wire form: the scheme's BCS bytes, or x402's
  * reference form, base64 of the JSON `{"transaction": [bytes], "senderAuthenticator": [bytes]}`. Only an entry
- * function call to a framework fungible-asset transfer is accepted.
+ * function call to a framework fungible-asset transfer is accepted. Module, function and struct names are read as
+ * their exact bytes, a leading U+FEFF included, and each must be a Move identifier, else `aptos/tx-malformed`.
  */
 export function decodeAptosTx(transaction: string): AptosInstrument | Refusal {
   const decoded = base64Bytes(transaction, MAX_TX_BYTES);
@@ -497,8 +498,9 @@ class Reader {
     throw new RangeError("too long");
   }
 
+  /** A Move identifier, decoded strictly: a leading U+FEFF is kept, so the name fails the identifier rule. */
   ident(): string {
-    const s = new TextDecoder("utf-8", { fatal: true }).decode(this.bytes(this.uleb()));
+    const s = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(this.bytes(this.uleb()));
     if (!IDENT.test(s)) throw new RangeError("identifier");
     return s;
   }

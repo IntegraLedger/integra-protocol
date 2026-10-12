@@ -11,16 +11,20 @@ import {
   Ed25519PrivateKey,
   EntryFunction,
   RawTransaction,
+  Identifier,
   Script,
   SignedTransaction,
   SimpleTransaction,
+  StructTag,
   TransactionAuthenticatorEd25519,
   TransactionPayloadEntryFunction,
   TransactionPayloadScript,
+  TypeTagStruct,
   U64,
   generateSigningMessageForTransaction,
   parseTypeTag,
   type TransactionPayload,
+  type TypeTag,
 } from "@aptos-labs/ts-sdk";
 import { ReaderError } from "../src/evm.js";
 import {
@@ -42,9 +46,13 @@ const O = V.fixed.O;
 const F = V.fixed.fixtureF;
 const LINK: string = V.fixed.link;
 
-function transferPayload(): TransactionPayload {
+function transferPayload(
+  module = "primary_fungible_store",
+  name = "transfer",
+  typeArgument: TypeTag = parseTypeTag(F.typeArgument),
+): TransactionPayload {
   return new TransactionPayloadEntryFunction(
-    EntryFunction.build("0x1::primary_fungible_store", "transfer", [parseTypeTag(F.typeArgument)], [
+    EntryFunction.build(`0x1::${module}`, name, [typeArgument], [
       AccountAddress.from(F.metadata),
       AccountAddress.from(F.recipient),
       new U64(BigInt(F.amount)),
@@ -174,6 +182,27 @@ describe("V2 · reference from the wire", () => {
     const script = new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], []));
     expect(decodeAptosTx(referenceWire(raw(script)))).toEqual({ refused: true, code: V.V2.script.expect });
     expect(await exactAptos.reference(payment(signedWire(raw(script))))).toEqual({ refused: true, code: V.V2.script.expect });
+  });
+  it("a module, function or struct name with a leading U+FEFF is not a Move identifier", async () => {
+    // Move identifiers are ASCII letters, digits and underscores (move-core-types, identifier.rs), so the bytes
+    // EF BB BF before a name make a name that is not the transfer the scheme names. The code is the vector's row.
+    const named = (r: { case: string }) => r.case.startsWith("a module, function or struct name");
+    const row = V.agreedRefusals.rows.find(named);
+    const bom = "\uFEFF";
+    const struct = new TypeTagStruct(
+      new StructTag(AccountAddress.ONE, new Identifier(`${bom}fungible_asset`), new Identifier("Metadata"), []),
+    );
+    const payloads = [
+      transferPayload(`${bom}primary_fungible_store`),
+      transferPayload("primary_fungible_store", `${bom}transfer`),
+      transferPayload("primary_fungible_store", "transfer", struct),
+    ];
+    for (const payload of payloads) {
+      for (const wire of [referenceWire(raw(payload)), signedWire(raw(payload))]) {
+        expect(decodeAptosTx(wire)).toEqual({ refused: true, code: row.expect });
+        expect(await exactAptos.reference(payment(wire))).toEqual({ refused: true, code: row.expect });
+      }
+    }
   });
   it("a transaction over 64 KiB, and one cut short", () => {
     expect(decodeAptosTx(Buffer.alloc(64 * 1024 + 1).toString("base64"))).toEqual({ refused: true, code: "aptos/tx-too-large" });
