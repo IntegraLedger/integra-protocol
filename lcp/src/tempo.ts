@@ -15,7 +15,7 @@ import {
 } from "./evm-abi.js";
 import type { EvmReader, EvmReceipt } from "./evm.js";
 import { readReceipt } from "./receipt.js";
-import { isAddress, normalHash } from "./fields.js";
+import { isAddress, isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpBytes, rlpDecode, rlpList, rlpUint, rlpUintBytes, type RlpItem } from "./rlp.js";
 import type { AtrHash } from "./core.js";
@@ -364,6 +364,7 @@ export async function witnessRecover(
   ref: { network: string; transaction: Hex },
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
+  if (!isObject(ref)) return refusal("tempo/unreadable");
   const receipt = await readReceipt(ref.network, ref.transaction, reader);
   if (isRefusal(receipt)) return receipt;
   const witnesses: Hex[] = [];

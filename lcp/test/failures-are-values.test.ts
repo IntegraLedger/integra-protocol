@@ -44,6 +44,7 @@ import {
   sessionSolana,
   sessionStatus,
   sessionXrpl,
+  subscriptionTempo,
 } from "../src/mpp.js";
 import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
@@ -612,4 +613,8 @@ describe("mpp", () => {
       }
     }
   });
+});
+
+describe("tempo", () => {
+  reads([["subscriptionTempo.recover", subscriptionTempo.recover, "mpp-charge-evm-hash.json", refused("tempo/unreadable")]]);
 });
