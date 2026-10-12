@@ -496,11 +496,6 @@ const check: OptionFilter = (o) => {
   return true;
 };
 
-/** This pairing's id for an option it can pay, or undefined. */
-export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
-  return check(option) === true ? ID : undefined;
-}
-
 function advertise(
   doc: PaymentRequired,
   h: AtrHash,

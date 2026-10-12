@@ -11,7 +11,6 @@ import {
   decodeTronTx,
   encodeTronRaw,
   exactTronMemo,
-  pairingOf,
   tronAddress,
   tronCarrier,
   type TronInfo,
@@ -19,6 +18,7 @@ import {
   type TronRef,
 } from "../src/tron.js";
 import { hash, type AtrHash } from "../src/core.js";
+import { pairingOf } from "../src/index.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tron-lcp-trc20-memo.json", import.meta.url), "utf8"));

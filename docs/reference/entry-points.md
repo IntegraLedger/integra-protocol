@@ -376,7 +376,7 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 **Pairings:** `x402/exact/tron/lcp-trc20-memo`.
 
-**Values (13):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `pairingOf`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
+**Values (12):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
 
 **Types (7):** `TronInfo`, `TronNetwork`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
 
