@@ -7,6 +7,7 @@ import { typedData as snTypedData } from "starknet";
 import { keccak256, toBytes } from "viem";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
+import { counting } from "./fixtures/counting-reader.js";
 import {
   EVENT_TRANSFER,
   MASK_250,
@@ -141,6 +142,42 @@ describe("x402-exact-starknet.json", () => {
     ]);
     expect(await starknetLandedNonce(REF, readerFor(below[0]))).toBe(V.S5.landedNonce.expect);
     expect(await starknetLandedNonce(REF, readerFor(below[1]))).toEqual({ refused: true, code: "starknet/not-found" });
+  });
+
+  // A missing or malformed idDigest cannot name the landed transfer, so the read is pending, never failed
+  // (docs/guides/rails.md, "Reading settlement"); the digest is a 32-byte hash, the same in either case.
+  it("S5: a ref whose idDigest is malformed is pending unreadable, with nothing read", async () => {
+    const landed = V.S5.status[0];
+    for (const idDigest of [undefined, REF.idDigest.slice(2), `0X${REF.idDigest.slice(2)}`, `0x${REF.idDigest.slice(4)}`]) {
+      const { reader, calls } = counting(readerFor(landed));
+      expect(await exactStarknet.status({ ...REF, idDigest } as typeof REF, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
+    const upper = { ...REF, idDigest: `0x${REF.idDigest.slice(2).toUpperCase()}` } as typeof REF;
+    expect(plain(await exactStarknet.status(upper, readerFor(landed)))).toEqual(landed.expect);
+    expect(await starknetLandedNonce(upper, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
+  });
+
+  // A felt is an element of the field of the STARK prime 2^251 + 17·2^192 + 1 (Starknet's felt252, docs.starknet.io
+  // "Cryptography"), written as reference writes it, 0x and hex digits. A from, asset or nonce outside that form cannot
+  // name the payer, the token or the signed nonce, so the read is pending, never settled or failed
+  // (docs/guides/rails.md, "Reading settlement"); a felt reads the same in either case.
+  it("S5: a ref whose from, asset or nonce is not a felt is pending unreadable, with nothing read", async () => {
+    const landed = V.S5.status[0];
+    const prime = "0x800000000000011000000000000000000000000000000000000000000000001";
+    for (const key of ["from", "asset", "nonce"] as const) {
+      for (const value of [undefined, REF[key].slice(2), prime]) {
+        const { reader, calls } = counting(readerFor(landed));
+        expect([key, value, await exactStarknet.status({ ...REF, [key]: value } as typeof REF, reader)]).toEqual([
+          key,
+          value,
+          { state: "pending", why: "unreadable" },
+        ]);
+        expect(calls).toEqual([]);
+      }
+      const upper = { ...REF, [key]: `0x${REF[key].slice(2).toUpperCase()}` } as typeof REF;
+      expect(plain(await exactStarknet.status(upper, readerFor(landed)))).toEqual(landed.expect);
+    }
   });
 
   // x402's settlement step 4 (scheme_exact_starknet.md at 0cb1a1f0) counts the one Transfer the payer's account emits,

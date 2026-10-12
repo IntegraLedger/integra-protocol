@@ -19,6 +19,7 @@ import {
   type CcdReader,
   type CcdUnsigned,
 } from "../src/ccd.js";
+import { counting } from "./fixtures/counting-reader.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-ccd.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -204,6 +205,25 @@ describe("x402/exact/ccd", () => {
       expect(await exactCcd.recover({ network: V.D5.ref.network, transaction: V.D5.transaction }, reader)).toEqual(
         V.D5.wrongReader.expectRecover,
       );
+    });
+    // A missing or malformed ref field cannot name the landed transfer, so the read is pending, never
+    // failed (docs/guides/rails.md, "Reading settlement"); a hash in either case is the same 32 bytes.
+    it("a ref whose h or idDigest is malformed is pending unreadable, with nothing read", async () => {
+      const ref = V.D5.ref;
+      const landed = V.D5.rows[0];
+      const malformed = [
+        { h: undefined }, { h: "0x1234" }, { h: `0X${ref.h.slice(2)}` }, { h: ref.h.slice(2) },
+        { idDigest: undefined }, { idDigest: ref.idDigest.slice(2) }, { idDigest: `0x${ref.idDigest.slice(2, -1)}g` },
+      ];
+      for (const change of malformed) {
+        const { reader, calls } = counting(readerFor(landed.item));
+        expect(await exactCcd.status({ ...ref, ...change }, reader)).toEqual({ state: "pending", why: "unreadable" });
+        expect(calls).toEqual([]);
+      }
+      const upper = (s: string) => `0x${s.slice(2).toUpperCase()}`;
+      for (const change of [{ h: upper(ref.h) }, { idDigest: upper(ref.idDigest) }]) {
+        expect(await exactCcd.status({ ...ref, ...change }, readerFor(landed.item))).toEqual(landed.expectStatus);
+      }
     });
   });
 

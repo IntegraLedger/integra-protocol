@@ -26,6 +26,7 @@ import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
 import { issuedDigest, pairingsOf, sessionHedera, sessionSolana, sessionXrpl, type MppChallenge, type MppCredential } from "../src/mpp.js";
 import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocate, type SvmLanded, type SvmReader } from "../src/svm.js";
 import { cancelAfterOf, decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
+import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
@@ -348,6 +349,14 @@ describe("mpp/session/solana", () => {
     });
     expect(await sessionSolana.status(ref, readerOf(await closeWire(4)))).toEqual({ state: "settled", commitment: "finalized" });
     expect(await sessionSolana.status(ref, readerOf(await closeWire(2)))).toEqual({ state: "failed", why: "not-a-close" });
+    // A program or channel that is not the base58 of a 32-byte key cannot name the close, so the read is pending, never
+    // failed, with nothing read (docs/guides/rails.md, "Reading settlement"). "0" is outside the base58 alphabet.
+    const sealed = await closeWire(4);
+    for (const change of [{ channel: V.SV2.channel.slice(0, 32) }, { channel: undefined }, { program: `0${ref.program.slice(1)}` }, { program: undefined }]) {
+      const { reader, calls } = counting(readerOf(sealed));
+      expect(await sessionSolana.status({ ...ref, ...change } as typeof ref, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
   });
 
   it("build returns the salt and the request's values; complete checks the composed open", async () => {
@@ -498,6 +507,34 @@ describe("mpp/session/xrpl", () => {
     }
     const failing: XrplReader = { ...reader({ notFound: true, searchedAll: false }), tx: async () => { throw new ReaderError("transport"); } };
     expect(await sessionXrpl.status({ ...close, transaction: "AB".repeat(32) }, failing)).toEqual({ state: "pending", why: "unreadable" });
+    // An opening transaction that is not 64 hex digits (xrpl.org, "Transaction identifying hash") cannot name the
+    // opening, so the read is pending, never expired (docs/guides/rails.md, "Reading settlement"), even from a reader
+    // that answers any other hash as not found with the whole range searched and LastLedgerSequence passed; the lookup
+    // asks for the hash in the upper case decodeBlob writes.
+    const opened = V.XS4.rows[0];
+    const holding: XrplReader = {
+      ...reader({ notFound: true, searchedAll: true }),
+      tx: async (hash) => (hash === ref.transaction ? opened.landed : { notFound: true, searchedAll: true }),
+      validatedLedger: async () => V.XS2.lastLedgerSequence + 1,
+    };
+    for (const transaction of [undefined, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
+      const { reader: r, calls } = counting(holding);
+      const malformed = { ...ref, fromLedger: 900, transaction } as typeof ref & { fromLedger: number };
+      expect([transaction, await sessionXrpl.status(malformed, r)]).toEqual([transaction, { state: "pending", why: "unreadable" }]);
+      expect(calls).toEqual([]);
+    }
+    expect(await sessionXrpl.status({ ...ref, fromLedger: 900, transaction: ref.transaction.toLowerCase() }, holding)).toEqual(opened.expect);
+    // A channel that is not 64 hex digits cannot name the close, so the read is pending, never failed, with nothing read
+    // (docs/guides/rails.md, "Reading settlement"); hex digits read the same in either case.
+    const closed = V.XS4.closeRows[0];
+    for (const channel of [`0x${close.channel}`, undefined, close.channel.slice(2)]) {
+      const { reader: r, calls } = counting(reader(closed.landed));
+      const malformed = { ...close, channel, transaction: "AB".repeat(32) } as typeof close & { transaction: string };
+      expect(await sessionXrpl.status(malformed, r)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
+    const lower = { ...close, channel: close.channel.toLowerCase(), transaction: "AB".repeat(32) };
+    expect(await sessionXrpl.status(lower, reader(closed.landed))).toEqual(closed.expect);
   });
 
   it("XS5: a multi-signed opening is refused by bound, reference and the channel ref", async () => {

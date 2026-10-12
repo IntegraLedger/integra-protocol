@@ -136,8 +136,14 @@ pending, with the reason `unreadable`, and a later read can settle it. On `x402/
 `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
 `mpp/charge/evm/authorization`, `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` and `mpp/charge/usdc/evm`, whose
 `reference` always names the log carrying H or its commitment, a reference without a well-formed log of that event is
-pending `unreadable` too: the hash cannot be checked, nothing is read, and no later read settles it. Failed means the
-rail itself says so: a reverted, aborted or expired transaction, or one that does not carry this payment.
+pending `unreadable` too: the hash cannot be checked, nothing is read, and no later read settles it. On Casper,
+Concordium, Starknet, Tron, TON, the XRP Ledger, NEAR, Stacks and Cardano, and in the Solana and XRP Ledger session
+close reads, a reference that lacks a field `status` compares the landed payment with, or holds it malformed, such as
+a hash without the `0x` its pairing writes or an address in another encoding, is pending `unreadable` as well, with
+nothing read; so is one whose transaction id on Tron, Cardano or the XRP Ledger, or request body hash on TON, is
+malformed. Hex digits in a hash or a hex address read the same in either case; a NEAR account id and a Stacks address
+read only as their pairing writes them. Failed means the rail itself says so: a reverted, aborted or expired
+transaction, or one that does not carry this payment.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another

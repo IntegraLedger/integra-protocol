@@ -390,6 +390,49 @@ describe("usdc/stacks status and recover (M4b)", () => {
     expect(await stacksRecover(r, readerWith(at, { notFound: true, height: null }))).toEqual({ refused: true, code: "stacks/not-found" });
   });
 
+  // An origin or contract not in the form reference writes cannot name the landed call, so the read is pending, never
+  // failed (docs/guides/rails.md, "Reading settlement"). c32check writes an address in upper case (c32check 2.0.0's
+  // c32address); a contract principal is that address, "." and the contract's name.
+  it("a ref whose origin or contract is malformed is pending unreadable, with nothing read", async () => {
+    const settled = (V.M4b.rows as Row[]).find((r) => (r.expect as { state: string }).state === "settled")!;
+    const [address, name] = ref.contract.split(".") as [string, string];
+    const malformed = [
+      { origin: ref.origin.toLowerCase() }, { origin: undefined }, { origin: `${ref.origin}.${name}` },
+      { contract: `${address.toLowerCase()}.${name}` }, { contract: undefined }, { contract: address }, { contract: `${address}.` },
+    ];
+    for (const change of malformed) {
+      const reader = readerFor(settled);
+      expect(await stacksStatus({ ...ref, ...change } as typeof ref, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(reader.calls).toBe(0);
+    }
+    expect(withBigints(await stacksStatus(ref, readerFor(settled)))).toEqual(settled.expect);
+  });
+
+  // Principals at the edges of the forms reference writes settle when the landed call is theirs: an origin of 28
+  // characters, version 20 and the zero hash160; the boot contract SP000000000000000000002Q6VF78.pox-4 (version 22, the
+  // zero hash160; the Stacks mainnet PoX-4 contract); and a contract name of 40 characters in mixed case (SIP-005: a
+  // contract name is a letter, then letters, digits, "-" or "_"). The addresses are as @stacks/transactions 7.6.0's
+  // c32check encoding writes them.
+  it("a ref whose origin or contract is at the edge of the written forms settles", async () => {
+    const settled = (V.M4b.rows as Row[]).find((r) => (r.expect as { state: string }).state === "settled")!;
+    const multisig = "SM0000000000000000000062QV6X";
+    const boot = "SP000000000000000000002Q6VF78";
+    expect(S.addressToString(S.addressFromVersionHash(20, "00".repeat(20)))).toBe(multisig);
+    expect(S.addressToString(S.addressFromVersionHash(22, "00".repeat(20)))).toBe(boot);
+    const [address] = ref.contract.split(".") as [string, string];
+    const edges = [
+      [multisig, ref.contract],
+      [ref.origin, `${boot}.pox-4`],
+      [ref.origin, `${address}.Token_A-${"x".repeat(32)}`],
+    ] as const;
+    for (const [origin, contract] of edges) {
+      const tx = landed(settled);
+      const txAnswer = { ...tx, sender: { ...tx.sender, address: origin }, call: { ...tx.call, contractId: contract } };
+      const got = withBigints(await stacksStatus({ ...ref, origin, contract }, readerFor({ ...settled, txAnswer })));
+      expect([origin, contract, got]).toEqual([origin, contract, settled.expect]);
+    }
+  });
+
   it("plant: a post-condition abort is failed, never settled, and recover refuses it", async () => {
     const row = { status: V.plant.status, tip: V.plant.tip };
     expect(withBigints(await stacksStatus(ref, readerFor(row)))).toEqual(V.plant.expectStatus);

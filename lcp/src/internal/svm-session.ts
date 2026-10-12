@@ -90,10 +90,14 @@ export function sessionProof(p: { channelId: string; payer: string; challengeId:
 /**
  * Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
  * `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel is settled; any other
- * landed transaction is failed `not-a-close`. At most two calls.
+ * landed transaction is failed `not-a-close`. A ref whose program or channel is not the base58 of a 32-byte key is
+ * pending `unreadable`, with nothing read. At most two calls.
  */
 export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promise<SvmCloseStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  const programKey = keyBytes(ref.program);
+  const channelKey = keyBytes(ref.channel);
+  if (programKey === null || channelKey === null) return { state: "pending", why: "unreadable" };
   let found: { landed: SvmLanded; commitment: "confirmed" | "finalized" } | null = null;
   try {
     for (const commitment of ["finalized", "confirmed"] as const) {
@@ -113,9 +117,6 @@ export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promi
   if (found.landed.err !== null && found.landed.err !== undefined) return { state: "failed", why: "err" };
   const tx = decodeSvmTx(found.landed.wire);
   if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
-  const programKey = keyBytes(ref.program);
-  const channelKey = keyBytes(ref.channel);
-  if (programKey === null || channelKey === null) return { state: "failed", why: "not-a-close" };
   const closes = tx.instructions.some((ix) => {
     if (!sameKey(tx.keys[ix.program], programKey)) return false;
     const at = ix.data[0] === SETTLE_AND_SEAL_DISCRIMINATOR ? 1 : ix.data[0] === SEAL_DISCRIMINATOR ? 0 : -1;

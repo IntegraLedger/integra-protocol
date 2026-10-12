@@ -144,20 +144,22 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
  * into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, the
  * reader holds no block at that height, or the lookup names an earlier slot or none, it is pending `not-found`. A
  * present one fails only when the ledger marks it invalid. A `depth` that is not a non-negative bigint is pending
- * `unreadable`. At most three calls: `slotAt` only for an absent transaction once the tip's slot is past the TTL and
- * the lookup covers the tip, and not at `depth` 0, where the tip is that block.
+ * `unreadable`, and so is a ref whose `txId` is not `0x` and 64 hex digits, with nothing read; the id is looked up in
+ * lowercase. At most three calls: `slotAt` only for an absent transaction once the tip's slot is past the TTL and the
+ * lookup covers the tip, and not at `depth` 0, where the tip is that block.
  */
 export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, depth: bigint): Promise<CardanoStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
   if (reader.network !== ref.network) return unreadable;
+  const txId = normalHash(ref.txId);
   const ttlSlot = typeof ref.ttlSlot === "string" && DECIMAL.test(ref.ttlSlot) ? BigInt(ref.ttlSlot) : undefined;
-  if (ttlSlot === undefined) return unreadable;
+  if (txId === null || ttlSlot === undefined) return unreadable;
   if (typeof depth !== "bigint" || depth < 0n) return unreadable;
   const notFound = { state: "pending", why: "not-found" } as const;
   try {
     const tip = await reader.tip();
     if (!isObject(tip) || typeof tip.blockHeight !== "bigint" || typeof tip.slot !== "bigint") return unreadable;
-    const tx: unknown = await reader.transaction(ref.txId, false);
+    const tx: unknown = await reader.transaction(txId, false);
     const readTo = notFoundPoint(tx, "slot");
     if (readTo !== undefined) {
       if (tip.slot <= ttlSlot || tip.blockHeight < depth) return notFound;

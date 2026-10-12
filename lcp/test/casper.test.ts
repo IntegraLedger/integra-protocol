@@ -13,6 +13,7 @@ import {
 } from "@casper-ecosystem/casper-eip-712";
 import type { AtrHash } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
+import { counting } from "./fixtures/counting-reader.js";
 import { LEGAL_CONTEXT_SCHEMA, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import {
   CASPER_DOMAIN_TYPEHASH,
@@ -154,6 +155,26 @@ describe("x402/exact/casper", () => {
       expect(
         await exactCasper.recover({ network: V.C4.ref.network, asset: V.C4.ref.asset, transaction: V.C4.transaction }, reader),
       ).toEqual(V.C4.wrongReader.expectRecover);
+    });
+    // A missing or malformed ref field cannot name the landed call, so the read is pending, never failed
+    // (docs/guides/rails.md, "Reading settlement"); a hash in either case is the same 32 bytes.
+    it("a ref whose h, idDigest or asset is malformed is pending unreadable, with nothing read", async () => {
+      const ref = V.C4.ref;
+      const landed = V.C4.rows[0];
+      const malformed = [
+        { h: undefined }, { h: "0x12" }, { h: `0X${ref.h.slice(2)}` }, { h: ref.h.slice(2) },
+        { idDigest: undefined }, { idDigest: ref.idDigest.slice(2) }, { idDigest: `0x${ref.idDigest.slice(4)}` },
+        { asset: undefined }, { asset: `0x${ref.asset}` }, { asset: ref.asset.slice(2) },
+      ];
+      for (const change of malformed) {
+        const { reader, calls } = counting(readerFor(landed.call));
+        expect(await exactCasper.status({ ...ref, ...change }, reader)).toEqual({ state: "pending", why: "unreadable" });
+        expect(calls).toEqual([]);
+      }
+      const upper = (s: string) => `0x${s.slice(2).toUpperCase()}`;
+      for (const change of [{ h: upper(ref.h) }, { idDigest: upper(ref.idDigest) }, { asset: ref.asset.toUpperCase() }]) {
+        expect(plain(await exactCasper.status({ ...ref, ...change }, readerFor(landed.call)))).toEqual(landed.expectStatus);
+      }
     });
   });
 

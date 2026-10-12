@@ -6,6 +6,7 @@
 import type * as NearCrypto from "@near-js/crypto";
 import type * as NearTransactions from "@near-js/transactions";
 import type * as Borsh from "borsh";
+import { base58 } from "@scure/base";
 import { fromLcpString, hash, hashEquals, parseJson, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
@@ -238,21 +239,29 @@ function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | nu
  * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
  * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
  * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
- * empty relayer list, a reader for another network, a ref whose nonce, asset or digest is malformed, or a delegate
- * whose arguments are not base64 is pending.
+ * empty relayer list, a reader for another network, or a delegate whose arguments are not base64 is pending. A ref
+ * whose nonce, asset, payer, public key or digest is malformed is pending `unreadable`, with nothing read: the asset and
+ * the payer must be account ids of 2 to 64 lowercase letters, digits, `.`, `_` or `-`, and the public key `ed25519:`
+ * and the base58 of 32 bytes or `secp256k1:` and of 64.
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
   if (reader.network !== ref.network || !Array.isArray(reader.relayers) || reader.relayers.length === 0) {
+    return { state: "pending", why: "unreadable" };
+  }
+  const nonce = u64Of(ref.nonce);
+  if (
+    nonce === null ||
+    !isAccount(ref.asset) ||
+    !isAccount(ref.payer) ||
+    !isPublicKey(ref.publicKey) ||
+    normalHash(ref.argsDigest) === null
+  ) {
     return { state: "pending", why: "unreadable" };
   }
   const outcome = await findOutcome(ref.transaction, reader);
   if (outcome === "unreadable") return { state: "pending", why: "unreadable" };
   if (outcome === null) return { state: "pending", why: "not-found" };
   const dg = outcome.delegate;
-  const nonce = u64Of(ref.nonce);
-  if (nonce === null || typeof ref.asset !== "string" || !ACCOUNT.test(ref.asset) || normalHash(ref.argsDigest) === null) {
-    return { state: "pending", why: "unreadable" };
-  }
   if (
     dg === null ||
     dg.senderId !== ref.payer ||
@@ -477,6 +486,21 @@ function u64Of(s: unknown): bigint | null {
   if (typeof s !== "string" || !/^[0-9]{1,20}$/.test(s)) return null;
   const v = BigInt(s);
   return v < U64_LIMIT ? v : null;
+}
+
+function isAccount(s: unknown): s is string {
+  return typeof s === "string" && ACCOUNT.test(s);
+}
+
+/** True for a public key as NEAR writes it: `ed25519:` and the base58 of 32 bytes, or `secp256k1:` and of 64. */
+function isPublicKey(s: unknown): boolean {
+  const m = typeof s === "string" ? /^(ed25519|secp256k1):([1-9A-HJ-NP-Za-km-z]{1,88})$/.exec(s) : null;
+  if (m === null) return false;
+  try {
+    return base58.decode(m[2]!).length === (m[1] === "ed25519" ? 32 : 64);
+  } catch {
+    return false;
+  }
 }
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {

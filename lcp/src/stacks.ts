@@ -83,6 +83,10 @@ const FAILED: { readonly [status: string]: "abort-by-response" | "abort-by-post-
   problematic_skipped: "skipped",
 });
 const NONCE = /^(?:0|[1-9][0-9]{0,19})$/;
+/** A standard principal as c32check writes it: `S`, the version and the checked hash160, 28 to 41 characters in all. */
+const PRINCIPAL = /^S[0-9A-HJKMNP-TV-Z]{27,40}$/;
+/** A contract principal: a standard principal, `.` and a Clarity contract name of at most 128 characters. */
+const CONTRACT = /^S[0-9A-HJKMNP-TV-Z]{27,40}\.[a-zA-Z][a-zA-Z0-9_-]{0,127}$/;
 
 /** The memo argument's serialization for `h`: `(some h)` as a 32-byte buffer, lowercase. */
 export function memoArgument(h: AtrHash): Hex | undefined {
@@ -108,7 +112,9 @@ export function memoHash(arg: unknown): AtrHash | null {
  * failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
  * was read at the API's tip, so `block`. An unknown transaction counts so only when the lookup names a height at or
  * above the one the nonce read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is
- * pending `not-found`. A failed or malformed nonce read then is pending `unreadable`.
+ * pending `not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32
+ * address in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`,
+ * with nothing read.
  */
 export async function stacksStatus(
   ref: StacksRef & { transaction: Hex; h: AtrHash },
@@ -118,6 +124,10 @@ export async function stacksStatus(
     return { state: "pending", why: "unreadable" };
   }
   if (reader.network !== ref.network || typeof ref.nonce !== "string" || !NONCE.test(ref.nonce)) {
+    return { state: "pending", why: "unreadable" };
+  }
+  const { origin, contract }: { origin: unknown; contract: unknown } = ref;
+  if (typeof origin !== "string" || !PRINCIPAL.test(origin) || typeof contract !== "string" || !CONTRACT.test(contract)) {
     return { state: "pending", why: "unreadable" };
   }
   const memo = memoArgument(ref.h);

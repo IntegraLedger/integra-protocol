@@ -3,8 +3,10 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { KeyType, PublicKey } from "@near-js/crypto";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
+import { counting } from "./fixtures/counting-reader.js";
 import {
   exactNear,
   ftTransferArgs,
@@ -178,6 +180,38 @@ describe("x402-exact-near.json", () => {
     expect(await exactNear.status({ ...REF, argsDigest: upper }, readerFor(settled))).toEqual(settled.expect);
     // NEAR account ids are 2 to 64 characters of lowercase letters, digits, ".", "_" and "-", so this ref names no token.
     expect(await exactNear.status({ ...REF, asset: "USDC.testnet" }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  // A ref that cannot name the delegate is pending before any read. NEAR account ids are lowercase (nearcore's account id
+  // rules); a public key is written `ed25519:` and the base58 of its 32 bytes (@near-js/crypto PublicKey.toString).
+  it("V3: a ref whose nonce, asset, payer, public key or digest is malformed is pending unreadable, with nothing read", async () => {
+    const settled = V.V3.status[0];
+    const [, key] = REF.publicKey.split(":") as [string, string];
+    const malformed = [
+      { nonce: "x" }, { asset: "USDC.testnet" }, { argsDigest: "0x12" },
+      { payer: REF.payer.toUpperCase() }, { payer: undefined }, { payer: "" },
+      { publicKey: `ED25519:${key}` }, { publicKey: undefined }, { publicKey: key }, { publicKey: `ed25519:${key.slice(0, -2)}` },
+      { publicKey: `secp256k1:${key}` },
+    ];
+    for (const change of malformed) {
+      const { reader, calls } = counting(readerFor(settled));
+      expect(await exactNear.status({ ...REF, ...change } as typeof REF, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
+    expect(await exactNear.status(REF, readerFor(settled))).toEqual(settled.expect);
+  });
+
+  // A secp256k1 key is written `secp256k1:` and the base58 of its 64 bytes, x then y (@near-js/crypto 2.5.1
+  // PublicKey.toString). The key here is the public key of the scalar 1, the generator G of secp256k1 (SEC 2 v2.0,
+  // §2.4.1). A delegate under such a key, otherwise V3's settled outcome, settles as that row.
+  it("V3: a ref whose public key is a secp256k1 key as @near-js/crypto writes it settles", async () => {
+    const G =
+      "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798" +
+      "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8";
+    const publicKey = new PublicKey({ keyType: KeyType.SECP256K1, data: Uint8Array.from(Buffer.from(G, "hex")) }).toString();
+    const settled = V.V3.status[0];
+    const outcome = { ...settled.outcome, delegate: { ...settled.outcome.delegate, publicKey } };
+    expect(await exactNear.status({ ...REF, publicKey }, readerFor({ ...settled, outcome }))).toEqual(settled.expect);
   });
 
   // nearcore's RPC gives a function call's args as base64; an answer that is not base64 is a reader fault, so the read

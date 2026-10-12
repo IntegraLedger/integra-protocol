@@ -220,14 +220,19 @@ export async function decodePresented(holder: object, hex: unknown): Promise<Dec
 /**
  * Reads a transaction by the hash computed from its signed blob. Settled only when a validated ledger holds it with
  * `tesSUCCESS` as a Payment whose `InvoiceID` is the one expected; `tec` codes are final failures that claimed the fee;
- * past `LastLedgerSequence` with the whole range searched it expired. A failed read is pending. At most two calls.
+ * past `LastLedgerSequence` with the whole range searched it expired. A failed read is pending. A ref whose
+ * `transaction` or `expect` is not 64 hex digits is pending `unreadable`, with nothing read; the transaction is looked
+ * up in upper case, and invoice ids compare in either case. At most two calls.
  */
 export async function xrplStatus(ref: XrplRef, reader: XrplReader): Promise<XrplStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (reader.network !== ref.network || typeof ref.expect !== "string" || !HASH256.test(ref.expect)) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "pending", why: "unreadable" };
   const range = ref.lastLedgerSequence === null ? null : { min: ref.fromLedger, max: ref.lastLedgerSequence };
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
-    r = await reader.tx(ref.transaction, range);
+    r = await reader.tx(ref.transaction.toUpperCase(), range);
   } catch {
     return { state: "pending", why: "unreadable" };
   }

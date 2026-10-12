@@ -163,10 +163,13 @@ export async function ccdIdDigest(sender: Uint8Array, receiver: Uint8Array, amou
 /**
  * Reads the named block item. Settled when it is finalized and successful, with exactly one transfer whose memo
  * `memoCarrier` reads as `ref.h` (a PLT memo with tag 24 unwrapped) and whose sender, receiver and amount hash to
- * `ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending.
+ * `ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending. A ref whose `h`
+ * or `idDigest` is not `0x` and 64 hex digits is pending `unreadable`, with nothing read; hashes compare in either case.
  */
 export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash }, reader: CcdReader): Promise<CcdStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (reader.network !== ref.network || normalHash(ref.h) === null || normalHash(ref.idDigest) === null) {
+    return { state: "pending", why: "unreadable" };
+  }
   let it: CcdItem | null;
   try {
     it = await reader.item(ref.transaction);

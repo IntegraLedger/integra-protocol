@@ -4,7 +4,7 @@
  * through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it
  * but nothing recovers the hash.
  */
-import { fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
+import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
@@ -260,10 +260,20 @@ function word(v: bigint): Uint8Array {
  * nested, at any depth, below an `execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path
  * to either having reverted. A call below such a `transfer` is the token's own execution of it (a library call
  * repeats the frame) and is not read as another transfer. A failed read, a malformed answer, an asset `Transfer` event
- * of neither standard layout, or a reader for another network is pending. Two calls.
+ * of neither standard layout, or a reader for another network is pending. A ref whose `from`, `asset` or `nonce` is not
+ * `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64 hex digits, is pending
+ * `unreadable`, with nothing read; felts compare as numbers and the digest as a hash, in either case. Two calls.
  */
 export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (
+    reader.network !== ref.network ||
+    normalHash(ref.idDigest) === null ||
+    feltValue(ref.from) === undefined ||
+    feltValue(ref.asset) === undefined ||
+    feltValue(ref.nonce) === undefined
+  ) {
+    return { state: "pending", why: "unreadable" };
+  }
   let receipt: StarknetReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -314,7 +324,7 @@ async function transferEmitted(
   }
   if (sent.length !== 1) return false;
   const digest = await starknetIdDigest(feltOf(payer), feltOf(sent[0]!.to), sent[0]!.amount);
-  return !isRefusal(digest) && digest === ref.idDigest;
+  return !isRefusal(digest) && hashEquals(digest, ref.idDigest);
 }
 
 /**
@@ -380,7 +390,7 @@ async function matches(
         const nonces = new Set<bigint>();
         for (const e of above) {
           const digest = await starknetIdDigest(e.contract, feltOf(to), low + high * U128);
-          if (!isRefusal(digest) && digest === ref.idDigest) nonces.add(e.landed);
+          if (!isRefusal(digest) && hashEquals(digest, ref.idDigest)) nonces.add(e.landed);
         }
         found.push(...nonces);
       }

@@ -368,16 +368,23 @@ function memoHash(data: Uint8Array): AtrHash | null {
  * `expired` only when that earlier solidified block is two slots past the expiration and neither lookup finds the
  * transaction, each naming a block time at or past that earlier block's: a lookup whose node lags the block read first,
  * or that names no time, is pending `not-found`. A failed read, an answer of neither documented shape, or a reader for
- * another network is pending `unreadable`. At most three calls.
+ * another network is pending `unreadable`. A ref whose `txid` is not `0x` and 64 hex digits, or whose `asset` is not the
+ * token's 21-byte address in hex (`41` and 20 bytes, `0x` optional), is pending `unreadable`, with nothing read; the
+ * reader is given the txid in lowercase. At most three calls.
  */
 export async function tronStatus(ref: TronRef, reader: TronReader): Promise<TronStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  const txid = normalHash(ref.txid);
+  const asset: unknown = ref.asset;
+  if (txid === null || typeof asset !== "string" || !/^41[0-9a-f]{40}$/.test(bare(asset))) {
+    return { state: "pending", why: "unreadable" };
+  }
   const head = await solidTimestamp(reader);
   let covered = true;
   for (const level of ["solid", "head"] as const) {
     let info: unknown;
     try {
-      info = await reader.info(ref.txid, level);
+      info = await reader.info(txid, level);
     } catch {
       return { state: "pending", why: "unreadable" };
     }

@@ -181,13 +181,20 @@ export async function casperIdDigest(from: CasperAddress, to: CasperAddress, val
 /**
  * Reads the named transaction. Settled, at the height of its block, when it executed without error as a call to
  * `ref.asset`'s `transfer_with_authorization` or `receive_with_authorization` whose `nonce` argument is `h` and whose
- * `from`, `to` and `value` hash to `ref.idDigest`. A failed read, or a reader for another network, is pending.
+ * `from`, `to` and `value` hash to `ref.idDigest`. A failed read, or a reader for another network, is pending. A ref
+ * whose `h` or `idDigest` is not `0x` and 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
+ * pending `unreadable`, with nothing read; hashes compare in either case. `ref.asset` names the token package whose
+ * call carries the payment, which identifies the instrument; nothing is compared with the ATR's content.
  */
 export async function casperStatus(
   ref: CasperRef & { transaction: string; h: AtrHash },
   reader: CasperReader,
 ): Promise<CasperStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  const asset: unknown = ref.asset;
+  if (normalHash(ref.h) === null || normalHash(ref.idDigest) === null || typeof asset !== "string" || !PACKAGE.test(asset)) {
+    return { state: "pending", why: "unreadable" };
+  }
   let call: CasperCall | null;
   try {
     call = await reader.transaction(ref.transaction);

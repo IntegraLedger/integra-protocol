@@ -338,16 +338,19 @@ function sendMessage(actions: Cell): Cell | Refusal {
  * `validUntil`, and an index that lags that head, or names no time, is pending `not-found`. The payer's Jetton wallet's
  * transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted
  * delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed read, a
- * malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
+ * malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
+ * network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
+ * lowercase. At most four calls.
  */
 export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
   if (peer === undefined || !isObject(ref) || !isObject(reader) || reader.network !== ref.network) return unreadable;
-  if (rawAddress(ref.jettonWallet) === null || rawAddress(ref.wallet) === null || !isUint32(ref.validUntil)) {
+  const request = normalHash(ref.requestBodyHash);
+  if (request === null || rawAddress(ref.jettonWallet) === null || rawAddress(ref.wallet) === null || !isUint32(ref.validUntil)) {
     return unreadable;
   }
   const head = await headTime(reader);
-  const w5 = await transactionsOn(reader, ref.requestBodyHash, ref.wallet);
+  const w5 = await transactionsOn(reader, request, ref.wallet);
   if (w5 === null) return unreadable;
   const transfer = w5.transactions
     .filter((t) => !t.aborted)

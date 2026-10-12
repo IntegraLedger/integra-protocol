@@ -5,6 +5,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { beginCell, Cell, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
+import { counting } from "./fixtures/counting-reader.js";
 import { exactTvm, lcpComment, pairingOf, tvmCarrier, type TonTx, type TvmPayment, type TvmReader, type TvmRef } from "../src/tvm.js";
 import type { AtrHash } from "../src/core.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
@@ -249,6 +250,21 @@ describe("x402-exact-tvm.json", () => {
       const got = await exactTvm.recover({ network: REF.network, transaction: row.transaction }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
+  });
+
+  // A request body hash that is not 0x and 64 hex digits cannot find the signed request, so the read is pending, never
+  // expired (docs/guides/rails.md, "Reading settlement"); the hash is the same 32 bytes in either case. This reader
+  // answers no transaction for a body hash other than the one reference wrote.
+  it("V4: a ref whose requestBodyHash is malformed is pending unreadable, with nothing read", async () => {
+    const landed = V.V4.status[0];
+    const late = { ...landed, headUtime: REF.validUntil + 600 };
+    for (const requestBodyHash of [undefined, REF.requestBodyHash.slice(2), "0x34", `0X${REF.requestBodyHash.slice(2)}`]) {
+      const { reader, calls } = counting(readerFor(late));
+      expect(await exactTvm.status({ ...REF, requestBodyHash } as TvmRef, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
+    const upper = { ...REF, requestBodyHash: `0x${REF.requestBodyHash.slice(2).toUpperCase()}` as TvmRef["requestBodyHash"] };
+    expect(await exactTvm.status(upper, readerFor(late))).toEqual(landed.expect);
   });
 
   it("plant: an equal body executed on another account is never the payment", async () => {

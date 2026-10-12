@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { decode } from "ripple-binary-codec";
 import { ReaderError } from "../src/evm.js";
+import { counting } from "./fixtures/counting-reader.js";
 import type { AtrHash } from "../src/index.js";
 import { decodeBlob, mppInvoiceId, x402InvoiceId, xrplStatus, type XrplReader, type XrplRef } from "../src/xrpl.js";
 import { exactXrpl, pairingOf, type XrplPaymentPayload } from "../src/x402-exact-xrpl.js";
@@ -93,6 +94,39 @@ describe("x402-exact-xrpl.json", () => {
     for (const row of V.V5.rows) {
       expect(await xrplStatus(V.V5.ref as XrplRef, readerFor(row.tx, row.validated ?? 0)), row.case).toEqual(row.expect);
     }
+  });
+
+  // An expect that is not 64 hex digits cannot name the landed Payment's InvoiceID, so the read is pending, never
+  // failed (docs/guides/rails.md, "Reading settlement"); XRPL hex is the same 32 bytes in either case.
+  it("V5: a ref whose expect is malformed is pending unreadable, with nothing read", async () => {
+    const landed = V.V5.rows[0];
+    for (const invoice of [undefined, `0x${V.V5.ref.expect}`, V.V5.ref.expect.slice(2), 1]) {
+      const { reader, calls } = counting(readerFor(landed.tx));
+      expect(await xrplStatus({ ...V.V5.ref, expect: invoice }, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
+    expect(await xrplStatus({ ...V.V5.ref, expect: V.V5.ref.expect.toLowerCase() }, readerFor(landed.tx))).toEqual(landed.expect);
+  });
+
+  // A transaction's identifying hash is 64 hex digits (xrpl.org, "Transaction identifying hash"), and decodeBlob writes
+  // it in upper case. A transaction in any other form cannot name the landed Payment, so the read is pending, never
+  // expired (docs/guides/rails.md, "Reading settlement"). This reader holds V5's landed Payment under the hash
+  // decodeBlob wrote and answers V5's not-found, whole-range, past-LastLedgerSequence row for any other hash.
+  it("V5: a ref whose transaction is malformed is pending unreadable, with nothing read", async () => {
+    const [landed, , , expired] = V.V5.rows;
+    const holding: XrplReader = {
+      ...readerFor(expired.tx, expired.validated),
+      tx: async (hash) => (hash === V.V5.ref.transaction ? landed.tx : expired.tx),
+    };
+    for (const transaction of [undefined, `0x${V.V5.ref.transaction}`, V.V5.ref.transaction.slice(2), 7]) {
+      const { reader, calls } = counting(holding);
+      expect([transaction, await xrplStatus({ ...V.V5.ref, transaction }, reader)]).toEqual([
+        transaction,
+        { state: "pending", why: "unreadable" },
+      ]);
+      expect(calls).toEqual([]);
+    }
+    expect(await xrplStatus({ ...V.V5.ref, transaction: V.V5.ref.transaction.toLowerCase() }, holding)).toEqual(landed.expect);
   });
 
   it("V6: reads by the blob's hash, never the facilitator's", async () => {

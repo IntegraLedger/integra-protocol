@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
+import { counting } from "./fixtures/counting-reader.js";
 import {
   TRANSFER_TOPIC,
   decodeTronTx,
@@ -158,6 +159,29 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
     expect(TRANSFER_TOPIC).toBe(V.fixed.transferTopic);
+  });
+
+  // A missing or malformed ref field cannot name the landed transaction, so the read is pending, never
+  // failed (docs/guides/rails.md, "Reading settlement"). The option names the token in base58check; the log names it by
+  // its 20 bytes; reference writes 0x, 41 and those 20 bytes.
+  it("V4: a ref whose txid or asset is malformed is pending unreadable, with nothing read", async () => {
+    const landed = V.V4.status[0];
+    const malformed = [
+      { txid: undefined }, { txid: REF.txid.slice(2) }, { txid: `0x${REF.txid.slice(4)}` },
+      { asset: undefined }, { asset: `0x${REF.asset.slice(4)}` }, { asset: V.fixed.O.asset },
+    ];
+    for (const change of malformed) {
+      const { reader, calls } = counting(readerFor(landed));
+      expect(await exactTronMemo.status({ ...REF, ...change } as TronRef, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(calls).toEqual([]);
+    }
+    expect(plain(await exactTronMemo.status({ ...REF, asset: REF.asset.slice(2) as never }, readerFor(landed)))).toEqual(landed.expect);
+    const looked: string[] = [];
+    const r = readerFor(landed);
+    const upper = { ...REF, txid: `0x${REF.txid.slice(2).toUpperCase()}` as TronRef["txid"] };
+    const seen: TronReader = { ...r, info: async (txid, level) => (looked.push(txid), r.info(txid, level)) };
+    expect(plain(await exactTronMemo.status(upper, seen))).toEqual(landed.expect);
+    expect(looked).toEqual([REF.txid]);
   });
 
   it("plant: a Transfer-topic log from another contract is never the settlement", async () => {

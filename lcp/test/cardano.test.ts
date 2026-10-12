@@ -226,6 +226,25 @@ describe("V5 · status and recover", () => {
       expect(await exactCardano.status(refOf(V.V5.ref), r, depth)).toEqual({ state: "failed", why: "expired" });
     }
   });
+  // A txId that is not 0x and 64 hex digits cannot find the transaction, so the read is pending, never expired
+  // (docs/guides/rails.md, "Reading settlement"); the id is the same 32 bytes in either case. This reader holds the
+  // transaction under the id reference wrote, and answers any other id with a lookup that reached the tip.
+  it("status: a ref whose txId is malformed is pending unreadable, with nothing read", async () => {
+    const deep = { blockHeight: "5216518", slot: "134620001" };
+    const held = () => {
+      const r = reader(PAST, V.V5.status[0].tx, undefined, undefined, deep);
+      const lookup = r.transaction;
+      r.transaction = async (id, withCbor) => (id === V.V5.ref.txId ? lookup(id, withCbor) : { notFound: true, slot: BigInt(PAST.slot) });
+      return r;
+    };
+    for (const txId of [undefined, V.V5.ref.txId.slice(2), `0X${V.V5.ref.txId.slice(2)}`, "0x12"]) {
+      const r = held();
+      expect(await exactCardano.status({ ...refOf(V.V5.ref), txId } as CardanoRef, r, DEPTH)).toEqual({ state: "pending", why: "unreadable" });
+      expect(r.calls).toBe(0);
+    }
+    const upper = { ...refOf(V.V5.ref), txId: `0x${V.V5.ref.txId.slice(2).toUpperCase()}` as CardanoRef["txId"] };
+    expect(plain(await exactCardano.status(upper, held(), DEPTH))).toEqual(V.V5.status[0].expect);
+  });
   // The interface: a failed read is pending `unreadable`, and so is a call or an answer outside its types.
   it("status: a failed or malformed slotAt, or a depth that is not a non-negative bigint, is unreadable", async () => {
     const unreadable = { state: "pending", why: "unreadable" };
