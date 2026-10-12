@@ -100,9 +100,10 @@ describe("x402-exact-hedera.json", () => {
       const p = presentedOf(V.V2.expectTransactionBase64, row.accepted);
       expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
       expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
-      // advertise and build still need both: build writes the transfers from the amount.
+      // advertise and build need both: build writes the transfers from the amount.
       const doc = { ...required, accepts: [row.accepted] };
       expect(exactHedera.advertise(doc, H, V.fixed.link, row.accepted)).toEqual({ refused: true, code: "hedera/option-malformed" });
+      await expect(unsigned(row.accepted)).rejects.toThrow("hedera/option-malformed");
     }
     const { maxTimeoutSeconds: _, ...noTimeout } = O;
     for (const accepted of [noTimeout, { ...O, amount: "x" }]) {
