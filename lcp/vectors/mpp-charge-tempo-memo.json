@@ -47,8 +47,8 @@
    "why": "receive-policy-blocked"
   },
   "memoOnAnotherLog": {
-   "case": "a stranger's TransferWithMemo of 1 unit to the recipient carrying this challenge's memo, beside the payer's TransferWithMemo of 1000000 to the recipient carrying the memo of the challenge at position 1 (MV7's expectMemoPosition1). TIP-20's TransferWithMemo carries the memo and the transfer in one log, so the transfer this payment made is on the log that carries its memo; here neither log is this payment",
-   "stranger": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+   "case": "a TransferWithMemo of 1 unit from sender (Anvil account 3) to the recipient carrying this challenge's memo, beside the payer's TransferWithMemo of 1000000 to the recipient carrying the memo of the challenge at position 1 (MV7's expectMemoPosition1). TIP-20's TransferWithMemo carries the memo and the transfer in one log, so the transfer this payment made is on the log that carries its memo; here neither log is this payment",
+   "sender": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
    "expect": {
     "state": "failed",
     "why": "transfer-not-found"
