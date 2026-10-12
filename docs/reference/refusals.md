@@ -10,7 +10,7 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 483 codes the package can return, by namespace. CI checks that every code the source names in
+This page lists all 484 codes the package can return, by namespace. CI checks that every code the source names in
 `refusal(…)` or `refuse(…)` is listed here.
 
 | Namespace | Codes | Returned by |
@@ -31,7 +31,7 @@ This page lists all 483 codes the package can return, by namespace. CI checks th
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 19 | Hedera (`@integraledger/lcp/hedera`). |
-| [`avm`](#avm) | 12 | Algorand (`@integraledger/lcp/avm`). |
+| [`avm`](#avm) | 13 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
 | [`cardano`](#cardano) | 12 | Cardano (`@integraledger/lcp/cardano`). |
 | [`casper`](#casper) | 13 | Casper (`@integraledger/lcp/casper`). |
@@ -479,9 +479,10 @@ Algorand (`@integraledger/lcp/avm`).
 | `avm/not-axfer` | The Algorand payment transaction is not an asset transfer. |
 | `avm/not-found` | The Algorand reader found no transaction for the id. |
 | `avm/note-not-lcp` | The Algorand transaction's note is not UTF-8 carrying an ATR hash in LCP string form. |
-| `avm/option-malformed` | An Algorand option's `extra` is not an object or names a transfer method or flow this pairing does not pay, its asset, `payTo` or fee payer is invalid, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid, or the buyer's payer or suggested parameters given to `build` are invalid (or `algosdk` is not loaded). |
+| `avm/option-malformed` | An Algorand option's `extra` is not an object or names a transfer method or flow this pairing does not pay, its asset, `payTo` or fee payer is invalid, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid, or the buyer's payer or suggested parameters given to `build` are invalid. |
+| `avm/peer-missing` | The optional peer dependency `algosdk` cannot be loaded to decode or build an Algorand transaction. |
 | `avm/signature-malformed` | The signature given to the Algorand `complete` is not 64 bytes. |
-| `avm/txn-malformed` | The Algorand payload has no `paymentGroup` array, the payment entry is not base64 msgpack within the caps that decodes as a signed transaction, its note exceeds the bound, or `algosdk` is not loaded. |
+| `avm/txn-malformed` | The Algorand payload has no `paymentGroup` array, the payment entry is not base64 msgpack within the caps that decodes as a signed transaction, or its note exceeds the bound. |
 | `avm/unreadable` | The Algorand reader threw or returned an answer that is not well formed. |
 | `avm/wrong-reader` | The Algorand reader is missing or answers for a different network than the reference names. |
 

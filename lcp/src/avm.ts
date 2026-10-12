@@ -1,7 +1,8 @@
 /**
  * Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR
  * hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes.
- * `algosdk` is an optional peer: this module loads it when present, and without it the pairing serves no option.
+ * `algosdk` is an optional peer: this module loads it when present. Without it the pairing serves no option, and
+ * `avmCarrier` and `build` refuse `avm/peer-missing`.
  */
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
@@ -226,10 +227,11 @@ function toBase64(bytes: Uint8Array): string {
 
 /**
  * The payment transaction of an x402 Algorand payload: `paymentGroup[paymentIndex]`, decoded as a signed asset
- * transfer whose note is an LCP string. Gives the hash, the transaction id and the last valid round.
+ * transfer whose note is an LCP string. Gives the hash, the transaction id and the last valid round. Without algosdk,
+ * `avm/peer-missing`.
  */
 export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
-  if (sdk === null) return refusal("avm/txn-malformed");
+  if (sdk === null) return refusal("avm/peer-missing");
   if (!isObject(p) || !Array.isArray(p.paymentGroup)) return refusal("avm/txn-malformed");
   const group = p.paymentGroup;
   if (group.length < 1 || group.length > MAX_GROUP) return refusal("avm/group-too-large");
@@ -279,13 +281,14 @@ function urlSafe(s: string): string {
 
 /**
  * The asset transfer the payer signs, with the hash's LCP string as its note; with the option's fee payer, grouped
- * after that fee payer's zero payment, which carries both fees.
+ * after that fee payer's zero payment, which carries both fees. Without algosdk, `avm/peer-missing`.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
   h: AtrHash,
 ): Promise<AvmUnsigned | Refusal> {
-  if (sdk === null || !isObject(c)) return refusal("avm/option-malformed");
+  if (sdk === null) return refusal("avm/peer-missing");
+  if (!isObject(c)) return refusal("avm/option-malformed");
   const ok = chosen(c.required, c.accepted, check);
   if (ok !== true) return ok;
   const nh = normalHash(h);

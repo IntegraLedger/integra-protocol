@@ -66,6 +66,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "avm/not-found",
   "avm/note-not-lcp",
   "avm/option-malformed",
+  "avm/peer-missing",
   "avm/signature-malformed",
   "avm/txn-malformed",
   "avm/unreadable",
