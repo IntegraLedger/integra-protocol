@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tron/lcp-trc20-memo pairing: the tron entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is mainnet transaction 40662c9c…, read live from a Solidity node. V2's inputs are the published Anvil development key, USDT-TRC20, the payee bytes of x402's example option under 0x41, and solidified block 86542765. The signature was made with coincurve 21.0.0 (RFC 6979) and recovers to the payer; base58check with base58 2.1.1; the Transfer topic with pycryptodome 3.23.0 keccak; every SHA-256 with hashlib. Negative transactions are V2 with fields changed, written by hand from Tron.proto's field numbers. Byte strings are lowercase hex; int64 values are decimal strings.",
+ "about": "Vectors for the x402/exact/tron/lcp-trc20-memo pairing: the tron entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is mainnet transaction 40662c9c…, read live from a Solidity node. V2's inputs are the published Anvil development key, USDT-TRC20, the payee bytes of x402's example option under 0x41, and solidified block 86542765. The signature was made with coincurve 21.0.0 (RFC 6979) and recovers to the payer; base58check with base58 2.1.1; the Transfer topic with pycryptodome 3.23.0 keccak; every SHA-256 with hashlib. Negative transactions are V2 with fields changed, written by hand from Tron.proto's field numbers. V4's status fixtures model the nodes' answers: a lookup that finds nothing answers notFound with the time of the latest block at its level on the node that answered, and null marks an answer status does not read. A node includes a transaction only while its expiration is after the head block's time (java-tron Manager.validateCommon), so a lookup names absence through the solid head read first only when its node has reached that head's time. Byte strings are lowercase hex; int64 values are decimal strings.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -150,8 +150,11 @@
     }
    },
    {
-    "case": "solid null, head found",
-    "solid": null,
+    "case": "solid not found, head found",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300724000"
+    },
     "head": {
      "blockNumber": "86542790",
      "result": "SUCCESS",
@@ -203,9 +206,15 @@
     }
    },
    {
-    "case": "nowhere, solid head at 1790300729999",
-    "solid": null,
-    "head": null,
+    "case": "nowhere, solid head at 1790300729999, both lookups naming it",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
     "solidHead": {
      "number": "86542800",
      "timestamp": "1790300729999"
@@ -216,9 +225,15 @@
     }
    },
    {
-    "case": "nowhere, solid head at 1790300730000",
-    "solid": null,
-    "head": null,
+    "case": "nowhere, solid head at 1790300730000, both lookups naming it",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300730000"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300730000"
+    },
     "solidHead": {
      "number": "86542801",
      "timestamp": "1790300730000"
@@ -236,6 +251,44 @@
     "expect": {
      "state": "pending",
      "why": "unreadable"
+    }
+   },
+   {
+    "case": "nowhere, solid head at 1790300730000, the solid lookup naming 1790300714000",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300714000"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300730000"
+    },
+    "solidHead": {
+     "number": "86542801",
+     "timestamp": "1790300730000"
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "nowhere, solid head at 1790300730000, the head lookup naming 1790300714000",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300730000"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300714000"
+    },
+    "solidHead": {
+     "number": "86542801",
+     "timestamp": "1790300730000"
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
     }
    }
   ],

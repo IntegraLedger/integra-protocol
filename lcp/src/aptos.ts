@@ -6,7 +6,7 @@
  */
 import { digestJson, parseJson, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
-import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -55,8 +55,12 @@ export interface AptosReader {
   readonly network: AptosNetwork;
   /** `GET /v1/transactions/by_hash/{hash}`; null on 404. */
   byHash(hash: Hex): Promise<AptosCommitted | { type: "pending_transaction" } | null>;
-  /** `GET /v1/accounts/{sender}/transactions?start=n&limit=1`, kept only when its `sequence_number` is n. */
-  bySequence(sender: Hex, n: bigint): Promise<AptosCommitted | null>;
+  /**
+   * `GET /v1/accounts/{sender}/transactions?start=n&limit=1`, kept only when its `sequence_number` is n. When there is
+   * none, `notFound` with `timestampUsecs`: the ledger timestamp of that answer, its `X-Aptos-Ledger-TimestampUsec`
+   * header.
+   */
+  bySequence(sender: Hex, n: bigint): Promise<AptosCommitted | { notFound: true; timestampUsecs: bigint }>;
   /** `GET /v1`. */
   ledger(): Promise<{ chainId: number; timestampUsecs: bigint }>;
 }
@@ -204,8 +208,10 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
 /**
  * Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
  * identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
- * transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. A
- * failed read, or a reader for another network, is pending. At most three calls.
+ * transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. The
+ * ledger is read first: failed `expired` only when its timestamp is past `expiresAt` and the lookup by sequence number
+ * finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
+ * is pending `not-found`. A failed read, or a reader for another network, is pending. At most three calls.
  */
 export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<AptosStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -228,9 +234,11 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
       }
     }
 
-    const found = await reader.bySequence(ref.sender, sequenceNumber);
-    if (found === null) {
-      return ledger.timestampUsecs / 1_000_000n > expiresAt
+    const found: unknown = await reader.bySequence(ref.sender, sequenceNumber);
+    const readTo = notFoundPoint(found, "timestampUsecs");
+    if (readTo !== undefined) {
+      const covered = readTo !== null && readTo >= ledger.timestampUsecs;
+      return covered && ledger.timestampUsecs / 1_000_000n > expiresAt
         ? { state: "failed", why: "expired" }
         : { state: "pending", why: "not-found" };
     }

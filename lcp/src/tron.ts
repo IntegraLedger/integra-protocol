@@ -6,7 +6,7 @@
 import { base58 } from "@scure/base";
 import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
-import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
 import { bytesOfHexDigits, decimalBelow, hexDigits } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -58,8 +58,13 @@ export interface TronInfo {
 /** Bounded, read-only calls against one network's FullNode and SolidityNode. Every failure rejects with `ReaderError`. */
 export interface TronReader {
   readonly network: TronNetwork;
-  /** `/walletsolidity/gettransactioninfobyid` ("solid") or `/wallet/gettransactioninfobyid` ("head"); null: none. */
-  info(txid: Hex, level: "solid" | "head"): Promise<TronInfo | null>;
+  /**
+   * `/walletsolidity/gettransactioninfobyid` ("solid") or `/wallet/gettransactioninfobyid` ("head"). When the node does
+   * not know the transaction, `notFound` with `timestamp`: the time in milliseconds of the latest block at that level
+   * on the node that answered (`/walletsolidity/getnowblock` or `/wallet/getnowblock`), read from that same node before
+   * the lookup, or null when the reader cannot read it from that node. A lookup naming no time never reads failed.
+   */
+  info(txid: Hex, level: "solid" | "head"): Promise<TronInfo | { notFound: true; timestamp: bigint | null }>;
   /** `/walletsolidity/gettransactionbyid`; null: none. */
   transaction(txid: Hex): Promise<{ rawDataHex: string } | null>;
   /** `/walletsolidity/getnowblock`: the latest solidified block's number and time in milliseconds. */
@@ -361,19 +366,26 @@ function memoHash(data: Uint8Array): AtrHash | null {
  * Reads the latest solidified block first, then the transaction by id: at the Solidity node, then at the FullNode's
  * head. Settled when its receipt result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as
  * `expired` only when that earlier solidified block is two slots past the expiration and neither lookup finds the
- * transaction. A failed read, or a reader for another network, is pending. At most three calls.
+ * transaction, each naming a block time at or past that earlier block's: a lookup whose node lags the block read first,
+ * or that names no time, is pending `not-found`. A failed read, an answer of neither documented shape, or a reader for
+ * another network is pending `unreadable`. At most three calls.
  */
 export async function tronStatus(ref: TronRef, reader: TronReader): Promise<TronStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
   const head = await solidTimestamp(reader);
+  let covered = true;
   for (const level of ["solid", "head"] as const) {
-    let info: TronInfo | null;
+    let info: unknown;
     try {
       info = await reader.info(ref.txid, level);
     } catch {
       return { state: "pending", why: "unreadable" };
     }
-    if (info === null) continue;
+    const readTo = notFoundPoint(info, "timestamp");
+    if (readTo !== undefined) {
+      covered &&= readTo !== null && head !== null && readTo >= head;
+      continue;
+    }
     if (!isInfo(info)) return { state: "pending", why: "unreadable" };
     if (info.result !== "SUCCESS") return { state: "failed", why: "contract-failed", result: info.result };
     if (!info.logs.some((log) => isAssetTransfer(log, ref.asset))) return { state: "failed", why: "no-transfer" };
@@ -381,7 +393,7 @@ export async function tronStatus(ref: TronRef, reader: TronReader): Promise<Tron
   }
   const expiration = typeof ref.expiration === "string" && /^[0-9]{1,19}$/.test(ref.expiration) ? BigInt(ref.expiration) : null;
   if (head === null || expiration === null) return { state: "pending", why: "unreadable" };
-  if (head >= expiration + EXPIRY_SLOTS_MS) return { state: "failed", why: "expired" };
+  if (head >= expiration + EXPIRY_SLOTS_MS && covered) return { state: "failed", why: "expired" };
   return { state: "pending", why: "not-found" };
 }
 

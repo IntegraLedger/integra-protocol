@@ -133,7 +133,9 @@ function reader(row: Row, network = "aptos:1", chainId = 1): AptosReader & { cal
     },
     async bySequence() {
       r.calls++;
-      return (row.bySequence ?? null) as AptosCommitted | null;
+      const answer = row.bySequence as { notFound?: true; timestampUsecs?: string } | null | undefined;
+      if (answer?.notFound === true) return { notFound: true as const, timestampUsecs: BigInt(answer.timestampUsecs!) };
+      return (answer ?? null) as AptosCommitted;
     },
   };
   return r;
@@ -249,6 +251,22 @@ describe("V4 · status", () => {
       version: committed.version,
       transaction: committed.hash,
     });
+  });
+  // Every successful Aptos REST response carries X-Aptos-Ledger-TimestampUsec, the ledger timestamp of that answer, and a
+  // transaction cannot commit past its expiration_timestamp_secs. A lookup computed at a ledger before the one read
+  // first cannot show the transaction absent at that ledger, whatever the ledger read first says.
+  it("a not-found lookup computed before the ledger read first is pending, never expired", async () => {
+    const [row] = V.V4.status.filter((r: { case: string }) => r.case.endsWith("1790300896 s"));
+    const ledgerUsecs = 1790300896000000n;
+    for (const at of [1790300865000000n, 1790300895000000n, 1790300895999999n, ledgerUsecs, ledgerUsecs + 1n]) {
+      const r = reader({ ...row, bySequence: { notFound: true, timestampUsecs: at.toString() } });
+      const want = at >= ledgerUsecs ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+      expect([at, await exactAptos.status(refOf(row.ref), r)]).toEqual([at, want]);
+    }
+    const unnamed = { ...reader(row), bySequence: async () => ({ notFound: true }) as never };
+    expect(await exactAptos.status(refOf(row.ref), unnamed)).toEqual({ state: "pending", why: "not-found" });
+    const bare = { ...reader(row), bySequence: async () => null as never };
+    expect(await exactAptos.status(refOf(row.ref), bare)).toEqual({ state: "pending", why: "unreadable" });
   });
   it("a reader for another network, or a ledger for another chain, is unreadable", async () => {
     const row = V.V4.status[0];

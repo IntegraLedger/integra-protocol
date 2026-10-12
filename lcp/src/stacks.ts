@@ -5,7 +5,7 @@
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { fromRawBytes, type AtrHash } from "./core.js";
 import { bytesOf, hexOf, type Hex } from "./evm-abi.js";
-import { isObject, normalHash } from "./fields.js";
+import { isObject, normalHash, notFoundPoint } from "./fields.js";
 import { refusal, type Refusal } from "./refusal.js";
 
 /** CAIP-2: `stacks:1` (mainnet), `stacks:2147483648` (testnet). */
@@ -35,17 +35,23 @@ export interface StacksMempool {
   status: string;
 }
 
-/** Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. */
+/**
+ * Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. `height` is the block
+ * height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from the node that gave the
+ * answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and before a lookup that
+ * answers `notFound`, so the lookup is at or above it. It is null when the reader cannot read it from that node, and an
+ * answer naming no height never reads an unknown transaction as failed.
+ */
 export interface StacksReader {
   readonly network: StacksNetwork;
-  /** The transaction by its `0x`-prefixed id, with its function arguments; null when the API does not know it. */
-  transaction(txid: Hex): Promise<StacksLanded | StacksMempool | null>;
+  /** The transaction by its `0x`-prefixed id, with its function arguments; `notFound` when the API does not know it. */
+  transaction(txid: Hex): Promise<StacksLanded | StacksMempool | { notFound: true; height: bigint | null }>;
   /** The tenure height of the block at `height`. */
   blockTenure(height: bigint): Promise<bigint>;
   /** The tip's tenure height. */
   tipTenure(): Promise<bigint>;
   /** The principal's last confirmed nonce, or null when it has none. */
-  confirmedNonce(principal: string): Promise<bigint | null>;
+  confirmedNonce(principal: string): Promise<{ nonce: bigint | null; height: bigint | null }>;
 }
 
 /**
@@ -94,13 +100,15 @@ export function memoHash(arg: unknown): AtrHash | null {
 
 /**
  * The payment's settlement, in at most four reader calls. The origin's confirmed nonce is read first, then the
- * transaction. A wrong reader, a failed transaction read, or an answer of neither documented shape is pending
+ * transaction. A wrong reader, a failed transaction read, or an answer of no documented shape is pending
  * `unreadable`. A mined transaction must be the origin's at its nonce, calling the contract's `transfer` with `(some H)`
  * as its fourth argument, else failed `not-this-instrument`; then the API's `status` decides. A mined transaction's
  * answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
  * two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
  * failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
- * was read at the API's tip, so `block`. A failed or malformed nonce read then is pending `unreadable`.
+ * was read at the API's tip, so `block`. An unknown transaction counts so only when the lookup names a height at or
+ * above the one the nonce read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is
+ * pending `not-found`. A failed or malformed nonce read then is pending `unreadable`.
  */
 export async function stacksStatus(
   ref: StacksRef & { transaction: Hex; h: AtrHash },
@@ -150,23 +158,38 @@ export async function stacksStatus(
     }
     return { state: "settled", finality: await mark(), blockHeight: tx.blockHeight };
   }
-  if (tx !== null && !isMempool(tx)) return { state: "pending", why: "unreadable" };
-  if (tx !== null && tx.status === "pending") return { state: "pending", why: "mempool" };
-  if (tx !== null && !tx.status.startsWith("dropped_")) return { state: "pending", why: "unreadable" };
+  const readTo = notFoundPoint(tx, "height");
+  if (readTo === undefined) {
+    if (!isMempool(tx)) return { state: "pending", why: "unreadable" };
+    if (tx.status === "pending") return { state: "pending", why: "mempool" };
+    if (!tx.status.startsWith("dropped_")) return { state: "pending", why: "unreadable" };
+  }
   if (confirmed === undefined) return { state: "pending", why: "unreadable" };
-  if (confirmed !== null && confirmed >= nonce) return { state: "failed", why: "nonce-used", finality: "block" };
-  return { state: "pending", why: tx === null ? "not-found" : "dropped" };
+  const covered = readTo === undefined || (readTo !== null && confirmed.height !== null && readTo >= confirmed.height);
+  if (confirmed.nonce !== null && confirmed.nonce >= nonce && covered) {
+    return { state: "failed", why: "nonce-used", finality: "block" };
+  }
+  return { state: "pending", why: readTo === undefined ? "dropped" : "not-found" };
 }
 
-/** The principal's last confirmed nonce; null when it has none; undefined when the read fails or is malformed. */
-async function confirmedNonce(reader: StacksReader, principal: string): Promise<bigint | null | undefined> {
+/**
+ * The principal's last confirmed nonce (null when it has none) with the tip height it names; undefined when the read
+ * fails or is malformed.
+ */
+async function confirmedNonce(
+  reader: StacksReader,
+  principal: string,
+): Promise<{ nonce: bigint | null; height: bigint | null } | undefined> {
   let n: unknown;
   try {
     n = await reader.confirmedNonce(principal);
   } catch {
     return undefined;
   }
-  return n === null || typeof n === "bigint" ? n : undefined;
+  if (!isObject(n)) return undefined;
+  const { nonce, height } = n;
+  if (nonce !== null && typeof nonce !== "bigint") return undefined;
+  return height === null || typeof height === "bigint" ? { nonce, height } : undefined;
 }
 
 /** True for an answer of `StacksLanded`'s shape. */
@@ -189,7 +212,7 @@ function isMempool(v: unknown): v is StacksMempool {
 
 /**
  * Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
- * A wrong reader is `stacks/wrong-reader`, a failed read or an answer of neither documented shape `stacks/unreadable`,
+ * A wrong reader is `stacks/wrong-reader`, a failed read or an answer of no documented shape `stacks/unreadable`,
  * an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`, and no
  * `(some <32 bytes>)` memo of that call `stacks/no-memo`.
  */
@@ -209,7 +232,7 @@ export async function stacksRecover(
   } catch {
     return refusal("stacks/unreadable");
   }
-  if (tx !== null && !isLanded(tx) && !isMempool(tx)) return refusal("stacks/unreadable");
+  if (!isLanded(tx) && !isMempool(tx) && notFoundPoint(tx, "height") === undefined) return refusal("stacks/unreadable");
   if (!isLanded(tx)) return refusal("stacks/not-found");
   if (tx.status !== "success") return refusal("stacks/not-success");
   const call = tx.call;

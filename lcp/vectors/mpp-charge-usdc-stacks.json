@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). Rows with txAnswer give the transaction read's answer as is: values of neither StacksLanded's nor StacksMempool's shape, which status reads as pending unreadable and recover refuses stacks/unreadable.",
+ "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). The confirmed nonce read answers the nonce with the height of the API's chain tip read after it (GET /extended's chain_tip.block_height), so the nonce read is at or below that height, and a transaction read that finds nothing answers notFound with the height read before it, so an empty lookup shows the transaction unmined only up to its own height: nonce-used needs it at or above the nonce read's. Rows with txAnswer give the transaction read's answer as is: values of none of its documented shapes, which status reads as pending unreadable and recover refuses stacks/unreadable.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",
@@ -183,16 +183,25 @@
      "mined": false,
      "status": "dropped_stale_garbage_collect"
     },
-    "confirmedNonce": null,
+    "confirmedNonce": {
+     "nonce": null,
+     "height": "9021840"
+    },
     "expect": {
      "state": "pending",
      "why": "dropped"
     }
    },
    {
-    "case": "not found, confirmed nonce 0",
-    "tx": null,
-    "confirmedNonce": "0",
+    "case": "not found at height 9021840, confirmed nonce 0 read at height 9021840",
+    "tx": {
+     "notFound": true,
+     "height": "9021840"
+    },
+    "confirmedNonce": {
+     "nonce": "0",
+     "height": "9021840"
+    },
     "expect": {
      "state": "failed",
      "why": "nonce-used",
@@ -201,8 +210,14 @@
    },
    {
     "case": "not found, confirmed nonce null",
-    "tx": null,
-    "confirmedNonce": null,
+    "tx": {
+     "notFound": true,
+     "height": "9021840"
+    },
+    "confirmedNonce": {
+     "nonce": null,
+     "height": "9021840"
+    },
     "expect": {
      "state": "pending",
      "why": "not-found"
@@ -210,7 +225,10 @@
    },
    {
     "case": "not found, the confirmed nonce read rejects",
-    "tx": null,
+    "tx": {
+     "notFound": true,
+     "height": "9021840"
+    },
     "confirmedNonce": "reader-error",
     "expect": {
      "state": "pending",
@@ -219,7 +237,10 @@
    },
    {
     "case": "not found, the confirmed nonce read answers a number",
-    "tx": null,
+    "tx": {
+     "notFound": true,
+     "height": "9021840"
+    },
     "confirmedNonce": "number",
     "expect": {
      "state": "pending",
@@ -335,6 +356,21 @@
     "expect": {
      "state": "pending",
      "why": "unreadable"
+    }
+   },
+   {
+    "case": "not found at height 9021830, confirmed nonce 0 read at height 9021840",
+    "tx": {
+     "notFound": true,
+     "height": "9021830"
+    },
+    "confirmedNonce": {
+     "nonce": "0",
+     "height": "9021840"
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
     }
    }
   ],

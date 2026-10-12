@@ -143,12 +143,13 @@ On Stellar the payer signs an authorization entry for the transfer, not the tran
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
 entry leaves the payment pending while the entry is valid. Past the entry's expiration ledger, `status` searches the
 asset's transfer events to the seller: it settles on a transaction that used the entry, and answers failed `expired`
-only when that search is complete and finds none. The search runs through the expiration ledger itself, in which the
-entry is still valid: `transfers` takes `fromLedger` through `toLedger`, both inclusive. Stellar RPC's `getEvents`
-treats `endLedger` as exclusive and scans at most 10,000 ledgers per call, so a reader over it sends
-`endLedger: toLedger + 1` on the first page, only the cursor after that, and returns a `cursor` until `getEvents`
-has scanned through `toLedger`, even when a page holds no events, and keeps only the events through `toLedger`, since
-a cursor page can scan past it.
+only when that search is complete, finds none, and each page of events names a `latestLedger` at or above the one
+`getLatestLedger` gave first. The search runs through the expiration ledger itself, in which the entry is still valid:
+`transfers` takes `fromLedger` through `toLedger`, both inclusive. Stellar RPC's `getEvents` treats `endLedger` as
+exclusive and scans at most 10,000 ledgers per call, so a reader over it sends `endLedger: toLedger + 1` on the first
+page, only the cursor after that, and returns a `cursor` until `getEvents` has scanned through `toLedger`, even when a
+page holds no events, and keeps only the events through `toLedger`, since a cursor page can scan past it. Each page
+also returns `getEvents`' `latestLedger`, the latest ledger the RPC held when it answered.
 
 An MPP Stellar push payment (a `hash` credential, under a request whose `feePayer` is false or absent) may come from a
 payer that submits the transaction as its source account and authorizes the transfer with a source-account credential
@@ -170,33 +171,54 @@ blocks at which you take a settlement as final, and answers failed `expired` onl
 the tip is past the transaction's TTL, so a rollback above that depth leaves a payment that landed pending `not-found`,
 never failed.
 
-A verdict that a payment will never land, such as `expired` or `nonce-used`, rests on a reference point: a head
-time, a ledger or a confirmed nonce. On TRON, TON and Stacks, `status` reads that reference point before it looks the
-payment up, so a payment that lands between the two reads, or a reader whose sources disagree between them, never
-reads as failed. On TON, `status` counts only the Jetton transfer that a transaction of the payer's W5 wallet sent
-with the signed request, since W5 checks the signature before it sends anything; an equal transfer body executed any
-other way never settles. A request the payer's W5 wallet has executed stays pending `in-flight` until its Jetton
-transfer lands, however late, because an internal message carries no expiry.
+On the rails in the table below, a verdict that a payment will never land rests on a reference point: a head time, a
+ledger, a confirmed nonce, a final height or a chain tip. The reference point is read before the lookup it judges, and
+a lookup shows the payment absent only up to the point its own source had reached. So the reader's answer names that
+point, in the answer itself or read from the source that answered before the lookup, and the verdict needs it at or
+past the reference point. A payment that lands between the two reads, or that a lookup misses because its source lags
+the reference point, as one node behind a load-balanced endpoint can, stays pending (`nearLapsed` answers false), never
+failed, and so does one whose answer names no point. A later read, once that source has caught up, gives the verdict.
+The rule governs `expired` on Tron, TON, Aptos, Stellar and Cardano, `aborted` when every W5 transaction with a TON
+request aborted, `nonce-used` for a transaction the Stacks API does not know, and `nearLapsed`. On TON, `no-transfer`
+reads the W5 wallet's own transaction with the request at any indexed time; on Stacks, a transaction the API lists as
+dropped reads `nonce-used` from the confirmed nonce alone. On Stacks the API's answers name no height, so a reader
+reads the API's chain tip from the node that answered, after the nonce read and before the lookup, and must pin one
+node to name it; a reader that cannot names no height.
+
+| Rail | The reference point, read first | What the answer that finds nothing names |
+|---|---|---|
+| Tron | the latest solidified block's time | `{ notFound: true, timestamp }`: the time of the latest block at the lookup's level on the node that answered |
+| TON | the masterchain head's `gen_utime` | `byInBody`'s `headUtime`: the `gen_utime` of a masterchain block through which the index that answered holds every block |
+| Stacks | the origin's confirmed nonce, with its `height` read after it | `{ notFound: true, height }`: the block height of the chain tip of the API that answered, read before the lookup |
+| Aptos | the ledger's timestamp | `{ notFound: true, timestampUsecs }`: the ledger timestamp of the answer |
+| Stellar | `getLatestLedger`, read after the named transaction and before the events search | each events page's `latestLedger` |
+| NEAR | the final block height | the key read's `blockHeight`, `view_access_key`'s `block_height` |
+| Cardano | the chain tip's slot | `{ notFound: true, slot }`: the slot of the latest block the indexer that answered held |
+
+On TON, `status` counts only the Jetton transfer that a transaction of the payer's W5 wallet sent with the signed
+request, since W5 checks the signature before it sends anything; an equal transfer body executed any other way never
+settles. A request the payer's W5 wallet has executed stays pending `in-flight` until its Jetton transfer lands,
+however late, because an internal message carries no expiry.
 
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |
 | Solana | `SvmReader` | `getTransaction` at a commitment, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
-| Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events, `getLatestLedger` | the ledger |
+| Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events with `getEvents`' `latestLedger`, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
 | Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
 | Algorand | `AvmReader` | the Indexer's transaction search by id | the confirmed round |
-| Aptos | `AptosReader` | the transaction by hash, the sender's transaction by sequence number, the ledger info | the version |
-| Cardano | `CardanoReader` | the chain tip, the transaction by id, the slot of the block at a height | the confirmations |
+| Aptos | `AptosReader` | the ledger info, read first; the transaction by hash; the sender's transaction by sequence number, with the ledger timestamp of its answer | the version |
+| Cardano | `CardanoReader` | the chain tip, read first; the transaction by id, with the indexer's latest slot when it holds none; the slot of the block at a height | the confirmations |
 | Casper | `CasperReader` | `info_get_transaction` | the finalized block height |
 | Concordium | `CcdReader` | gRPC `GetBlockItemStatus` | `finalized` |
-| NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` | `final` when the status is `FINAL`, else `optimistic` |
+| NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` with its `block_height` | `final` when the status is `FINAL`, else `optimistic` |
 | Polkadot Asset Hub | `PolkadotReader` | Sidecar's extrinsic by block and index, a block's raw extrinsics, the finalized head | `finalized` or `head` |
 | Starknet | `StarknetReader` | `starknet_getTransactionReceipt` with its `Transfer` events, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
 | Sui | `SuiReader` | the transaction by digest, with the current epoch and the first checkpoint the endpoint holds transactions from | the checkpoint |
-| Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level; `gettransactionbyid` | `solidified` or `head` |
-| TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the signed W5 request's), by message hash (the Jetton transfer the W5 transaction sent, then the `internal_transfer` it led to) and by hash | `confirmed` or `finalized` |
-| Stacks | `StacksReader` | the origin's confirmed nonce, read first; the transaction by id; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
+| Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level, with the node's latest block time at that level when it finds nothing; `gettransactionbyid` | `solidified` or `head` |
+| TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the signed W5 request's), with the `gen_utime` of a masterchain block through which the index holds every block, by message hash (the Jetton transfer the W5 transaction sent, then the `internal_transfer` it led to) and by hash | `confirmed` or `finalized` |
+| Stacks | `StacksReader` | the origin's confirmed nonce, read first, with the chain tip's height (`GET /extended`) read after it from the same node; the transaction by id, with the chain tip's height read before it from the same node when the API does not know it; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
 
 On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport` or
 `malformed`. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a

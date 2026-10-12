@@ -33,9 +33,12 @@ function bytesOf(b64: string): Uint8Array {
 }
 
 type Tip = { blockHeight: string; slot: string };
-type OnChain = { blockHeight: string; slot: string; valid: boolean } | null;
+type OnChain = { blockHeight: string; slot: string; valid: boolean } | { notFound: true; slot: string } | null;
 
-/** A scripted reader. `slotAt` answers `deep`'s slot at `deep`'s height, and null (no block held) at any other. */
+/**
+ * A scripted reader. `slotAt` answers `deep`'s slot at `deep`'s height, and null (no block held) at any other. A `tx`
+ * of null is a lookup that finds nothing from an indexer at the tip's slot.
+ */
 function reader(
   tip: Tip,
   tx: OnChain | "error",
@@ -60,7 +63,8 @@ function reader(
     async transaction(_id: `0x${string}`, withCbor: boolean) {
       r.calls++;
       if (tx === "error") throw new ReaderError("timeout");
-      if (tx === null) return null;
+      if (tx === null) return { notFound: true as const, slot: BigInt(tip.slot) };
+      if ("notFound" in tx) return { notFound: true as const, slot: BigInt(tx.slot) };
       return {
         blockHeight: BigInt(tx.blockHeight),
         slot: BigInt(tx.slot),
@@ -185,6 +189,43 @@ describe("V5 · status and recover", () => {
     expect(await exactCardano.status(refOf(V.V5.ref), r, 0n)).toEqual({ state: "failed", why: "expired" });
     expect(r.heights).toEqual([]);
   });
+  // An indexer's lookup shows a transaction absent only through the latest block it holds, so a lookup from an
+  // indexer behind the tip read first cannot show that a transaction which landed before the TTL is missing; the
+  // transaction landed in a block at or below the TTL slot (x402's Cardano scheme: a transaction can land only inside
+  // its validity window).
+  it("status: a lookup from an indexer behind the tip read first is pending, never expired", async () => {
+    const deep = { blockHeight: "5216518", slot: "134620001" };
+    for (const depth of [0n, DEPTH]) {
+      for (const [slot, want] of [
+        ["134617495", { state: "pending", why: "not-found" }],
+        ["134620399", { state: "pending", why: "not-found" }],
+        ["134620400", { state: "failed", why: "expired" }],
+        ["134620401", { state: "failed", why: "expired" }],
+      ] as const) {
+        const r = reader(PAST, { notFound: true, slot }, undefined, undefined, deep);
+        expect([depth, slot, await exactCardano.status(refOf(V.V5.ref), r, depth)]).toEqual([depth, slot, want]);
+        if (want.state === "pending") expect(r.heights).toEqual([]);
+      }
+    }
+    const unnamed = { ...reader(PAST, null), transaction: async () => ({ notFound: true }) as never };
+    expect(await exactCardano.status(refOf(V.V5.ref), unnamed, 0n)).toEqual({ state: "pending", why: "not-found" });
+    const bare = { ...reader(PAST, null), transaction: async () => null as never };
+    expect(await exactCardano.status(refOf(V.V5.ref), bare, 0n)).toEqual({ state: "pending", why: "unreadable" });
+  });
+  // Blockfrost answers 404 for a transaction its indexer does not hold, naming no slot, so a reader takes the slot from
+  // a second call (/blocks/latest), which a load-balanced endpoint can send to another indexer. A reader that cannot
+  // read the slot from the indexer that answered names none.
+  it("status: a lookup naming a null slot is pending not-found, never expired", async () => {
+    const deep = { blockHeight: "5216518", slot: "134620001" };
+    for (const depth of [0n, DEPTH]) {
+      const r = reader(PAST, null, undefined, undefined, deep);
+      const unnamed: CardanoReader = { ...r, transaction: async () => ({ notFound: true, slot: null }) };
+      expect(await exactCardano.status(refOf(V.V5.ref), unnamed, depth)).toEqual({ state: "pending", why: "not-found" });
+      expect(r.heights).toEqual([]);
+      expect(await exactCardano.recover(refOf(V.V5.ref), unnamed)).toEqual(refused("cardano/not-found"));
+      expect(await exactCardano.status(refOf(V.V5.ref), r, depth)).toEqual({ state: "failed", why: "expired" });
+    }
+  });
   // The interface: a failed read is pending `unreadable`, and so is a call or an answer outside its types.
   it("status: a failed or malformed slotAt, or a depth that is not a non-negative bigint, is unreadable", async () => {
     const unreadable = { state: "pending", why: "unreadable" };
@@ -205,7 +246,7 @@ describe("V5 · status and recover", () => {
       expect(got).toEqual(row.expect.startsWith("0x") ? row.expect : refused(row.expect));
     });
   }
-  it("recover: wrong reader, failed read, absent, invalid, no cbor, and bytes for another id", async () => {
+  it("recover: wrong reader, failed read, absent, an answer of no documented shape, invalid, no cbor, and bytes for another id", async () => {
     const ref = { network: "cardano:preprod" as const, txId: V.V2.expectReference.txId };
     const ok = { blockHeight: "1", slot: "1", valid: true };
     expect(await exactCardano.recover(ref, reader(V.V5.tip, ok, TX["V2"], "cardano:preview"))).toEqual(
@@ -213,6 +254,8 @@ describe("V5 · status and recover", () => {
     );
     expect(await exactCardano.recover(ref, reader(V.V5.tip, "error"))).toEqual(refused("cardano/unreadable"));
     expect(await exactCardano.recover(ref, reader(V.V5.tip, null))).toEqual(refused("cardano/not-found"));
+    const bare = { ...reader(V.V5.tip, null), transaction: async () => null as never };
+    expect(await exactCardano.recover(ref, bare)).toEqual(refused("cardano/unreadable"));
     expect(await exactCardano.recover(ref, reader(V.V5.tip, { ...ok, valid: false }, TX["V2"]))).toEqual(
       refused("cardano/not-valid"),
     );

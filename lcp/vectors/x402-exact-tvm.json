@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers: byInBodyRequest answers the lookup by the signed W5 request's body hash, byInMessage the lookups by message hash, keyed by the hash, byInBody a lookup by the Jetton transfer's body hash, which status does not make, and headUtime the masterchain head's gen_utime; inBody is a BoC in hex. Status counts only the payer Jetton wallet's transaction that took the message the payer's W5 wallet emitted in a transaction with the request: W5 checks the request's signature before any action runs (wallet_v5.fc). W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head.",
+ "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed. Status fixtures model TON Center v3 answers: byInBodyRequest answers the lookup by the signed W5 request's body hash, byInMessage the lookups by message hash, keyed by the hash, byInBody a lookup by the Jetton transfer's body hash, which status does not make, and headUtime the masterchain head's gen_utime; each byInBody answer also names the gen_utime of a masterchain block through which its index holds every block, indexedUtime where the row gives it and the row's headUtime where it does not; inBody is a BoC in hex. Status counts only the payer Jetton wallet's transaction that took the message the payer's W5 wallet emitted in a transaction with the request: W5 checks the request's signature before any action runs (wallet_v5.fc). W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal request that aborts leaves its seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before valid_until: a lookup that finds no transaction with the request, or only aborted ones, shows that the request never executes only when its index holds every block through the head read first. An internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -389,18 +389,20 @@
     }
    },
    {
-    "case": "nothing found, headUtime 1790000060 (at validUntil)",
+    "case": "nothing found, the lookup's index at the head read first, headUtime 1790000060 (at validUntil)",
     "byInBodyRequest": [],
     "headUtime": 1790000060,
+    "indexedUtime": 1790000060,
     "expect": {
      "state": "pending",
      "why": "not-found"
     }
    },
    {
-    "case": "nothing found, headUtime 1790000061 (past validUntil)",
+    "case": "nothing found, the lookup's index at the head read first, headUtime 1790000061 (past validUntil)",
     "byInBodyRequest": [],
     "headUtime": 1790000061,
+    "indexedUtime": 1790000061,
     "expect": {
      "state": "failed",
      "why": "expired"
@@ -545,6 +547,35 @@
     "expect": {
      "state": "pending",
      "why": "unreadable"
+    }
+   },
+   {
+    "case": "nothing found, headUtime 1790000200, the lookup's index at 1790000040",
+    "byInBodyRequest": [],
+    "headUtime": 1790000200,
+    "indexedUtime": 1790000040,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000200, the lookup's index at 1790000040",
+    "byInBodyRequest": [
+     {
+      "hash": "tx-w5",
+      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+      "aborted": true,
+      "finality": 2,
+      "inBody": null,
+      "outMsgs": []
+     }
+    ],
+    "headUtime": 1790000200,
+    "indexedUtime": 1790000040,
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
     }
    }
   ],

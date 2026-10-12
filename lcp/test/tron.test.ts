@@ -53,16 +53,23 @@ const choice = () => ({
   feeLimit: BigInt(V.fixed.feeLimit),
 });
 
-type Answer = { blockNumber: string; result: string; logs: TronInfo["logs"] } | null | "reader-error";
+type NotFound = { notFound: true; timestamp: bigint };
+type Answer =
+  | { blockNumber: string; result: string; logs: TronInfo["logs"] }
+  | { notFound: true; timestamp: string }
+  | null
+  | "reader-error";
+/** A reader answering the row's fixtures; null, an answer status does not read, is passed through as given. */
 function readerFor(a: {
   solid?: Answer;
   head?: Answer;
   solidHead?: { number: string; timestamp: string } | null;
   rawDataHex?: string | null;
 }): TronReader {
-  const info = (x: Answer | undefined): TronInfo | null => {
+  const info = (x: Answer | undefined): TronInfo | NotFound => {
     if (x === "reader-error") throw new ReaderError("transport");
-    if (x === null || x === undefined) return null;
+    if (x === null || x === undefined) return null as never;
+    if ("notFound" in x) return { notFound: true, timestamp: BigInt(x.timestamp) };
     return { blockNumber: BigInt(x.blockNumber), result: x.result, logs: x.logs };
   };
   return {
@@ -232,8 +239,9 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
 
   // A java-tron node accepts a transaction only while its expiration is after the head block's time
   // (Manager.validateCommon: `transactionExpiration <= headBlockTime` throws TransactionExpirationException), so a
-  // transaction included in a block timed before its expiration can never read as `expired`. The reader below answers from a chain that advances between calls, as a
-  // node catching up or a FullNode and a SolidityNode at different heights do.
+  // transaction included in a block timed before its expiration can never read as `expired`. The reader below answers
+  // from a chain that advances between calls, as a node catching up or a FullNode and a SolidityNode at different
+  // heights do; a lookup that finds nothing names the time of the latest block at its level.
   it("the solid head is read before the lookups, so a transaction landing between reads is never expired", async () => {
     const expiration = BigInt(REF.expiration);
     const txBlock = 1000n;
@@ -249,7 +257,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
             calls.push(`info:${level}`);
             const top = level === "solid" ? head - 19n : head;
             head += step;
-            return top >= txBlock ? found : null;
+            return top >= txBlock ? found : { notFound: true, timestamp: blockTime(top) };
           },
           transaction: async () => null,
           solidHead: async () => {
@@ -266,12 +274,65 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     }
   });
 
+  // The same rule read across two nodes: the solid head comes from a node that has seen the block holding the
+  // transaction, the lookups from nodes that have not. Each lookup names the latest block time at its level on the
+  // node that answered (/walletsolidity/getnowblock, /wallet/getnowblock), so absence is shown only through that time.
+  it("a lookup whose node lags the solid head read first is pending, never expired", async () => {
+    const expiration = BigInt(REF.expiration);
+    const found: TronInfo = { blockNumber: 86542790n, result: "SUCCESS", logs: V.V4.status[0].solid.logs };
+    const txTime = expiration - 3000n;
+    const ahead = expiration + 9000n;
+    for (const solidAt of [expiration - 6000n, txTime - 1n, txTime, ahead]) {
+      for (const headAt of [expiration - 6000n, txTime - 1n, txTime, ahead]) {
+        const reader: TronReader = {
+          network: REF.network,
+          solidHead: async () => ({ number: 86542804n, timestamp: ahead }),
+          info: async (_txid, level) => {
+            const at = level === "solid" ? solidAt : headAt;
+            return at >= txTime ? found : { notFound: true, timestamp: at };
+          },
+          transaction: async () => null,
+        };
+        const got = await exactTronMemo.status(REF, reader);
+        const want = solidAt >= txTime || headAt >= txTime ? "settled" : "pending";
+        expect([solidAt, headAt, got.state]).toEqual([solidAt, headAt, want]);
+      }
+    }
+  });
+
   it("a failed or malformed solid-head read leaves a found transaction settled and a missing one unreadable", async () => {
     const solid = V.V4.status[0].solid;
+    const nowhere = { notFound: true as const, timestamp: "1790300730000" };
     expect(plain(await exactTronMemo.status(REF, readerFor({ solid })))).toEqual(V.V4.status[0].expect);
-    const malformed = { ...readerFor({}), solidHead: async () => ({ number: 1n, timestamp: "1790300730000" }) as never };
+    const missing = readerFor({ solid: nowhere, head: nowhere });
+    const malformed = { ...missing, solidHead: async () => ({ number: 1n, timestamp: "1790300730000" }) as never };
     expect(await exactTronMemo.status(REF, malformed)).toEqual({ state: "pending", why: "unreadable" });
-    expect(await exactTronMemo.status(REF, readerFor({}))).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactTronMemo.status(REF, missing)).toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  it("a lookup answer of no documented shape is pending unreadable, and a not-found naming no time pending not-found", async () => {
+    const solidHead = { number: "86542801", timestamp: "1790300730000" };
+    expect(await exactTronMemo.status(REF, readerFor({ solid: null, head: null, solidHead }))).toEqual({
+      state: "pending",
+      why: "unreadable",
+    });
+    const unnamed = { ...readerFor({ solidHead }), info: async () => ({ notFound: true }) as never };
+    expect(await exactTronMemo.status(REF, unnamed)).toEqual({ state: "pending", why: "not-found" });
+  });
+
+  // java-tron's gettransactioninfobyid answers {} for a transaction the node does not know, naming no block time
+  // (GetTransactionInfoByIdServlet), so a reader takes the time from a second call, which a load-balanced endpoint can
+  // send to another node. A reader that cannot read the time from the node that answered names none.
+  it("a lookup naming a null block time is pending not-found, never expired", async () => {
+    const head = BigInt(REF.expiration) + 9000n;
+    const lookup = (timestamp: bigint | null): TronReader => ({
+      network: REF.network,
+      solidHead: async () => ({ number: 86542804n, timestamp: head }),
+      info: async () => ({ notFound: true, timestamp }),
+      transaction: async () => null,
+    });
+    expect(await exactTronMemo.status(REF, lookup(null))).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactTronMemo.status(REF, lookup(head))).toEqual({ state: "failed", why: "expired" });
   });
 
   it("a network mismatch is pending for status and wrong-reader for recover", async () => {

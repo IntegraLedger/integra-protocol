@@ -309,7 +309,7 @@ describe("mpp-charge-stellar.json", () => {
     const reader: StellarReader = {
       network: "stellar:testnet",
       transaction: async () => ({ status: "SUCCESS", envelopeXdr: V.V3.envelope, ledger: 990, oldestLedger: 1 }),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
       latestLedger: async () => 1000,
     } as StellarReader;
     const fetched = await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader);
@@ -325,7 +325,7 @@ describe("mpp-charge-stellar.json", () => {
     const reader: StellarReader = {
       network: "stellar:testnet",
       transaction: async () => ({ status: "SUCCESS", envelopeXdr: row.envelope, ledger: 990, oldestLedger: 1 }),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 995 }),
       latestLedger: async () => 995,
     };
     const fetched = await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader);
@@ -354,7 +354,7 @@ describe("mpp-charge-stellar.json", () => {
               oldestLedger: 1,
             }
           : { status: "NOT_FOUND", oldestLedger: 1 },
-      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: latest }),
       latestLedger: async () => latest,
     });
 
@@ -403,7 +403,12 @@ describe("mpp-charge-stellar.json", () => {
       const sourceLanded = { status: "SUCCESS", envelope: S.envelope, ledger: 990 };
       const listing: StellarReader = {
         ...readerOf(S.hash, sourceLanded),
-        transfers: async () => ({ events: [{ txHash: S.hash, toMuxedId: BigInt(named.toId) }], complete: true, oldestLedger: 0 }),
+        transfers: async () => ({
+          events: [{ txHash: S.hash, toMuxedId: BigInt(named.toId) }],
+          complete: true,
+          oldestLedger: 0,
+          latestLedger: 995,
+        }),
       };
       expect(await stellarLocate(named, listing)).toEqual(S.expectLocate);
       expect(await chargeStellar.status(XST.V5.ref, readerOf(XST.V5.ref.transaction, sourceLanded, 995))).toEqual({
@@ -443,7 +448,7 @@ describe("mpp-charge-stellar.json", () => {
     const reader: StellarReader = {
       network: "stellar:testnet",
       transaction: async () => ({ status: "FAILED", envelopeXdr: V.V3.envelope, ledger: 990, oldestLedger: 1 }),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
       latestLedger: async () => 1000,
     } as StellarReader;
     expect(await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader)).toEqual(refused(row.expect));

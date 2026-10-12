@@ -36,7 +36,7 @@ type EntryRef = StellarRef & { transaction: string; authDigest: `0x${string}`; e
 type Answer = { status: string; envelope?: string; ledger?: number };
 type Row = Answer & {
   latestLedger?: number;
-  transfers?: { events: { txHash: string }[]; complete: boolean };
+  transfers?: { events: { txHash: string }[]; complete: boolean; latestLedger?: number };
   candidate?: Answer;
 };
 
@@ -50,7 +50,8 @@ function envelopeOf(e: string | undefined): string | undefined {
 /**
  * A reader answering `getTransaction` with the row's answer (a listed transaction with the row's candidate),
  * `getLatestLedger` with the row's latest ledger (2000 when unset), and one page of the row's transfer events, each
- * carrying V1's muxed id (none, complete, when unset).
+ * carrying V1's muxed id (none, complete, when unset), computed at the row's events ledger (its latest ledger when
+ * unset).
  */
 function readerFor(row: Row): StellarReader {
   const answer = (a: Answer) => {
@@ -71,6 +72,7 @@ function readerFor(row: Row): StellarReader {
       events: (row.transfers?.events ?? []).map((e) => ({ txHash: e.txHash, toMuxedId: BigInt(V.V1.muxedId) })),
       complete: row.transfers?.complete ?? true,
       oldestLedger: f.fromLedger,
+      latestLedger: row.transfers?.latestLedger ?? row.latestLedger ?? 2000,
     }),
     latestLedger: async () => row.latestLedger ?? 2000,
   };
@@ -156,29 +158,66 @@ describe("x402-exact-stellar.json", () => {
 
   it("V5: status and stellarLocate", async () => {
     const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    for (const row of V.V5.rows) expect(await stellarStatus(ref, readerFor(row)), row.case).toEqual(row.expect);
+    for (const row of V.V5.rows) {
+      expect(await stellarStatus(ref, readerFor(row)), row.case).toEqual(row.expect);
+      if (row.expectLocate !== undefined) expect(await stellarLocate(ref, readerFor(row)), row.case).toEqual(row.expectLocate);
+    }
     const disabled: StellarReader = {
       ...readerFor(V.V5.rows[0]),
-      transfers: async () => ({ events: [], complete: false, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: false, oldestLedger: 1, latestLedger: 1001 }),
     };
     expect(await stellarLocate(ref, disabled)).toEqual(V.V5.locateEventsDisabled.expect);
     const retention: StellarReader = {
       ...readerFor(V.V5.rows[0]),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger + 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger + 1, latestLedger: 1001 }),
     };
     expect(await stellarLocate(ref, retention)).toEqual(V.V5.locateOldestAboveFrom.expect);
-    const held: StellarReader = {
+    const behind: StellarReader = {
       ...readerFor(V.V5.rows[0]),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger, latestLedger: 999 }),
     };
-    expect(await stellarLocate(ref, held)).toEqual({ complete: true });
+    expect(await stellarLocate(ref, behind)).toEqual(V.V5.locateLatestBelowExpiration.expect);
+    for (const latestLedger of [1000, 1001]) {
+      const held: StellarReader = {
+        ...readerFor(V.V5.rows[0]),
+        transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger, latestLedger }),
+      };
+      expect(await stellarLocate(ref, held)).toEqual({ complete: true });
+    }
     for (const row of [V.V5.locateCandidateNotReadable, V.V5.locateCandidateNotThisInstrument]) {
       const listed: StellarReader = {
         ...readerFor({ status: row.status, ...(row.envelope === "plant" ? { envelope: V.plant.envelope, ledger: 990 } : {}) }),
-        transfers: async () => ({ events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }], complete: true, oldestLedger: ref.fromLedger }),
+        transfers: async () => ({
+          events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }],
+          complete: true,
+          oldestLedger: ref.fromLedger,
+          latestLedger: 1001,
+        }),
       };
       expect(await stellarLocate(ref, listed), row.case).toEqual(row.expect);
     }
+  });
+
+  // Stellar RPC's getEvents answers with latestLedger, the latest ledger the RPC held when it answered. A search whose
+  // events index stands below the ledger getLatestLedger gave first cannot show the entry unused through that ledger,
+  // so the payment stays pending until the index has caught up.
+  it("V5: a search whose events index lags the ledger read first is pending, never expired", async () => {
+    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
+    const nowhere = { status: "NOT_FOUND", latestLedger: 1001, transfers: { events: [], complete: true } };
+    for (const [indexed, want] of [
+      [990, { state: "pending", why: "not-found" }],
+      [1000, { state: "pending", why: "not-found" }],
+      [1001, { state: "failed", why: "expired" }],
+      [1002, { state: "failed", why: "expired" }],
+    ] as const) {
+      const reader = readerFor({ ...nowhere, transfers: { ...nowhere.transfers, latestLedger: indexed } });
+      expect([indexed, await stellarStatus(ref, reader)]).toEqual([indexed, want]);
+    }
+    const unnamed: StellarReader = {
+      ...readerFor(nowhere),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }) as never,
+    };
+    expect(await stellarStatus(ref, unnamed)).toEqual({ state: "pending", why: "not-found" });
   });
 
   it("V5 rebuilt: V3's signed entry in another transaction is the same instrument", () => {
@@ -230,7 +269,12 @@ describe("x402-exact-stellar.json", () => {
       const listed: StellarReader = {
         ...readerFor({ status: "NOT_FOUND" }),
         transaction: async (hash) => (hash === "bb".repeat(32) ? readerFor(row).transaction(hash) : { status: "NOT_FOUND", oldestLedger: 1 }),
-        transfers: async () => ({ events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }], complete: true, oldestLedger: ref.fromLedger }),
+        transfers: async () => ({
+          events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }],
+          complete: true,
+          oldestLedger: ref.fromLedger,
+          latestLedger: 1001,
+        }),
       };
       expect(await stellarLocate(ref, listed)).toEqual({ found: "bb".repeat(32), complete: true });
       const code = V.agreedRefusals.rows[3].expect;
@@ -340,7 +384,7 @@ describe("x402-exact-stellar.json", () => {
           const last = inclusive ? f.toLedger : f.toLedger - 1;
           const r = getEvents(landedIn, latest, f.cursor !== undefined ? { cursor: f.cursor } : { startLedger: f.fromLedger, endLedger: last + 1 });
           const events = r.events.filter((e) => e.ledger <= last).map(({ txHash, toMuxedId }) => ({ txHash, toMuxedId }));
-          return { events, ...(Number(r.cursor) < last ? { cursor: r.cursor } : {}), complete: true, oldestLedger: 1 };
+          return { events, ...(Number(r.cursor) < last ? { cursor: r.cursor } : {}), complete: true, oldestLedger: 1, latestLedger: latest };
         },
         latestLedger: async () => latest,
       };

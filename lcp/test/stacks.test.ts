@@ -190,9 +190,9 @@ type Row = {
   status?: string;
   senderNonce?: string;
   memo?: string;
-  tx?: null | "reader-error" | { mined: false; status: string };
+  tx?: "reader-error" | { mined: false; status: string } | { notFound: true; height: string };
   txAnswer?: unknown;
-  confirmedNonce?: string | null | "reader-error" | "number";
+  confirmedNonce?: { nonce: string | null; height: string } | "reader-error" | "number";
   readerNetwork?: string;
   expect: unknown;
 };
@@ -210,8 +210,10 @@ function landed(row: Partial<Row>): StacksLanded {
   };
 }
 
+type NotFound = { notFound: true; height: bigint };
+
 /** A `txAnswer` as the reader returns it: a mined answer's decimal-string integers read as bigints. */
-function answer(v: unknown): StacksLanded | StacksMempool | null {
+function answer(v: unknown): StacksLanded | StacksMempool | NotFound {
   if (typeof v !== "object" || v === null || (v as { mined?: unknown }).mined !== true) return v as StacksMempool;
   const o = { ...(v as Record<string, unknown>) };
   if (typeof o["blockHeight"] === "string") o["blockHeight"] = BigInt(o["blockHeight"]);
@@ -225,11 +227,12 @@ function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: st
     calls: 0,
     order: [] as string[],
     network: (row.readerNetwork ?? F.network) as StacksReader["network"],
-    async transaction(): Promise<StacksLanded | StacksMempool | null> {
+    async transaction(): Promise<StacksLanded | StacksMempool | NotFound> {
       r.calls++;
       r.order.push("transaction");
       if (row.txAnswer !== undefined) return answer(row.txAnswer);
       if (row.tx === "reader-error") throw new ReaderError("transport");
+      if (row.tx !== undefined && "notFound" in row.tx) return { notFound: true, height: BigInt(row.tx.height) };
       if (row.tx !== undefined) return row.tx;
       return landed(row);
     },
@@ -248,8 +251,9 @@ function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: st
       r.order.push("confirmedNonce");
       const n = row.confirmedNonce;
       if (n === "reader-error") throw new ReaderError("transport");
-      if (n === "number") return 0 as unknown as bigint;
-      return n === null || n === undefined ? null : BigInt(n);
+      if (n === "number") return { nonce: 0 as unknown as bigint, height: 9021840n };
+      if (n === undefined) return { nonce: null, height: 9021840n };
+      return { nonce: n.nonce === null ? null : BigInt(n.nonce), height: BigInt(n.height) };
     },
   };
   return r;
@@ -278,20 +282,22 @@ describe("usdc/stacks status and recover (M4b)", () => {
 
   // A nonce the origin's account has confirmed at or above the transaction's means the transaction can never be
   // mined (SIP-005: a transaction's nonce must equal its origin's next nonce). The reader below answers from an API
-  // at which the transaction is mined, and the origin's nonce confirmed, between the two reads.
+  // at which the transaction is mined, and the origin's nonce confirmed, between the two reads; each answer names the
+  // API's chain-tip height, one block higher with every read.
   it("the confirmed nonce is read before the transaction, so a transaction mined between reads is never nonce-used", async () => {
     for (const minedAt of [0, 1, 2]) {
       let reads = 0;
       const mined = () => reads > minedAt;
+      const height = () => 9021831n + BigInt(reads);
       const reader: StacksReader = {
         network: F.network as StacksReader["network"],
         async confirmedNonce() {
-          const n = mined() ? 0n : null;
+          const n = { nonce: mined() ? 0n : null, height: height() };
           reads++;
           return n;
         },
         async transaction() {
-          const t = mined() ? landed({}) : null;
+          const t = mined() ? landed({}) : { notFound: true as const, height: height() };
           reads++;
           return t;
         },
@@ -305,6 +311,83 @@ describe("usdc/stacks status and recover (M4b)", () => {
       const got = await stacksStatus(ref, reader);
       expect([minedAt, got.state]).not.toEqual([minedAt, "failed"]);
     }
+  });
+
+  // The same rule read across two APIs: the confirmed nonce from one whose tip has the block that mined the
+  // transaction (9021832), the lookup from one whose tip does not yet. Each answer names its API's chain-tip height,
+  // so an empty lookup shows the transaction unmined only up to that height.
+  it("a lookup from an API behind the nonce read is pending, and nonce-used waits for one that has caught up", async () => {
+    const minedAt = BigInt(V.M4b.L.blockHeight);
+    const nonceAt = minedAt + 8n;
+    const readerAt = (lookupAt: bigint, ours: boolean): StacksReader => ({
+      ...readerFor({ tip: "256358" }),
+      confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
+      transaction: async () => (ours && lookupAt >= minedAt ? landed({}) : { notFound: true, height: lookupAt }),
+    });
+    for (const lookupAt of [minedAt - 2n, minedAt - 1n, minedAt, nonceAt - 1n, nonceAt, nonceAt + 1n]) {
+      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true)));
+      const want = lookupAt >= minedAt ? { state: "settled", finality: "bitcoin", blockHeight: minedAt.toString() } : { state: "pending", why: "not-found" };
+      expect([lookupAt.toString(), got]).toEqual([lookupAt.toString(), want]);
+      const other = await stacksStatus(ref, readerAt(lookupAt, false));
+      const spent = lookupAt >= nonceAt ? { state: "failed", why: "nonce-used", finality: "block" } : { state: "pending", why: "not-found" };
+      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), spent]);
+    }
+    const unnamed = { ...readerAt(nonceAt, false), transaction: async () => ({ notFound: true }) as never };
+    expect(await stacksStatus(ref, unnamed)).toEqual({ state: "pending", why: "not-found" });
+    const bare = { ...readerAt(nonceAt, false), transaction: async () => null as never };
+    expect(await stacksStatus(ref, bare)).toEqual({ state: "pending", why: "unreadable" });
+    const oldNonce = { ...readerAt(nonceAt, false), confirmedNonce: async () => 0n as never };
+    expect(await stacksStatus(ref, oldNonce)).toEqual({ state: "pending", why: "unreadable" });
+    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    expect(await stacksRecover(r, readerAt(nonceAt, false))).toEqual({ refused: true, code: "stacks/not-found" });
+    expect(await stacksRecover(r, bare)).toEqual({ refused: true, code: "stacks/unreadable" });
+  });
+
+  // A block can land between a reader's two calls to one node. The nonce read's height is read after the nonce
+  // (GET /extended's chain_tip.block_height), so the nonce read is at or below it, and a lookup's height before the
+  // lookup, so the lookup is at or above it. Below, block 9021832 mines the transaction, confirming the origin's nonce
+  // 0, just before the nonce call or between that call and its height read; the lookup comes from a node one block
+  // behind.
+  it("a nonce read's height read after the nonce keeps a lookup one block behind pending", async () => {
+    const minedAt = BigInt(V.M4b.L.blockHeight);
+    for (const landsAt of [0, 1]) {
+      let tip = minedAt - 1n;
+      let step = 0;
+      const advance = () => {
+        if (step++ === landsAt) tip = minedAt;
+      };
+      const reader: StacksReader = {
+        ...readerFor({ tip: "256358" }),
+        async confirmedNonce() {
+          advance();
+          const nonce = tip >= minedAt ? 0n : null;
+          advance();
+          return { nonce, height: tip };
+        },
+        transaction: async () => ({ notFound: true, height: minedAt - 1n }),
+      };
+      expect([landsAt, await stacksStatus(ref, reader)]).toEqual([landsAt, { state: "pending", why: "not-found" }]);
+    }
+  });
+
+  // The Stacks Blockchain API's 404 for an unknown transaction and its nonces answer name no height, so a reader takes
+  // the height from a second call (/extended), which a load-balanced endpoint can send to another node. A reader that
+  // cannot read the height from the node that answered names none: an unknown transaction then never reads nonce-used,
+  // and a dropped one reads it from the confirmed nonce alone.
+  it("a lookup or nonce read naming a null height leaves an unknown transaction pending not-found", async () => {
+    const at = 9021840n;
+    const readerWith = (nonceAt: bigint | null, lookup: { notFound: true; height: bigint | null } | StacksMempool): StacksReader => ({
+      ...readerFor({ tip: "256358" }),
+      confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
+      transaction: async () => lookup,
+    });
+    const spent = { state: "failed", why: "nonce-used", finality: "block" };
+    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: null }))).toEqual({ state: "pending", why: "not-found" });
+    expect(await stacksStatus(ref, readerWith(null, { notFound: true, height: at }))).toEqual({ state: "pending", why: "not-found" });
+    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: at }))).toEqual(spent);
+    expect(await stacksStatus(ref, readerWith(null, { mined: false, status: "dropped_stale_garbage_collect" }))).toEqual(spent);
+    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    expect(await stacksRecover(r, readerWith(at, { notFound: true, height: null }))).toEqual({ refused: true, code: "stacks/not-found" });
   });
 
   it("plant: a post-condition abort is failed, never settled, and recover refuses it", async () => {

@@ -40,6 +40,16 @@ export function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+/**
+ * Reads a reader's not-found answer, `{ notFound: true, [key]: point }`, where the point is how far the answering
+ * source had read: undefined when `v` is not a not-found answer, else its point, or null when it names none.
+ */
+export function notFoundPoint(v: unknown, key: string): bigint | null | undefined {
+  if (!isObject(v) || v["notFound"] !== true) return undefined;
+  const point = v[key];
+  return typeof point === "bigint" ? point : null;
+}
+
 /** Freezes `v` and everything reachable from it. */
 export function deepFreeze<T>(v: T): T {
   if (typeof v === "object" && v !== null) {

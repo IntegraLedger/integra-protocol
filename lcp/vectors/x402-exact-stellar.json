@@ -357,7 +357,7 @@
   }
  ],
  "V5": {
-  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists; a listed transaction bbbb… reads as candidate. The Soroban host tries a transaction's authorization entries in order, skips one whose address or root invocation does not match, and authenticates the first that matches (rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing), so a landed transaction is read by the payer's first address-credential entry whose rootInvocation is the operation's transfer with no sub-invocations, and another entry of the payer in the same transaction is not read.",
+  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. getEvents answers with the latest ledger the RPC held (Stellar RPC getEvents: latestLedger), so a search shows the entry unused only through that ledger: it counts as complete for status only when each events answer names a latestLedger at or above the one getLatestLedger gave first, and for stellarLocate at or above the expiration ledger (locateLatestBelowExpiration: 999). A listed transaction that used the entry is on the chain whatever ledger the events answer names, so it settles the read on any page; a row's expectLocate is stellarLocate's answer over the same reader. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists with their latestLedger; a listed transaction bbbb… reads as candidate. The Soroban host tries a transaction's authorization entries in order, skips one whose address or root invocation does not match, and authenticates the first that matches (rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing), so a landed transaction is read by the payer's first address-credential entry whose rootInvocation is the operation's transfer with no sub-invocations, and another entry of the payer in the same transaction is not read.",
   "ref": {
    "network": "stellar:testnet",
    "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -395,7 +395,8 @@
     "latestLedger": 1001,
     "transfers": {
      "events": [],
-     "complete": true
+     "complete": true,
+     "latestLedger": 1001
     },
     "expect": {
      "state": "failed",
@@ -408,7 +409,8 @@
     "latestLedger": 1001,
     "transfers": {
      "events": [],
-     "complete": false
+     "complete": false,
+     "latestLedger": 1001
     },
     "expect": {
      "state": "pending",
@@ -425,7 +427,8 @@
        "txHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
      ],
-     "complete": true
+     "complete": true,
+     "latestLedger": 1001
     },
     "candidate": {
      "status": "SUCCESS",
@@ -456,7 +459,8 @@
     "latestLedger": 1001,
     "transfers": {
      "events": [],
-     "complete": true
+     "complete": true,
+     "latestLedger": 1001
     },
     "expect": {
      "state": "failed",
@@ -478,7 +482,8 @@
     "latestLedger": 1001,
     "transfers": {
      "events": [],
-     "complete": true
+     "complete": true,
+     "latestLedger": 1001
     },
     "expect": {
      "state": "failed",
@@ -503,6 +508,47 @@
      "state": "settled",
      "ledger": 990
     }
+   },
+   {
+    "case": "the named transaction is not found; past the expiration ledger, the search is complete and lists nothing, its events answer computed at ledger 990, before the ledger read first (1001)",
+    "status": "NOT_FOUND",
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [],
+     "complete": true,
+     "latestLedger": 990
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "the named transaction is not found; past the expiration ledger, the search lists the rebuilt transaction, which succeeded at ledger 995, its events answer computed at ledger 998, before the ledger read first (1001) and the expiration ledger",
+    "status": "NOT_FOUND",
+    "latestLedger": 1001,
+    "transfers": {
+     "events": [
+      {
+       "txHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+     ],
+     "complete": true,
+     "latestLedger": 998
+    },
+    "candidate": {
+     "status": "SUCCESS",
+     "envelope": "rebuilt",
+     "ledger": 995
+    },
+    "expect": {
+     "state": "settled",
+     "ledger": 995
+    },
+    "expectLocate": {
+     "found": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "complete": true
+    }
    }
   ],
   "rebuilt": {
@@ -515,6 +561,11 @@
    }
   },
   "locateOldestAboveFrom": {
+   "expect": {
+    "complete": false
+   }
+  },
+  "locateLatestBelowExpiration": {
    "expect": {
     "complete": false
    }

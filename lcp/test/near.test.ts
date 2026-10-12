@@ -46,7 +46,7 @@ type Fixture = {
 function readerFor(a: {
   outcome?: Fixture | null | "reader-error";
   finalHeight?: string;
-  keyNonce?: string | null;
+  keyNonce?: { nonce: string; blockHeight: string } | null;
   relayers?: string[];
 }): NearReader {
   return {
@@ -59,7 +59,10 @@ function readerFor(a: {
       return { ...a.outcome, delegate: d === null ? null : { ...d, nonce: BigInt(d.nonce) } };
     },
     finalHeight: async () => BigInt(a.finalHeight ?? "0"),
-    accessKeyNonce: async () => (a.keyNonce === null || a.keyNonce === undefined ? null : BigInt(a.keyNonce)),
+    accessKeyNonce: async () =>
+      a.keyNonce === null || a.keyNonce === undefined
+        ? null
+        : { nonce: BigInt(a.keyNonce.nonce), blockHeight: BigInt(a.keyNonce.blockHeight) },
   };
 }
 const REF: NearRef & { transaction: string } = V.V3.ref;
@@ -142,6 +145,26 @@ describe("x402-exact-near.json", () => {
       const got = await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
+  });
+
+  // view_access_key at finality "final" answers the key's nonce with the block_height it read it at (nearcore RPC). A
+  // delegate action executes only while the block height is at most maxBlockHeight and its nonce is above the key's, so
+  // a key read below the final height read first cannot show that the delegate never executed: the read lags.
+  it("V3: a key read below the final height read first is never a lapse", async () => {
+    const final = 200000061n;
+    for (const [at, want] of [
+      [200000050n, false],
+      [200000060n, false],
+      [final, true],
+      [final + 5n, true],
+    ] as const) {
+      const reader = { ...readerFor({ finalHeight: final.toString() }), accessKeyNonce: async () => ({ nonce: 100n, blockHeight: at }) };
+      expect([at, await nearLapsed(REF, reader)]).toEqual([at, want]);
+    }
+    const bare = { ...readerFor({ finalHeight: final.toString() }), accessKeyNonce: async () => 100n as never };
+    expect(await nearLapsed(REF, bare)).toBe(false);
+    const unnamed = { ...readerFor({ finalHeight: final.toString() }), accessKeyNonce: async () => ({ nonce: 100n }) as never };
+    expect(await nearLapsed(REF, unnamed)).toBe(false);
   });
 
   // The ref's argsDigest is a 32-byte hash compared as bytes, as hashEquals compares hashes; a ref without one cannot

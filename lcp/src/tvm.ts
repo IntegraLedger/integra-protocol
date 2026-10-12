@@ -66,8 +66,14 @@ export interface TonTx {
 /** Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects with `ReaderError`. */
 export interface TvmReader {
   readonly network: TvmNetwork;
-  /** GET /api/v3/transactionsByMessage?body_hash=…&direction=in */
-  byInBody(bodyHash: Hex): Promise<readonly TonTx[]>;
+  /**
+   * GET /api/v3/transactionsByMessage?body_hash=…&direction=in, with `headUtime`: the `gen_utime` of a masterchain
+   * block through which the index that answered holds every block, read from that same index before the lookup, or null
+   * when the reader cannot read it from that index. `masterchainInfo`'s `last` can be ahead of an earlier block the
+   * index has not finished writing, so on its own it does not name such a block. A lookup naming no time never reads
+   * `expired` or `aborted`.
+   */
+  byInBody(bodyHash: Hex): Promise<{ transactions: readonly TonTx[]; headUtime: number | null }>;
   /** GET /api/v3/transactionsByMessage?msg_hash=…&direction=in */
   byInMessage(msgHash: string): Promise<readonly TonTx[]>;
   /** GET /api/v3/transactions?hash=… */
@@ -325,11 +331,14 @@ function sendMessage(actions: Cell): Cell | Refusal {
  * any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
  * Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
  * emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
- * pending `not-found` up to `validUntil`; past it, failed `expired` when the W5 wallet holds no transaction with the
- * request, `no-transfer` when one executed and emitted nothing, `aborted` when every one aborted. The payer's Jetton
- * wallet's transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an
- * aborted delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed
- * read, a malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
+ * pending `not-found` up to `validUntil`; past it, failed `no-transfer` when one executed and emitted nothing, and
+ * failed `expired` when the W5 wallet holds no transaction with the request, or `aborted` when every one aborted, only
+ * when the lookup names an indexed time at or past the head read first: an internal request that aborts leaves its
+ * seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
+ * `validUntil`, and an index that lags that head, or names no time, is pending `not-found`. The payer's Jetton wallet's
+ * transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted
+ * delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed read, a
+ * malformed reference, or a reader for another network is pending `unreadable`. At most four calls.
  */
 export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -340,7 +349,7 @@ export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStat
   const head = await headTime(reader);
   const w5 = await transactionsOn(reader, ref.requestBodyHash, ref.wallet);
   if (w5 === null) return unreadable;
-  const transfer = w5
+  const transfer = w5.transactions
     .filter((t) => !t.aborted)
     .flatMap((t) => t.outMsgs)
     .find((m) => m.opcode === OP.jettonTransfer);
@@ -364,12 +373,17 @@ export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStat
   return { state: "pending", why: "not-final" };
 }
 
-/** The status while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides. */
-function unsent(ref: TvmRef, w5: readonly TonTx[], head: number | null): TvmStatus {
+/**
+ * The status while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides, and a
+ * lookup that finds none, or only aborted ones, counts only when its index holds every block through that head.
+ */
+function unsent(ref: TvmRef, w5: OnAccount, head: number | null): TvmStatus {
   if (head === null) return { state: "pending", why: "unreadable" };
   if (head <= ref.validUntil) return { state: "pending", why: "not-found" };
-  if (w5.length === 0) return { state: "failed", why: "expired" };
-  return w5.some((t) => !t.aborted) ? { state: "failed", why: "no-transfer" } : { state: "failed", why: "aborted" };
+  if (w5.transactions.some((t) => !t.aborted)) return { state: "failed", why: "no-transfer" };
+  const covered = w5.headUtime !== null && w5.headUtime >= head;
+  if (!covered) return { state: "pending", why: "not-found" };
+  return w5.transactions.length === 0 ? { state: "failed", why: "expired" } : { state: "failed", why: "aborted" };
 }
 
 /** The transactions that took this message, or null when the read fails or its answer is malformed. */
@@ -394,16 +408,27 @@ async function headTime(reader: TvmReader): Promise<number | null> {
   return Number.isSafeInteger(head) ? (head as number) : null;
 }
 
+/** A lookup's transactions on one account, with the time through which its index holds every block (null: none). */
+interface OnAccount {
+  transactions: TonTx[];
+  headUtime: number | null;
+}
+
 /** The transactions with this inbound body on `account`, or null when the read fails or its answer is malformed. */
-async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string): Promise<TonTx[] | null> {
-  let found: readonly TonTx[];
+async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string): Promise<OnAccount | null> {
+  let found: unknown;
   try {
     found = await reader.byInBody(bodyHash);
   } catch {
     return null;
   }
-  if (!Array.isArray(found) || !found.every(isTonTx)) return null;
-  return found.filter((t) => sameAccount(t.account, account));
+  if (!isObject(found)) return null;
+  const { transactions, headUtime } = found;
+  if (!Array.isArray(transactions) || !transactions.every(isTonTx)) return null;
+  return {
+    transactions: transactions.filter((t) => sameAccount(t.account, account)),
+    headUtime: Number.isSafeInteger(headUtime) ? (headUtime as number) : null,
+  };
 }
 
 /** Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. One call. */

@@ -45,6 +45,7 @@ function readerFor(a: {
   byInBodyRequest?: Fixture[] | "reader-error";
   byInMessage?: Record<string, Fixture[] | "reader-error">;
   headUtime?: number;
+  indexedUtime?: number;
   inBodyHex?: string;
   byHash?: "reader-error";
 }): TvmReader {
@@ -54,7 +55,7 @@ function readerFor(a: {
     byInBody: async (bodyHash) => {
       const answer = bodyHash === V.V4.ref.requestBodyHash ? a.byInBodyRequest : a.byInBody;
       if (answer === "reader-error") throw new ReaderError("transport");
-      return (answer ?? []).map(tx);
+      return { transactions: (answer ?? []).map(tx), headUtime: (a.indexedUtime ?? a.headUtime) as number };
     },
     byInMessage: async (msgHash) => {
       const answer = a.byInMessage?.[msgHash];
@@ -277,10 +278,12 @@ describe("x402-exact-tvm.json", () => {
       const reader: TvmReader = {
         network: ref.network,
         headUtime: async () => head,
-        byInBody: async (bodyHash) =>
-          (bodyHash === ref.transferBodyHash ? landed["msg-jetton-transfer"]! : bodyHash === ref.requestBodyHash ? w5 : []).map(
-            (f) => ({ ...f, inBody: null }),
-          ),
+        byInBody: async (bodyHash) => ({
+          transactions: (
+            bodyHash === ref.transferBodyHash ? landed["msg-jetton-transfer"]! : bodyHash === ref.requestBodyHash ? w5 : []
+          ).map((f) => ({ ...f, inBody: null })),
+          headUtime: head,
+        }),
         byInMessage: async (msgHash) => (landed[msgHash] ?? []).map((f) => ({ ...f, inBody: null })),
         byHash: async () => null,
       };
@@ -311,7 +314,8 @@ describe("x402-exact-tvm.json", () => {
           const reader: TvmReader = {
             network: REF.network,
             headUtime: async () => tick("head", now),
-            byInBody: async (bodyHash) => tick("request", bodyHash === REF.requestBodyHash && now >= executed ? [request] : []),
+            byInBody: async (bodyHash) =>
+              tick("request", { transactions: bodyHash === REF.requestBodyHash && now >= executed ? [request] : [], headUtime: now }),
             byInMessage: async (msgHash) =>
               tick(msgHash, now < executed + delay ? [] : msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
             byHash: async () => null,
@@ -324,6 +328,83 @@ describe("x402-exact-tvm.json", () => {
         }
       }
     }
+  });
+
+  // The same chain read through two indexes: the head comes from an index that has indexed past `validUntil`, the
+  // lookup by the request's body hash from one that has not yet indexed the block in which W5 executed the request.
+  // Each answer names the gen_utime of a masterchain block through which its index holds every block, and W5 refuses a
+  // request only once `valid_until <= now()` (wallet_v5.fc), so an empty answer from an index behind the head read first
+  // shows nothing about the request at that head.
+  it("an empty lookup from an index behind the head read first is pending, never expired", async () => {
+    const executed = REF.validUntil - 1;
+    const request = { hash: "tx-w5", account: REF.wallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "j", opcode: 0x0f8a7ea5 }] };
+    const payer = { hash: "tx-payer", account: REF.jettonWallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "m", opcode: 0x178d4519 }] };
+    const payee = { hash: "tx-payee", account: "0:" + "33".repeat(32), aborted: false, finality: 2 as const, inBody: null, outMsgs: [] };
+    const head = REF.validUntil + 140;
+    for (const indexed of [REF.validUntil - 20, executed - 1, executed, head - 1, head]) {
+      const reader: TvmReader = {
+        network: REF.network,
+        headUtime: async () => head,
+        byInBody: async () => ({ transactions: indexed >= executed ? [request] : [], headUtime: indexed }),
+        byInMessage: async (msgHash) => (msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
+        byHash: async () => null,
+      };
+      const want = indexed >= executed ? { state: "settled", finality: "finalized" } : { state: "pending", why: "not-found" };
+      expect([indexed, await exactTvm.status(REF, reader)]).toEqual([indexed, want]);
+    }
+    const nothing = (indexed: unknown): TvmReader => ({
+      ...readerFor({ headUtime: head }),
+      byInBody: async () => ({ transactions: [], headUtime: indexed as number }),
+    });
+    expect(await exactTvm.status(REF, nothing(head))).toEqual({ state: "failed", why: "expired" });
+    expect(await exactTvm.status(REF, nothing(head - 1))).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactTvm.status(REF, nothing(undefined))).toEqual({ state: "pending", why: "not-found" });
+    const bare = { ...readerFor({ headUtime: head }), byInBody: async () => [] as never };
+    expect(await exactTvm.status(REF, bare)).toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  // W5 commits the seqno of an external request before its actions run, but an internal request that aborts leaves its
+  // seqno unused (wallet_v5.fc: commit() only when is_external), so the same request can run again before valid_until.
+  // Below, the request aborts once and then runs again and emits the Jetton transfer; the lookup comes from an index
+  // that holds every block through `indexed`, behind the head read first.
+  it("an aborted request from an index behind the head read first is pending, never aborted", async () => {
+    const abortedAt = REF.validUntil - 20;
+    const executed = REF.validUntil - 1;
+    const aborted = { hash: "tx-w5-aborted", account: REF.wallet, aborted: true, finality: 2 as const, inBody: null, outMsgs: [] };
+    const request = { hash: "tx-w5", account: REF.wallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "j", opcode: 0x0f8a7ea5 }] };
+    const payer = { hash: "tx-payer", account: REF.jettonWallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "m", opcode: 0x178d4519 }] };
+    const payee = { hash: "tx-payee", account: "0:" + "33".repeat(32), aborted: false, finality: 2 as const, inBody: null, outMsgs: [] };
+    const head = REF.validUntil + 140;
+    for (const indexed of [abortedAt, executed - 1, executed, head]) {
+      const reader: TvmReader = {
+        network: REF.network,
+        headUtime: async () => head,
+        byInBody: async () => ({ transactions: indexed >= executed ? [aborted, request] : [aborted], headUtime: indexed }),
+        byInMessage: async (msgHash) => (msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
+        byHash: async () => null,
+      };
+      const want = indexed >= executed ? { state: "settled", finality: "finalized" } : { state: "pending", why: "not-found" };
+      expect([indexed, await exactTvm.status(REF, reader)]).toEqual([indexed, want]);
+    }
+    const onlyAborted = (indexed: number): TvmReader => ({
+      ...readerFor({ headUtime: head }),
+      byInBody: async () => ({ transactions: [aborted], headUtime: indexed }),
+    });
+    expect(await exactTvm.status(REF, onlyAborted(head))).toEqual({ state: "failed", why: "aborted" });
+    expect(await exactTvm.status(REF, onlyAborted(head - 1))).toEqual({ state: "pending", why: "not-found" });
+  });
+
+  // An empty TON Center v3 transactionsByMessage answer names no block, so a reader takes the indexed time from a
+  // second call, which a load-balanced endpoint can send to another index. A reader that cannot read the time from the
+  // index that answered names none.
+  it("an empty lookup naming a null indexed time is pending not-found, never expired", async () => {
+    const head = REF.validUntil + 140;
+    const lookup = (headUtime: number | null): TvmReader => ({
+      ...readerFor({ headUtime: head }),
+      byInBody: async () => ({ transactions: [], headUtime }),
+    });
+    expect(await exactTvm.status(REF, lookup(null))).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactTvm.status(REF, lookup(head))).toEqual({ state: "failed", why: "expired" });
   });
 
   it("refusal codes left to the implementation", async () => {

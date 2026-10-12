@@ -505,12 +505,12 @@ Cardano (`@integraledger/lcp/cardano`).
 | `cardano/aux-missing` | The Cardano transaction's body has no auxiliary data hash (key 7), or it carries no auxiliary data. |
 | `cardano/hash-not-carried` | The Cardano auxiliary data's label 674 `msg` lines carry no line that is exactly the lowercase LCP marker followed by a line of 64 lowercase hex digits. |
 | `cardano/network-malformed` | A Cardano option's network starts with `cardano:` or `cip34:` but is not one this package maps. |
-| `cardano/not-found` | The Cardano reader found no transaction for the id. |
+| `cardano/not-found` | The Cardano reader answers that the indexer does not hold the transaction (its not-found answer). |
 | `cardano/not-valid` | The Cardano transaction the reference names is on chain as invalid (its collateral was taken). |
 | `cardano/ttl-missing` | The Cardano transaction sets no TTL, so `reference` has no slot by which it settles. |
 | `cardano/tx-malformed` | A Cardano transaction is not base64 of one CBOR array `[body, witness set, validity, auxiliary data]` with a map body of unique unsigned keys, a valid TTL and a 32-byte auxiliary data hash. |
 | `cardano/tx-too-large` | `decodeCardanoTx` is given a transaction larger than the size bound. |
-| `cardano/unreadable` | The Cardano reader threw or returned a transaction that is not well formed, too large, or not the one the reference names. |
+| `cardano/unreadable` | The Cardano reader threw, gave an answer of neither documented shape (a transaction, or a not-found answer), or returned a transaction that is not well formed, too large, or not the one the reference names. |
 | `cardano/wrong-reader` | The Cardano reader answers for a different network than the reference names. |
 
 ## casper
@@ -721,9 +721,9 @@ Stacks (`@integraledger/lcp/stacks`).
 | Code | Meaning |
 |---|---|
 | `stacks/no-memo` | The Stacks transaction is not a call to the reference's contract `transfer`, or its fourth argument is not `(some <32 bytes>)`. |
-| `stacks/not-found` | The reference's transaction id is not a 32-byte hash, or the Stacks reader found no mined transaction for it. |
+| `stacks/not-found` | The reference's transaction id is not a 32-byte hash, or the Stacks reader answers that the API does not know the transaction (its not-found answer) or that the transaction is unmined. |
 | `stacks/not-success` | The mined Stacks transaction's status is not `success`. |
 | `stacks/peer-missing` | The optional peer dependency `@stacks/transactions` cannot be loaded. |
-| `stacks/unreadable` | The reference or reader is not an object, or the Stacks reader threw or answered a transaction that is neither a mined nor an unmined transaction of the reader's documented shape. |
+| `stacks/unreadable` | The reference or reader is not an object, or the Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer). |
 | `stacks/wrong-reader` | The Stacks reader answers for a different network than the reference names. |
 

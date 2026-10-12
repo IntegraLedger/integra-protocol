@@ -69,8 +69,8 @@ export interface NearReader {
   txStatus(txHash: string, sender: string): Promise<NearOutcome | null>;
   /** `block` at finality "final": its header's height. */
   finalHeight(): Promise<bigint>;
-  /** `view_access_key` at "final": the key's nonce; null: no such key. */
-  accessKeyNonce(account: string, publicKey: string): Promise<bigint | null>;
+  /** `view_access_key` at "final": the key's nonce and the `block_height` of the block whose state it reads; null: no such key. */
+  accessKeyNonce(account: string, publicKey: string): Promise<{ nonce: bigint; blockHeight: bigint } | null>;
 }
 
 /** The read keys recorded at claim, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction` is
@@ -274,9 +274,10 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
 }
 
 /**
- * True only when the delegate action can never execute: the final height is past `maxBlockHeight` and the key's
- * nonce is below the action's. A key that does not exist is false, because a key deleted after the delegate
- * executed gives the same answer. Two calls; a failed read is false.
+ * True only when the delegate action can never execute: the final height, read first, is past `maxBlockHeight`, and
+ * the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
+ * the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
+ * executed gives the same answer. Two calls; a failed or malformed read is false.
  */
 export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<boolean> {
   const maxBlockHeight = u64Of(ref.maxBlockHeight);
@@ -285,8 +286,9 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
   try {
     const height = await reader.finalHeight();
     if (typeof height !== "bigint" || height <= maxBlockHeight) return false;
-    const nonce = await reader.accessKeyNonce(ref.payer, ref.publicKey);
-    return typeof nonce === "bigint" && nonce < signed;
+    const key: unknown = await reader.accessKeyNonce(ref.payer, ref.publicKey);
+    if (!isObject(key) || typeof key["nonce"] !== "bigint" || typeof key["blockHeight"] !== "bigint") return false;
+    return key["blockHeight"] >= height && key["nonce"] < signed;
   } catch {
     return false;
   }
