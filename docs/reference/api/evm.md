@@ -796,7 +796,11 @@ Reads the named transaction. A reader for another network, or a failed read, is 
 the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
 Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
 authorization's: the transfer's `from` is the binding log's authorizer (topic 1), else failed `transfer-not-found`.
-Settled carries the highest finality mark reached. At most three calls.
+Where the binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose
+delegate (data word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The
+transfer's `from` is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one
+root delegator redeemed in one transaction are read alike, so one transfer from it counts for either. Settled
+carries the highest finality mark reached. At most three calls.
 
 #### Parameters
 
@@ -891,11 +895,17 @@ With `payer` zero it is x402's `signatureNonce`.
 
 > **permit2Status**(`ref`, `reader`): `Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
 
-Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then Permit2's record of the nonce. The ref's
-`authorization` must be a `permit2` one and its `transferLog` must name `from`, else pending `unreadable`. At the
-receipt's block, `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set, where
-`from` is the matched transfer's; else failed `nonce-not-used`. A failed call is pending `unreadable`. At most four
-calls.
+Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then the permit in the transaction and
+Permit2's record of its nonce. The ref's `authorization` must be a `permit2` one and its `transferLog` must name
+`from`, else pending `unreadable`. The transaction (`eth_getTransactionByHash`) must carry the permit's nonce,
+`authorization.nonce`, as 32 bytes at any byte offset of its input: a direct call to the proxy, a batched call and an
+ERC-4337 bundle place it at different offsets. A transaction the node does not hold is pending `not-found`, and a
+failed read, or an input that is not hex bytes, pending `unreadable`. Then, where `from` is the matched transfer's,
+`nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set at the receipt's block and
+unset at the block before it, so that the nonce is spent in that block. A transaction without the nonce, or a nonce
+unused at the receipt's block or used before it, is failed `nonce-not-used`. A failed call is pending `unreadable`.
+A payer who writes the nonce into a transaction of its own that makes the reference's transfer, and uses the nonce in
+the same block, by spending the permit or by invalidating the nonce, is read as paying. At most six calls.
 
 #### Parameters
 
