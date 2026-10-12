@@ -113,29 +113,6 @@
               "auth-capture"
             ]
           }
-        },
-        "scale": {
-          "type": "string",
-          "minLength": 1,
-          "description": "How a price in the checkout's currency is paid in the token, in words."
-        },
-        "disclosure": {
-          "type": "object",
-          "properties": {
-            "presentation": {
-              "type": "string",
-              "const": "disclosure"
-            },
-            "content": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "presentation",
-            "content"
-          ],
-          "additionalProperties": false
         }
       },
       "required": [
@@ -143,9 +120,7 @@
         "x402Version",
         "network",
         "asset",
-        "schemes",
-        "scale",
-        "disclosure"
+        "schemes"
       ],
       "additionalProperties": false
     },
@@ -190,7 +165,7 @@
     },
     "response_config": {
       "title": "Response config",
-      "description": "`config` in a checkout response from `ready_for_complete`: the x402 `PaymentRequired` that carries H, the hash of the ATR, in `extensions.legalContext`, with the business config's `environment`, `network`, `scale` and `disclosure`.",
+      "description": "`config` in a checkout response from `ready_for_complete`: the x402 `PaymentRequired` that carries H, the hash of the ATR, in `extensions.legalContext`, with the business config's `environment` and `network`.",
       "type": "object",
       "properties": {
         "x402Version": {
@@ -356,28 +331,6 @@
         "network": {
           "type": "string",
           "pattern": "^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$"
-        },
-        "scale": {
-          "type": "string",
-          "minLength": 1
-        },
-        "disclosure": {
-          "type": "object",
-          "properties": {
-            "presentation": {
-              "type": "string",
-              "const": "disclosure"
-            },
-            "content": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "presentation",
-            "content"
-          ],
-          "additionalProperties": false
         }
       },
       "required": [
@@ -386,9 +339,7 @@
         "accepts",
         "extensions",
         "environment",
-        "network",
-        "scale",
-        "disclosure"
+        "network"
       ],
       "additionalProperties": {}
     },

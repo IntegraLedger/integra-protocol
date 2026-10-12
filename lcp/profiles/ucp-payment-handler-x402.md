@@ -74,9 +74,9 @@ The schema's `$defs["com.integraledger.lcp.x402"]` holds `business_schema`, `pla
 
 | Config variant | Context | Purpose |
 |---|---|---|
-| `business_config` | the business's profile | The network, the token and the schemes it is paid in; the scale and the disclosure. |
+| `business_config` | the business's profile | The network, the token and the schemes it is paid in. |
 | `platform_config` | a platform's profile | The networks and schemes the platform's wallet pays. |
-| `response_config` | a checkout response, from `ready_for_complete` | The x402 `PaymentRequired` that carries H, with the business config's `environment`, `network`, `scale` and `disclosure`. |
+| `response_config` | a checkout response, from `ready_for_complete` | The x402 `PaymentRequired` that carries H, with the business config's `environment` and `network`. |
 
 #### Business config fields
 
@@ -87,14 +87,12 @@ The schema's `$defs["com.integraledger.lcp.x402"]` holds `business_schema`, `pla
 | `network` | string, CAIP-2 | Yes | The network every option is on. |
 | `asset` | object | Yes | The token: `address`, as x402's `asset` writes it; `symbol`; `decimals`. |
 | `schemes` | array of `"exact"`, `"auth-capture"` | Yes | The schemes offered. `auth-capture` only where the escrow is deployed. |
-| `scale` | string | Yes | How a price in the checkout's currency is paid in the token, in words. |
-| `disclosure` | object | Yes | `{presentation: "disclosure", content}`: what the platform shows beside the checkout's totals. `content` states the scale, and any notice the business requires there. |
 
 The business config has no other member.
 
 #### Response config fields
 
-The response config is an x402 version 2 `PaymentRequired`, with four members added.
+The response config is an x402 version 2 `PaymentRequired`, with two members added.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -103,7 +101,7 @@ The response config is an x402 version 2 `PaymentRequired`, with four members ad
 | `accepts` | array, 1 to 32 | Yes | x402 `PaymentRequirements`, each with `scheme` `exact` or `auth-capture`, `network` equal to `network`, and `payTo` the business's address. |
 | `extensions` | object | Yes | `extensions.legalContext` is `{info, schema}`, and `info` is `{"type":"sha256","value":H,"legalContextUrl":L}`, as LCP's x402 profiles place it. |
 | `error` | string | No | x402's. |
-| `environment`, `network`, `scale`, `disclosure` | | Yes | The business config's. |
+| `environment`, `network` | | Yes | The business config's. |
 
 #### Example: the business's declaration, in its profile
 
@@ -121,12 +119,7 @@ The response config is an x402 version 2 `PaymentRequired`, with four members ad
         "x402Version": 2,
         "network": "eip155:84532",
         "asset": {"address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e", "symbol": "USDC", "decimals": 6},
-        "schemes": ["exact", "auth-capture"],
-        "scale": "Each US dollar is paid as one USDC.",
-        "disclosure": {
-          "presentation": "disclosure",
-          "content": "Each US dollar is paid as one USDC. This checkout is paid on Base Sepolia, a test network: its USDC has no value."
-        }
+        "schemes": ["exact", "auth-capture"]
       }
     }
   ]
@@ -147,11 +140,9 @@ The response config is an x402 version 2 `PaymentRequired`, with four members ad
    are `exact` with EIP-3009, and the payment carries the payment mandate's hash.
 4. The handler's `config` is then the response config for that ATR, and the checkout's `links[]` carries
    `{"type":"legal_context","url":L,"title":"lcp:sha256:"+H}`.
-5. The checkout's `messages[]` carries the disclosure as a warning: `code` `com.integraledger.lcp.x402.scale`, `path`
-   `$.totals`, the disclosure's `content`, and `presentation` `disclosure`.
-6. A change to the terms issues a new ATR, with a new H, a new `config` and a new link. A payment carrying an earlier
+5. A change to the terms issues a new ATR, with a new H, a new `config` and a new link. A payment carrying an earlier
    H does not complete the checkout.
-7. The handler causes no UCP Actions.
+6. The handler causes no UCP Actions.
 
 #### Example: the ATR's binding slot
 
@@ -226,19 +217,14 @@ The response config is an x402 version 2 `PaymentRequired`, with four members ad
           }
         },
         "environment": "sandbox",
-        "network": "eip155:84532",
-        "scale": "Each US dollar is paid as one USDC.",
-        "disclosure": {
-          "presentation": "disclosure",
-          "content": "Each US dollar is paid as one USDC. This checkout is paid on Base Sepolia, a test network: its USDC has no value."
-        }
+        "network": "eip155:84532"
       }
     }
   ]
 }
 ```
 
-With, in the checkout's `links[]` and `messages[]`:
+With, in the checkout's `links[]`:
 
 ```json
 {
@@ -247,15 +233,6 @@ With, in the checkout's `links[]` and `messages[]`:
       "type": "legal_context",
       "url": "https://shop.example/atr/0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d",
       "title": "lcp:sha256:0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d"
-    }
-  ],
-  "messages": [
-    {
-      "type": "warning",
-      "code": "com.integraledger.lcp.x402.scale",
-      "path": "$.totals",
-      "content": "Each US dollar is paid as one USDC. This checkout is paid on Base Sepolia, a test network: its USDC has no value.",
-      "presentation": "disclosure"
     }
   ]
 }
@@ -394,7 +371,7 @@ Other members are the platform's own.
    `legal_context` link carries the same H. Fetch L, compute SHA-256 over the bytes received, and compare the result
    with H as 32 bytes. Check that the ATR names the checkout: its `x402.request.path` is the checkout's completion
    path, or, under AP2 mandates, its `ucp` slot holds the checkout's `id`. On any mismatch, do not pay.
-4. **Show the terms.** Show the buyer the ATR's terms, and the disclosure beside the checkout's totals.
+4. **Show the terms.** Show the buyer the ATR's terms.
 5. **Sign.** Choose one option of `accepts`. The wallet signs it with H where the profile of the option's pairing puts
    it, and echoes `extensions` unchanged. Under AP2 mandates, steps 5 and 6 are
    [Paying under AP2 mandates](#paying-under-ap2-mandates).
