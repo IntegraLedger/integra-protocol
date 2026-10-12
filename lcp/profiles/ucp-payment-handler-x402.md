@@ -645,7 +645,7 @@ as it was, and the platform may complete again.
   the credential)
 - **LCP profiles:** `ucp/checkout/legal-context`, `x402/exact/eip155/eip3009`, `x402/auth-capture/eip155`, and the
   profile of each x402 pairing, at `https://github.com/IntegraLedger/integra-protocol/tree/main/lcp/profiles`
-- **x402 version 2:** `https://github.com/coinbase/x402/blob/main/specs/x402-specification-v2.md`
+- **x402 version 2:** `https://github.com/x402-foundation/x402/blob/main/specs/x402-specification-v2.md`
 - **UCP's payment handler guide:** `https://ucp.dev/2026-08-25/specification/payment/guide/`
 - **UCP's AP2 Mandates extension:** `https://ucp.dev/2026-08-25/specification/payment/extensions/ap2-mandates/`
 - **AP2 version 0.2:** `https://github.com/google-agentic-commerce/AP2/tree/v0.2.0`
