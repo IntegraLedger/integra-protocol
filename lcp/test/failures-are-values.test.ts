@@ -34,6 +34,7 @@ import {
   txIdMirror,
   txIdText,
 } from "../src/hedera.js";
+import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
 import {
   chargeCard,
   chargeNearIntents,
@@ -617,4 +618,15 @@ describe("mpp", () => {
 
 describe("tempo", () => {
   reads([["subscriptionTempo.recover", subscriptionTempo.recover, "mpp-charge-evm-hash.json", refused("tempo/unreadable")]]);
+});
+
+describe("lightning", () => {
+  answers([
+    ["exactLnbtc.build", exactLnbtc.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["exactLnbtcNamed.build", exactLnbtcNamed.build, [undefined, H], 0, refused("x402/not-v2")],
+    ["invoiceH", invoiceH, [undefined, "h"], 0, refused("ln/invoice-malformed")],
+  ]);
+  it("exactLnbtc.unplaced hands back a value that is not an option unchanged", () => {
+    for (const bad of MALFORMED) expect(exactLnbtc.unplaced(bad as never), String(bad)).toBe(bad);
+  });
 });

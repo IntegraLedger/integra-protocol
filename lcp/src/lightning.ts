@@ -100,6 +100,7 @@ export async function decodeBolt11(invoice: string): Promise<Bolt11 | Refusal> {
 
 /** The one 32-byte `h` or `m` field of an invoice, as the hash it carries. */
 export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
+  if (!isObject(b) || !Array.isArray(b.tags)) return refusal("ln/invoice-malformed");
   const type = FIELD[field];
   const count = b.tags.filter((t) => t === type).length;
   if (count === 0) return refusal(field === "h" ? "ln/no-description-hash" : "ln/no-metadata");
@@ -405,7 +406,7 @@ function optionFields(o: PaymentRequirements): Refusal | null {
 
 /** The option without `extra.invoice`, the dynamic field that carries the hash on `x402/exact/lnbtc`. */
 function withoutInvoice(option: PaymentRequirements): PaymentRequirements {
-  if (!isObject(option.extra) || !Object.hasOwn(option.extra, "invoice")) return option;
+  if (!isObject(option) || !isObject(option.extra) || !Object.hasOwn(option.extra, "invoice")) return option;
   const { invoice: _, ...extra } = option.extra;
   return { ...option, extra };
 }
@@ -489,6 +490,7 @@ function lnbtcAdvertiseBeforeCarrier(
 }
 
 async function lnbtcBuild(c: { required: PaymentRequired; accepted: PaymentRequirements }, h: AtrHash): Promise<LnUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
   if (wrong !== true) return wrong;
   const accepted = c.accepted as PaymentRequirements & { extra: { invoice: string } };
@@ -562,6 +564,7 @@ async function namedBuild(
   c: { required: PaymentRequired; accepted: PaymentRequirements; atr: Uint8Array },
   h: AtrHash,
 ): Promise<LnUnsigned | Refusal> {
+  if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
   if (wrong !== true) return wrong;
   const accepted = c.accepted as PaymentRequirements & { extra: { invoice: string } };
