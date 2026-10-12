@@ -266,7 +266,26 @@ The deepest nesting of arrays and objects in any JSON this package writes or rea
 > **assemble**(`id`, `binding`, `content`, `limits?`): `Promise`\<[`CoreRefusal`](#corerefusal) \| \{ `atrHash`: `` `0x${string}` ``; `bytes`: `Uint8Array`; \}\>
 
 Writes the ATR's bytes and hashes them. The same inputs always give the same bytes. Every problem with the inputs
-is returned as a refusal.
+is returned as a refusal, from the first check that fails, in this order:
+
+1. `limits.maxBytes`, when given, is a non-negative safe integer (`core/too-large`). The limit applied is the
+   smaller of it and 1 MiB.
+2. `id` is a string (`core/binding-not-json`), `binding` is an array of two (`core/slot-name`), and `content` is an
+   array (`core/content-not-json`).
+3. The binding's slot name matches the slot-name pattern (`core/slot-name`) and is not `atrVersion` or `id`
+   (`core/slot-reserved`).
+4. There are at most 64 party slots (`core/too-large`).
+5. Each party slot, in the order given, is an array of two (`core/slot-name`); its name matches the pattern
+   (`core/slot-name`), is not `atrVersion`, `id` or the binding's slot name (`core/slot-reserved`) and has not
+   appeared before (`core/slot-duplicate`); its bytes are a `Uint8Array` (`core/content-not-json`).
+6. The binding value is a JSON value `JSON.stringify` writes exactly, every number a safe integer, nested at most 64
+   levels (`core/binding-not-json`).
+7. The assembled length is at most the limit (`core/too-large`).
+8. Each party's bytes, in order, are one JSON value (`core/content-not-json`).
+
+Each input is read once: each array's length and members, each party's name, bytes and size, and each member of
+the binding value, in the one walk that checks the value and writes it. What is checked is what is written, an input
+behind an accessor included.
 
 #### Parameters
 
