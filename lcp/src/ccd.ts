@@ -64,7 +64,7 @@ export type CcdStatus =
   | { state: "pending"; why: "not-found" | "received" | "committed" | "unreadable" }
   | { state: "failed"; why: "rejected" | "not-this-instrument" };
 
-export interface CcdChoice {
+interface CcdChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   now: number;
