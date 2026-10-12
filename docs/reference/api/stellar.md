@@ -295,10 +295,12 @@ transaction is not found, or cannot be read, leaves the search incomplete. At mo
 
 > **stellarStatus**(`ref`, `reader`): `Promise`\<[`StellarStatus`](#stellarstatus)\>
 
-Reads the instrument through a named transaction. Settled when that transaction used the authorization entry recorded
-at claim and succeeded. Otherwise the entry can still be used by another transaction until its expiration ledger, so
-a named transaction that is not found, failed, or succeeded with another entry is pending. The read is final only
-past that ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
+Reads the instrument through a named transaction. Settled when that transaction succeeded and used the authorization
+entry `ref.authDigest` names. A landed transaction is read by the payer's first address-credential entry whose
+`rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations; other entries of the payer in
+it are not read. Otherwise the entry can still be used by another transaction until its expiration ledger, so a named
+transaction that is not found, failed, or succeeded with another entry is pending. The read is final only past that
+ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
 transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
 incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
 or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well.
