@@ -49,9 +49,9 @@ node scripts/docs-reference.mjs --check
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.
 
-CI runs the commands above and the rest of `.github/workflows/ci.yml` on every push to `main` and when dispatched by
-hand. No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change once it is on
-`main`.
+CI runs the commands in the block above and the rest of `.github/workflows/ci.yml` on every push to `main` and when
+dispatched by hand. No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change
+once it is on `main`.
 
 ## The rules the code follows
 
@@ -81,9 +81,9 @@ Signed-off-by: Your Name <you@example.com>
 ```
 
 using the name and email of your git configuration. On every push to `main`, CI reads every commit in `main`'s history
-except one merge commit, exempt by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message
-matches the agent pattern in `.github/workflows/ci.yml` (`Co-authored-by`, `generated with` and the names it lists, in
-any case). It runs after the push and cannot hold a commit back, so sign off every commit before you open a pull
+except one merge commit, exempt by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message matches
+the agent pattern in `.github/workflows/ci.yml` (`Co-authored-by`, `generated with` and the names it lists, in upper or
+lower case). It runs after the push and cannot hold a commit back, so sign off every commit before you open a pull
 request. To sign off commits you already made, run `git rebase --signoff origin/main` and force-push your branch.
 
 ## Pull requests

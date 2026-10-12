@@ -22,7 +22,7 @@ jobs:
         env:
           EXEMPT: 9dbb65d8c408e1234ef5661fb5a287db3522480e
         run: |
-          set -eu
+          set -euo pipefail
           unsigned=$(git log --format='%H %(trailers:key=Signed-off-by,valueonly,separator=%x2C)' "$GITHUB_SHA" |
             awk -v exempt="$EXEMPT" 'NF<2 && $1 != exempt')
           agent=$(git rev-list "$GITHUB_SHA" | grep -vx "$EXEMPT" | while read -r c; do
