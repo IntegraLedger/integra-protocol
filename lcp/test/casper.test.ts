@@ -111,6 +111,31 @@ describe("x402/exact/casper", () => {
     expect(await exactCasper.reference(payment)).toEqual(V.C3.expect);
   });
 
+  describe("C3: settleBy for a validBefore past Number.MAX_SAFE_INTEGER", () => {
+    type Row = { case: string; mutate: Record<string, string>; expect: { settleBy?: number } };
+    for (const row of V.C3.rows as Row[]) {
+      it(row.case, async () => {
+        const payment = mutate(V.C2.expectPayload, row.mutate) as CasperPaymentPayload;
+        expect(await exactCasper.reference(payment)).toEqual(row.expect);
+      });
+    }
+
+    it("the rows' values: 2^53-1 is ECMAScript's Number.MAX_SAFE_INTEGER, and 2^64-1 and 2^64 bracket a u64", () => {
+      const rows = V.C3.rows as Row[];
+      const before = rows.map((r) => BigInt(r.mutate["payload.authorization.validBefore"]!));
+      expect(before).toEqual([2n ** 53n - 1n, 2n ** 53n, 2n ** 64n - 1n, 2n ** 64n]);
+      for (const r of rows.filter((r) => r.expect.settleBy !== undefined)) expect(r.expect.settleBy).toBe(Number.MAX_SAFE_INTEGER);
+    });
+
+    it("build signs a validBefore past 2^53-1 for the largest maxTimeoutSeconds the filter admits, and reference records it", async () => {
+      const o = { ...O, maxTimeoutSeconds: Number.MAX_SAFE_INTEGER };
+      const u = await exactCasper.build({ required: required(o), accepted: o, from: V.fixed.from, now: V.fixed.now }, H);
+      const payment = (u as CasperUnsigned).complete(V.fixed.publicKey, V.fixed.signature) as CasperPaymentPayload;
+      expect(BigInt(payment.payload.authorization.validBefore)).toBe(BigInt(V.fixed.now) + BigInt(Number.MAX_SAFE_INTEGER));
+      expect(await exactCasper.reference(payment)).toEqual({ ...V.C3.expect, settleBy: Number.MAX_SAFE_INTEGER });
+    });
+  });
+
   describe("C4: status and recover", () => {
     for (const row of V.C4.rows) {
       it(row.case, async () => {

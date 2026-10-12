@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/casper pairing: the casper entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; the option, payee and payer are x402's Casper example; the EIP-712 values were computed with @casper-ecosystem/casper-eip-712 1.2.1 and, separately, viem 2.56.8 over CEP-3009's formula by hand, on Node 24.21.0; every SHA-256 with GNU coreutils sha256sum. The public key and signature are placeholders of the tagged widths: bound verifies no signature. Byte strings are hex; uint256 values are decimal strings; a call's blockHeight is a decimal string.",
+ "about": "Vectors for the x402/exact/casper pairing: the casper entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; the option, payee and payer are x402's Casper example; the EIP-712 values were computed with @casper-ecosystem/casper-eip-712 1.2.1 and, separately, viem 2.56.8 over CEP-3009's formula by hand, on Node 24.21.0; every SHA-256 with GNU coreutils sha256sum. The public key and signature are placeholders of the tagged widths: bound verifies no signature. Byte strings are hex; uint256 values are decimal strings; a call's blockHeight is a decimal string. C3's rows change only validBefore: CEP-3009's transfer_with_authorization takes valid_before as a u64 and names u64::MAX the value that never expires, and reference records settleBy as validBefore up to 2^53-1, ECMAScript's Number.MAX_SAFE_INTEGER, and as 2^53-1 above it, and refuses a validBefore of 2^64 or more.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -96,7 +96,55 @@
    "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
    "idDigest": "0x9fa3f79c2d95b99fe12cde6ad305edf028195e2152e3932e5f5b202831a4267e",
    "settleBy": 1790000060
-  }
+  },
+  "rows": [
+   {
+    "case": "validBefore 2^53-1, Number.MAX_SAFE_INTEGER",
+    "mutate": {
+     "payload.authorization.validBefore": "9007199254740991"
+    },
+    "expect": {
+     "network": "casper:casper-test",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "idDigest": "0x9fa3f79c2d95b99fe12cde6ad305edf028195e2152e3932e5f5b202831a4267e",
+     "settleBy": 9007199254740991
+    }
+   },
+   {
+    "case": "validBefore 2^53, which build signs at the fixed time 1790000000 with maxTimeoutSeconds 9007197464740992",
+    "mutate": {
+     "payload.authorization.validBefore": "9007199254740992"
+    },
+    "expect": {
+     "network": "casper:casper-test",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "idDigest": "0x9fa3f79c2d95b99fe12cde6ad305edf028195e2152e3932e5f5b202831a4267e",
+     "settleBy": 9007199254740991
+    }
+   },
+   {
+    "case": "validBefore 2^64-1, u64::MAX, CEP-3009's never-expiring valid_before",
+    "mutate": {
+     "payload.authorization.validBefore": "18446744073709551615"
+    },
+    "expect": {
+     "network": "casper:casper-test",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "idDigest": "0x9fa3f79c2d95b99fe12cde6ad305edf028195e2152e3932e5f5b202831a4267e",
+     "settleBy": 9007199254740991
+    }
+   },
+   {
+    "case": "validBefore 2^64, past CEP-3009's u64 valid_before",
+    "mutate": {
+     "payload.authorization.validBefore": "18446744073709551616"
+    },
+    "expect": {
+     "refused": true,
+     "code": "casper/payload-malformed"
+    }
+   }
+  ]
  },
  "C4": {
   "reader": {

@@ -527,7 +527,7 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/not-executed` | The Casper transaction the reference names has not executed. |
 | `casper/not-found` | The Casper reader found no transaction for the reference. |
 | `casper/option-malformed` | A Casper asset is not a contract package hash, the token name or version is not a valid name, `validBefore` is out of range, or the `now` given to `build` is not a non-negative safe integer. |
-| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature, or its value or `validBefore` cannot be read, or H given to `cep3009TypedData` is not a valid ATR hash. |
+| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature, or its value is not a decimal uint256 or its `validBefore` not a decimal below 2^64, or H given to `cep3009TypedData` is not a valid ATR hash. |
 | `casper/reverted` | The Casper transaction executed with an error. |
 | `casper/signature-malformed` | The public key or signature given to the Casper `complete` is not tagged hex of the allowed length. |
 | `casper/unreadable` | The Casper reader threw or returned a call that is not well formed. |

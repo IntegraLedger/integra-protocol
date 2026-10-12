@@ -5,6 +5,7 @@
 import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
+import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -328,23 +329,25 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return normalHash(n.startsWith("0x") ? n : `0x${n}`)!;
 }
 
-/** The read keys for finding this payment later: network, token package, `validBefore` and the transfer's digest. */
+/**
+ * The read keys for finding this payment later: network, token package, the transfer's digest and `settleBy`, which
+ * is `validBefore` up to `Number.MAX_SAFE_INTEGER` and that value for a later one. `validBefore` is a decimal below
+ * 2^64, CEP-3009's `valid_before` being a u64 whose largest value never expires; `value` is a decimal uint256.
+ */
 async function reference(presented: unknown): Promise<CasperRef | Refusal> {
   const p = paymentOf(presented);
   if (isRefusal(p)) return p;
   const a = p.payload.authorization;
   const value = uint256Of(a.value);
-  const settleBy = Number(a.validBefore);
-  if (value === undefined || !/^[0-9]{1,16}$/.test(a.validBefore) || !Number.isSafeInteger(settleBy)) {
-    return refusal("casper/payload-malformed");
-  }
+  const validBefore = decimalBelow(a.validBefore, U64_LIMIT);
+  if (value === undefined || validBefore === undefined) return refusal("casper/payload-malformed");
   const idDigest = await casperIdDigest(a.from, a.to, value);
   if (isRefusal(idDigest)) return refusal("casper/payload-malformed");
   return {
     network: p.accepted.network as CasperNetwork,
     asset: p.accepted.asset.toLowerCase(),
     idDigest,
-    settleBy,
+    settleBy: Math.min(Number(validBefore), Number.MAX_SAFE_INTEGER),
   };
 }
 
