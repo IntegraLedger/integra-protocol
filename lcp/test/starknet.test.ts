@@ -7,6 +7,7 @@ import { typedData as snTypedData } from "starknet";
 import { keccak256, toBytes } from "viem";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
+import { pairingOf } from "../src/index.js";
 import { counting } from "./fixtures/counting-reader.js";
 import {
   EVENT_TRANSFER,
@@ -14,7 +15,6 @@ import {
   SELECTOR_EXECUTE_FROM_OUTSIDE_V2,
   SELECTOR_TRANSFER,
   exactStarknet,
-  pairingOf,
   snNonce,
   starknetLandedNonce,
   type Felt,
