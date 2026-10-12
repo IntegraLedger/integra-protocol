@@ -159,9 +159,11 @@ describe("x402-exact-tvm.json", () => {
   });
 
   // The entry point's interface: "No function throws". An exotic cell (TVM's library cell: type 2, then a 256-bit
-  // hash) is not an ordinary cell, so a step that parses one refuses it with that step's code: the comment is step 5's
-  // `tvm/payload-not-lcp`, and an action list that is not a cell holding one `action_send_msg` is `tvm/boc-malformed`.
-  it("V3: an exotic cell the read parses is the parsing step's refusal, never a throw", async () => {
+  // hash) is not an ordinary cell, so each cell the read parses refuses one with the code of the check that reads it:
+  // the settlement message and an exotic action list `tvm/boc-malformed`, the signed request `tvm/not-w5-signed`, the
+  // action list's `prev`, which must be empty, `tvm/actions`, the outgoing message and its Jetton transfer body
+  // `tvm/not-jetton-transfer`, and the comment `tvm/payload-not-lcp`.
+  it("V3: an exotic cell the read parses is refused by the check that reads it, never a throw", async () => {
     const p = await signed();
     const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
     const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
@@ -174,8 +176,13 @@ describe("x402-exact-tvm.json", () => {
     const transfer = root.refs[0]!.refs[0]!.refs[1]!.refs[0]!;
     const comment = transfer.refs.findIndex((r) => r.bits.length === 32 + 8 * 77);
     for (const [path, code] of [
-      [[0, 0, 1, 0, comment], "tvm/payload-not-lcp"],
+      [[], "tvm/boc-malformed"],
+      [[0], "tvm/not-w5-signed"],
       [[0, 0], "tvm/boc-malformed"],
+      [[0, 0, 0], "tvm/actions"],
+      [[0, 0, 1], "tvm/not-jetton-transfer"],
+      [[0, 0, 1, 0], "tvm/not-jetton-transfer"],
+      [[0, 0, 1, 0, comment], "tvm/payload-not-lcp"],
     ] as const) {
       const boc = swap(root, path).toBoc({ idx: false, crc32: true }).toString("base64");
       expect([path, await exactTvm.bound(payment(boc, p.accepted))]).toEqual([path, { refused: true, code }]);
