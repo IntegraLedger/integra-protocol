@@ -417,8 +417,8 @@ function stacksPeer(): Promise<StacksPeer | undefined> {
 type Decoded = ReturnType<StacksPeer["deserializeTransaction"]>;
 
 /**
- * H from the echoed challenge, once its transaction decodes and calls `transfer` with `(some H)` as its fourth
- * argument. The transaction is decoded, never re-serialised; nothing but that argument is read.
+ * H from the echoed challenge, once its transaction decodes, re-serialises to the same bytes and calls `transfer`
+ * with `(some H)` as its fourth argument. Nothing but that argument is read.
  */
 async function stacksBinding(
   input: unknown,

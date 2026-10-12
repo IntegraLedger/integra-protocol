@@ -113,9 +113,9 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     }
   });
 
-  // SIP-005: a multisig spending condition's public-key field holds a compressed secp256k1 point, 0x02 or 0x03 and its
-  // x. Where x^3 + 7 has no square root modulo the field prime (SEC 2, 2.4.1), no point has that x, and the transaction
-  // does not decode and re-serialise to the same bytes.
+  // SIP-005: a multisig spending condition's public-key field holds a secp256k1 point: compressed (0x02 or 0x03 and
+  // its x) or, after 0x04, its x and y. Where x^3 + 7 has no square root modulo the field prime (SEC 2, 2.4.1), no
+  // point has that x, whatever the y, and the transaction does not decode and re-serialise to the same bytes.
   it("bound and reference refuse a multisig transaction whose key field is not a point on the curve", async () => {
     const [address, name] = F.contract.split(".");
     const publicKey = S.privateKeyToPublic(KEY) as string;
@@ -158,6 +158,19 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     offCurve.set(Buffer.from(`02${x.toString(16).padStart(64, "0")}`, "hex"), (at - 2) / 2 + 1);
     expect(await chargeUsdcStacks.bound(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
     expect(await chargeUsdcStacks.reference(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+
+    const start = (at - 2) / 2;
+    const word = (v: bigint) => v.toString(16).padStart(64, "0");
+    const uncompressed = Buffer.from(`0004${word(x)}${word(7n)}`, "hex");
+    expect(uncompressed.length).toBe(66);
+    const offCurve65 = Uint8Array.from([
+      ...multisig.subarray(0, start),
+      ...uncompressed,
+      ...multisig.subarray(start + 34),
+    ]);
+    const malformed = { refused: true, code: "mpp/stacks-tx-malformed" };
+    expect(await chargeUsdcStacks.bound(credential(offCurve65))).toEqual(malformed);
+    expect(await chargeUsdcStacks.reference(credential(offCurve65))).toEqual(malformed);
   });
 
   it("reference gives the read keys, and survives JSON", async () => {
