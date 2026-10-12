@@ -77,7 +77,7 @@ export interface PolkadotRef {
 /**
  * A settlement or failure names the timepoint it read, `<block hash>-<index>`: the one given, or the canonical one when
  * the given block left the chain and the canonical block at that height holds the same extrinsic at that index.
- * Pending `not-located` asks for the payment to be located from the claim position.
+ * Pending `not-located` asks for the payment to be located (`polkadotLocate`).
  */
 export type PolkadotStatus =
   | { state: "settled"; finality: "finalized" | "head"; height: bigint; transaction: string }
