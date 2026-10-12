@@ -390,7 +390,7 @@ import { exactTvm, lcpComment, OP, … } from "@integraledger/lcp/tvm";
 
 **Pairings:** `x402/exact/tvm`.
 
-**Values (7):** `exactTvm`, `lcpComment`, `OP`, `pairingOf`, `tvmCarrier`, `tvmRecover`, `tvmStatus`.
+**Values (6):** `exactTvm`, `lcpComment`, `OP`, `tvmCarrier`, `tvmRecover`, `tvmStatus`.
 
 **Types (9):** `TonCell`, `TonTx`, `TvmChoice`, `TvmNetwork`, `TvmPayment`, `TvmReader`, `TvmRef`, `TvmStatus`, `TvmUnsigned`.
 

@@ -6,7 +6,8 @@ import { beginCell, Cell, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
-import { exactTvm, lcpComment, pairingOf, tvmCarrier, type TonTx, type TvmPayment, type TvmReader, type TvmRef } from "../src/tvm.js";
+import { pairingOf } from "../src/index.js";
+import { exactTvm, lcpComment, tvmCarrier, type TonTx, type TvmPayment, type TvmReader, type TvmRef } from "../src/tvm.js";
 import type { AtrHash } from "../src/core.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 

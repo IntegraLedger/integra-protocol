@@ -38,13 +38,13 @@ describe("without the TON and NEAR peers", () => {
   });
 
   it("TON: every function that needs @ton/core refuses tvm/peer-missing", { timeout: IMPORT_MS }, async () => {
-    const { exactTvm, lcpComment, pairingOf, tvmCarrier } = await import("../src/tvm.js");
+    const { exactTvm, lcpComment, tvmCarrier } = await import("../src/tvm.js");
     const refused = { refused: true, code: code(TVM) };
     const O = TVM.fixed.O;
     const doc = { x402Version: 2 as const, resource: TVM.fixed.resource, accepts: [O] };
     expect(lcpComment(TVM.fixed.H)).toEqual(refused);
     expect(tvmCarrier("te6ccgEBAQEAAgAAAA==")).toEqual(refused);
-    expect(pairingOf(O)).toBeUndefined();
+    expect(root.pairingOf(O)).toBeUndefined();
     expect(exactTvm.advertise(doc, TVM.fixed.H, TVM.fixed.link, O)).toEqual(refused);
     const payment = { x402Version: 2, accepted: O, payload: { settlementBoc: "te6ccgEBAQEAAgAAAA==", asset: O.asset } };
     expect(await exactTvm.bound(payment)).toEqual(refused);

@@ -521,11 +521,6 @@ const check: OptionFilter = (o) => {
   return true;
 };
 
-/** This pairing's id for an option it can pay, or undefined. */
-export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
-  return check(option) === true ? ID : undefined;
-}
-
 /** The option without `extra.forwardPayload`, where the hash rides; a value that is not an option, unchanged. */
 function unplaced(option: PaymentRequirements): PaymentRequirements {
   if (!isObject(option) || !isObject(option.extra) || !("forwardPayload" in option.extra)) return option;
