@@ -551,7 +551,7 @@
     "expect": "svm/network-malformed"
    },
    {
-    "case": "an xrpl session request whose recipient is not a classic address",
+    "case": "an xrpl session request whose recipient is not shaped as a classic address (r and 24 to 34 base58 characters)",
     "expect": "mpp/request-malformed"
    },
    {

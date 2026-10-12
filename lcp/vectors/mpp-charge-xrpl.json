@@ -105,7 +105,7 @@
     "expect": "xrpl/network-malformed"
    },
    {
-    "case": "pairingsOf with a recipient not a classic address, a currency neither XRP nor an issued currency nor an MPT, an amount not a positive decimal (whole drops for XRP), an invoiceId not 64 hex digits, or a tag not uint32",
+    "case": "pairingsOf with a recipient not shaped as a classic address (r and 24 to 34 base58 characters), a currency neither XRP nor an issued currency nor an MPT, an amount not a positive decimal (whole drops for XRP), an invoiceId not 64 hex digits, or a tag not uint32",
     "expect": "mpp/request-malformed"
    },
    {
