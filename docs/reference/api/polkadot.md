@@ -81,7 +81,7 @@ Bounded, read-only calls against one network's Sidecar. Every failure rejects.
 
 ### PolkadotRef
 
-The read keys recorded at claim, computed from the signed bytes.
+The read keys: the accepted option's network, and the extrinsic's hash and the call's asset from the signed bytes.
 
 #### Properties
 
@@ -110,7 +110,7 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 
 ##### complete()
 
-> **complete**(`extrinsic`): [`Refusal`](index.md#refusal) \| [`PolkadotPaymentPayload`](#polkadotpaymentpayload)
+> **complete**(`extrinsic`): [`Refusal`](index.md#refusal) \| `PolkadotPaymentPayload`
 
 ###### Parameters
 
@@ -120,7 +120,7 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`PolkadotPaymentPayload`](#polkadotpaymentpayload)
+[`Refusal`](index.md#refusal) \| `PolkadotPaymentPayload`
 
 ***
 
@@ -143,34 +143,13 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 
 ***
 
-### PolkadotPayload
-
-> **PolkadotPayload** = `object`
-
-The x402 payload: the signed extrinsic and its call, lowercase hex.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-call"></a> `call` | [`Hex`](evm.md#hex) |
-| <a id="property-extrinsic"></a> `extrinsic` | [`Hex`](evm.md#hex) |
-
-***
-
-### PolkadotPaymentPayload
-
-> **PolkadotPaymentPayload** = [`X402Payment`](x402.md#x402payment)\<[`PolkadotPayload`](#polkadotpayload)\>
-
-***
-
 ### PolkadotStatus
 
 > **PolkadotStatus** = \{ `finality`: `"finalized"` \| `"head"`; `height`: `bigint`; `state`: `"settled"`; `transaction`: `string`; \} \| \{ `state`: `"pending"`; `why`: `"not-located"` \| `"not-found"` \| `"unreadable"`; \} \| \{ `finality`: `"finalized"` \| `"head"`; `height`: `bigint`; `state`: `"failed"`; `transaction`: `string`; `why`: `"not-this-extrinsic"` \| `"dispatch-failed"` \| `"no-remark"` \| `"no-transfer"`; \}
 
 A settlement or failure names the timepoint it read, `<block hash>-<index>`: the one given, or the canonical one when
 the given block left the chain and the canonical block at that height holds the same extrinsic at that index.
-Pending `not-located` asks for the payment to be located from the claim position.
+Pending `not-located` asks for the payment to be located (`polkadotLocate`).
 
 ## Variables
 
@@ -193,12 +172,6 @@ Pallet and call indices, the same on both networks.
 > `const` **LCP\_ASSETS\_REMARK**: `"lcp-assets-remark"` = `"lcp-assets-remark"`
 
 The profile's `assetTransferMethod`.
-
-***
-
-### POLKADOT\_NETWORKS
-
-> `const` **POLKADOT\_NETWORKS**: readonly [`PolkadotNetwork`](#polkadotnetwork)[]
 
 ## Functions
 
@@ -281,24 +254,6 @@ ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reade
 #### Returns
 
 `Promise`\<`string` \| [`Refusal`](index.md#refusal) \| `null`\>
-
-***
-
-### polkadotPairingOf()
-
-> **polkadotPairingOf**(`o`): `"x402/exact/polkadot/lcp-assets-remark"` \| `undefined`
-
-The pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `o` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/polkadot/lcp-assets-remark"` \| `undefined`
 
 ***
 
