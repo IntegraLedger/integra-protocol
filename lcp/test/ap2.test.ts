@@ -157,6 +157,20 @@ describe("ap2-checkout-mandate.json", () => {
     }
   });
 
+  it("bound checks the mandate against the checkout JWT presented beside it, not the seller's latest", async () => {
+    // The seller's latest JWT is the plant's re-issued checkout; the buyer's copy is J, the one M commits to and the
+    // one the buyer's complete() presents.
+    const r = checkoutMandate.read(J);
+    if ("refused" in r) throw new Error(r.code);
+    const u = await checkoutMandate.build(r.offer, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    const buyers = u.complete(M);
+    expect(buyers.checkout_jwt).toBe(J);
+    expect(await checkoutMandate.bound(buyers)).toBe(F.H);
+    const latest: string = V.plant.checkoutJwt;
+    expect(await checkoutMandate.bound({ checkout_mandate: M, checkout_jwt: latest })).toEqual(V.plant.expect);
+  });
+
   describe("implementation rows", () => {
     for (const row of V.implementation) {
       it(`${row.name}: ${row.case}`, async () => {

@@ -50,7 +50,10 @@ export interface Presented {
    * mandate's, joined by `~~`.
    */
   checkout_mandate: string;
-  /** The checkout JWT the presenter names as the latest. */
+  /**
+   * The checkout JWT presented beside the mandate. For AP2's latest-checkout check, the seller passes the one it last
+   * sent for this checkout; the buyer's copy shows only that the mandate and that JWT agree.
+   */
   checkout_jwt: Jws;
 }
 export interface MandateContent {
@@ -149,8 +152,10 @@ export async function readMandate(m: unknown): Promise<MandateContent | Refusal>
 }
 
 /**
- * AP2's merchant check: the mandate's `checkout_hash` is the hash of the presenter's latest `checkout_jwt`, and a
- * disclosed `checkout_jwt` is that JWT. Returns that JWT's payload.
+ * AP2's merchant check: the mandate's `checkout_hash` is the hash of the presented `checkout_jwt`, and a disclosed
+ * `checkout_jwt` is that JWT. Returns that JWT's payload. It checks that the mandate commits to the latest checkout
+ * when the seller presents the `checkout_jwt` it last sent for this checkout; with the buyer's copy, it checks only
+ * that the mandate and that JWT agree.
  */
 export async function checkoutBinding(p: unknown): Promise<{ payload: Payload } | Refusal> {
   if (!isJsonObject(p)) return refusal("ap2/mandate-malformed");
@@ -292,13 +297,12 @@ const pattern: LcpPattern = deepFreeze({
   proves:
     "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
     "recorded in <transaction>. The buyer's closed AP2 Checkout Mandate carries checkout_hash, the SHA-256 of the " +
-    "checkout JWT the seller last sent, and that JWT's payload carries this ATR's hash as its legalContext member. The " +
-    "seller read both from inside the mandate. The mandate's signer is the user's trusted surface, or the agent " +
-    "under the user's open mandate, presented before it in a chain. The seller did not verify that signature, the " +
-    "open mandate's signature or delegation to the agent's key (cnf), or the chain's link between them: AP2 has the " +
-    "Credential Provider verify the Payment Mandate, whose transaction_id is the same hash, before a payment " +
-    "credential issues. The seller reported the payment. This does not show that amount, payee or timing match the " +
-    "ATR's content.",
+    "checkout JWT presented beside it, and that JWT's payload carries this ATR's hash as its legalContext member. The " +
+    "mandate's signer is the user's trusted surface, or the agent under the user's open mandate, presented before it " +
+    "in a chain. The seller did not verify that signature, the open mandate's signature or delegation to the agent's " +
+    "key (cnf), or the chain's link between them: AP2 has the Credential Provider verify the Payment Mandate, whose " +
+    "transaction_id is the same hash, before a payment credential issues. The seller reported the payment. This does " +
+    "not show that amount, payee or timing match the ATR's content.",
 });
 
 export const checkoutMandate = Object.freeze({
