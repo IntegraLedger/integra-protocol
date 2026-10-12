@@ -7,23 +7,6 @@ description: "The exports of @integraledger/lcp/tron."
 
 ## Interfaces
 
-### TronChoice
-
-#### Properties
-
-| Property | Type | Description |
-| ------ | ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
-| <a id="property-feelimit"></a> `feeLimit` | `bigint` | In sun, from 1 to 15,000,000,000. |
-| <a id="property-now"></a> `now` | `bigint` | Milliseconds since the epoch. |
-| <a id="property-payer"></a> `payer` | `string` | The payer's base58check address. |
-| <a id="property-refblock"></a> `refBlock` | `object` | A recent block from the buyer's FullNode. |
-| `refBlock.id` | `` `0x${string}` `` | - |
-| `refBlock.number` | `bigint` | - |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
-
-***
-
 ### TronInfo
 
 #### Properties
@@ -48,7 +31,7 @@ The `Transaction.raw` fields this profile uses.
 | <a id="property-contractaddress"></a> `contractAddress` | `Uint8Array` |
 | <a id="property-data"></a> `data` | `Uint8Array` |
 | <a id="property-expiration"></a> `expiration` | `bigint` |
-| <a id="property-feelimit-1"></a> `feeLimit` | `bigint` |
+| <a id="property-feelimit"></a> `feeLimit` | `bigint` |
 | <a id="property-owner"></a> `owner` | `Uint8Array` |
 | <a id="property-refblockbytes"></a> `refBlockBytes` | `Uint8Array` |
 | <a id="property-refblockhash"></a> `refBlockHash` | `Uint8Array` |
@@ -145,7 +128,7 @@ The read keys recorded at claim, JSON-serialisable. `asset` is the contract's 21
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`TronPayment`](#tronpayment)
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `TronPayment`
 
 Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 
@@ -157,7 +140,7 @@ Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`TronPayment`](#tronpayment)
+[`Refusal`](index.md#refusal) \| `TronPayment`
 
 ## Type Aliases
 
@@ -166,12 +149,6 @@ Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 > **TronNetwork** = `` `tron:${number}` ``
 
 CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta.
-
-***
-
-### TronPayment
-
-> **TronPayment** = [`X402Payment`](x402.md#x402payment)\<\{ `transaction`: `string`; \}\>
 
 ***
 
@@ -258,24 +235,6 @@ bigint from 0 below 2^63, the values `decodeTronTx` reads back.
 #### Returns
 
 `Uint8Array`
-
-***
-
-### pairingOf()
-
-> **pairingOf**(`option`): `"x402/exact/tron/lcp-trc20-memo"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/tron/lcp-trc20-memo"` \| `undefined`
 
 ***
 
