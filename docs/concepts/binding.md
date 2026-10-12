@@ -15,7 +15,7 @@ is what they agreed to.
 
 ## Where H rides
 
-Each pairing places H in one field. Some examples, all from the package's own pairings:
+Where H rides depends on the pairing. Some examples, all from the package's own pairings:
 
 | Pairing | Where H rides |
 |---|---|
