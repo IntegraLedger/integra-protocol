@@ -36,7 +36,7 @@ description: "The exports of @integraledger/lcp/ap2."
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-checkout_jwt-1"></a> `checkout_jwt` | `string` | The checkout JWT the presenter names as the latest. |
+| <a id="property-checkout_jwt-1"></a> `checkout_jwt` | `string` | The checkout JWT presented beside the mandate. For AP2's latest-checkout check, the seller passes the one it last sent for this checkout; the buyer's copy shows only that the mandate and that JWT agree. |
 | <a id="property-checkout_mandate"></a> `checkout_mandate` | `string` | The closed Checkout Mandate as presented: one SD-JWT, or AP2's chain of the open mandate's SD-JWT and the closed mandate's, joined by `~~`. |
 
 ***
@@ -128,8 +128,10 @@ The option digest the issuer keeps: SHA-256 over the RFC 8785 form.
 
 > **checkoutBinding**(`p`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `payload`: [`Payload`](#payload); \}\>
 
-AP2's merchant check: the mandate's `checkout_hash` is the hash of the presenter's latest `checkout_jwt`, and a
-disclosed `checkout_jwt` is that JWT. Returns that JWT's payload.
+AP2's merchant check: the mandate's `checkout_hash` is the hash of the presented `checkout_jwt`, and a disclosed
+`checkout_jwt` is that JWT. Returns that JWT's payload. It checks that the mandate commits to the latest checkout
+when the seller presents the `checkout_jwt` it last sent for this checkout; with the buyer's copy, it checks only
+that the mandate and that JWT agree.
 
 #### Parameters
 
