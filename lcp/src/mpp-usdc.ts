@@ -422,8 +422,50 @@ function stacksPeer(): Promise<StacksPeer | undefined> {
 type Decoded = ReturnType<StacksPeer["deserializeTransaction"]>;
 
 /**
- * H from the echoed challenge, once its transaction decodes, re-serialises to the same bytes and calls `transfer`
- * with `(some H)` as its fourth argument. Nothing but that argument is read.
+ * The deepest a Clarity value in a transaction nests, the outermost value counting 1: stacks-core reads a
+ * transaction's Clarity values with `UNSANITIZED_DEPTH_CHECK`, 16, and refuses a deeper one.
+ */
+const MAX_CLARITY_DEPTH = 16;
+
+/**
+ * True when every Clarity value the decoded transaction carries nests at most `MAX_CLARITY_DEPTH` levels: its
+ * payload's function arguments or recipient, and each non-fungible post-condition's asset value. The walk keeps its own
+ * list and stops at the first value past the bound.
+ */
+function clarityWithinDepth(tx: Decoded, peer: StacksPeer): boolean {
+  const payload = tx.payload as { functionArgs?: unknown; recipient?: unknown };
+  const todo: [unknown, number][] = [];
+  if (Array.isArray(payload.functionArgs)) for (const v of payload.functionArgs) todo.push([v, 1]);
+  if (payload.recipient !== undefined) todo.push([payload.recipient, 1]);
+  for (const pc of tx.postConditions.values) {
+    if (pc.conditionType === peer.PostConditionType.NonFungible) todo.push([pc.assetName, 1]);
+  }
+  for (let next = todo.pop(); next !== undefined; next = todo.pop()) {
+    const [v, depth] = next;
+    if (depth > MAX_CLARITY_DEPTH) return false;
+    if (!isObject(v)) continue;
+    const inner = v["value"];
+    switch (v["type"]) {
+      case peer.ClarityType.OptionalSome:
+      case peer.ClarityType.ResponseOk:
+      case peer.ClarityType.ResponseErr:
+        todo.push([inner, depth + 1]);
+        break;
+      case peer.ClarityType.List:
+        if (Array.isArray(inner)) for (const x of inner) todo.push([x, depth + 1]);
+        break;
+      case peer.ClarityType.Tuple:
+        if (isObject(inner)) for (const x of Object.values(inner)) todo.push([x, depth + 1]);
+        break;
+    }
+  }
+  return true;
+}
+
+/**
+ * H from the echoed challenge, once its transaction decodes, carries no Clarity value nested deeper than a Stacks node
+ * reads, re-serialises to the same bytes and calls `transfer` with `(some H)` as its fourth argument. Nothing but that
+ * argument is read.
  */
 async function stacksBinding(
   input: unknown,
@@ -447,10 +489,12 @@ async function stacksBinding(
   const peer = await stacksPeer();
   if (peer === undefined) return refusal("stacks/peer-missing");
   // Decoding accepts a multisig key field that is not a point on the curve; re-serialising it throws. Either is a
-  // transaction that does not decode and re-serialise to the same bytes.
+  // transaction that does not decode and re-serialise to the same bytes. The peer decodes a Clarity value by
+  // recursion, so a value nested past the node's bound is refused here whether this host's stack holds it or not.
   let tx: Decoded;
   try {
     tx = peer.deserializeTransaction(wire);
+    if (!clarityWithinDepth(tx, peer)) return refusal("mpp/stacks-tx-malformed");
     if (!equalBytes(peer.serializeTransactionBytes(tx), wire)) return refusal("mpp/stacks-tx-malformed");
   } catch {
     return refusal("mpp/stacks-tx-malformed");

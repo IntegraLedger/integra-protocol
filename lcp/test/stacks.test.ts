@@ -173,6 +173,64 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     expect(await chargeUsdcStacks.reference(credential(offCurve65))).toEqual(malformed);
   });
 
+  // stacks-core reads a transaction's Clarity values (each function argument, and each non-fungible post-condition's
+  // asset value) with `UNSANITIZED_DEPTH_CHECK` = 16 and refuses a value nested deeper, the outermost value counting 1
+  // (stacks-network/stacks-core 10474cd, clarity-types/src/types/serialization.rs and stacks-codec/src/transaction.rs).
+  // The deep values are written by hand as Clarity's serialization writes them (`some` is the byte 0x0a before its
+  // value; a `uint` is 0x01 and 16 bytes), so that building them reads no stack; the transactions are left unsigned,
+  // which bound does not read.
+  it("bound and reference refuse a Clarity value nested deeper than a Stacks node reads", async () => {
+    const [address, name] = F.contract.split(".");
+    const memo = S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex")));
+    const A = 0xa1a2a3a4a5a6a7a8n;
+    const B = 0xb1b2b3b4b5b6b7b8n;
+    const leaf = (v: bigint) => `01${v.toString(16).padStart(32, "0")}`;
+    const nested = (levels: number, v: bigint) => `${"0a".repeat(levels - 1)}${leaf(v)}`;
+    const some = (levels: number, v: bigint): S.ClarityValue => {
+      let cv: S.ClarityValue = S.uintCV(v);
+      for (let i = 1; i < levels; i++) cv = S.someCV(cv);
+      return cv;
+    };
+    const call = async (first: S.ClarityValue, nftValue: S.ClarityValue) => {
+      const tx = await S.makeUnsignedContractCall({
+        contractAddress: address,
+        contractName: name,
+        functionName: "transfer",
+        functionArgs: [first, S.principalCV(F.sender), S.principalCV(F.recipient), memo],
+        network: "testnet",
+        fee: BigInt(F.fee),
+        nonce: BigInt(F.nonce),
+        publicKey: S.privateKeyToPublic(KEY) as string,
+        postConditionMode: S.PostConditionMode.Deny,
+        postConditions: [S.Pc.principal(F.sender).willNotSendAsset().nft(`${address}.${name}::nft`, nftValue)],
+      });
+      tx.anchorMode = S.AnchorMode.OnChainOnly;
+      return hex(S.serializeTransactionBytes(tx)).slice(2);
+    };
+    const wire = (text: string) => Buffer.from(text, "hex");
+    const malformed = { refused: true, code: "mpp/stacks-tx-malformed" };
+
+    for (const [first, nft] of [
+      [16, 1],
+      [1, 16],
+    ] as const) {
+      expect(await chargeUsdcStacks.bound(credential(wire(await call(some(first, A), some(nft, B)))))).toBe(V.M4.expectBound);
+    }
+    const plain = await call(S.uintCV(A), S.uintCV(B));
+    const [a, b] = [plain.indexOf(leaf(A)), plain.indexOf(leaf(B))];
+    expect([a % 2, b % 2, plain.lastIndexOf(leaf(A)) === a, plain.lastIndexOf(leaf(B)) === b]).toEqual([0, 0, true, true]);
+    const deepArgument = (levels: number) => plain.slice(0, a) + nested(levels, A) + plain.slice(a + leaf(A).length);
+    const deepAsset = (levels: number) => plain.slice(0, b) + nested(levels, B) + plain.slice(b + leaf(B).length);
+    expect(deepArgument(17)).toBe(await call(some(17, A), S.uintCV(B)));
+    expect(deepAsset(17)).toBe(await call(S.uintCV(A), some(17, B)));
+    for (const levels of [17, 1000, 20_000]) {
+      for (const text of [deepArgument(levels), deepAsset(levels)]) {
+        expect(await chargeUsdcStacks.bound(credential(wire(text)))).toEqual(malformed);
+        expect(await chargeUsdcStacks.reference(credential(wire(text)))).toEqual(malformed);
+      }
+    }
+  });
+
   it("reference gives the read keys, and survives JSON", async () => {
     const ref = await chargeUsdcStacks.reference(credential(await withMemo()));
     expect(ref).toEqual(V.M4.expectReference);
