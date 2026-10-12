@@ -5,7 +5,7 @@
 // an object (docs/reference/refusals.md); a writer whose type carries none throws `TypeError` on an argument outside its
 // type, as the core's carrier writers do (docs/concepts/refusals.md, "What throws"). Each well-formed counterpart of a
 // replaced argument is a value from the rail's vector file.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { aptosIdDigest, aptosStatus } from "../src/aptos.js";
 import { avmRecover, avmStatus } from "../src/avm.js";
@@ -34,6 +34,7 @@ import {
   txIdMirror,
   txIdText,
 } from "../src/hedera.js";
+import { BINDINGS } from "../src/index.js";
 import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
 import {
   chargeCard,
@@ -645,6 +646,99 @@ describe("sui", () => {
     expect(suiCarrier(tx)).toBe(V2.expectBound);
     for (const unusedPure of [undefined, "0x1234", [null], [H]]) {
       expect(suiCarrier({ ...tx, unusedPure } as never), String(unusedPure)).toEqual(refused("sui/tx-malformed"));
+    }
+  });
+});
+
+describe("every pairing", () => {
+  it("every function member, given no argument or one to three that are not what it takes, answers with a value", async () => {
+    let calls = 0;
+    for (const b of BINDINGS) {
+      const channel = (b as { channel?: object }).channel ?? {};
+      const members: [string, unknown, object][] = [
+        ...Object.entries(b).map(([k, f]): [string, unknown, object] => [k, f, b]),
+        ...Object.entries(channel).map(([k, f]): [string, unknown, object] => [`channel.${k}`, f, channel]),
+      ];
+      for (const [member, f, self] of members) {
+        if (typeof f !== "function") continue;
+        for (const bad of [...MALFORMED, []]) {
+          for (let n = 0; n <= 3; n++) {
+            calls++;
+            const args = Array.from({ length: n }, () => bad);
+            const answer = await Promise.resolve()
+              .then(() => f.apply(self, args))
+              .then(
+                () => "a value",
+                (e: unknown) => `throws ${String(e)}`,
+              );
+            expect(answer, `${b.id} ${member}(${n} x ${String(bad)})`).toBe("a value");
+          }
+        }
+      }
+    }
+    expect(calls).toBeGreaterThan(5000);
+  });
+
+  it("every unplaced hands back a value that is not an option unchanged", () => {
+    for (const b of BINDINGS) {
+      for (const bad of MALFORMED) expect((b.unplaced as (o: unknown) => unknown)(bad), `${b.id} ${String(bad)}`).toBe(bad);
+    }
+  });
+
+  // Each pairing's own B6 credential (and the same credential as a push, its payload type "signature" or "hash"), the
+  // ref its reference writes and the close ref its closeRef writes, with a reader that is not an object: fetchPresented
+  // answers what it answers a reader "x", and status is pending unreadable.
+  const b6 = readdirSync(new URL("../vectors/", import.meta.url))
+    .flatMap((name) => (load(name).buyer?.rows ?? []) as { name: string; pairing: string; input: { presented?: unknown } }[])
+    .filter((r) => r.name === "B6");
+  it("every read, given its pairing's own credential or ref and a reader that is not an object, answers with a value", async () => {
+    let calls = 0;
+    for (const b of BINDINGS) {
+      const row = b6.find((r) => r.pairing === b.id);
+      if (row === undefined) continue;
+      const presented = row.input.presented as { challenge: unknown; payload: object };
+      const p = b as unknown as { [k: string]: (...a: unknown[]) => Promise<unknown> } & { channel?: { ref(c: unknown): Promise<unknown> } };
+      if (typeof p.fetchPresented === "function") {
+        for (const type of [undefined, "signature", "hash"]) {
+          const c = type === undefined ? presented : { ...presented, payload: { ...presented.payload, type } };
+          const other = await p.fetchPresented(structuredClone(c), "x");
+          for (const bad of [null, undefined]) {
+            calls++;
+            expect(await p.fetchPresented(structuredClone(c), bad), `${b.id} fetchPresented ${type} ${bad}`).toEqual(other);
+          }
+        }
+      }
+      if (typeof p.status !== "function") continue;
+      const refs: unknown[] = [];
+      const opened = await p.reference?.(structuredClone(presented));
+      if (opened !== null && typeof opened === "object" && !("refused" in opened)) refs.push({ transaction: "x", ...opened });
+      const channel = (await p.channel?.ref(structuredClone(presented))) as { channel?: unknown } | undefined;
+      if (typeof p.closeRef === "function" && typeof channel?.channel === "string") {
+        refs.push({ ...(p.closeRef as unknown as (...a: unknown[]) => object)(presented.challenge, channel.channel), transaction: "x" });
+      }
+      for (const ref of refs) {
+        for (const bad of NOT_OBJECTS) {
+          calls++;
+          expect(await p.status(structuredClone(ref), bad), `${b.id} status ${JSON.stringify(ref).slice(0, 40)} ${String(bad)}`).toEqual(UNREADABLE);
+        }
+      }
+    }
+    expect(calls).toBeGreaterThan(100);
+  });
+
+  // These x402 pairings' builds read the choice's members before the document: their own codes answer first.
+  const ownCodes = /(algorand|hedera|near|polkadot|starknet|tron|tvm)/;
+  const x402Builds = BINDINGS.filter((b) => b.id.startsWith("x402/") && !ownCodes.test(b.id));
+  it("every x402 build that reads a choice object refuses one that is not an object as x402/not-v2", async () => {
+    expect(x402Builds.length).toBeGreaterThan(15);
+    for (const b of x402Builds) {
+      for (const member of ["build", "buildWithin"] as const) {
+        const f = (b as unknown as { [k: string]: unknown })[member];
+        if (typeof f !== "function") continue;
+        for (const bad of NOT_OBJECTS) {
+          expect(await f.call(b, bad, H), `${b.id} ${member} ${String(bad)}`).toEqual(refused("x402/not-v2"));
+        }
+      }
     }
   });
 });
