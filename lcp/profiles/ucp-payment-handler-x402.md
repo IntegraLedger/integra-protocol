@@ -9,8 +9,9 @@
 ## Introduction
 
 A UCP checkout is paid in x402: the platform's wallet signs an x402 version 2 payment for one option the checkout
-offers, and the business settles it on chain. The payment carries the hash of the Agentic Transaction Record (ATR) that
-states the checkout's terms, so paying is agreeing to that record.
+offers, and the business settles it on chain. Without AP2 mandates, the payment carries the hash of the Agentic
+Transaction Record (ATR) that states the checkout's terms, and a payment the buyer approves that carries that hash is
+proof that the buyer accepted that record.
 
 1. The credential is the buyer's signed x402 payment, whole: `{type: "x402", x402Version: 2, paymentPayload,
    paymentRequirements}`. It is the credential Finance District's `xyz.fd.prism_payment` handler takes, so a wallet
