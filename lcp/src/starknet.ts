@@ -7,6 +7,7 @@
 import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import type { StarknetPayment } from "./internal/starknet.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -22,7 +23,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 export type StarknetNetwork = "starknet:SN_MAIN" | "starknet:SN_SEPOLIA";
@@ -106,11 +106,6 @@ export type StarknetStatus =
   | { state: "settled"; finality: "ACCEPTED_ON_L2" | "ACCEPTED_ON_L1"; blockNumber: bigint }
   | { state: "pending"; why: "not-found" | "pre-confirmed" | "unreadable" }
   | { state: "failed"; why: "reverted" | "not-this-instrument" };
-
-export type StarknetPayment = X402Payment<{
-  from: Felt;
-  outsideExecution: { typedData: OutsideExecutionTypedData; signature: readonly Felt[] };
-}>;
 
 export interface StarknetUnsigned {
   /** The typed data the account's key signs; SNIP-12 hashes the account in. */

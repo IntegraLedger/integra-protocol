@@ -314,7 +314,7 @@ import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp
 
 **Values (14):** `ANY_CALLER`, `chainIdFelt`, `EVENT_TRANSFER`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `pairingOf`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `starknetIdDigest`, `starknetLandedNonce`, `starknetStatus`.
 
-**Types (12):** `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetEvent`, `StarknetInvocation`, `StarknetNetwork`, `StarknetPayment`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
+**Types (11):** `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetEvent`, `StarknetInvocation`, `StarknetNetwork`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
 
 ## `@integraledger/lcp/stellar`
 

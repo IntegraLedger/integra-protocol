@@ -20,7 +20,6 @@ import {
   type Felt,
   type OutsideExecutionTypedData,
   type StarknetInvocation,
-  type StarknetPayment,
   type StarknetReader,
   type StarknetReceipt,
   type StarknetRef,
@@ -47,7 +46,9 @@ const advertised = () => exactStarknet.advertise(doc(), H, V.fixed.link, O) as P
 const pay = async (required: PaymentRequired = advertised()) => {
   const u = await exactStarknet.build({ required, accepted: O, from: V.fixed.from, now: V.fixed.now }, H);
   if ("refused" in u) throw new Error(u.code);
-  return u.complete(V.S3.signature) as StarknetPayment;
+  const p = u.complete(V.S3.signature);
+  if ("refused" in p) throw new Error(p.code);
+  return p;
 };
 type Rec =
   | { finality: string; execution: string; blockNumber: string | null; events: StarknetReceipt["events"] }
