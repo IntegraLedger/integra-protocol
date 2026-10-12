@@ -33,6 +33,7 @@ import {
   txIdMirror,
   txIdText,
 } from "../src/hedera.js";
+import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -337,5 +338,13 @@ describe("hedera", () => {
     () => hederaVoucher(channel, 5 as never),
     () => hederaVoucher(channel, -1n),
     () => hederaVoucher(channel, 1n << 128n),
+  ]);
+});
+
+describe("near", () => {
+  reads([
+    ["nearStatus", nearStatus, "x402-exact-near.json", UNREADABLE],
+    ["nearRecover", nearRecover, "x402-exact-near.json", refused("near/wrong-reader")],
+    ["nearLapsed", nearLapsed, "x402-exact-near.json", false],
   ]);
 });

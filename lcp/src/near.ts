@@ -245,7 +245,10 @@ function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | nu
  * and the base58 of 32 bytes or `secp256k1:` and of 64.
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
-  if (reader.network !== ref.network || !Array.isArray(reader.relayers) || reader.relayers.length === 0) {
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
+  if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) {
     return { state: "pending", why: "unreadable" };
   }
   const nonce = u64Of(ref.nonce);
@@ -286,9 +289,11 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
  * True only when the delegate action can never execute: the final height, read first, is past `maxBlockHeight`, and
  * the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
  * the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
- * executed gives the same answer. Two calls; a failed or malformed read is false.
+ * executed gives the same answer. Two calls; a failed or malformed read, or a ref or reader that is not an object, is
+ * false.
  */
 export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<boolean> {
+  if (!isObject(ref) || !isObject(reader)) return false;
   const maxBlockHeight = u64Of(ref.maxBlockHeight);
   const signed = u64Of(ref.nonce);
   if (reader.network !== ref.network || maxBlockHeight === null || signed === null) return false;
@@ -308,7 +313,7 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
  * that calls another method is `near/not-ft-transfer`.
  */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
-  if (reader.network !== ref.network) return refusal("near/wrong-reader");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
   if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) return refusal("near/no-relayer");
   const outcome = await findOutcome(ref.transaction, reader);
   if (outcome === "unreadable") return refusal("near/unreadable");
