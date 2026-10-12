@@ -415,14 +415,17 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
  * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
  * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
  * failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
- * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`; a `revokes` that is not an object
- * whose `account` and `keyId` are addresses is pending `unreadable`, with no call made. At most four calls.
+ * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. An `opens` that is not an object
+ * whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, or a `revokes`
+ * that is not an object whose `account` and `keyId` are addresses, is pending `unreadable`, with no call made. At most
+ * four calls.
  */
 export async function sessionStatus(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionStatus> {
   if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
     return { state: "pending", why: "unreadable" };
   }
   if (ref.revokes !== undefined && !readableRevokes(ref.revokes)) return { state: "pending", why: "unreadable" };
+  if (ref.opens !== undefined && !readableOpens(ref.opens)) return { state: "pending", why: "unreadable" };
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
     network: reader.network,
@@ -472,6 +475,23 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     return typeof id === "string" && sameBytes(id, o.channel);
   });
   return opened ? s : { state: "failed", why: "binding-log-not-found" };
+}
+
+/**
+ * Whether `opens` is an object whose `escrow` is an address, `channel` and `h` are 32-byte hashes and `chainId` is a
+ * positive safe integer, as `reference` writes it.
+ */
+function readableOpens(opens: unknown): boolean {
+  if (!isObject(opens)) return false;
+  const chainId = opens["chainId"];
+  return (
+    isAddress(opens["escrow"]) &&
+    normalHash(opens["channel"]) !== null &&
+    normalHash(opens["h"]) !== null &&
+    typeof chainId === "number" &&
+    Number.isSafeInteger(chainId) &&
+    chainId > 0
+  );
 }
 
 /** Whether `revokes` is an object whose `account` and `keyId` are addresses, as `closeRef` writes it. */

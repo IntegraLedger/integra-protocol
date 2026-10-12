@@ -117,6 +117,28 @@ describe("ES9: the hash opening's settlement read", () => {
     expect(await statusOf(await opening(H), noSender)).toEqual({ state: "pending", why: "unreadable" });
   });
 
+  // CONTRIBUTING.md, "Failures are values": status answers a ref member it cannot read as pending unreadable and makes
+  // no reader call for it. A readable opens is the form reference writes, asserted above: the escrow's address, the
+  // channel, H and the chain id.
+  it("an opens that is not of the form reference writes reads as pending unreadable, with no call made", async () => {
+    const ref = (await sessionEvm.reference(await opening(H))) as SessionRef;
+    const calls = { n: 0 };
+    const settled = reader(R.cases[0].transaction);
+    const counting: EvmReader = {
+      network: settled.network,
+      receipt: async (tx) => (calls.n++, settled.receipt(tx)),
+      blockNumber: async (tag) => (calls.n++, settled.blockNumber(tag)),
+      transaction: async (tx) => (calls.n++, settled.transaction(tx)),
+      call: async (to, data, block) => (calls.n++, settled.call(to, data, block)),
+    };
+    for (const opens of [null, {}, { ...ref.opens, escrow: 5 }, { ...ref.opens, chainId: 0 }, "x"]) {
+      const malformed = { ...ref, opens, transaction: R.hash } as unknown as SessionRef & { transaction: Hex };
+      expect(await sessionEvm.status(malformed, counting), JSON.stringify(opens)).toEqual({ state: "pending", why: "unreadable" });
+    }
+    expect(calls.n).toBe(0);
+    expect(withBigints(await sessionEvm.status({ ...ref, transaction: R.hash as Hex }, counting))).toEqual(R.cases[0].expect);
+  });
+
   it("the authorization opening's reference names no open call; its AuthorizationUsed nonce commits to H", async () => {
     const ref = (await sessionEvm.reference(await signedOpening("authorization"))) as SessionRef;
     expect(ref.opens).toBeUndefined();

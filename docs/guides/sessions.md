@@ -275,9 +275,10 @@ elsewhere, reads as failed, with the reason `transfer-not-found`.
 
 An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim; one of type
 `permit2` is sent by the seller's server, which names its transaction to `status`. Both references carry `opens`: the
-escrow, the channel, H and the chain. `status` then reads the transaction itself, through the reader's `transaction`
-(`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles only when it holds the
-escrow's open call for the channel, with H as its salt:
+escrow, the channel, H and the chain; a reference whose `opens` is not of that form reads as pending, with the reason
+`unreadable`, and nothing is read. Otherwise `status` reads the transaction itself, through the reader's
+`transaction` (`eth_getTransactionByHash`, which gives the sender, the recipient and the calldata), and settles only
+when it holds the escrow's open call for the channel, with H as its salt:
 
 - the escrow's `open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)` in its
   first 164 bytes of calldata, sent to the escrow, whose sender is the payer; or
