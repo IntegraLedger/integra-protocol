@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 import { decode } from "ripple-binary-codec";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
-import type { AtrHash } from "../src/index.js";
+import { pairingOf, type AtrHash } from "../src/index.js";
 import { decodeBlob, mppInvoiceId, x402InvoiceId, xrplStatus, type XrplReader, type XrplRef } from "../src/xrpl.js";
-import { exactXrpl, pairingOf } from "../src/x402-exact-xrpl.js";
+import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));

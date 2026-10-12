@@ -50,18 +50,18 @@ interface XrplChoice {
   lastLedgerSequence: number;
 }
 
-/** This pairing's id for an option it can pay, or undefined. */
-export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
-  if (!isObject(option) || option.scheme !== "exact" || !isXrplNetwork(option.network)) return undefined;
-  if (!isObject(option.extra) || option.extra["areFeesSponsored"] !== false) return undefined;
+/**
+ * The pairing's filter: an `exact` option on an `xrpl:` network with `extra.areFeesSponsored` false, an
+ * `extra.assetTransferMethod` absent, `sequence` or `ticketSequence`, and an `extra.invoiceId` absent or a string.
+ */
+function isThis(option: PaymentRequirements): boolean {
+  if (!isObject(option) || option.scheme !== "exact" || !isXrplNetwork(option.network)) return false;
+  if (!isObject(option.extra) || option.extra["areFeesSponsored"] !== false) return false;
   const method = option.extra["assetTransferMethod"];
-  if (method !== undefined && method !== "sequence" && method !== "ticketSequence") return undefined;
+  if (method !== undefined && method !== "sequence" && method !== "ticketSequence") return false;
   const invoiceId = option.extra["invoiceId"];
-  if (invoiceId !== undefined && typeof invoiceId !== "string") return undefined;
-  return ID;
+  return invoiceId === undefined || typeof invoiceId === "string";
 }
-
-const isThis = (o: PaymentRequirements): boolean => pairingOf(o) !== undefined;
 
 /** True when `build` can write the Payment's `Amount`: XRP drops, or an issued amount with `extra.issuer`. */
 function payable(o: PaymentRequirements): boolean {
