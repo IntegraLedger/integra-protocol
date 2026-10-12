@@ -8,14 +8,13 @@ import { ReaderError } from "../src/evm.js";
 import {
   LCP_MARKER,
   auxiliaryData,
-  cardanoPairingOf,
   decodeCardanoTx,
   exactCardano,
-  type CardanoPaymentPayload,
   type CardanoReader,
   type CardanoRef,
 } from "../src/cardano.js";
-import type { PaymentRequired } from "../src/x402.js";
+import { pairingOf } from "../src/index.js";
+import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-cardano.json", import.meta.url), "utf8"));
 const H: `0x${string}` = V.fixed.H;
@@ -24,7 +23,7 @@ const LINK: string = V.fixed.link;
 const TX: Record<string, string> = { V2: V.V2.transactionBase64, V3: V.V3.transactionBase64 };
 const DEPTH = BigInt(V.V5.depth);
 
-function payment(transaction: string, accepted = O): CardanoPaymentPayload {
+function payment(transaction: string, accepted = O) {
   return { x402Version: 2, accepted, payload: { transaction, nonce: V.fixed.nonce } };
 }
 
@@ -293,15 +292,16 @@ describe("plant", () => {
 
 describe("the pairing's filter, advertise, read, build and complete", () => {
   it("takes the named networks, their CIP-34 aliases and the three methods", () => {
+    const pays = (o: PaymentRequirements) => pairingOf(o) === "x402/exact/cardano";
     for (const network of ["cardano:mainnet", "cardano:preview", "cip34:1-764824073", "cip34:0-2"]) {
-      expect(cardanoPairingOf({ ...O, network })).toBe("x402/exact/cardano");
+      expect(pays({ ...O, network })).toBe(true);
     }
     for (const m of ["script", "masumi"]) {
-      expect(cardanoPairingOf({ ...O, extra: { assetTransferMethod: m } })).toBe("x402/exact/cardano");
+      expect(pays({ ...O, extra: { assetTransferMethod: m } })).toBe(true);
     }
-    expect(cardanoPairingOf({ ...O, extra: { assetTransferMethod: "eip3009" } })).toBeUndefined();
-    expect(cardanoPairingOf({ ...O, extra: { paymentFlow: "upfront" } })).toBeUndefined();
-    expect(cardanoPairingOf({ ...O, network: "cip34:0-4" })).toBeUndefined();
+    expect(pays({ ...O, extra: { assetTransferMethod: "eip3009" } })).toBe(false);
+    expect(pays({ ...O, extra: { paymentFlow: "upfront" } })).toBe(false);
+    expect(pays({ ...O, network: "cip34:0-4" })).toBe(false);
   });
   it("advertise and read; build asks for the auxiliary data; complete accepts only a payment bound to H", async () => {
     const required = exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);

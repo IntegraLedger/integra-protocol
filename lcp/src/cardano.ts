@@ -7,6 +7,7 @@ import { blake2b } from "@noble/hashes/blake2.js";
 import { fromLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
+import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import { base64Bytes, hexOf, sameBytes } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -73,14 +74,6 @@ export type CardanoStatus =
 export interface CardanoPayload {
   transaction: string;
   nonce: string;
-}
-
-export interface CardanoPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: CardanoPayload;
-  extensions?: PaymentRequired["extensions"];
 }
 
 export interface CardanoUnsigned {
@@ -201,7 +194,7 @@ export async function cardanoRecover(
 }
 
 /** The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not. */
-export function cardanoOptionCheck(option: unknown): Refusal | undefined {
+function cardanoOptionCheck(option: unknown): Refusal | undefined {
   if (!isObject(option) || option["scheme"] !== "exact") return refusal("x402/option-not-this-pairing");
   const network = option["network"];
   if (typeof network !== "string" || !(network.startsWith("cardano:") || network.startsWith("cip34:"))) {
@@ -220,11 +213,6 @@ export function cardanoOptionCheck(option: unknown): Refusal | undefined {
 
 /** The filter step over `cardanoOptionCheck`. */
 const cardanoFilter: OptionFilter = (o) => cardanoOptionCheck(o) ?? true;
-
-/** This pairing's id for an option it can pay, or undefined. */
-export function cardanoPairingOf(option: PaymentRequirements): typeof ID | undefined {
-  return cardanoOptionCheck(option) === undefined ? ID : undefined;
-}
 
 function advertise(
   doc: PaymentRequired,

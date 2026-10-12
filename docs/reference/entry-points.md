@@ -159,14 +159,14 @@ import { disclosureDigest, pairingsOf, sellerReference, … } from "@integraledg
 Cardano, and the `x402/exact/cardano` pairing: the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so settlement is read by an id fixed before any money moves.
 
 ```ts no-check
-import { auxiliaryData, cardanoOptionCheck, cardanoPairingOf, … } from "@integraledger/lcp/cardano";
+import { auxiliaryData, cardanoRecover, cardanoStatus, … } from "@integraledger/lcp/cardano";
 ```
 
 **Pairings:** `x402/exact/cardano`.
 
-**Values (8):** `auxiliaryData`, `cardanoOptionCheck`, `cardanoPairingOf`, `cardanoRecover`, `cardanoStatus`, `decodeCardanoTx`, `exactCardano`, `LCP_MARKER`.
+**Values (6):** `auxiliaryData`, `cardanoRecover`, `cardanoStatus`, `decodeCardanoTx`, `exactCardano`, `LCP_MARKER`.
 
-**Types (9):** `CardanoNetwork`, `CardanoOnChain`, `CardanoPayload`, `CardanoPaymentPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
+**Types (8):** `CardanoNetwork`, `CardanoOnChain`, `CardanoPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
 
 ## `@integraledger/lcp/casper`
 
