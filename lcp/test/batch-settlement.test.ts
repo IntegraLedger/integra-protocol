@@ -1,5 +1,5 @@
 // Runs x402-batch-settlement.json through the x402-batch-settlement and svm entry points. Every expected value is the
-// file's. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
+// file's, except the pairingOf test's, which are the x402 SVM batch-settlement option table's, as its name says. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
 // x402-exact-solana.json's nonce; its digest is node:crypto's SHA-256 of kit's message.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -241,11 +241,12 @@ describe("x402-batch-settlement.json: SVM", () => {
     };
   };
 
-  it("ES6: a full refund's request_close, built by buildWithin", async () => {
+  it("ES6: a full refund carries the voucher, and the request_close only on the retry (x402 751590a2, scheme_batch_settlement_svm.md L626-636; steward client/channel.ts:281-312)", async () => {
     const S6 = V.ES6;
     const withMemo = V.ES4.accepted as PaymentRequirements;
     const { memo: _memo, ...noMemoExtra } = withMemo.extra as Record<string, unknown>;
     const withoutMemo = { ...withMemo, extra: noMemoExtra } as PaymentRequirements;
+    const seed = Uint8Array.from(Buffer.from(V.fixed.svm.payerSeed, "hex"));
     const within = (accepted: PaymentRequirements, extra: Record<string, unknown> = {}) =>
       batchSvm.buildWithin(
         {
@@ -254,25 +255,42 @@ describe("x402-batch-settlement.json: SVM", () => {
           channelConfig: V.ES4.config,
           maxClaimableAmount: 1000n,
           refund: {},
-          recentBlockhash: V.fixed.svm.blockhash,
           ...extra,
         },
         V.fixed.H,
       );
-    const u = await within(withMemo);
+
+    const c = await within(withMemo);
+    if ("refused" in c) throw new Error(c.code);
+    expect(c.requests.map((r) => r.kind)).toEqual(["ed25519-raw"]);
+    const vr = c.requests[0]!;
+    if (vr.kind !== "ed25519-raw") throw new Error(vr.kind);
+    expect(hex(vr.message)).toBe(V.ES3.message);
+    expect(vr.signer).toBe(V.ES4.config.payerAuthorizer);
+    const vs = ed25519.sign(vr.message, seed);
+    const cp = c.complete([base58.encode(vs)]);
+    if ("refused" in cp) throw new Error(cp.code);
+    expect(Object.keys(cp.payload).sort()).toEqual(S6.cooperative.payloadMembers);
+    expect(cp.payload["type"]).toBe("refund");
+    expect(cp.payload["channelConfig"]).toEqual(V.ES4.config);
+    expect(cp.payload["voucher"]).toEqual({ channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: base58.encode(vs) });
+    expect(batchSvm.channel.kind(cp)).toBe(S6.cooperative.expectKind);
+    expect(await batchSvm.channel.ref(cp)).toEqual(V.ES4.expectRef);
+
+    const u = await within(withMemo, { recentBlockhash: V.fixed.svm.blockhash });
     if ("refused" in u) throw new Error(u.code);
-    expect(u.requests.length).toBe(1);
+    expect(u.requests.map((r) => r.kind)).toEqual(["solana-message", "ed25519-raw"]);
     const req = u.requests[0]!;
     if (req.kind !== "solana-message") throw new Error(req.kind);
     const solders = b64(V.ES4.closeWireBase64);
     expect(decoded(req.message)).toEqual(decoded(solders.subarray(1 + 64 * solders[0]!)));
-    const seed = Uint8Array.from(Buffer.from(V.fixed.svm.payerSeed, "hex"));
     const sig = ed25519.sign(req.message, seed);
-    const p = u.complete([base58.encode(sig)]);
+    const p = u.complete([base58.encode(sig), base58.encode(vs)]);
     if ("refused" in p) throw new Error(p.code);
-    expect(Object.keys(p.payload).sort()).toEqual(["channelConfig", "transaction", "type"]);
+    expect(Object.keys(p.payload).sort()).toEqual(S6.withMemo.payloadMembers);
     expect(p.payload["type"]).toBe("refund");
     expect(p.payload["channelConfig"]).toEqual(V.ES4.config);
+    expect(p.payload["voucher"]).toEqual(cp.payload["voucher"]);
     const wire = b64(p.payload["transaction"] as string);
     expect(wire[0]).toBe(2);
     expect(wire.subarray(1, 65).every((b) => b === 0)).toBe(true);
@@ -280,18 +298,18 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(hex(wire.subarray(129))).toBe(hex(req.message));
     expect(batchSvm.channel.kind(p)).toBe(S6.withMemo.expectKind);
     expect(await batchSvm.channel.ref(p)).toEqual(V.ES4.expectRef);
+    expect(u.complete([base58.encode(sig)])).toEqual(refused("svm/input-malformed"));
 
-    const v = await within(withoutMemo);
+    const v = await within(withoutMemo, { recentBlockhash: V.fixed.svm.blockhash });
     if ("refused" in v) throw new Error(v.code);
-    const vr = v.requests[0]!;
-    if (vr.kind !== "solana-message") throw new Error(vr.kind);
-    const d = decoded(vr.message);
+    const wr = v.requests[0]!;
+    if (wr.kind !== "solana-message") throw new Error(wr.kind);
+    const d = decoded(wr.message);
     expect(d.feePayer).toBe(V.fixed.svm.feePayer);
     expect(d.blockhash).toBe(V.fixed.svm.blockhash);
     expect(d.instructions).toEqual(S6.withoutMemo.instructions);
 
     expect(await within(withMemo, { refund: { amount: 5n } })).toEqual(refused(S6.refundWithAmount.expect));
-    expect(await within(withMemo, { recentBlockhash: undefined })).toEqual(refused(S6.noBlockhash.expect));
   });
 
   it("ES1: PDAs", () => {
@@ -306,7 +324,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(V.ES1.eventAuthority).not.toBe(V.ES1.wrongCurveTest);
   });
 
-  it("ES2 and ES3: the opening build, decompiled, and the voucher", async () => {
+  it("ES2 and ES3: the opening build, decompiled with its seller memo then binding memo (steward payment-channels/open.ts:464-467 at 751590a2), and the voucher", async () => {
     expect(
       hex(openInstructionData({ salt: 42n, deposit: 100000n, gracePeriod: 3600, openSlot: BigInt(S.openSlot), recipient: S.payTo })),
     ).toBe(V.ES2.openInstructionData);
@@ -360,6 +378,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(hex(vs).startsWith(V.ES3.signaturePrefix) && hex(vs).endsWith(V.ES3.signatureSuffix)).toBe(true);
     expect(ed25519.verify(vs, voucherReq.message, ed25519.getPublicKey(seed))).toBe(true);
     const payment = unwrap(u.complete([base58.encode(ed25519.sign(txReq.message, seed)), base58.encode(vs)]));
+    expect(payment.payload["channelConfig"]).toEqual(V.ES4.config);
     expect(await batchSvm.bound(payment)).toBe(H);
   });
 
@@ -411,12 +430,36 @@ describe("x402-batch-settlement.json: SVM", () => {
       ...svmReaderFor("finalized", landed(wire), V.ES5.txid),
       firstAvailableBlock: async () => BigInt(V.ES7.firstAvailableBlock),
       signatures: async () => [
-        { signature: V.ES5.txid, slot: fromSlot + 5n, memo: `[77] ${V.fixed.L}` },
+        { signature: V.ES5.txid, slot: fromSlot + 5n, memo: V.ES7.memo },
         { signature: "older", slot: fromSlot - 1n, memo: null },
       ],
     };
     expect(await svmLocate(ref, reader, H, batchSvm.status)).toEqual(V.ES7.expectChannelStatus);
     expect(await svmLocate(ref, reader, H)).toEqual(V.ES7.expectTransferTest);
+  });
+
+  it("ES8: the opening's memos, exactly one binding memo and one other, read by bound and recover (x402 751590a2, scheme_batch_settlement_svm.md L1320-1325, L1346-1348; steward test/unit/batch.receiverAuthorizer.test.ts)", async () => {
+    const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
+    const ref = { network: V.ES5.ref.network, transaction: V.ES5.txid };
+    expect(V.ES8.rows.length).toBe(4);
+    for (const row of V.ES8.rows) {
+      const opening = svmPayment({ type: "deposit", channelConfig: V.ES4.config, voucher, deposit: { amount: S.deposit, transaction: row.wireBase64 } });
+      const expected = row.expect.startsWith("0x") ? row.expect : refused(row.expect);
+      expect(await batchSvm.bound(opening), row.case).toEqual(expected);
+      const recovered = await batchSvm.recover(ref, svmReaderFor("finalized", landed(b64(row.wireBase64)), V.ES5.txid));
+      expect(recovered, row.case).toEqual(expected);
+    }
+  });
+
+  it("pairingOf: a Solana option names extra.receiverAuthorizer and client voucher signing (x402 751590a2, scheme_batch_settlement_svm.md L244-246)", () => {
+    const o: PaymentRequirements = S.option;
+    const extra = o.extra!;
+    const { receiverAuthorizer: _ra, ...noAuthorizer } = extra;
+    expect(pairingOf(o)).toBe("x402/batch-settlement/solana");
+    expect(pairingOf({ ...o, extra: { ...extra, voucherSigner: "client" } })).toBe("x402/batch-settlement/solana");
+    expect(pairingOf({ ...o, extra: noAuthorizer })).toBeUndefined();
+    expect(pairingOf({ ...o, extra: { ...extra, receiverAuthorizer: "not-a-key" } })).toBeUndefined();
+    expect(pairingOf({ ...o, extra: { ...extra, voucherSigner: "server", operator: S.receiverAuthorizer } })).toBeUndefined();
   });
 
   it("ES5: svmChannelStatus, and a transaction with no channel instruction", async () => {

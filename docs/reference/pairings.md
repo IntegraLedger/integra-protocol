@@ -285,7 +285,7 @@ The payer signed a token authorization for a deposit into an x402 batch-settleme
 
 ### `x402/batch-settlement/solana`
 
-The payer signed a Solana transaction whose one Memo instruction carries this ATR's hash in LCP string form, and which opened an x402 batch-settlement payment channel; it executed without error. The memo is in the transaction's instruction data on chain. Later requests in this channel were paid under this ATR by vouchers the seller did not meter. This does not show that amount, recipient, mint or timing match the ATR's content.
+The payer signed a Solana transaction whose seller Memo instruction (`extra.memo`) carries this ATR's hash in LCP string form, and which opened an x402 batch-settlement payment channel; it executed without error. The memo is in the transaction's instruction data on chain. Later requests in this channel were paid under this ATR by vouchers the seller did not meter. This does not show that amount, recipient, mint or timing match the ATR's content.
 
 ### `x402/exact/algorand`
 

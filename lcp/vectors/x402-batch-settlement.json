@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.56.8 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid.",
+ "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.56.8 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
@@ -51,6 +51,7 @@
    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
    "payerSeed": "0101010101010101010101010101010101010101010101010101010101010101",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
    "salt": "42",
@@ -68,6 +69,7 @@
     "maxTimeoutSeconds": 300,
     "extra": {
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
      "withdrawDelay": 3600,
      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
     }
@@ -76,6 +78,7 @@
     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
     "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
     "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
     "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     "withdrawDelay": 3600,
     "salt": "42",
@@ -450,11 +453,11 @@
  },
  "ES2": {
   "openInstructionData": "012a00000000000000a086010000000000100e0000403f531400000000010000001cc66ed43751115a42b5905132c4f668328611e5e8deb7d862585d2a3551d0011027",
-  "messageLength": 671,
-  "messageSha256": "e587b0a57619b5d3abd45b8a6e4a33fa3ea5901129ac117221856591c3d4aee0",
-  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
-  "wireLength": 800,
-  "wireSha256Prefix": "ed301d6a"
+  "messageLength": 755,
+  "messageSha256": "9a6d535a8dbea8b86d26f59b68586fb355379ca4156b5b1ed406acc559b913f6",
+  "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACc+z//5kOQ/+o5g0TLEclAJt1fa7cRLn+3pUKQWMjk5DYGUVX5ULpeATaeGYiAOF8GLpmEGxRbVF35gzv+X0cDgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusFBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAcAUXg0MDI6YmF0Y2gtc2V0dGxlbWVudDpzdm06cmN2YXV0aDp2MTpHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZQA=",
+  "wireLength": 884,
+  "wireSha256Prefix": "1a9c0eec"
  },
  "ES3": {
   "message": "56017380ae64e95eb45273c8239cf5957096e690c6075a453bfd9361e560ab6ec4f9e8030000000000000000000000000000",
@@ -471,6 +474,7 @@
    "maxTimeoutSeconds": 300,
    "extra": {
     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
     "withdrawDelay": 3600,
     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
@@ -480,6 +484,7 @@
    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
    "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
    "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
    "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
    "withdrawDelay": 3600,
    "salt": "42",
@@ -497,7 +502,7 @@
   "expectCloseKind": "close",
   "expectBoundWithin": "x402/not-bound-within",
   "plantNonce": {
-   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkbNOiGFpX1kKakJFygX5yN3Wl25YrHLMmmoDVZtxxQfBDq20J4fyl/WjGnAbePszYM5ApXsXJGQcpz7pKnIEPgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHACAwMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZgA=",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACPZodz3LYHpmBhGsXnIlkh0Ami+CWRm34L3RsJtW39UGidYmB2y056Ms27E+Zmcpv0xjczbPth3Xbz+8UGrmMEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusFBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHACAwMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZgcAUXg0MDI6YmF0Y2gtc2V0dGxlbWVudDpzdm06cmN2YXV0aDp2MTpHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZQA=",
    "expect": "svm/memo-not-lcp"
   },
   "plantSalt43": {
@@ -506,12 +511,12 @@
   }
  },
  "ES5": {
-  "txid": "62RzG8yhQ1ecrAovS7EFWigjoiFNEGwk24gbtRugVgXcPfgATLDtM6SmevDN82fbJ8iNGSctTqf4a5B2tnUnoLWg",
-  "landedWireBase64": "AvtRoZ1NyRgw2QzWgw7fr7ulRGAtwQgIi39rAnNxL9ZokK2uh8GreTin32uPWc3SmNqjY+nFpRyeOnRrB6cMxQWgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+  "txid": "AaKMyA6BEk32ysK2pRZ5mzYf5gvXyZF5eW8RLGUriHh6vu5zU3JR5aPkfaLKLUq9YWGC1A5ub6bQnmtjMGXB7nf",
+  "landedWireBase64": "AghBsdKx5LmISurqZe80IoTVmgmQh7t2lSW5Kok5y7nR1pJ8kNIEzn+FeGeHcPk1phHATNoKTPzy/KCVIQftuACc+z//5kOQ/+o5g0TLEclAJt1fa7cRLn+3pUKQWMjk5DYGUVX5ULpeATaeGYiAOF8GLpmEGxRbVF35gzv+X0cDgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusFBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAcAUXg0MDI6YmF0Y2gtc2V0dGxlbWVudDpzdm06cmN2YXV0aDp2MTpHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZQA=",
   "ref": {
    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-   "transaction": "62RzG8yhQ1ecrAovS7EFWigjoiFNEGwk24gbtRugVgXcPfgATLDtM6SmevDN82fbJ8iNGSctTqf4a5B2tnUnoLWg",
-   "digest": "0xe587b0a57619b5d3abd45b8a6e4a33fa3ea5901129ac117221856591c3d4aee0",
+   "transaction": "AaKMyA6BEk32ysK2pRZ5mzYf5gvXyZF5eW8RLGUriHh6vu5zU3JR5aPkfaLKLUq9YWGC1A5ub6bQnmtjMGXB7nf",
+   "digest": "0x9a6d535a8dbea8b86d26f59b68586fb355379ca4156b5b1ed406acc559b913f6",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
    "fromSlot": "0"
@@ -558,13 +563,28 @@
   }
  },
  "ES6": {
-  "case": "a full refund: buildWithin with refund {} builds the request_close itself (x402 scheme_batch_settlement_svm, canonical refund request_close and the refund payload): the Compute Budget prefix (limit 200000, price 1 microlamport), request_close (data 05) of the payment-channels program with exactly the payer (read-only signer) and the channel PDA (writable), then one Memo v3 with extra.memo when the option carries one, else none; fee payer extra.feePayer; recentBlockhash the caller's when extra has none. The payload is {type: refund, channelConfig, transaction}, with no amount (the request MUST NOT contain an amount) and no voucher.",
+  "case": "a full refund: buildWithin with refund {} carries the voucher for maxClaimableAmount, the server's accepted cumulative amount, with expiresAt 0, and no amount; with recentBlockhash it also carries a payer-signed request_close, which x402 sends only on a retry after invalid_batch_settlement_svm_receiver_binding_unavailable (x402-foundation/x402 751590a2, scheme_batch_settlement_svm.md L626-636; the steward SDK's typescript/packages/mechanisms/svm/src/batch-settlement/client/channel.ts:281-312, and test/unit/batch.refund.test.ts, \"resends with a request_close when the facilitator has no binding\", at the same commit). The request_close is the Compute Budget prefix (limit 200000, price 1 microlamport), request_close (data 05) of the payment-channels program with exactly the payer (read-only signer) and the channel PDA (writable), then one Memo v3 with extra.memo when the option carries one, else none; fee payer extra.feePayer.",
+  "cooperative": {
+   "case": "ES4's option and config, maxClaimableAmount 1000, no recentBlockhash: one ed25519-raw request by the payer authorizer over ES3's message; the payload is {type: refund, channelConfig, voucher}",
+   "payloadMembers": [
+    "channelConfig",
+    "type",
+    "voucher"
+   ],
+   "expectKind": "close"
+  },
   "withMemo": {
-   "case": "ES4's option (extra.memo = L): decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0 (key order inside a category is not compared: the rail does not fix it)",
+   "case": "the retry, with ES4's option (extra.memo = L) and recentBlockhash: the solana-message request, then the voucher; decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0 (key order inside a category is not compared: the rail does not fix it); the payload is {type: refund, channelConfig, voucher, transaction}",
+   "payloadMembers": [
+    "channelConfig",
+    "transaction",
+    "type",
+    "voucher"
+   ],
    "expectKind": "close"
   },
   "withoutMemo": {
-   "case": "ES4's option without extra.memo",
+   "case": "the retry, with ES4's option without extra.memo",
    "instructions": [
     {
      "program": "ComputeBudget111111111111111111111111111111",
@@ -597,23 +617,45 @@
   "refundWithAmount": {
    "case": "refund {amount} on Solana",
    "expect": "svm/input-malformed"
-  },
-  "noBlockhash": {
-   "case": "no recentBlockhash, and the option carries no extra.recentBlockhash",
-   "expect": "svm/input-malformed"
   }
  },
  "ES7": {
-  "case": "svmLocate for the opening, with no transaction named: the fee payer's signatures list ES5's txid, whose RPC memo rendering is '[77] ' + L (getSignaturesForAddress renders each memo as '[len] text'), then one signature below fromSlot. Each candidate is read through the pairing's own status (svmChannelStatus): the opening is found. Read through the transfer test instead, the opening, which carries no top-level transfer, is not found and the search would end complete and empty.",
+  "case": "svmLocate for the opening, with no transaction named: the fee payer's signatures list ES5's txid, whose RPC memo rendering is '[77] ' + L + '; [81] ' + the binding memo (getSignaturesForAddress renders each memo as '[len] text' and joins them with '; ': anza-xyz/agave transaction-status/src/extract_memos.rs at 3deb741d), then one signature below fromSlot. Each candidate is read through the pairing's own status (svmChannelStatus): the opening is found. Read through the transfer test instead, the opening, which carries no top-level transfer, is not found and the search would end complete and empty.",
   "fromSlot": "1000000",
   "firstAvailableBlock": "999000",
   "expectChannelStatus": {
-   "found": "62RzG8yhQ1ecrAovS7EFWigjoiFNEGwk24gbtRugVgXcPfgATLDtM6SmevDN82fbJ8iNGSctTqf4a5B2tnUnoLWg",
+   "found": "AaKMyA6BEk32ysK2pRZ5mzYf5gvXyZF5eW8RLGUriHh6vu5zU3JR5aPkfaLKLUq9YWGC1A5ub6bQnmtjMGXB7nf",
    "complete": true
   },
   "expectTransferTest": {
    "complete": true
-  }
+  },
+  "memo": "[77] lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad; [81] x402:batch-settlement:svm:rcvauth:v1:GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse"
+ },
+ "ES8": {
+  "case": "the opening's memos: exactly one receiver-authorizer binding memo and exactly one other Memo instruction, in either order, the other carrying H; any other count is refused (x402-foundation/x402 751590a2, scheme_batch_settlement_svm.md L1320-1325 and L1346-1348: the open suffix carries exactly one binding Memo and the facilitator requires exactly one Memo besides it; the steward SDK's payment-channels/open.ts:1199-1224 and test/unit/batch.receiverAuthorizer.test.ts, \"requires exactly one matching binding memo in the open\", which rejects an open with no binding memo and one with two). Each wire is ES2's opening with only its memos changed, built with solders 0.26.0 and signed by the payer; bound reads it as deposit.transaction under ES4's option and config, and recover reads it landed.",
+  "rows": [
+   {
+    "case": "the binding memo, then L",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABW1WBc7qcTk/8i07c+/PKrb8Tjk1etybXKhBaEmvG5k0iN7OnR8uPzKh+w4w9aTjK5Gita0Phd3hRdi6+7cgYOgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusFBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAFF4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "L alone",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
+    "expect": "svm/memo-count"
+   },
+   {
+    "case": "L, then the binding memo twice",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAX57+lksW4AtwN9Iz+8gac/2aV4KQhJuAWCAlDNdG8c5mbn5LCxAEDQedkTX42Z1EmtPTG4h7INLACvCdAwCwKgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusGBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAcAUXg0MDI6YmF0Y2gtc2V0dGxlbWVudDpzdm06cmN2YXV0aDp2MTpHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZQcAUXg0MDI6YmF0Y2gtc2V0dGxlbWVudDpzdm06cmN2YXV0aDp2MTpHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZQA=",
+    "expect": "svm/memo-count"
+   },
+   {
+    "case": "the binding memo alone",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD1wa6gnfyy7ehwPutqL5sYxJda9F5uzzDfLymX9FlHoYGTyxKoIQ8oGf0t2vRLVerlUWMhM4M86jekfpPsvhEOgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAFF4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UA",
+    "expect": "svm/memo-count"
+   }
+  ]
  },
  "EC1": {
   "payload": {
@@ -997,6 +1039,7 @@
         "maxTimeoutSeconds": 300,
         "extra": {
          "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+         "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
          "withdrawDelay": 3600,
          "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
          "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
@@ -1069,6 +1112,7 @@
        "maxTimeoutSeconds": 300,
        "extra": {
         "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+        "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
         "withdrawDelay": 3600,
         "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
         "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
@@ -1080,6 +1124,7 @@
         "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
         "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
         "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
         "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
         "withdrawDelay": 3600,
         "salt": "42",
@@ -1093,7 +1138,7 @@
        },
        "deposit": {
         "amount": "100000",
-        "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgweV3InVMeIiSI52mvt9otosTNwb55RgoEJK+wSQPOoCBEaNnDL+K+y8PZwTjNjhMUAYfarvg/qSRc7J/fSwEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA="
+        "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACc+z//5kOQ/+o5g0TLEclAJt1fa7cRLn+3pUKQWMjk5DYGUVX5ULpeATaeGYiAOF8GLpmEGxRbVF35gzv+X0cDgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cCEDrsxfntLbHUbGeqXL0Svcr4HZ2KjBN7dtN6OhR3vhzgK5k6V60UnPII5z1lXCW5pDGB1pFO/2TYeVgq27E+e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusFBgAFAkANAwAGAAkDAQAAAAAAAAANDgEAAAoBAwQCCQUIDAsNQwEqAAAAAAAAAKCGAQAAAAAAEA4AAEA/UxQAAAAAAQAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABECcHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAcAUXg0MDI6YmF0Y2gtc2V0dGxlbWVudDpzdm06cmN2YXV0aDp2MTpHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZQA="
        }
       }
      },

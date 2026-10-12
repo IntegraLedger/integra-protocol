@@ -1,7 +1,8 @@
 /**
  * x402 `batch-settlement`: one ATR per channel. On EVM the ATR hash is the channel configuration's `salt`, which the
- * channel id commits to and every signature signs; on Solana it is the opening transaction's one memo; on Cloudflare
- * it rides the echoed `extensions.legalContext` of each request, with no channel.
+ * channel id commits to and every signature signs; on Solana it is the opening transaction's seller Memo instruction
+ * (`extra.memo`), beside x402's receiver-authorizer binding memo; on Cloudflare it rides the echoed
+ * `extensions.legalContext` of each request, with no channel.
  */
 import { base58 } from "@scure/base";
 import { toLcpString, type AtrHash, type Json } from "./core.js";
@@ -39,23 +40,27 @@ import {
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
+  buildChannelMessage,
   channelInstruction,
+  channelMessage,
   channelPda,
   channelVoucherMessage,
-  buildChannelMessage,
   decodeSvmTx,
   isKey,
   isSolanaNetwork,
+  landedTransaction,
+  memoCarrier,
+  memoData,
   signedWire,
   staticNonce,
-  svmCarrier,
   svmChannelStatus,
-  svmRecover,
   svmReference,
   toBase64,
   wireOf,
   TOKEN,
   TOKEN_2022,
+  type SolanaNetwork,
+  type SvmReader,
   type SvmRef,
   type SvmTx,
 } from "./internal/svm.js";
@@ -277,11 +282,18 @@ export interface BatchWithin {
   /** Exactly as sent at the opening. */
   channelConfig: Json;
   maxClaimableAmount: bigint;
-  /** A refund. EVM: its amount, absent for a full refund. SVM: `{}`, a full refund whose `request_close` is built here. */
+  /**
+   * A refund. EVM: its amount, absent for a full refund. SVM: `{}`, a full refund carrying the voucher for
+   * `maxClaimableAmount`, the server's accepted cumulative amount, and, with `recentBlockhash`, a payer-signed
+   * `request_close` built here.
+   */
   refund?: { amount?: bigint };
-  /** SVM refund: the blockhash to use when the option carries no `extra.recentBlockhash`. */
+  /**
+   * SVM refund: the blockhash of its `request_close`. Given, the refund carries that transaction, which x402 sends
+   * only on a retry after `invalid_batch_settlement_svm_receiver_binding_unavailable`.
+   */
   recentBlockhash?: string;
-  /** SVM refund: the Compute Budget values, 200 000 units and 1 microlamport when absent. */
+  /** SVM refund's `request_close`: the Compute Budget values, 200 000 units and 1 microlamport when absent. */
   computeUnitLimit?: number;
   computeUnitPrice?: bigint;
 }
@@ -304,7 +316,10 @@ function nonZeroAddress(v: unknown): v is Hex {
   return isAddress(v) && !/^0x0{40}$/.test(v);
 }
 
-/** The batch-settlement pairing an option names, or undefined. */
+/**
+ * The batch-settlement pairing an option names, or undefined. A Solana option names `extra.receiverAuthorizer` and
+ * client voucher signing (`extra.voucherSigner` absent or `"client"`).
+ */
 export function pairingOf(option: PaymentRequirements): BatchPairingId | undefined {
   if (!isObject(option) || option.scheme !== "batch-settlement" || !isObject(option.extra)) return undefined;
   const extra = option.extra;
@@ -321,7 +336,11 @@ export function pairingOf(option: PaymentRequirements): BatchPairingId | undefin
     return EVM_ID;
   }
   if (isSolanaNetwork(option.network)) {
-    if (!isKey(option.asset) || !isKey(option.payTo) || !isKey(extra["feePayer"])) return undefined;
+    if (!isKey(option.asset) || !isKey(option.payTo) || !isKey(extra["feePayer"]) || !isKey(extra["receiverAuthorizer"])) {
+      return undefined;
+    }
+    const signer = extra["voucherSigner"];
+    if (signer !== undefined && signer !== "client") return undefined;
     if (extra["tokenProgram"] !== TOKEN && extra["tokenProgram"] !== TOKEN_2022) return undefined;
     if (!isDelay(extra["withdrawDelay"]) || (extra["withdrawDelay"] as number) < option.maxTimeoutSeconds) return undefined;
     if (flow !== undefined && flow !== "authorization") return undefined;
@@ -792,7 +811,37 @@ async function svmRef(p: unknown): Promise<{ network: string; channel: string } 
   return { network: x.accepted.network, channel: pda };
 }
 
-/** The opening's memo hash, when the one memo equals `extra.memo` and the channel instruction is an `open`. */
+/** x402's receiver-authorizer binding memo: this prefix, then the base58 key. */
+const BINDING_MEMO_PREFIX = "x402:batch-settlement:svm:rcvauth:v1:";
+const BINDING_MEMO_PREFIX_BYTES = new TextEncoder().encode(BINDING_MEMO_PREFIX);
+
+function isBindingMemo(data: Uint8Array): boolean {
+  return data.length >= BINDING_MEMO_PREFIX_BYTES.length && BINDING_MEMO_PREFIX_BYTES.every((b, i) => data[i] === b);
+}
+
+/**
+ * The opening's memos: exactly one receiver-authorizer binding memo, whose key is not read, and exactly one other
+ * Memo instruction, which carries the ATR hash in LCP string form. Any other count is `svm/memo-count`.
+ */
+function openingCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
+  const memos = memoData(tx);
+  const others = memos.filter((d) => !isBindingMemo(d));
+  if (others.length !== 1 || memos.length !== 2) return refusal("svm/memo-count");
+  return memoCarrier(others[0]!);
+}
+
+/** Zero-party recovery: the ATR hash in the landed opening's seller memo, beside its binding memo. One or two calls. */
+async function svmBatchRecover(
+  ref: { network: SolanaNetwork; transaction: string },
+  reader: SvmReader,
+): Promise<AtrHash | Refusal> {
+  const tx = await landedTransaction(ref, reader);
+  if (isRefusal(tx)) return tx;
+  const c = openingCarrier(tx);
+  return isRefusal(c) ? c : c.h;
+}
+
+/** The opening's memo hash, when its seller memo equals `extra.memo` and the channel instruction is an `open`. */
 async function svmOpening(presented: unknown) {
   const x = payloadOf(presented, SVM_ID);
   if (isRefusal(x)) return x;
@@ -802,12 +851,12 @@ async function svmOpening(presented: unknown) {
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
-  const carrier = svmCarrier(tx);
-  if (isRefusal(carrier)) return carrier;
-  if (carrier.memo !== x.accepted.extra!["memo"]) return refusal("svm/carrier-mismatch");
   const ix = channelInstruction(tx);
   if (isRefusal(ix)) return ix;
   if (ix.kind !== "open") return refusal("x402/not-an-opening");
+  const carrier = openingCarrier(tx);
+  if (isRefusal(carrier)) return carrier;
+  if (carrier.memo !== x.accepted.extra!["memo"]) return refusal("svm/carrier-mismatch");
   const r = await svmRef(presented);
   if (isRefusal(r)) return r;
   return { accepted: x.accepted, tx, h: carrier.h };
@@ -835,7 +884,10 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
   }
 }
 
-/** The opening: the `open` transaction, then the first voucher, each for the payer or its authorizer to sign. */
+/**
+ * The opening: the `open` transaction, then the first voucher, each for the payer or its authorizer to sign. The
+ * transaction ends with two v3 Memo instructions: `extra.memo`, then x402's binding memo for `extra.receiverAuthorizer`.
+ */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   const ok = chosen(c.required, c.accepted, filterOf(isId(SVM_ID)));
   if (ok !== true) return ok;
@@ -858,26 +910,29 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   });
   if (isRefusal(channel)) return channel;
   if (c.openSlot > BigInt(Number.MAX_SAFE_INTEGER)) return refusal("svm/input-malformed");
-  const message = await buildChannelMessage({
-    feePayer,
-    payer: c.payer,
-    mint: accepted.asset,
-    tokenProgram: c.tokenProgram,
-    recentBlockhash: c.recentBlockhash,
-    memo,
-    computeUnitLimit: c.computeUnitLimit ?? 200_000,
-    computeUnitPrice: c.computeUnitPrice ?? 1n,
-    instruction: {
-      kind: "open",
-      channel,
-      signer: c.payerAuthorizer,
-      salt: c.salt,
-      deposit: c.deposit,
-      gracePeriod: extra["withdrawDelay"] as number,
-      openSlot: c.openSlot,
-      recipient: accepted.payTo,
+  const receiverAuthorizer = extra["receiverAuthorizer"] as string;
+  const message = await channelMessage(
+    {
+      feePayer,
+      payer: c.payer,
+      mint: accepted.asset,
+      tokenProgram: c.tokenProgram,
+      recentBlockhash: c.recentBlockhash,
+      computeUnitLimit: c.computeUnitLimit ?? 200_000,
+      computeUnitPrice: c.computeUnitPrice ?? 1n,
+      instruction: {
+        kind: "open",
+        channel,
+        signer: c.payerAuthorizer,
+        salt: c.salt,
+        deposit: c.deposit,
+        gracePeriod: extra["withdrawDelay"] as number,
+        openSlot: c.openSlot,
+        recipient: accepted.payTo,
+      },
     },
-  });
+    [memo, BINDING_MEMO_PREFIX + receiverAuthorizer],
+  );
   if (isRefusal(message)) return message;
   const amount = BigInt(accepted.amount);
   const voucherMessage = channelVoucherMessage(channel, amount, 0n);
@@ -885,7 +940,7 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
     payer: c.payer,
     payerAuthorizer: c.payerAuthorizer,
     receiver: accepted.payTo,
-    ...(typeof extra["receiverAuthorizer"] === "string" ? { receiverAuthorizer: extra["receiverAuthorizer"] } : {}),
+    receiverAuthorizer,
     token: accepted.asset,
     withdrawDelay: extra["withdrawDelay"] as number,
     salt: c.salt.toString(),
@@ -912,9 +967,10 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
 }
 
 /**
- * A later voucher, or a full refund, for a channel this buyer opened. The refund is a `request_close` message for the
- * payer: the Compute Budget prefix, `request_close` with the payer (read-only signer) and the channel (writable), then
- * one Memo v3 with `extra.memo` when the option carries one. Its payload carries no `amount` and no voucher.
+ * A later voucher, or a full refund, for a channel this buyer opened. Each carries the voucher for
+ * `maxClaimableAmount`. A refund carries no `amount`; with `recentBlockhash` it also carries a `request_close` message
+ * for the payer, signed first: the Compute Budget prefix, `request_close` with the payer (read-only signer) and the
+ * channel (writable), then one Memo v3 with `extra.memo` when the option carries one.
  */
 async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigned | Refusal> {
   const ok = chosen(w.required, w.accepted, filterOf(isId(SVM_ID)));
@@ -931,18 +987,40 @@ async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigne
     openSlot: BigInt(config.openSlot),
   });
   if (isRefusal(channel)) return channel;
+  if (typeof w.maxClaimableAmount !== "bigint" || w.maxClaimableAmount < 0n || w.maxClaimableAmount >= U64_LIMIT) {
+    return refusal("svm/input-malformed");
+  }
+  const voucherRequest: SigningRequest = {
+    kind: "ed25519-raw",
+    message: channelVoucherMessage(channel, w.maxClaimableAmount, 0n),
+    signer: config.payerAuthorizer,
+  };
+  const voucherOf = (sig: Uint8Array) => ({
+    channelId: channel,
+    maxClaimableAmount: w.maxClaimableAmount.toString(),
+    expiresAt: 0,
+    signature: base58.encode(sig),
+  });
   if (w.refund !== undefined) {
     if (!isObject(w.refund) || w.refund.amount !== undefined) return refusal("svm/input-malformed");
+    if (w.recentBlockhash === undefined) {
+      return {
+        requests: [voucherRequest],
+        complete(signatures: readonly string[]): BatchPaymentPayload | Refusal {
+          const sig = signatures.length === 1 ? signatureBytes(signatures[0]) : undefined;
+          if (sig === undefined) return refusal("svm/input-malformed");
+          return paymentWith(required, accepted, { type: "refund", channelConfig: w.channelConfig, voucher: voucherOf(sig) });
+        },
+      };
+    }
     const extra = accepted.extra!;
-    const recentBlockhash = typeof extra["recentBlockhash"] === "string" ? extra["recentBlockhash"] : w.recentBlockhash;
-    if (typeof recentBlockhash !== "string") return refusal("svm/input-malformed");
     const memo = extra["memo"];
     const message = await buildChannelMessage({
       feePayer: extra["feePayer"] as string,
       payer: config.payer,
       mint: config.token,
       tokenProgram: extra["tokenProgram"] as string,
-      recentBlockhash,
+      recentBlockhash: w.recentBlockhash,
       ...(typeof memo === "string" ? { memo } : {}),
       computeUnitLimit: w.computeUnitLimit ?? 200_000,
       computeUnitPrice: w.computeUnitPrice ?? 1n,
@@ -950,30 +1028,27 @@ async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigne
     });
     if (isRefusal(message)) return message;
     return {
-      requests: [{ kind: "solana-message", message }],
+      requests: [{ kind: "solana-message", message }, voucherRequest],
       complete(signatures: readonly string[]): BatchPaymentPayload | Refusal {
-        const sig = signatures.length === 1 ? signatureBytes(signatures[0]) : undefined;
-        if (sig === undefined) return refusal("svm/input-malformed");
-        const wire = signedWire(message, config.payer, sig);
+        const [txSig, voucherSig] = signatures.map(signatureBytes);
+        if (signatures.length !== 2 || txSig === undefined || voucherSig === undefined) return refusal("svm/input-malformed");
+        const wire = signedWire(message, config.payer, txSig);
         if (isRefusal(wire)) return wire;
-        return paymentWith(required, accepted, { type: "refund", channelConfig: w.channelConfig, transaction: toBase64(wire) });
+        return paymentWith(required, accepted, {
+          type: "refund",
+          channelConfig: w.channelConfig,
+          voucher: voucherOf(voucherSig),
+          transaction: toBase64(wire),
+        });
       },
     };
   }
-  if (typeof w.maxClaimableAmount !== "bigint" || w.maxClaimableAmount < 0n || w.maxClaimableAmount >= U64_LIMIT) {
-    return refusal("svm/input-malformed");
-  }
-  const message = channelVoucherMessage(channel, w.maxClaimableAmount, 0n);
   return {
-    requests: [{ kind: "ed25519-raw", message, signer: config.payerAuthorizer }],
+    requests: [voucherRequest],
     complete(signatures: readonly string[]): BatchPaymentPayload | Refusal {
       const sig = signatures.length === 1 ? signatureBytes(signatures[0]) : undefined;
       if (sig === undefined) return refusal("svm/input-malformed");
-      return paymentWith(required, accepted, {
-          type: "voucher",
-          channelConfig: w.channelConfig,
-          voucher: { channelId: channel, maxClaimableAmount: w.maxClaimableAmount.toString(), expiresAt: 0, signature: base58.encode(sig) },
-        });
+      return paymentWith(required, accepted, { type: "voucher", channelConfig: w.channelConfig, voucher: voucherOf(sig) });
     },
   };
 }
@@ -1004,10 +1079,10 @@ export const batchSvm = Object.freeze({
     forwardIndexable: false,
     publicProof: true,
     proves:
-      "The payer signed a Solana transaction whose one Memo instruction carries this ATR's hash in LCP string form, and " +
-      "which opened an x402 batch-settlement payment channel; it executed without error. The memo is in the " +
-      "transaction's instruction data on chain. Later requests in this channel were paid under this ATR by vouchers " +
-      "the seller did not meter. This does not show that amount, recipient, mint or timing match the ATR's content.",
+      "The payer signed a Solana transaction whose seller Memo instruction (`extra.memo`) carries this ATR's hash in " +
+      "LCP string form, and which opened an x402 batch-settlement payment channel; it executed without error. The memo " +
+      "is in the transaction's instruction data on chain. Later requests in this channel were paid under this ATR by " +
+      "vouchers the seller did not meter. This does not show that amount, recipient, mint or timing match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
   carrier: "extra.memo" as const,
@@ -1020,7 +1095,7 @@ export const batchSvm = Object.freeze({
   bound: svmBound,
   reference: svmReferenceOf,
   status: svmChannelStatus,
-  recover: svmRecover,
+  recover: svmBatchRecover,
   channel: Object.freeze({
     kind: svmKind,
     ref: svmRef,

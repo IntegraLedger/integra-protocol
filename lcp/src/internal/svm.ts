@@ -284,14 +284,26 @@ function decode(wire: Uint8Array): Decoded | Refusal {
  * any other spelling is `svm/carrier-not-canonical`.
  */
 export function svmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
-  const memos = tx.instructions.filter((ix) => {
-    const program = tx.keys[ix.program];
-    return sameBytes(program, MEMO_V3_BYTES) || sameBytes(program, MEMO_V4_BYTES);
-  });
+  const memos = memoData(tx);
   if (memos.length !== 1) return refusal("svm/memo-count");
+  return memoCarrier(memos[0]!);
+}
+
+/** The data of each top-level Memo instruction (v3 or v4), in order. */
+export function memoData(tx: SvmTx): Uint8Array[] {
+  return tx.instructions
+    .filter((ix) => {
+      const program = tx.keys[ix.program];
+      return sameBytes(program, MEMO_V3_BYTES) || sameBytes(program, MEMO_V4_BYTES);
+    })
+    .map((ix) => ix.data);
+}
+
+/** The ATR hash one Memo instruction's UTF-8 data carries in LCP string form, exactly `toLcpString(h)`. */
+export function memoCarrier(data: Uint8Array): { h: AtrHash; memo: string } | Refusal {
   let memo: string;
   try {
-    memo = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(memos[0]!.data);
+    memo = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(data);
   } catch {
     return refusal("svm/memo-not-utf8");
   }
@@ -795,15 +807,23 @@ export async function svmRecover(
   ref: { network: SolanaNetwork; transaction: string },
   reader: SvmReader,
 ): Promise<AtrHash | Refusal> {
+  const tx = await landedTransaction(ref, reader);
+  if (isRefusal(tx)) return tx;
+  const c = svmCarrier(tx);
+  return isRefusal(c) ? c : c.h;
+}
+
+/** The named transaction, landed without error and decoded. One or two calls. */
+export async function landedTransaction(
+  ref: { network: SolanaNetwork; transaction: string },
+  reader: SvmReader,
+): Promise<SvmTx | Refusal> {
   if (reader.network !== ref.network) return refusal("svm/wrong-reader");
   const read = await landedAt(reader, ref.transaction);
   if (read === undefined) return refusal("svm/unreadable");
   if (read === null) return refusal("svm/not-found");
   if (read.landed.err !== null && read.landed.err !== undefined) return refusal("svm/err");
-  const tx = decodeSvmTx(read.landed.wire);
-  if (isRefusal(tx)) return tx;
-  const c = svmCarrier(tx);
-  return isRefusal(c) ? c : c.h;
+  return decodeSvmTx(read.landed.wire);
 }
 
 // ── the payment-channels program ─────────────────────────────────────────────────────────────────────────────────
@@ -982,6 +1002,12 @@ export interface ChannelBuildInput {
  * payer is also the `open`'s rent payer and payee.
  */
 export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Array | Refusal> {
+  const memo = typeof i === "object" && i !== null ? i.memo : undefined;
+  return channelMessage(i, memo === undefined ? [] : [memo]);
+}
+
+/** `buildChannelMessage` with one v3 Memo instruction per entry of `memos`, in order, in place of `i.memo`. */
+export async function channelMessage(i: ChannelBuildInput, memos: readonly unknown[]): Promise<Uint8Array | Refusal> {
   const ix = i?.instruction;
   if (
     typeof i !== "object" ||
@@ -991,7 +1017,7 @@ export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Ar
     !isKey(i.mint) ||
     (i.tokenProgram !== TOKEN && i.tokenProgram !== TOKEN_2022) ||
     !isKey(i.recentBlockhash) ||
-    (i.memo !== undefined && typeof i.memo !== "string") ||
+    !memos.every((m) => typeof m === "string") ||
     !Number.isInteger(i.computeUnitLimit) ||
     i.computeUnitLimit < 0 ||
     i.computeUnitLimit > 0xffffffff ||
@@ -1066,6 +1092,6 @@ export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Ar
     { programAddress: address(COMPUTE_BUDGET), data: concat(Uint8Array.of(2), u32le(i.computeUnitLimit)) },
     { programAddress: address(COMPUTE_BUDGET), data: concat(Uint8Array.of(3), u64le(i.computeUnitPrice)) },
     { programAddress: address(PAYMENT_CHANNELS), accounts, data },
-    ...(i.memo !== undefined ? [{ programAddress: address(MEMO_V3), data: new TextEncoder().encode(i.memo) }] : []),
+    ...(memos as readonly string[]).map((m) => ({ programAddress: address(MEMO_V3), data: new TextEncoder().encode(m) })),
   ]);
 }
