@@ -52,7 +52,9 @@ The payload x402's Sui scheme defines.
 Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects with `ReaderError`.
 `read` is one request, so one snapshot:
 `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}}}
-checkpoint{epoch{epochId}}}`, where the last field is the latest checkpoint's epoch.
+checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}}}`.
+`epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first checkpoint from which the endpoint holds
+transactions (the available range's inclusive lower bound), or null when the endpoint states none.
 
 #### Properties
 
@@ -64,7 +66,7 @@ checkpoint{epoch{epochId}}}`, where the last field is the latest checkpoint's ep
 
 ##### read()
 
-> **read**(`digest`): `Promise`\<\{ `epoch`: `bigint`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
+> **read**(`digest`): `Promise`\<\{ `epoch`: `bigint`; `firstCheckpoint`: `bigint` \| `null`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
 
 ###### Parameters
 
@@ -74,7 +76,7 @@ checkpoint{epoch{epochId}}}`, where the last field is the latest checkpoint's ep
 
 ###### Returns
 
-`Promise`\<\{ `epoch`: `bigint`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
+`Promise`\<\{ `epoch`: `bigint`; `firstCheckpoint`: `bigint` \| `null`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
 
 ***
 
@@ -151,7 +153,7 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ### exactSui
 
-> `const` **exactSui**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiUnsigned`](#suiunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/sui"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiRef`](#suiref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`SuiStatus`](#suistatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactSui**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiUnsigned`](#suiunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/sui"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiRef`](#suiref)\>; `status`: (`ref`, `reader`, `position`) => `Promise`\<[`SuiStatus`](#suistatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ## Functions
 
@@ -250,11 +252,15 @@ Reads the hash back from the executed transaction alone, by its digest. One call
 
 ### suiStatus()
 
-> **suiStatus**(`ref`, `reader`): `Promise`\<[`SuiStatus`](#suistatus)\>
+> **suiStatus**(`ref`, `reader`, `position`): `Promise`\<[`SuiStatus`](#suistatus)\>
 
-Reads the recorded digest. A failed read, or a reader for another network, is pending. An absent transaction is
-expired once the latest epoch is past its bound; a present one must be these bytes carrying this hash, and its
-effects' status decides. One call.
+Reads the recorded digest. A failed read, or a reader for another network, is pending. `position` is the checkpoint
+from which the caller needs the endpoint's history: one at or before every checkpoint the payment could have
+executed in, such as the latest checkpoint when the payment is requested. An absent transaction is expired once the
+latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
+pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. A
+present one must be these bytes carrying this hash, and its effects' status decides. A `position` that is not a
+non-negative bigint is pending `unreadable`. One call.
 
 #### Parameters
 
@@ -262,6 +268,7 @@ effects' status decides. One call.
 | ------ | ------ |
 | `ref` | [`SuiRef`](#suiref) & `object` |
 | `reader` | [`SuiReader`](#suireader) |
+| `position` | `bigint` |
 
 #### Returns
 
