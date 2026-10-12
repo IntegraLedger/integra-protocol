@@ -19,6 +19,7 @@ import type {
   TransactionV1EnvelopeWire,
 } from "@stellar/stellar-sdk/xdr";
 import { toRawBytes, type AtrHash } from "../core.js";
+import { isObject } from "../fields.js";
 import type { Hex } from "../evm.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
@@ -140,7 +141,7 @@ export interface StellarUnsigned {
 
 // ── the carrier ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The hash's first 8 bytes, big-endian, as a u64. */
+/** The hash's first 8 bytes, big-endian, as a u64. Throws TypeError when `h` is not a 32-byte hash. */
 export function muxedId(h: AtrHash): bigint {
   const b = toRawBytes(h);
   let v = 0n;
@@ -148,7 +149,10 @@ export function muxedId(h: AtrHash): bigint {
   return v;
 }
 
-/** The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `base` is not a `G…` strkey. */
+/**
+ * The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `base` is not a `G…` strkey or `h` is not a
+ * 32-byte hash, and when @stellar/stellar-sdk is not installed.
+ */
 export function muxedFor(base: string, h: AtrHash): string {
   const S = need();
   if (S === null || !S.StrKey.isValidEd25519PublicKey(base)) throw new TypeError("not a G account strkey");
@@ -685,17 +689,25 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
  * ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
  * transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
  * `latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
- * is never read as absence. A failed read, or a reader for another network, is pending. One call when the named
- * transaction settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s
- * calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as the transaction's source
- * account, with no `expiration` either) is settled when the named transaction succeeded as that transfer, and is
- * otherwise pending: there is no expiration ledger to pass.
+ * is never read as absence. A failed read, or a reader for another network, is pending, and a ref whose `authDigest` is
+ * present and not a string is pending `unreadable`, with nothing read. One call when the named transaction settles or
+ * a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
+ * without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
+ * `expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
+ * there is no expiration ledger to pass.
  */
 export async function stellarStatus(
   ref: StellarRef & { transaction: string },
   reader: StellarReader,
 ): Promise<StellarStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
+  if (
+    !isObject(ref) ||
+    !isObject(reader) ||
+    reader.network !== ref.network ||
+    (ref.authDigest !== undefined && typeof ref.authDigest !== "string")
+  ) {
+    return { state: "pending", why: "unreadable" };
+  }
   const named = await readNamed(ref, ref.transaction, reader);
   if (named.state === "settled") return named;
   if (named.why === "unreadable") return { state: "pending", why: "unreadable" };
@@ -722,13 +734,15 @@ export async function stellarStatus(
  * (`oldestLedger` ≤ `fromLedger`) and had reached the expiration ledger (`latestLedger` ≥ `expiration`), and every
  * candidate was read: a listed candidate whose transaction is not found, or cannot be read, leaves the search
  * incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
- * has no entry to search for: `complete` is false.
+ * has no entry to search for, and a ref whose `authDigest` is not a string names none: `complete` is false. A ref or
+ * reader that is not an object, or a reader for another network, is `complete` false too, with nothing read.
  */
 export async function stellarLocate(
   ref: StellarRef,
   reader: StellarReader,
 ): Promise<{ found?: string; complete: boolean }> {
-  if (reader.network !== ref.network || ref.authDigest === undefined || ref.expiration === undefined) return { complete: false };
+  if (!isObject(ref) || !isObject(reader)) return { complete: false };
+  if (reader.network !== ref.network || typeof ref.authDigest !== "string" || ref.expiration === undefined) return { complete: false };
   const l = await locate(ref, ref.expiration, reader, ref.expiration);
   return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
 }

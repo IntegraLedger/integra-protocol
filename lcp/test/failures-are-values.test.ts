@@ -36,6 +36,7 @@ import {
 import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
+import { stellarLocate, stellarStatus } from "../src/stellar.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -372,4 +373,21 @@ describe("starknet", () => {
   });
   const notNetworks = [...NOT_OBJECTS, "starknet:XYZ", "eip155:1", "starknet:sn_main"];
   throwsTypeError("chainIdFelt", notNetworks.map((n) => () => chainIdFelt(n as never)));
+});
+
+describe("stellar", () => {
+  reads([
+    ["stellarStatus", stellarStatus, "x402-exact-stellar.json", UNREADABLE],
+    ["stellarLocate", stellarLocate, "x402-exact-stellar.json", { complete: false }],
+  ]);
+  it("stellarStatus and stellarLocate: a ref whose authDigest is not a string reads nothing", async () => {
+    const ref = refIn("x402-exact-stellar.json");
+    for (const authDigest of [null, 1, {}]) {
+      const reader = quietReader(ref.network);
+      const bad = { ...ref, authDigest } as never;
+      expect(await stellarStatus(bad, reader as never), String(authDigest)).toEqual(UNREADABLE);
+      expect(await stellarLocate(bad, reader as never), String(authDigest)).toEqual({ complete: false });
+      expect(reader.reads(), String(authDigest)).toBe(0);
+    }
+  });
 });
