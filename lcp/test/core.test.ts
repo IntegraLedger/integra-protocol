@@ -173,9 +173,11 @@ describe("hash takes a Uint8Array", () => {
       new Uint16Array([0x6261]),
       new Uint8ClampedArray(abc),
       new DataView(abc.slice().buffer),
+      new Proxy(abc, {}),
     ]) {
       await expect(hash(value as never)).rejects.toThrow(TypeError);
     }
+    await expect(hash(new Proxy(abc, {}))).rejects.toThrow("not a Uint8Array");
   });
   it("assemble takes a party's bytes from another realm", async () => {
     const v = vector("V1");
@@ -184,10 +186,11 @@ describe("hash takes a Uint8Array", () => {
     if ("refused" in out) throw new Error(out.code);
     expect(out.atrHash).toBe(v.expectHash);
   });
-  it("fromRawBytes takes 32 bytes from another realm, and no array of numbers", () => {
+  it("fromRawBytes takes 32 bytes from another realm, and no array of numbers or Proxy", () => {
     const raw = fromHex(ABC.slice(2));
     expect(fromRawBytes(otherRealm(raw))).toBe(ABC);
     expect(fromRawBytes([...raw] as never)).toBeNull();
+    expect(fromRawBytes(new Proxy(raw, {}))).toBeNull();
   });
 });
 

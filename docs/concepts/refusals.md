@@ -53,7 +53,7 @@ its pairing defines, and returns either a value it built or its own refusal.
 
 Four core functions take a value the caller controls completely, and throw a `TypeError` when it is wrong. `hash`
 rejects with one when its argument is not a `Uint8Array`: a `Buffer` or a `Uint8Array` from another realm is hashed,
-and a string, an array, an `ArrayBuffer` or another typed array is not. `toLcpString`, `toLegalContext` and
+and a string, an array, an `ArrayBuffer`, another typed array or a Proxy is not. `toLcpString`, `toLegalContext` and
 `toRawBytes` throw when the hash is not 32 bytes, and `toLegalContext` also when the link is not an `https` URL. Their
 `from…` counterparts return `null` instead of throwing.
 

@@ -101,10 +101,10 @@ export async function assemble(
 
 /**
  * True for a `Uint8Array`, a `Buffer` included, from this realm or another (a `vm` context, a test runner's sandbox).
- * An `ArrayBuffer`, another typed array, an array and an array-like are false.
+ * An `ArrayBuffer`, another typed array, an array, an array-like and a Proxy are false.
  */
 function isBytes(x: unknown): x is Uint8Array {
-  return x instanceof Uint8Array || (ArrayBuffer.isView(x) && x.constructor?.name === "Uint8Array");
+  return ArrayBuffer.isView(x) && (x instanceof Uint8Array || x.constructor?.name === "Uint8Array");
 }
 
 /**
