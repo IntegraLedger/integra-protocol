@@ -1228,7 +1228,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript implementation applies every row; the Python implementation applies every row except the status row, as it reads no settlement.",
   "rows": [
    {
     "case": "an option on starknet:SN_GOERLI",
