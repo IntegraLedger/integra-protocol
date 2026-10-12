@@ -27,18 +27,17 @@ import {
   type TypeTag,
 } from "@aptos-labs/ts-sdk";
 import { ReaderError } from "../src/evm.js";
+import { pairingOf } from "../src/index.js";
 import {
   aptosIdDigest,
-  aptosPairingOf,
   committedInstrument,
   decodeAptosTx,
   exactAptos,
   type AptosCommitted,
-  type AptosPaymentPayload,
   type AptosReader,
   type AptosRef,
 } from "../src/aptos.js";
-import type { PaymentRequired } from "../src/x402.js";
+import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-aptos.json", import.meta.url), "utf8"));
 const H: `0x${string}` = V.fixed.H;
@@ -94,7 +93,7 @@ function signedWire(r: RawTransaction): string {
   );
 }
 
-function payment(transaction: string, extensions?: PaymentRequired["extensions"], accepted = O): AptosPaymentPayload {
+function payment(transaction: string, extensions?: PaymentRequired["extensions"], accepted = O) {
   return { x402Version: 2, accepted, payload: { transaction }, ...(extensions ? { extensions } : {}) };
 }
 
@@ -283,12 +282,13 @@ describe("plant", () => {
 
 describe("the pairing's filter, advertise, read, build and complete", () => {
   it("takes aptos:<1-255> and long-form addresses", () => {
-    expect(aptosPairingOf(O)).toBe("x402/exact/aptos");
-    expect(aptosPairingOf({ ...O, network: "aptos:2" })).toBe("x402/exact/aptos");
-    expect(aptosPairingOf({ ...O, network: "aptos:01" })).toBeUndefined();
-    expect(aptosPairingOf({ ...O, network: "aptos:256" })).toBeUndefined();
-    expect(aptosPairingOf({ ...O, payTo: "0x1" })).toBeUndefined();
-    expect(aptosPairingOf({ ...O, extra: { assetTransferMethod: "x" } })).toBeUndefined();
+    const pays = (o: PaymentRequirements) => pairingOf(o) === "x402/exact/aptos";
+    expect(pays(O)).toBe(true);
+    expect(pays({ ...O, network: "aptos:2" })).toBe(true);
+    expect(pays({ ...O, network: "aptos:01" })).toBe(false);
+    expect(pays({ ...O, network: "aptos:256" })).toBe(false);
+    expect(pays({ ...O, payTo: "0x1" })).toBe(false);
+    expect(pays({ ...O, extra: { assetTransferMethod: "x" } })).toBe(false);
   });
   it("refuses an unnamed chain id as network-malformed", async () => {
     expect(await exactAptos.bound(payment("AAAA", undefined, { ...O, network: "aptos:0" }))).toEqual({

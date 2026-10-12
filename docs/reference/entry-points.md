@@ -117,14 +117,14 @@ import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledge
 Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified by a digest of the transfer the payer signed and by the expiry it signed.
 
 ```ts no-check
-import { aptosIdDigest, aptosOptionCheck, aptosPairingOf, … } from "@integraledger/lcp/aptos";
+import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integraledger/lcp/aptos";
 ```
 
 **Pairings:** `x402/exact/aptos`.
 
-**Values (7):** `aptosIdDigest`, `aptosOptionCheck`, `aptosPairingOf`, `aptosStatus`, `committedInstrument`, `decodeAptosTx`, `exactAptos`.
+**Values (5):** `aptosIdDigest`, `aptosStatus`, `committedInstrument`, `decodeAptosTx`, `exactAptos`.
 
-**Types (8):** `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosPaymentPayload`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`.
+**Types (7):** `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`.
 
 ## `@integraledger/lcp/avm`
 

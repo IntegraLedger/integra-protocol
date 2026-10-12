@@ -7,6 +7,7 @@
 import { digestJson, parseJson, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
+import type { AptosPaymentPayload } from "./internal/aptos.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -80,14 +81,6 @@ export type AptosStatus =
   | { state: "settled"; version: bigint; transaction: Hex }
   | { state: "pending"; why: "not-found" | "in-mempool" | "unreadable" }
   | { state: "failed"; why: "aborted" | "superseded" | "expired" };
-
-export interface AptosPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { transaction: string };
-  extensions?: PaymentRequired["extensions"];
-}
 
 export interface AptosUnsigned {
   request: { kind: "aptos-transaction"; accepted: PaymentRequirements };
@@ -257,7 +250,7 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
 }
 
 /** The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not. */
-export function aptosOptionCheck(option: unknown): Refusal | undefined {
+function aptosOptionCheck(option: unknown): Refusal | undefined {
   if (!isObject(option) || option["scheme"] !== "exact") return refusal("x402/option-not-this-pairing");
   const network = option["network"];
   if (typeof network !== "string" || !network.startsWith("aptos:")) return refusal("x402/option-not-this-pairing");
@@ -277,11 +270,6 @@ export function aptosOptionCheck(option: unknown): Refusal | undefined {
 
 /** The filter step over `aptosOptionCheck`. */
 const aptosFilter: OptionFilter = (o) => aptosOptionCheck(o) ?? true;
-
-/** This pairing's id for an option it can pay, or undefined. */
-export function aptosPairingOf(option: PaymentRequirements): typeof ID | undefined {
-  return aptosOptionCheck(option) === undefined ? ID : undefined;
-}
 
 function advertise(
   doc: PaymentRequired,
