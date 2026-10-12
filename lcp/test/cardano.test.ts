@@ -291,13 +291,19 @@ describe("plant", () => {
 });
 
 describe("the pairing's filter, advertise, read, build and complete", () => {
-  it("takes the named networks, their CIP-34 aliases and the three methods", () => {
+  // x402's Cardano scheme (x402-foundation/x402 specs/schemes/exact/scheme_exact_cardano.md, blob c53d0185) lists
+  // `"assetTransferMethods": ["default", "masumi", "script"]`, and its SDK's facilitator reads an option that names no
+  // method as "default" (typescript/packages/mechanisms/cardano, exact/facilitator/scheme.ts).
+  it("takes the named networks, their CIP-34 aliases and the three methods", async () => {
     const pays = (o: PaymentRequirements) => pairingOf(o) === "x402/exact/cardano";
     for (const network of ["cardano:mainnet", "cardano:preview", "cip34:1-764824073", "cip34:0-2"]) {
       expect(pays({ ...O, network })).toBe(true);
     }
-    for (const m of ["script", "masumi"]) {
+    for (const m of ["default", "script", "masumi"]) {
       expect(pays({ ...O, extra: { assetTransferMethod: m } })).toBe(true);
+      expect(await exactCardano.bound(payment(V.V2.transactionBase64, { ...O, extra: { assetTransferMethod: m } }))).toBe(
+        V.V2.expectBound,
+      );
     }
     expect(pays({ ...O, extra: { assetTransferMethod: "eip3009" } })).toBe(false);
     expect(pays({ ...O, extra: { paymentFlow: "upfront" } })).toBe(false);

@@ -93,7 +93,8 @@ const NETWORKS: Readonly<Record<string, CardanoNetwork>> = {
   "cip34:0-1": "cardano:preprod",
   "cip34:0-2": "cardano:preview",
 };
-const METHODS: readonly unknown[] = [undefined, "script", "masumi"];
+/** x402's Cardano asset transfer methods: "default" (address to address, also when unnamed), "script", "masumi". */
+const METHODS: readonly unknown[] = [undefined, "default", "script", "masumi"];
 const HEX64 = /^[0-9a-f]{64}$/;
 const DECIMAL = /^[0-9]{1,78}$/;
 const LABEL_MESSAGE = 674n;
