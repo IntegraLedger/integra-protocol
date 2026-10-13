@@ -100,7 +100,7 @@ export type TvmStatus =
   | { state: "pending"; why: "not-found" | "in-flight" | "not-final" | "unreadable" }
   | { state: "failed"; why: "aborted" | "no-transfer" | "bounced" | "expired" };
 
-export interface TvmChoice {
+interface TvmChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   /** The payer's W5 wallet, raw. */
