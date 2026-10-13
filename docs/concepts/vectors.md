@@ -10,10 +10,11 @@ description: The shared test cases that fix the rules byte for byte across langu
 language, that passes them assembles the same bytes, computes the same hashes, and places and reads H in the same
 fields as this package.
 
-Every expected value in a vector file comes from outside this package: a specification's published example, a
-standard's test value such as SHA-256 of `"abc"` from FIPS 180-2, a transaction read from a live network, or an
-independent tool (Python's `json` and `hashlib`, `sha256sum`, `openssl`, viem, eth-account, a rail's own SDK). Each
-file's `about` names its sources.
+Every expected byte, hash and signature in a vector file comes from outside this package: a specification's published
+example, a standard's test value such as SHA-256 of `"abc"` from FIPS 180-2, a transaction read from a live network, or
+an independent tool (Python's `json` and `hashlib`, `sha256sum`, `openssl`, viem, eth-account, a rail's own SDK).
+Refusal codes are this package's own, not a specification's; a file's `agreedRefusals` rows hold the codes for checks
+its specification leaves to the implementation. Each file's `about` names its sources.
 
 ## What they fix
 
@@ -61,5 +62,5 @@ and from Python, so the rules hold in both languages.
 ## Plants
 
 A row marked `plant` is a deliberate wrong input with a known outcome: bytes one changed byte away from the ATR, a
-receipt with the hash in the wrong topic, an agreement resource advertising another ATR's hash. A check that accepts
-a plant is broken, whatever else it passes.
+receipt whose matching log comes from another contract, an agreement resource advertising another ATR's hash. A check
+that accepts a plant is broken, whatever else it passes.
