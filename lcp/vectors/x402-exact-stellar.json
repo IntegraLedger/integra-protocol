@@ -636,7 +636,7 @@
     "expect": "stellar/payer-mismatch"
    },
    {
-    "case": "advertise or build with an amount that is not a positive i128 in decimal, or maxTimeoutSeconds not a positive integer",
+    "case": "advertise or build with an amount that is not an i128 of 0 or more in decimal, or maxTimeoutSeconds not a positive integer",
     "expect": "x402/option-malformed"
    },
    {

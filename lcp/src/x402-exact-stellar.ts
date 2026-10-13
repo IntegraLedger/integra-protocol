@@ -35,7 +35,7 @@ import {
 } from "./x402.js";
 
 const ID = "x402/exact/stellar" as const;
-const AMOUNT = /^[1-9][0-9]{0,37}$/;
+const AMOUNT = /^(0|[1-9][0-9]{0,37})$/;
 const I128_LIMIT = 1n << 127n;
 
 /**
@@ -57,7 +57,7 @@ function isThis(option: PaymentRequirements): boolean {
   return isObject(option.extra) && option.extra["areFeesSponsored"] === true;
 }
 
-/** True when the amount is a positive i128 in decimal and the timeout a positive safe integer. */
+/** True when the amount is an i128 of 0 or more in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
   return (
     typeof o.amount === "string" &&

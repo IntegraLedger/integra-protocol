@@ -494,4 +494,36 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
     if (sig.type !== 13) throw new Error("not bytes");
     expect(ed25519.verify(sig.bytes, fromHex(sha256(preimage)), Keypair.fromRawEd25519Seed(Buffer.from(seed)).rawPublicKey())).toBe(true);
   });
+
+  // x402's exact Stellar scheme asks only that the transfer's amount equal `requirements.amount` exactly, as an i128
+  // (x402-foundation/x402 8228bd6d specs/schemes/exact/scheme_exact_stellar.md:121), and the Stellar Asset Contract's
+  // `transfer` refuses only a negative amount (rs-soroban-env soroban-env-host/src/builtin_contracts/
+  // stellar_asset_contract/contract.rs, check_nonnegative_amount: "negative amount is not allowed"). The preimage is
+  // @stellar/stellar-sdk 17.1.0's buildAuthorizationEntryPreimage for the simulated entry at the expiration build writes.
+  it("an option whose amount is 0 is served: advertise, read, pairingOf and build", async () => {
+    const zero: PaymentRequirements = { ...V.fixed.option, amount: "0" };
+    const doc = exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [zero] }, H, V.fixed.link, zero);
+    if ("refused" in doc) throw new Error(doc.code);
+    const accepted = doc.accepts[0]!;
+    expect(accepted).toEqual({ ...V.V3.accepted, amount: "0" });
+    const r = exactStellar.read(doc);
+    if ("refused" in r) throw new Error(r.code);
+    expect(r.h).toBe(H);
+    expect(pairingOf(zero)).toBe("x402/exact/stellar");
+    const simulatedXdr = simulated(V.V2.simulatedXdr, moved(0n));
+    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
+    const u = await exactStellar.build({ required, accepted, simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const env = xdr.TransactionEnvelope.fromXdr(simulatedXdr, "base64").toXdrObject();
+    if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
+    const entry = xdr.SorobanAuthorizationEntry.fromXdrObject(env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth[0]!);
+    const preimage = buildAuthorizationEntryPreimage(entry, V.V2.expectExpiration, Networks.TESTNET).toXdr("raw");
+    expect(sha256(u.request.preimage)).toBe(sha256(preimage));
+    for (const amount of ["-1", (1n << 127n).toString()]) {
+      const o: PaymentRequirements = { ...zero, amount };
+      expect(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o), amount).toEqual(
+        refused("x402/option-malformed"),
+      );
+    }
+  });
 });
