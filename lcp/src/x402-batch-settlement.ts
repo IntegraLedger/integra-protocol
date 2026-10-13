@@ -34,7 +34,13 @@ import {
   type Permit2TypedData,
 } from "./evm.js";
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
-import { carriesBinding, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
+import {
+  carriesBinding,
+  failedIfFinal,
+  receiveTypedData,
+  transferParts,
+  type ReceiveTypedData,
+} from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   buildChannelMessage,
@@ -604,9 +610,11 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
  * logs hold that deposit call's transfers. The transfer counts when its `from`, `to` and `value` hash to the
  * reference's digest. A matching transfer elsewhere in the transaction, such as the payer's deposit into another
  * channel beside a gift into this one, is failed `transfer-not-found`; a matching transfer the transaction makes
- * between the previous deposit call and this one is read as this deposit's. A reference without this pairing's
- * well-formed `Deposited` binding log from the channel contract and its `from,to,value` transfer log is pending
- * `unreadable`, and nothing is read. At most three calls.
+ * between the previous deposit call and this one is read as this deposit's. Each failed answer, `evmStatus`'s and this
+ * one, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
+ * mark cannot be read, the same reason is pending. A reference without this pairing's well-formed `Deposited` binding
+ * log from the channel contract and its `from,to,value` transfer log is pending `unreadable`, and nothing is read. At
+ * most three calls.
  */
 async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   if (!isObject(ref) || !isObject(reader)) return { state: "pending", why: "unreadable" };
@@ -639,7 +647,7 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
     }
     start = i + 1;
   }
-  return { state: "failed", why: "transfer-not-found" };
+  return failedIfFinal(s, "transfer-not-found");
 }
 
 /** Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. */

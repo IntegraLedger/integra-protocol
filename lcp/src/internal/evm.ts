@@ -202,7 +202,7 @@ export interface EvmTxRef {
 
 export type EvmStatus =
   | { state: "settled"; finality: "latest" | "safe" | "finalized"; blockNumber: bigint }
-  | { state: "pending"; why: "not-found" | "unreadable" }
+  | { state: "pending"; why: "not-found" | "unreadable" | "reverted" | "authorization-not-used" | "transfer-not-found" }
   | { state: "failed"; why: "reverted" | "authorization-not-used" | "transfer-not-found" };
 
 /**
@@ -217,9 +217,11 @@ export type EvmStatus =
  * token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
  * pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
  * use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
- * receipt's block. A failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an
- * `asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`, never failed. At most
- * three calls.
+ * receipt's block. A failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the
+ * receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+ * cannot be read, the same reason is pending. A failed read, a reader for another network, a `transaction` or `h` that
+ * is not a 32-byte hash, an `asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`,
+ * never failed. At most three calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
@@ -239,15 +241,15 @@ export async function eip3009Status(
   }
   if (receipt === null) return { state: "pending", why: "not-found" };
   if (!isReceipt(receipt)) return { state: "pending", why: "unreadable" };
-  if (receipt.status === 0) return { state: "failed", why: "reverted" };
+  const at = receipt.blockNumber;
+  if (receipt.status === 0) return failedAt(at, "reverted", reader);
 
   const binding = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
   const authorizers = authorizersOf(receipt.logs, binding);
-  if (authorizers.length === 0) return { state: "failed", why: "authorization-not-used" };
+  if (authorizers.length === 0) return failedAt(at, "authorization-not-used", reader);
   const transfers = await pairedTransfers(receipt.logs, binding, ref.transferLog);
-  if (transfers.length === 0) return { state: "failed", why: "transfer-not-found" };
+  if (transfers.length === 0) return failedAt(at, "transfer-not-found", reader);
 
-  const at = receipt.blockNumber;
   return settledAt(at, reader);
 }
 
@@ -560,7 +562,7 @@ export interface EvmRef {
 export type EvmBreadthStatus =
   | EvmStatus
   | {
-      state: "failed";
+      state: "failed" | "pending";
       why: "binding-log-not-found" | "transfer-not-found" | "receive-policy-blocked" | "nonce-not-used";
     };
 
@@ -577,8 +579,10 @@ export type EvmBreadthStatus =
  * word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
  * is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
  * redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
- * finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
- * present and not of the form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
+ * finality mark reached. A failed answer is given only where the receipt's block is at or below the reader's
+ * `finalized` mark; above it, or where that mark cannot be read, the same reason is pending.
+ * A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is present and not of the
+ * form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const read = await matchedTransfers(ref, reader);
@@ -596,8 +600,10 @@ export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * `nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set at the receipt's block and
  * unset at the block before it, so that the nonce is spent in that block. A transaction without the nonce, or a nonce
  * unused at the receipt's block or used before it, is failed `nonce-not-used`. A failed call is pending `unreadable`.
- * A payer who writes the nonce into a transaction of its own that makes the reference's transfer, and uses the nonce in
- * the same block, by spending the permit or by invalidating the nonce, is read as paying. At most six calls.
+ * A failed answer, `evmStatus`'s or `nonce-not-used`, is given only where the receipt's block is at or below the
+ * reader's `finalized` mark; above it, or where that mark cannot be read, the same reason is pending. A payer who
+ * writes the nonce into a transaction of its own that makes the reference's transfer, and uses the nonce in the same
+ * block, by spending the permit or by invalidating the nonce, is read as paying. At most six calls.
  */
 export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   if (!isObject(ref)) return { state: "pending", why: "unreadable" };
@@ -608,9 +614,9 @@ export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: 
   if (!ref.transferLog.identity.split(",").includes("from")) return { state: "pending", why: "unreadable" };
   const read = await matchedTransfers(ref, reader);
   if (!("receipt" in read)) return read;
-  const carried = await inputCarries(ref.transaction, auth.nonce, reader);
-  if (carried !== true) return carried === false ? { state: "failed", why: "nonce-not-used" } : carried;
   const block = read.receipt.blockNumber;
+  const carried = await inputCarries(ref.transaction, auth.nonce, reader);
+  if (carried !== true) return carried === false ? failedAt(block, "nonce-not-used", reader) : carried;
   const owners = [...new Set(read.transfers.map((t) => t.from))];
   let used = false;
   for (const owner of owners) {
@@ -624,7 +630,7 @@ export async function permit2Status(ref: EvmRef & { transaction: Hex }, reader: 
       break;
     }
   }
-  if (!used) return { state: "failed", why: "nonce-not-used" };
+  if (!used) return failedAt(block, "nonce-not-used", reader);
   return settledAt(block, reader);
 }
 
@@ -657,7 +663,8 @@ async function inputCarries(
 
 /**
  * The receipt of the named transaction and the transfers in it that the ref's `transferLog` identifies, once the
- * checks `evmStatus` makes before its finality marks hold; otherwise the status those checks give.
+ * checks `evmStatus` makes before its finality marks hold; otherwise the status those checks give, a failed one through
+ * `failedAt`.
  */
 async function matchedTransfers(
   ref: EvmRef & { transaction: Hex },
@@ -677,7 +684,7 @@ async function matchedTransfers(
   }
   if (receipt === null) return { state: "pending", why: "not-found" };
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return { state: "pending", why: "unreadable" };
-  if (receipt.status === 0) return { state: "failed", why: "reverted" };
+  if (receipt.status === 0) return failedAt(receipt.blockNumber, "reverted", reader);
 
   let missing: "binding-log-not-found" | "transfer-not-found" | undefined;
   let transfers: { from: Hex; to: Hex; value: bigint }[] = [];
@@ -703,9 +710,9 @@ async function matchedTransfers(
   if (missing !== undefined) {
     const token = ref.transferLog?.address ?? ref.bindingLog?.address;
     if (token !== undefined && receipt.logs.some((l) => isGuardTransfer(l, token))) {
-      return { state: "failed", why: "receive-policy-blocked" };
+      return failedAt(receipt.blockNumber, "receive-policy-blocked", reader);
     }
-    return { state: "failed", why: missing };
+    return failedAt(receipt.blockNumber, missing, reader);
   }
   return { receipt, transfers };
 }
@@ -792,6 +799,31 @@ function isTransferLog(t: unknown): t is TransferLog {
     ["from,to,value", "from,to", "from", "to,value", "to"].includes(identity as string) &&
     bytesOf(digest)?.length === 32
   );
+}
+
+/**
+ * A failure read from a receipt in block `at`: failed `why` where `at` is at or below the reader's `finalized` mark,
+ * else pending `why`. A block above that mark can be replaced, and a failed answer names no mark, so it is given only
+ * at the highest the reader names; a failed mark read counts as not reached. One call.
+ */
+export async function failedAt<W extends string>(
+  at: bigint,
+  why: W,
+  reader: EvmReader,
+): Promise<{ state: "failed"; why: W } | { state: "pending"; why: W }> {
+  const finalized = await mark(reader, "finalized");
+  return finalized !== null && finalized >= at ? { state: "failed", why } : { state: "pending", why };
+}
+
+/**
+ * A failure read from the receipt `settled` read: failed `why` where `settled` reached the `finalized` mark, as
+ * `failedAt` requires, else pending `why`. No call.
+ */
+export function failedIfFinal<W extends string>(
+  settled: EvmStatus & { state: "settled" },
+  why: W,
+): { state: "failed"; why: W } | { state: "pending"; why: W } {
+  return settled.finality === "finalized" ? { state: "failed", why } : { state: "pending", why };
 }
 
 /** Settled at the highest finality mark whose block is at or above `at`; a failed mark read counts as not reached. */

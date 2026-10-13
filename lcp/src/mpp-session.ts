@@ -56,7 +56,14 @@ import {
   type MppChoice,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { isLog, isReceipt, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
+import {
+  failedIfFinal,
+  isLog,
+  isReceipt,
+  receiveTypedData,
+  transferParts,
+  type ReceiveTypedData,
+} from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readReceipt } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -435,7 +442,9 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
  * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
  * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
  * failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
- * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. An `opens` that is not an object
+ * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. Each failed answer, `evmStatus`'s
+ * and these, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where
+ * that mark cannot be read, the same reason is pending. An `opens` that is not an object
  * whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, an `opened` that is
  * not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h` 32-byte hashes and `chainId` a
  * positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
@@ -474,12 +483,12 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
   if (s.state === "settled" && ref.opens !== undefined) return openRead(s, ref, ref.opens, reader);
   if (s.state === "settled" && ref.closes !== undefined) return closeRead(s, ref.transaction, ref.closes, reader);
   if (s.state === "settled" && ref.accessKey?.account !== undefined) {
-    return spentUnder((seen as EvmReceipt | null)?.logs ?? [], ref.accessKey) ? s : { state: "failed", why: "binding-log-not-found" };
+    return spentUnder((seen as EvmReceipt | null)?.logs ?? [], ref.accessKey) ? s : failedIfFinal(s, "binding-log-not-found");
   }
   if (s.state === "settled" && ref.revokes !== undefined) {
     const { account, keyId } = ref.revokes;
     const revoked = keychainLog((seen as EvmReceipt | null)?.logs ?? [], KEY_REVOKED_TOPIC, [account, keyId]);
-    return revoked ? s : { state: "failed", why: "binding-log-not-found" };
+    return revoked ? s : failedIfFinal(s, "binding-log-not-found");
   }
   if (s.state !== "settled" || ref.opened === undefined) return s;
   const o = ref.opened;
@@ -510,7 +519,7 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     });
     return typeof id === "string" && sameBytes(id, o.channel);
   });
-  return opened ? s : { state: "failed", why: "binding-log-not-found" };
+  return opened ? s : failedIfFinal(s, "binding-log-not-found");
 }
 
 /** A key that ties a status read to the opening or the close, as a writer of these pairings gives it. */
@@ -984,7 +993,7 @@ async function closeRead(
  * than `MAX_CALLDATA` is pending `unreadable`. The deposit is not read.
  */
 async function openRead(
-  settled: SessionStatus,
+  settled: EvmBreadthStatus & { state: "settled" },
   ref: SessionRef & { transaction: Hex },
   opens: NonNullable<SessionRef["opens"]>,
   reader: EvmReader,
@@ -1005,8 +1014,7 @@ async function openRead(
   if (to === opens.escrow.toLowerCase() && (selector === OPEN_V1_SELECTOR || selector === OPEN_WITH_PERMIT2_SELECTOR)) {
     const payer = selector === OPEN_V1_SELECTOR ? (input.length >= OPEN_CALL_BYTES ? tx.from : undefined) : addressAt(args, 5);
     if (payer !== undefined && opensChannel(args, payer, opens)) return settled;
-    const final = settled.state === "settled" && settled.finality === "finalized";
-    return ref.settleBy === undefined && final ? { state: "failed", why: "open-call-not-found" } : { state: "pending", why: "open-call-not-found" };
+    return ref.settleBy === undefined ? failedIfFinal(settled, "open-call-not-found") : { state: "pending", why: "open-call-not-found" };
   }
   return { state: "pending", why: "open-call-not-found" };
 }

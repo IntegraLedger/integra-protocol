@@ -90,7 +90,7 @@ describe("a ref without its pairing's binding log", () => {
       const calls: string[] = [];
       const read = await b.status({ network: NET, transaction: tx, transferLog, bindingLog: own }, reader(calls));
       expect(read).toEqual({ state: "failed", why: "binding-log-not-found" });
-      expect(calls).toEqual(["receipt"]);
+      expect(calls).toEqual(["receipt", "blockNumber"]);
     });
   }
   it("covers each of the eight pairings", () => {

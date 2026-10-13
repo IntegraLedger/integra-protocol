@@ -68,7 +68,7 @@ import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { readReceipt } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
+import { failedIfFinal, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
@@ -181,7 +181,9 @@ const PAYMENT_WITNESS = [
  * `RECEIVE_POLICY_GUARD`. `ref.transferLog` must identify a `Transfer` from `ref.asset` by its sender alone (identity
  * `from`), as the pairing's `reference` records it, else pending `unreadable`. Without such a log, a `Transfer` from
  * that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`: another
- * account's `Transfer` in the same transaction is not this payment. At most three calls.
+ * account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and these, is
+ * given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+ * cannot be read, the same reason is pending. At most three calls.
  */
 export async function transferPresent(
   ref: EvmRef & { transaction: Hex; asset: Hex },
@@ -203,7 +205,7 @@ export async function transferPresent(
   const s = await evmStatus({ network: ref.network, transaction: ref.transaction }, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
-  if (!isAddress(ref.asset)) return { state: "failed", why: "transfer-not-found" };
+  if (!isAddress(ref.asset)) return failedIfFinal(s, "transfer-not-found");
   const sent: EvmLog[] = [];
   for (const l of logs) {
     const parts = transferParts(l, ref.asset, TRANSFER_TOPIC);
@@ -212,8 +214,8 @@ export async function transferPresent(
     if (typeof digest === "string" && sameBytes(digest, sender.digest)) sent.push(l);
   }
   if (sent.some((l) => !isGuardTransfer(l, ref.asset))) return s;
-  if (sent.length > 0) return { state: "failed", why: "receive-policy-blocked" };
-  return { state: "failed", why: "transfer-not-found" };
+  if (sent.length > 0) return failedIfFinal(s, "receive-policy-blocked");
+  return failedIfFinal(s, "transfer-not-found");
 }
 
 /** True for a `TransferLog` that identifies a `Transfer` from `asset` by its sender alone: identity `from`. */

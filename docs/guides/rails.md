@@ -155,6 +155,14 @@ them.
 Failed means the rail itself says so: a reverted, aborted or expired transaction, or one that does not carry this
 payment.
 
+On EVM chains and Tempo, and on the MPP Hedera session, which reads its escrow through Hedera's JSON-RPC relay, a block
+above the `finalized` mark can be replaced, by one in which the same transaction succeeds or holds other logs. A
+failed answer names no mark, so `status` gives one read from a receipt (`reverted`, `authorization-not-used`,
+`transfer-not-found`, `binding-log-not-found`, `receive-policy-blocked`, `nonce-not-used` or `open-call-not-found`)
+only when the receipt's block is at or below the reader's `finalized` mark. Above it, or where that mark cannot be
+read, `status` answers pending with the same reason, and a later read gives the verdict. Settled answers are not held
+to the mark: they carry the mark they reached.
+
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
 entry leaves the payment pending while the entry is valid. Past the entry's expiration ledger, `status` searches the

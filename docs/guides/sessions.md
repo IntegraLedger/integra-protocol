@@ -256,7 +256,12 @@ session, `pattern.proves` says that each voucher signs the channel id and an amo
 on EVM, Tempo, Hedera, Solana and the XRP Ledger, and on `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives
 the read keys of the close from the issued challenge and the channel, and `status` reads the close through the same
 reader. On `mpp/session/evm`, a transaction
-that is not a call closing that channel reads as pending, with the reason `not-a-close`. On `mpp/subscription/tempo`,
+that is not a call closing that channel reads as pending, with the reason `not-a-close`. On the EVM, Tempo and Hedera
+sessions, the Tempo subscription and `x402/batch-settlement/eip155`, an opening, a close or a transfer under the
+subscription's access key reads as failed only once the
+receipt's block is at or below the reader's `finalized` mark; above that mark, where the block can be replaced,
+or where the mark cannot be read, it reads as pending with the same reason
+([Reading settlement](./rails.md#reading-settlement)). On `mpp/subscription/tempo`,
 the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
 channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
 activation's receipt as `accessKey.account`; without it, `closeRef` refuses `mpp/input-malformed`. Another account's

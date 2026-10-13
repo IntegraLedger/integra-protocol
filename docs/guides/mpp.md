@@ -160,6 +160,11 @@ not H), the deadline, the token and the contract that records the nonce's use, f
 32 bytes anywhere in its input, and reads that record set at the receipt's block and unset at the block before, as on
 x402's Permit2 pairings.
 
+On the EVM, Tempo and `usdc` EVM charges, `status` answers failed, such as `reverted`, `binding-log-not-found`,
+`transfer-not-found`, `receive-policy-blocked` or `nonce-not-used`, only once the receipt's block is at or below the
+reader's `finalized` mark. Above that mark, where the block can be replaced, or where the mark cannot be read, it
+answers pending with the same reason ([Reading settlement](./rails.md#reading-settlement)).
+
 The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these rules in full.
 
 ## Answering the buyer
