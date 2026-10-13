@@ -88,7 +88,8 @@ One Agent Card `capabilities.extensions[]` entry per listed URI. `required` defa
 > **place**(`task`, `h`, `link`, `a2aExtensions?`): [`Refusal`](index.md#refusal) \| [`A2aTask`](#a2atask)
 
 A copy of the task whose `metadata` carries `{type, value, legalContextUrl}` under the listed URI the request's
-`A2A-Extensions` value activated, or the first listed URI. Other metadata is kept.
+`A2A-Extensions` value activated, or the first listed URI. Other metadata is kept. A task that is not an object, or
+that carries a `refused` member, is `a2a/legal-context-malformed`.
 
 #### Parameters
 

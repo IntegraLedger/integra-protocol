@@ -839,7 +839,8 @@ quoted-strings unescaped and unknown parameters dropped. At most 8 KiB per value
 
 A copy of `doc` in which the challenge whose bound members equal `option` carries the id derived from H and an
 `opaque` holding the seller's map plus `legalContext`, `legalContextUrl` and, when given, `legalContextAgreementUrl`.
-A Tempo subscription challenge's id is the bare base64url of H.
+A Tempo subscription challenge's id is the bare base64url of H. A `doc` holding a challenge that carries a `refused`
+member is `mpp/challenge-malformed`, as one holding a challenge without the required members is.
 
 #### Parameters
 
