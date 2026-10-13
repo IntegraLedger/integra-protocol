@@ -197,8 +197,9 @@ own copy.
 ## What this package does not do
 
 It holds no key and signs nothing. It does not call the facilitator, move funds, or decide whether to serve a
-request. It never compares amount, payee, asset, timing or payer with the ATR's content: the binding is the one thing
-it checks.
+request. It never judges amount, payee, asset, timing or payer, and never reads the parties' content in the ATR.
+Beside the binding, it checks only the form the rail or the scheme requires and the bounds within which it reads its
+input.
 
 ## On other surfaces
 

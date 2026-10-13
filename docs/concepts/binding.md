@@ -9,9 +9,10 @@ description: How the ATR hash rides in a payment, the binding patterns, and what
 the protocol or rail provides a place, and the buyer approves a payment that carries H, or carries a value from which
 anyone holding the ATR can confirm exactly that H.
 
-Binding is the whole of what this package checks about a payment. It never compares amount, payee, asset, timing or
-payer with the ATR's content. A discrepancy between the payment and the record is between the parties, and the record
-is what they agreed to.
+Binding is what this package checks about a payment, beside the form its rail or scheme requires and the bounds within
+which it reads its input. It never judges amount, payee, asset, timing or payer, and never reads the parties' content
+in the ATR. A discrepancy between what the parties agreed and what was paid is between them, and the record is what
+they agreed to.
 
 ## Where H rides
 
