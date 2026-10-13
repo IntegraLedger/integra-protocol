@@ -39,7 +39,7 @@ gRPC v2 `GetBlockItemStatus`; null when the node does not know the item.
 
 ### CcdRef
 
-The read keys recorded at claim.
+The read keys `reference` returns.
 
 #### Properties
 

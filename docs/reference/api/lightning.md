@@ -14,7 +14,7 @@ description: "The exports of @integraledger/lcp/lightning."
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-amountmsat"></a> `amountMsat` | `bigint` \| `null` | - |
-| <a id="property-currency"></a> `currency` | `"bc"` \| `"tb"` \| `"tbs"` \| `"bcrt"` | - |
+| <a id="property-currency"></a> `currency` | `"bcrt"` \| `"tbs"` \| `"tb"` \| `"bc"` | - |
 | <a id="property-description"></a> `description` | `string` \| `null` | - |
 | <a id="property-descriptionhash"></a> `descriptionHash` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
 | <a id="property-expiry"></a> `expiry` | `number` | - |
@@ -66,7 +66,7 @@ description: "The exports of @integraledger/lcp/lightning."
 
 ### LnRef
 
-The read keys recorded at claim: the invoice's payment hash as lowercase hex, and when the payment can land.
+The read keys `reference` returns: the invoice's payment hash as lowercase hex, and when the payment can land.
 
 #### Properties
 
@@ -105,12 +105,6 @@ The read keys recorded at claim: the invoice's payment hash as lowercase hex, an
 [`Refusal`](index.md#refusal) \| [`LnPaymentPayload`](#lnpaymentpayload)
 
 ## Type Aliases
-
-### LnMppPairing
-
-> **LnMppPairing** = *typeof* `LN_CHARGE` \| *typeof* `LN_SESSION`
-
-***
 
 ### LnNetwork
 
@@ -151,7 +145,7 @@ CAIP-2 for Lightning: `lnbtc:` and the first 32 hex digits of the Bitcoin networ
 
 ### exactLnbtcNamed
 
-> `const` **exactLnbtcNamed**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnUnsigned`](#lnunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/lnbtc/invoice-named"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnRef`](#lnref)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactLnbtcNamed**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnUnsigned`](#lnunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/lnbtc/invoice-named"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnRef`](#lnref)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -165,9 +159,10 @@ CAIP-2 for Lightning: `lnbtc:` and the first 32 hex digits of the Bitcoin networ
 
 > **atrNamesInvoice**(`atr`, `invoice`): `boolean`
 
-True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds an option
-whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`, `id` and `x402`, in that
-order, and no member name appears twice, so every JSON reader finds the same `x402` slot. Only that slot is read.
+True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds, among its
+first 32 entries, an option whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`,
+`id` and `x402`, in that order, and no member name appears twice, so every JSON reader finds the same `x402` slot.
+Only that slot is read.
 
 #### Parameters
 
@@ -216,23 +211,3 @@ The one 32-byte `h` or `m` field of an invoice, as the hash it carries.
 #### Returns
 
 [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-***
-
-### lnbtcPairingOf()
-
-> **lnbtcPairingOf**(`option`): `"x402/exact/lnbtc"` \| `"x402/exact/lnbtc/invoice-named"` \| `undefined`
-
-Which of the two x402 Lightning pairings an option belongs to: by whether its invoice has an `m` field. An option
-whose `extra` has no `invoice` is the offer the seller sends before its node writes the invoice, so it is
-`x402/exact/lnbtc`; an `invoice-named` option carries its invoice at issue.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | `unknown` |
-
-#### Returns
-
-`"x402/exact/lnbtc"` \| `"x402/exact/lnbtc/invoice-named"` \| `undefined`

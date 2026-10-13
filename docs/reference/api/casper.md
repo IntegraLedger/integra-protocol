@@ -60,7 +60,7 @@ Bounded, read-only calls against one network's node. Every failure rejects with 
 
 ### CasperRef
 
-The read keys recorded at claim.
+The read keys `reference` returns.
 
 #### Properties
 

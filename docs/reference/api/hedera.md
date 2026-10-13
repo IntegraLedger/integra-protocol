@@ -82,7 +82,7 @@ Bounded, read-only calls against one network's Mirror Node. Every failure reject
 
 ### HederaRef
 
-The read keys recorded at claim, taken from the signed body.
+The read keys `reference` returns.
 
 #### Properties
 

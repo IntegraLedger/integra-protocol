@@ -187,7 +187,8 @@ joined by `; `), or null when it has none.
 
 ### SvmRef
 
-The read keys recorded at claim.
+The read keys a seller keeps to read the settlement later: what `reference` returns, and `fromSlot`, which the seller
+adds.
 
 #### Properties
 
@@ -197,7 +198,7 @@ The read keys recorded at claim.
 | <a id="property-channel-1"></a> `channel?` | `string` | The channel account the transaction creates, for an opening that carries no memo: the search pages this address's signatures instead of the fee payer's, and reads each one as a candidate. |
 | <a id="property-digest"></a> `digest` | `` `0x${string}` `` | - |
 | <a id="property-feepayer-2"></a> `feePayer` | `string` | - |
-| <a id="property-fromslot"></a> `fromSlot` | `string` | The slot read at claim, as a decimal string. |
+| <a id="property-fromslot"></a> `fromSlot` | `string` | The slot the seller read when it kept the reference, as a decimal string. |
 | <a id="property-network-1"></a> `network` | `` `solana:${string}` `` | - |
 | <a id="property-nonce"></a> `nonce?` | [`SvmNonce`](#svmnonce) | Present exactly when the message uses a durable nonce. |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |

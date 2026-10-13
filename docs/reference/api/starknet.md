@@ -134,7 +134,7 @@ Bounded, read-only calls against one network's JSON-RPC node. Every failure reje
 
 ### StarknetRef
 
-The read keys recorded at claim; `transaction` is added when the facilitator names it.
+The read keys `reference` returns; `transaction` is added when the facilitator names it.
 
 #### Properties
 

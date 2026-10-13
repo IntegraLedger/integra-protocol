@@ -101,7 +101,8 @@ the lookup, or null when the reader cannot read it from that node. A lookup nami
 
 ### TronRef
 
-The read keys recorded at claim, JSON-serialisable. `asset` is the contract's 21-byte address; `expiration` is decimal milliseconds.
+The read keys `reference` returns, JSON-serialisable. `asset` is the contract's 21-byte address; `expiration` is
+decimal milliseconds.
 
 #### Properties
 

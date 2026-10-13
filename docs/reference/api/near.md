@@ -80,8 +80,8 @@ Bounded, read-only calls against one network's RPC. Every failure rejects with `
 
 ### NearRef
 
-The read keys recorded at claim, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction` is
-added when the facilitator names it.
+The read keys `reference` returns, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction`
+is added when the facilitator names it.
 
 #### Properties
 

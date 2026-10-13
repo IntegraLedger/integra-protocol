@@ -100,7 +100,7 @@ page can scan past `toLedger`, so the reader keeps only the events through `toLe
 
 ### StellarRef
 
-The read keys recorded at claim.
+The read keys `reference` returns.
 
 #### Properties
 

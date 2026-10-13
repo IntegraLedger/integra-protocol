@@ -398,9 +398,10 @@ A random RFC 9562 version 4 UUID, lowercase.
 
 > **pairingOf**(`option`): `PairingOn`\<`"x402"`\> \| `undefined`
 
-The x402 pairing that serves an option: a Lightning option's by `lnbtcPairingOf`, which names `x402/exact/lnbtc` for
-an option whose invoice is not yet written; else the first x402 pairing in `BINDINGS` whose `read` offers it, on a
-document holding that option alone. Undefined when none does.
+The x402 pairing that serves an option: for an `exact` option on a Lightning network, `x402/exact/lnbtc` when its
+invoice has an `m` field or is not yet written, and `x402/exact/lnbtc/invoice-named` when it has none; else the
+first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option alone. Undefined when
+none does.
 
 #### Parameters
 
