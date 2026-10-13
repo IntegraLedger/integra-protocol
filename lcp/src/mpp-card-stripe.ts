@@ -130,8 +130,9 @@ function pairingOf<Id extends ConfirmOnly>(id: Id, carrier: string, p: LcpPatter
 export const chargeCard = pairingOf("mpp/charge/card", "request.externalId");
 export const chargeStripe = pairingOf("mpp/charge/stripe", "request.methodDetails.metadata.legal_context");
 /**
- * The Stripe subscription's activation receipt, the `Payment-Receipt` payload decoded from its base64url JSON (or the
- * MCP transport's receipt object as given). The seller passes it when it reports the opening paid.
+ * The Stripe subscription's activation receipt: the `Payment-Receipt` payload the seller's server answered the opening
+ * with, decoded from its base64url JSON (or the MCP transport's receipt object as given). `channel.ref` takes it with
+ * the opening.
  */
 export interface StripeSubscriptionReceipt {
   method: "stripe";
