@@ -70,7 +70,7 @@ export interface TvmReader {
    * block through which the index that answered holds every block, read from that same index before the lookup, or null
    * when the reader cannot read it from that index. `masterchainInfo`'s `last` can be ahead of an earlier block the
    * index has not finished writing, so on its own it does not name such a block. A lookup naming no time never reads
-   * `expired` or `aborted`.
+   * `expired`, nor `no-transfer` or `aborted` from the W5 wallet's transactions.
    */
   byInBody(bodyHash: Hex): Promise<{ transactions: readonly TonTx[]; headUtime: number | null }>;
   /** GET /api/v3/transactionsByMessage?msg_hash=…&direction=in */
@@ -328,16 +328,17 @@ function sendMessage(actions: Cell): Cell | Refusal {
  * any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
  * Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
  * emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
- * pending `not-found` up to `validUntil`; past it, failed `no-transfer` when one executed and emitted nothing, and
- * failed `expired` when the W5 wallet holds no transaction with the request, or `aborted` when every one aborted, only
- * when the lookup names an indexed time at or past the head read first: an internal request that aborts leaves its
- * seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
- * `validUntil`, and an index that lags that head, or names no time, is pending `not-found`. The payer's Jetton wallet's
- * transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted
- * delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed read, a
- * malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
- * network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
- * lowercase. At most four calls.
+ * pending `not-found` up to `validUntil`; past it, failed `expired` when the W5 wallet holds no transaction with the
+ * request, `no-transfer` when one executed and emitted nothing, and `aborted` when every one aborted, each only when
+ * the lookup names an indexed time at or past the head read first. The lookup shows the W5 wallet's transactions only
+ * through the blocks its index holds, and an internal request that aborts leaves its seqno unused (wallet_v5.fc commits
+ * the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose index lags
+ * that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted is failed
+ * `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`, at any
+ * head. A transaction on any other account is ignored. A failed or malformed read, a malformed reference (a
+ * `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another network is pending
+ * `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in lowercase. At most
+ * four calls.
  */
 export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -374,16 +375,16 @@ export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStat
 }
 
 /**
- * The status while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides, and a
- * lookup that finds none, or only aborted ones, counts only when its index holds every block through that head.
+ * The status while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides, and
+ * the lookup counts only when its index holds every block through that head.
  */
 function unsent(ref: TvmRef, w5: OnAccount, head: number | null): TvmStatus {
   if (head === null) return { state: "pending", why: "unreadable" };
   if (head <= ref.validUntil) return { state: "pending", why: "not-found" };
-  if (w5.transactions.some((t) => !t.aborted)) return { state: "failed", why: "no-transfer" };
   const covered = w5.headUtime !== null && w5.headUtime >= head;
   if (!covered) return { state: "pending", why: "not-found" };
-  return w5.transactions.length === 0 ? { state: "failed", why: "expired" } : { state: "failed", why: "aborted" };
+  if (w5.transactions.length === 0) return { state: "failed", why: "expired" };
+  return w5.transactions.some((t) => !t.aborted) ? { state: "failed", why: "no-transfer" } : { state: "failed", why: "aborted" };
 }
 
 /** The transactions that took this message, or null when the read fails or its answer is malformed. */

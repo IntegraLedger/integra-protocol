@@ -417,6 +417,25 @@ describe("x402-exact-tvm.json", () => {
     expect(await exactTvm.status(REF, onlyAborted(head - 1))).toEqual({ state: "pending", why: "not-found" });
   });
 
+  // A lookup shows the W5 wallet's transactions only through the blocks its index holds, so a W5 transaction that ran the
+  // request and emitted nothing reads failed `no-transfer` only from an index that holds every block through the head
+  // read first; from an index behind that head, or a lookup naming no time, it is pending (docs/guides/rails.md,
+  // "Reading settlement").
+  it("an executed request that emitted nothing, from an index behind the head read first, is pending, never no-transfer", async () => {
+    const head = REF.validUntil + 140;
+    const ran = { hash: "tx-w5", account: REF.wallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [] };
+    const lookup = (indexed: number | null): TvmReader => ({
+      ...readerFor({ headUtime: head }),
+      byInBody: async () => ({ transactions: [ran], headUtime: indexed }),
+    });
+    for (const indexed of [REF.validUntil - 20, REF.validUntil, head - 1, null]) {
+      expect([indexed, await exactTvm.status(REF, lookup(indexed))]).toEqual([indexed, { state: "pending", why: "not-found" }]);
+    }
+    for (const indexed of [head, head + 60]) {
+      expect([indexed, await exactTvm.status(REF, lookup(indexed))]).toEqual([indexed, { state: "failed", why: "no-transfer" }]);
+    }
+  });
+
   // An empty TON Center v3 transactionsByMessage answer names no block, so a reader takes the indexed time from a
   // second call, which a load-balanced endpoint can send to another index. A reader that cannot read the time from the
   // index that answered names none.
