@@ -26,13 +26,18 @@ A rail field holds H in one of these forms:
 | H's first 8 bytes | 8 bytes | The Stellar muxed id, and the MPP Solana session salt. |
 | H's low 250 bits | one felt | The Starknet nonce. |
 | SHA-256 of H's LCP string | 32 bytes | The x402 XRPL `InvoiceID`. |
-| A value derived from the challenge id | varies | The MPP charges on EVM, Tempo and Hedera, and `usdc` on EVM and Gateway, whose nonce, salt or memo derives from the challenge id that carries H. |
+| A value derived from the challenge id | varies | The MPP `authorization` and `permit2` charges on EVM, the MPP charges on Tempo and Hedera, and `usdc` on EVM and Gateway, whose nonce, salt or memo derives from the challenge id that carries H. |
+
+The 77 bytes of H's LCP string are the string itself. Concordium writes it as a CBOR text string of 79 bytes, 83
+inside a PLT transfer's CBOR tag 24, and Cardano's CIP-20 message holds it as two strings of 13 and 64 bytes, since a
+CIP-20 string holds at most 64 bytes.
 
 A field that holds only part of H, or a value derived from it, lets anyone holding the ATR confirm H, but does not let
 anyone recover H from the chain alone. Each pairing's `pattern` says which it is: `zeroPartyRecoverable` is true only
-where the chain keeps H itself. Where only 7 or 8 bytes of the payment depend on H, as with the Stellar muxed id and
-the nonce of MPP's attribution memo on Tempo and Hedera, the payment binds H only through those bytes: whoever
-assembles the ATR can construct a second ATR that shares them, and the pairing's `pattern.proves` says so.
+where the chain keeps H itself. Where only 7 or 8 bytes of the payment depend on H, as with the Stellar muxed id, the
+MPP Solana session's salt, and the nonce of the attribution memo on Tempo and Hedera, the payment binds H only through
+those bytes: whoever assembles the ATR can construct a second ATR that shares them, and the pairing's `pattern.proves`
+says so.
 
 This example prints the forms for one H, using each rail's own helper:
 
@@ -74,14 +79,14 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | | | `x402/batch-settlement/eip155`, `mpp/session/evm` | The channel's salt. See [Channels, sessions and subscriptions](./sessions.md). |
 | | | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | A nonce or salt derived from the MPP challenge id. |
 | | | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | The challenge only; the payment transaction carries nothing. |
-| Tempo | `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | MPP's attribution memo on `transferWithMemo`, whose last 7 bytes derive from the challenge id. |
+| Tempo | `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | The attribution memo MPP's SDKs write on `transferWithMemo`, whose last 7 bytes derive from the challenge id. |
 | | | `mpp/session/tempo`, `mpp/subscription/tempo` | The channel's salt, or the key authorization's witness. |
-| Solana | `svm`, `x402-exact-solana`, `x402-upto-solana` | `x402/exact/solana`, `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/charge/solana`, `mpp/charge/usdc/solana` | The transaction's one Memo instruction, holding H's LCP string. An `x402/batch-settlement/solana` opening also carries x402's receiver-authorizer binding memo. |
+| Solana | `svm`, `x402-exact-solana`, `x402-upto-solana` | `x402/exact/solana`, `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/charge/solana`, `mpp/charge/usdc/solana` | The one Memo instruction holding H's LCP string; on the MPP charges, Memo instructions whose data is not an LCP string are not read. An `x402/batch-settlement/solana` opening also carries x402's receiver-authorizer binding memo. |
 | | | `mpp/session/solana` | The session channel's salt: H's first 8 bytes. It binds those 8 bytes only: whoever assembles the ATR can construct a second ATR whose hash shares them. |
 | Stellar | `stellar`, `x402-exact-stellar` | `x402/exact/stellar`, `mpp/charge/stellar` | The seller's muxed address, whose 8-byte id is H's first 8 bytes, as the Soroban `transfer`'s `to`. |
 | XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. The payer signs with a single key: a blob that carries `Signers` is refused `xrpl/multisigned`. |
 | | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. The payer signs with a single key, as for `x402/exact/xrpl`. |
-| | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo: H's LCP string. The payer signs the opening with a single key. |
+| | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo holding an LCP string: H's. The payer signs the opening with a single key. |
 | Hedera | `hedera` | `x402/exact/hedera` | The signed transaction body's memo: H's LCP string. |
 | | | `mpp/charge/hedera` | MPP's attribution memo, as the signed body memo. |
 | | | `mpp/session/hedera` | The escrow channel's salt. |
