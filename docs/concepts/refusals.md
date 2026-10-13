@@ -78,8 +78,8 @@ The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which ar
 
 These exports throw a `TypeError` too:
 
-- on a null or missing argument: `carriesBinding` (its log or binding log), `transferParts` (its log), `paymentWith`
-  (its document) and `withExtra` (its option);
+- on a null or missing argument: `carriesBinding` (its log or binding log), `paymentWith` (its document) and
+  `withExtra` (its option);
 - on any argument outside its type: `offeredAt` (an `accepts` that is not an array) and `withOption` (a document whose
   `accepts` is not an array).
 

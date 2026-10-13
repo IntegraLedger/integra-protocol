@@ -35,7 +35,6 @@ import {
   permit2TypedData,
   redeemedLeafRecover,
   transferDigest,
-  transferParts,
 } from "./internal/evm.js";
 
 export {
@@ -70,7 +69,6 @@ export {
   permit2TypedData,
   redeemedLeafRecover,
   transferDigest,
-  transferParts,
 };
 export type {
   Delegation,

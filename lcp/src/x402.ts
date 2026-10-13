@@ -28,7 +28,6 @@ import {
   permit2TypedData,
   redeemedLeafRecover,
   transferDigest,
-  transferParts,
   type Eip155,
   type Eip3009Ref,
   type Eip3009TypedData,
@@ -45,7 +44,7 @@ import {
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { agreementIn } from "./internal/agreement.js";
-import { permit2Status, receiveTypedData, type ReceiveTypedData } from "./internal/evm.js";
+import { permit2Status, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,

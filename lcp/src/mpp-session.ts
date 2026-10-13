@@ -25,7 +25,6 @@ import {
   evmStatus,
   isLog,
   isReceipt,
-  transferParts,
   permit2TypedData,
   transferDigest,
   type EvmBreadthStatus,
@@ -59,7 +58,7 @@ import {
   type MppChoice,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { receiveTypedData, type ReceiveTypedData } from "./internal/evm.js";
+import { receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readReceipt } from "./receipt.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";

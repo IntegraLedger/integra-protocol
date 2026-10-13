@@ -14,7 +14,6 @@ import {
   evmStatus,
   permit2TypedData,
   transferDigest,
-  transferParts,
   PERMIT2,
   type EvmBreadthStatus,
   type EvmLog,
@@ -69,7 +68,7 @@ import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { readReceipt } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { isGuardTransfer, permit2Status } from "./internal/evm.js";
+import { isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
