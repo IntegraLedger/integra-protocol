@@ -175,7 +175,7 @@ export function batchChannelId(chainId: number, c: ChannelConfig): Hex | Refusal
   return eip712Digest(chainId, structHash);
 }
 
-/** The ERC-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)). */
+/** The EIP-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)). */
 export function erc3009DepositNonce(channelId: Hex, authSalt: Hex): Hex | Refusal {
   if (!HASH32.test(channelId) || !HASH32.test(authSalt)) return refusal("evm/field-malformed");
   return hexOf(keccak(concat([bytes32Word(channelId), bytes32Word(authSalt)])));
@@ -533,7 +533,7 @@ async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned
   };
 }
 
-/** The opening's deposit authorization: exactly one of the ERC-3009 and Permit2 forms. */
+/** The opening's deposit authorization: exactly one of the EIP-3009 and Permit2 forms. */
 function depositOf(payload: Record<string, unknown>) {
   const deposit = payload["deposit"];
   if (!isObject(deposit) || typeof deposit["amount"] !== "string" || !DECIMAL.test(deposit["amount"])) {

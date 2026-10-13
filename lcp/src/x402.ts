@@ -333,7 +333,7 @@ async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
 }
 
 /**
- * The account whose signature authorises the pull: the authorization's `from`, lowercase. ERC-3009's signed message
+ * The account whose signature authorises the pull: the authorization's `from`, lowercase. EIP-3009's signed message
  * holds `from`, so the authorization can execute only from that account.
  */
 async function authorizer(presented: unknown): Promise<Hex | Refusal> {

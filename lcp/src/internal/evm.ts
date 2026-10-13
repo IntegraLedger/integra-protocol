@@ -48,7 +48,7 @@ export interface Eip3009TypedData {
 }
 
 /**
- * The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in ERC-3009's order. The domain's
+ * The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in EIP-3009's order. The domain's
  * `verifyingContract` is the token.
  */
 export function eip3009TypedData(a: {
@@ -213,7 +213,7 @@ export type EvmStatus =
  * Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
  * pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
  * third equal to `h`, and the `Transfer` paired with it, which `transferLog` identifies. The pair follows the order in
- * which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; ERC-3009
+ * which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; EIP-3009
  * itself states no order. The `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and
  * before the token's next `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the
  * token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` log is failed
@@ -395,7 +395,10 @@ export const PAYMENT_INFO_TYPEHASH = "0xae68ac7ce30c86ece8196b61a7c486d8f0061f57
 export const SALT_BINDING_TYPEHASH = "0x8a2a7e41a0bda000ded071ff38b79401d2603e1826516ff2635b11fe9e30877f" as const;
 /** MetaMask's reference DelegationManager, v1.3.0, at one CREATE2 address. */
 export const DELEGATION_MANAGER = "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3" as const;
-/** The chain ids whose deployment record holds a DelegationManager at `DELEGATION_MANAGER`. */
+/**
+ * The chain ids on which an `erc7710` payment through `DELEGATION_MANAGER` is read at the salt level,
+ * `x402/exact/eip155/erc7710-salt`; on any other chain that pairing refuses it with `x402/manager-not-reference`.
+ */
 export const DELEGATION_MANAGER_CHAINS: readonly number[] = Object.freeze([
   1, 10, 56, 97, 100, 130, 137, 143, 146, 1155, 1301, 1328, 1329, 2020, 2021, 4114, 4217, 4663, 5000, 5003, 5042, 5115,
   6342, 6343, 8453, 10143, 10200, 13579, 14601, 42161, 42170, 42220, 42431, 46630, 50312, 57073, 59141, 59144, 80002,
@@ -422,9 +425,10 @@ export interface Delegation {
 }
 
 /**
- * Decodes `abi.encode(Delegation[])`, strictly: every offset and length lies inside the input and is 32-byte aligned,
- * address words carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8 KiB per `bytes`. The
- * array is returned in the input's order, leaf first. An empty array decodes to `[]`.
+ * Decodes `abi.encode(Delegation[])` of at most 32 KiB, strictly: the input is a non-empty multiple of 32 bytes, every
+ * offset and length word lies inside it at a 32-byte-aligned position, every offset is a multiple of 32, address words
+ * carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8 KiB per `bytes`; the padding after a
+ * `bytes` value is not read. The array is returned in the input's order, leaf first. An empty array decodes to `[]`.
  */
 export function decodePermissionContext(ctx: Hex): Delegation[] | Refusal {
   const b = bytesOf(ctx, MAX_CONTEXT_BYTES);
@@ -532,7 +536,7 @@ export interface TransferLog {
  * reader needs to decide, with `authorizationUsed` and the payment's authorizer, whether it executed or can still
  * execute.
  * - `eip3009`: the token `at` answers `authorizationState(authorizer, nonce)`, true once the authorization is used. It
- *   executes only in a block whose timestamp is below `deadline` (ERC-3009's `validBefore`).
+ *   executes only in a block whose timestamp is below `deadline` (EIP-3009's `validBefore`).
  * - `permit2`: the Permit2 deployment `at` answers `nonceBitmap(authorizer, nonce >> 8)`, whose bit `nonce & 0xff` is
  *   set once the nonce is used. The permit executes only in a block whose timestamp is at most `deadline`.
  */
@@ -574,7 +578,7 @@ export type EvmBreadthStatus =
  * Reads the named transaction. A reader for another network, or a failed read, is pending; no receipt is pending
  * `not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
  * the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
- * Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
+ * Where the binding log is EIP-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
  * authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired with a use of the binding's
  * value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log and the transfer log
  * name one event of one contract, as Tempo's `TransferWithMemo` carries the memo and the transfer together, they are
@@ -583,10 +587,12 @@ export type EvmBreadthStatus =
  * word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
  * is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
  * redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
- * finality mark reached. A failed answer is given only where the receipt's block is at or below the reader's
- * `finalized` mark; above it, or where that mark cannot be read, the same reason is pending.
- * A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is present and not of the
- * form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
+ * finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
+ * present and not of the form a reference writes, is pending `unreadable`, with nothing read. Where a log the ref names
+ * is missing and the receipt holds a `Transfer` that the token of the ref's transfer log, or else of its binding log,
+ * emitted to `RECEIVE_POLICY_GUARD`, the reason is `receive-policy-blocked` instead. A failed answer is given only where
+ * the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the
+ * same reason is pending. At most three calls.
  */
 export async function evmStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
   const read = await matchedTransfers(ref, reader);
@@ -973,7 +979,8 @@ const WITNESS_TYPE_NAME = /^[A-Z][A-Za-z0-9]{0,63}$/;
 
 /**
  * Permit2's typed data under its domain (`name` "Permit2", no version). No witness gives `PermitTransferFrom`; a
- * witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` when `permitted` is an array.
+ * witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` when `permitted` is an array. An empty
+ * `permitted` array, one of more than 32 entries, and an array with no witness are refused `evm/field-malformed`.
  */
 export function permit2TypedData(a: {
   chainId: number;
