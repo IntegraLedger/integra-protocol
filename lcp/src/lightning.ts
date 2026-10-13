@@ -7,7 +7,7 @@
 import { canonicalJson, fromLegalContext, fromRawBytes, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { decode, FIELD, isLnOffer, isLnOption, lnbtcPairs, namedPairs, NETWORKS } from "./internal/lightning.js";
-import { advertiseFor, filterOf, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, filterOf, readFor, type X402Read } from "./internal/x402.js";
 import {
   b64uEncode,
   credentialOf,
@@ -22,7 +22,6 @@ import {
 } from "./mpp-challenge.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  chosen,
   paymentWith,
   tie,
   type LcpPattern,

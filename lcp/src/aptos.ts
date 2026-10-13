@@ -8,11 +8,10 @@ import { digestJson, parseJson, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
 import type { AptosPaymentPayload } from "./internal/aptos.js";
-import { advertiseFor, legalContextOf, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, legalContextOf, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  chosen,
   paymentWith,
   presentedWith,
   tie,

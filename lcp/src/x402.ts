@@ -231,21 +231,6 @@ export function tie(
   return ["x402", { accepts, request }];
 }
 
-/**
- * The checks `build` makes on the buyer's choice before anything pairing-specific: the document is x402 v2 with at
- * most 32 options, the chosen option is one it offers, and the filter serves it.
- */
-export function chosen(required: unknown, accepted: unknown, filter: OptionFilter): true | Refusal {
-  if (!isObject(required) || required["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepts = required["accepts"];
-  if (!Array.isArray(accepts) || accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
-  if (!isOffered(accepts as PaymentRequirements[], accepted as PaymentRequirements)) {
-    return refusal("x402/option-not-in-document");
-  }
-  const f = isObject(accepted) ? filter(accepted as PaymentRequirements) : undefined;
-  return f ?? refusal("x402/option-not-this-pairing");
-}
-
 /** The payment for the chosen option: the challenge's `resource` and `extensions` unchanged, omitted when absent. */
 export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequirements, payload: P): X402Payment<P> {
   return {

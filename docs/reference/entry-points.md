@@ -413,12 +413,12 @@ import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, … } from "@integraled
 x402 v2 documents and the `x402/exact/eip155/eip3009` pairing: the ATR hash advertised in the challenge's `extensions.legalContext`, signed by the payer as the EIP-3009 nonce, read back from the payment, and read from the settlement.
 
 ```ts no-check
-import { authCaptureEip3009, authCapturePermit2, chosen, … } from "@integraledger/lcp/x402";
+import { authCaptureEip3009, authCapturePermit2, exactEip3009, … } from "@integraledger/lcp/x402";
 ```
 
 **Pairings:** `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/upto/eip155/permit2`.
 
-**Values (21):** `authCaptureEip3009`, `authCapturePermit2`, `chosen`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
+**Values (20):** `authCaptureEip3009`, `authCapturePermit2`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
 
 **Types (12):** `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
 
