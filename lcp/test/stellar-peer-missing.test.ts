@@ -49,5 +49,6 @@ describe("without @stellar/stellar-sdk", () => {
     expect(st.transferEventTopics(V.fixed.seller)).toEqual(refused);
     expect(st.transferEventOf(V.events.rows[0].topic, V.events.rows[0].value)).toEqual(refused);
     expect(() => st.muxedFor(V.fixed.seller, V.fixed.H)).toThrow(TypeError);
+    expect(() => st.muxedFor(V.fixed.seller, V.fixed.H)).toThrow("@stellar/stellar-sdk is not installed");
   });
 });

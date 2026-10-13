@@ -170,7 +170,8 @@ export function muxedId(h: AtrHash): bigint {
  */
 export function muxedFor(base: string, h: AtrHash): string {
   const S = need();
-  if (S === null || !S.StrKey.isValidEd25519PublicKey(base)) throw new TypeError("not a G account strkey");
+  if (S === null) throw new TypeError("@stellar/stellar-sdk is not installed");
+  if (!S.StrKey.isValidEd25519PublicKey(base)) throw new TypeError("not a G account strkey");
   const raw = new Uint8Array(40);
   raw.set(S.StrKey.decodeEd25519PublicKey(base), 0);
   new DataView(raw.buffer).setBigUint64(32, muxedId(h), false);
