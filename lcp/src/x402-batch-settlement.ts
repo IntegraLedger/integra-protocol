@@ -698,9 +698,8 @@ export const batchEvm = Object.freeze({
       "The payer signed a token authorization for a deposit into an x402 batch-settlement channel whose identifier, the " +
       "EIP-712 hash of the channel's configuration, commits to this ATR's hash as the configuration's salt. The token " +
       "contract or Permit2 verified that signature when the channel contract collected the deposit, and the hash is on " +
-      "chain as the salt in the channel's ChannelCreated event. Later requests in this channel were paid under this ATR " +
-      "by vouchers the seller did not meter; each voucher signs a commitment to this ATR's hash. This does not show " +
-      "that amount, payee, asset or timing match the ATR's content.",
+      "chain as the salt in the channel's ChannelCreated event. Each voucher in this channel signs a commitment to this " +
+      "ATR's hash. This does not show that amount, payee, asset or timing match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
   unplaced: identity,
@@ -1080,8 +1079,8 @@ export const batchSvm = Object.freeze({
     proves:
       "The payer signed a Solana transaction whose seller Memo instruction (`extra.memo`) carries this ATR's hash in " +
       "LCP string form, and which opened an x402 batch-settlement payment channel; it executed without error. The memo " +
-      "is in the transaction's instruction data on chain. Later requests in this channel were paid under this ATR by " +
-      "vouchers the seller did not meter. This does not show that amount, recipient, mint or timing match the ATR's content.",
+      "is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing " +
+      "match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
   carrier: "extra.memo" as const,
