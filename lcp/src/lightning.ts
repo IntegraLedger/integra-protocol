@@ -427,11 +427,9 @@ export const exactLnbtcNamed = Object.freeze({
     proves:
       X1_OPENING +
       "The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's " +
-      "signed BOLT11 invoice, whose payment hash the payer paid and whose description hash is x402's request hash. " +
-      "The invoice does not carry this ATR's hash, and the payer signed nothing that does. The buyer's gate paid only " +
-      "an invoice its ATR names, and the seller checked that the paid invoice is the one issued with this ATR. The " +
-      "invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. " +
-      "This does not show that amount, payee or timing match the ATR's content.",
+      "signed BOLT11 invoice, whose description hash is x402's request hash. The invoice does not carry this ATR's " +
+      "hash, and the payer signed nothing that does. " +
+      REPORT,
   } satisfies LcpPattern) as LcpPattern,
   claims: true as boolean,
   carrier: null,

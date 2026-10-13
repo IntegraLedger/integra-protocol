@@ -7,7 +7,15 @@ import { decode as lightDecode } from "light-bolt11-decoder";
 import bolt11 from "bolt11";
 import { canonicalJson, type AtrHash, type Json } from "../src/index.js";
 import { issuedDigest, pairingsOf, type MppChallenge, type MppCredential } from "../src/mpp.js";
-import { chargeLightning, decodeBolt11, exactLnbtc, sessionLightning, type Bolt11, type LnMppUnsigned } from "../src/lightning.js";
+import {
+  chargeLightning,
+  decodeBolt11,
+  exactLnbtc,
+  exactLnbtcNamed,
+  sessionLightning,
+  type Bolt11,
+  type LnMppUnsigned,
+} from "../src/lightning.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const C = load("mpp-charge-lightning.json");
@@ -379,6 +387,21 @@ describe("the records of the Lightning pairings whose invoice carries the hash",
       expect(b.pattern.proves).not.toMatch(/the payer paid|checked the node signature|did not verify/i);
     });
   }
+});
+
+// On x402/exact/lnbtc/invoice-named the invoice carries no hash and the ATR names the option as issued. Its record says
+// that, and that settlement is the seller's report; it says nothing of the payer's payment, of the buyer's gate or of a
+// check the seller made, none of which the pairing reads.
+describe("the invoice-named Lightning pairing's record", () => {
+  it("proves states what the ATR names and that settlement is the seller's report", () => {
+    const proves = exactLnbtcNamed.pattern.proves;
+    expect(proves).toContain(
+      "The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's " +
+        "signed BOLT11 invoice, whose description hash is x402's request hash.",
+    );
+    expect(proves).toContain("Settlement is the seller's report; the invoice and its preimage, which the parties hold,");
+    expect(proves).not.toMatch(/the payer paid|gate paid|seller checked/i);
+  });
 });
 
 // Both MPP Lightning pairings carry the ATR hash as the `mpp/charge` profile places it: the pattern names that profile.

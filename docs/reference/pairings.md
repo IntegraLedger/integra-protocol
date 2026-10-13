@@ -337,7 +337,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `x402/exact/lnbtc/invoice-named`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's signed BOLT11 invoice, whose payment hash the payer paid and whose description hash is x402's request hash. The invoice does not carry this ATR's hash, and the payer signed nothing that does. The buyer's gate paid only an invoice its ATR names, and the seller checked that the paid invoice is the one issued with this ATR. The invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's signed BOLT11 invoice, whose description hash is x402's request hash. The invoice does not carry this ATR's hash, and the payer signed nothing that does. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
 
 ### `x402/exact/near`
 
