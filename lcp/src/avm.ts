@@ -80,6 +80,11 @@ const NETWORK = /^algorand:([-_a-zA-Z0-9]{32})$/;
 const ASSET = /^(0|[1-9][0-9]{0,19})$/;
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const UINT64_LIMIT = 1n << 64n;
+/**
+ * A transaction id as `reference` writes it: the base32 of a 32-byte hash without padding, 52 characters, the last
+ * holding one bit of the hash and four zero bits.
+ */
+const TXID = /^[A-Z2-7]{51}[AQ]$/;
 const MAX_GROUP = 16;
 const MAX_ENTRY = 8192;
 const MAX_NOTE = 4096;
@@ -325,13 +330,16 @@ function carriedOf(presented: unknown): { h: AtrHash; txid: string; lastValid: b
 
 /**
  * Reads the payment by its id. Found is settled and final; absent after the last valid round is expired; otherwise
- * pending. A failed read, or a reader for another network, is pending.
+ * pending. A failed read, or a reader for another network, is pending. A ref whose `txid` is not the 52 base32
+ * characters of a 32-byte hash, as `reference` writes it, or whose `lastValid` is not a decimal below 2^64, is pending
+ * `unreadable`, with nothing read.
  */
 export async function avmStatus(ref: AvmRef, reader: AvmReader): Promise<AvmStatus> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
     return { state: "pending", why: "unreadable" };
   }
-  if (typeof ref.lastValid !== "string" || !ASSET.test(ref.lastValid)) return { state: "pending", why: "unreadable" };
+  const lastValid = uint64Of(ref.lastValid);
+  if (lastValid === undefined || !isTxid(ref.txid)) return { state: "pending", why: "unreadable" };
   let answer: Awaited<ReturnType<AvmReader["search"]>>;
   try {
     answer = await reader.search(ref.txid);
@@ -340,7 +348,7 @@ export async function avmStatus(ref: AvmRef, reader: AvmReader): Promise<AvmStat
   }
   if (!isAnswer(answer)) return { state: "pending", why: "unreadable" };
   if (answer.found !== null) return { state: "settled", finality: "final", round: answer.found.confirmedRound };
-  if (answer.currentRound > BigInt(ref.lastValid)) return { state: "failed", why: "expired" };
+  if (answer.currentRound > lastValid) return { state: "failed", why: "expired" };
   return { state: "pending", why: "not-found" };
 }
 
@@ -365,6 +373,10 @@ export async function avmRecover(
     return refusal("avm/note-not-lcp");
   }
   return fromLcpString(note) ?? refusal("avm/note-not-lcp");
+}
+
+function isTxid(t: unknown): t is string {
+  return typeof t === "string" && TXID.test(t);
 }
 
 function isAnswer(a: unknown): a is Awaited<ReturnType<AvmReader["search"]>> {

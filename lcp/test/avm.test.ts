@@ -129,6 +129,48 @@ describe("x402-exact-algorand.json", () => {
     expect(await exactAvm.recover(ref, readerOf({}, V.V4.recover.answer))).toBe(V.V4.recover.expect);
   });
 
+  // An Algorand transaction id is the base32 of its SHA-512/256 hash, without padding: 52 characters (the file's
+  // txids, from py-algorand-sdk). Each ref below holds V4's id or last valid round in another form, beside a reader
+  // that answers V4's expired row for any id; none is read.
+  it("V4: a ref whose txid or lastValid is not in the form reference writes is unreadable, with nothing read", async () => {
+    const ref = V.V4.reference;
+    const expired = V.V4.rows.find((r: { expect: { why: string } }) => r.expect.why === "expired");
+    const searched: unknown[] = [];
+    const reader: AvmReader = {
+      network: V.V4.readerNetwork,
+      search: async (txid) => {
+        searched.push(txid);
+        return readerOf({}, expired.answer).search(txid);
+      },
+    };
+    // Ids in the written form are read: V4's, and the fee payer's, whose last character is Q.
+    for (const txid of [ref.txid, V.V2.expectFeePayerTxid]) {
+      expect(withStrings(await avmStatus({ ...ref, txid }, reader))).toEqual(expired.expect);
+    }
+    expect(searched).toEqual([ref.txid, V.V2.expectFeePayerTxid]);
+    searched.length = 0;
+    const digest = base32.decode(ref.txid + "====");
+    const txids = [
+      ref.txid.toLowerCase(),
+      ref.txid.slice(0, 51),
+      ref.txid + "A",
+      ref.txid + "====",
+      ref.txid.slice(0, 51) + "B",
+      Buffer.from(digest).toString("hex"),
+      Buffer.from(digest).toString("base64"),
+      "",
+      null,
+      1,
+    ];
+    for (const txid of txids) {
+      expect(await avmStatus({ ...ref, txid }, reader)).toEqual({ state: "pending", why: "unreadable" });
+    }
+    for (const lastValid of ["18446744073709551616", "99999999999999999999", "067634796", "-1", 67634796, null]) {
+      expect(await avmStatus({ ...ref, lastValid }, reader)).toEqual({ state: "pending", why: "unreadable" });
+    }
+    expect(searched).toEqual([]);
+  });
+
   // x402's Algorand scheme (x402-foundation/x402, specs/schemes/exact/scheme_exact_algo.md, "Signature Scheme") lets
   // a top-level transaction be authorized by an Ed25519 signature (sig), a k-of-n multisignature (msig) or a logic
   // signature (lsig). V2's payment transaction under each gives the file's H (FIPS 180-2's "abc") and V3's reference
