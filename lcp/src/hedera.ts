@@ -147,7 +147,7 @@ export interface ExecutorRef {
   asset: string;
   /** `hederaIdDigest` of the payer. */
   idDigest: Hex;
-  /** Unix seconds: claim time plus `maxTimeoutSeconds`. */
+  /** Unix seconds: the time `reference` ran plus `maxTimeoutSeconds`. */
   settleBy: number;
   /** The facilitator's `SettlementResponse.transaction`, mirror form. */
   transaction?: string;
