@@ -71,3 +71,9 @@ their `.md` addresses only:
 
 Each page names `/llms.txt` with `<link rel="describedby">` and its Markdown with `<link rel="alternate"
 type="text/markdown">`. `pnpm dev` does not run `worker.js`.
+
+No workflow deploys the site. A maintainer deploys it after a build, at the repository root:
+
+```sh
+npx wrangler deploy -c website/wrangler.toml
+```
