@@ -29,7 +29,7 @@ import {
   type XrplUnsigned,
 } from "./internal/xrpl.js";
 import { isObject, normalHash } from "./fields.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -72,8 +72,12 @@ function payable(o: PaymentRequirements): boolean {
   return AMOUNT.test(o.amount) && typeof o.extra?.["issuer"] === "string";
 }
 
-/** The option without `extra.invoiceId`: the option as the seller issued it. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option without `extra.invoiceId`: the option as the seller issued it. An option that carries a `refused` member
+ * is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return withoutExtra(option, "invoiceId");
 }
 
