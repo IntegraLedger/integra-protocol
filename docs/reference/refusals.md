@@ -456,11 +456,11 @@ Hedera (`@integraledger/lcp/hedera`).
 | `hedera/chain-id-unnamed` | An MPP Hedera `chainId` is not 295 or 296, or a charge request names no `chainId` and no default network is given. |
 | `hedera/channel-id-mismatch` | The channel id recomputed from the Hedera `ChannelOpened` log is not the `channelId` the credential names. |
 | `hedera/channel-log-not-found` | The Hedera session opening's landed logs hold no single `ChannelOpened` log from the escrow naming the channel with readable parties, or the reference names no binding log. |
-| `hedera/deprecated-fields` | A Hedera `Transaction` uses the deprecated fields 1 to 4 instead of `signedTransactionBytes`. |
+| `hedera/deprecated-fields` | A Hedera `Transaction` uses the deprecated fields 2 to 4, or a `Transaction` inside a `TransactionList` the deprecated fields 1 to 4, instead of `signedTransactionBytes` (a top-level field 1 is read as a `TransactionList`). |
 | `hedera/executor-malformed` | The transfer-executor payload given to `complete` or presented is not an object with entity `payer` and `executor` and a hex `authorization` within the bound. |
-| `hedera/executor-not-offered` | The transfer-executor payload names an `executor` the option does not list. |
+| `hedera/executor-not-offered` | The transfer-executor payload given to `complete` names an `executor` the option does not list; `bound` and `reference` do not check it. |
 | `hedera/list-inconsistent` | The bodies of a Hedera `TransactionList` do not all share one transaction id and memo. |
-| `hedera/memo-not-lcp` | The Hedera memo is not UTF-8 carrying an ATR hash in LCP string form. |
+| `hedera/memo-not-lcp` | The Hedera memo does not carry an ATR hash in LCP string form, or the memo of the landed transaction a recovery reads is not UTF-8 (a signed body whose memo is not UTF-8 is `hedera/tx-malformed`). |
 | `hedera/network-malformed` | The network written by `fetchPresented` for an MPP Hedera charge is not a Hedera network. |
 | `hedera/no-legal-context` | The transfer-executor pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |
 | `hedera/no-memo` | The signed Hedera body, or the landed transaction a recovery reads, has an empty memo. |
@@ -502,8 +502,8 @@ Aptos (`@integraledger/lcp/aptos`).
 | Code | Meaning |
 |---|---|
 | `aptos/chain-mismatch` | The presented Aptos transaction's chain id is not the chain of the option's network. |
-| `aptos/network-malformed` | An Aptos option's network starts with `aptos:` but names no known chain. |
-| `aptos/not-an-x402-transfer` | The Aptos transaction, or the committed transaction a reader returns, is not a call to the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments (two addresses and a u64 amount). |
+| `aptos/network-malformed` | An Aptos option's network starts with `aptos:` but is not followed by a decimal chain id from 1 to 255 with no leading zero. |
+| `aptos/not-an-x402-transfer` | The transaction given to `decodeAptosTx` is not a call to the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments (two addresses and a u64 amount), or the committed transaction a reader returns is not a user transaction with an entry function payload whose sender, sequence number, expiry, function name, one type argument and three arguments (two addresses and a decimal u64 amount) can be read; `committedInstrument` does not check which function is called. |
 | `aptos/not-entry-function` | The Aptos transaction's payload is not an entry function call. |
 | `aptos/tx-malformed` | `decodeAptosTx` is given text that is not base64 of an Aptos `RawTransaction` prefix (in BCS or x402's reference JSON form) that reads to the end of its fields, or a prefix with a module, function or struct name that is not an ASCII letter or underscore followed by up to 254 ASCII letters, digits and underscores (a leading U+FEFF included), or `aptosIdDigest` is given an instrument that is not an object whose sequence number is a bigint and whose type arguments and arguments are arrays. |
 | `aptos/tx-too-large` | `decodeAptosTx` is given a transaction larger than the size bound. |
@@ -522,9 +522,9 @@ Cardano (`@integraledger/lcp/cardano`).
 | `cardano/not-found` | The Cardano reader answers that the indexer does not hold the transaction (its not-found answer). |
 | `cardano/not-valid` | The Cardano transaction the reference names is on chain as invalid (its collateral was taken). |
 | `cardano/ttl-missing` | The Cardano transaction sets no TTL, so `reference` has no slot by which it settles. |
-| `cardano/tx-malformed` | A Cardano transaction is not base64 of one CBOR array `[body, witness set, validity, auxiliary data]` with a map body of unique unsigned keys, a valid TTL and a 32-byte auxiliary data hash. |
+| `cardano/tx-malformed` | A Cardano transaction, as base64 text or as the CBOR bytes a reader returns to `cardanoRecover`, is not one CBOR array `[body, witness set, validity, auxiliary data]` with a map body of unique unsigned keys, a valid TTL and a 32-byte auxiliary data hash. |
 | `cardano/tx-too-large` | `decodeCardanoTx` is given a transaction larger than the size bound. |
-| `cardano/unreadable` | The Cardano reader threw, gave an answer of neither documented shape (a transaction, or a not-found answer), or returned a transaction that is not well formed, too large, or not the one the reference names. |
+| `cardano/unreadable` | The Cardano reader threw, gave an answer of neither documented shape (a transaction, or a not-found answer), or returned a transaction with no CBOR bytes, more bytes than the size bound, or bytes whose id is not the one the reference names. |
 | `cardano/wrong-reader` | The Cardano reader answers for a different network than the reference names. |
 
 ## casper
@@ -533,7 +533,7 @@ Casper (`@integraledger/lcp/casper`).
 
 | Code | Meaning |
 |---|---|
-| `casper/address-malformed` | A Casper `from` or `to` address, or the payer given to `build`, is not a valid Casper account or package address. |
+| `casper/address-malformed` | A `from` or `to` address given to `cep3009TypedData` or `casperIdDigest`, or the payer given to `build`, is not a valid Casper account or package address. |
 | `casper/amount-malformed` | A Casper amount is not a uint256. |
 | `casper/key-tag-mismatch` | The public key and signature given to the Casper `complete` carry different algorithm tags. |
 | `casper/network-malformed` | A Casper network given to `cep3009TypedData` is not a Casper CAIP-2 name, or its argument is not an object. |
@@ -541,7 +541,7 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/not-executed` | The Casper transaction the reference names has not executed. |
 | `casper/not-found` | The Casper reader found no transaction for the reference. |
 | `casper/option-malformed` | A Casper asset is not a contract package hash, the token name or version is not a valid name, `validBefore` is out of range, or the `now` given to `build` is not a non-negative safe integer. |
-| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature, or its value is not a decimal uint256 or its `validBefore` not a decimal below 2^64, or H given to `cep3009TypedData` is not a valid ATR hash. |
+| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, or is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature; or, for `reference`, its value is not a decimal uint256, its `validBefore` not a decimal below 2^64, or its `from` or `to` not a Casper address; or H given to `cep3009TypedData` or `build` is not a valid ATR hash. |
 | `casper/reverted` | The Casper transaction executed with an error. |
 | `casper/signature-malformed` | The public key or signature given to the Casper `complete` is not tagged hex of the allowed length. |
 | `casper/unreadable` | The Casper reader threw or returned a call that is not well formed. |
@@ -555,7 +555,7 @@ Concordium (`@integraledger/lcp/ccd`).
 |---|---|
 | `ccd/address-malformed` | A Concordium account address is missing, is not base58check of the account form, or its bytes are not 32 long. |
 | `ccd/memo-not-cbor-text` | The Concordium memo is not exactly one CBOR text string within the memo bound. |
-| `ccd/memo-not-lcp` | The Concordium memo's text is not an ATR hash in LCP string form under the preferred encoding, or H given to `build` is not a valid ATR hash. |
+| `ccd/memo-not-lcp` | The Concordium memo's text is not an ATR hash in LCP string form with lowercase hex under the preferred encoding, or H given to `build` is not a valid ATR hash. |
 | `ccd/no-carrier` | The finalized Concordium block item does not hold exactly one transfer whose memo carries an ATR hash as `memoCarrier` reads it. |
 | `ccd/no-memo` | The Concordium transaction is a plain `transfer` with no memo, or its PLT transfer operation has no memo. |
 | `ccd/not-finalized` | The Concordium block item is not finalized. |
@@ -567,7 +567,7 @@ Concordium (`@integraledger/lcp/ccd`).
 | `ccd/payload-kind` | The Concordium transaction's payload is neither `transferWithMemo` nor a PLT `tokenUpdate`. |
 | `ccd/rejected` | The Concordium block item was rejected. |
 | `ccd/too-large` | The Concordium signed transaction, its memo or its token operations exceed the size bound. |
-| `ccd/transaction-malformed` | The presented Concordium signed transaction is not a JSON value (x402's wire form, `JSON.parse(Transaction.toJSONString(tx))`), or not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object. |
+| `ccd/transaction-malformed` | The presented Concordium signed transaction is not a JSON value (x402's wire form, `JSON.parse(Transaction.toJSONString(tx))`), or not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object that serialises as JSON (the SDK's unserialized transaction, whose header holds bigints, is refused). |
 | `ccd/unreadable` | The Concordium reader threw or returned a block item that is not well formed. |
 | `ccd/wrong-reader` | The Concordium reader answers for a different network than the reference names. |
 
@@ -712,12 +712,12 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 | `ln/description-inline` | The MPP challenge's invoice carries an inline `d` description. |
 | `ln/description-present` | The MPP Lightning challenge's request carries a `description`. |
 | `ln/expires-after-invoice` | The MPP challenge's `expires` is later than the invoice's own expiry. |
-| `ln/field-length` | The invoice's `h` or `m` field is not 32 bytes. |
+| `ln/field-length` | `invoiceH` finds that the invoice lists an `h` or `m` field whose bytes are absent or not 32 bytes: a decoded invoice's `m` of another length, or a hand-built `Bolt11`. A BOLT11 invoice whose `h` field is not 52 words (32 bytes) does not decode, and is `ln/invoice-malformed`. |
 | `ln/field-repeated` | The invoice carries more than one `h` field or more than one `m` field. |
 | `ln/invoice-malformed` | A BOLT11 invoice is missing or not a string, mixes case, or does not decode (bech32 checksum, prefix, field lengths, exactly one payment hash, expiry width), or `invoiceH` is given a decoded invoice that is not an object with a `tags` array. |
 | `ln/invoice-not-named` | The invoice-named pairing's `build` finds that the ATR's `x402` slot does not name the option's invoice, or that the ATR is not one JSON object whose first members are `atrVersion`, `id` and `x402` with no member name repeated. |
 | `ln/invoice-too-large` | A BOLT11 invoice exceeds 8 KiB or carries more tagged fields than the bound. |
-| `ln/no-description-hash` | The invoice has no `h` (description hash) field. |
+| `ln/no-description-hash` | The invoice of an x402 Lightning option, or a decoded invoice given to `invoiceH` for its `h`, has no `h` (description hash) field; on the MPP Lightning pairings such an invoice is `mpp/carrier-not-challenge`. |
 | `ln/no-legal-context` | The invoice-named pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |
 | `ln/no-metadata` | The invoice for `x402/exact/lnbtc` has no `m` (metadata) field, or its `m` is not H. |
 | `ln/no-payment-in-action` | The MPP Lightning session credential whose payment is being bound is not the `open` action, the only one that pays the invoice. |
@@ -725,7 +725,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 | `ln/payment-hash-mismatch` | The invoice's payment hash is not the challenge's `paymentHash`. |
 | `ln/payment-hash-required` | An MPP Lightning challenge carries no payment hash of 64 lowercase hex digits (in `methodDetails.paymentHash` for charge, `paymentHash` for session). |
 | `ln/preimage-malformed` | The preimage given to `complete` is not 64 lowercase hex digits. |
-| `ln/request-hash-mismatch` | The option's `extra.requestHash` is not 64 hex digits, or the invoice's description hash is not that request hash. |
+| `ln/request-hash-mismatch` | The option's `extra.requestHash` is not 64 lowercase hex digits, or the invoice's description hash is not that request hash. |
 | `ln/return-invoice-malformed` | The MPP Lightning session `build` is given a return invoice that is not an amountless BOLT11 invoice. |
 
 ## stacks
