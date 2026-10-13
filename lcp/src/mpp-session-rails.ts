@@ -8,7 +8,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
 import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmRef } from "./evm.js";
-import { failedAt, isLog } from "./internal/evm.js";
+import { failedAt, isLog, isReceipt } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
   CHANNEL_CLOSED_TOPIC,
@@ -332,7 +332,9 @@ async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: Hede
 
 /**
  * Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log naming the channel. A ref or reader that is
- * not an object, or a reader for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge.
+ * not an object, or a reader for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge. A
+ * failed read, or a reader answer that is not a receipt or holds a log that is not an object with a string `address`,
+ * an array of string `topics` and a string `data`, is `hedera/unreadable`.
  */
 async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
@@ -343,12 +345,11 @@ async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Pr
     return refusal("hedera/unreadable");
   }
   if (receipt === null) return refusal("hedera/not-found");
-  if (!isObject(receipt) || !Array.isArray(receipt.logs)) return refusal("hedera/unreadable");
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
   const b = ref.bindingLog;
   if (b === undefined) return refusal("hedera/channel-log-not-found");
   const log = receipt.logs.find(
     (l) =>
-      isLog(l) &&
       l.address.toLowerCase() === b.address.toLowerCase() &&
       l.topics.length === 4 &&
       l.topics[0]!.toLowerCase() === CHANNEL_OPENED_TOPIC &&

@@ -24,6 +24,7 @@ import {
   transferDigest,
 } from "../src/evm.js";
 import {
+  CHANNEL_OPENED_TOPIC,
   exactHedera,
   executorStatus,
   hederaChannelId,
@@ -705,6 +706,33 @@ describe("mpp", () => {
         expect(answer, `${member} ${JSON.stringify(bad)}`).toEqual(UNREADABLE);
         expect(reader.reads(), `${member} ${JSON.stringify(bad)}`).toBe(0);
       }
+    }
+  });
+  // HS3's opening receipt holds its one ChannelOpened log, and HS4's testnet opening the token's Transfer into the
+  // escrow and then the escrow's ChannelOpened (mpp-session-hedera-solana-xrpl.json): recover gives each opening's
+  // salt, H and HS4's salt. The ref is the one reference writes: the escrow, lowercase, and the channel.
+  it("sessionHedera.recover reads a reader answer that is not a receipt, or a receipt holding a log that is not an object with a string address, an array of string topics and a string data, as hedera/unreadable, the code of a failed read", async () => {
+    const S = load("mpp-session-hedera-solana-xrpl.json");
+    const network = "hedera:testnet";
+    const ref = (transaction: string, channel: string) => ({
+      network,
+      transaction,
+      bindingLog: { address: S.fixed.escrow.toLowerCase(), topic0: CHANNEL_OPENED_TOPIC, index: 1, value: channel },
+    });
+    const answering = (receipt: unknown) => ({ network, receipt: async () => receipt });
+    const open = S.HS4.openReceipt;
+    const holding = (logs: unknown[]) => answering({ status: open.status, blockNumber: BigInt(open.blockNumber), logs });
+    const hs3 = ref(S.HS3.txHash, S.HS1.expectChannelId);
+    const hs4 = ref(S.HS4.openTx, S.HS4.channel);
+    expect(await sessionHedera.recover(hs3 as never, holding([S.HS3.log]) as never)).toBe(S.fixed.H);
+    expect(await sessionHedera.recover(hs4 as never, holding(open.logs) as never)).toBe(S.HS4.salt);
+    const read = open.logs.findIndex((l: { topics: string[] }) => l.topics[1] === S.HS4.channel);
+    for (const [label, logs] of misshapen(open.logs, read)) {
+      expect(await sessionHedera.recover(hs4 as never, holding(logs) as never), label).toEqual(refused("hedera/unreadable"));
+    }
+    const receipt = { status: open.status, blockNumber: BigInt(open.blockNumber), logs: open.logs };
+    for (const [label, bad] of notReceipts(receipt)) {
+      expect(await sessionHedera.recover(hs4 as never, answering(bad) as never), label).toEqual(refused("hedera/unreadable"));
     }
   });
 });
