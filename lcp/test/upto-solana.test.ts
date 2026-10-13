@@ -11,9 +11,9 @@ import {
   isWritableRole,
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
-import { hash, type AtrHash, type Refusal } from "../src/index.js";
+import { hash, pairingOf, type AtrHash, type Refusal } from "../src/index.js";
 import { channelPda, openInstructionData, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
-import { pairingOf, uptoSvm } from "../src/x402-upto-solana.js";
+import { uptoSvm } from "../src/x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 

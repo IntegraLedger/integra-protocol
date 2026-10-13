@@ -481,12 +481,12 @@ import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
 The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel escrowing the signed maximum; read back from that transaction, and settlement read from the opening.
 
 ```ts no-check
-import { pairingOf, uptoSvm } from "@integraledger/lcp/x402-upto-solana";
+import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 ```
 
 **Pairings:** `x402/upto/solana`.
 
-**Values (2):** `pairingOf`, `uptoSvm`.
+**Values (1):** `uptoSvm`.
 
 **Types (2):** `UptoSvmChoice`, `UptoSvmPayload`.
 

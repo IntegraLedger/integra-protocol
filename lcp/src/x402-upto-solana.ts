@@ -76,23 +76,25 @@ export interface UptoSvmChoice {
   computeUnitPrice?: bigint;
 }
 
-/** This pairing's id for an option it can pay, or undefined. */
-export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
-  if (!isObject(option) || option.scheme !== "upto" || !isSolanaNetwork(option.network)) return undefined;
-  if (!isKey(option.asset) || !isKey(option.payTo)) return undefined;
+/**
+ * True for an option of this pairing: `upto` on a Solana network, with `asset`, `payTo`, `extra.feePayer` and
+ * `extra.receiverAuthorizer` each the base58 of a 32-byte key, a positive safe-integer `extra.withdrawDelay`, the token
+ * program or Token-2022 as `extra.tokenProgram`, an `extra.memo`, when present, of at most 256 UTF-8 bytes, and an
+ * `extra.paymentFlow`, when present, of `escrow`.
+ */
+function isThis(option: PaymentRequirements): boolean {
+  if (!isObject(option) || option.scheme !== "upto" || !isSolanaNetwork(option.network)) return false;
+  if (!isKey(option.asset) || !isKey(option.payTo)) return false;
   const extra: unknown = option.extra;
-  if (!isObject(extra) || !isKey(extra["feePayer"]) || !isKey(extra["receiverAuthorizer"])) return undefined;
+  if (!isObject(extra) || !isKey(extra["feePayer"]) || !isKey(extra["receiverAuthorizer"])) return false;
   const delay = extra["withdrawDelay"];
-  if (!Number.isSafeInteger(delay) || (delay as number) <= 0) return undefined;
-  if (extra["tokenProgram"] !== TOKEN && extra["tokenProgram"] !== TOKEN_2022) return undefined;
+  if (!Number.isSafeInteger(delay) || (delay as number) <= 0) return false;
+  if (extra["tokenProgram"] !== TOKEN && extra["tokenProgram"] !== TOKEN_2022) return false;
   const memo = extra["memo"];
-  if (memo !== undefined && (typeof memo !== "string" || new TextEncoder().encode(memo).length > MAX_MEMO)) return undefined;
+  if (memo !== undefined && (typeof memo !== "string" || new TextEncoder().encode(memo).length > MAX_MEMO)) return false;
   const flow = extra["paymentFlow"];
-  if (flow !== undefined && flow !== "escrow") return undefined;
-  return ID;
+  return flow === undefined || flow === "escrow";
 }
-
-const isThis = (o: PaymentRequirements): boolean => pairingOf(o) !== undefined;
 
 /** True when the amount is a u64 in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
