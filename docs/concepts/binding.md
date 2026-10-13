@@ -57,7 +57,6 @@ Each pairing's `pattern` record states what a payment through it shows, and neve
 | `zeroPartyRecoverable` | H can be read back from the settled transaction alone, without either party (the pairing's `recover`). |
 | `forwardIndexable` | A search by H finds the settlement. |
 | `profile` | The LCP profile that defines the binding, where one does. The profiles ship in the package's [`profiles/`](../../lcp/profiles/). |
-| `instrument` | `"landed"` where the buyer presents standing authority that is redeemed once per payment, so a payment is the transfer that lands. |
 | `canonical` | A flag the record declares. Nothing in this package reads it. |
 | `proves` | One paragraph stating what the payment shows and what it does not. |
 

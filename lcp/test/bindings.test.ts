@@ -1,5 +1,6 @@
 // The expected ids are the implemented pairings: x402/exact/eip155/eip3009 first, then every
 // other pairing's id by id, with the MPP pairings in MPP_BINDINGS' order. A2A is a carrier, not a pairing.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import { exactTronMemo } from "../src/tron.js";
@@ -78,6 +79,31 @@ describe("BINDINGS", () => {
     ]);
     expect(BINDINGS[0]).toBe(exactEip3009);
     expect(BINDINGS).toContain(exactTronMemo);
+  });
+});
+
+// The record each pairing states carries the members of the field table in docs/concepts/binding.md ("What each
+// binding proves") and no other.
+describe("the record's members", () => {
+  const page = readFileSync(new URL("../../docs/concepts/binding.md", import.meta.url), "utf8");
+  const start = page.indexOf("| Field | Meaning |");
+  const table = page.slice(start, page.indexOf("\n\n", start));
+  const fields = new Set([...table.matchAll(/^\| `([A-Za-z]+)` \|/gm)].map((m) => m[1]));
+  it("the field table lists nine members", () => {
+    expect([...fields].sort()).toEqual([
+      "buyerSigns",
+      "canonical",
+      "forwardIndexable",
+      "onChain",
+      "pattern",
+      "profile",
+      "proves",
+      "publicProof",
+      "zeroPartyRecoverable",
+    ]);
+  });
+  it("every pairing's record carries only those members", () => {
+    for (const b of BINDINGS) for (const k of Object.keys(b.pattern)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
   });
 });
 

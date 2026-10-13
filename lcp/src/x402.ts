@@ -148,12 +148,6 @@ export type LcpPattern = {
   forwardIndexable: boolean;
   publicProof: boolean;
   proves: string;
-  /**
-   * Where the buyer signs no hash, what identifies one payment. Absent: the pairing's `reference` for that payment.
-   * `"landed"`: the buyer presents standing authority, redeemed once per payment, so a payment is the transfer that
-   * lands, and the landed transaction is the instrument.
-   */
-  instrument?: "landed";
 };
 
 export interface X402Offer {
@@ -1335,7 +1329,6 @@ export const exactErc7710 = binding(
     zeroPartyRecoverable: false,
     forwardIndexable: false,
     publicProof: false,
-    instrument: "landed",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
       "recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment " +
