@@ -19,7 +19,8 @@ export const MEMO_V4 = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH";
 export const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 export const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 export const SYSTEM = "11111111111111111111111111111111";
-export const RECENT_BLOCKHASHES = "SysvarRecentB1ockHashes11111111111111111111";
+/** The `RecentBlockhashes` sysvar, which a durable message's `AdvanceNonceAccount` names after its nonce account. */
+const RECENT_BLOCKHASHES = "SysvarRecentB1ockHashes11111111111111111111";
 export const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
 export const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
