@@ -99,7 +99,12 @@ function advertise(
   return withOption(placed, offeredAt(placed.accepts, offer), { ...offer, payTo: muxedFor(offer.payTo, h) });
 }
 
+/**
+ * The buyer's reading of the challenge: its hash, its link and the options this pairing can pay. Without
+ * @stellar/stellar-sdk no option can be read: `stellar/peer-missing`.
+ */
 function read(doc: PaymentRequired): X402Read | Refusal {
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   return readFor(filterOf(isThis))(doc);
 }
 

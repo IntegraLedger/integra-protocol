@@ -46,6 +46,13 @@ describe("without @stellar/stellar-sdk", () => {
     expect(await exactStellar.reference(presented)).toEqual(refused);
   });
 
+  // The document is V3's challenge, which the pairing reads with the peer: its hash, link and V3's option.
+  it("x402/exact/stellar's read refuses peer-missing, as its advertise does", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.V3.accepted], extensions: V.V3.extensions };
+    expect(exactStellar.read(required)).toEqual({ refused: true, code: CODE });
+  });
+
   it("mpp/charge/stellar's advertise refuses peer-missing, as its bound and reference do", { timeout: IMPORT_MS }, async () => {
     const { chargeStellar } = await import("../src/mpp.js");
     const refused = { refused: true, code: CODE };
