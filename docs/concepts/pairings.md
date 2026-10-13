@@ -35,7 +35,7 @@ Pairings that settle on a rail the package can read also have:
 | Member | What it does |
 |---|---|
 | `reference(presented)` | The read keys for finding this payment's settlement later: the network, and the log, transfer or transaction that carries H. |
-| `status(ref, reader)` | The settlement's state, read through a bounded reader you supply: settled with its finality, pending, or failed with the reason. On Sui it also takes `position`, the checkpoint from which you need the endpoint's history ([Reading settlement](../guides/rails.md#reading-settlement)). On Cardano it is `status(ref, reader, depth)`, with the depth at which you take a settlement as final ([Reading settlement](../guides/rails.md#reading-settlement)). |
+| `status(ref, reader)` | The settlement's state, read through a bounded reader you supply: settled with its finality, pending, or failed with the reason. A `settled` answer at `latest` (EVM) or `head` (Polkadot, Tron) can be reorganised away; read it again until it is final: `finalized`, or `solidified` on Tron. On Sui it also takes `position`, the checkpoint from which you need the endpoint's history ([Reading settlement](../guides/rails.md#reading-settlement)). On Cardano it is `status(ref, reader, depth)`, with the depth at which you take a settlement as final ([Reading settlement](../guides/rails.md#reading-settlement)). |
 | `recover(tx, reader)` | H read back from a settled transaction alone, where the rail keeps it (`pattern.zeroPartyRecoverable`). |
 | `authorizer(presented)` | On an EVM pull pairing, the account whose signature authorises the pull. With the reference's `authorization`, it lets a reader ask the chain whether the authorization executed before any transaction is named. |
 

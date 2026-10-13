@@ -71,7 +71,8 @@ authorizer that log order pairs with it ([the x402 guide](./x402.md#a-named-tran
 payee and value hash to the reference's digest. A transaction whose receipt the reader does not hold, where `receipt`
 answers `null`, is pending `not-found`, and a failed read is pending `unreadable`. Anything else is `failed`, with the
 reason, once the receipt's block is at or below the reader's `finalized` mark; above that mark, where the block can be
-replaced, or where the mark cannot be read, it is pending with the same reason.
+replaced, or where the mark cannot be read, it is pending with the same reason. A `settled` answer at `latest` (EVM) or
+`head` (Polkadot, Tron) can be reorganised away; read it again until it is final: `finalized`, or `solidified` on Tron.
 
 Before any transaction is named, `authorizer(payment)` gives the account whose signature authorises the transfer, and
 `authorizationUsed(ref, authorizer, block, reader)` asks the token whether that authorization had executed by a block.
