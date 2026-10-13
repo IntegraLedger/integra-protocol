@@ -195,9 +195,6 @@ async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refu
   return refusal("mpp/not-bound-within");
 }
 
-const LATER =
-  "Later requests in this channel were paid under this ATR by vouchers the seller did not meter";
-
 // ── mpp/session/hedera.
 
 /** `methodDetails.escrowContract`, lowercase, else `mpp/request-malformed`. */
@@ -979,13 +976,12 @@ export const sessionHedera = Object.freeze({
       buyerSigns: true,
       zeroPartyRecoverable: true,
       proves:
-        "The payer signed a Hedera EVM transaction that opened an MPP session channel on the escrow contract named " +
-        "in the challenge, with this ATR's hash as the channel's salt, and it reached consensus. The escrow's " +
+        "The payer signed a Hedera EVM transaction that opened an MPP session channel on the escrow contract named in " +
+        "the challenge, with this ATR's hash as the channel's salt, and it reached consensus. The escrow's " +
         "ChannelOpened event carries the salt, and the channel id is keccak256 over an encoding that includes it. The " +
-        "hash is also in the MPP challenge the opening answered. " +
-        LATER +
-        ". Each voucher signs that channel id, which commits to this ATR's hash. This does not show that amount, " +
-        "deposit, recipient, token or timing match the ATR's content.",
+        "hash is also in the MPP challenge the opening answered. Each voucher signs that channel id, which commits to " +
+        "this ATR's hash. This does not show that amount, deposit, recipient, token or timing match the ATR's " +
+        "content.",
     },
     "mpp/session/hedera-solana-xrpl",
   ),
@@ -1023,16 +1019,12 @@ export const sessionSolana = Object.freeze({
       buyerSigns: false,
       zeroPartyRecoverable: false,
       proves:
-        "The ATR was assembled, written to the seller's storage and linked in the challenge before approval, " +
-        "and its hash is in the MPP challenge the opening " +
+        "The ATR was assembled and delivered before approval, and its hash is in the MPP challenge the opening " +
         "answered, protected by the server's binding of the challenge. The payer signed a Solana transaction that " +
         "opened a session channel on the channel program named in the challenge, with the first 8 bytes of this ATR's " +
         "hash as the channel's salt, and it executed without error. The salt binds only this hash's first 8 bytes: " +
-        "whoever assembles the ATR can construct a second ATR whose hash shares them. " +
-        LATER +
-        ". Where the operator signs the vouchers, each request also carried the payer's session proof, which signs the " +
-        "opening challenge's id and so this ATR's hash. This does not show that amount, deposit, recipient, mint or " +
-        "timing match the ATR's content.",
+        "whoever assembles the ATR can construct a second ATR whose hash shares them. This does not show that amount, " +
+        "deposit, recipient, mint or timing match the ATR's content.",
     },
     "mpp/session/hedera-solana-xrpl",
   ),
@@ -1064,9 +1056,8 @@ export const sessionXrpl = Object.freeze({
       zeroPartyRecoverable: true,
       proves:
         "The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's " +
-        "hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. " +
-        LATER +
-        "; each signs the channel id and an amount, not the hash. This does not show that amount, deposit, " +
+        "hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Vouchers in " +
+        "this channel sign the channel id and an amount, not the hash. This does not show that amount, deposit, " +
         "destination, settle delay or timing match the ATR's content.",
     },
     "mpp/session/hedera-solana-xrpl",

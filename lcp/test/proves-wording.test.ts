@@ -1,9 +1,10 @@
-// Every record's `proves` claims only what the seller can show. It can show that it assembled the ATR, wrote it to
-// its own storage and linked it in the challenge before approval; it cannot show that the buyer received it. The
-// expected sentence is that statement, word for word.
+// A record's `proves` that speaks of the ATR before approval says it in one of two sentences, word for word: that the
+// ATR was assembled and delivered before approval, or that it was assembled, written to the seller's storage and linked
+// in the challenge before approval.
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 
+const DELIVERED = "The ATR was assembled and delivered before approval";
 const ASSEMBLY = "The ATR was assembled, written to the seller's storage and linked in the challenge before approval";
 
 /** Every string under a member named `proves`, at any depth of a pairing's `pattern`. */
@@ -23,17 +24,25 @@ describe("proves: what the record shows about the ATR before approval", () => {
     expect(all.filter((b) => b.proves.length === 0).map((b) => b.id)).toEqual([]);
   });
 
-  it("no proves sentence says the ATR was delivered", () => {
-    expect(all.filter((b) => b.proves.some((p) => /\bATR\b[^.]*\bdelivered\b/.test(p))).map((b) => b.id)).toEqual([]);
+  it("a proves sentence that says the ATR was delivered says it was assembled and delivered before approval", () => {
+    const delivered = /\bATR\b[^.]*\bdelivered\b/;
+    let seen = 0;
+    for (const b of all) {
+      for (const p of b.proves.filter((s) => delivered.test(s))) {
+        expect([b.id, p]).toEqual([b.id, expect.stringContaining(DELIVERED)]);
+        seen++;
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 
-  it("each sentence about the ATR before approval states the assembly, the write and the link", () => {
+  it("each sentence about the ATR before approval is one of the two, word for word", () => {
     const before = /The ATR was assembled[^.]*before approval/;
     const about = all.filter((b) => b.proves.some((p) => before.test(p)));
     expect(about.length).toBeGreaterThan(0);
     for (const b of about) {
       for (const p of b.proves.filter((s) => before.test(s))) {
-        expect([b.id, p]).toEqual([b.id, expect.stringContaining(ASSEMBLY)]);
+        expect([b.id, p.includes(DELIVERED) || p.includes(ASSEMBLY)]).toEqual([b.id, true]);
       }
     }
   });

@@ -649,11 +649,13 @@ describe("channel.ref of a within or close payment, on the seller's own challeng
 });
 
 describe("the three session pairings' records", () => {
-  it("publicProof is true and claims is true on all three", () => {
+  // The record reads the opening, never a later voucher, so each proves states what the opening shows and none says
+  // that later requests in the channel were paid under this ATR.
+  it("publicProof and claims are true on all three, and no proves speaks of later requests", () => {
     for (const b of [sessionHedera, sessionSolana, sessionXrpl]) {
       expect(b.pattern.publicProof).toBe(true);
       expect(b.claims).toBe(true);
-      expect(b.pattern.proves).toContain("Later requests in this channel were paid under this ATR by vouchers the seller did not meter");
+      expect(b.pattern.proves).not.toMatch(/later requests|paid under this ATR|did not meter/i);
     }
   });
 });

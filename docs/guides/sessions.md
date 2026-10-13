@@ -243,9 +243,10 @@ voucher only for a channel it opened for an ATR it compared.
 
 ## What the record says
 
-Each channel pairing's `pattern.proves` states what the opening shows. On the MPP sessions and subscriptions it then
-says that the later payments in the session or subscription were made under the same ATR; on the x402 batch-settlement
-channels it does not. Some also say what the later payments sign: on the EVM,
+Each channel pairing's `pattern.proves` states what the opening shows. On the EVM, Tempo and Lightning MPP sessions and
+the MPP subscriptions it then says that the later payments in the session or subscription were made under the same ATR;
+on the Hedera, Solana and XRP Ledger MPP sessions and the x402 batch-settlement channels it does not. Some also say
+what the vouchers sign: on the EVM,
 Tempo and Hedera sessions and the EVM batch-settlement channel, each voucher signs a commitment to H; on the XRP
 Ledger session, each voucher signs the channel id and an amount, not H. The
 [pairings reference](../reference/pairings.md#what-each-binding-proves) quotes each one.
