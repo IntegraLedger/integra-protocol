@@ -26,7 +26,6 @@ import {
   isReceipt,
   paymentHash,
   permit2TypedData,
-  receiveTypedData,
   redeemedLeafRecover,
   transferDigest,
   transferParts,
@@ -46,7 +45,7 @@ import {
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { agreementIn } from "./internal/agreement.js";
-import { permit2Status, type ReceiveTypedData } from "./internal/evm.js";
+import { permit2Status, receiveTypedData, type ReceiveTypedData } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
