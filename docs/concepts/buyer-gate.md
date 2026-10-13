@@ -37,8 +37,9 @@ sequenceDiagram
 3. **Compare.** `hashEquals(await hash(bytes), h)`. On any difference, stop: nothing is signed.
 4. **Build and sign.** The pairing's `build(choice, h)` returns what the signer signs, with H in its place. Pass the H
    you compared, never a value read again from the document.
-5. **Finish.** `complete(signature)` gives the payment. Before sending it, `bound(payment)` reads H back from what was
-   signed; it must equal the H you compared.
+5. **Finish.** `complete(signature)` gives the payment. Before sending it, check that `bound(payment)` equals the H you
+   compared. Where the pairing's `claims` is false, nothing the buyer signed is bound to H, whatever `bound` returns,
+   and the agreement payment is the proof.
 6. **Keep the bytes.** The buyer's copy of the ATR is its record of what it agreed to.
 
 ## One changed byte

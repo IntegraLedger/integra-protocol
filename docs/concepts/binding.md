@@ -6,8 +6,9 @@ description: How the ATR hash rides in a payment, the binding patterns, and what
 # Binding
 
 **Binding** is how H rides in a pairing's payment: the field its specification defines. The seller places H where
-the protocol or rail provides a place, and the buyer approves a payment that carries H, or carries a value from which
-anyone holding the ATR can confirm exactly that H.
+the protocol or rail provides a place, and, where the pairing's `buyerSigns` is true, the buyer approves a payment that
+carries H, or carries a value from which anyone holding the ATR can confirm exactly that H. Where its `claims` is false,
+nothing in the payment is bound to H, and the agreement payment is the proof.
 
 Binding is what this package checks about a payment, beside the form its rail or scheme requires and the bounds within
 which it reads its input. It never judges amount, payee, asset, timing or payer, and never reads the parties' content

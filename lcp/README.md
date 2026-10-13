@@ -10,8 +10,11 @@ agreement payment, on the x402, MPP, checkout and card pairings this package imp
 `@integraledger/lcp` is the reference implementation of the **Legal Context Protocol (LCP)**: the pattern in which the
 hash of the agreement's record is bound into the payment, so that where the payment the buyer approves carries the hash,
 that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. The
-seller assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and signs
-a payment that carries the hash; the seller reads the hash back from the payment and from the settlement.
+seller assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and, on
+most pairings, signs a payment that carries the hash; the seller reads the hash back from the payment, and on most
+rails from the settlement. On some pairings (`pattern.buyerSigns` false) the buyer's signature does not cover the
+hash, and where the pairing's `claims` is false, nothing in the payment is bound to it; the agreement payment is the
+proof.
 
 The package is deterministic and small at its core. It holds no key, signs nothing, calls no network on its own, and
 carries no business or legal logic. What the agreement says is the parties' business; this package hashes the record,

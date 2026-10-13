@@ -36,10 +36,12 @@ sequenceDiagram
    the values that tie it to this payment, and whatever the parties agreed, byte for byte.
 2. **The seller advertises its hash.** H goes into the payment challenge, beside an `https` link to the seller's copy.
 3. **The buyer compares before it signs.** It fetches the bytes, hashes them, and signs nothing unless they hash to H.
-4. **The payment carries H.** The buyer signs a payment with H in the field its protocol or rail provides: a nonce, a
-   memo, a salt, an invoice field.
-5. **Anyone holding the record can match it.** The seller reads H back from the payment, and on most rails from the
-   settlement on chain.
+4. **The payment carries H.** On most pairings the buyer signs a payment with H in the field its protocol or rail
+   provides: a nonce, a memo, a salt, an invoice field. On some (`pattern.buyerSigns` false) the buyer's signature does
+   not cover H, and where the pairing's `claims` is false, nothing in the payment is bound to H; the agreement payment
+   is the proof. Each pairing's `pattern` and `claims` say which.
+5. **Anyone holding the record can match it.** The seller reads H back from the payment where the pairing's `claims` is
+   true, and on most rails from the settlement on chain.
 
 The package fixes the bytes, the hash and where H rides. It does not decide what the record says, and it never
 compares amount, payee, asset, timing or payer with the record's content: that is between the parties, and the record
