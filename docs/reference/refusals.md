@@ -633,7 +633,7 @@ Starknet (`@integraledger/lcp/starknet`).
 | `starknet/option-malformed` | A Starknet option has no `extra` object, or its amount is not a u256 or its timeout is not positive, or the buyer's choice given to `build` is not an object or has an invalid `now`, or an amount or deadline given to a typed-data helper is out of range. |
 | `starknet/reverted` | The Starknet transaction the reference names reverted. |
 | `starknet/signature-malformed` | The signature given to the Starknet `complete` is not 1 to the allowed number of valid felts. |
-| `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, exceeds the bound, or lacks one transfer call's calldata and a decimal `Execute Before`. |
+| `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, exceeds 16 KiB as JSON or nests more than 64 levels, or lacks one transfer call's calldata and a decimal `Execute Before`. |
 | `starknet/unreadable` | The Starknet reader threw or returned a receipt or events that are not well formed. |
 | `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference names. |
 

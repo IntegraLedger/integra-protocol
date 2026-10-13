@@ -6,7 +6,7 @@
  */
 import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
-import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import type { StarknetPayment } from "./internal/starknet.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -119,7 +119,7 @@ const NETWORKS: readonly string[] = ["starknet:SN_MAIN", "starknet:SN_SEPOLIA"];
 const U128 = 1n << 128n;
 const U256_LIMIT = 1n << 256n;
 const MAX_SIGNATURE_FELTS = 32;
-const MAX_TYPED_DATA_CHARS = 16_384;
+const MAX_TYPED_DATA_BYTES = 16_384;
 const MAX_DEPTH = 16;
 const MAX_INVOCATIONS = 512;
 const MAX_EVENTS = 1024;
@@ -530,7 +530,9 @@ function signed(presented: unknown): Signed | Refusal {
   if (feltValue(from) === undefined) return refusal("starknet/felt-malformed");
   const oe = p.payload["outsideExecution"];
   const td = isObject(oe) ? oe["typedData"] : undefined;
-  if (!isObject(td) || JSON.stringify(td).length > MAX_TYPED_DATA_CHARS) return refusal("starknet/typed-data-malformed");
+  if (!isObject(td) || (jsonBytes(td) ?? Number.POSITIVE_INFINITY) > MAX_TYPED_DATA_BYTES) {
+    return refusal("starknet/typed-data-malformed");
+  }
   const domain = td["domain"];
   const message = td["message"];
   if (td["primaryType"] !== "OutsideExecution" || !isObject(domain) || !isObject(message)) {

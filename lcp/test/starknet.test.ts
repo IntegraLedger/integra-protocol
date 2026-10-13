@@ -234,6 +234,23 @@ describe("x402-exact-starknet.json", () => {
     expect(plain(await exactStarknet.status(REF, readerFor(V.plant)))).toEqual(V.plant.expect);
   });
 
+  // The typed data is measured as JSON within the package's one nesting bound, 64 levels (vectors/core-vectors.json
+  // `jsonDepth`), the typedData object counting 1. Objects with numeric member names, as JSON.parse builds them, are
+  // what V8 writes by recursion, so the deepest are answered by the bound and not by the host's stack. A value JSON
+  // cannot write (a bigint, a cycle) is malformed typed data.
+  it("bound measures the typed data within the JSON nesting bound, and refuses what JSON cannot write", async () => {
+    const p = await pay();
+    const oe = p.payload.outsideExecution;
+    const withX = (x: unknown) => ({ ...p, payload: { ...p.payload, outsideExecution: { ...oe, typedData: { ...oe.typedData, x } } } }) as never;
+    const levels = (n: number) => JSON.parse('{"1":'.repeat(n - 1) + "[]" + "}".repeat(n - 1));
+    const malformed = { refused: true, code: "starknet/typed-data-malformed" };
+    expect(await exactStarknet.bound(withX(levels(63)))).toBe(V.S4.expectBound);
+    for (const n of [64, 1000, 100_000]) expect(await exactStarknet.bound(withX(levels(n)))).toEqual(malformed);
+    const cycle: { [k: string]: unknown } = {};
+    cycle["self"] = cycle;
+    for (const x of [1n, cycle]) expect(await exactStarknet.bound(withX(x))).toEqual(malformed);
+  });
+
   it("refusal codes left to the implementation", async () => {
     for (const row of V.agreedRefusals.rows) {
       const want = { refused: true, code: row.expect };
