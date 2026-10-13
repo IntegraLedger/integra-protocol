@@ -206,7 +206,10 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
  * transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. The
  * ledger is read first: failed `expired` only when its timestamp is past `expiresAt` and the lookup by sequence number
  * finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
- * is pending `not-found`. A failed read, or a reader for another network, is pending. At most three calls.
+ * is pending `not-found`. A failed read, or a reader for another network, is pending. A ref whose sequence number or
+ * expiry is not a decimal string below 2^64, or whose `sender`, `idDigest` or named `transaction` is not `0x` and 64
+ * hex digits, is pending `unreadable`, with nothing read; hex digits read the same in either case, and the reader is
+ * given the sender and the transaction in lowercase. At most three calls.
  */
 export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<AptosStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -216,21 +219,25 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
   const sequenceNumber = decimalBelow(ref.sequenceNumber, U64_LIMIT);
   const expiresAt = decimalBelow(ref.expiresAt, U64_LIMIT);
   if (sequenceNumber === undefined || expiresAt === undefined) return unreadable;
+  const sender = typeof ref.sender === "string" && ADDRESS_64.test(ref.sender) ? (ref.sender.toLowerCase() as Hex) : null;
+  const idDigest = normalHash(ref.idDigest);
+  const transaction = ref.transaction === undefined ? undefined : normalHash(ref.transaction);
+  if (sender === null || idDigest === null || transaction === null) return unreadable;
   try {
     const ledger = await reader.ledger();
     if (!isObject(ledger) || ledger.chainId !== chainId || typeof ledger.timestampUsecs !== "bigint") return unreadable;
 
-    if (ref.transaction !== undefined) {
-      const named = await reader.byHash(ref.transaction);
+    if (transaction !== undefined) {
+      const named = await reader.byHash(transaction);
       if (named !== null && !isObject(named)) return unreadable;
       if (named !== null && named.type === "pending_transaction") return { state: "pending", why: "in-mempool" };
       if (named !== null) {
         if (!isCommitted(named)) return unreadable;
-        if (await matches(named, ref, expiresAt, chainId)) return decided(named);
+        if (await matches(named, idDigest, expiresAt, chainId)) return decided(named);
       }
     }
 
-    const found: unknown = await reader.bySequence(ref.sender, sequenceNumber);
+    const found: unknown = await reader.bySequence(sender, sequenceNumber);
     const readTo = notFoundPoint(found, "timestampUsecs");
     if (readTo !== undefined) {
       const covered = readTo !== null && readTo >= ledger.timestampUsecs;
@@ -239,10 +246,8 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
         : { state: "pending", why: "not-found" };
     }
     if (!isCommitted(found)) return unreadable;
-    if (longAddress(found.sender) !== ref.sender.toLowerCase() || found.sequence_number !== sequenceNumber.toString()) {
-      return unreadable;
-    }
-    if (!(await matches(found, ref, expiresAt, chainId))) return { state: "failed", why: "superseded" };
+    if (longAddress(found.sender) !== sender || found.sequence_number !== sequenceNumber.toString()) return unreadable;
+    if (!(await matches(found, idDigest, expiresAt, chainId))) return { state: "failed", why: "superseded" };
     return decided(found);
   } catch {
     return unreadable;
@@ -380,14 +385,14 @@ export const exactAptos = Object.freeze({
 });
 
 /**
- * True when the committed transaction is the one the payer signed: its transfer hashes to the ref's digest, and its
- * expiry is the ref's.
+ * True when the committed transaction is the one the payer signed: its transfer hashes to the ref's digest, given in
+ * lowercase, and its expiry is the ref's.
  */
-async function matches(t: AptosCommitted, ref: AptosRef, expiresAt: bigint, chainId: number): Promise<boolean> {
+async function matches(t: AptosCommitted, idDigest: string, expiresAt: bigint, chainId: number): Promise<boolean> {
   const i = committedInstrument(t, chainId);
   if (isRefusal(i) || i.expiresAt !== expiresAt) return false;
   const d = await aptosIdDigest(i);
-  return !isRefusal(d) && d === ref.idDigest.toLowerCase();
+  return !isRefusal(d) && d === idDigest;
 }
 
 function decided(t: AptosCommitted): AptosStatus {

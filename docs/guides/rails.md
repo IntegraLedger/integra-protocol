@@ -137,10 +137,11 @@ pending, with the reason `unreadable`, and a later read can settle it. On `x402/
 `mpp/charge/evm/authorization`, `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` and `mpp/charge/usdc/evm`, whose
 `reference` always names the log carrying H or its commitment, a reference without a well-formed log of that event is
 pending `unreadable` too: the hash cannot be checked, nothing is read, and no later read settles it. On Casper,
-Concordium, Starknet, Tron, TON, the XRP Ledger, NEAR, Stacks and Cardano, and in the Solana and XRP Ledger session
-close reads, a reference that lacks a field `status` compares the landed payment with, or holds it malformed, such as
-a hash without the `0x` its pairing writes or an address in another encoding, is pending `unreadable` as well, with
-nothing read; so is one whose transaction id on Tron, Cardano or the XRP Ledger, or request body hash on TON, is
+Concordium, Starknet, Tron, TON, the XRP Ledger, NEAR, Stacks, Cardano and Aptos, and in the Solana and XRP Ledger
+session close reads, a reference that lacks a field `status` compares the landed payment with, or holds it malformed,
+such as a hash without the `0x` its pairing writes or an address in another encoding, is pending `unreadable` as well,
+with nothing read; so is one whose transaction id on Tron, Cardano, Aptos or the XRP Ledger, sender on Aptos, or request
+body hash on TON, is
 malformed. On the EVM rails, a reference whose transaction is not a 32-byte hash, or whose binding log or transfer log
 is not of the form its pairing writes, is pending `unreadable` too, with nothing read; `x402/exact/eip155/eip3009`
 reads H and the token from the reference's `h` and `asset` rather than its binding log, and an `h` that is not a

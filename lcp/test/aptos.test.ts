@@ -117,21 +117,25 @@ function refOf(v: Record<string, string>): AptosRef {
 
 type Row = { ledgerUsecs: string; byHash?: unknown; bySequence?: unknown; readerError?: boolean };
 
-function reader(row: Row, network = "aptos:1", chainId = 1): AptosReader & { calls: number } {
+/** A scripted reader; `asked` holds the hash and the sender each lookup was given. */
+function reader(row: Row, network = "aptos:1", chainId = 1): AptosReader & { calls: number; asked: unknown[] } {
   const r = {
     network: network as AptosReader["network"],
     calls: 0,
+    asked: [] as unknown[],
     async ledger() {
       r.calls++;
       if (row.readerError) throw new ReaderError("transport");
       return { chainId, timestampUsecs: BigInt(row.ledgerUsecs) };
     },
-    async byHash() {
+    async byHash(hash: unknown) {
       r.calls++;
+      r.asked.push(hash);
       return (row.byHash ?? null) as AptosCommitted | null;
     },
-    async bySequence() {
+    async bySequence(sender: unknown) {
       r.calls++;
+      r.asked.push(sender);
       const answer = row.bySequence as { notFound?: true; timestampUsecs?: string } | null | undefined;
       if (answer?.notFound === true) return { notFound: true as const, timestampUsecs: BigInt(answer.timestampUsecs!) };
       return (answer ?? null) as AptosCommitted;
@@ -271,6 +275,39 @@ describe("V4 · status", () => {
     const row = V.V4.status[0];
     expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:2"))).toEqual({ state: "pending", why: "unreadable" });
     expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:1", 2))).toEqual({ state: "pending", why: "unreadable" });
+  });
+  // docs/guides/rails.md, "Reading settlement": a reference that lacks a field status reads the payment by, or holds it
+  // malformed, is pending unreadable with nothing read, and hex digits read the same in either case. reference() writes
+  // the sender and the idDigest as 0x and 64 lowercase hex digits (V2), and a named transaction is an Aptos hash in the
+  // same form (V4). Each row's reader would otherwise answer the row's expect.
+  it("a ref whose sender, idDigest or named transaction is not 0x and 64 hex digits is unreadable, with nothing read", async () => {
+    const named: string = V.V4.status[0].ref.transaction;
+    for (const row of V.V4.status) {
+      for (const key of ["sender", "idDigest", "transaction"] as const) {
+        const good: string = row.ref[key] ?? named;
+        const forms: unknown[] = [null, 1, {}, [], "", "0x12", good.slice(0, 64), `${good}00`, good.slice(2)];
+        forms.push(`0X${good.slice(2)}`, `0xg${good.slice(3)}`);
+        if (key !== "transaction") forms.push(undefined);
+        if (key === "sender") forms.push("0x1");
+        for (const v of forms) {
+          const r = reader(row);
+          const ref = { ...refOf(row.ref), [key]: v } as AptosRef;
+          const got = await exactAptos.status(ref, r);
+          expect([row.case, key, v, got, r.calls]).toEqual([row.case, key, v, { state: "pending", why: "unreadable" }, 0]);
+        }
+      }
+    }
+  });
+  it("a ref in upper-case hex reads as the vector's ref, and the reader is given the sender and transaction in lowercase", async () => {
+    const upper = (s: string) => `0x${s.slice(2).toUpperCase()}` as `0x${string}`;
+    for (const row of V.V4.status) {
+      const ref = refOf(row.ref);
+      const shouted: AptosRef = { ...ref, sender: upper(ref.sender), idDigest: upper(ref.idDigest) };
+      if (ref.transaction !== undefined) shouted.transaction = upper(ref.transaction);
+      const r = reader(row);
+      expect(plain(await exactAptos.status(shouted, r))).toEqual(row.expect);
+      expect(r.asked).toEqual(r.asked.map((a) => String(a).toLowerCase()));
+    }
   });
 });
 
