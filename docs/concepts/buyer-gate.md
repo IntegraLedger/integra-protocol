@@ -86,7 +86,7 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 | `signer-failed` | The signer rejected. |
 | `no-payable-option` | No option is payable by the buyer's accounts. Nothing is fetched. |
 | `pairing-not-supported` | The pairing id is not one the gate implements. |
-| `agreement-pending` | An agreement payment was made and its receipt did not arrive in time; the full payment is not signed. |
+| `agreement-pending` | An agreement payment was made and its receipt did not arrive in time; the full payment is not signed. Never sign a second agreement payment. |
 | `agreement-failed` | The agreement's receipt names another ATR's hash, or an agreement answer is in a content coding other than `identity`; the full payment is not signed. |
 | `agreement-not-offered` | The chosen pairing's payment is not a public proof of H (`pattern.publicProof` is false) and the offer names no agreement URL. The link is fetched and compared first; nothing is signed. |
 
