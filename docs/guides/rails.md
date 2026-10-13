@@ -136,8 +136,13 @@ rail needs nothing more than the package.
 calls against one network's endpoint. The package makes those calls and nothing else, so the endpoint, the
 credentials, the timeouts and the retries are yours. Each `status` makes a bounded number of calls.
 
-A reader that throws, times out, or answers for another network never makes a payment failed: `status` answers
-pending, with the reason `unreadable`, and a later read can settle it. On `x402/exact/eip155/erc7710-salt`,
+A reader that throws or times out never makes a payment failed: a rejected read of the transaction makes `status` answer
+pending, with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark counts as that
+mark not reached. A reader that declares a network other than the reference's is read the same way, with nothing read,
+so no later read through it settles the payment. The package compares only the `network` a reader declares and never
+asks its endpoint which network it serves, so a reader declares its endpoint's own: one that declares the payment's
+network over another network's endpoint finds nothing, and where a verdict rests on a point it reads, such as a head,
+ledger, slot or round, it can answer failed `expired` for a payment that landed. On `x402/exact/eip155/erc7710-salt`,
 `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
 `mpp/charge/evm/authorization`, `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` and `mpp/charge/usdc/evm`, whose
 `reference` always names the log carrying H or its commitment, a reference without a well-formed log of that event is
