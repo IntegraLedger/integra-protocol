@@ -111,7 +111,7 @@ export {
   type UsdcUnsigned,
 } from "./mpp-usdc.js";
 export { chargeNearIntents } from "./mpp-nearintents.js";
-export { chargeSolana, mppSvmCarrier, type SolanaChargeChoice, type SolanaChargeUnsigned } from "./mpp-solana.js";
+export { chargeSolana, type SolanaChargeChoice, type SolanaChargeUnsigned } from "./mpp-solana.js";
 export { chargeStellar, type StellarChargeChoice, type StellarChargeUnsigned } from "./mpp-stellar.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
 export {

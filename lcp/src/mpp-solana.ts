@@ -100,7 +100,7 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
  * instructions whose data is not an LCP string are not read. None is `svm/no-carrier`; more than one `svm/memo-count`.
  * The one found must be `toLcpString(h)` exactly, in lowercase hex, else `svm/carrier-not-canonical`.
  */
-export function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
+function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
   const found: { h: AtrHash; memo: string }[] = [];
   for (const ix of tx.instructions) {
     const program = tx.keys[ix.program];
