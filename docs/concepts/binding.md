@@ -58,7 +58,7 @@ Each pairing's `pattern` record states what a payment through it shows, and neve
 | `pattern` | The binding pattern above. |
 | `buyerSigns` | The buyer's signature covers H, or a value derived from H that no second ATR can feasibly be made to match: a part of 7 or 8 bytes does not count. |
 | `onChain` | The binding is visible on a public ledger after settlement (`LCP §8.3`): the settlement carries H, part of it, or a value derived from it. |
-| `publicProof` | Settlement leaves a public record that commits to H. |
+| `publicProof` | Settlement leaves a public record that commits to H. Where that record holds only 8 bytes of H, or 7 bytes derived from the challenge id that carries H, it binds H only through those bytes: whoever assembles the ATR can construct a second ATR that shares them, and the pairing's `proves` says so. |
 | `zeroPartyRecoverable` | H can be read back from the settled transaction alone, without either party (the pairing's `recover`). |
 | `forwardIndexable` | A search by H finds the settlement. |
 | `profile` | The LCP profile that defines the binding, where one does. The profiles ship in the package's [`profiles/`](../../lcp/profiles/). |
