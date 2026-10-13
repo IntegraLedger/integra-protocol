@@ -25,9 +25,7 @@ const PRESENTED = { challenge: { id: "x", realm: "api.seller.example", method: "
 const SUBSCRIPTION_SENTENCE =
   "Later billing periods were paid under this ATR by renewal invoices the seller did not read. The close is the " +
   "seller's report.";
-const SESSION_SENTENCE =
-  "Later requests in this session were paid under this ATR from its deposit, by bearer proofs the seller did not " +
-  "meter. The close is the seller's report.";
+const SESSION_SENTENCE = "The close is the seller's report.";
 
 describe("mpp/subscription/stripe's channel members", () => {
   const ch = (subscriptionStripe as unknown as { channel: Record<string, (...a: unknown[]) => unknown> }).channel;
@@ -82,8 +80,11 @@ describe("mpp/subscription/stripe's channel members", () => {
   });
 });
 
+// The record reads the session's opening, never a later bearer proof or top-up, so the proves states what the opening
+// shows and ends with the close, the seller's report; it never says that later requests were paid under this ATR.
 describe("mpp/session/lightning's proves", () => {
-  it("ends with the session's sentence", () => {
+  it("ends with the session's sentence, and speaks of no later request", () => {
     expect(sessionLightning.pattern.proves.endsWith(` ${SESSION_SENTENCE}`)).toBe(true);
+    expect(sessionLightning.pattern.proves).not.toMatch(/later requests|paid under this ATR|did not meter|bearer/i);
   });
 });

@@ -707,10 +707,7 @@ async function sessionBoundWithin(_presented: unknown): Promise<AtrHash | Refusa
   return refusal("mpp/not-bound-within");
 }
 
-const MPP_LN_SESSION_PROVES =
-  MPP_LN_PROVES +
-  " Later requests in this session were paid under this ATR from its deposit, by bearer proofs the seller did not " +
-  "meter. The close is the seller's report.";
+const MPP_LN_SESSION_PROVES = MPP_LN_PROVES + " The close is the seller's report.";
 
 export const sessionLightning = Object.freeze({
   ...lnMppBinding(LN_SESSION, "request.depositInvoice#h", MPP_LN_SESSION_PROVES),
