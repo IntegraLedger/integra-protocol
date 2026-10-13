@@ -202,6 +202,27 @@ authorization used by block 100: true
 recovered from the chain alone: true
 ```
 
+## The agreement URL
+
+Where the chosen pairing's `pattern.publicProof` is false, the payment is not a public proof of H, and the buyer gates
+require an agreement URL: pass it to `advertise` as `agreementUrl`, and `read` returns it as `agreement`. The buyer
+gates decline an offer that names none (`agreement-not-offered`). The buyer pays that URL first, with a payment that is
+itself a public proof of H, and makes the full payment only after the URL's receipt.
+
+[`vectors/buyer.json`](../../lcp/vectors/buyer.json) fixes the exchange in `fixed.agreement` and the `BA` rows:
+
+- **Unpaid**, the URL answers `402` with `PAYMENT-REQUIRED`: the base64 of an x402 challenge, pad characters included,
+  advertising the same H and link. The buyer gates decline a challenge that advertises another H (`BA2`) and a header
+  without its pad characters (`BA13`).
+- **Settling**, a paid request answers `202` with `Retry-After`, and the buyer sends the same signed payment again,
+  until the agreement option's `maxTimeoutSeconds` plus 180 seconds have passed (`BA1`, `BA3`).
+- **Recorded**, a paid request answers `200` with the receipt
+  `{"atrHash": H, "agreed": true, "network": …, "transaction": …}`. The buyer gates require all four members: `atrHash`
+  naming the same H (`BA4`), `agreed` true, and `network` and `transaction` strings.
+
+Answer in the identity coding: the buyer asks with `Accept-Encoding: identity` and declines any other
+`Content-Encoding` (`BE2`). [The agreement URL](../concepts/buyer-gate.md#the-agreement-url) gives the buyer's side.
+
 ## What the seller keeps
 
 Keep H, the link and the reference for each payment, and the ATR's bytes in your storage after the link expires; the
