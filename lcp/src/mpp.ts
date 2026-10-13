@@ -178,12 +178,13 @@ const PAYMENT_WITNESS = [
 /**
  * `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
  * topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose recipient is not
- * `RECEIVE_POLICY_GUARD`. `ref.transferLog` must identify a `Transfer` from `ref.asset` by its sender alone (identity
- * `from`), as the pairing's `reference` records it, else pending `unreadable`. Without such a log, a `Transfer` from
- * that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`: another
- * account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and these, is
- * given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
- * cannot be read, the same reason is pending. At most three calls.
+ * `RECEIVE_POLICY_GUARD`. `ref.asset` and `ref.transferLog.address` must be addresses naming the same token, and
+ * `ref.transferLog` must identify a `Transfer` from it by its sender alone (identity `from`), as the pairing's
+ * `reference` records it; any other ref is pending `unreadable`, with nothing read. Without such a log, a `Transfer`
+ * from that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`:
+ * another account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and
+ * these, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
+ * mark cannot be read, the same reason is pending. At most three calls.
  */
 export async function transferPresent(
   ref: EvmRef & { transaction: Hex; asset: Hex },
@@ -205,7 +206,6 @@ export async function transferPresent(
   const s = await evmStatus({ network: ref.network, transaction: ref.transaction }, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
-  if (!isAddress(ref.asset)) return failedIfFinal(s, "transfer-not-found");
   const sent: EvmLog[] = [];
   for (const l of logs) {
     const parts = transferParts(l, ref.asset, TRANSFER_TOPIC);
@@ -218,13 +218,16 @@ export async function transferPresent(
   return failedIfFinal(s, "transfer-not-found");
 }
 
-/** True for a `TransferLog` that identifies a `Transfer` from `asset` by its sender alone: identity `from`. */
+/**
+ * True for a `TransferLog` that identifies a `Transfer` from `asset` by its sender alone (identity `from`), where
+ * `asset` and the log's `address` are both addresses and name the same token.
+ */
 function identifiesSender(t: unknown, asset: unknown): t is TransferLog {
   if (!isObject(t) || t["identity"] !== "from" || !sameBytes(t["topic0"], TRANSFER_TOPIC)) return false;
   const address = t["address"];
   return (
-    typeof address === "string" &&
-    typeof asset === "string" &&
+    isAddress(address) &&
+    isAddress(asset) &&
     address.toLowerCase() === asset.toLowerCase() &&
     bytesOf(t["digest"])?.length === 32
   );

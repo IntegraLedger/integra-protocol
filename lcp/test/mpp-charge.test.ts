@@ -47,6 +47,7 @@ import {
   decodeTempoTx,
   memoCalldata,
 } from "../src/tempo.js";
+import { counting } from "./fixtures/counting-reader.js";
 import { C_E, C_T, H, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 
 const A = load("mpp-charge-evm-authorization.json");
@@ -469,6 +470,49 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     const { transferLog: _sender, ...unidentified } = ref;
     expect(await status([transfer(A.fixed.payer, RECIPIENT_E, 10000n)], unidentified))
       .toEqual({ state: "pending", why: "unreadable" });
+  });
+
+  // An address is `0x` and 40 hex digits in either case (Ethereum execution-apis, `src/schemas/base-types.yaml`
+  // `address`, the form a receipt log's `address` takes in `src/schemas/receipt.yaml`). A reference whose `asset` or
+  // transfer log address is any other string names no emitter a receipt can hold, and the rails guide ("Reading
+  // settlement") reads a transfer log not of the form its pairing writes as pending `unreadable`, with nothing read.
+  it("MV12: a reference whose asset or transfer log address is not an address is pending unreadable, nothing read", async () => {
+    const keys = await evmHash.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential);
+    if ("refused" in keys) throw new Error(keys.code);
+    const ref = (asset: string, address: string) => ({
+      ...keys,
+      transaction: HS.MV12.hash,
+      asset: asset as `0x${string}`,
+      transferLog: { ...keys.transferLog!, address: address as `0x${string}` },
+    });
+    const payment: EvmLog = {
+      address: USDC.toLowerCase() as `0x${string}`,
+      topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)],
+      data: wordOf(10000n),
+    };
+    const holding = () => counting(readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [payment] }));
+    const upper = `0X${USDC.slice(2)}`;
+    const shapes: [string, string, string][] = [
+      ["asset not an address", "usdc", USDC],
+      ["transfer log address not an address", USDC, "usdc"],
+      ["both not addresses, different", "usdc", "token"],
+      ["both one string that is not an address", "usdc", "usdc"],
+      ["both one short hex string", "0x01", "0x01"],
+      ["both the token's 40 hex digits without 0x", USDC.slice(2), USDC.slice(2)],
+      ["asset the token written with 0X", upper, USDC],
+      ["transfer log address the token written with 0X", USDC, upper],
+    ];
+    for (const pairing of [evmHash, evmTransaction]) {
+      // The well-formed reference reads the same receipt and settles: the counting reader sees each call.
+      const control = holding();
+      expect(withBigints(await pairing.status(ref(USDC, USDC), control.reader))).toEqual(HS.MV12.expectSettled);
+      expect(control.calls).toEqual(["receipt", "blockNumber"]);
+      for (const [shape, asset, address] of shapes) {
+        const { reader, calls } = holding();
+        expect([pairing.id, shape, await pairing.status(ref(asset, address), reader), calls])
+          .toEqual([pairing.id, shape, { state: "pending", why: "unreadable" }, []]);
+      }
+    }
   });
 
   it("MV12: the payer's Transfer to the receive-policy guard is failed receive-policy-blocked, never the payment", async () => {
