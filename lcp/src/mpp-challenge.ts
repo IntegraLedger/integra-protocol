@@ -534,13 +534,16 @@ function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }):
   if (!isAddress(d["escrowContract"])) return refusal("mpp/escrow-malformed");
   if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"])) return refusal("mpp/request-malformed");
-  if (d["permit2Contract"] !== undefined && !isAddress(d["permit2Contract"])) return refusal("mpp/request-malformed");
   const types = d["credentialTypes"];
   if (types !== undefined) {
     if (!Array.isArray(types) || types.length === 0) return refusal("mpp/credential-types");
     if (!types.every((t) => t === "permit2" || t === "authorization" || t === "hash")) {
       return refusal("mpp/credential-types");
     }
+  }
+  // The Permit2 opening signs `permit2Contract` as the verifying contract; an absent `credentialTypes` is `["hash"]`.
+  if (Array.isArray(types) && types.includes("permit2") && d["permit2Contract"] !== undefined && !isAddress(d["permit2Contract"])) {
+    return refusal("mpp/request-malformed");
   }
   return ["mpp/session/evm"];
 }

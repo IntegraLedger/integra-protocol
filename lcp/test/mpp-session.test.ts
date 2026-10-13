@@ -250,6 +250,20 @@ describe("mpp-session-evm.json", () => {
     expect(await sessionEvm.bound(planted)).toEqual(E.plant3.expect);
   });
 
+  // `permit2Contract` is the verifying contract the Permit2 opening signs (draft-evm-session-00 L942); an absent
+  // `credentialTypes` defaults to `["hash"]` (L948). Its form is checked where `credentialTypes` lists `permit2`.
+  it("pairingsOf checks permit2Contract only where credentialTypes lists permit2", () => {
+    const r = JSON.parse(E.fixed.request);
+    const { credentialTypes: _listed, ...unlisted } = r.methodDetails;
+    const withDetails = (md: object) => challenge("evm", "session", JSON.stringify({ ...r, methodDetails: { ...unlisted, ...md } }));
+    expect(pairingsOf(withDetails({ permit2Contract: "nope" }))).toEqual(["mpp/session/evm"]);
+    expect(pairingsOf(withDetails({ credentialTypes: ["hash", "authorization"], permit2Contract: "nope" }))).toEqual(["mpp/session/evm"]);
+    expect(pairingsOf(withDetails({ credentialTypes: ["hash", "permit2"], permit2Contract: "nope" }))).toEqual({
+      refused: true,
+      code: "mpp/request-malformed",
+    });
+  });
+
   it("the record", () => {
     expect(sessionEvm.pattern).toEqual(Object.fromEntries(Object.entries(E.pattern).filter(([k]) => k !== "claims")));
     expect(sessionEvm.claims).toBe(E.pattern.claims);
