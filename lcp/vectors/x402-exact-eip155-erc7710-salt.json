@@ -21,7 +21,7 @@
   "resource": {
    "url": "https://api.seller.example/v1/quote"
   },
-  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
   "leaf": {
    "delegate": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
@@ -262,7 +262,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -333,7 +333,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",

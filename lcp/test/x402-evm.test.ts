@@ -58,7 +58,8 @@ const REQUIRED: PaymentRequired = { x402Version: 2, resource: RESOURCE, accepts:
 // eth-account 0.14.0 (Python 3.12.3): Account.sign_typed_data over V1's typed data.
 const SIGNATURE =
   "0xd51cabca403ce9ee24ab0442df41928ef61c1c117bc211a2cac7c5b11c0084832e0cf7beda17ce863cec05d47b776dc24cecf0255b48b274cdf60f05129fe5771b" as const;
-const LINK = "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+// Where the seller serves the ATR: a path from a random token, not from H (x402-exact-eip155-eip3009.json's fixed.link).
+const LINK = "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f";
 
 const refused = (code: string) => ({ refused: true, code });
 // viem's parameter types need literal field types; the typed data is passed to it as data.
@@ -287,12 +288,12 @@ describe("V5 advertise and read", () => {
   it("read refuses an http link as link-not-https, and a malformed context as legal-context-malformed", () => {
     const doc = exactEip3009.advertise({ x402Version: 2, resource: RESOURCE, accepts: [O] }, H, LINK, O) as PaymentRequired;
     const http = structuredClone(doc);
-    (http.extensions!["legalContext"]!.info as Record<string, unknown>)["legalContextUrl"] = "http://atr.seller.example/" + H;
+    (http.extensions!["legalContext"]!.info as Record<string, unknown>)["legalContextUrl"] = LINK.replace("https:", "http:");
     expect(exactEip3009.read(http)).toEqual(refused("x402/link-not-https"));
     const snake = structuredClone(doc);
     const info = snake.extensions!["legalContext"]!.info as Record<string, unknown>;
     delete info["legalContextUrl"];
-    info["legal_context_url"] = "http://atr.seller.example/" + H;
+    info["legal_context_url"] = LINK.replace("https:", "http:");
     expect(exactEip3009.read(snake)).toEqual(refused("x402/link-not-https"));
     const bad = structuredClone(doc);
     (bad.extensions!["legalContext"]!.info as Record<string, unknown>)["value"] = "0x1234";
