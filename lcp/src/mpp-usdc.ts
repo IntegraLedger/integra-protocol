@@ -26,6 +26,7 @@ import {
   credentialOf,
   deepFreeze,
   echoedFor,
+  expiresOf,
   isHexBytes,
   isObject,
   pairingsOf,
@@ -195,7 +196,9 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
   const nonce = usdcNonce(choice.challenge.id, choice.challenge.realm, requestHash);
   if (isRefusal(nonce)) return nonce;
   const chainId = profileOf(o)["chainId"] as number;
-  const validBefore = BigInt(o.expires);
+  const expires = expiresOf(o);
+  if (isRefusal(expires)) return expires;
+  const validBefore = BigInt(expires);
   const typedData = eip3009TypedData({
     network: `eip155:${chainId}`,
     asset: str(o.request["currency"]) as Hex,

@@ -413,14 +413,44 @@ export interface Checked {
   method: MppMethod;
   request: { [k: string]: Json };
   details: { [k: string]: Json };
-  /** unix seconds of `expires`. */
-  expires: number;
+  /** unix seconds of `expires`; undefined when the challenge carries none, and then `pairings` holds none that needs it. */
+  expires: number | undefined;
   pairings: readonly MppPairing[];
 }
 
 /**
+ * The pairings that need the challenge's `expires`: each one's `build` writes it into what the payer signs (the
+ * EIP-3009 `validBefore`, the Permit2 `deadline`, the Tempo transaction's `validBefore`, the Stellar entry's expiration
+ * ledger, the session opening's deadline), or, on NEAR Intents and the XRP Ledger charge, the method's draft requires
+ * it. Without `expires` a challenge offers none of them.
+ */
+const NEEDS_EXPIRES: ReadonlySet<MppPairing> = new Set<MppPairing>([
+  "mpp/charge/evm/authorization",
+  "mpp/charge/evm/permit2",
+  "mpp/charge/tempo/memo",
+  "mpp/charge/tempo/push",
+  "mpp/charge/usdc/evm",
+  "mpp/charge/stellar",
+  "mpp/charge/nearintents",
+  "mpp/charge/xrpl",
+  "mpp/session/evm",
+  "mpp/session/tempo",
+]);
+
+/**
+ * Unix seconds of a checked challenge's `expires`, for a `build` whose pairing writes it; none is
+ * `mpp/expires-required`, as `pairingsOf` gives it.
+ */
+export function expiresOf(checked: Checked): number | Refusal {
+  return checked.expires ?? refusal("mpp/expires-required");
+}
+
+/**
  * Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. A
- * Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money.
+ * Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money. An
+ * `expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
+ * whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
+ * it, are left out, and a challenge left with no pairing is `mpp/expires-required`.
  */
 export function pairingsOf(c: MppChallenge): readonly MppPairing[] | Refusal {
   const checked = checkChallenge(c, false);
@@ -447,7 +477,7 @@ export function checkChallenge(c: unknown, placed: boolean): Checked | Refusal {
   const check = Object.hasOwn(PAIRING_CHECKS, key) ? PAIRING_CHECKS[key] : undefined;
   if (check === undefined) return refusal("mpp/not-this-pairing");
   const expires = c.expires === undefined ? undefined : unixOf(c.expires);
-  if (expires === undefined) return refusal("mpp/expires-required");
+  if (c.expires !== undefined && expires === undefined) return refusal("mpp/expires-required");
   const request = decodeObject(c.request);
   if (request === undefined) return refusal("mpp/request-malformed");
   if (c.opaque !== undefined) {
@@ -458,8 +488,10 @@ export function checkChallenge(c: unknown, placed: boolean): Checked | Refusal {
   const md = request["methodDetails"];
   const details = md === undefined ? {} : isObject(md) ? (md as { [k: string]: Json }) : undefined;
   if (details === undefined) return refusal("mpp/request-malformed");
-  const pairings = check(request, details, c);
-  if (isRefusal(pairings)) return pairings;
+  const named = check(request, details, c);
+  if (isRefusal(named)) return named;
+  const pairings = expires === undefined ? named.filter((p) => !NEEDS_EXPIRES.has(p)) : named;
+  if (pairings.length === 0 && named.length > 0) return refusal("mpp/expires-required");
   return { challenge: c, request, details, expires, intent: c.intent as MppIntent, method: c.method as MppMethod, pairings };
 }
 
@@ -475,7 +507,7 @@ export type PairingCheck = (
  * (absent: `transaction` and `hash`). `splits`, when present, holds 1 to 10 entries, each an address `recipient` and a
  * decimal `amount`, zero included, and leaves only `permit2`.
  */
-function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {
+function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c: MppChallenge): readonly MppPairing[] | Refusal {
   if (!isPositiveInt(d["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
   }
@@ -500,8 +532,9 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): 
     listed = listed.filter((p) => p === "mpp/charge/evm/permit2");
   }
   if (listed.length === 0) return refusal("mpp/credential-types");
-  // The Permit2 build writes `permit2Address` as the verifying contract and `externalId` into the signed witness.
-  if (listed.includes("mpp/charge/evm/permit2")) {
+  // The Permit2 build writes `permit2Address` as the verifying contract and `externalId` into the signed witness;
+  // without `expires` no Permit2 pairing is offered.
+  if (listed.includes("mpp/charge/evm/permit2") && c.expires !== undefined) {
     if (d["permit2Address"] !== undefined && !isAddress(d["permit2Address"])) return refusal("mpp/request-malformed");
     if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
   }

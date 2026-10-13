@@ -125,7 +125,7 @@
    "expect": "mpp/channel-named"
   },
   {
-   "case": "no expires",
+   "case": "hedera with an expires that is not an RFC 3339 date-time",
    "method": "hedera",
    "request": {
     "amount": "25",
@@ -138,7 +138,7 @@
     "suggestedDeposit": "10000000",
     "unitType": "llm_token"
    },
-   "noExpires": true,
+   "expires": "2026-09-21",
    "expect": "mpp/expires-required"
   },
   {

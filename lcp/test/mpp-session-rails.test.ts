@@ -62,8 +62,19 @@ describe("SS1: the opening challenges", () => {
     }
     for (const row of V.SS1refusals) {
       const c: MppChallenge = { ...V.SS1[row.method].challenge, request: b64u(canonicalJson(row.request) as string) };
-      if (row.noExpires) delete c.expires;
+      if (row.expires !== undefined) c.expires = row.expires;
       expect(pairingsOf(c), row.case).toEqual(refused(row.expect));
+    }
+  });
+
+  // The core draft makes `expires` a SHOULD for servers (draft-httpauth-payment-01 L324), and none of these sessions'
+  // builds writes it into what the payer signs, so a challenge without it names the pairing; one that is not an RFC
+  // 3339 date-time is mpp/expires-required.
+  it("a challenge without expires names its pairing", () => {
+    for (const m of ["hedera", "solana", "xrpl"] as const) {
+      const { expires: _expires, ...unexpiring } = V.SS1[m].challenge as MppChallenge;
+      expect(pairingsOf(unexpiring)).toEqual([`mpp/session/${m}`]);
+      expect(pairingsOf({ ...V.SS1[m].challenge, expires: "tomorrow" })).toEqual(refused("mpp/expires-required"));
     }
   });
 });

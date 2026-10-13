@@ -489,7 +489,8 @@ function networkRefused(details: { [k: string]: Json }, b: Bolt11): Refusal | nu
 /**
  * The checks of what the seller's node wrote: the invoice decodes, its one `h` is `h`, it has no `d`, the request has
  * no `description`, its payment hash is the request's, its currency is the one the challenge's `network` names, when it
- * names one (a network MPP Lightning defines), and `expires` is no later than the invoice's own expiry.
+ * names one (a network MPP Lightning defines), and `expires`, when the challenge carries one, is no later than the
+ * invoice's own expiry.
  */
 function lnChallengeChecks(pairing: LnMppPairing, c: MppChallenge, h: AtrHash, placed: boolean): Bolt11 | Refusal {
   const checked = checkChallenge(c, placed);
@@ -506,7 +507,7 @@ function lnChallengeChecks(pairing: LnMppPairing, c: MppChallenge, h: AtrHash, p
   if (paymentHash !== hex(b.paymentHash)) return refusal("ln/payment-hash-mismatch");
   const network = networkRefused(checked.details, b);
   if (network !== null) return network;
-  if (checked.expires > b.timestamp + b.expiry) return refusal("ln/expires-after-invoice");
+  if (checked.expires !== undefined && checked.expires > b.timestamp + b.expiry) return refusal("ln/expires-after-invoice");
   return b;
 }
 

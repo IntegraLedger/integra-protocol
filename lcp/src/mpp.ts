@@ -39,6 +39,7 @@ import {
   didPkhAddress,
   echoedFor,
   echoedOf,
+  expiresOf,
   isChallengeShape,
   isHexBytes,
   isObject,
@@ -365,7 +366,9 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
   }
   const chainId = chainOf(o);
   const nonce = challengeHash(choice.challenge.id, choice.challenge.realm);
-  const validBefore = BigInt(o.expires);
+  const expires = expiresOf(o);
+  if (isRefusal(expires)) return expires;
+  const validBefore = BigInt(expires);
   const typedData = eip3009TypedData({
     network: `eip155:${chainId}`,
     asset: str(o.request["currency"]) as Hex,
@@ -473,7 +476,9 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
   if (primary <= 0n) return refusal("mpp/input-malformed");
   const challengeHashValue = challengeHash(choice.challenge.id, choice.challenge.realm);
   const externalId = str(o.request["externalId"]);
-  const deadline = BigInt(o.expires);
+  const expires = expiresOf(o);
+  if (isRefusal(expires)) return expires;
+  const deadline = BigInt(expires);
   const nonce = BigInt(challengeHashValue);
   const transfers = [{ to: recipient, amount: primary }, ...(splits ?? [])];
   const permitted = transfers.map((t) => ({ token: currency, amount: t.amount }));
@@ -660,6 +665,8 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
     const o = offerFor(choice, h, pairing);
     if (isRefusal(o)) return o;
+    const validBefore = expiresOf(o);
+    if (isRefusal(validBefore)) return validBefore;
     const clientId: unknown = choice.clientId;
     if (clientId !== undefined && (typeof clientId !== "string" || !clientId.isWellFormed())) return refusal("mpp/input-malformed");
     const chainId = chainOf(o);
@@ -674,7 +681,7 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
         kind: "tempo-call",
         chainId,
         call: { to: str(o.request["currency"]) as Hex, data },
-        validBefore: o.expires,
+        validBefore,
         broadcast,
       },
       complete(signedTxOrHash: Hex): MppCredential | Refusal {

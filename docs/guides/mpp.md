@@ -40,6 +40,12 @@ equal `option` gets the id derived from H and an `opaque` holding the seller's o
 derives from that hash. `pairingsOf(challenge)` names the pairings a challenge offers, and `tie(challenges)` is the
 ATR's binding slot: every challenge's bound members, as issued.
 
+A challenge's `expires`, when present, is an RFC 3339 date-time, else `mpp/expires-required`. MPP's core makes it a
+SHOULD for servers. A pairing needs it where its `build` writes it into what the payer signs: the EVM `authorization`
+and `permit2` charges, Tempo's pull and push charges, the `usdc` EVM charge, the Stellar charge and the EVM and Tempo
+sessions; the NEAR Intents and XRP Ledger charge drafts require it too. Without `expires` those pairings are left out of
+what `pairingsOf`, `advertise` and `build` offer, and a challenge left with no pairing is `mpp/expires-required`.
+
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
 import { challengeH, pairingsOf, place, read, type MppChallenge } from "@integraledger/lcp/mpp";

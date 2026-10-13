@@ -24,6 +24,7 @@ import {
   credentialOf,
   deepFreeze,
   echoedFor,
+  expiresOf,
   isObject,
   placeCarrier,
   pushedField,
@@ -209,7 +210,9 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   if (!Number.isSafeInteger(choice.currentLedger) || choice.currentLedger < 0 || !Number.isSafeInteger(choice.now)) {
     return refusal("stellar/tx-malformed");
   }
-  const expiration = choice.currentLedger + Math.max(0, Math.ceil((checked.expires - choice.now) / 5));
+  const expires = expiresOf(checked);
+  if (isRefusal(expires)) return expires;
+  const expiration = choice.currentLedger + Math.max(0, Math.ceil((expires - choice.now) / 5));
   const s = signingFor(
     choice.simulatedXdr,
     checked.details["network"] as StellarNetwork,

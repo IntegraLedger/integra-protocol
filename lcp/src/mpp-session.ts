@@ -46,6 +46,7 @@ import {
   deepFreeze,
   didPkhAddress,
   echoedFor,
+  expiresOf,
   isChallengeShape,
   isHexBytes,
   isObject,
@@ -765,7 +766,9 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
   const salt = normalHash(h)!;
   const channelId = evmChannelId({ payer: from, payee: recipient, token: currency, salt, authorizedSigner: signer, escrow, chainId });
   if (typeof channelId !== "string") return channelId;
-  const deadline = BigInt(o.expires);
+  const expires = expiresOf(o);
+  if (isRefusal(expires)) return expires;
+  const deadline = BigInt(expires);
   const challenge = { ...choice.challenge };
   const source = `did:pkh:eip155:${chainId}:${from}`;
   const voucher = (funded: Hex): VoucherTypedData | Refusal =>
@@ -1192,6 +1195,8 @@ async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
 async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
   const o = offerFor(choice, h, SESSION_TEMPO);
   if (isRefusal(o)) return o;
+  const validBefore = expiresOf(o);
+  if (isRefusal(validBefore)) return validBefore;
   const p = paramsOf(choice.challenge);
   if (isRefusal(p)) return p;
   const deposit = choice.deposit;
@@ -1226,7 +1231,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
     return typeof channelId === "string" ? { channelId, descriptor } : channelId;
   };
   return {
-    funding: { kind: "tempo-call", chainId: p.chainId, call: { to: p.escrow, data }, validBefore: o.expires, broadcast: false },
+    funding: { kind: "tempo-call", chainId: p.chainId, call: { to: p.escrow, data }, validBefore, broadcast: false },
     voucher(signedTx: Hex): VoucherTypedData | Refusal {
       const c = opened(signedTx);
       if (isRefusal(c)) return c;

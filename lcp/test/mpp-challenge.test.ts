@@ -10,6 +10,8 @@ import {
   challengeH,
   challengeHash,
   challengeId,
+  evmAuthorization,
+  evmTransaction,
   issuedDigest,
   network,
   pairingsOf,
@@ -173,6 +175,8 @@ describe("mpp-challenge.json", () => {
     ]);
     expect(pairingsOf(md({ credentialTypes: ["transaction", "permit2"], permit2Address: "nope" }))).toEqual(reqMalformed);
     expect(pairingsOf(md({ credentialTypes: ["permit2"] }, { externalId: 7 }))).toEqual(reqMalformed);
+    const { expires: _unset, ...unexpiring } = md({ credentialTypes: ["transaction", "permit2"], permit2Address: "nope" }, { externalId: 7 });
+    expect(pairingsOf(unexpiring)).toEqual(["mpp/charge/evm/transaction"]);
     const pushOnlyFeePayer = challenge("tempo", "charge", JSON.stringify({ amount: "1", currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { supportedModes: ["push"], feePayer: true } }));
     expect(pairingsOf(pushOnlyFeePayer)).toEqual({ refused: true, code: "mpp/modes-pull-only" });
   });
@@ -557,4 +561,94 @@ describe("problem", () => {
       expect(refused ? [out.code, problem(out.code)] : out).toEqual([code, answer]);
     });
   }
+});
+
+// The core draft makes `expires` a SHOULD for servers (draft-httpauth-payment-01 L324), and the charge intent's
+// "REQUIRED for blockchain methods" is an example of a method elevating it (draft-payment-intent-charge-00 L143-145).
+// A pairing needs it where its build writes it into what the payer signs: the EIP-3009 validBefore, the Permit2
+// deadline, the Tempo transaction's validBefore, the Stellar entry's expiration ledger and the session openings'
+// deadline; and on NEAR Intents, whose draft says `expires` "MUST be set to the 1Click quote deadline"
+// (draft-nearintents-charge-01 L414-415), and on the XRP Ledger charge, whose draft says "The server MUST reject a
+// credential whose challenge carries no `expires`" (draft-xrpl-charge-00 L391-392). Without `expires` those pairings
+// are left out, and a challenge left with none is mpp/expires-required.
+describe("expires: required where a build writes it into what the payer signs", () => {
+  const NEEDS = new Set([
+    "mpp/charge/evm/authorization",
+    "mpp/charge/evm/permit2",
+    "mpp/charge/tempo/memo",
+    "mpp/charge/tempo/push",
+    "mpp/charge/usdc/evm",
+    "mpp/charge/stellar",
+    "mpp/charge/nearintents",
+    "mpp/charge/xrpl",
+    "mpp/session/evm",
+    "mpp/session/tempo",
+  ]);
+  const required = { refused: true, code: "mpp/expires-required" };
+  const files = [
+    "mpp-charge-evm-authorization.json",
+    "mpp-charge-hedera.json",
+    "mpp-charge-lightning.json",
+    "mpp-charge-nearintents.json",
+    "mpp-charge-solana.json",
+    "mpp-charge-stellar.json",
+    "mpp-charge-tempo-memo.json",
+    "mpp-charge-tempo-push.json",
+    "mpp-charge-usdc-evm.json",
+    "mpp-charge-usdc-gateway.json",
+    "mpp-charge-usdc-solana.json",
+    "mpp-charge-usdc-stacks.json",
+    "mpp-charge-xrpl.json",
+    "mpp-session-evm.json",
+    "mpp-session-hedera-solana-xrpl.json",
+    "mpp-session-lightning.json",
+    "mpp-session-tempo.json",
+    "mpp-subscription-tempo.json",
+  ];
+
+  it("each vector file's challenge, without expires, offers its pairings that do not need it", () => {
+    for (const file of files) {
+      const row = (load(file).buyer.rows as { input: { presented?: { challenge?: MppChallenge } } }[]).find(
+        (r) => r.input.presented?.challenge !== undefined,
+      )!;
+      const { id: _id, opaque: _opaque, ...offer } = row.input.presented!.challenge!;
+      const named = pairingsOf(offer) as string[];
+      const kept = named.filter((p) => !NEEDS.has(p));
+      const { expires: _expires, ...unexpiring } = offer;
+      expect([file, pairingsOf(unexpiring)]).toEqual([file, kept.length === 0 ? required : kept]);
+      expect([file, pairingsOf({ ...offer, expires: "tomorrow" })]).toEqual([file, required]);
+    }
+  });
+
+  it("card, Stripe and the EVM transaction and hash charges need none", () => {
+    const issued = (method: string, intent: string, request: unknown) => ({ realm, method, intent, request: b64u(JSON.stringify(request)) });
+    expect(pairingsOf(issued("card", "charge", load("mpp-charge-card.json").M1.request))).toEqual(["mpp/charge/card"]);
+    expect(pairingsOf(issued("stripe", "charge", load("mpp-charge-stripe.json").M2.request))).toEqual(["mpp/charge/stripe"]);
+    expect(pairingsOf(issued("stripe", "subscription", load("mpp-subscription-stripe.json").S1.request))).toEqual([
+      "mpp/subscription/stripe",
+    ]);
+    const { expires: _expires, ...evm } = challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes);
+    expect(pairingsOf(evm)).toEqual(["mpp/charge/evm/transaction", "mpp/charge/evm/hash"]);
+  });
+
+  it("pairingsOf, advertise and build read alike: a pairing that needs expires is left out without it", async () => {
+    const r = JSON.parse(V.fixed.R_E);
+    const mixed = challenge("evm", "charge", JSON.stringify({ ...r, methodDetails: { ...r.methodDetails, credentialTypes: ["authorization", "transaction"] } }));
+    const { expires: _expires, ...offer } = mixed;
+    expect(pairingsOf(offer)).toEqual(["mpp/charge/evm/transaction"]);
+    expect(evmAuthorization.advertise([offer], H, link, offer)).toEqual({ refused: true, code: "mpp/not-this-pairing" });
+    const placed = evmTransaction.advertise([offer], H, link, offer) as (MppChallenge & { id: string })[];
+    expect(placed[0]!.expires).toBeUndefined();
+    const from = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
+    const tokenDomain = { name: "USD Coin", version: "2" };
+    expect(await evmAuthorization.build({ challenge: placed[0]!, from, now: 0, tokenDomain }, H)).toEqual({
+      refused: true,
+      code: "mpp/not-this-pairing",
+    });
+    expect(await evmTransaction.build({ challenge: placed[0]!, from, now: 0 }, H)).toMatchObject({ request: { kind: "evm-call" } });
+    const { expires: _e, ...both } = C_E;
+    expect(place([both], H, link, both)).toEqual(required);
+    const { expires: _placedExpires, ...unexpired } = (place([C_E], H, link, C_E) as (MppChallenge & { id: string })[])[0]!;
+    expect(await evmAuthorization.build({ challenge: unexpired, from, now: 0, tokenDomain }, H)).toEqual(required);
+  });
 });
