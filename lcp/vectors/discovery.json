@@ -298,7 +298,7 @@
   },
   {
    "name": "a duplicated member: the last one is read, as JSON.parse and Python's json read it",
-   "source": "RFC 8259 §4 leaves duplicate names to the receiver; this file fixes the reading for the TypeScript and Python implementations",
+   "source": "RFC 8259 §4 leaves duplicate names to the receiver; this file fixes the reading for the TypeScript implementation",
    "bytes": "{\"terms\":\"http://seller.example/a.md\",\"terms\":\"https://seller.example/b.md\"}",
    "document": {
     "terms": "https://seller.example/b.md"
