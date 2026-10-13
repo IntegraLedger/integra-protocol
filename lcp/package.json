@@ -1,7 +1,7 @@
 {
   "name": "@integraledger/lcp",
   "version": "0.3.0",
-  "description": "Assemble and hash an Agentic Transaction Record (ATR), and carry the hash in x402, MPP, AP2, ACP, UCP, ACK and card payments across chains and rails, and in A2A task metadata.",
+  "description": "Assemble and hash an Agentic Transaction Record (ATR), and carry the hash in the payment, or beside it in an agreement payment, on the x402, MPP, AP2, ACP, UCP, ACK and card pairings this package implements, and in A2A task metadata.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

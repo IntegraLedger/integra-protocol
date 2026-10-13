@@ -11,9 +11,9 @@ shows which exact record the buyer approved, and that approval is the buyer's ac
 not, the pairing's statement of what it proves says so.
 
 [`@integraledger/lcp`](https://github.com/IntegraLedger/integra-protocol/tree/main/lcp) is its reference
-implementation, for TypeScript and JavaScript. It assembles the record, hashes it, and binds the hash into payments on
-x402, MPP, agentic checkouts and card networks, across EVM chains, Solana, Stellar, the XRP Ledger and every other
-rail the [rails guide](./guides/rails.md) lists.
+implementation, for TypeScript and JavaScript. It assembles the record, hashes it, and carries the hash in the
+payment, or beside it in an agreement payment, on the x402, MPP, checkout and card pairings it implements: on EVM
+chains, Solana, Stellar, the XRP Ledger and every other rail the [rails guide](./guides/rails.md) lists.
 
 ## How it works
 

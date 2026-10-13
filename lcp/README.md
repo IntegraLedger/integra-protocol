@@ -1,7 +1,7 @@
 # @integraledger/lcp
 
-Assemble an Agentic Transaction Record, hash its exact bytes, and bind that hash into the payment, on x402, MPP,
-agentic checkouts and card networks, across every chain and rail they settle on.
+Assemble an Agentic Transaction Record, hash its exact bytes, and carry that hash in the payment, or beside it in an
+agreement payment, on the x402, MPP, checkout and card pairings this package implements.
 
 [![npm](https://img.shields.io/npm/v/@integraledger/lcp)](https://www.npmjs.com/package/@integraledger/lcp)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/IntegraLedger/integra-protocol/blob/main/lcp/LICENSE)
