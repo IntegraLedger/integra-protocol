@@ -217,7 +217,8 @@ itself a public proof of H, and makes the full payment only after the URL's rece
   advertising the same H and link. The buyer gates decline a challenge that advertises another H (`BA2`) and a header
   without its pad characters (`BA13`).
 - **Settling**, a paid request answers `202` with `Retry-After`, and the buyer sends the same signed payment again,
-  until the agreement option's `maxTimeoutSeconds` plus 180 seconds have passed (`BA1`, `BA3`).
+  until the agreement option's `maxTimeoutSeconds` plus 180 seconds have passed (`BA1`, `BA3`). The buyer gates decline
+  an unpaid request answered `202` as `agreement-pending`, and sign nothing (`BA14`).
 - **Recorded**, a paid request answers `200` with the receipt
   `{"atrHash": H, "agreed": true, "network": …, "transaction": …}`. The buyer gates require all four members: `atrHash`
   naming the same H (`BA4`), `agreed` true, and `network` and `transaction` strings.

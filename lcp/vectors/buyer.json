@@ -60,7 +60,7 @@
   "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "now": 1790000000,
   "agreement": {
-   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says; the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.57.4 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60.",
+   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says (BA14's first answer, to the unpaid request, is 202); the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.57.4 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60.",
    "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
    "option": {
     "scheme": "exact",
@@ -976,6 +976,26 @@
     "paidRequests": 0
    },
    "note": "x402's HTTP transport carries PAYMENT-REQUIRED as the base64-encoded PaymentRequired (x402-foundation/x402 specs/transports-v2/http.md at f8f83309, lines 12 and 168), and RFC 4648 section 3.2 has implementations include the pad characters unless the referring specification explicitly states otherwise, which x402 does not. requiredUnpadded is therefore not base64: the 402 carries no readable PAYMENT-REQUIRED, and nothing is signed or paid. Python 3.12.3 base64.b64decode(validate=True) refuses it (Incorrect padding) and, with the two pad characters restored, decodes it to required. BA8 is the same exchange with the padded header, which the gate reads and asks approval for."
+  },
+  {
+   "name": "BA14",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 202,
+      "retryAfter": "2"
+     }
+    ],
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "agreement-pending",
+    "signCalls": 0,
+    "agreementFetches": 1,
+    "paidRequests": 0
+   },
+   "note": "The agreement URL answers the gate's unpaid request 202: an agreement payment for this ATR is settling. The gate declines agreement-pending after that one request, without waiting for Retry-After, and signs, pays and asks approval for nothing. A later call needs no approval: once the agreement payment is recorded, the agreement URL answers the unpaid request 200 with the receipt."
   },
   {
    "name": "BE1",

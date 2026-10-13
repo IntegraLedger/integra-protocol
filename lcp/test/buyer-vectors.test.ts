@@ -96,6 +96,27 @@ describe("buyer.json BA12: an offer naming no agreement URL, for a pairing whose
   });
 });
 
+// docs/concepts/buyer-gate.md: an agreement URL that answers the unpaid request 202 has an agreement payment for this
+// ATR settling; the gate declines agreement-pending after that one request, signing nothing and asking no approval.
+describe("buyer.json BA14: an unpaid request answered 202 is agreement-pending, with nothing signed", () => {
+  it("the agreement URL answers the one unpaid request 202, and no approval is given", () => {
+    const r = row("BA14");
+    expect(r.input.doc).toBe("as BA1");
+    expect(r.input.agreement).toEqual([{ status: 202, retryAfter: "2" }]);
+    expect(r.input.approve).toBeUndefined();
+    expect(r.input.agreement.some((s: { paymentRequired?: string }) => s.paymentRequired !== undefined)).toBe(false);
+  });
+
+  it("the gate declines agreement-pending after one request, with no signer call and nothing paid", () => {
+    expect(row("BA14").expect).toEqual({ decline: "agreement-pending", signCalls: 0, agreementFetches: 1, paidRequests: 0 });
+  });
+
+  it("the BA rows run BA1 to BA14 in order", () => {
+    const names = B.rows.map((r: { name: string }) => r.name).filter((n: string) => /^BA[0-9]+$/.test(n));
+    expect(names).toEqual(Array.from({ length: 14 }, (_, i) => `BA${i + 1}`));
+  });
+});
+
 describe("buyer.json BE1: the served bodies decode to A under the coding each case names", () => {
   const A = fromHex(B.fixed.A);
   const C = fromHex(B.fixed.C);

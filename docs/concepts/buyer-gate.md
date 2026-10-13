@@ -86,7 +86,7 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 | `signer-failed` | The signer rejected. |
 | `no-payable-option` | No option is payable by the buyer's accounts. Nothing is fetched. |
 | `pairing-not-supported` | The pairing id is not one the gate implements. |
-| `agreement-pending` | An agreement payment was made and its receipt did not arrive in time; the full payment is not signed. Never sign a second agreement payment. |
+| `agreement-pending` | An agreement payment for this ATR is settling, and the full payment is not signed: the gate made the agreement payment and its receipt did not arrive in time (`BA3`), or the agreement URL answered the unpaid request `202` (`BA14`), and nothing is signed. After that unpaid `202`, call again later without approval: once the agreement payment is recorded, the agreement URL answers its receipt. Never sign a second agreement payment. |
 | `agreement-failed` | The agreement's receipt names another ATR's hash, or an agreement answer is in a content coding other than `identity`; the full payment is not signed. |
 | `agreement-not-offered` | The chosen pairing's payment is not a public proof of H (`pattern.publicProof` is false) and the offer names no agreement URL. The link is fetched and compared first; nothing is signed. |
 
@@ -99,7 +99,8 @@ is itself a public proof of H (`pattern.publicProof`), the buyer does not pay th
 
 The agreement payment is a payment like any other, so the buyer's agent approves it before anything is signed:
 
-1. **Fetch** the agreement URL's `402` and check that it advertises the same H.
+1. **Fetch** the agreement URL's `402` and check that it advertises the same H. A `202` to this unpaid request means an
+   agreement payment for this ATR is settling: the gate declines `agreement-pending` and signs nothing (`BA14`).
 2. **Choose** its option with the main payment's rule: the options in order, the first the signer can pay whose
    pairing's payment is itself a public proof of H.
 3. **Hand the agent** that option's amount, token (`asset`), payee (`payTo`) and network, and sign only once it
@@ -107,7 +108,7 @@ The agreement payment is a payment like any other, so the buyer's agent approves
 4. **Pay and wait** for the `200` receipt. The exchange is bounded by the chosen option's `maxTimeoutSeconds` plus
    180 seconds; `maxTimeoutSeconds` is a JSON number with an integral value, so `60.0` is `60`.
 
-The buyer vector rows `BA1` to `BA13` fix this exchange: its order, the approval and the bounds.
+The buyer vector rows `BA1` to `BA14` fix this exchange: its order, the approval and the bounds.
 
 ## What the gate checks, and what it does not
 

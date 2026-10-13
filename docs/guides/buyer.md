@@ -174,7 +174,9 @@ Some pairings' payments carry H in nothing public: their `pattern.publicProof` i
 `https` URL, whenever the challenge carries one. Pay it only when the chosen pairing's `pattern.publicProof` is false,
 and pay it first, with a payment that carries H publicly. The agreement payment is approved like any other: hand the
 agent its amount, token, payee and network, and sign it only once the agent approves. Pay the full payment only after
-the agreement's `200` receipt names the same H. See [the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
+the agreement's `200` receipt names the same H. Where the agreement URL answers the unpaid request `202`, an agreement
+payment for this ATR is settling: sign nothing, and call again later without approval. See
+[the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
 
 ## Channels and sessions
 
