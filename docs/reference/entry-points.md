@@ -488,7 +488,7 @@ import { pairingOf, uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 
 **Values (2):** `pairingOf`, `uptoSvm`.
 
-**Types (3):** `UptoSvmChoice`, `UptoSvmPayload`, `UptoSvmPaymentPayload`.
+**Types (2):** `UptoSvmChoice`, `UptoSvmPayload`.
 
 ## `@integraledger/lcp/xrpl`
 

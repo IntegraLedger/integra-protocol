@@ -11,9 +11,9 @@ import {
   isWritableRole,
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
-import { hash, type AtrHash } from "../src/index.js";
+import { hash, type AtrHash, type Refusal } from "../src/index.js";
 import { channelPda, openInstructionData, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
-import { pairingOf, uptoSvm, type UptoSvmPaymentPayload } from "../src/x402-upto-solana.js";
+import { pairingOf, uptoSvm } from "../src/x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
@@ -24,6 +24,8 @@ const hex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
 const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
 const b64 = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "base64"));
 const refused = (code: string) => ({ refused: true, code });
+type Unsigned = Exclude<Awaited<ReturnType<typeof uptoSvm.build>>, Refusal>;
+type Payment = Exclude<ReturnType<Unsigned["complete"]>, Refusal>;
 const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, err, loaded: { writable: [], readonly: [] }, inner: [] });
 
 function readerFor(at: "finalized" | "confirmed" | null | "reader-error", l: SvmLanded, txid: string): SvmReader {
@@ -45,7 +47,7 @@ function readerFor(at: "finalized" | "confirmed" | null | "reader-error", l: Svm
 }
 
 /** A payment carrying `wire` as its opening, with the vector's payload fields. */
-const payment = (wire: string, accepted: PaymentRequirements): UptoSvmPaymentPayload => ({
+const payment = (wire: string, accepted: PaymentRequirements): Payment => ({
   x402Version: 2,
   accepted,
   payload: {

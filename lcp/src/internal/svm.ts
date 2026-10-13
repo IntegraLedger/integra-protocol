@@ -10,6 +10,7 @@ import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
 import { isObject } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import type { UptoSvmPayload } from "../x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 
 /** CAIP-2: `solana:` and 32 base58 characters. */
@@ -24,6 +25,19 @@ export interface SvmPaymentPayload {
   resource?: PaymentRequired["resource"];
   accepted: PaymentRequirements;
   payload: { transaction: string };
+  extensions?: PaymentRequired["extensions"];
+}
+
+/**
+ * A payment on `x402/upto/solana`: the opening's signed fields and its base64 partially signed transaction.
+ * `../x402-upto-solana.ts` returns it from `complete`, and the root names it among the payments `Presented` covers; no
+ * entry point exports it.
+ */
+export interface UptoSvmPaymentPayload {
+  x402Version: 2;
+  resource?: PaymentRequired["resource"];
+  accepted: PaymentRequirements;
+  payload: UptoSvmPayload;
   extensions?: PaymentRequired["extensions"];
 }
 

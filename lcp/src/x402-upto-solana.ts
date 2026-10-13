@@ -22,6 +22,7 @@ import {
   TOKEN,
   TOKEN_2022,
   type SvmRef,
+  type UptoSvmPaymentPayload,
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -60,14 +61,6 @@ export interface UptoSvmPayload {
   authorizedSigner: string;
   /** Base64 of the partially signed `open` transaction. */
   openTransaction: string;
-}
-
-export interface UptoSvmPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: UptoSvmPayload;
-  extensions?: PaymentRequired["extensions"];
 }
 
 export interface UptoSvmChoice {

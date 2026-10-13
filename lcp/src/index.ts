@@ -43,7 +43,7 @@ import type { NearPayment } from "./internal/near.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import type { StarknetPayment } from "./internal/starknet.js";
 import type { SuiPaymentPayload } from "./internal/sui.js";
-import type { SvmPaymentPayload } from "./internal/svm.js";
+import type { SvmPaymentPayload, UptoSvmPaymentPayload } from "./internal/svm.js";
 import type { TronPayment } from "./internal/tron.js";
 import type { TvmPayment } from "./internal/tvm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
@@ -62,7 +62,7 @@ import { batchCloudflare, batchEvm, batchSvm } from "./x402-batch-settlement.js"
 import { exactSvm } from "./x402-exact-solana.js";
 import { exactStellar, type StellarPaymentPayload } from "./x402-exact-stellar.js";
 import { exactXrpl } from "./x402-exact-xrpl.js";
-import { type UptoSvmPaymentPayload, uptoSvm } from "./x402-upto-solana.js";
+import { uptoSvm } from "./x402-upto-solana.js";
 
 /** An x402 pairing of scheme and rail. */
 export type X402Binding =
