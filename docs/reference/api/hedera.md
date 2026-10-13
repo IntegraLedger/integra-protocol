@@ -16,7 +16,7 @@ description: "The exports of @integraledger/lcp/hedera."
 | <a id="property-asset"></a> `asset` | `string` | - |
 | <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | `hederaIdDigest` of the payer. |
 | <a id="property-network"></a> `network` | [`HederaNetwork`](#hederanetwork) | - |
-| <a id="property-settleby"></a> `settleBy` | `number` | Unix seconds: claim time plus `maxTimeoutSeconds`. |
+| <a id="property-settleby"></a> `settleBy` | `number` | Unix seconds: the time `reference` ran plus `maxTimeoutSeconds`. |
 | <a id="property-transaction"></a> `transaction?` | `string` | The facilitator's `SettlementResponse.transaction`, mirror form. |
 
 ***
@@ -143,28 +143,6 @@ The signed `Transaction`, base64.
 
 ***
 
-### HederaVoucherTypedData
-
-The EIP-712 voucher a Hedera session's payer signs: `Voucher(bytes32 channelId,uint128 cumulativeAmount)`.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-domain"></a> `domain` | `object` |
-| `domain.chainId` | `295` \| `296` |
-| `domain.name` | `"Hedera Stream Channel"` |
-| `domain.verifyingContract` | `` `0x${string}` `` |
-| `domain.version` | `"1"` |
-| <a id="property-message"></a> `message` | `object` |
-| `message.channelId` | `` `0x${string}` `` |
-| `message.cumulativeAmount` | `bigint` |
-| <a id="property-primarytype"></a> `primaryType` | `"Voucher"` |
-| <a id="property-types"></a> `types` | `object` |
-| `types.Voucher` | \[\{ `name`: `"channelId"`; `type`: `"bytes32"`; \}, \{ `name`: `"cumulativeAmount"`; `type`: `"uint128"`; \}\] |
-
-***
-
 ### MirrorEntry
 
 The Mirror Node's `Transaction` entry: the fields read here.
@@ -184,28 +162,6 @@ The Mirror Node's `Transaction` entry: the fields read here.
 | <a id="property-transfers"></a> `transfers?` | readonly `object`[] | - |
 
 ## Type Aliases
-
-### ExecutorPayload
-
-> **ExecutorPayload** = `object`
-
-The x402 `transferExecutor` payload.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-authorization"></a> `authorization` | [`Hex`](evm.md#hex) |
-| <a id="property-executor"></a> `executor` | `string` |
-| <a id="property-payer-1"></a> `payer` | `string` |
-
-***
-
-### ExecutorPaymentPayload
-
-> **ExecutorPaymentPayload** = [`X402Payment`](x402.md#x402payment)\<[`ExecutorPayload`](#executorpayload)\>
-
-***
 
 ### HederaCloseRef
 
@@ -243,45 +199,9 @@ A reader of a Hedera network's JSON-RPC relay: an `EvmReader` on a `hedera:` net
 
 ***
 
-### HederaLandedCharge
-
-> **HederaLandedCharge** = [`MppCredential`](mpp.md#mppcredential) & `object`
-
-A Hedera charge credential with what `fetchPresented` read: the network, and for a push the landed memo.
-
-#### Type Declaration
-
-| Name | Type |
-| ------ | ------ |
-| `landed` | `object` |
-| `landed.memo?` | `string` |
-| `landed.network` | [`HederaNetwork`](#hederanetwork) |
-
-***
-
 ### HederaNetwork
 
 > **HederaNetwork** = `"hedera:mainnet"` \| `"hedera:testnet"` \| `"hedera:previewnet"` \| `"hedera:devnet"`
-
-***
-
-### HederaPayload
-
-> **HederaPayload** = `object`
-
-The x402 `exact` payload on Hedera: the partially signed transaction, base64.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-transaction-2"></a> `transaction` | `string` |
-
-***
-
-### HederaPaymentPayload
-
-> **HederaPaymentPayload** = [`X402Payment`](x402.md#x402payment)\<[`HederaPayload`](#hederapayload)\>
 
 ***
 
@@ -304,25 +224,7 @@ The opening's read keys: the reported open transaction and its `ChannelOpened` l
 
 > **HederaStatus** = \{ `consensus`: `string`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"not-this-instrument"` \| `` `result:${string}` ``; \}
 
-***
-
-### MppHederaRequest
-
-> **MppHederaRequest** = `object`
-
-An MPP Hedera charge request as decoded from the challenge's `request`.
-
-#### Index Signature
-
-\[`k`: `string`\]: [`Json`](index.md#json)
-
 ## Variables
-
-### APPROVE\_SELECTOR
-
-> `const` **APPROVE\_SELECTOR**: `"0x095ea7b3"` = `"0x095ea7b3"`
-
-***
 
 ### CHANNEL\_CLOSED\_TOPIC
 
@@ -340,7 +242,7 @@ An MPP Hedera charge request as decoded from the challenge's `request`.
 
 ### chargeHedera
 
-> `const` **chargeHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`credentialChallenge`, `request`, `c`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `carrier`: `"challenge"`; `claims`: `boolean`; `fetchPresented`: (`input`, `reader`, `defaultNetwork?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaLandedCharge`](#hederalandedcharge)\>; `id`: `"mpp/charge/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `network`: (`request`, `defaultNetwork?`) => [`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork); `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}; \}; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`MppChallenge`](mpp.md#mppchallenge); \}\>
+> `const` **chargeHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`credentialChallenge`, `request`, `c`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `carrier`: `"challenge"`; `claims`: `boolean`; `fetchPresented`: (`input`, `reader`, `defaultNetwork?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `HederaLandedCharge`\>; `id`: `"mpp/charge/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `network`: (`request`, `defaultNetwork?`) => [`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork); `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}; \}; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`MppChallenge`](mpp.md#mppchallenge); \}\>
 
 ***
 
@@ -360,42 +262,9 @@ An MPP Hedera charge request as decoded from the challenge's `request`.
 
 ### exactHederaExecutor
 
-> `const` **exactHederaExecutor**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `amount`: `string`; `asset`: `string`; `executors`: readonly `string`[]; `kind`: `"hedera-executor"`; `network`: [`HederaNetwork`](#hederanetwork); `payTo`: `string`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`ExecutorPaymentPayload`](#executorpaymentpayload); \}\>; `claims`: `boolean`; `id`: `"x402/exact/hedera/transfer-executor"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ExecutorRef`](#executorref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
-
-***
-
-### HEDERA\_CHAIN\_IDS
-
-> `const` **HEDERA\_CHAIN\_IDS**: `Readonly`\<`Record`\<`number`, [`HederaNetwork`](#hederanetwork)\>\>
-
-MPP's EIP-155 chain ids for Hedera, mapped to their CAIP-2 networks.
-
-***
-
-### HEDERA\_NETWORKS
-
-> `const` **HEDERA\_NETWORKS**: readonly [`HederaNetwork`](#hederanetwork)[]
+> `const` **exactHederaExecutor**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `amount`: `string`; `asset`: `string`; `executors`: readonly `string`[]; `kind`: `"hedera-executor"`; `network`: [`HederaNetwork`](#hederanetwork); `payTo`: `string`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| `ExecutorPaymentPayload`; \}\>; `claims`: `boolean`; `id`: `"x402/exact/hedera/transfer-executor"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ExecutorRef`](#executorref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ## Functions
-
-### approveCalldata()
-
-> **approveCalldata**(`spender`, `amount`): `` `0x${string}` ``
-
-`approve(spender, amount)` calldata.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `spender` | `` `0x${string}` `` |
-| `amount` | `bigint` |
-
-#### Returns
-
-`` `0x${string}` ``
-
-***
 
 ### decodeHederaTx()
 
@@ -462,24 +331,6 @@ when an address is not `0x` and 40 hex digits, the salt is not a 32-byte hash, o
 
 ***
 
-### hederaChargeRequest()
-
-> **hederaChargeRequest**(`c`): `true` \| [`Refusal`](index.md#refusal)
-
-The Hedera request checks a charge challenge must pass before it is placed.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `c` | [`MppChallenge`](mpp.md#mppchallenge) |
-
-#### Returns
-
-`true` \| [`Refusal`](index.md#refusal)
-
-***
-
 ### hederaIdDigest()
 
 > **hederaIdDigest**(`payer`): `Promise`\<`` `0x${string}` ``\>
@@ -495,44 +346,6 @@ The core's hash over the ASCII of `payer`: the payer's identity, never shown in 
 #### Returns
 
 `Promise`\<`` `0x${string}` ``\>
-
-***
-
-### hederaNetworkOfChainId()
-
-> **hederaNetworkOfChainId**(`chainId`): [`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork)
-
-The CAIP-2 network of an MPP `methodDetails.chainId`: 295 and 296 only.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `chainId` | `unknown` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork)
-
-***
-
-### hederaPairingOf()
-
-> **hederaPairingOf**(`o`): [`Refusal`](index.md#refusal) \| `"x402/exact/hedera"` \| `"x402/exact/hedera/transfer-executor"` \| `undefined`
-
-The Hedera pairing an option names: `x402/exact/hedera` for `cryptoTransfer` (or no method), the transfer-executor
-pairing for `transferExecutor`; a Hedera option either cannot serve is `hedera/option-malformed`. Undefined for an
-option on another rail.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `o` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| `"x402/exact/hedera"` \| `"x402/exact/hedera/transfer-executor"` \| `undefined`
 
 ***
 
@@ -560,7 +373,7 @@ network, is pending. A ref whose `expectMemo` is not a string is pending `unread
 
 ### hederaVoucher()
 
-> **hederaVoucher**(`c`, `cumulative`): [`HederaVoucherTypedData`](#hederavouchertypeddata)
+> **hederaVoucher**(`c`, `cumulative`): `HederaVoucherTypedData`
 
 The voucher for `cumulative` on a channel, under the escrow's domain. Throws TypeError when the channel id is not a
 32-byte hash, the escrow not `0x` and 40 hex digits, the chain id not 295 or 296, or `cumulative` not a bigint that
@@ -578,29 +391,7 @@ fits a uint128.
 
 #### Returns
 
-[`HederaVoucherTypedData`](#hederavouchertypeddata)
-
-***
-
-### openCalldata()
-
-> **openCalldata**(`payee`, `token`, `deposit`, `salt`, `authorizedSigner`): `` `0x${string}` ``
-
-The escrow's `open(payee, token, deposit, salt, authorizedSigner)` calldata.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `payee` | `` `0x${string}` `` |
-| `token` | `` `0x${string}` `` |
-| `deposit` | `bigint` |
-| `salt` | `` `0x${string}` `` |
-| `authorizedSigner` | `` `0x${string}` `` |
-
-#### Returns
-
-`` `0x${string}` ``
+`HederaVoucherTypedData`
 
 ***
 

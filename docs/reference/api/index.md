@@ -57,28 +57,6 @@ the checks on that carrier.
 
 `unknown`
 
-***
-
-### PushMode
-
-The optional member of a push-mode pairing: the transaction its credential names, or undefined.
-
-#### Methods
-
-##### landedTx()?
-
-> `optional` **landedTx**(`presented`): `string` \| `undefined`
-
-###### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `presented` | `unknown` |
-
-###### Returns
-
-`string` \| `undefined`
-
 ## Type Aliases
 
 ### AtrHash
@@ -91,7 +69,7 @@ The optional member of a push-mode pairing: the transaction its credential names
 
 ### Binding
 
-> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & [`PushMode`](#pushmode) & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
+> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & `PushMode` & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
 
 A pairing of protocol, scheme and rail.
 
