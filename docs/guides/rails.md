@@ -322,9 +322,9 @@ rides in the challenge, and each pairing's record says what its payment shows. O
 carries H either. On Lightning the invoice carries H, but the invoice and its preimage are held by the parties, and no
 public ledger shows them.
 
-For these pairings the seller can advertise an [agreement URL](../concepts/buyer-gate.md#the-agreement-url): the buyer
-first pays that URL, whose payment is a public proof of H, and then the full payment. This example lists the x402 and
-MPP pairings it applies to:
+For these pairings the seller advertises an [agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the
+link, and the buyer gate declines such an offer without one: the buyer first pays that URL, whose payment is a public
+proof of H, and then the full payment. This example lists the x402 and MPP pairings it applies to:
 
 ```ts
 import { BINDINGS } from "@integraledger/lcp";

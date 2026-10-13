@@ -90,10 +90,10 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 
 ## The agreement URL
 
-Where a pairing's payment carries H in nothing public, the seller may advertise an **agreement URL**
-(`legalContextAgreementUrl`) beside the link. The buyer first pays that URL, whose payment carries H publicly, and
-pays the full payment only after its `200` receipt names the same H. Where the chosen pairing's payment is itself a
-public proof of H (`pattern.publicProof`), the buyer does not pay the agreement URL.
+Where the pairing's `publicProof` is false, the seller advertises an **agreement URL** (`legalContextAgreementUrl`)
+beside the link; the buyer gate declines such an offer without one. The buyer first pays that URL, whose payment carries
+H publicly, and pays the full payment only after its `200` receipt names the same H. Where the chosen pairing's payment
+is itself a public proof of H (`pattern.publicProof`), the buyer does not pay the agreement URL.
 
 The agreement payment is a payment like any other, so the buyer's agent approves it before anything is signed:
 

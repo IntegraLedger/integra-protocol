@@ -27,10 +27,10 @@ The "Buyer signs H" column is each pairing's `pattern.buyerSigns`. The
 states about what a payment through it proves, including which signatures this package verifies and which it leaves
 to the network or the provider.
 
-Where the buyer's approval does not sign H, the seller may advertise an
-[agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the link. Every checkout pairing's `advertise`
-takes it as its last argument and writes it where the protocol keeps the link, and its `read` returns it as
-`agreement`.
+Where the pairing's `publicProof` is false, the seller advertises an
+[agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the link; the buyer gate declines such an offer
+without one. Every checkout pairing's `advertise` takes it as its last argument and writes it where the protocol keeps
+the link, and its `read` returns it as `agreement`.
 
 ## ACP
 
