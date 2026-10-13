@@ -1,0 +1,41 @@
+name: Bug report
+description: A function of @integraledger/lcp returns something its documentation does not state.
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        A vulnerability is reported privately, never here: see
+        [SECURITY.md](https://github.com/IntegraLedger/integra-protocol/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: The version of @integraledger/lcp, as `npm ls @integraledger/lcp` prints it.
+    validations:
+      required: true
+  - type: input
+    id: entry-point
+    attributes:
+      label: Entry point and function
+      description: For example `@integraledger/lcp/x402`, `exactEip3009.bound`.
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: The smallest input that shows it
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and the documentation that states it
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What the package returned
+    validations:
+      required: true
