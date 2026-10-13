@@ -332,8 +332,9 @@ calls, so a v1 opening is refused (`tempo/open-not-found`).
 
 On some pairings the settlement leaves no public record that commits to H: `pattern.publicProof` is false. H still
 rides in the challenge, and each pairing's record says what its payment shows. On most of them nothing the buyer signs
-carries H either. On Lightning the invoice carries H, but the invoice and its preimage are held by the parties, and no
-public ledger shows them.
+carries H either. On `x402/exact/lnbtc` and the MPP Lightning pairings the invoice carries H, and on
+`x402/exact/lnbtc/invoice-named` the ATR names the invoice instead; either way the invoice and its preimage are held by
+the parties, and no public ledger shows them.
 
 For these pairings the seller advertises an [agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the
 link, and the buyer gate declines such an offer without one: the buyer first pays that URL, whose payment is a public
