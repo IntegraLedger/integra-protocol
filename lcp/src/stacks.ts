@@ -60,8 +60,9 @@ export interface StacksReader {
 }
 
 /**
- * The read keys of a Stacks payment: its network, the token contract, the origin and its nonce as a decimal string,
- * and the transaction id (absent for a sponsored transaction, whose id is fixed only by the sponsor's signature).
+ * The read keys of a Stacks payment: its network, the contract the transaction calls, the origin and its nonce as a
+ * decimal string, and the transaction id (absent for a sponsored transaction, whose id is fixed only by the sponsor's
+ * signature).
  */
 export interface StacksRef {
   network: StacksNetwork;
