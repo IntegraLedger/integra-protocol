@@ -4,6 +4,7 @@
  */
 import type { AtrHash, Json } from "./core.js";
 import {
+  hasPeer,
   isAccount,
   muxedFor,
   muxedId,
@@ -238,7 +239,10 @@ function unplaced(option: MppChallenge): MppChallenge {
   return withoutCarrier(option, unmux);
 }
 
-/** The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. */
+/**
+ * The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. Without
+ * @stellar/stellar-sdk the recipient cannot be placed: `stellar/peer-missing`.
+ */
 function advertise(
   doc: readonly MppChallenge[],
   h: AtrHash,
@@ -252,6 +256,7 @@ function advertise(
     link,
     offer,
     (issued) => {
+      if (!hasPeer()) return refusal("stellar/peer-missing");
       if (unmux(issued) !== null) return refusal("stellar/carrier-occupied");
       return isAccount(issued) ? muxedFor(issued, h) : refusal("stellar/option-malformed");
     },

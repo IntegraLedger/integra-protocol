@@ -4,6 +4,7 @@
  */
 import type { AtrHash } from "./core.js";
 import {
+  hasPeer,
   isAccount,
   isContract,
   isMuxed,
@@ -74,7 +75,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements {
   return m === null ? option : { ...option, payTo: m.base };
 }
 
-/** The challenge's `extensions.legalContext` set, and the chosen option's `payTo` set to `muxedFor(payTo, h)`. */
+/**
+ * The challenge's `extensions.legalContext` set, and the chosen option's `payTo` set to `muxedFor(payTo, h)`. Without
+ * @stellar/stellar-sdk the option cannot be read or placed: `stellar/peer-missing`.
+ */
 function advertise(
   doc: PaymentRequired,
   h: AtrHash,
@@ -82,6 +86,7 @@ function advertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!isAccount(offer.payTo)) return refusal("stellar/carrier-occupied");

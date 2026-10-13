@@ -204,6 +204,11 @@ function need(): typeof StellarBase | null {
   return peer ?? null;
 }
 
+/** True when @stellar/stellar-sdk loaded with this module. */
+export function hasPeer(): boolean {
+  return peer !== undefined;
+}
+
 // ── decoding ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** An `SCAddress` as a strkey, its non-muxed base, and its muxed id when it has one. */
