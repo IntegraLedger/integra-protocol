@@ -19,7 +19,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -350,8 +350,12 @@ function instrumentOf(presented: unknown): { network: AptosNetwork; instrument: 
   return { network, instrument };
 }
 
-/** The option unchanged: nothing of the hash rides in it. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: nothing of the hash rides in it. An option that carries a `refused` member is
+ * `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 
