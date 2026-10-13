@@ -7,21 +7,6 @@ description: "The exports of @integraledger/lcp/near."
 
 ## Interfaces
 
-### NearChoice
-
-#### Properties
-
-| Property | Type | Description |
-| ------ | ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
-| <a id="property-accesskeynonce"></a> `accessKeyNonce` | `bigint` | `view_access_key`'s nonce for the key. |
-| <a id="property-finalheight"></a> `finalHeight` | `bigint` | `block` at finality "final": its height. |
-| <a id="property-payer"></a> `payer` | `string` | - |
-| <a id="property-publickey"></a> `publicKey` | `string` | `ed25519:…` or `secp256k1:…`. |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
-
-***
-
 ### NearOutcome
 
 #### Properties
@@ -107,8 +92,8 @@ added when the facilitator names it.
 | <a id="property-maxblockheight"></a> `maxBlockHeight` | `string` | - |
 | <a id="property-network-1"></a> `network` | [`NearNetwork`](#nearnetwork) | - |
 | <a id="property-nonce"></a> `nonce` | `string` | - |
-| <a id="property-payer-1"></a> `payer` | `string` | - |
-| <a id="property-publickey-1"></a> `publicKey` | `string` | - |
+| <a id="property-payer"></a> `payer` | `string` | - |
+| <a id="property-publickey"></a> `publicKey` | `string` | - |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |
 
 ***
@@ -127,7 +112,7 @@ added when the facilitator names it.
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`NearPayment`](#nearpayment)
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `NearPayment`
 
 Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature.
 
@@ -141,7 +126,7 @@ Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`NearPayment`](#nearpayment)
+[`Refusal`](index.md#refusal) \| `NearPayment`
 
 ## Type Aliases
 
@@ -150,12 +135,6 @@ Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature.
 > **NearNetwork** = `"near:mainnet"` \| `"near:testnet"`
 
 x402's NEAR network identifiers.
-
-***
-
-### NearPayment
-
-> **NearPayment** = [`X402Payment`](x402.md#x402payment)\<\{ `signedDelegateAction`: `string`; \}\>
 
 ***
 
