@@ -221,7 +221,7 @@ describe("x402/exact/casper", () => {
     });
   });
 
-  it("unplaced is the identity", () => {
+  it("unplaced hands a plain option back as the same object", () => {
     expect(exactCasper.unplaced(O)).toBe(O);
   });
 });

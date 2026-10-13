@@ -342,8 +342,12 @@ async function reference(presented: unknown): Promise<CasperRef | Refusal> {
   };
 }
 
-/** The option unchanged: on this pairing the hash rides in the authorization, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: on this pairing the hash rides in the authorization, not in the option. An option that carries
+ * a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 
