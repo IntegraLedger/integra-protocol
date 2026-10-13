@@ -89,7 +89,7 @@ export interface StarknetReader {
   trace(tx: Felt): Promise<StarknetInvocation | null>;
 }
 
-/** The read keys recorded at claim; `transaction` is added when the facilitator names it. */
+/** The read keys `reference` returns; `transaction` is added when the facilitator names it. */
 export interface StarknetRef {
   network: StarknetNetwork;
   transaction?: Felt;

@@ -119,7 +119,7 @@ export interface HederaReader {
   transactions(mirrorId: string): Promise<readonly MirrorEntry[] | null>;
 }
 
-/** The read keys recorded at claim, taken from the signed body. */
+/** The read keys `reference` returns. */
 export interface HederaRef {
   network: HederaNetwork;
   /** Mirror form. */
@@ -716,7 +716,7 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return fromLcpString(s.body.memo) ?? refusal("hedera/memo-not-lcp");
 }
 
-/** The read keys recorded at claim, from the signed body: the mirror-form id, the memo and the end of validity. */
+/** The read keys, from the signed body: the mirror-form id, the memo and the end of validity. */
 async function reference(presented: unknown): Promise<HederaRef | Refusal> {
   const h = await bound(presented);
   if (isRefusal(h)) return h;
@@ -1197,7 +1197,7 @@ async function boundCharge(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys recorded at claim, on the network `fetchPresented` wrote (else the request's `chainId`).
+ * The read keys, on the network `fetchPresented` wrote (else the request's `chainId`).
  * `type="transaction"`: from the signed body. `type="hash"`: the credential's transaction id, the landed memo, and
  * validity to the valid start plus 180 s.
  */

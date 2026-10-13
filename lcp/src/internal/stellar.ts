@@ -102,7 +102,7 @@ export interface StellarReader {
   latestLedger(): Promise<number>;
 }
 
-/** The read keys recorded at claim. */
+/** The read keys `reference` returns. */
 export interface StellarRef {
   network: StellarNetwork;
   transaction?: string;

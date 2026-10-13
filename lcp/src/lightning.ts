@@ -49,7 +49,7 @@ export interface Bolt11 {
   tags: readonly number[];
 }
 
-/** The read keys recorded at claim: the invoice's payment hash as lowercase hex, and when the payment can land. */
+/** The read keys `reference` returns: the invoice's payment hash as lowercase hex, and when the payment can land. */
 export interface LnRef {
   network: string;
   paymentHash: string;

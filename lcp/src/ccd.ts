@@ -50,7 +50,7 @@ export interface CcdReader {
   item(hash: string): Promise<CcdItem | null>;
 }
 
-/** The read keys recorded at claim. */
+/** The read keys `reference` returns. */
 export interface CcdRef {
   network: CcdNetwork;
   transaction?: string;

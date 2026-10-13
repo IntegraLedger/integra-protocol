@@ -72,8 +72,10 @@ export interface NearReader {
   accessKeyNonce(account: string, publicKey: string): Promise<{ nonce: bigint; blockHeight: bigint } | null>;
 }
 
-/** The read keys recorded at claim, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction` is
- * added when the facilitator names it. */
+/**
+ * The read keys `reference` returns, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction`
+ * is added when the facilitator names it.
+ */
 export interface NearRef {
   network: NearNetwork;
   asset: string;

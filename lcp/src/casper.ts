@@ -63,7 +63,7 @@ export interface CasperReader {
   transaction(hash: string): Promise<CasperCall | null>;
 }
 
-/** The read keys recorded at claim. */
+/** The read keys `reference` returns. */
 export interface CasperRef {
   network: CasperNetwork;
   transaction?: string;

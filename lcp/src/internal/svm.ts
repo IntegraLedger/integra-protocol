@@ -128,7 +128,10 @@ export interface SvmNonce {
   value: string;
 }
 
-/** The read keys recorded at claim. */
+/**
+ * The read keys a seller keeps to read the settlement later: what `reference` returns, and `fromSlot`, which the seller
+ * adds.
+ */
 export interface SvmRef {
   network: SolanaNetwork;
   transaction?: string;
@@ -141,7 +144,7 @@ export interface SvmRef {
   blockhash: string;
   /** Present exactly when the message uses a durable nonce. */
   nonce?: SvmNonce;
-  /** The slot read at claim, as a decimal string. */
+  /** The slot the seller read when it kept the reference, as a decimal string. */
   fromSlot: string;
   /**
    * The channel account the transaction creates, for an opening that carries no memo: the search pages this address's
