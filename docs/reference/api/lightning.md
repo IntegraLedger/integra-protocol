@@ -14,7 +14,7 @@ description: "The exports of @integraledger/lcp/lightning."
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-amountmsat"></a> `amountMsat` | `bigint` \| `null` | - |
-| <a id="property-currency"></a> `currency` | `"bcrt"` \| `"tbs"` \| `"tb"` \| `"bc"` | - |
+| <a id="property-currency"></a> `currency` | `"bc"` \| `"tb"` \| `"tbs"` \| `"bcrt"` | - |
 | <a id="property-description"></a> `description` | `string` \| `null` | - |
 | <a id="property-descriptionhash"></a> `descriptionHash` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
 | <a id="property-expiry"></a> `expiry` | `number` | - |

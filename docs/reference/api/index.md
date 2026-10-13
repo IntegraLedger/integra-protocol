@@ -415,25 +415,6 @@ none does.
 
 ***
 
-### pairingsOfPlaced()
-
-> **pairingsOfPlaced**(`c`): readonly [`MppPairing`](mpp.md#mpppairing)[]
-
-The pairings a placed challenge offers: `pairingsOf` over the challenge with its `opaque` removed, so the LCP members
-`place` wrote are not read as an occupied carrier. None when the challenge does not read.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `c` | [`MppChallenge`](mpp.md#mppchallenge) |
-
-#### Returns
-
-readonly [`MppPairing`](mpp.md#mpppairing)[]
-
-***
-
 ### parseJson()
 
 > **parseJson**(`text`): `unknown`

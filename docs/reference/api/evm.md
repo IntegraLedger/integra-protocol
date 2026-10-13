@@ -294,7 +294,7 @@ The read keys for a later settlement read of an EVM payment, and nothing else.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](#pullauthorization) | The signed pull authorization and where the chain records its use; present on every pull pairing that has one. |
+| <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](#pullauthorization) | The signed pull authorization and where the chain records its use, where the pairing's reference records one. |
 | <a id="property-bindinglog"></a> `bindingLog?` | \{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) | The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. |
 | <a id="property-network-1"></a> `network` | `` `eip155:${string}` `` \| `HederaNetwork` | - |
 | <a id="property-search"></a> `search?` | `object` | The log filter that finds the transaction when none is named; absent, only a named transaction is read. |

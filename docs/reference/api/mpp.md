@@ -74,7 +74,8 @@ A challenge's auth-params after quoted-string unescaping. `request` and `opaque`
 
 ### MppChoice
 
-The buyer's inputs to `build`. No check reads them.
+The buyer's inputs to `build`. `build` checks their form and that the chosen challenge's id carries H; it compares no
+deal value.
 
 #### Extended by
 
@@ -154,7 +155,7 @@ The settlement read keys of these pairings.
 | `accessKey.keyId` | `` `0x${string}` `` | - | - |
 | `accessKey.to` | `` `0x${string}` `` | - | - |
 | `accessKey.token` | `` `0x${string}` `` | - | - |
-| <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](evm.md#pullauthorization) | The signed pull authorization and where the chain records its use; present on every pull pairing that has one. | [`EvmRef`](evm.md#evmref).[`authorization`](evm.md#property-authorization) |
+| <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](evm.md#pullauthorization) | The signed pull authorization and where the chain records its use, where the pairing's reference records one. | [`EvmRef`](evm.md#evmref).[`authorization`](evm.md#property-authorization) |
 | <a id="property-bindinglog"></a> `bindingLog?` | \{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) | The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. | [`EvmRef`](evm.md#evmref).[`bindingLog`](evm.md#property-bindinglog) |
 | <a id="property-closes"></a> `closes?` | `object` | The close of an EVM session: a call to `escrow` of one of `EVM_CLOSE_SELECTORS` naming `channel`. | - |
 | `closes.channel` | `` `0x${string}` `` | - | - |
@@ -385,8 +386,8 @@ A request to the buyer's signer for an in-channel payment.
 > `const` **CARRIER**: \{ readonly \[i in MppIntent\]: \{ readonly \[m in MppMethod\]?: readonly string\[\] \| null \} \}
 
 The request member a pairing writes H into, by intent and method; null where no request member carries it. `usdc`
-carries H in a request member only on its Solana profile (`USDC_CARRIER`). A Stellar charge's `recipient` carries H's
-first 8 bytes as its muxed id only: its base account stays a member of what was issued.
+carries H in a request member only on its Solana profile. A Stellar charge's `recipient` carries H's first 8 bytes as
+its muxed id only: its base account stays a member of what was issued.
 
 ***
 
@@ -552,18 +553,6 @@ Every MPP pairing this entry point implements.
 
 > `const` **tempoPush**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `fetchPresented`: (`presented`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LandedCredential`](#landedcredential)\>; `id`: `"mpp/charge/tempo/push"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Json`](index.md#json); \}\>
 
-***
-
-### USDC\_CARRIER
-
-> `const` **USDC\_CARRIER**: `object`
-
-The request member `usdc` writes H into, by `methodDetails.type`; null where no request member carries it.
-
-#### Index Signature
-
-\[`profile`: `string`\]: readonly `string`[] \| `null`
-
 ## Functions
 
 ### attributionMemo()
@@ -713,26 +702,6 @@ keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainI
 
 ***
 
-### gatewayAccount()
-
-> **gatewayAccount**(`network`, `word`): `string` \| `undefined`
-
-CAIP-10 of a TransferSpec `bytes32` account on `network`: on `eip155:*` the last 20 bytes as `0x` lowercase hex, the
-first 12 being zero; on `solana:*` base58 of the 32 bytes. Anything else is undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `network` | `string` |
-| `word` | `unknown` |
-
-#### Returns
-
-`string` \| `undefined`
-
-***
-
 ### issuedDigest()
 
 > **issuedDigest**(`c`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
@@ -800,7 +769,10 @@ it, with that method's default where it names one. A method whose challenge name
 > **pairingsOf**(`c`): [`Refusal`](index.md#refusal) \| readonly [`MppPairing`](#mpppairing)[]
 
 Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. A
-Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money.
+Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money. An
+`expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
+whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
+it, are left out, and a challenge left with no pairing is `mpp/expires-required`.
 
 #### Parameters
 
@@ -811,6 +783,25 @@ Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credenti
 #### Returns
 
 [`Refusal`](index.md#refusal) \| readonly [`MppPairing`](#mpppairing)[]
+
+***
+
+### pairingsOfPlaced()
+
+> **pairingsOfPlaced**(`c`): readonly [`MppPairing`](#mpppairing)[]
+
+The pairings a placed challenge offers: `pairingsOf` over the challenge with its `opaque` removed, so the LCP members
+`place` wrote are not read as an occupied carrier. None when the challenge does not read.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `c` | [`MppChallenge`](#mppchallenge) |
+
+#### Returns
+
+readonly [`MppPairing`](#mpppairing)[]
 
 ***
 
@@ -1080,12 +1071,6 @@ RFC 8785 form of their own parse, else `mpp/request-not-jcs`; they are hashed as
 ### chargeHedera
 
 Re-exports [chargeHedera](hedera.md#chargehedera)
-
-***
-
-### pairingsOfPlaced
-
-Re-exports [pairingsOfPlaced](index.md#pairingsofplaced)
 
 ***
 
