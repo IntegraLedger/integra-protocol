@@ -4,7 +4,7 @@
  * labels, are not read.
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
-import { normalHash } from "./fields.js";
+import { normalHash, notFoundPoint } from "./fields.js";
 import {
   COMPUTE_BUDGET,
   MEMO_V3,
@@ -22,7 +22,6 @@ import {
   staticNonce,
   wireOf,
   type SolanaNetwork,
-  type SvmLanded,
   type SvmReader,
   type SvmRef,
   type SvmTx,
@@ -192,8 +191,8 @@ async function reference(
 
 /**
  * A push credential (`type="signature"`) with the landed wire added as `transaction`, read at `confirmed`. Other
- * credentials are returned unchanged. A read that fails, or finds nothing, is a refusal the seller retries; a landed
- * transaction that failed with an error is refused `svm/err`.
+ * credentials are returned unchanged. A read that fails, finds nothing or gives an answer of neither documented shape
+ * is a refusal the seller retries; a landed transaction that failed with an error is refused `svm/err`.
  */
 async function fetchPresented(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
@@ -212,16 +211,17 @@ async function fetchPresented(
   if (!isObject(reader) || reader.network !== network) return refusal("svm/wrong-reader");
   const signature = credential.payload["signature"];
   if (!isSignatureText(signature)) return refusal("mpp/credential-malformed");
-  let landed: SvmLanded | null;
+  let landed: unknown;
   try {
     landed = await reader.transaction(signature, "confirmed");
   } catch {
     return refusal("svm/unreadable");
   }
-  if (landed === null) return refusal("svm/not-found");
-  if (!isObject(landed) || !(landed.wire instanceof Uint8Array)) return refusal("svm/unreadable");
-  if (landed.err !== null && landed.err !== undefined) return refusal("svm/err");
-  return { ...credential, payload: { ...credential.payload, transaction: toBase64(landed.wire) } };
+  if (notFoundPoint(landed, "slot") !== undefined) return refusal("svm/not-found");
+  const wire = isObject(landed) ? landed["wire"] : undefined;
+  if (!isObject(landed) || !(wire instanceof Uint8Array)) return refusal("svm/unreadable");
+  if (landed["err"] !== null && landed["err"] !== undefined) return refusal("svm/err");
+  return { ...credential, payload: { ...credential.payload, transaction: toBase64(wire) } };
 }
 
 /** A base58 Ed25519 signature's text: 64 to 88 base58 characters. */
@@ -232,16 +232,18 @@ function isSignatureText(s: unknown): s is string {
 /** Zero-party: the one LCP memo of the landed transaction, read at `finalized`, then `confirmed`. */
 async function recover(ref: { network: SolanaNetwork; transaction: string }, reader: SvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
-  let landed: SvmLanded | null = null;
+  let landed: unknown;
   try {
-    landed = (await reader.transaction(ref.transaction, "finalized")) ?? (await reader.transaction(ref.transaction, "confirmed"));
+    landed = await reader.transaction(ref.transaction, "finalized");
+    if (notFoundPoint(landed, "slot") !== undefined) landed = await reader.transaction(ref.transaction, "confirmed");
   } catch {
     return refusal("svm/unreadable");
   }
-  if (landed === null) return refusal("svm/not-found");
-  if (!isObject(landed) || !(landed.wire instanceof Uint8Array)) return refusal("svm/unreadable");
-  if (landed.err !== null && landed.err !== undefined) return refusal("svm/err");
-  const tx = decodeSvmTx(landed.wire);
+  if (notFoundPoint(landed, "slot") !== undefined) return refusal("svm/not-found");
+  const wire = isObject(landed) ? landed["wire"] : undefined;
+  if (!isObject(landed) || !(wire instanceof Uint8Array)) return refusal("svm/unreadable");
+  if (landed["err"] !== null && landed["err"] !== undefined) return refusal("svm/err");
+  const tx = decodeSvmTx(wire);
   if (isRefusal(tx)) return tx;
   const c = mppSvmCarrier(tx);
   return isRefusal(c) ? c : c.h;

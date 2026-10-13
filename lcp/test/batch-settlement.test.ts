@@ -212,7 +212,7 @@ const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, er
 function svmReaderFor(at: "finalized" | null, l: SvmLanded, txid: string): SvmReader {
   return {
     network: V.ES5.ref.network,
-    transaction: async (sig) => (sig === txid && at !== null ? l : null),
+    transaction: async (sig) => (sig === txid && at !== null ? l : { notFound: true as const, slot: null }),
     signatures: async () => [],
     blockhashValid: async () => true,
     firstAvailableBlock: async () => 0n,

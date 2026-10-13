@@ -380,7 +380,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/no-carrier` | The Solana transaction presented for an MPP charge has no Memo instruction carrying an ATR hash in LCP string form. |
 | `svm/no-channel-instruction` | The Solana transaction has no top-level payment-channels instruction. |
 | `svm/nonce-account-not-static` | The Solana message's first instruction is `AdvanceNonceAccount` and names its nonce account through an address lookup table: a durable message names its nonce account as a static key (SIMD-0242), and the message alone cannot show the nonce account a reference records. |
-| `svm/not-found` | The Solana reader found no landed transaction for the signature. |
+| `svm/not-found` | The Solana reader answers that the node holds no transaction for the signature (its not-found answer). |
 | `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid. |
 | `svm/pda-not-found` | `findPda` is given an invalid program key or too many or too long seeds, or no bump yields an off-curve address. |
 | `svm/peer-missing` | The optional peer dependency `@solana/kit` cannot be loaded to build a Solana message. |
@@ -388,7 +388,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/read-first` | An MPP Solana `signature` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
 | `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed), or an MPP `bundle` credential's `transactions` is not an array within the bound, or `svmCarrier` or `channelInstruction` is given a transaction that is not a decoded one. |
 | `svm/tx-too-large` | A Solana transaction, or its base64 text, exceeds the wire size bound. |
-| `svm/unreadable` | The Solana reader threw or returned a landed transaction that is not well formed. |
+| `svm/unreadable` | The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer), or returned a landed transaction that is not well formed. |
 | `svm/wrong-reader` | The Solana reader answers for a different network than the reference or challenge names. |
 
 ## stellar

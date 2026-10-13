@@ -4,6 +4,7 @@
  * are re-exported by `../svm.ts`; the read of a reported close serves `mpp/session/solana`'s `status`.
  */
 import { canonicalJson, toRawBytes, type AtrHash } from "../core.js";
+import { isObject, notFoundPoint } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import {
   channelVoucherMessage,
@@ -101,8 +102,9 @@ function isWellFormed(s: unknown): s is string {
 /**
  * Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
  * `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel is settled; any other
- * landed transaction is failed `not-a-close`. A ref whose program or channel is not the base58 of a 32-byte key is
- * pending `unreadable`, with nothing read. At most two calls.
+ * landed transaction is failed `not-a-close`. Not found at either is pending `not-found`; a failed read, or an answer
+ * of neither documented shape, is pending `unreadable`. A ref whose program or channel is not the base58 of a 32-byte
+ * key is pending `unreadable`, with nothing read. At most two calls.
  */
 export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promise<SvmCloseStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
@@ -112,19 +114,16 @@ export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promi
   let found: { landed: SvmLanded; commitment: "confirmed" | "finalized" } | null = null;
   try {
     for (const commitment of ["finalized", "confirmed"] as const) {
-      const landed = await reader.transaction(ref.transaction, commitment);
-      if (landed !== null) {
-        found = { landed, commitment };
-        break;
-      }
+      const landed: unknown = await reader.transaction(ref.transaction, commitment);
+      if (notFoundPoint(landed, "slot") !== undefined) continue;
+      if (!isObject(landed) || !(landed["wire"] instanceof Uint8Array)) return { state: "pending", why: "unreadable" };
+      found = { landed: landed as unknown as SvmLanded, commitment };
+      break;
     }
   } catch {
     return { state: "pending", why: "unreadable" };
   }
   if (found === null) return { state: "pending", why: "not-found" };
-  if (typeof found.landed !== "object" || !(found.landed.wire instanceof Uint8Array)) {
-    return { state: "pending", why: "unreadable" };
-  }
   if (found.landed.err !== null && found.landed.err !== undefined) return { state: "failed", why: "err" };
   const tx = decodeSvmTx(found.landed.wire);
   if (isRefusal(tx)) return { state: "pending", why: "unreadable" };

@@ -52,8 +52,8 @@ function readerFor(
     network: V.V4.network,
     transaction: async (sig, commitment) => {
       if (at === "reader-error") throw new ReaderError("transport");
-      if (sig !== txid || at === null) return null;
-      if (at === "confirmed" && commitment === "finalized") return null;
+      if (sig !== txid || at === null) return { notFound: true, slot: null };
+      if (at === "confirmed" && commitment === "finalized") return { notFound: true, slot: null };
       return l;
     },
     signatures: async () => [],
@@ -216,6 +216,21 @@ describe("x402-exact-solana.json", () => {
     expect(base58.encode(tx.signatures[0]!)).toBe(V.V4.txid);
   });
 
+  // SvmReader.transaction answers a landed transaction, or notFound with the node's slot; any other answer, such as
+  // getTransaction's bare null passed through, is neither, and is a read to repeat.
+  it("a transaction answer of neither documented shape is pending unreadable, and recover refuses it svm/unreadable", async () => {
+    const ref = V.V4.ref as SvmRef & { transaction: string };
+    const answering = (a: unknown): SvmReader => ({ ...readerFor("finalized", landed(new Uint8Array())), transaction: async () => a as never });
+    for (const a of [null, undefined, {}, { notFound: false, slot: 1150n }, "landed"]) {
+      expect(await svmStatus(ref, answering(a)), String(a)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await svmRecover(ref, answering(a)), String(a)).toEqual(refused("svm/unreadable"));
+    }
+    for (const slot of [1150n, null]) {
+      expect(await svmStatus(ref, answering({ notFound: true, slot }))).toEqual({ state: "pending", why: "not-found" });
+      expect(await svmRecover(ref, answering({ notFound: true, slot }))).toEqual(refused("svm/not-found"));
+    }
+  });
+
   it("V5: svmLocate", async () => {
     const fromSlot = BigInt(V.V5.fromSlot);
     const ref: SvmRef = { ...V.V4.ref, fromSlot: V.V5.fromSlot };
@@ -267,7 +282,8 @@ describe("x402-exact-solana.json", () => {
       expect(c.candidateWire === "plant" || c.candidateWire === null, c.case).toBe(true);
       const r: SvmReader = {
         network: V.V4.network,
-        transaction: async (sig) => (c.candidateWire === "plant" && sig.startsWith("cand-") ? landed(plantWire) : null),
+        transaction: async (sig) =>
+          c.candidateWire === "plant" && sig.startsWith("cand-") ? landed(plantWire) : { notFound: true as const, slot: null },
         signatures: async () => list,
         blockhashValid: async () => false,
         firstAvailableBlock: holds,
@@ -451,7 +467,12 @@ describe("x402-exact-solana.json durableNonce", () => {
     expect(await svmNonceMoved(plain, readerFor(null, landed(new Uint8Array())))).toBe(false);
   });
 
-  it("status on the named durable message is nonce-moved once the nonce moved on and a last read finds nothing", async () => {
+  // A lookup that finds nothing shows the transaction absent only up to the slot its node had reached: Solana's
+  // getTransaction answers null for a transaction the node does not hold at that commitment, and getSlot names the
+  // node's slot at a commitment. The nonce account read shows the nonce moved on as of its response's context slot
+  // (getAccountInfo's context.slot). So the last read shows the message never landed only from a node at or past that
+  // slot; one behind it, or one naming no slot, leaves the payment pending.
+  it("status on the named durable message is nonce-moved once the nonce moved on and a last read at or past the nonce read finds nothing", async () => {
     const ref: SvmRef & { transaction: string } = {
       ...D.reference[0].expect,
       transaction: D.txid,
@@ -466,7 +487,9 @@ describe("x402-exact-solana.json durableNonce", () => {
         transaction: async (sig) => {
           expect(sig).toBe(D.txid);
           expect(answers.length, row.case).toBeGreaterThan(0);
-          return answers.shift() === "landed" ? landed(wire) : null;
+          const answer = answers.shift();
+          if (answer === "landed") return landed(wire);
+          return { notFound: true, slot: answer.slot === null ? null : BigInt(answer.slot) };
         },
         signatures: async () => [],
         blockhashValid: async () => false,

@@ -415,7 +415,7 @@ describe("problem", () => {
   };
 
   const arms: [string, () => Promise<unknown>, string, { status: number; type: string }][] = [
-    ["mpp/charge/solana: no transaction at confirmed", () => chargeSolana.fetchPresented(solanaPush, solana(async () => null)), "svm/not-found", internal],
+    ["mpp/charge/solana: no transaction at confirmed", () => chargeSolana.fetchPresented(solanaPush, solana(async () => ({ notFound: true as const, slot: null }))), "svm/not-found", internal],
     ["mpp/charge/solana: the read fails", () => chargeSolana.fetchPresented(solanaPush, solana(failing)), "svm/unreadable", internal],
     [
       "mpp/charge/solana: the landed transaction carries an error",

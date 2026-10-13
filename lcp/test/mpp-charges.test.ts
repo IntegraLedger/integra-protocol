@@ -197,7 +197,7 @@ describe("mpp-charge-solana.json", () => {
     };
     const reader: SvmReader = {
       network: V.push.network,
-      transaction: async (sig) => (sig === V.push.txid ? landed : null),
+      transaction: async (sig) => (sig === V.push.txid ? landed : { notFound: true as const, slot: null }),
       signatures: async () => [],
       blockhashValid: async () => true,
       firstAvailableBlock: async () => 0n,
@@ -214,6 +214,13 @@ describe("mpp-charge-solana.json", () => {
     expect(ref.transaction).toBe(V.push.expectReferenceTransaction);
     const failing: SvmReader = { ...reader, transaction: async () => { throw new ReaderError("transport"); } };
     expect(await chargeSolana.fetchPresented(cr, failing)).toEqual(refused("svm/unreadable"));
+    // SvmReader.transaction answers a landed transaction, or notFound with the node's slot; a bare null is neither.
+    const answering = (a: unknown): SvmReader => ({ ...reader, transaction: async () => a as never });
+    const named = { network: V.push.network, transaction: V.push.txid };
+    expect(await chargeSolana.fetchPresented(cr, answering({ notFound: true, slot: 1150n }))).toEqual(refused("svm/not-found"));
+    expect(await chargeSolana.recover(named, answering({ notFound: true, slot: null }))).toEqual(refused("svm/not-found"));
+    expect(await chargeSolana.fetchPresented(cr, answering(null))).toEqual(refused("svm/unreadable"));
+    expect(await chargeSolana.recover(named, answering(null))).toEqual(refused("svm/unreadable"));
     expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toBe(V.recover.expect);
   });
 
@@ -227,7 +234,7 @@ describe("mpp-charge-solana.json", () => {
     };
     const reader: SvmReader = {
       network: V.push.network,
-      transaction: async (sig) => (sig === V.push.txid ? landed : null),
+      transaction: async (sig) => (sig === V.push.txid ? landed : { notFound: true as const, slot: null }),
       signatures: async () => [],
       blockhashValid: async () => true,
       firstAvailableBlock: async () => 0n,

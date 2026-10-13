@@ -191,7 +191,8 @@ first in which it cannot commit. `aptosStatus(ref, reader)` answers failed `expi
 the ledger's timestamp, read first, is at or past the reference's `expiresAt`.
 
 On the rails in the table below, a verdict that a payment will never land rests on a reference point: a head time, a
-ledger, a confirmed nonce, a final height or a chain tip. The reference point is read before the lookup it judges, and
+ledger, a confirmed nonce, a final height, a chain tip or the slot of a nonce account read. The reference point is
+read before the lookup it judges, and
 a lookup shows the payment absent only up to the point its own source had reached. So the reader's answer names that
 point, in the answer itself or read from the source that answered before the lookup, and the verdict needs it at or
 past the reference point. A payment that lands between the two reads, or that a lookup misses because its source lags
@@ -199,9 +200,11 @@ the reference point, as one node behind a load-balanced endpoint can, stays pend
 failed, and so does one whose answer names no point. A later read, once that source has caught up, gives the verdict.
 The rule governs `expired` on Tron, TON, Aptos, Stellar and Cardano, TON's `no-transfer` and `aborted` when no W5
 transaction with the request sent its Jetton transfer, `nonce-used` for a transaction the Stacks API does not know or
-lists as dropped, and `nearLapsed`. On Stacks the API's
-answers name no height, so a reader reads the API's chain tip from the node that answered, after the nonce read and
-before the lookup, and must pin one node to name it; a reader that cannot names no height.
+lists as dropped, `nonce-moved` for a named Solana durable-nonce transaction no lookup finds, and `nearLapsed`. On
+Stacks the API's answers name no height, so a reader reads the API's chain tip from the node that answered, after the
+nonce read and before the lookup, and must pin one node to name it; a reader that cannot names no height. On Solana
+`getTransaction` names no slot when it finds nothing, so a reader reads `getSlot` at the lookup's commitment from the
+node that answers, before the lookup, and must pin one node to name it; a reader that cannot names no slot.
 
 | Rail | The reference point, read first | What the answer that finds nothing names |
 |---|---|---|
@@ -212,6 +215,7 @@ before the lookup, and must pin one node to name it; a reader that cannot names 
 | Stellar | `getLatestLedger`, read after the named transaction and before the events search | each events page's `latestLedger` |
 | NEAR | the final block height | the key read's `blockHeight`, `view_access_key`'s `block_height` |
 | Cardano | the chain tip's slot | `{ notFound: true, slot }`: the slot of the latest block the indexer that answered held |
+| Solana | the context slot of the durable nonce account's read (`getAccountInfo` at `finalized`) | `{ notFound: true, slot }`: the slot at the lookup's commitment of the node that answered, read before the lookup |
 
 On TON, `status` counts only the Jetton transfer that a transaction of the payer's W5 wallet sent with the signed
 request, since W5 checks the signature before it sends anything; an equal transfer body executed any other way never
@@ -221,7 +225,7 @@ however late, because an internal message carries no expiry.
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |
-| Solana | `SvmReader` | `getTransaction` at a commitment, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
+| Solana | `SvmReader` | `getTransaction` at a commitment, with the node's slot at that commitment (`getSlot`) read before it when it finds nothing, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events with `getEvents`' `latestLedger`, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
 | Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
@@ -251,9 +255,11 @@ and an empty `blockhash`. The sysvar may come from an address lookup table: the 
 as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `AdvanceNonceAccount` takes its nonce
 account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at
 `finalized` and is true once the account holds another value, or is not a nonce account, at a read at least 150 slots
-past `fromSlot`. A named transaction then not found is failed, with the reason `nonce-moved`. With no transaction named,
-a `svmLocate` that starts after `svmNonceMoved` reads true, and is complete with nothing found, shows the message never
-landed.
+past `fromSlot`. A named transaction then not found, by a lookup whose node had reached that read's context slot, is
+failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot, leaves it pending. With no
+transaction named, a `svmLocate` that starts after `svmNonceMoved` reads true, and is complete with nothing found,
+shows the message never landed when the node that lists the signatures holds every block through that read's context
+slot: the signature pages name no slot.
 
 Lightning has no settlement read: the invoice and its preimage, which the parties hold, are the proof of payment, and
 no public ledger shows it. Its pairings give `reference` and no `status`.

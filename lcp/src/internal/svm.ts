@@ -8,7 +8,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { base58 } from "@scure/base";
 import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
-import { isObject } from "../fields.js";
+import { isObject, notFoundPoint } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { UptoSvmPayload } from "../x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
@@ -87,11 +87,19 @@ export interface SvmLanded {
   inner: readonly { program: number; data: Uint8Array }[];
 }
 
-/** Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. `transaction`
+ * answers `notFound` when the node holds no such transaction at that commitment, with `slot`: the node's slot at that
+ * commitment (`getSlot`), read from that same node before the lookup, so the lookup is at or past it, or null when the
+ * reader cannot read it from that node. A lookup naming no slot never reads failed.
+ */
 export interface SvmReader {
   readonly network: SolanaNetwork;
-  /** `getTransaction`; null when none is found at that commitment. */
-  transaction(signature: string, commitment: "confirmed" | "finalized"): Promise<SvmLanded | null>;
+  /** `getTransaction` at that commitment, or `notFound` with the node's slot there. */
+  transaction(
+    signature: string,
+    commitment: "confirmed" | "finalized",
+  ): Promise<SvmLanded | { notFound: true; slot: bigint | null }>;
   /**
    * `getSignaturesForAddress`, newest first. `memo` is the RPC's rendering of the transaction's memos (`[len] text`,
    * joined by `; `), or null when it has none.
@@ -639,20 +647,32 @@ export function svmSigning(message: Uint8Array, signer: string): SvmSigning {
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Reads a named transaction at `finalized`, then `confirmed`. Undefined when the read failed. */
+/** A named transaction's lookup: landed at a commitment, or not found, with the slot the last lookup names. */
+type Lookup = { landed: SvmLanded; commitment: "confirmed" | "finalized" } | { notFound: true; slot: bigint | null };
+
+/**
+ * Reads a named transaction at `finalized`, then `confirmed`: the first landed answer, or, when every lookup finds
+ * nothing, `notFound` with the slot the last lookup names. Undefined when a read failed or gave an answer of neither
+ * documented shape.
+ */
 async function landedAt(
   reader: SvmReader,
   transaction: string,
   commitments: readonly ("finalized" | "confirmed")[] = ["finalized", "confirmed"],
-): Promise<{ landed: SvmLanded; commitment: "confirmed" | "finalized" } | null | undefined> {
+): Promise<Lookup | undefined> {
+  let slot: bigint | null = null;
   try {
     for (const commitment of commitments) {
-      const landed = await reader.transaction(transaction, commitment);
-      if (landed === null) continue;
-      if (!isLanded(landed)) return undefined;
-      return { landed, commitment };
+      const answer: unknown = await reader.transaction(transaction, commitment);
+      const readTo = notFoundPoint(answer, "slot");
+      if (readTo !== undefined) {
+        slot = readTo;
+        continue;
+      }
+      if (!isLanded(answer)) return undefined;
+      return { landed: answer, commitment };
     }
-    return null;
+    return { notFound: true, slot };
   } catch {
     return undefined;
   }
@@ -691,11 +711,13 @@ function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
 
 /**
  * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
- * without error, and must carry a token or SOL transfer. A failed read, or a reader for another network, is pending.
- * A ref whose `digest` is not a string is pending `unreadable`, with nothing read. A durable-nonce transaction that is
- * not found, once `svmNonceMoved` holds and the node's first available block is at or before `fromSlot`, is read once
- * more at `finalized`; still not found, it is failed `nonce-moved`: the message can never land. At most two calls, or
- * five for a durable-nonce reference.
+ * without error, and must carry a token or SOL transfer. A failed read, an answer of neither documented shape, or a
+ * reader for another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`,
+ * with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first
+ * available block is at or before `fromSlot`, is read once more at `finalized`; still not found by a lookup naming a
+ * slot at or past the context slot of the nonce account read, it is failed `nonce-moved`: the message can never land.
+ * A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
+ * durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
   return settledBy(ref, reader, (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer"));
@@ -704,7 +726,7 @@ export async function svmStatus(ref: SvmRef & { transaction: string }, reader: S
 /**
  * The shared settlement read: digest, then `err`, then the pairing's own check, which names a failure or returns null.
  * A durable-nonce transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at
- * `finalized` still finds nothing.
+ * `finalized`, naming a slot at or past the context slot of the nonce account read, still finds nothing.
  */
 export async function settledBy<W extends string>(
   ref: SvmRef & { transaction: string },
@@ -720,12 +742,16 @@ export async function settledBy<W extends string>(
   }
   let read = await landedAt(reader, ref.transaction);
   if (read === undefined) return { state: "pending", why: "unreadable" };
-  if (read === null && ref.nonce !== undefined && (await nonceLapsed(ref, reader))) {
-    read = await landedAt(reader, ref.transaction, ["finalized"]);
-    if (read === undefined) return { state: "pending", why: "unreadable" };
-    if (read === null) return { state: "failed", why: "nonce-moved" };
+  if ("notFound" in read && ref.nonce !== undefined) {
+    const movedAt = await nonceLapsed(ref, reader);
+    if (movedAt !== null) {
+      read = await landedAt(reader, ref.transaction, ["finalized"]);
+      if (read === undefined) return { state: "pending", why: "unreadable" };
+      const covered = "notFound" in read && read.slot !== null && read.slot >= movedAt;
+      if (covered) return { state: "failed", why: "nonce-moved" };
+    }
   }
-  if (read === null) return { state: "pending", why: "not-found" };
+  if ("notFound" in read) return { state: "pending", why: "not-found" };
   const tx = decodeSvmTx(read.landed.wire);
   if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
   if ((await svmDigest(tx)) !== ref.digest.toLowerCase()) return { state: "failed", why: "not-this-instrument" };
@@ -742,48 +768,59 @@ export async function settledBy<W extends string>(
  * value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce`, a
  * ref or reader that is not an object and a reader for another network are false. One call.
  *
- * The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. So
- * a durable-nonce reference with no named transaction lapses when this reads true and a `svmLocate` that starts after
- * it is complete with nothing found.
+ * The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
+ * lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
+ * finds nothing shows the message never landed only from a node at or past that read's context slot, as `svmStatus`
+ * reads it. With no transaction named, a `svmLocate` that starts after this reads true, and is complete with nothing
+ * found, shows the message never landed when the node that lists the signatures holds every block through that slot.
  */
 export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<boolean> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return false;
+  return (await nonceMovedAt(ref, reader)) !== null;
+}
+
+/** The context slot of the nonce account read when `svmNonceMoved` reads true, else null. */
+async function nonceMovedAt(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return null;
   const nonce: unknown = ref.nonce;
-  if (typeof nonce !== "object" || nonce === null) return false;
+  if (typeof nonce !== "object" || nonce === null) return null;
   const { account, value } = nonce as SvmNonce;
-  if (!isKey(account) || !isKey(value)) return false;
-  if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return false;
+  if (!isKey(account) || !isKey(value)) return null;
+  if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return null;
   let read: Awaited<ReturnType<SvmReader["account"]>>;
   try {
     read = await reader.account(account);
   } catch {
-    return false;
+    return null;
   }
-  if (typeof read !== "object" || read === null || typeof read.slot !== "bigint") return false;
-  if (read.slot < BigInt(ref.fromSlot) + NONCE_SETTLED_SLOTS) return false;
+  if (typeof read !== "object" || read === null || typeof read.slot !== "bigint") return null;
+  if (read.slot < BigInt(ref.fromSlot) + NONCE_SETTLED_SLOTS) return null;
   const found: unknown = read.value;
-  if (found === null) return true;
-  if (typeof found !== "object") return false;
+  if (found === null) return read.slot;
+  if (typeof found !== "object") return null;
   const { owner, data } = found as { owner: unknown; data: unknown };
-  if (typeof owner !== "string" || !(data instanceof Uint8Array)) return false;
-  if (owner !== SYSTEM || data.length !== NONCE_ACCOUNT_BYTES) return true;
+  if (typeof owner !== "string" || !(data instanceof Uint8Array)) return null;
+  if (owner !== SYSTEM || data.length !== NONCE_ACCOUNT_BYTES) return read.slot;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const version = view.getUint32(0, true);
   const state = view.getUint32(4, true);
-  if (state !== 1) return true;
-  if (version === 0) return false;
-  if (version !== 1) return true;
-  return keyString(data.subarray(40, 72)) !== value;
+  if (state !== 1) return read.slot;
+  if (version === 0) return null;
+  if (version !== 1) return read.slot;
+  return keyString(data.subarray(40, 72)) !== value ? read.slot : null;
 }
 
-/** `svmNonceMoved`, and the node still holds every block from `fromSlot`. */
-async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<boolean> {
-  if (!(await svmNonceMoved(ref, reader))) return false;
+/**
+ * The context slot of the nonce account read when `svmNonceMoved` reads true and the node still holds every block from
+ * `fromSlot`, else null.
+ */
+async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
+  const movedAt = await nonceMovedAt(ref, reader);
+  if (movedAt === null) return null;
   try {
     const first = await reader.firstAvailableBlock();
-    return typeof first === "bigint" && first <= BigInt(ref.fromSlot);
+    return typeof first === "bigint" && first <= BigInt(ref.fromSlot) ? movedAt : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -867,7 +904,7 @@ export async function landedTransaction(
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
   const read = await landedAt(reader, ref.transaction);
   if (read === undefined) return refusal("svm/unreadable");
-  if (read === null) return refusal("svm/not-found");
+  if ("notFound" in read) return refusal("svm/not-found");
   if (read.landed.err !== null && read.landed.err !== undefined) return refusal("svm/err");
   return decodeSvmTx(read.landed.wire);
 }

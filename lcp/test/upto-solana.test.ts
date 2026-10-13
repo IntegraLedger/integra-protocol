@@ -33,8 +33,8 @@ function readerFor(at: "finalized" | "confirmed" | null | "reader-error", l: Svm
     network: V.EU5.ref.network,
     transaction: async (sig, commitment) => {
       if (at === "reader-error") throw new ReaderError("transport");
-      if (sig !== txid || at === null) return null;
-      if (at === "confirmed" && commitment === "finalized") return null;
+      if (sig !== txid || at === null) return { notFound: true, slot: null };
+      if (at === "confirmed" && commitment === "finalized") return { notFound: true, slot: null };
       return l;
     },
     signatures: async () => [],

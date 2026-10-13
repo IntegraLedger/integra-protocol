@@ -248,7 +248,7 @@ describe("mpp/session/solana", () => {
     const paged: string[] = [];
     const readerOf = (first: bigint): SvmReader => ({
       network: ref.network,
-      transaction: async () => null,
+      transaction: async () => ({ notFound: true as const, slot: null }),
       signatures: async (address) => {
         paged.push(address);
         return address === V.SV2.channel
@@ -290,7 +290,7 @@ describe("mpp/session/solana", () => {
       network: ref.network,
       transaction: async (sig) =>
         wires[sig] === undefined
-          ? null
+          ? { notFound: true as const, slot: null }
           : { wire: Uint8Array.from(Buffer.from(wires[sig]!, "base64")), err: null, loaded: { writable: [], readonly: [] }, inner: [deposit] },
       signatures: async (address) =>
         address === V.SV2.channel ? signatures.map((signature, i) => ({ signature, slot: 130n - BigInt(i), memo: null })) : [],
@@ -373,6 +373,11 @@ describe("mpp/session/solana", () => {
       expect(await sessionSolana.status({ ...ref, ...change } as typeof ref, reader)).toEqual({ state: "pending", why: "unreadable" });
       expect(calls).toEqual([]);
     }
+    // A close the node holds at neither commitment is pending not-found; SvmReader.transaction answers a landed
+    // transaction or notFound, and any other answer, such as a bare null, is pending unreadable.
+    const answering = (a: unknown): SvmReader => ({ ...readerOf(sealed), transaction: async () => a as never });
+    expect(await sessionSolana.status(ref, answering({ notFound: true, slot: 1150n }))).toEqual({ state: "pending", why: "not-found" });
+    expect(await sessionSolana.status(ref, answering(null))).toEqual({ state: "pending", why: "unreadable" });
   });
 
   it("build returns the salt and the request's values; complete checks the composed open", async () => {

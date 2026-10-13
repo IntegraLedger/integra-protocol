@@ -686,7 +686,7 @@
    ]
   },
   "status": {
-   "case": "svmStatus on the durable message named by its txid, fromSlot 1000, with the nonce account read at slot 1150. transactions lists what each successive transaction read returns: finalized, then confirmed, then, once the nonce has moved on and the node holds fromSlot, one more read at finalized",
+   "case": "svmStatus on the durable message named by its txid, fromSlot 1000, with the nonce account read at context slot 1150. transactions lists what each successive transaction read answers: finalized, then confirmed, then, once the nonce has moved on and the node holds fromSlot, one more read at finalized. A read that finds nothing answers notFound with the node's slot at that commitment, read from that node before the lookup (Solana's getSlot), or null when the reader cannot read it there: the lookup shows the transaction absent only up to that slot, so nonce-moved needs the last read's slot at or past the nonce read's",
    "landedWireBase64": "AmCpPBBBtnFMI++0DBLZfF7rh3680NkTB81bqxAAyn+7HRPZtuJScQ+plM+UazCw3Gr76TmuONmkQlWrK0f4pQsMrGN8VMSgl/vPLzXkROdAdKiOoZivjX+TSZ+Joq0l79ids9qA9EVBXZox1/iWiufU3lWmDKg5LyMkvcS3HXQOgAIBBguBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksVo7gioRfc9KXiM8DXDFFshqzRNgGLqlAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nShjpdfDyAE4QiGG9GKEaInHzKXf8J5228z7ICgtgyOAFBQMDCAEEBAAAAAYABQJAnAAABgAJAwEAAAAAAAAACQQECgIBCgzoAwAAAAAAAAYHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
    "fromSlot": "1000",
    "rows": [
@@ -704,11 +704,20 @@
      "accountReads": 0
     },
     {
-     "case": "never found, and the nonce has moved on: failed nonce-moved",
+     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1150, the nonce read's: failed nonce-moved",
      "transactions": [
-      null,
-      null,
-      null
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      }
      ],
      "account": "moved",
      "firstAvailableBlock": "0",
@@ -719,10 +728,88 @@
      "accountReads": 1
     },
     {
+     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1151, past the nonce read: failed nonce-moved",
+     "transactions": [
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1151"
+      }
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "failed",
+      "why": "nonce-moved"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "never found, and the nonce has moved on, but the last read comes from a node at slot 1149, behind the nonce read: pending",
+     "transactions": [
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1149"
+      }
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "pending",
+      "why": "not-found"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "never found, and the nonce has moved on, but the last read names no slot: pending",
+     "transactions": [
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": null
+      }
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "pending",
+      "why": "not-found"
+     },
+     "accountReads": 1
+    },
+    {
      "case": "never found, and the account holds the recorded value: pending",
      "transactions": [
-      null,
-      null
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      }
      ],
      "account": "held",
      "firstAvailableBlock": "0",
@@ -735,8 +822,14 @@
     {
      "case": "never found, the nonce has moved on, but the node's first available block is above fromSlot: pending",
      "transactions": [
-      null,
-      null
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      }
      ],
      "account": "moved",
      "firstAvailableBlock": "1001",
@@ -749,8 +842,14 @@
     {
      "case": "not found at first, then found by the read at finalized after the nonce read: settled",
      "transactions": [
-      null,
-      null,
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
       "landed"
      ],
      "account": "moved",
