@@ -2,7 +2,8 @@
  * Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8
  * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
- * needs it refuses `stellar/peer-missing`. The public names are re-exported by `../stellar.ts`.
+ * needs it refuses `stellar/peer-missing`, except the writer `muxedFor`, which throws TypeError. The public names are
+ * re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import { base64 } from "@scure/base";

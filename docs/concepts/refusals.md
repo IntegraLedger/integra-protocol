@@ -63,7 +63,8 @@ the link is not an `https` URL. Their `from…` counterparts return `null` inste
 The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which are asynchronous, reject):
 
 - on a hash that is not 32 bytes: `ccdMemo` and `pltMemo`, `muxedId` and `muxedFor` (also on a base that is not a `G…`
-  account), `mppInvoiceId` and `x402InvoiceId`, and `sessionSalt`;
+  account, and on any argument when `@stellar/stellar-sdk` is not installed), `mppInvoiceId` and `x402InvoiceId`, and
+  `sessionSalt`;
 - on a Hedera value outside its type: `txIdText` and `txIdMirror` (an id that is not an account `shard.realm.num`, a
   non-negative bigint `seconds` and `nanos` from 0 to 999,999,999), `hederaChannelId` (an address that is not `0x` and
   40 hex digits, a salt that is not a 32-byte hash, a chain id other than 295 and 296) and `hederaVoucher` (the same
