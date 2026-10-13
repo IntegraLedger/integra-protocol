@@ -141,8 +141,6 @@ export type Eip3009Ref = EvmRef & {
   network: Eip155;
   asset: Hex;
   validBefore: string;
-  /** The option's `maxTimeoutSeconds`: the authorization was signed no earlier than `validBefore` less this. */
-  maxTimeoutSeconds: number;
   idDigest: Hex;
   transferLog: TransferLog;
   authorization: PullAuthorization;

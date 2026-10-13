@@ -444,10 +444,9 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys for finding this payment on chain later: network, token, `validBefore`, the option's
- * `maxTimeoutSeconds` and the transfer's digest, and the same keys as an `EvmRef`: the `AuthorizationUsed` log carrying
- * H, the transfer's identity, the nonce search, and the authorization as the token records its use (nonce H, deadline
- * `validBefore`).
+ * The read keys for finding this payment on chain later: network, token, `validBefore` and the transfer's digest, and
+ * the same keys as an `EvmRef`: the `AuthorizationUsed` log carrying H, the transfer's identity, the nonce search, and
+ * the authorization as the token records its use (nonce H, deadline `validBefore`).
  */
 async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
   const h = await bound(presented);
@@ -458,8 +457,7 @@ async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
   if (!isAddress(a.from) || !isAddress(a.to) || uint256Of(a.value) === undefined || validBefore === undefined) {
     return refusal("x402/payload-malformed");
   }
-  const timeout = accepted.maxTimeoutSeconds;
-  if (!isAddress(accepted.asset) || !Number.isSafeInteger(timeout) || timeout <= 0) return refusal("x402/option-malformed");
+  if (!isAddress(accepted.asset)) return refusal("x402/option-malformed");
   const idDigest = await authorizationIdDigest(a.from, a.to, a.value);
   if (isRefusal(idDigest)) return idDigest;
   const asset = accepted.asset as Hex;
@@ -467,7 +465,6 @@ async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
     network: accepted.network as Eip155,
     asset,
     validBefore: validBefore.toString(),
-    maxTimeoutSeconds: timeout,
     idDigest,
     bindingLog: { address: asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: h },
     transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: idDigest },

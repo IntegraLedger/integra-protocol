@@ -351,24 +351,33 @@ describe("the identity digest and the reference", () => {
     expect(await authorizationIdDigest(PAYER, O.payTo as Hex, 10000n)).toBe(ID_DIGEST);
     expect(sha256(encodePacked(["address", "address", "uint256"], [PAYER, O.payTo as Hex, 10000n]))).toBe(ID_DIGEST);
   });
+  // The read keys are the network, the token, validBefore and the transfer's digest, with the same keys as an EvmRef;
+  // the option's maxTimeoutSeconds is not among them, so reference neither records nor reads it.
+  const keysOfV2 = {
+    network: "eip155:84532",
+    asset: O.asset,
+    validBefore: "1790000060",
+    idDigest: ID_DIGEST,
+    bindingLog: { address: O.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H },
+    transferLog: {
+      address: O.asset,
+      topic0: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      identity: "from,to,value",
+      digest: ID_DIGEST,
+    },
+    search: { address: O.asset, topics: [AUTHORIZATION_USED_TOPIC, null, H] },
+    authorization: { scheme: "eip3009", at: O.asset, nonce: H, deadline: "1790000060", asset: O.asset },
+  };
   it("reference gives the read keys of V2's payment", async () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
-    expect(await exactEip3009.reference(p)).toEqual({
-      network: "eip155:84532",
-      asset: O.asset,
-      validBefore: "1790000060",
-      maxTimeoutSeconds: O.maxTimeoutSeconds,
-      idDigest: ID_DIGEST,
-      bindingLog: { address: O.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H },
-      transferLog: {
-        address: O.asset,
-        topic0: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        identity: "from,to,value",
-        digest: ID_DIGEST,
-      },
-      search: { address: O.asset, topics: [AUTHORIZATION_USED_TOPIC, null, H] },
-      authorization: { scheme: "eip3009", at: O.asset, nonce: H, deadline: "1790000060", asset: O.asset },
-    });
+    expect(await exactEip3009.reference(p)).toEqual(keysOfV2);
+  });
+  it("reference gives the same keys whatever the accepted option's maxTimeoutSeconds", async () => {
+    const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
+    const untimed = structuredClone(p);
+    delete (untimed.accepted as Partial<PaymentRequirements>).maxTimeoutSeconds;
+    const timeouts = [0, 1.5].map((t) => ({ ...p.accepted, maxTimeoutSeconds: t })).concat(untimed.accepted);
+    for (const accepted of timeouts) expect(await exactEip3009.reference({ ...p, accepted })).toEqual(keysOfV2);
   });
   it("authorizer gives the authorization's from, lowercase, and refuses what bound refuses", async () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
