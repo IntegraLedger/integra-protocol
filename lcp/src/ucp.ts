@@ -292,10 +292,9 @@ function unsignedPattern(noun: "checkout" | "booking"): LcpPattern {
     publicProof: false,
     proves:
       AGREEMENT +
-      `The ${noun} response the platform received carried this ATR's hash and link as its legal_context link before ` +
-      `the buyer completed the ${noun}, and the ATR was in the seller's storage before that. UCP without the AP2 ` +
-      "Mandates extension defines no buyer signature, so the buyer's approval, given in the platform's interface, did " +
-      "not sign the hash. The seller tied the payment to the hash in its report.",
+      `The ${noun} response carried this ATR's hash and link as its legal_context link. UCP without the AP2 Mandates ` +
+      "extension defines no buyer signature, so the buyer's approval did not sign the hash. The seller tied the " +
+      "payment to the hash in its report.",
   });
 }
 

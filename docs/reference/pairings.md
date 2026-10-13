@@ -257,7 +257,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `ucp/booking/unsigned`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The booking response the platform received carried this ATR's hash and link as its legal_context link before the buyer completed the booking, and the ATR was in the seller's storage before that. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval, given in the platform's interface, did not sign the hash. The seller tied the payment to the hash in its report.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The booking response carried this ATR's hash and link as its legal_context link. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval did not sign the hash. The seller tied the payment to the hash in its report.
 
 ### `ucp/checkout/ap2-mandate`
 
@@ -265,7 +265,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `ucp/checkout/unsigned`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The checkout response the platform received carried this ATR's hash and link as its legal_context link before the buyer completed the checkout, and the ATR was in the seller's storage before that. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval, given in the platform's interface, did not sign the hash. The seller tied the payment to the hash in its report.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The checkout response carried this ATR's hash and link as its legal_context link. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval did not sign the hash. The seller tied the payment to the hash in its report.
 
 ### `x402/auth-capture/eip155/eip3009`
 
