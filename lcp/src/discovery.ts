@@ -1,7 +1,8 @@
 /**
  * The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one,
- * members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check only what
- * LCP §2 states. Neither throws or does I/O.
+ * members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members
+ * LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes,
+ * and JSON nested at most 64 levels. Neither throws or does I/O.
  */
 import { fromRawBytes, isHttpsLink, parseJson, toRawBytes, type AtrHash } from "./core.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -127,8 +128,9 @@ function write(o: Record<string, unknown>, members: Members): string {
 }
 
 /**
- * One UTF-8 JSON object of at most `MAX_DOCUMENT_BYTES`, checked as LCP §2 states. Unknown members, at the top level or
- * inside `disputeResolution` and `contact`, are left out of `document` and named in `ignored` by dotted path.
+ * One UTF-8 JSON object of at most `MAX_DOCUMENT_BYTES`, nested at most 64 levels, with the members LCP §2.4–§2.5
+ * define checked: each string member non-empty and `terms` an https URL. Unknown members, at the top level or inside
+ * `disputeResolution` and `contact`, are left out of `document` and named in `ignored` by dotted path.
  */
 export function parse(bytes: Uint8Array): { document: LegalContextDocument; ignored: string[] } | Refusal {
   if (!(bytes instanceof Uint8Array)) return refusal("discovery/not-json-object");
