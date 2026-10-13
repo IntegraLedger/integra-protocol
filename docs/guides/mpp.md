@@ -114,9 +114,9 @@ Payment scheme's problem type and HTTP status for a refusal code this package re
 | sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/hedera`, `mpp/session/solana`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
 | subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. |
 
-Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the attribution memo on Tempo and Hedera, and
-the Stellar muxed id), the payment binds H only through those bytes: whoever assembles the ATR can construct a second
-ATR that shares them. Those pairings state this in their `pattern.proves`.
+Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the attribution memo on Tempo and Hedera, the
+Stellar muxed id, and the Solana session's 8-byte channel salt), the payment binds H only through those bytes: whoever
+assembles the ATR can construct a second ATR that shares them. Those pairings state this in their `pattern.proves`.
 
 The challenge's `id` and `realm`, and the client id a Tempo or Hedera payer may add to the attribution memo, are hashed
 as UTF-8. A string holding a lone surrogate has no UTF-8 form, so a challenge whose `realm` is not a well-formed string
