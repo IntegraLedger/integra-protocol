@@ -455,12 +455,12 @@ import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 The `x402/exact/stellar` pairing: the ATR hash advertised in the challenge's `extensions.legalContext`, and its first 8 bytes carried as the muxed id of the option's `payTo`, which the payer signs as the Soroban `transfer`'s `to`.
 
 ```ts no-check
-import { exactStellar, pairingOf } from "@integraledger/lcp/x402-exact-stellar";
+import { exactStellar } from "@integraledger/lcp/x402-exact-stellar";
 ```
 
 **Pairings:** `x402/exact/stellar`.
 
-**Values (2):** `exactStellar`, `pairingOf`.
+**Values (1):** `exactStellar`.
 
 ## `@integraledger/lcp/x402-exact-xrpl`
 

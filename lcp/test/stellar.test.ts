@@ -6,7 +6,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { Keypair, Networks, StrKey, authorizeEntry, buildAuthorizationEntryPreimage, xdr } from "@stellar/stellar-sdk";
 import { ScVal, TransactionEnvelope } from "@stellar/stellar-sdk/xdr";
 import { ReaderError } from "../src/evm.js";
-import type { AtrHash } from "../src/index.js";
+import { pairingOf, type AtrHash } from "../src/index.js";
 import type { StellarPaymentPayload } from "../src/internal/stellar.js";
 import {
   PASSPHRASE,
@@ -20,7 +20,7 @@ import {
   type StellarReader,
   type StellarRef,
 } from "../src/stellar.js";
-import { exactStellar, pairingOf } from "../src/x402-exact-stellar.js";
+import { exactStellar } from "../src/x402-exact-stellar.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { account, muxed, signed, simulated, type Case } from "./fixtures/stellar-signed-invocation.js";
 

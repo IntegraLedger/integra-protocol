@@ -50,15 +50,12 @@ interface StellarChoice {
   payer: string;
 }
 
-/** This pairing's id for an option it can pay, or undefined. */
-export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
-  if (!isObject(option) || option.scheme !== "exact" || !isStellarNetwork(option.network)) return undefined;
-  if (!isContract(option.asset) || !(isAccount(option.payTo) || isMuxed(option.payTo))) return undefined;
-  if (!isObject(option.extra) || option.extra["areFeesSponsored"] !== true) return undefined;
-  return ID;
+/** True for an option this pairing can pay. */
+function isThis(option: PaymentRequirements): boolean {
+  if (!isObject(option) || option.scheme !== "exact" || !isStellarNetwork(option.network)) return false;
+  if (!isContract(option.asset) || !(isAccount(option.payTo) || isMuxed(option.payTo))) return false;
+  return isObject(option.extra) && option.extra["areFeesSponsored"] === true;
 }
-
-const isThis = (o: PaymentRequirements): boolean => pairingOf(o) !== undefined;
 
 /** True when the amount is a positive i128 in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
