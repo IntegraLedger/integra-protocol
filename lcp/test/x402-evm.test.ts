@@ -264,6 +264,15 @@ describe("V5 advertise and read", () => {
     const other = exactEip3009.advertise(base, H, LINK + "?v=other", O) as PaymentRequired;
     expect(exactEip3009.advertise(other, H, LINK, O)).toEqual(refused("x402/legal-context-conflict"));
   });
+  // docs/guides/x402.md: the same H, link and agreement URL leave info as it is, and the schema written is
+  // LEGAL_CONTEXT_SCHEMA, whatever schema the document held.
+  it("writes LEGAL_CONTEXT_SCHEMA over another schema beside the same info", () => {
+    const base: PaymentRequired = { x402Version: 2, resource: RESOURCE, accepts: [O] };
+    const once = exactEip3009.advertise(base, H, LINK, O) as PaymentRequired;
+    const info = once.extensions!["legalContext"]!.info;
+    const odd: PaymentRequired = { ...once, extensions: { legalContext: { info, schema: { type: "object" } } } };
+    expect(exactEip3009.advertise(odd, H, LINK, O)).toEqual(once);
+  });
   it("is idempotent for the same hash and link, and keeps other extensions", () => {
     const base: PaymentRequired = {
       x402Version: 2,
