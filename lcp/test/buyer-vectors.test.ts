@@ -268,7 +268,9 @@ describe("buyer.json BW1 and BW2: the within challenge's opaque, a map whose eve
     const opaque = control.doc[0]!.opaque!;
     expect(opaque).toBe(opening.challenge.opaque);
     expect(Buffer.from(opaque, "base64url").toString("utf8")).toBe(control.opaqueText);
-    const lcpMembers = { legalContext: toLcpString(h), legalContextUrl: `https://atr.seller.example/${h}` };
+    const mpp = load("mpp-challenge.json").fixed;
+    expect(h).toBe(mpp.H);
+    const lcpMembers = { legalContext: toLcpString(h), legalContextUrl: mpp.link };
     expect(decodeStringMap(opaque)).toEqual(lcpMembers);
   });
 
