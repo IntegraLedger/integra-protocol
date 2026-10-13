@@ -18,7 +18,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   LEGAL_CONTEXT,
   tie,
@@ -594,8 +594,12 @@ async function reference(presented: unknown): Promise<StarknetRef | Refusal> {
   };
 }
 
-/** The option unchanged: on this pairing the hash rides in the signed nonce, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: on this pairing the hash rides in the signed nonce, not in the option. An option that carries a
+ * `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 

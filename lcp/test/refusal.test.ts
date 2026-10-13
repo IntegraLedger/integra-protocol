@@ -183,6 +183,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/exact/hedera/transfer-executor",
     "x402/exact/near",
     "x402/exact/polkadot/lcp-assets-remark",
+    "x402/exact/starknet",
   ];
   for (const id of noCarrier) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
