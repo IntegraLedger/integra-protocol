@@ -13,7 +13,7 @@
   "otherH": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
  },
  "V1": {
-  "case": "tie of both handler kinds, serialised by P1, is the acp value in A; assemble with A's id and content gives A and H",
+  "case": "tie of both handler kinds, serialised by assemble, is the acp value in A; assemble with A's id and content gives A and H",
   "options": [
    {
     "requires_delegate_payment": true
