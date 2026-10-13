@@ -95,7 +95,8 @@ if (isRefusal(request)) throw new Error(String(request.code));
 const changed = unsigned.complete({ allowance: { ...unsigned.allowance, max_amount: 99900 } });
 console.log(isRefusal(changed) ? changed.code : "accepted");
 
-// Seller: H back out of what the agent signed.
+// Buyer: confirm the request the agent signed carries H (the buyer gate's signed-not-bound check).
+// In ACP the seller never receives this request: `claims` is false, and the seller ties the payment to H in its report.
 const bound = await delegated.bound(request);
 console.log("bound to H:", typeof bound === "string" && hashEquals(bound, atr.atrHash));
 ```
