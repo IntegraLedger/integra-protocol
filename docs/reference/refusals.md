@@ -83,7 +83,7 @@ The discovery document (`@integraledger/lcp/discovery`).
 | `discovery/member-malformed/termsFormat` | `parse` or `emit` finds the discovery document's `termsFormat` present but not a non-empty string. |
 | `discovery/not-json-object` | `parse` refuses an input that is not a `Uint8Array`, or bytes that are not UTF-8 JSON or whose value is not an object, and `emit` refuses a document that is not an object. |
 | `discovery/terms-missing` | The discovery document has no `terms` member. |
-| `discovery/terms-not-https` | The discovery document's `terms` is a string that is not an absolute `https` URL. |
+| `discovery/terms-not-https` | The discovery document's `terms` is a string that the package's https-link rule (`isHttpsLink`) refuses: not an absolute URL of scheme `https` with a host and no userinfo, or holding whitespace, a control character or a backslash, a host name over 253 characters or a port above 65535, or not well-formed UTF-16. |
 | `discovery/too-large` | `parse` refuses bytes that exceed 65536, and `emit` refuses a document whose written bytes exceed 65536. |
 
 ## x402
@@ -188,8 +188,8 @@ ACK Payment Requests and receipts (`@integraledger/lcp/ack`).
 
 | Code | Meaning |
 |---|---|
-| `ack/id-not-lcp` | `read` finds that the signed token's `id` is not an ATR hash in LCP's string form (`lcp:sha256:H`). |
-| `ack/legal-context-conflict` | `read` finds that the hash in the body's `legalContext` differs from the hash in the signed token's `id`. |
+| `ack/id-not-lcp` | `read` finds that the Payment Request token's `id` is not an ATR hash in LCP's string form (`lcp:sha256:H`). |
+| `ack/legal-context-conflict` | `read` finds that the hash in the body's `legalContext` differs from the hash in the Payment Request token's `id`. |
 | `ack/legal-context-malformed` | `advertise` refuses an invalid ATR hash, or a link or agreement URL that is an `https` link over 2048 characters; `read` refuses a body `legalContext` that does not decode (a link that is not `https` included), whose link exceeds 2048 characters, or whose agreement URL is not an `https` link of at most 2048 characters or is given twice with different values. |
 | `ack/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link. |
 | `ack/no-legal-context` | `read` finds no `legalContext` in the 402 body. |
@@ -228,11 +228,11 @@ AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledg
 | Code | Meaning |
 |---|---|
 | `ap2/checkout-hash-mismatch` | `bound` finds that the mandate discloses a `checkout_jwt` different from the presented one. |
-| `ap2/checkout-id-missing` | The checkout payload has no `id`, or its `id` is not a non-empty string. |
+| `ap2/checkout-id-missing` | `advertise`, `read` or `build` finds that the checkout payload has no `id`, or that its `id` is not a non-empty string; `bound` does not read the `id`. |
 | `ap2/checkout-not-latest` | `bound` finds that the mandate's `checkout_hash` is not the SHA-256 of the presented `checkout_jwt`. |
 | `ap2/disclosure-unreferenced` | An SD-JWT of the Checkout Mandate presentation (either hop of a chain) carries a disclosure that no digest in its payload references. |
 | `ap2/hash-not-in-checkout` | `build` finds that the hash in the offer's checkout JWT is not H. |
-| `ap2/jws-malformed` | A checkout JWT (given to `jwsPayload`, `read`, `build` or `bound`, or as a payload to `advertise`) is not a compact JWS whose payload is one JSON object, or `advertise` is given a payload that is not a serialisable JSON object. |
+| `ap2/jws-malformed` | A checkout JWT (given to `jwsPayload`, `read`, `build` or `bound`, or as a payload to `advertise`) is not a compact JWS whose payload is one JSON object, `advertise` is given a payload that is not a serialisable JSON object, or `build` is given an offer that is not an object. |
 | `ap2/legal-context-conflict` | `advertise` finds a different `legalContext` already in the checkout payload. |
 | `ap2/legal-context-malformed` | The agreement URL given to `advertise` is an `https` link over 2048 characters, or H is invalid, or the checkout payload's `legalContext`, as `read`, `build` or `bound` finds it, does not decode (a link that is not `https` included), or, as `read` finds it, has an agreement URL that is not an `https` link of at most 2048 characters or is given in both spellings with different values. |
 | `ap2/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link. |
@@ -255,9 +255,9 @@ UCP checkouts and bookings (`@integraledger/lcp/ucp`).
 | `ucp/ap2-not-active` | An AP2 Mandate pairing's `read` or `build` finds no `ap2.merchant_authorization` in the checkout in detached JWS form. |
 | `ucp/checkout-malformed` | The checkout (or booking) is not a serialisable JSON object with a non-empty string `id`, its `links` is present but not an array, or the offer given to `build` is not an object. |
 | `ucp/hash-not-in-checkout` | The AP2 Mandate pairing's `build` finds that the checkout's `legal_context` link carries a hash other than H. |
-| `ucp/legal-context-conflict` | The checkout has more than one `legal_context` link or more than one `legal_context_agreement` link, or `advertise` finds an existing `legal_context` or `legal_context_agreement` link whose values differ from the ones it would write (including an existing `legal_context` link with no agreement link when an agreement URL is given). |
-| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form, its `url` is not a usable `https` URL, a `legal_context_agreement` link's `url` is not a usable `https` URL of at most 2048 characters, or the agreement URL given to `advertise` is an `https` link over 2048 characters or the H given to it is invalid. |
-| `ucp/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the `url` of the checkout's `legal_context` or `legal_context_agreement` link is an absolute URL whose scheme is not `https`. |
+| `ucp/legal-context-conflict` | The checkout has more than one `legal_context` link, `read` finds more than one `legal_context_agreement` link, or `advertise` finds an existing `legal_context` link whose values differ from the ones it would write, or, given an agreement URL, finds more than one `legal_context_agreement` link, one whose `url` differs from it, or an existing `legal_context` link with no agreement link. |
+| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form or its `url` is not a usable `https` URL, `read` finds a `legal_context_agreement` link whose `url` is not a usable `https` URL of at most 2048 characters, or the agreement URL given to `advertise` is an `https` link over 2048 characters or the H given to it is invalid. |
+| `ucp/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the `url` of the checkout's `legal_context` link, or the `url` of its `legal_context_agreement` link read by `read`, is an absolute URL whose scheme is not `https`. |
 | `ucp/no-legal-context` | The checkout has no `links` or no link whose `type` is `legal_context`. |
 | `ucp/not-buyer-signed` | `bound` of the unsigned checkout and booking pairings always refuses, because nothing the buyer signs carries the hash. |
 | `ucp/nothing-to-sign` | `build` of the unsigned checkout and booking pairings always refuses, because the buyer signs nothing. |
@@ -294,7 +294,7 @@ Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraled
 | `card/vi-no-checkout-mandate` | A Verifiable Intent layer's `delegate_payload` does not reference exactly one `mandate.checkout.1` mandate. |
 | `card/vi-sd-hash-mismatch` | In autonomous mode, L3b's `sd_hash` is not the digest of L2, or L2's `sd_hash` is not the digest of L1. |
 | `card/vi-signature-invalid` | In autonomous mode, L3b's ES256 signature does not verify under the key L2 delegates, or L2's under L1's `cnf.jwk`, or a signature is not 64 bytes of base64url. |
-| `card/vi-transaction-id-mismatch` | A `mandate.payment.1` mandate in the same layer has a `transaction_id` other than the digest of the checkout mandate's `checkout_jwt`. |
+| `card/vi-transaction-id-mismatch` | A `mandate.payment.1` mandate in the same layer has no `transaction_id`, or one other than the digest of the checkout mandate's `checkout_jwt`. |
 | `card/vi-typ` | A Verifiable Intent layer's header does not have `alg` `ES256` and the expected `typ`, or (in autonomous mode) L3b's header has no string `kid`. |
 
 ## a2a
@@ -303,7 +303,7 @@ The A2A extension (`@integraledger/lcp/a2a`).
 
 | Code | Meaning |
 |---|---|
-| `a2a/legal-context-conflict` | `place` finds a different legal context already under an extension URI in the task's `metadata`, or `read` finds values under two extension URIs that disagree. |
+| `a2a/legal-context-conflict` | `place` finds a different legal context already under the extension URI in the task's `metadata`. |
 | `a2a/legal-context-malformed` | `place` refuses a task or `metadata` that is not an object, an invalid ATR hash, or an `https` link over 2048 characters; `read` refuses a value under the extension URI that does not decode as a legal context or whose link exceeds 2048 characters. |
 | `a2a/link-not-https` | The link to the seller's copy given to `place` is not an `https` link, or the one found by `read` is an absolute URL whose scheme is not `https`. |
 | `a2a/no-legal-context` | `read` finds no legal context under any extension URI in the task's `metadata`. |
