@@ -10,16 +10,14 @@ Include:
 
 - the package version and the entry point involved;
 - the smallest input that shows the problem, and what the package returned;
-- what an attacker gains, and under which conditions.
+- what the problem allows, and under which conditions.
 
 The maintainers acknowledge the report in the advisory, work on a fix with you there, and publish the advisory with
 the fixed release. Credit is given to the reporter unless you ask otherwise.
 
-For a bug that is not a vulnerability, open a [public issue](https://github.com/IntegraLedger/integra-protocol/issues).
-
 ## Supported versions
 
-Security fixes are released for the latest published version of `@integraledger/lcp`.
+Security fixes are released for the latest published version of each package.
 
 ## What counts
 
@@ -39,3 +37,7 @@ The package's one job is the binding between an ATR and a payment, so a vulnerab
 By design, the package does not check amount, payee, asset, timing or payer against the ATR's content, does not hold
 keys, and does not verify every signature it reads; each pairing's `pattern.proves` says what the payment shows. A
 report that relies on one of these is not a vulnerability in this package.
+
+## Bugs that are not vulnerabilities
+
+Open a [public issue](https://github.com/IntegraLedger/integra-protocol/issues).
