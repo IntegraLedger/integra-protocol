@@ -160,11 +160,10 @@ const pattern: LcpPattern = Object.freeze({
   publicProof: false,
   proves:
     "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-    "recorded in <transaction>. This ATR's hash was issued to the seller as the id of its signed ACK Payment Request, " +
-    "with the link to deliver beside it before payment; a receipt for that request, issued after settlement, embeds " +
-    "the signed request. Neither the request nor the receipt was seen in making this record. ACK defines no payer " +
-    "signature, so nothing the buyer signed carries the hash. The seller checked nothing the buyer signed, and " +
-    "settlement is the seller's report. This does not show that the buyer's approval carried the hash.",
+    "recorded in <transaction>. This ATR's hash is the id of the seller's ACK Payment Request token, with the link " +
+    "beside it; a receipt for that request embeds the token. The token's signature is not verified here. ACK defines " +
+    "no payer signature, so nothing the buyer signed carries the hash, and settlement is the seller's report. This " +
+    "does not show that the buyer's approval carried the hash.",
 });
 
 export const paymentRequest = Object.freeze({
