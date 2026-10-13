@@ -15,11 +15,14 @@ gate with the fetch bounds and declines already in place, use the buyer packages
 `read(doc)` gives H, the link, and the options the pairing can pay. Fetch the link with bounds, keep the bytes exactly
 as received, and compare their hash with H. On any failure, stop before anything is signed.
 
-The fetch below is the one the shared vectors fix: one `GET`, no redirects, a 10-second deadline over headers and
-body, and at most 1 MiB, counted as the body streams. It asks with `redirect: "manual"` and reads a `3xx` answer, or the
-`opaqueredirect` answer with status `0` that browsers give, as a failure. Cloudflare Workers refuse
+The fetch below is the one the shared vectors fix: one `GET` asking for the identity coding
+(`Accept-Encoding: identity`), no redirects, a 10-second deadline over headers and body, at most 1 MiB, counted as the
+body streams, and an answer in any other content coding declined. It asks with `redirect: "manual"` and reads a `3xx`
+answer, or the `opaqueredirect` answer with status `0` that browsers give, as a failure. Cloudflare Workers refuse
 `redirect: "error"` with a `TypeError`, and under `"manual"` a Worker's `fetch` answers a redirect with the `3xx`
-itself (measured on Cloudflare's runtime with wrangler 4.141.0).
+itself (measured on Cloudflare's runtime with wrangler 4.141.0). In a browser, `Accept-Encoding` is a forbidden request
+header and a cross-origin answer's `Content-Encoding` is hidden unless the seller exposes it, so the coding check
+cannot be made there.
 
 ## 2. Build and sign
 
@@ -55,14 +58,23 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const MAX_ATR_BYTES = 1_048_576;
 
-/** One GET, no redirects, a 10-second deadline, and at most 1 MiB. The bytes as received, or why not. */
+/**
+ * One GET asking for the identity coding, no redirects, a 10-second deadline, and at most 1 MiB. The bytes as
+ * received, or why not.
+ */
 async function fetchAtr(link: string, get: typeof fetch = fetch): Promise<Uint8Array | string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await get(link, { redirect: "manual", signal: controller.signal });
+    const response = await get(link, {
+      redirect: "manual",
+      signal: controller.signal,
+      headers: { "accept-encoding": "identity" },
+    });
     const redirected = response.type === "opaqueredirect" || (response.status >= 300 && response.status <= 399);
     if (redirected || response.status !== 200 || response.body === null) return "atr-unfetchable";
+    const coding = (response.headers.get("content-encoding") ?? "").trim().toLowerCase();
+    if (coding !== "" && coding !== "identity") return "atr-unfetchable";
     const chunks: Uint8Array[] = [];
     let size = 0;
     for await (const chunk of response.body) {
