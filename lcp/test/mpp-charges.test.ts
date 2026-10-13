@@ -309,12 +309,13 @@ describe("mpp-charge-stellar.json", () => {
     const D = V.issuedDigest;
     expect(await issuedDigest(V.challenge)).toBe(D.expectIssued);
     expect(await issuedDigest(placed)).toBe(D.expectIssued);
-    expect(await issuedDigest(chargeStellar.unplaced(placed))).toBe(D.expectIssued);
-    expect(chargeStellar.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
+    const issued = chargeStellar.unplaced(placed) as MppChallenge;
+    expect(await issuedDigest(issued)).toBe(D.expectIssued);
+    expect(issued).toEqual({ ...placed, request: V.challenge.request });
     expect(JSON.parse(Buffer.from(D.echoedRequest, "base64url").toString("utf8")).recipient).toBe(D.payerMuxed);
     const echoed = { ...placed, request: D.echoedRequest };
     expect(await issuedDigest(echoed)).toBe(D.expectEchoed);
-    expect(await issuedDigest(chargeStellar.unplaced(echoed))).toBe(D.expectEchoed);
+    expect(await issuedDigest(chargeStellar.unplaced(echoed) as MppChallenge)).toBe(D.expectEchoed);
   });
 
   it("refusals, and fetchPresented of a hash credential", async () => {

@@ -239,10 +239,12 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
 /**
  * The placed challenge with only the muxed id taken out: `request`'s muxed `recipient` back to its base `G…`
  * account, the member that stays in the digest, and `request` re-encoded as base64url of the core's `canonicalJson`.
- * `id`, `opaque` and every other member stay as placed. Without @stellar/stellar-sdk the challenge is returned
- * unchanged.
+ * `id`, `opaque` and every other member stay as placed. A challenge that carries a `refused` member is
+ * `mpp/challenge-malformed`; otherwise, without @stellar/stellar-sdk, the challenge is returned as given. A value that
+ * is not an object comes back as it is.
  */
-function unplaced(option: MppChallenge): MppChallenge {
+function unplaced(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return withoutCarrier(option, unmux);
 }
 
