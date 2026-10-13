@@ -57,9 +57,9 @@ sequenceDiagram
   B->>S: fetch the link
   S-->>B: the ATR's exact bytes
   Note over B: buyer gate: SHA-256(bytes) equals H, or stop
-  Note over B: build the payment with H in its field, sign it
-  B->>S: payment carrying H
-  Note over S: bound(payment) equals H, then settle, then status reads H on the rail
+  Note over B: build the payment and sign it, on most pairings with H in the field it signs
+  B->>S: payment, carrying H where the pairing's claims is true
+  Note over S: where it carries H, bound(payment) equals H, then settle, then on most rails status reads H
 ```
 
 ## Install

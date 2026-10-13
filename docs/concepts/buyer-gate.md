@@ -21,8 +21,8 @@ sequenceDiagram
   alt the hashes differ, or the fetch fails
     Note over B: decline, and sign nothing
   else the hashes are equal
-    Note over B: build the payment with H in its place, then sign
-    B->>S: the payment, carrying H
+    Note over B: build the payment and sign it, on most pairings with H in the field it signs
+    B->>S: the payment, carrying H where the pairing's claims is true
   end
 ```
 

@@ -27,9 +27,9 @@ sequenceDiagram
   B->>S: fetch the link
   S-->>B: the ATR's exact bytes
   Note over B: SHA-256(bytes) equals H, or stop
-  Note over B: build the payment with H in its field, sign it
-  B->>S: payment carrying H
-  Note over S: H read back from the payment equals the H it issued
+  Note over B: build the payment and sign it, on most pairings with H in the field it signs
+  B->>S: payment, carrying H where the pairing's claims is true
+  Note over S: where it carries H, H read back from the payment equals the H it issued
 ```
 
 1. **The seller assembles the record.** The Agentic Transaction Record holds a format marker, a per-transaction id,
