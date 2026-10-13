@@ -105,8 +105,9 @@ function memoHash(arg: unknown): AtrHash | null {
 /**
  * The payment's settlement, in at most four reader calls. The origin's confirmed nonce is read first, then the
  * transaction. A wrong reader, a failed transaction read, or an answer of no documented shape is pending
- * `unreadable`. A mined transaction must be the origin's at its nonce, calling the contract's `transfer` with `(some H)`
- * as its fourth argument, else failed `not-this-instrument`; then the API's `status` decides. A mined transaction's
+ * `unreadable`. A mined transaction must be the origin's at its nonce, calling `transfer` on the ref's `contract`, the
+ * contract the presented transaction called, with `(some H)` as its fourth argument, else failed `not-this-instrument`;
+ * then the API's `status` decides. A mined transaction's
  * answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
  * two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
  * failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce

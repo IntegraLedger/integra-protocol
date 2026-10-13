@@ -160,7 +160,12 @@ keys its own pairing writes for the opening or the close, or names a key another
 hex address read the same in either case; a NEAR account id and a Stacks address read only as their pairing writes
 them.
 Failed means the rail itself says so: a reverted, aborted or expired transaction, or one that does not carry this
-payment.
+payment. On Tron a failed answer can come from the FullNode's head before the block is solidified, and on TON from
+transactions not yet finalized; a failed answer names no finality.
+
+`status` reads the settlement of the presented transaction. On Stacks, Stellar, Tron and NEAR, `reference` takes the
+token from that transaction, so `status` reports the settlement on the contract the transaction called, and on Solana
+the reference names no token: confirming that it is the token the challenge named is the seller's check.
 
 On EVM chains and Tempo, and on the MPP Hedera session, which reads its escrow through Hedera's JSON-RPC relay, a block
 above the `finalized` mark can be replaced, by one in which the same transaction succeeds or holds other logs. A

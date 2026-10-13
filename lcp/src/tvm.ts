@@ -345,10 +345,10 @@ function sendMessage(actions: Cell): Cell | Refusal {
  * commits the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose
  * index lags that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted
  * is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`,
- * at any head. A transaction on any other account is ignored. A failed or malformed read, a malformed reference (a
- * `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another network is pending
- * `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in lowercase. At most
- * four calls.
+ * at any head and at any finality. A transaction on any other account is ignored. A failed or malformed read, a
+ * malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
+ * network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
+ * lowercase. At most four calls.
  */
 export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
