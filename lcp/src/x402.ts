@@ -40,7 +40,6 @@ import {
 } from "./evm.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
-import { agreementIn } from "./internal/agreement.js";
 import {
   isLog,
   isReceipt,
@@ -56,7 +55,7 @@ import {
   MAX_OPTIONS,
   advertiseFor,
   isOffered,
-  legalContextOf,
+  readFor,
   sameJson,
   type OptionFilter,
   type X402Advertise,
@@ -230,31 +229,6 @@ export function tie(
   request: RequestCommitment,
 ): ["x402", { accepts: readonly PaymentRequirements[]; request: RequestCommitment }] {
   return ["x402", { accepts, request }];
-}
-
-/**
- * The buyer's reading over a pairing's filter: the hash, the link, the agreement URL when `extensions.legalContext` carries one, and
- * the options the filter serves, in document order. A link or agreement URL of at most 2048 characters that parses as
- * an absolute URL with a scheme other than `https` is `x402/link-not-https`; any other value that is not a link, or two
- * spellings that disagree, is `x402/legal-context-malformed`.
- */
-export function readFor(filter: OptionFilter): (doc: unknown) => X402Read | Refusal {
-  return (doc) => {
-    if (!isObject(doc) || doc["x402Version"] !== 2) return refusal("x402/not-v2");
-    const accepts = doc["accepts"];
-    if (!Array.isArray(accepts) || accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
-    const extensions = doc["extensions"];
-    const lc = legalContextOf(extensions);
-    if (isRefusal(lc)) return lc;
-    const present = isObject(extensions) ? extensions[LEGAL_CONTEXT] : undefined;
-    const agreement = agreementIn(isObject(present) ? present["info"] : undefined);
-    if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("x402/link-not-https");
-    if (typeof agreement === "object") return refusal("x402/legal-context-malformed");
-    const options = (accepts as PaymentRequirements[]).filter((o) => isObject(o) && filter(o) === true);
-    if (options.length === 0) return refusal("x402/no-payable-option");
-    const offer = { required: doc as PaymentRequired, options };
-    return agreement === undefined ? { h: lc.h, link: lc.link, offer } : { h: lc.h, link: lc.link, agreement, offer };
-  };
 }
 
 /**

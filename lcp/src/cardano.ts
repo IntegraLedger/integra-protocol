@@ -8,14 +8,13 @@ import { fromLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
 import type { CardanoPaymentPayload } from "./internal/cardano.js";
-import { advertiseFor, type OptionFilter, type X402Read } from "./internal/x402.js";
+import { advertiseFor, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { base64Bytes, hexOf, sameBytes } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
   paymentWith,
   presentedWith,
-  readFor,
   tie,
   type LcpPattern,
   type PaymentRequired,
