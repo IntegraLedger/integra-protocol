@@ -268,8 +268,8 @@ Rejects with a TypeError when `h` is not a 32-byte hash.
 > **xrplChannelId**(`account`, `destination`, `sequence`): `string` \| [`Refusal`](index.md#refusal)
 
 The PayChannel id: SHA-512Half of `0x0078` ‖ the source's AccountID ‖ the destination's AccountID ‖ the creating
-transaction's sequence (or ticket sequence), big-endian; upper-case hex. A malformed address or sequence is
-`xrpl/not-channel-create`.
+transaction's sequence (or ticket sequence), big-endian; upper-case hex. An address that is not a classic address,
+or a sequence that is not a UInt32, is `mpp/input-malformed`.
 
 #### Parameters
 
@@ -289,7 +289,8 @@ transaction's sequence (or ticket sequence), big-endian; upper-case hex. A malfo
 
 > **xrplClaim**(`channelId`, `drops`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
 
-The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as u64 big-endian.
+The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as u64 big-endian. A channel id that is not
+64 hex digits, or drops that are not a `bigint` UInt64, is `mpp/input-malformed`.
 
 #### Parameters
 
