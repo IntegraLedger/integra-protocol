@@ -34,7 +34,8 @@ import {
 } from "./x402.js";
 
 export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
-export const HEDERA_NETWORKS: readonly HederaNetwork[] = Object.freeze([
+/** The four CAIP-2 Hedera networks. */
+const HEDERA_NETWORKS: readonly HederaNetwork[] = Object.freeze([
   "hedera:mainnet",
   "hedera:testnet",
   "hedera:previewnet",
