@@ -3,7 +3,7 @@
  "fixed": {
   "A": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e60\",\"ucp\":{\"options\":[{\"checkout\":\"chk_1\"}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
   "H": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-  "L": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+  "L": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
   "C0": {
    "ucp": {
     "version": "2026-08-25"
@@ -28,13 +28,13 @@
   "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "mandateHeader": "{\"alg\":\"ES256\",\"typ\":\"dc+sd-jwt\",\"kid\":\"platform-key-1\"}",
   "disclosureTemplate": "[\"2GLC42sKQveCfGfryNRN9w\", \"checkout_jwt\", \"<J>\"]",
-  "mandatePayload": "{\"vct\":\"mandate.checkout.1\",\"checkout_hash\":\"OeuY9U-yZrBnjHtQA1gwaHDuprRe9V8Mxp11NY922TM\",\"_sd\":[\"Yx2NjdPJxKLYZIN8XHEsWVRQRVT6kgjfmTKZKh7ttrw\"],\"_sd_alg\":\"sha-256\",\"iat\":1790000000,\"exp\":1790000600}",
+  "mandatePayload": "{\"vct\":\"mandate.checkout.1\",\"checkout_hash\":\"BPHlZorES0LlnG6I981_bF9gC2L9K8fVl31RvkuZIbM\",\"_sd\":[\"bZ_eCLcraeKLODbew0LJsIak5LoxBKIRKElRgg0kaA0\"],\"_sd_alg\":\"sha-256\",\"iat\":1790000000,\"exp\":1790000600}",
   "merchantAuthorization": "eyJhbGciOiJFUzI1NiJ9..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
  },
  "built": {
-  "J": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4NjBkNTNlZTJhNGI1MzE0NjA2NmQwOTk1MDI5YzFmYjMzZDlhNjlkNjkzMGMxMmVjNTlhMzNjYzExNzg0YjE3ZSIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-  "D": "WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd",
-  "M": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiT2V1WTlVLXlackJuakh0UUExZ3dhSER1cHJSZTlWOE14cDExTlk5MjJUTSIsIl9zZCI6WyJZeDJOamRQSnhLTFlaSU44WEhFc1dWUlFSVlQ2a2dqZm1US1pLaDd0dHJ3Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd~"
+  "J": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzNkYjIxYTIwLTg2NzktNGJiMC05NDJlLWEyMTU4ZmEwODY4MyIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "D": "WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMek5rWWpJeFlUSXdMVGcyTnprdE5HSmlNQzA1TkRKbExXRXlNVFU0Wm1Fd09EWTRNeUlzSW5ScGRHeGxJam9pYkdOd09uTm9ZVEkxTmpvd2VEWXdaRFV6WldVeVlUUmlOVE14TkRZd05qWmtNRGs1TlRBeU9XTXhabUl6TTJRNVlUWTVaRFk1TXpCak1USmxZelU1WVRNelkyTXhNVGM0TkdJeE4yVWlmVjE5LkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIl0",
+  "M": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiQlBIbFpvckVTMExsbkc2STk4MV9iRjlnQzJMOUs4ZlZsMzFSdmt1WkliTSIsIl9zZCI6WyJiWl9lQ0xjcmFlS0xPRGJldzBMSnNJYWs1TG94QktJUktFbFJnZzBrYUEwIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMek5rWWpJeFlUSXdMVGcyTnprdE5HSmlNQzA1TkRKbExXRXlNVFU0Wm1Fd09EWTRNeUlzSW5ScGRHeGxJam9pYkdOd09uTm9ZVEkxTmpvd2VEWXdaRFV6WldVeVlUUmlOVE14TkRZd05qWmtNRGs1TlRBeU9XTXhabUl6TTJRNVlUWTVaRFk1TXpCak1USmxZelU1WVRNelkyTXhNVGM0TkdJeE4yVWlmVjE5LkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIl0~"
  },
  "V1": {
   "options": [
@@ -68,7 +68,7 @@
     ]
    },
    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
    "offer": {
     "checkout": "chk_1"
    }
@@ -93,14 +93,14 @@
     },
     {
      "type": "legal_context",
-     "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
      "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
     }
    ]
   },
   "expectRead": {
    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+   "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
   },
   "expectAp2Read": {
    "refused": true,
@@ -115,7 +115,7 @@
    "refused": true,
    "code": "ucp/legal-context-conflict"
   },
-  "expectJLength": 719
+  "expectJLength": 679
  },
  "V2b": {
   "B0": {
@@ -140,7 +140,7 @@
   },
   "advertise": {
    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+   "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
    "offer": {
     "booking": "bkg_1"
    }
@@ -165,14 +165,14 @@
     },
     {
      "type": "legal_context",
-     "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
      "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
     }
    ]
   },
   "expectRead": {
    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-   "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+   "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
   },
   "otherBooking": {
    "offer": {
@@ -197,8 +197,8 @@
   "expectIssuedDigest": "0x3213565426c731cb3a0a6e851fbaef41b33ed0c01a936429cf96e5e3a92d0d9d"
  },
  "V4": {
-  "expectCheckoutHash": "OeuY9U-yZrBnjHtQA1gwaHDuprRe9V8Mxp11NY922TM",
-  "expectDisclosureDigest": "Yx2NjdPJxKLYZIN8XHEsWVRQRVT6kgjfmTKZKh7ttrw",
+  "expectCheckoutHash": "BPHlZorES0LlnG6I981_bF9gC2L9K8fVl31RvkuZIbM",
+  "expectDisclosureDigest": "bZ_eCLcraeKLODbew0LJsIak5LoxBKIRKElRgg0kaA0",
   "expectBound": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
   "expectUnsignedBound": {
    "refused": true,
@@ -239,7 +239,7 @@
    "policies": [
     {
      "type": "com.integraledger.policy.legal_context",
-     "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+     "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
      "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
     }
    ]
@@ -266,7 +266,7 @@
    "lcp_presentation": {
     "type": "sha256",
     "value": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "legalContextUrl": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+    "legalContextUrl": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
    }
   },
   "expect": {
@@ -278,8 +278,8 @@
   "case": "the seller re-issued for a changed cart: J2 is J built from C0 with amount 39800 and the link of A2, and M still commits to J",
   "A2": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e61\",\"ucp\":{\"options\":[{\"checkout\":\"chk_1\"}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":2}],\"totals\":[{\"type\":\"total\",\"amount\":39800}]}",
   "H2": "0x7d51bac1e09288ddd10f0fccd54e7ee342c5b7500c5983efbfbea88880dfef1f",
-  "checkoutJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjM5ODAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4N2Q1MWJhYzFlMDkyODhkZGQxMGYwZmNjZDU0ZTdlZTM0MmM1Yjc1MDBjNTk4M2VmYmZiZWE4ODg4MGRmZWYxZiIsInRpdGxlIjoibGNwOnNoYTI1NjoweDdkNTFiYWMxZTA5Mjg4ZGRkMTBmMGZjY2Q1NGU3ZWUzNDJjNWI3NTAwYzU5ODNlZmJmYmVhODg4ODBkZmVmMWYifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-  "expectJ2Hash": "mUgKEKHXX_NDsegPFCZSlCTEv5z2zofnDTaqtM7ucl8",
+  "checkoutJwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjM5ODAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzIxNDk1ZjFhLWI0MTEtNDc3NC1hZmVjLWJhNmYwOWYwM2U0YiIsInRpdGxlIjoibGNwOnNoYTI1NjoweDdkNTFiYWMxZTA5Mjg4ZGRkMTBmMGZjY2Q1NGU3ZWUzNDJjNWI3NTAwYzU5ODNlZmJmYmVhODg4ODBkZmVmMWYifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "expectJ2Hash": "dCo-0fBbbgxbkmn34bbwR-z8d2he7fHCFIwkV1xsPS8",
   "expect": {
    "refused": true,
    "code": "ap2/checkout-not-latest"
@@ -307,7 +307,7 @@
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": "chk_1"
     }
@@ -328,7 +328,7 @@
     "links": [
      {
       "type": "legal_context",
-      "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+      "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
      }
     ]
@@ -360,13 +360,13 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": "chk_1"
     }
@@ -391,7 +391,7 @@
      },
      {
       "type": "legal_context",
-      "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+      "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
      }
     ]
@@ -424,7 +424,7 @@
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": ""
     }
@@ -461,7 +461,7 @@
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "booking": "chk_1"
     }
@@ -498,7 +498,7 @@
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "http://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "http://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": "chk_1"
     }
@@ -534,7 +534,7 @@
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": "chk_1"
     }
@@ -568,7 +568,7 @@
      }
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": "chk_1"
     }
@@ -857,7 +857,7 @@
      ]
     },
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
     "offer": {
      "checkout": "chk_1"
     }
@@ -930,12 +930,12 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ]
@@ -972,7 +972,7 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ]
@@ -1009,7 +1009,7 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
       }
      ]
     }
@@ -1045,7 +1045,7 @@
       },
       {
        "type": "legal_context",
-       "url": "http://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "http://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ]
@@ -1108,7 +1108,7 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60D53EE2A4B53146066D0995029C1FB33D9A69D6930C12EC59A33CC11784B17E"
       }
      ]
@@ -1116,7 +1116,7 @@
    },
    "expect": {
     "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-    "link": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
    }
   },
   {
@@ -1145,7 +1145,7 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ],
@@ -1185,7 +1185,7 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ],
@@ -1226,7 +1226,7 @@
       },
       {
        "type": "legal_context",
-       "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
        "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
       }
      ]
@@ -1314,7 +1314,7 @@
        },
        {
         "type": "legal_context",
-        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
         "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
        }
       ],
@@ -1338,8 +1338,8 @@
     "pairing": "ucp/booking/ap2-mandate",
     "input": {
      "presented": {
-      "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiT2V1WTlVLXlackJuakh0UUExZ3dhSER1cHJSZTlWOE14cDExTlk5MjJUTSIsIl9zZCI6WyJZeDJOamRQSnhLTFlaSU44WEhFc1dWUlFSVlQ2a2dqZm1US1pLaDd0dHJ3Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd~",
-      "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4NjBkNTNlZTJhNGI1MzE0NjA2NmQwOTk1MDI5YzFmYjMzZDlhNjlkNjkzMGMxMmVjNTlhMzNjYzExNzg0YjE3ZSIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiQlBIbFpvckVTMExsbkc2STk4MV9iRjlnQzJMOUs4ZlZsMzFSdmt1WkliTSIsIl9zZCI6WyJiWl9lQ0xjcmFlS0xPRGJldzBMSnNJYWs1TG94QktJUktFbFJnZzBrYUEwIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMek5rWWpJeFlUSXdMVGcyTnprdE5HSmlNQzA1TkRKbExXRXlNVFU0Wm1Fd09EWTRNeUlzSW5ScGRHeGxJam9pYkdOd09uTm9ZVEkxTmpvd2VEWXdaRFV6WldVeVlUUmlOVE14TkRZd05qWmtNRGs1TlRBeU9XTXhabUl6TTJRNVlUWTVaRFk1TXpCak1USmxZelU1WVRNelkyTXhNVGM0TkdJeE4yVWlmVjE5LkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIl0~",
+      "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzNkYjIxYTIwLTg2NzktNGJiMC05NDJlLWEyMTU4ZmEwODY4MyIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
      },
      "check": [
       {
@@ -1385,7 +1385,7 @@
        },
        {
         "type": "legal_context",
-        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
         "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
        }
       ]
@@ -1426,7 +1426,7 @@
        },
        {
         "type": "legal_context",
-        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
         "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
        }
       ],
@@ -1450,8 +1450,8 @@
     "pairing": "ucp/checkout/ap2-mandate",
     "input": {
      "presented": {
-      "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiT2V1WTlVLXlackJuakh0UUExZ3dhSER1cHJSZTlWOE14cDExTlk5MjJUTSIsIl9zZCI6WyJZeDJOamRQSnhLTFlaSU44WEhFc1dWUlFSVlQ2a2dqZm1US1pLaDd0dHJ3Il0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMekI0TmpCa05UTmxaVEpoTkdJMU16RTBOakEyTm1Rd09UazFNREk1WXpGbVlqTXpaRGxoTmpsa05qa3pNR014TW1Wak5UbGhNek5qWXpFeE56ZzBZakUzWlNJc0luUnBkR3hsSWpvaWJHTndPbk5vWVRJMU5qb3dlRFl3WkRVelpXVXlZVFJpTlRNeE5EWXdOalprTURrNU5UQXlPV014Wm1Jek0yUTVZVFk1WkRZNU16QmpNVEpsWXpVNVlUTXpZMk14TVRjNE5HSXhOMlVpZlYxOS5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJd~",
-      "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4NjBkNTNlZTJhNGI1MzE0NjA2NmQwOTk1MDI5YzFmYjMzZDlhNjlkNjkzMGMxMmVjNTlhMzNjYzExNzg0YjE3ZSIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCIsImtpZCI6InBsYXRmb3JtLWtleS0xIn0.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoiQlBIbFpvckVTMExsbkc2STk4MV9iRjlnQzJMOUs4ZlZsMzFSdmt1WkliTSIsIl9zZCI6WyJiWl9lQ0xjcmFlS0xPRGJldzBMSnNJYWs1TG94QktJUktFbFJnZzBrYUEwIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SjFZM0FpT25zaWRtVnljMmx2YmlJNklqSXdNall0TURndE1qVWlmU3dpYVdRaU9pSmphR3RmTVNJc0luTjBZWFIxY3lJNkluSmxZV1I1WDJadmNsOWpiMjF3YkdWMFpTSXNJbU4xY25KbGJtTjVJam9pVlZORUlpd2lkRzkwWVd4eklqcGJleUowZVhCbElqb2lkRzkwWVd3aUxDSmhiVzkxYm5RaU9qRTVPVEF3ZlYwc0lteHBibXR6SWpwYmV5SjBlWEJsSWpvaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0luVnliQ0k2SW1oMGRIQnpPaTh2YzJWc2JHVnlMbVY0WVcxd2JHVXZkRzl6SW4wc2V5SjBlWEJsSWpvaWJHVm5ZV3hmWTI5dWRHVjRkQ0lzSW5WeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMek5rWWpJeFlUSXdMVGcyTnprdE5HSmlNQzA1TkRKbExXRXlNVFU0Wm1Fd09EWTRNeUlzSW5ScGRHeGxJam9pYkdOd09uTm9ZVEkxTmpvd2VEWXdaRFV6WldVeVlUUmlOVE14TkRZd05qWmtNRGs1TlRBeU9XTXhabUl6TTJRNVlUWTVaRFk1TXpCak1USmxZelU1WVRNelkyTXhNVGM0TkdJeE4yVWlmVjE5LkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIl0~",
+      "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJ1Y3AiOnsidmVyc2lvbiI6IjIwMjYtMDgtMjUifSwiaWQiOiJjaGtfMSIsInN0YXR1cyI6InJlYWR5X2Zvcl9jb21wbGV0ZSIsImN1cnJlbmN5IjoiVVNEIiwidG90YWxzIjpbeyJ0eXBlIjoidG90YWwiLCJhbW91bnQiOjE5OTAwfV0sImxpbmtzIjpbeyJ0eXBlIjoidGVybXNfb2Zfc2VydmljZSIsInVybCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUvdG9zIn0seyJ0eXBlIjoibGVnYWxfY29udGV4dCIsInVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzNkYjIxYTIwLTg2NzktNGJiMC05NDJlLWEyMTU4ZmEwODY4MyIsInRpdGxlIjoibGNwOnNoYTI1NjoweDYwZDUzZWUyYTRiNTMxNDYwNjZkMDk5NTAyOWMxZmIzM2Q5YTY5ZDY5MzBjMTJlYzU5YTMzY2MxMTc4NGIxN2UifV19.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
      },
      "check": [
       {
@@ -1497,7 +1497,7 @@
        },
        {
         "type": "legal_context",
-        "url": "https://atr.seller.example/0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+        "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
         "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
        }
       ]

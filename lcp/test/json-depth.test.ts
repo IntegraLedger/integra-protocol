@@ -20,7 +20,8 @@ const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
 const nest = (n: number, inner: string) => "[".repeat(n) + inner + "]".repeat(n);
 const refused = (code: string) => ({ refused: true, code });
 const H = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
-const L = `https://atr.seller.example/${H}`;
+// A path from a random token, not from H (card.json's fixed.link).
+const L = "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f";
 const jws = (payload: string) => `${b64u('{"alg":"ES256"}')}.${b64u(payload)}.${"A".repeat(86)}`;
 
 describe("the cap is one constant, 64", () => {

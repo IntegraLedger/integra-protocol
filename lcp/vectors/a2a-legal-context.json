@@ -2,7 +2,7 @@
  "about": "Vectors for the a2a entry point of @integraledger/lcp, the LCP A2A extension. Every expected value is fixed by the extension and its URI list, with H and L as in ack-payment-request.json. A value {\"$repeat\": [s, n]} in args stands for the string s repeated n times.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "L": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "URI": "https://lcp.integraledger.com/a2a/legal-context/v1",
   "uris": [
    "https://lcp.integraledger.com/a2a/legal-context/v1"
@@ -52,13 +52,13 @@
     "https://lcp.integraledger.com/a2a/legal-context/v1": {
      "type": "sha256",
      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     }
    }
   },
   "expectRead": {
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
   },
   "placeOther": {
    "h": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -68,7 +68,7 @@
    }
   },
   "httpLink": {
-   "link": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "http://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
    "expect": {
     "refused": true,
     "code": "a2a/link-not-https"
@@ -82,7 +82,7 @@
     "legalContext": {
      "type": "sha256",
      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     }
    }
   },
@@ -156,7 +156,7 @@
       }
      },
      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
      "https://lcp.integraledger.com/a2a/legal-context/v1"
     ],
     "expect": {
@@ -167,7 +167,7 @@
       "https://lcp.integraledger.com/a2a/legal-context/v1": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     }
@@ -184,12 +184,12 @@
        "https://lcp.integraledger.com/a2a/legal-context/v1": {
         "type": "sha256",
         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
        }
       }
      },
      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     ],
     "expect": {
      "id": "task-1",
@@ -199,7 +199,7 @@
       "https://lcp.integraledger.com/a2a/legal-context/v1": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     }
@@ -212,7 +212,7 @@
       "task"
      ],
      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     ],
     "expect": {
      "refused": true,
@@ -228,7 +228,7 @@
       "metadata": "x"
      },
      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     ],
     "expect": {
      "refused": true,
@@ -247,7 +247,7 @@
       }
      },
      "0x1234",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     ],
     "expect": {
      "refused": true,
@@ -282,7 +282,7 @@
        "https://lcp.integraledger.com/a2a/legal-context/v1": {
         "type": "sha256",
         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
         "pad": {
          "$repeat": [
           "a",
@@ -307,7 +307,7 @@
        "https://lcp.integraledger.com/a2a/legal-context/v1": {
         "type": "sha512",
         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
        }
       }
      }
@@ -326,7 +326,7 @@
        "https://lcp.integraledger.com/a2a/legal-context/v1": {
         "type": "sha256",
         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-        "legalContextUrl": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        "legalContextUrl": "http://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
        }
       }
      }

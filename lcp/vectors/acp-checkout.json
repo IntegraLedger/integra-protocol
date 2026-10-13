@@ -1,9 +1,9 @@
 {
- "about": "Vectors for the acp/checkout/delegated and acp/checkout/undelegated pairings: the acp entry point of @integraledger/lcp. Every expected value is fixed by the pairing. A is a 287-byte ATR, H = SHA-256(A) (GNU coreutils sha256sum and openssl dgst -sha256 agree), L = https://atr.seller.example/<H>, S0 a checkout session, and otherH ucp.json's H. A value {\"$repeat\": [s, n]} in args stands for the string s repeated n times.",
+ "about": "Vectors for the acp/checkout/delegated and acp/checkout/undelegated pairings: the acp entry point of @integraledger/lcp. Every expected value is fixed by the pairing. A is a 287-byte ATR, H = SHA-256(A) (GNU coreutils sha256sum and openssl dgst -sha256 agree), L = https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050, a path from a random token, not from H, S0 a checkout session, and otherH ucp.json's H. A value {\"$repeat\": [s, n]} in args stands for the string s repeated n times.",
  "fixed": {
   "A": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e80\",\"acp\":{\"options\":[{\"requires_delegate_payment\":true},{\"requires_delegate_payment\":false}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
   "H": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-  "L": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+  "L": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
   "S0": {
    "currency": "usd",
    "metadata": {
@@ -61,7 +61,7 @@
     }
    },
    "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-   "link": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "link": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
    "offer": {
     "requires_delegate_payment": true
    }
@@ -74,13 +74,13 @@
     "legal_context": {
      "type": "sha256",
      "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+     "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
     }
    }
   },
   "expectRead": {
    "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-   "link": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+   "link": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
   },
   "readUpperCaseId": {
    "id": "0x1BE27E75EA3728B55834EC54FF6709669427B11C9BA47A6D9F182B0BE46513BE",
@@ -100,7 +100,7 @@
    }
   },
   "httpLink": {
-   "link": "http://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+   "link": "http://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
    "expect": {
     "refused": true,
     "code": "acp/link-not-https"
@@ -133,7 +133,7 @@
      "legal_context": {
       "type": "sha256",
       "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-      "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+      "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
      }
     }
    },
@@ -176,13 +176,13 @@
     "legal_context": {
      "type": "sha256",
      "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+     "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
     }
    }
   },
   "expectRead": {
    "h": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-   "link": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+   "link": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
   },
   "expectBuild": {
    "refused": true,
@@ -201,7 +201,7 @@
    "legal_context": {
     "type": "sha256",
     "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-    "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
    }
   },
   "expect": {
@@ -219,7 +219,7 @@
     "legal_context": {
      "type": "sha256",
      "value": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
-     "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+     "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
     }
    }
   },
@@ -265,7 +265,7 @@
       "session"
      ],
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -284,7 +284,7 @@
       "metadata": "x"
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -311,7 +311,7 @@
       }
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -338,7 +338,7 @@
       }
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -359,7 +359,7 @@
       }
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": "yes"
      }
@@ -380,7 +380,7 @@
       }
      },
      "0x1234",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -426,12 +426,12 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be?v=2"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050?v=2"
        }
       }
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -453,12 +453,12 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": true
      }
@@ -471,7 +471,7 @@
       "legal_context": {
        "type": "sha256",
        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-       "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
       }
      }
     }
@@ -488,7 +488,7 @@
       "id": "0x1BE27E75EA3728B55834EC54FF6709669427B11C9BA47A6D9F182B0BE46513BE"
      },
      "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050",
      {
       "requires_delegate_payment": false
      }
@@ -501,7 +501,7 @@
       "legal_context": {
        "type": "sha256",
        "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-       "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+       "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
       }
      }
     }
@@ -541,7 +541,7 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      }
@@ -562,7 +562,7 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      }
@@ -583,7 +583,7 @@
        "legal_context": {
         "type": "sha512",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      }
@@ -604,7 +604,7 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "http://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "http://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      }
@@ -647,7 +647,7 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       },
       "pad": {
@@ -676,7 +676,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -705,7 +705,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -734,7 +734,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -763,7 +763,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -792,7 +792,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -821,7 +821,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -850,7 +850,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -879,7 +879,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -908,7 +908,7 @@
         "legal_context": {
          "type": "sha256",
          "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-         "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
         }
        }
       },
@@ -1058,7 +1058,7 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      },
@@ -1128,7 +1128,7 @@
        "legal_context": {
         "type": "sha256",
         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-        "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+        "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
        }
       }
      },

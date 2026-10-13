@@ -1,8 +1,8 @@
 {
- "about": "Vectors for the ack/payment-request pairing: the ack entry point of @integraledger/lcp. Every expected value is fixed by the pairing, with H, L and the JWS conventions of card.json: H = SHA-256(\"abc\") (FIPS 180-2), L = https://atr.seller.example/<H>, and each token base64url(JSON(header)).base64url(JSON(payload)).base64url(r||s), JSON compact with members in the order written. T and the plant's token were built from that recipe with GNU coreutils basenc; their ES256 signatures verify over those signing inputs (cryptography 41.0.7). read verifies no signature. A token whose third segment is c2ln carries no signature at all.",
+ "about": "Vectors for the ack/payment-request pairing: the ack entry point of @integraledger/lcp. Every expected value is fixed by the pairing, with H, L and the JWS conventions of card.json: H = SHA-256(\"abc\") (FIPS 180-2), L = https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f, a path from a random token, not from H, and each token base64url(JSON(header)).base64url(JSON(payload)).base64url(r||s), JSON compact with members in the order written. T and the plant's token were built from that recipe with GNU coreutils basenc; their ES256 signatures verify over those signing inputs (cryptography 41.0.7). read verifies no signature. A token whose third segment is c2ln carries no signature at all.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "L": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "ID": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
    "id": "opt-usdc-base",
@@ -19,7 +19,7 @@
   "advertise": {
    "doc": {},
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
    "offer": {
     "id": "opt-usdc-base",
     "currency": "USDC",
@@ -34,7 +34,7 @@
    "legalContext": {
     "type": "sha256",
     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
    }
   },
   "emptyOption": {
@@ -80,12 +80,12 @@
    "legalContext": {
     "type": "sha256",
     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
    }
   },
   "expect": {
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
    "offer": {
     "options": [
      {
@@ -127,7 +127,7 @@
    "legalContext": {
     "type": "sha256",
     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
    }
   },
   "expect": {
@@ -175,7 +175,7 @@
     "legalContext": {
      "type": "sha256",
      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     }
    },
    {
@@ -210,7 +210,7 @@
     "args": [
      {},
      "0x1234",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
      {
       "id": "opt-usdc-base",
       "currency": "USDC",
@@ -231,7 +231,7 @@
     "args": [
      {},
      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "http://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
      {
       "id": "opt-usdc-base",
       "currency": "USDC",
@@ -252,7 +252,7 @@
     "args": [
      {},
      "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
      {
       "id": 7,
       "currency": "USDC",
@@ -302,7 +302,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       },
       "pad": {
        "$repeat": [
@@ -344,7 +344,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -375,7 +375,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -406,7 +406,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -437,7 +437,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -468,7 +468,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -512,7 +512,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0x1234",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -543,7 +543,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "http://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "http://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -574,7 +574,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -605,7 +605,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
@@ -636,13 +636,13 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      }
     ],
     "expect": {
      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
      "offer": {
       "options": [
        {
@@ -728,7 +728,7 @@
       "legalContext": {
        "type": "sha256",
        "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-       "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
       }
      },
      "servesHex": "616264",

@@ -468,7 +468,7 @@ describe("card.json agreedRefusals: every row runs", () => {
       visaTap.read({ other: 1 }),
     ],
     "read with a legalContext whose link is not https": async () => [
-      visaTap.read({ legalContext: { type: "sha256", value: H, legalContextUrl: `http://atr.seller.example/${H}` } }),
+      visaTap.read({ legalContext: { type: "sha256", value: H, legalContextUrl: L.replace("https:", "http:") } }),
     ],
     "read with a legalContext whose link is over 2048 characters": async () => [
       visaTap.read({ legalContext: { type: "sha256", value: H, legalContextUrl: `https://a.example/${"a".repeat(2048)}` } }),

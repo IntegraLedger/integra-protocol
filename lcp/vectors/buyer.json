@@ -305,7 +305,7 @@
        "info": {
         "type": "sha256",
         "value": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f",
-        "legalContextUrl": "https://atr.seller.example/0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f"
+        "legalContextUrl": "https://atr.seller.example/8fa10ea7-aebf-4154-a7ec-30ad0addb55b"
        },
        "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

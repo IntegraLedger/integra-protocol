@@ -446,7 +446,8 @@ describe("carrier forms", () => {
     expect(fromRawBytes(new Uint8Array(31))).toBeNull();
   });
   it("structured form in both spellings, and an http link refused", () => {
-    const url = "https://atr.seller.example/" + h;
+    // A path from a random token, not from h: buyer.json's B2b advertises this hash at this link.
+    const url = "https://atr.seller.example/8fa10ea7-aebf-4154-a7ec-30ad0addb55b";
     expect(toLegalContext(h, url)).toEqual({ legalContext: { type: "sha256", value: h, legalContextUrl: url } });
     expect(toLegalContext(h, url, "snake")).toEqual({ legalContext: { type: "sha256", value: h, legal_context_url: url } });
     expect(fromLegalContext(toLegalContext(h, url))).toEqual({ h, url });

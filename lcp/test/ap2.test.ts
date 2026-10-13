@@ -230,7 +230,7 @@ describe("a non-https link gives one code on read, build and bound", () => {
   const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
   const sha256b64u = (s: string) => createHash("sha256").update(Buffer.from(s, "ascii")).digest("base64url");
   const HX = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
-  const payload = { id: "chk_2", legalContext: { type: "sha256", value: HX, legalContextUrl: `http://atr.seller.example/${HX}` } };
+  const payload = { id: "chk_2", legalContext: { type: "sha256", value: HX, legalContextUrl: "http://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f" } };
   const J = `${b64u('{"alg":"ES256","typ":"JWT"}')}.${b64u(JSON.stringify(payload))}.${"A".repeat(86)}`;
   const D = b64u(JSON.stringify(["c2FsdA", "checkout_jwt", J]));
   const M =
