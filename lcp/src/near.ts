@@ -92,7 +92,7 @@ export type NearStatus =
   | { state: "pending"; why: "not-found" | "in-flight" | "unreadable" }
   | { state: "failed"; why: "not-this-instrument" | "transfer-failed" };
 
-export interface NearChoice {
+interface NearChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   payer: string;
