@@ -46,7 +46,7 @@ Some pairings carry members for their own shape of payment:
 | `carrier` | some pairings | Where H is placed in the option or request, that field's path; `null` where nothing in the option carries it; on Hedera, the transaction field (x402) or `challenge` (MPP). |
 | `channel` | channels, sessions and subscriptions | `kind` classifies a later payment as the opening, a payment within, or the close; `ref` names the channel; `boundWithin` reads H from a payment within, where one carries it; `until` gives the channel's end, where it has one. |
 | `buildWithin` | channels and sessions | Builds a later payment within an open channel. |
-| `closeRef` | sessions and subscriptions | The read keys of the channel's close. |
+| `closeRef` | the MPP sessions other than `mpp/session/lightning`, and `mpp/subscription/tempo` | The read keys of the channel's close. |
 | `landedTx`, `fetchPresented` | push-mode pairings | The transaction a credential names, and the credential completed with that landed transaction; `fetchPresented` refuses a landed transaction that failed. |
 | `advertiseBeforeCarrier` | pairings whose carrier the seller writes after H | `advertise`'s checks and placement, without the checks on that carrier. |
 
