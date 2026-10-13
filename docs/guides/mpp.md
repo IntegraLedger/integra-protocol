@@ -135,8 +135,11 @@ the pairing's (on `usdc`, also the profile `methodDetails.type` names). They do 
 Tempo, Hedera, Solana and XRP Ledger sessions, and the Tempo subscription, each reads only the request members its own
 read keys or derivation use, such as the network or chain, the currency, the recipient, the escrow, the member that
 carries H (`externalId`, or the XRP Ledger's `methodDetails.invoiceId`), and `expires` where it is the payment's
-deadline, and refuses one of those that is malformed, with the code `advertise` gives it. On every pairing but
-Lightning's, `bound`, `reference` and `fetchPresented` refuse a `methodDetails` that is present and not an object with
+deadline, and refuses one of those that is malformed, with the code `advertise` gives it. On the Lightning charge and
+session, `bound` and `reference` hold the `network` the echoed challenge names, when it names one, to the invoice's
+currency as `advertise` does: a network MPP Lightning does not define, or one the invoice is not on, is
+`ln/currency-network`, and the read keys name the network of the invoice's currency. On every pairing, `bound`,
+`reference` and `fetchPresented` refuse a `methodDetails` that is present and not an object with
 `mpp/request-malformed`, as `advertise` does, and never read it as empty, except the Hedera charge's `bound`, which
 reads no request member, the EVM `transaction` and `hash` charges' `bound`, which always refuses
 (`mpp/no-signed-place`), and a `fetchPresented` given a signed transaction, which returns it as given.

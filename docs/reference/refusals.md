@@ -167,7 +167,7 @@ MPP challenges and credentials, and the checks every MPP pairing shares (`@integ
 | `mpp/opaque-not-this-hash` | The echoed challenge has no `opaque`, or its `opaque` does not carry a `legalContext` equal to the hash its id derives from. |
 | `mpp/receipt-malformed` | The Stripe subscription's activation receipt is not a successful `stripe` receipt with a Stripe subscription ID of 1 to 255 visible ASCII characters. |
 | `mpp/receipt-missing` | The Stripe subscription's `channel.ref` is given no activation receipt. |
-| `mpp/request-malformed` | A challenge's `request` does not decode as a base64url JSON object of at most 8 KiB, its `methodDetails` is not an object, a member its intent and method require (amount, currency, recipient, addresses, networks, period, channel id or profile fields) is missing or malformed, or the request re-encoded with the carrier placed would exceed 8 KiB. On `bound`, `reference` and `fetchPresented`, only the members that function reads are checked, and a `methodDetails` that is not an object is refused on every pairing but Lightning's, except by the Hedera charge's `bound`, which reads no request member, by the EVM `transaction` and `hash` charges' `bound`, which always refuses (`mpp/no-signed-place`), and by a `fetchPresented` given a signed transaction, which returns it as given. |
+| `mpp/request-malformed` | A challenge's `request` does not decode as a base64url JSON object of at most 8 KiB, its `methodDetails` is not an object, a member its intent and method require (amount, currency, recipient, addresses, networks, period, channel id or profile fields) is missing or malformed, or the request re-encoded with the carrier placed would exceed 8 KiB. On `bound`, `reference` and `fetchPresented`, only the members that function reads are checked, and a `methodDetails` that is not an object is refused on every pairing, except by the Hedera charge's `bound`, which reads no request member, by the EVM `transaction` and `hash` charges' `bound`, which always refuses (`mpp/no-signed-place`), and by a `fetchPresented` given a signed transaction, which returns it as given. |
 | `mpp/request-not-jcs` | `usdcRequestHash` finds that the challenge's decoded `request` bytes are not the RFC 8785 form of their own parse. |
 | `mpp/salt-not-this-hash` | An EVM session opening's `salt`, or its Permit2 witness `salt`, is not the hash the echoed challenge's id derives from. |
 | `mpp/salt-not-usdc-derivation` | The `usdc` Gateway credential's TransferSpec `salt` is not the `usdcGatewaySalt` derived from the challenge and the credential's own values. |
@@ -706,7 +706,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 
 | Code | Meaning |
 |---|---|
-| `ln/currency-network` | The invoice's currency is not the one the option's or challenge's network names, or the MPP challenge names a network MPP Lightning does not define. |
+| `ln/currency-network` | The invoice's currency is not the one the option's or challenge's network names, or the MPP challenge names a network MPP Lightning does not define; the MPP pairings' `bound` and `reference` check the echoed challenge the same way. |
 | `ln/description-inline` | The MPP challenge's invoice carries an inline `d` description. |
 | `ln/description-present` | The MPP Lightning challenge's request carries a `description`. |
 | `ln/expires-after-invoice` | The MPP challenge's `expires` is later than the invoice's own expiry. |

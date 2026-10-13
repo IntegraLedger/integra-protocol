@@ -81,6 +81,37 @@ describe("mpp/charge/lightning", () => {
     }
   });
 
+  // draft-lightning-charge-00's `network`: "MUST be one of "mainnet", "regtest", or "signet". If present, MUST match the
+  // network implied by the invoice's human-readable prefix." L2's prefix `lnbc` is mainnet (BOLT 11). An echo carrying
+  // L3's request with another network keeps the placed id and opaque; the reads answer it as advertise does.
+  describe("L3: bound and reference check the echoed network as advertise does", () => {
+    const rows: [string, Record<string, unknown>, string][] = [
+      ...C.L3.refusals
+        .filter((r: { expect: { code: string }; challengeSet?: unknown }) => r.expect.code === "ln/currency-network" && r.challengeSet === undefined)
+        .map((r: { case: string; requestSet: Record<string, unknown> }) => [r.case, r.requestSet, "ln/currency-network"]),
+      ["network bogus", { "methodDetails.network": "bogus" }, "ln/currency-network"],
+      ["network 5", { "methodDetails.network": 5 }, "ln/currency-network"],
+      ["network testnet, which MPP Lightning does not name", { "methodDetails.network": "testnet" }, "ln/currency-network"],
+    ];
+    it("the file gives one network row", () => {
+      expect(rows.length).toBe(4);
+    });
+    for (const [name, change, code] of rows) {
+      it(name, async () => {
+        const bad = challengeOf(C.L3, change);
+        expect(chargeLightning.advertise([bad], H, C.fixed.link, bad)).toEqual({ refused: true, code });
+        const credential: MppCredential = { challenge: { ...placed(), request: encode(set(C.L3.request, change)) }, payload: { preimage: C.fixed.preimage } };
+        expect(await chargeLightning.bound(credential)).toEqual({ refused: true, code });
+        expect(await chargeLightning.reference(credential)).toEqual({ refused: true, code });
+      });
+    }
+    it("no network: the read keys name the network of the invoice's currency, mainnet", async () => {
+      const request = set(C.L3.request, { "methodDetails.network": null });
+      const credential: MppCredential = { challenge: { ...placed(), request: encode(request) }, payload: { preimage: C.fixed.preimage } };
+      expect(await chargeLightning.reference(credential)).toEqual(C.L3.expectReference);
+    });
+  });
+
   it("plant 1: an echo whose invoice does not carry the challenge's hash is never bound", async () => {
     const challenge = placed();
     const request = set(C.L3.request, { "methodDetails.invoice": C.plant.invoice });
@@ -236,7 +267,13 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
   // "`ln` + BIP-0173 currency prefix (e.g. `lnbc` for Bitcoin mainnet, `lntb` for Bitcoin testnet, `lntbs` for Bitcoin
   // signet, and `lnbcrt` for Bitcoin regtest)". draft-lightning-session-00 defines no `network`, so the session reads
   // `methodDetails.network` by the charge's rule.
-  describe("advertise and build refuse a named network the invoice's currency does not match", () => {
+  /** The open credential of a placed session challenge, echoed with `request` in place of the one placed. */
+  const echoing = (request: Json) => {
+    const credential = opened(deposit);
+    return { ...credential, challenge: { ...credential.challenge, request: encode(request) } };
+  };
+
+  describe("advertise, build, bound and reference refuse a named network the invoice's currency does not match", () => {
     const rows: [string, string, object][] = [
       ["S1's mainnet invoice naming regtest", deposit, { network: "regtest" }],
       ["a regtest invoice naming mainnet", rehrp(deposit, "lnbcrt250n"), { network: "mainnet" }],
@@ -249,17 +286,50 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
         expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code: "ln/currency-network" });
         const challenge = { ...offer, id: opened(deposit).challenge.id } as MppChallenge & { id: string };
         expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual({ refused: true, code: "ln/currency-network" });
+        const echo = echoing(set(S.S1.request, { depositInvoice: invoice, methodDetails: details }));
+        expect(await sessionLightning.bound(echo)).toEqual({ refused: true, code: "ln/currency-network" });
+        expect(await sessionLightning.reference(echo)).toEqual({ refused: true, code: "ln/currency-network" });
       });
     }
   });
 
-  describe("S1's refusals: advertise and build", () => {
+  // A `network` that is not a string MPP Lightning defines names no network an invoice can match, and a `methodDetails`
+  // that is not an object has no `network` to read: each read answers as `advertise` does, never with the invoice's own
+  // network in the record.
+  describe("bound and reference answer a network that is not one MPP Lightning defines, or no methodDetails object, as advertise does", () => {
+    const rows: [string, Record<string, unknown>, string][] = [
+      ["network bogus", { methodDetails: { network: "bogus" } }, "ln/currency-network"],
+      ["network 5", { methodDetails: { network: 5 } }, "ln/currency-network"],
+      ["methodDetails the string mainnet", { methodDetails: "mainnet" }, "mpp/request-malformed"],
+    ];
+    for (const [name, change, code] of rows) {
+      it(name, async () => {
+        const request = set(S.S1.request, change);
+        const offer = challengeOf(S.S1, change);
+        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code });
+        expect(await sessionLightning.bound(echoing(request))).toEqual({ refused: true, code });
+        expect(await sessionLightning.reference(echoing(request))).toEqual({ refused: true, code });
+      });
+    }
+    it("a regtest invoice echoed naming regtest binds and reads regtest", async () => {
+      const echo = echoing(set(S.S1.request, { depositInvoice: rehrp(deposit, "lnbcrt250n"), methodDetails: { network: "regtest" } }));
+      expect(await sessionLightning.bound(echo)).toBe(H);
+      expect(await sessionLightning.reference(echo)).toMatchObject({ network: "regtest", paymentHash: S.fixed.paymentHash });
+    });
+  });
+
+  describe("S1's refusals: advertise and build, and bound and reference on a network row", () => {
     for (const row of S.S1.refusals) {
       it(row.case, async () => {
         const offer = challengeOf(S.S1, row.requestSet ?? {}, row.challengeSet ?? {});
         expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual(row.expect);
         const challenge = { ...offer, id: opened(deposit).challenge.id } as MppChallenge & { id: string };
         expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual(row.expect);
+        if (row.expect.code === "ln/currency-network" && row.challengeSet === undefined) {
+          const echo = echoing(set(S.S1.request, row.requestSet));
+          expect(await sessionLightning.bound(echo)).toEqual(row.expect);
+          expect(await sessionLightning.reference(echo)).toEqual(row.expect);
+        }
       });
     }
   });

@@ -10,10 +10,10 @@ import { decode, FIELD, isLnOffer, isLnOption, lnbtcPairs, namedPairs, NETWORKS 
 import { advertiseFor } from "./internal/x402.js";
 import {
   b64uEncode,
-  challengeBound,
   credentialOf,
   checkChallenge,
   decodeObject,
+  echoedFor,
   place,
   read as mppRead,
   tie as mppTie,
@@ -467,6 +467,17 @@ function lnFields(pairing: LnMppPairing, request: { [k: string]: Json }): { invo
 }
 
 /**
+ * `ln/currency-network` unless the challenge's `network`, when it names one, is a network MPP Lightning defines whose
+ * currency is the invoice's.
+ */
+function networkRefused(details: { [k: string]: Json }, b: Bolt11): Refusal | null {
+  const network = details["network"];
+  if (network === undefined) return null;
+  const named = typeof network === "string" && Object.hasOwn(MPP_NETWORKS, network);
+  return named && MPP_NETWORKS[network] === b.currency ? null : refusal("ln/currency-network");
+}
+
+/**
  * The checks of what the seller's node wrote: the invoice decodes, its one `h` is `h`, it has no `d`, the request has
  * no `description`, its payment hash is the request's, its currency is the one the challenge's `network` names, when it
  * names one (a network MPP Lightning defines), and `expires` is no later than the invoice's own expiry.
@@ -484,10 +495,8 @@ function lnChallengeChecks(pairing: LnMppPairing, c: MppChallenge, h: AtrHash, p
   if (b.tags.includes(FIELD.d)) return refusal("ln/description-inline");
   if (checked.request["description"] !== undefined) return refusal("ln/description-present");
   if (paymentHash !== hex(b.paymentHash)) return refusal("ln/payment-hash-mismatch");
-  const network = checked.details["network"];
-  if (network !== undefined) {
-    if (typeof network !== "string" || MPP_NETWORKS[network] !== b.currency) return refusal("ln/currency-network");
-  }
+  const network = networkRefused(checked.details, b);
+  if (network !== null) return network;
   if (checked.expires > b.timestamp + b.expiry) return refusal("ln/expires-after-invoice");
   return b;
 }
@@ -586,24 +595,24 @@ function amountless(v: unknown): boolean {
 }
 
 /**
- * The echoed challenge's hash, held to the invoice the payer paid. On the session, only the open action is the
- * session's payment. No signature is verified here.
+ * The echoed challenge's hash, held to the invoice the payer paid, whose currency must be the one the challenge's
+ * `network` names, when it names one, as `advertise` checks it; a `methodDetails` that is not an object is
+ * `mpp/request-malformed`, as `advertise` gives it. On the session, only the open action is the session's payment. No
+ * signature is verified here.
  */
-async function lnPaid(pairing: LnMppPairing, input: unknown): Promise<{ h: AtrHash; b: Bolt11; request: { [k: string]: Json } } | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const cb = challengeBound(presented);
-  if (isRefusal(cb)) return cb;
-  const c = presented.challenge;
-  if (c.method !== "lightning" || c.intent !== (pairing === LN_CHARGE ? "charge" : "session")) return refusal("mpp/not-this-pairing");
-  const { invoice, paymentHash } = lnFields(pairing, cb.request);
+async function lnPaid(pairing: LnMppPairing, input: unknown): Promise<{ h: AtrHash; b: Bolt11 } | Refusal> {
+  const echoed = echoedFor(input, pairing);
+  if (isRefusal(echoed)) return echoed;
+  const { invoice, paymentHash } = lnFields(pairing, echoed.checked.request);
   const b = typeof invoice === "string" ? decode(invoice) : refusal("ln/invoice-malformed");
   if (isRefusal(b)) return b;
   const d = invoiceH(b, "h");
-  if (isRefusal(d) || d !== cb.h) return refusal("mpp/carrier-not-challenge");
+  if (isRefusal(d) || d !== echoed.h) return refusal("mpp/carrier-not-challenge");
   if (paymentHash !== hex(b.paymentHash)) return refusal("ln/payment-hash-mismatch");
-  if (pairing === LN_SESSION && presented.payload["action"] !== OPEN) return refusal("ln/no-payment-in-action");
-  return { h: cb.h, b, request: cb.request };
+  const network = networkRefused(echoed.checked.details, b);
+  if (network !== null) return network;
+  if (pairing === LN_SESSION && echoed.payload["action"] !== OPEN) return refusal("ln/no-payment-in-action");
+  return { h: echoed.h, b };
 }
 
 function lnBound(pairing: LnMppPairing) {
@@ -614,16 +623,15 @@ function lnBound(pairing: LnMppPairing) {
 }
 
 /**
- * The read keys: the network the challenge names, else the invoice currency's; the invoice's payment hash; and its
- * timestamp plus expiry.
+ * The read keys: the network of the invoice's currency, which is the network the challenge names when it names one;
+ * the invoice's payment hash; and its timestamp plus expiry.
  */
 function lnReference(pairing: LnMppPairing) {
   return async (presented: unknown): Promise<LnRef | Refusal> => {
     const p = await lnPaid(pairing, presented);
     if (isRefusal(p)) return p;
-    const d = p.request["methodDetails"];
-    const named = isObject(d) && typeof d["network"] === "string" ? d["network"] : undefined;
-    return { network: named ?? CURRENCY_NETWORK[p.b.currency], paymentHash: hex(p.b.paymentHash), settleBy: p.b.timestamp + p.b.expiry };
+    const { b } = p;
+    return { network: CURRENCY_NETWORK[b.currency], paymentHash: hex(b.paymentHash), settleBy: b.timestamp + b.expiry };
   };
 }
 
