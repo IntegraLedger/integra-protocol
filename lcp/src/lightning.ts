@@ -98,9 +98,10 @@ export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
 }
 
 /**
- * True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds an option
- * whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`, `id` and `x402`, in that
- * order, and no member name appears twice, so every JSON reader finds the same `x402` slot. Only that slot is read.
+ * True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds, among its
+ * first 32 entries, an option whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`,
+ * `id` and `x402`, in that order, and no member name appears twice, so every JSON reader finds the same `x402` slot.
+ * Only that slot is read.
  */
 export function atrNamesInvoice(atr: Uint8Array, invoice: string): boolean {
   if (!(atr instanceof Uint8Array) || atr.length > MAX_ATR || typeof invoice !== "string") return false;

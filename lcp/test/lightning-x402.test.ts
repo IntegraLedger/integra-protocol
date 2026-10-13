@@ -176,6 +176,17 @@ describe("x402/exact/lnbtc/invoice-named", () => {
     expect(pairingOf(ON)).toBe("x402/exact/lnbtc/invoice-named");
   });
 
+  // An x402 document holds at most 32 options (x402/option-malformed, docs/reference/refusals.md), and atrNamesInvoice
+  // reads at most the first 32 entries of the slot's accepts: the invoice named at index 31 is found, at index 32 not.
+  it("atrNamesInvoice reads the first 32 entries of the x402 slot's accepts", () => {
+    const atr = (at: number): Uint8Array => {
+      const accepts = Array.from({ length: at + 1 }, (_, i) => ({ extra: { invoice: i === at ? N.L6.invoice : `other-${i}` } }));
+      return new TextEncoder().encode(JSON.stringify({ atrVersion: 1, id: N.fixed.atrId, x402: { accepts } }));
+    };
+    expect(atrNamesInvoice(atr(31), N.L6.invoice)).toBe(true);
+    expect(atrNamesInvoice(atr(32), N.L6.invoice)).toBe(false);
+  });
+
   it("atrNamesInvoice: the named invoice is read only from the one x402 member that follows atrVersion and id", () => {
     const invoices: Record<string, string> = { N: N.L6.invoice, N2: N.plant2.invoice };
     const rows = N.atrNamesInvoice.rows as { case: string; atrHex: string; members: string[] | null; expect: Record<string, boolean> }[];
