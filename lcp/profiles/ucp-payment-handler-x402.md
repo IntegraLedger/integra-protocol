@@ -167,10 +167,25 @@ The response config is an x402 version 2 `PaymentRequired`, with two members add
       "method": "POST",
       "path": "/checkout-sessions/chk_123/complete",
       "query": "",
-      "bodyDigest": "0x31e9ee275992a0de4f4ffb61742435428a23d8872fb0e5c3aa2a421651aca8d4"
+      "bodyDigest": "0xe0f8f6e3f07bd19912a82edcb45f5bedbcdd1c2d4787f306e7117b8f0c5df993"
     }
   }
 }
+```
+
+`bodyDigest` is the SHA-256 of the business's statement of the checkout's terms, which the ATR also carries as its
+`terms` slot. In these examples the statement is these 123 bytes of UTF-8:
+
+```text
+{"checkout":"chk_123","line_items":[{"title":"Example item","quantity":1}],"total":{"amount":"18000000","currency":"USDC"}}
+```
+
+With the id `208d7a9d-09c1-4bbd-89f6-ee4cd908d6e3`, this binding slot and that `terms` slot, the ATR is the 613 bytes
+of UTF-8 below, one line with no line break. H is their SHA-256,
+`0xd0262479b711503122aca9bd59ca8dcd33975b678c5a14e64f35d3f5da80db4a`.
+
+```text
+{"atrVersion":"1","id":"208d7a9d-09c1-4bbd-89f6-ee4cd908d6e3","x402":{"accepts":[{"scheme":"exact","network":"eip155:84532","amount":"18000000","asset":"0x036CbD53842c5426634e7929541eC2318f3dCF7e","payTo":"0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed","maxTimeoutSeconds":300,"extra":{"name":"USDC","version":"2"}}],"request":{"method":"POST","path":"/checkout-sessions/chk_123/complete","query":"","bodyDigest":"0xe0f8f6e3f07bd19912a82edcb45f5bedbcdd1c2d4787f306e7117b8f0c5df993"}},"terms":{"checkout":"chk_123","line_items":[{"title":"Example item","quantity":1}],"total":{"amount":"18000000","currency":"USDC"}}}
 ```
 
 #### Example: the handler in the checkout at `ready_for_complete`
@@ -204,8 +219,8 @@ The response config is an x402 version 2 `PaymentRequired`, with two members add
           "legalContext": {
             "info": {
               "type": "sha256",
-              "value": "0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d",
-              "legalContextUrl": "https://shop.example/atr/0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d"
+              "value": "0xd0262479b711503122aca9bd59ca8dcd33975b678c5a14e64f35d3f5da80db4a",
+              "legalContextUrl": "https://shop.example/atr/a607cd85-b6c6-4a54-826e-1aca54309f5b"
             },
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -234,8 +249,8 @@ With, in the checkout's `links[]`:
   "links": [
     {
       "type": "legal_context",
-      "url": "https://shop.example/atr/0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d",
-      "title": "lcp:sha256:0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d"
+      "url": "https://shop.example/atr/a607cd85-b6c6-4a54-826e-1aca54309f5b",
+      "title": "lcp:sha256:0xd0262479b711503122aca9bd59ca8dcd33975b678c5a14e64f35d3f5da80db4a"
     }
   ]
 }
@@ -299,19 +314,27 @@ mandates](#errors).
 
 #### Example: the checkout's links, under AP2 mandates
 
-The same checkout under AP2 mandates has its own ATR, whose slot is `ucp`, and so its own H.
+The same checkout under AP2 mandates has its own ATR, whose slot is `ucp`, and so its own H. With the id
+`505dc606-ae1e-46fc-a2a1-7ba4a631af01` and the same `terms` slot, the ATR is the 237 bytes of UTF-8 below, one line
+with no line break, and H is their SHA-256, `0x5edc1ae18d4f65db95af85043c3881556089ee20f5e7d81f74036db33f0b530b`.
+
+```text
+{"atrVersion":"1","id":"505dc606-ae1e-46fc-a2a1-7ba4a631af01","ucp":{"options":[{"checkout":"chk_123"}]},"terms":{"checkout":"chk_123","line_items":[{"title":"Example item","quantity":1}],"total":{"amount":"18000000","currency":"USDC"}}}
+```
+
+Its links:
 
 ```json
 {
   "links": [
     {
       "type": "legal_context",
-      "url": "https://shop.example/atr/0x361389f6b79a94991e87f16550b8a20186ea958dd728b10f148d8ff295ec6775",
-      "title": "lcp:sha256:0x361389f6b79a94991e87f16550b8a20186ea958dd728b10f148d8ff295ec6775"
+      "url": "https://shop.example/atr/8cff6478-8ecc-42ea-b9b2-3b6eeea921f2",
+      "title": "lcp:sha256:0x5edc1ae18d4f65db95af85043c3881556089ee20f5e7d81f74036db33f0b530b"
     },
     {
       "type": "legal_context_agreement",
-      "url": "https://shop.example/agreement/0x361389f6b79a94991e87f16550b8a20186ea958dd728b10f148d8ff295ec6775"
+      "url": "https://shop.example/agreement/0x5edc1ae18d4f65db95af85043c3881556089ee20f5e7d81f74036db33f0b530b"
     }
   ]
 }
@@ -382,6 +405,12 @@ Other members are the platform's own.
 
 #### Example: the instrument at completion
 
+The payer is the first development account of Foundry's Anvil, a published test key,
+`0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`, whose address is `from`. The wallet signs EIP-712
+`TransferWithAuthorization` with the authorization's members as its message, H as its `nonce`, in the token's domain
+`{"name":"USDC","version":"2","chainId":84532,"verifyingContract":"0x036CbD53842c5426634e7929541eC2318f3dCF7e"}`, and
+the signature recovers to `from`.
+
 ```json
 {
   "payment": {
@@ -410,22 +439,22 @@ Other members are the platform's own.
               "extra": {"name": "USDC", "version": "2"}
             },
             "payload": {
-              "signature": "0x49a2b3ff1d2d184d1e2cb21e0e7f56dac4d5d535da864f78998b06890460304002da36d582d5419d39690e4c1ab0357315afa855d1da2fad9d815c1d5893cc511b",
+              "signature": "0xcf36ddef865a9f2f93f70b685f0b1bdcac9018faa15a0df6c427e48be7766a1b491c4d98fbf65fb738c67c596967334669bad8b36fbdbb0c39da021af075961c1b",
               "authorization": {
                 "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
                 "to": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
                 "value": "18000000",
                 "validAfter": "0",
                 "validBefore": "1791000000",
-                "nonce": "0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d"
+                "nonce": "0xd0262479b711503122aca9bd59ca8dcd33975b678c5a14e64f35d3f5da80db4a"
               }
             },
             "extensions": {
               "legalContext": {
                 "info": {
                   "type": "sha256",
-                  "value": "0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d",
-                  "legalContextUrl": "https://shop.example/atr/0xbfa2dd92ee9bf37520ddc1dc99a9fb0a7a7e87d4c6421ff9c654473701f9e68d"
+                  "value": "0xd0262479b711503122aca9bd59ca8dcd33975b678c5a14e64f35d3f5da80db4a",
+                  "legalContextUrl": "https://shop.example/atr/a607cd85-b6c6-4a54-826e-1aca54309f5b"
                 },
                 "schema": {
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
