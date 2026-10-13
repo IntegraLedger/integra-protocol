@@ -1156,7 +1156,7 @@
    },
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
    "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
-   "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "agreementUrl": "https://pay.seller.example/agreement/1934d4c7-f71c-4da4-b435-8352ec29fe56",
    "offers": [
     {
      "pairing": "x402/exact/eip155/eip3009",
@@ -1229,7 +1229,7 @@
       "type": "sha256",
       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
-      "legalContextAgreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      "legalContextAgreementUrl": "https://pay.seller.example/agreement/1934d4c7-f71c-4da4-b435-8352ec29fe56"
      },
      "schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1259,12 +1259,12 @@
   "expectRead": {
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
    "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
-   "agreement": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   "agreement": "https://pay.seller.example/agreement/1934d4c7-f71c-4da4-b435-8352ec29fe56"
   },
   "conflicts": [
    {
     "case": "the second pairing advertises another agreement URL",
-    "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad?other",
+    "agreementUrl": "https://pay.seller.example/agreement/1934d4c7-f71c-4da4-b435-8352ec29fe56?other",
     "expect": "x402/legal-context-conflict"
    },
    {

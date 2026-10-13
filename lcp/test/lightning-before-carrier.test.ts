@@ -14,7 +14,8 @@ const C = load("mpp-charge-lightning.json");
 const S = load("mpp-session-lightning.json");
 const V = load("x402-exact-lnbtc.json");
 const H: AtrHash = V.fixed.H;
-const AGREEMENT = "https://agree.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+// A path from a random token, not from H.
+const AGREEMENT = "https://agree.seller.example/agreement/5a29a1f0-4323-4aae-9c28-97b146635f6e";
 
 function set<T>(base: T, changes: Record<string, unknown>): T {
   const copy = structuredClone(base) as Record<string, unknown>;

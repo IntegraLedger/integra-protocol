@@ -61,7 +61,7 @@
   "now": 1790000000,
   "agreement": {
    "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says (BA14's first answer, to the unpaid request, is 202); the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.57.4 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60.",
-   "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+   "url": "https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273",
    "option": {
     "scheme": "exact",
     "network": "eip155:84532",
@@ -77,7 +77,7 @@
    "required": {
     "x402Version": 2,
     "resource": {
-     "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     "url": "https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273"
     },
     "accepts": [
      {
@@ -128,7 +128,7 @@
    "requiredOtherHash": {
     "x402Version": 2,
     "resource": {
-     "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     "url": "https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273"
     },
     "accepts": [
      {
@@ -191,7 +191,7 @@
    "requiredMixed": {
     "x402Version": 2,
     "resource": {
-     "url": "https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     "url": "https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273"
     },
     "accepts": [
      {
@@ -250,8 +250,8 @@
      }
     }
    },
-   "requiredTimeoutText": "{\"x402Version\":2,\"resource\":{\"url\":\"https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\"},\"accepts\":[{\"scheme\":\"exact\",\"network\":\"eip155:84532\",\"amount\":\"1\",\"asset\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"payTo\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\",\"maxTimeoutSeconds\":60.0,\"extra\":{\"name\":\"USDC\",\"version\":\"2\"}}],\"extensions\":{\"legalContext\":{\"info\":{\"type\":\"sha256\",\"value\":\"0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\",\"legalContextUrl\":\"https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072\"},\"schema\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"type\":{\"const\":\"sha256\"},\"value\":{\"type\":\"string\",\"pattern\":\"^0x[0-9a-f]{64}$\"},\"legalContextUrl\":{\"type\":\"string\",\"pattern\":\"^https://\"}},\"required\":[\"type\",\"value\",\"legalContextUrl\"]}}}}",
-   "requiredUnpadded": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50LzB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ"
+   "requiredTimeoutText": "{\"x402Version\":2,\"resource\":{\"url\":\"https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273\"},\"accepts\":[{\"scheme\":\"exact\",\"network\":\"eip155:84532\",\"amount\":\"1\",\"asset\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"payTo\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\",\"maxTimeoutSeconds\":60.0,\"extra\":{\"name\":\"USDC\",\"version\":\"2\"}}],\"extensions\":{\"legalContext\":{\"info\":{\"type\":\"sha256\",\"value\":\"0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\",\"legalContextUrl\":\"https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072\"},\"schema\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"type\":{\"const\":\"sha256\"},\"value\":{\"type\":\"string\",\"pattern\":\"^0x[0-9a-f]{64}$\"},\"legalContextUrl\":{\"type\":\"string\",\"pattern\":\"^https://\"}},\"required\":[\"type\",\"value\",\"legalContextUrl\"]}}}}",
+   "requiredUnpadded": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50L2I5ZDNkNGI3LTJjOTktNGQ1Zi05MTc4LTgzNzY0NWY3NTI3MyJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ"
   }
  },
  "rows": [
@@ -738,7 +738,7 @@
   {
    "name": "BA5",
    "input": {
-    "agreementUrl": "http://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
+    "agreementUrl": "http://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273",
     "signer": "counting"
    },
    "expect": {

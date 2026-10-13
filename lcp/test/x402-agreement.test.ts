@@ -94,6 +94,9 @@ const ROWS: readonly [id: string, file: string, option: string, h: string][] = [
 ];
 
 describe("every x402 pairing takes the agreement URL", () => {
+  // A path from a random token, not from H (MX's agreement URL).
+  const A: string = MX.advertise.agreementUrl;
+
   it("the rows cover every x402 pairing in BINDINGS", () => {
     const x402 = BINDINGS.map((b) => b.id).filter((id) => id.startsWith("x402/"));
     expect([...x402].sort()).toEqual(ROWS.map(([id]) => id).sort());
@@ -105,7 +108,6 @@ describe("every x402 pairing takes the agreement URL", () => {
       const option = at(v, optionPath);
       const h = at(v, hPath) as string;
       const link = at(v, "fixed.link") as string;
-      const A = `https://pay.seller.example/agreement/${h}`;
       const doc = { x402Version: 2, resource: { url: "https://api.seller.example/r" }, accepts: [option] };
       const b = bindingOf(id);
       const without = b.advertise(doc, h, link, option) as PaymentRequired;
@@ -124,7 +126,7 @@ describe("every x402 pairing takes the agreement URL", () => {
         "legalContextAgreementUrl",
       ]);
       expect(b.advertise({ ...withA, accepts: doc.accepts }, h, link, option, A)).toEqual(withA);
-      expect(b.advertise(doc, h, link, option, `http://pay.seller.example/agreement/${h}`)).toEqual(refused("x402/link-not-https"));
+      expect(b.advertise(doc, h, link, option, A.replace("https:", "http:"))).toEqual(refused("x402/link-not-https"));
       const r = b.read(withA) as { agreement?: string; refused?: boolean };
       expect(r.refused).toBeUndefined();
       expect(r.agreement).toBe(A);

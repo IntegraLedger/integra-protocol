@@ -209,7 +209,9 @@ recovered from the chain alone: true
 Where the chosen pairing's `pattern.publicProof` is false, the payment is not a public proof of H, and the buyer gates
 require an agreement URL: pass it to `advertise` as `agreementUrl`, and `read` returns it as `agreement`. The buyer
 gates decline an offer that names none (`agreement-not-offered`). The buyer pays that URL first, with a payment that is
-itself a public proof of H, and makes the full payment only after the URL's receipt.
+itself a public proof of H, and makes the full payment only after the URL's receipt. Build the agreement URL from a
+random token too, not from H, as [Serving the link](#serving-the-link) says of the link: unpaid, it answers with a
+challenge that advertises the link.
 
 [`vectors/buyer.json`](../../lcp/vectors/buyer.json) fixes the exchange in `fixed.agreement` and the `BA` rows:
 

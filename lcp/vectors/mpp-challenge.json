@@ -6,7 +6,7 @@
   "expires": "2026-09-21T14:14:20Z",
   "expiresUnix": 1790000060,
   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
-  "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "agreementUrl": "https://pay.seller.example/agreement/1934d4c7-f71c-4da4-b435-8352ec29fe56",
   "R_E": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"permit2\",\"authorization\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
   "R_T": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"supportedModes\":[\"pull\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
  },
@@ -83,8 +83,8 @@
  },
  "MV14": {
   "case": "place([C_E], H, link, C_E, agreementUrl); issuedDigest of the echo; read",
-  "expectOpaqueLength": 418,
-  "expectOpaqueSha256": "0x5b25d47a2ca311ca0d618047603983c9ccb08e04f66123b407e4950d08f66b46",
+  "expectOpaqueLength": 378,
+  "expectOpaqueSha256": "0x22a2b7f834bedd60ced5826381318c92086b1b241999d0a18346e2635fba5716",
   "expectIssuedDigest": "0x287e16b6d4424f7d078ac0fbb78936f961d59f2fb5cf3b623d72f96ed8c0ebd4"
  },
  "S1": {

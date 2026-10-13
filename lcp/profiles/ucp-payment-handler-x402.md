@@ -334,7 +334,7 @@ Its links:
     },
     {
       "type": "legal_context_agreement",
-      "url": "https://shop.example/agreement/0x5edc1ae18d4f65db95af85043c3881556089ee20f5e7d81f74036db33f0b530b"
+      "url": "https://shop.example/agreement/17c0aed5-43d4-437f-8af1-ee5950883d96"
     }
   ]
 }

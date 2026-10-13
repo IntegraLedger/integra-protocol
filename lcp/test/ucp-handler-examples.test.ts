@@ -62,7 +62,7 @@ describe("ucp/payment-handler/x402: every example value follows from its stated 
     expect(new TextDecoder().decode(ucp.bytes)).toBe(atrUcp);
   });
 
-  it("H is SHA-256 of the ATR's bytes wherever the examples carry it, and no link is built from it", () => {
+  it("H is SHA-256 of the ATR's bytes wherever the examples carry it, and no link or agreement URL is built from it", () => {
     const h = sha256(atrX402);
     const h2 = sha256(atrUcp);
     expect(text).toContain(`H is their SHA-256,\n\`${h}\``);
@@ -73,7 +73,9 @@ describe("ucp/payment-handler/x402: every example value follows from its stated 
     expect(linkLists[1]?.[0]?.title).toBe(`lcp:sha256:${h2}`);
     expect(credential?.paymentPayload.payload.authorization["nonce"]).toBe(h);
     expect(credential?.paymentPayload.extensions).toEqual(config?.extensions);
-    for (const link of [config!.extensions.legalContext.info.legalContextUrl, linkLists[0]![0]!.url, linkLists[1]![0]!.url]) {
+    expect(linkLists[1]?.[1]?.type).toBe("legal_context_agreement");
+    const agreementUrl = linkLists[1]![1]!.url;
+    for (const link of [config!.extensions.legalContext.info.legalContextUrl, linkLists[0]![0]!.url, linkLists[1]![0]!.url, agreementUrl]) {
       expect(link).not.toContain(h.slice(2));
       expect(link).not.toContain(h2.slice(2));
     }

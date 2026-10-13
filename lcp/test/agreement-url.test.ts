@@ -36,8 +36,9 @@ const SCHEMA = JSON.parse(
     '"required":["type","value","legalContextUrl"]}',
 );
 
-const agreementFor = (h: string) => `https://pay.seller.example/agreement/${h}`;
-const HTTP = "http://pay.seller.example/agreement/0x00";
+// The agreement URL: a path from a random token, not from H (mpp-challenge.json's fixed.agreementUrl).
+const AGREEMENT: string = load("mpp-challenge.json").fixed.agreementUrl;
+const HTTP = AGREEMENT.replace("https:", "http:");
 const TOO_LONG = `https://pay.seller.example/${"a".repeat(2049 - "https://pay.seller.example/".length)}`;
 const TOO_LONG_HTTP = `http://pay.seller.example/${"a".repeat(2049 - "http://pay.seller.example/".length)}`;
 /** Bad values that are not a URL with another scheme: empty, unparseable, no host, userinfo, overlong. */
@@ -288,7 +289,7 @@ describe("the agreement URL", () => {
     describe(c.id, () => {
       const h = c.args[1];
       const link = c.args[2];
-      const A = agreementFor(h);
+      const A = AGREEMENT;
 
       it("without an agreement URL, advertise writes what it wrote before, and read returns no agreement", () => {
         const doc = call(c);
@@ -362,7 +363,7 @@ describe("the agreement URL", () => {
 describe("the agreement URL on an x402 document that already carries a legal context", () => {
   const c = X402_CASES[0]!;
   const [, h, link, option] = c.args;
-  const A = agreementFor(h);
+  const A = AGREEMENT;
 
   it("advertising the same agreement URL again returns an equal document", () => {
     const once = call(c, A);

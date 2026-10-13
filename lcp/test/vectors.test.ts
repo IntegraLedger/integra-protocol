@@ -183,6 +183,15 @@ describe("buyer.json: the rows the core and the binding can check", () => {
     }
   });
 
+  it("the agreement URL is a path that does not hold the hash, and each agreement challenge names it as its resource", () => {
+    // The seller guide's "The agreement URL": its unpaid 402 advertises the link, so it is built from a random token too.
+    const url: string = B.fixed.agreement.url;
+    expect(url.startsWith("https://api.seller.example/agreement/")).toBe(true);
+    expect(url.toLowerCase()).not.toContain(row("B1").expect.h.slice(2));
+    const { required, requiredMixed, requiredOtherHash } = B.fixed.agreement;
+    for (const doc of [required, requiredMixed, requiredOtherHash]) expect(doc.resource.url).toBe(url);
+  });
+
   it("B2b, B3 and B4 serve bytes whose hash is not the advertised one", async () => {
     const b2b = row("B2b");
     expect(hashEquals(await hash(fromHex(b2b.input.servesHex)), b2b.input.doc.extensions.legalContext.info.value)).toBe(
