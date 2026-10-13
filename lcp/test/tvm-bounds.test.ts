@@ -8,7 +8,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { beginCell, Cell, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import type { AtrHash } from "../src/core.js";
-import { exactTvm, type TvmPayment } from "../src/tvm.js";
+import { exactTvm } from "../src/tvm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tvm.json", import.meta.url), "utf8"));
@@ -17,7 +17,7 @@ const H: AtrHash = V.fixed.H;
 const placed: PaymentRequirements = V.fixed.placed;
 const seed = Uint8Array.from(Buffer.from(V.fixed.seedHex, "hex"));
 const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [placed] };
-const payment = (settlementBoc: string): TvmPayment => ({
+const payment = (settlementBoc: string) => ({
   x402Version: 2,
   resource: V.fixed.resource,
   accepted: placed,
@@ -83,7 +83,8 @@ describe("the TON BoC bounds: 512 cells, depth 32", () => {
       H,
     );
     if ("refused" in u) throw new Error(u.code);
-    const p = u.complete(ed25519.sign(u.request.hash, seed)) as TvmPayment;
+    const p = u.complete(ed25519.sign(u.request.hash, seed));
+    if ("refused" in p) throw new Error(p.code);
     const root = Cell.fromBase64(p.payload.settlementBoc);
     expect(distinctCells(root)).toBeGreaterThan(16);
     expect(distinctCells(root)).toBeLessThanOrEqual(512);

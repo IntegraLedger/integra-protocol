@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { pairingOf } from "../src/index.js";
-import { exactTvm, lcpComment, tvmCarrier, type TonTx, type TvmPayment, type TvmReader, type TvmRef } from "../src/tvm.js";
+import { exactTvm, lcpComment, tvmCarrier, type TonTx, type TvmReader, type TvmRef } from "../src/tvm.js";
 import type { AtrHash } from "../src/core.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
@@ -29,7 +29,7 @@ const choice = () => ({
   attachNanotons: BigInt(V.fixed.attachNanotons),
   now: V.fixed.now as number,
 });
-const payment = (settlementBoc: string, accepted: PaymentRequirements = placed): TvmPayment => ({
+const payment = (settlementBoc: string, accepted: PaymentRequirements = placed) => ({
   x402Version: 2,
   resource: V.fixed.resource,
   accepted,
@@ -38,7 +38,9 @@ const payment = (settlementBoc: string, accepted: PaymentRequirements = placed):
 const signed = async () => {
   const u = await exactTvm.build(choice(), H);
   if ("refused" in u) throw new Error(u.code);
-  return u.complete(ed25519.sign(u.request.hash, seed)) as TvmPayment;
+  const p = u.complete(ed25519.sign(u.request.hash, seed));
+  if ("refused" in p) throw new Error(p.code);
+  return p;
 };
 
 type Fixture = Omit<TonTx, "inBody"> & { inBody?: null };
@@ -106,7 +108,8 @@ describe("x402-exact-tvm.json", () => {
     const sig = ed25519.sign(u.request.hash, seed);
     expect(affix(Buffer.from(sig).toString("hex"), V.V2.expectSignature)).toBe(true);
     expect(ed25519.verify(sig, u.request.hash, Buffer.from(V.fixed.publicKey, "hex"))).toBe(true);
-    const p = u.complete(sig) as TvmPayment;
+    const p = u.complete(sig);
+    if ("refused" in p) throw new Error(p.code);
     const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
     expect(hashHex(root)).toBe(V.V2.expectSettlementRootHash);
     const actions = root.refs[0]!.refs[0]!;
@@ -127,7 +130,8 @@ describe("x402-exact-tvm.json", () => {
     expect(Buffer.from(u.request.hash).toString("hex")).toBe(W.expectRequestHash);
     const sig = ed25519.sign(u.request.hash, seed);
     expect(Buffer.from(sig).toString("hex")).toBe(W.expectSignature);
-    const p = u.complete(sig) as TvmPayment;
+    const p = u.complete(sig);
+    if ("refused" in p) throw new Error(p.code);
     const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
     expect(hashHex(root)).toBe(W.expectSettlementRootHash);
     expect(hashHex(root.refs[0]!)).toBe(W.expectStateInitHash);
@@ -235,7 +239,8 @@ describe("x402-exact-tvm.json", () => {
       const u = await exactTvm.build({ ...choice(), stateInit }, H);
       if ("refused" in u) throw new Error(u.code);
       expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2.expectRequestHash);
-      const p = u.complete(ed25519.sign(u.request.hash, seed)) as TvmPayment;
+      const p = u.complete(ed25519.sign(u.request.hash, seed));
+      if ("refused" in p) throw new Error(p.code);
       const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
       expect(root.refs.some((r) => r.refs.some((c) => c.isExotic))).toBe(true);
       expect(await exactTvm.bound(p)).toBe(V.V3.expectBound);
@@ -281,7 +286,8 @@ describe("x402-exact-tvm.json", () => {
   it("plant: a Jetton transfer the payer's W5 wallet never sent is never the payment", async () => {
     const u = await exactTvm.build(choice(), H);
     if ("refused" in u) throw new Error(u.code);
-    const unsigned = u.complete(new Uint8Array(64)) as TvmPayment;
+    const unsigned = u.complete(new Uint8Array(64));
+    if ("refused" in unsigned) throw new Error(unsigned.code);
     expect(await exactTvm.bound(unsigned)).toBe(V.V3.expectBound);
     const ref = await exactTvm.reference(unsigned);
     if ("refused" in ref) throw new Error(ref.code);

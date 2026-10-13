@@ -9,6 +9,7 @@ import type { Address, Cell, MessageRelaxed } from "@ton/core";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import type { TvmPayment } from "./internal/tvm.js";
 import { decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -34,7 +35,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
@@ -99,8 +99,6 @@ export type TvmStatus =
   | { state: "settled"; finality: "confirmed" | "finalized" }
   | { state: "pending"; why: "not-found" | "in-flight" | "not-final" | "unreadable" }
   | { state: "failed"; why: "aborted" | "no-transfer" | "bounced" | "expired" };
-
-export type TvmPayment = X402Payment<{ settlementBoc: string; asset: string }>;
 
 export interface TvmChoice {
   required: PaymentRequired;
