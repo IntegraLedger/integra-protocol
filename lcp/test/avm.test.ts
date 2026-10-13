@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { base32 } from "@scure/base";
+import { decodeAddress, decodeSignedTransaction, encodeMsgpack, LogicSig, SignedTransaction } from "algosdk";
 import { pairingOf, type AtrHash } from "../src/index.js";
 import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
@@ -126,6 +127,30 @@ describe("x402-exact-algorand.json", () => {
       expect(withStrings(await avmStatus(ref, readerOf({}, row.answer)))).toEqual(row.expect);
     }
     expect(await exactAvm.recover(ref, readerOf({}, V.V4.recover.answer))).toBe(V.V4.recover.expect);
+  });
+
+  // x402's Algorand scheme (x402-foundation/x402, specs/schemes/exact/scheme_exact_algo.md, "Signature Scheme") lets
+  // a top-level transaction be authorized by an Ed25519 signature (sig), a k-of-n multisignature (msig) or a logic
+  // signature (lsig). V2's payment transaction under each gives the file's H (FIPS 180-2's "abc") and V3's reference
+  // (py-algorand-sdk's txid, which covers the transaction and not its authorization).
+  it("bound and reference read the note under a signature, a multisignature or a logic signature", async () => {
+    const payment = await completed();
+    const [feePayerEntry, paymentEntry] = V.V2.expectPaymentGroup as string[];
+    const { txn, sig } = decodeSignedTransaction(Buffer.from(paymentEntry!, "base64"));
+    if (sig === undefined) throw new Error("V2's payment entry carries no sig");
+    // A 1-of-2 multisignature: the payer's key with V2's signature, and payTo's key unsigned.
+    const subsig = [{ pk: decodeAddress(V.fixed.payer).publicKey, s: sig }, { pk: decodeAddress(O.payTo).publicKey }];
+    const msig = { v: 1, thr: 1, subsig };
+    // A logic signature whose program, in TEAL version 6, pushes 1.
+    const lsig = new LogicSig(Uint8Array.from([0x06, 0x81, 0x01]));
+    for (const authorized of [new SignedTransaction({ txn, msig }), new SignedTransaction({ txn, lsig })]) {
+      const entry = Buffer.from(encodeMsgpack(authorized)).toString("base64");
+      const presented = { ...payment, payload: { paymentIndex: 1, paymentGroup: [feePayerEntry!, entry] } };
+      expect(await exactAvm.bound(presented)).toBe(V.V3.expectBound);
+      expect(await exactAvm.reference(presented)).toEqual(V.V3.expectReference);
+    }
+    expect(exactAvm.pattern.proves).toContain("with a signature, a multisignature or a logic signature");
+    expect(exactAvm.pattern.proves).not.toContain("payer signed");
   });
 
   it("plant: a note search is never a settlement", async () => {
