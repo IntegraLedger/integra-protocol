@@ -181,7 +181,8 @@ export async function checkoutJwtOf(m: string): Promise<Jws | Refusal> {
 
 /**
  * A copy of the payload with the `legalContext` member appended after the others, carrying `legalContextAgreementUrl`
- * after the link when `agreementUrl` is given. The seller's stack signs the result as its `checkout_jwt`.
+ * after the link when `agreementUrl` is given. The seller's stack signs the result as its `checkout_jwt`. A payload
+ * that carries a `refused` member is `ap2/jws-malformed`, before any other check.
  */
 function advertise(
   payload: Payload,
@@ -190,6 +191,7 @@ function advertise(
   offer: CheckoutOption,
   agreementUrl?: string,
 ): Payload | Refusal {
+  if (isJsonObject(payload) && carriesRefused(payload)) return refusal("ap2/jws-malformed");
   if (!isOption(offer)) return refusal("ap2/option-malformed");
   if (!isJsonObject(payload)) return refusal("ap2/jws-malformed");
   const id = payload["id"];

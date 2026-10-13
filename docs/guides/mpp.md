@@ -38,7 +38,9 @@ challenge whose `recipient` names another account gives another digest.
 ## Placing and reading
 
 `place(doc, h, link, option)` is the seller's placement over a list of challenges: the challenge whose bound members
-equal `option` gets the id derived from H and an `opaque` holding the seller's own map plus the LCP members.
+equal `option` gets the id derived from H and an `opaque` holding the seller's own map plus the LCP members. `place`,
+and so each pairing's `advertise`, refuses a list holding a challenge that carries a `refused` member as
+`mpp/challenge-malformed`.
 `read(doc)` is the buyer's reading: the challenges whose `opaque` carries an LCP hash and an `https` link and whose id
 derives from that hash. `pairingsOf(challenge)` names the pairings a challenge offers, and `tie(challenges)` is the
 ATR's binding slot: every challenge's bound members, as issued.

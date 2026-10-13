@@ -49,10 +49,16 @@ where it was made, not by its members, so a value you pass in is never returned 
 A presented payment or credential that the package would otherwise hand back to you unchanged is refused as malformed
 when it carries a `refused` member: `mpp/credential-malformed` for an MPP credential, `x402/payload-malformed` for an
 x402 EIP-3009 payment and `casper/payload-malformed` for a Casper payment. `unplaced`, which gives back the option or
-challenge you pass or a copy of it without the pairing's carrier, refuses one that carries a `refused` member the same
-way on every pairing: with `mpp/challenge-malformed` on MPP, `x402/option-malformed` on x402, and the pairing's
-`option-malformed` code on the ACK, ACP, AP2, card and UCP pairings. Every other entry point reads a presented value
-only for the members its pairing defines, and returns either a value it built or its own refusal.
+challenge you pass or a copy of it without the pairing's carrier, and each placement, which gives back a copy of the
+seller's document with the carrier placed (`advertise` and `advertiseBeforeCarrier` on the x402, MPP, ACP, AP2 and UCP
+pairings, and MPP's and A2A's `place`), refuse a value that carries a `refused` member before they remove or place
+anything: with `x402/option-malformed` on x402, with `mpp/challenge-malformed` on MPP (for a list of challenges, when
+any of them carries one), and elsewhere with the malformed code of what they are given: the pairing's
+`option-malformed` code for an option given to `unplaced` on the ACK, ACP, AP2, card and UCP pairings, and
+`acp/session-malformed`, `ap2/jws-malformed`, `ucp/checkout-malformed` or `a2a/legal-context-malformed` for the session,
+checkout payload, checkout or task a placement is given.
+Every other entry point reads a presented value only for the members its pairing defines, and returns either a value
+it built or its own refusal.
 
 ## What throws
 

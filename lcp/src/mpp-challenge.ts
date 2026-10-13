@@ -709,7 +709,8 @@ export async function issuedDigest(c: MppChallenge): Promise<Hex | Refusal> {
 /**
  * A copy of `doc` in which the challenge whose bound members equal `option` carries the id derived from H and an
  * `opaque` holding the seller's map plus `legalContext`, `legalContextUrl` and, when given, `legalContextAgreementUrl`.
- * A Tempo subscription challenge's id is the bare base64url of H.
+ * A Tempo subscription challenge's id is the bare base64url of H. A `doc` holding a challenge that carries a `refused`
+ * member is `mpp/challenge-malformed`, as one holding a challenge without the required members is.
  */
 export function place(
   doc: readonly MppChallenge[],
@@ -718,7 +719,12 @@ export function place(
   option: MppChallenge,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
-  if (!Array.isArray(doc) || doc.length > MAX_CHALLENGES || !doc.every(isChallengeShape)) {
+  if (
+    !Array.isArray(doc) ||
+    doc.length > MAX_CHALLENGES ||
+    !doc.every(isChallengeShape) ||
+    doc.some((c) => isObject(c) && carriesRefused(c))
+  ) {
     return refusal("mpp/challenge-malformed");
   }
   const hash = normalHash(h);

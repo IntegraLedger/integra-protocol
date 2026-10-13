@@ -133,10 +133,12 @@ function isSigned(c: Checkout): boolean {
 
 /**
  * A copy of the checkout with the `legal_context` link appended to `links[]`, followed by a `legal_context_agreement`
- * link to `agreementUrl` when one is given, before the business signs it.
+ * link to `agreementUrl` when one is given, before the business signs it. A checkout that carries a `refused` member
+ * is `ucp/checkout-malformed`, before any other check.
  */
 function advertiseFor(key: "checkout" | "booking") {
   return (doc: Checkout, h: AtrHash, link: string, offer: Option, agreementUrl?: string): Checkout | Refusal => {
+    if (isObject(doc) && carriesRefused(doc)) return refusal("ucp/checkout-malformed");
     if (!isOption(offer, key)) return refusal("ucp/option-malformed");
     const c = checkoutOf(doc);
     if (isRefusal(c)) return c;

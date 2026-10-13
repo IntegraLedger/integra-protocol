@@ -12,7 +12,7 @@ import {
   type Json,
 } from "./core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 
 /** The extension's URIs, in order of preference. The first is the one written when the client activated none. */
 export const A2A_EXTENSION_URIS: readonly string[] = Object.freeze([
@@ -69,10 +69,11 @@ export function requested(a2aExtensions: string | undefined): boolean {
 
 /**
  * A copy of the task whose `metadata` carries `{type, value, legalContextUrl}` under the listed URI the request's
- * `A2A-Extensions` value activated, or the first listed URI. Other metadata is kept.
+ * `A2A-Extensions` value activated, or the first listed URI. Other metadata is kept. A task that is not an object, or
+ * that carries a `refused` member, is `a2a/legal-context-malformed`.
  */
 export function place(task: A2aTask, h: AtrHash, link: string, a2aExtensions?: string): A2aTask | Refusal {
-  if (!isObject(task)) return refusal("a2a/legal-context-malformed");
+  if (!isObject(task) || carriesRefused(task)) return refusal("a2a/legal-context-malformed");
   const metadata: unknown = task["metadata"];
   if (metadata !== undefined && !isObject(metadata)) return refusal("a2a/legal-context-malformed");
   const nh = normalHash(h);

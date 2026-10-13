@@ -84,8 +84,9 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 }
 
 /**
- * The challenge's `extensions.legalContext` set, and the chosen option's `payTo` set to `muxedFor(payTo, h)`. Without
- * @stellar/stellar-sdk the option cannot be read or placed: `stellar/peer-missing`.
+ * The challenge's `extensions.legalContext` set, and the chosen option's `payTo` set to `muxedFor(payTo, h)`. A
+ * challenge that carries a `refused` member is `x402/option-malformed`. Without @stellar/stellar-sdk any other option
+ * cannot be read or placed: `stellar/peer-missing`.
  */
 function advertise(
   doc: PaymentRequired,
@@ -94,6 +95,7 @@ function advertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
+  if (isObject(doc) && carriesRefused(doc)) return refusal("x402/option-malformed");
   if (!hasPeer()) return refusal("stellar/peer-missing");
   const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;

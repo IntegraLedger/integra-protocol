@@ -1,11 +1,17 @@
 // Refusals are values the package makes. A value handed in, whatever its members, is never passed back as a refusal:
-// `isRefusal` recognises only what `refusal` made, and the readers that hand a caller's payment or credential back
-// refuse one that carries a `refused` member with their own malformed-input code.
+// `isRefusal` recognises only what `refusal` made, and the readers that hand a caller's payment or credential back,
+// and the functions that return a copy of a seller's document, refuse one that carries a `refused` member with their
+// own malformed-input code.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { assemble, BINDINGS, isRefusal as rootIsRefusal } from "../src/index.js";
+import { place as a2aPlace } from "../src/a2a.js";
+import { delegated as acpDelegated, undelegated as acpUndelegated } from "../src/acp.js";
+import { checkoutMandate } from "../src/ap2.js";
+import { assemble, BINDINGS, fromLcpString, isRefusal as rootIsRefusal } from "../src/index.js";
+import { place } from "../src/mpp.js";
 import { credentialOf } from "../src/mpp-challenge.js";
 import { isRefusal, refusal } from "../src/refusal.js";
+import { ap2Mandate as ucpAp2, bookingAp2Mandate as ucpBookingAp2, bookingUnsigned as ucpBookingUnsigned, unsigned as ucpUnsigned } from "../src/ucp.js";
 
 const dir = new URL("../vectors/", import.meta.url);
 const presentedOf: Map<string, unknown> = new Map(
@@ -390,6 +396,147 @@ describe("no entry point passes a caller's value back as a refusal", () => {
         code: "mpp/credential-malformed",
       });
       expect(reads).toBe(0);
+    });
+  }
+});
+
+// A placement function returns a copy of the seller's document with the carrier placed: every x402 and MPP pairing's
+// advertise, advertiseBeforeCarrier where a pairing has it, MPP's and A2A's place, and the ACP, AP2 and UCP pairings'
+// advertise. Like unplaced, it refuses a document that carries a refused member before it places anything, with the
+// malformed code of its namespace for that document (docs/reference/refusals.md): x402/option-malformed for an x402
+// document, mpp/challenge-malformed for a challenge in an MPP challenge list, a2a/legal-context-malformed for an A2A
+// task, acp/session-malformed for an ACP session, ap2/jws-malformed for an AP2 checkout payload and
+// ucp/checkout-malformed for a UCP checkout or booking. Each document is its pairing's vector file's as the seller
+// issued it: advertise places it into the vector file's own placed document, and advertiseBeforeCarrier and MPP's place
+// place it without a refusal.
+describe("every placement function refuses a seller document carrying a refused member", () => {
+  const vectors = readdirSync(dir)
+    .filter((n) => n.endsWith(".json"))
+    .map((n) => JSON.parse(readFileSync(new URL(n, dir), "utf8")) as Record<string, unknown>);
+  const load = (n: string) => JSON.parse(readFileSync(new URL(n, dir), "utf8"));
+  const advertisedDoc: Map<string, unknown> = new Map(
+    vectors.flatMap((d) =>
+      ((d["buyer"] as { rows: { name: string; pairing: string; input: { doc?: unknown } }[] } | undefined)?.rows ?? [])
+        .filter((r) => r.name === "B2")
+        .map((r) => [r.pairing, r.input.doc] as const),
+    ),
+  );
+  type Place = (doc: unknown, h: unknown, link: unknown, offer: unknown, agreementUrl?: string) => unknown;
+  const refused = (code: string) => ({ refused: true, code });
+
+  // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
+  // the carrier (unplaced). The x402/exact/lnbtc invoice, which carries the hash, exists when advertise is called, so
+  // advertise takes the option with it, and advertiseBeforeCarrier takes it without.
+  const x402 = BINDINGS.filter((b) => b.id.startsWith("x402/"));
+  it("the x402 pairings are twenty-nine, each with an advertised document of one option", () => {
+    expect(x402.length).toBe(29);
+    for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
+  });
+  const x402Calls = [
+    ...x402.map((b) => [b.id, "advertise", b.advertise as Place, b.id !== "x402/exact/lnbtc"] as const),
+    ...x402
+      .filter((b) => typeof b.advertiseBeforeCarrier === "function")
+      .map((b) => [b.id, "advertiseBeforeCarrier", b.advertiseBeforeCarrier as Place, true] as const),
+  ];
+  for (const [id, member, placeIn, asIssued] of x402Calls) {
+    it(`${id}: ${member} refuses a document carrying a refused member as x402/option-malformed`, () => {
+      const b = BINDINGS.find((p) => p.id === id)!;
+      const advertised = advertisedDoc.get(id) as { accepts: unknown[]; extensions: { legalContext: { info: Record<string, string> } } };
+      const info = advertised.extensions.legalContext.info;
+      const { legalContext: _, ...extensions } = advertised.extensions;
+      const option = asIssued ? (b.unplaced as (o: unknown) => unknown)(advertised.accepts[0]) : advertised.accepts[0];
+      const issued: Record<string, unknown> = { ...advertised, accepts: [option], extensions };
+      if (Object.keys(extensions).length === 0) delete issued["extensions"];
+      const args = [info["value"], info["legalContextUrl"], option, info["legalContextAgreementUrl"]] as const;
+      const placed = placeIn(structuredClone(issued), ...args);
+      if (member === "advertise") expect(placed).toEqual(advertised);
+      else expect(isRefusal(placed)).toBe(false);
+      for (const doc of [withRefused(issued), { ...withRefused(issued), x402Version: 1 }, shaped()]) {
+        const out = placeIn(doc, ...args);
+        expect(out).toEqual(refused("x402/option-malformed"));
+        expect(isRefusal(out)).toBe(true);
+      }
+    });
+  }
+
+  // An MPP challenge as issued: buyer row B2's advertised challenge without its carrier (unplaced), its id and its
+  // opaque, which place writes. The Lightning invoice, which carries the hash, exists when advertise is called, so
+  // advertise takes the challenge with it, and advertiseBeforeCarrier takes it without.
+  const mpp = BINDINGS.filter((b) => b.id.startsWith("mpp/"));
+  const issuedChallenge = (id: string, unplace: boolean) => {
+    const c = (advertisedDoc.get(id) as Record<string, string>[])[0]!;
+    const opaque = JSON.parse(Buffer.from(c["opaque"]!, "base64url").toString("utf8")) as Record<string, string>;
+    const unplaced = BINDINGS.find((p) => p.id === id)!.unplaced as (o: unknown) => Record<string, string>;
+    const { id: _id, opaque: _opaque, ...issued } = unplace ? unplaced(c) : c;
+    const h = fromLcpString(opaque["legalContext"]!);
+    return { issued, h, link: opaque["legalContextUrl"]!, agreementUrl: opaque["legalContextAgreementUrl"] };
+  };
+  it("the MPP pairings are twenty-six, each with an advertised list of one challenge whose opaque holds only the legal context", () => {
+    expect(mpp.length).toBe(26);
+    for (const b of mpp) {
+      const [c, ...rest] = advertisedDoc.get(b.id) as Record<string, string>[];
+      expect(rest, b.id).toEqual([]);
+      const opaque = JSON.parse(Buffer.from(c!["opaque"]!, "base64url").toString("utf8")) as Record<string, string>;
+      expect(Object.keys(opaque).filter((k) => !k.startsWith("legalContext")), b.id).toEqual([]);
+    }
+  });
+  const lightning = new Set(["mpp/charge/lightning", "mpp/session/lightning"]);
+  const mppCalls = [
+    ...mpp.map((b) => [b.id, "advertise", b.advertise as Place, !lightning.has(b.id)] as const),
+    ...mpp
+      .filter((b) => typeof b.advertiseBeforeCarrier === "function")
+      .map((b) => [b.id, "advertiseBeforeCarrier", b.advertiseBeforeCarrier as Place, true] as const),
+    ...mpp.map((b) => [b.id, "place", place as Place, true] as const),
+  ];
+  for (const [id, member, placeIn, unplace] of mppCalls) {
+    it(`${id}: ${member} refuses a challenge list in which a challenge carries a refused member as mpp/challenge-malformed`, () => {
+      const { issued, h, link, agreementUrl } = issuedChallenge(id, unplace);
+      const placed = placeIn([structuredClone(issued)], h, link, structuredClone(issued), agreementUrl);
+      if (member === "advertise") expect(placed).toEqual(advertisedDoc.get(id));
+      else expect(isRefusal(placed)).toBe(false);
+      const other = { ...issued, realm: "other.seller.example" };
+      for (const doc of [[withRefused(issued)], [issued, withRefused(other)], [withRefused(other), issued]]) {
+        const out = placeIn(doc, h, link, withRefused(issued), agreementUrl);
+        expect(out).toEqual(refused("mpp/challenge-malformed"));
+        expect(isRefusal(out)).toBe(true);
+      }
+    });
+  }
+
+  // A2A: a2a-legal-context.json's task A2, which place places into A2's placed task.
+  it("a2a's place refuses a task carrying a refused member as a2a/legal-context-malformed", () => {
+    const A = load("a2a-legal-context.json");
+    const { h, link } = A.A2.expectRead;
+    expect(a2aPlace(structuredClone(A.A2.task), h, link)).toEqual(A.A2.expectPlaced);
+    for (const task of [withRefused(A.A2.task), shaped()]) {
+      const out = a2aPlace(task, h, link);
+      expect(out).toEqual(refused("a2a/legal-context-malformed"));
+      expect(isRefusal(out)).toBe(true);
+    }
+  });
+
+  // The checkout pairings whose advertise copies the seller's document: ACP's session (acp-checkout.json V2), AP2's
+  // checkout payload (ap2-checkout-mandate.json V2) and UCP's checkout (ucp.json V2) or booking (V2b).
+  const A = load("acp-checkout.json").V2;
+  const P = load("ap2-checkout-mandate.json").V2;
+  const U = load("ucp.json");
+  const checkoutCalls: [string, Place, unknown, { h: string; link: string; offer: unknown }, unknown, string][] = [
+    ["acp/checkout/delegated", acpDelegated.advertise as Place, A.advertise.doc, A.advertise, A.expectSession, "acp/session-malformed"],
+    ["acp/checkout/undelegated", acpUndelegated.advertise as Place, A.advertise.doc, A.advertise, A.expectSession, "acp/session-malformed"],
+    ["ap2/checkout-mandate", checkoutMandate.advertise as Place, P.advertise.payload, P.advertise, P.expectPayload, "ap2/jws-malformed"],
+    ["ucp/checkout/unsigned", ucpUnsigned.advertise as Place, U.V2.advertise.doc, U.V2.advertise, U.V2.expectCheckout, "ucp/checkout-malformed"],
+    ["ucp/checkout/ap2-mandate", ucpAp2.advertise as Place, U.V2.advertise.doc, U.V2.advertise, U.V2.expectCheckout, "ucp/checkout-malformed"],
+    ["ucp/booking/unsigned", ucpBookingUnsigned.advertise as Place, U.V2b.B0, U.V2b.advertise, U.V2b.expectBooking, "ucp/checkout-malformed"],
+    ["ucp/booking/ap2-mandate", ucpBookingAp2.advertise as Place, U.V2b.B0, U.V2b.advertise, U.V2b.expectBooking, "ucp/checkout-malformed"],
+  ];
+  for (const [id, advertise, doc, a, expected, code] of checkoutCalls) {
+    it(`${id}: advertise refuses a document carrying a refused member as ${code}`, () => {
+      expect(advertise(structuredClone(doc), a.h, a.link, a.offer)).toEqual(expected);
+      for (const d of [withRefused(doc), shaped()]) {
+        const out = advertise(d, a.h, a.link, a.offer);
+        expect(out).toEqual(refused(code));
+        expect(isRefusal(out)).toBe(true);
+      }
     });
   }
 });

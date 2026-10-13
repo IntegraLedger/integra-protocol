@@ -115,8 +115,9 @@ bound to H: true
 ```
 
 `advertise` keeps every other member and metadata key, sets the session `id` only when it is absent or already H
-(`acp/id-conflict` otherwise), and refuses a session, given or as it would return it, larger than 1 MiB as JSON or
-nested more than 64 levels deep (`acp/too-large`). `read` takes H from `id` alone and refuses a `metadata.legal_context`
+(`acp/id-conflict` otherwise), refuses a session that carries a `refused` member (`acp/session-malformed`), and
+refuses a session, given or as it would return it, larger than 1 MiB as JSON or nested more than 64 levels deep
+(`acp/too-large`). `read` takes H from `id` alone and refuses a `metadata.legal_context`
 whose value is another hash (`acp/legal-context-conflict`). Because H is the session's `id`, one session binds one ATR:
 a change to the terms the ATR records needs a new session, which the agent creates. The LCP profile
 [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) states the rules.
@@ -135,8 +136,8 @@ and, with an agreement URL, a second entry of type `legal_context_agreement`. Th
 booking by its own `id` (`{ "checkout": "…" }` or `{ "booking": "…" }`), and `tie(options)` records those ids. The
 booking pairings follow UCP's draft lodging booking capability, `dev.ucp.lodging.booking`, at commit
 [`c9a1395b`](https://github.com/Universal-Commerce-Protocol/ucp/tree/c9a1395b5db889dd201ddc982b9a020b3cbef9a7/docs/specification/lodging/booking).
-`advertise` refuses a checkout the business has already signed (`ucp/already-signed`) and one whose `id` is not the
-option's (`ucp/option-not-this-checkout`).
+`advertise` refuses a checkout the business has already signed (`ucp/already-signed`), one whose `id` is not the
+option's (`ucp/option-not-this-checkout`) and one that carries a `refused` member (`ucp/checkout-malformed`).
 
 | Pairing | Buyer side | `bound` |
 |---|---|---|
@@ -204,8 +205,9 @@ reads a mandate whose `_sd_alg` is `sha-256` or absent, and refuses one with any
 The pairing targets AP2 v0.2 (Checkout Mandates, `mandate.checkout.1`). This package puts H in the JWT's payload:
 
 - **Seller.** `advertise(payload, h, link, { checkout: id })` appends a `legalContext` member,
-  `{"type":"sha256","value":H,"legalContextUrl":link}`, to the checkout payload whose `id` is the option's. The
-  seller's own stack signs the result as its `checkout_jwt`.
+  `{"type":"sha256","value":H,"legalContextUrl":link}`, to the checkout payload whose `id` is the option's, and
+  refuses a payload that carries a `refused` member (`ap2/jws-malformed`). The seller's own stack signs the result as
+  its `checkout_jwt`.
 - **Buyer.** `read(checkoutJwt)` decodes the JWT's payload and returns H, the link and the checkout. `build(offer, h)`
   returns the Checkout Mandate's required claims: `vct` `"mandate.checkout.1"`, the `checkout_jwt`, and
   `checkout_hash`, the unpadded base64url of SHA-256 over the JWT. The buyer's mandate signer issues the mandate as
@@ -338,7 +340,7 @@ reads only the Task's `metadata` under this extension's URI, does not.
 | `A2A_EXTENSION_URIS` | The extension's URI: `https://lcp.integraledger.com/a2a/legal-context/v1`. |
 | `agentExtension({ required? })` | The Agent Card `capabilities.extensions[]` entry that declares it. Leave `required` false: A2A asks agents not to mark data-only extensions as required. |
 | `requested(header)` | Whether a request's `A2A-Extensions` header value, at most 8,192 characters with at most 64 elements, names the extension. |
-| `place(task, h, link, header?)` | A copy of the Task with `{type, value, legalContextUrl}` in its `metadata`, under the extension's URI. Other metadata is kept. |
+| `place(task, h, link, header?)` | A copy of the Task with `{type, value, legalContextUrl}` in its `metadata`, under the extension's URI. Other metadata is kept. A Task that carries a `refused` member is `a2a/legal-context-malformed`. |
 | `read(task)` | H and the link from the Task's `metadata`. |
 | `delivery.proves` | What the delivery shows: nothing about the payment. |
 

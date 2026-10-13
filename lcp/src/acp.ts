@@ -87,10 +87,10 @@ export function tie(options: readonly HandlerOption[]): ["acp", { options: reado
  * A copy of the session with `id` = h and `metadata.legal_context` = `{type, value, legal_context_url}`, followed by
  * `legal_context_agreement_url` when `agreementUrl` is given. Other metadata members and every other member are kept.
  * With the same values already present it returns an equal session. The session it returns is at most 1 MiB as JSON,
- * as `read` requires.
+ * as `read` requires. A session that carries a `refused` member is `acp/session-malformed`.
  */
 function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption, agreementUrl?: string): Session | Refusal {
-  if (!isObject(doc)) return refusal("acp/session-malformed");
+  if (!isObject(doc) || carriesRefused(doc)) return refusal("acp/session-malformed");
   const size = jsonBytes(doc);
   if (size === undefined) return refusal("acp/session-malformed");
   if (size > MAX_SESSION_BYTES) return refusal("acp/too-large");
