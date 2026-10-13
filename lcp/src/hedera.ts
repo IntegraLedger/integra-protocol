@@ -141,10 +141,6 @@ export interface HederaUnsigned {
   complete(s: { publicKey: Uint8Array; signature: Uint8Array; type: "ed25519" | "ecdsa-secp256k1" }): string | Refusal;
 }
 
-/** The x402 `exact` payload on Hedera: the partially signed transaction, base64. */
-export type HederaPayload = { transaction: string };
-export type HederaPaymentPayload = X402Payment<HederaPayload>;
-
 /** The x402 `transferExecutor` payload. */
 export type ExecutorPayload = { payer: string; executor: string; authorization: Hex };
 export type ExecutorPaymentPayload = X402Payment<ExecutorPayload>;

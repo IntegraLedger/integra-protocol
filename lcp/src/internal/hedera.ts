@@ -1,13 +1,19 @@
 /**
  * The Hedera request checks an MPP charge challenge must pass, which `../hedera.ts`'s `advertise` and MPP's
  * `pairingsOf` run, and the readers they share with `../hedera.ts`: entity ids, decimal amounts, base64 and MPP's chain
- * ids. No entry point exports these names.
+ * ids. Also the x402 payment a Hedera payer presents, which the root names among the payments `Presented` covers. No
+ * entry point exports these names.
  */
 import { parseJson } from "../core.js";
 import { isObject } from "../fields.js";
 import type { HederaNetwork } from "../hedera.js";
 import type { MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import type { X402Payment } from "../x402.js";
+
+/** The x402 `exact` payload on Hedera: the partially signed transaction, base64. */
+type HederaPayload = { transaction: string };
+export type HederaPaymentPayload = X402Payment<HederaPayload>;
 
 const ENTITY = /^(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})$/;
 const DECIMAL = /^(0|[1-9][0-9]{0,18})$/;
