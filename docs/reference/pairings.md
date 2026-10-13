@@ -177,7 +177,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `mpp/charge/nearintents`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its externalId, bound by the seller's own key to a deposit address issued for that challenge only, and the seller reported delivery. The buyer's deposit does not carry the hash, and the buyer did not sign it. The NEAR Intents backend, not a contract the buyer signed, links the deposit to the seller.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its externalId, bound by the seller's server to a deposit address issued for that challenge only, and the seller reported delivery. The buyer's deposit does not carry the hash, and the buyer did not sign it. The NEAR Intents backend, not a contract the buyer signed, links the deposit to the seller.
 
 ### `mpp/charge/solana`
 
