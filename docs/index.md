@@ -82,9 +82,10 @@ These pages use each term in one sense:
 - **Guides** walk each flow with a program you can run: [seller](./guides/seller.md), [buyer](./guides/buyer.md),
   [channels, sessions and subscriptions](./guides/sessions.md), [x402](./guides/x402.md), [MPP](./guides/mpp.md),
   [agentic checkouts](./guides/checkouts.md), [rails](./guides/rails.md) and [discovery](./guides/discovery.md).
-- **Reference** is generated from the package: [entry points](./reference/entry-points.md),
-  [pairings](./reference/pairings.md), [refusal codes](./reference/refusals.md),
-  [vector files](./reference/vectors.md) and the [API](./reference/api/index.md).
+- **Reference**: [entry points](./reference/entry-points.md), [pairings](./reference/pairings.md),
+  [vector files](./reference/vectors.md) and the [API](./reference/api/index.md) are generated from the package;
+  [refusal codes](./reference/refusals.md) is written by hand, and CI checks that it lists every code the package
+  returns.
 
 A citation `LCP §N` names section N of the published
 [Legal Context Protocol v1.0](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md).
