@@ -744,10 +744,10 @@ const exactPattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The payer signed a Hedera transaction body whose memo carries this ATR's hash in LCP string form, and the " +
-    "transaction reached consensus with SUCCESS. The memo is in the public transaction record. This does not show " +
-    "that amount, recipient, token or timing match the ATR's content. The seller read the landed entry by its " +
-    "transaction id and memo; the fee payer, the seller's facilitator, could land another body under the same id.",
+    "The payer signed a Hedera transaction body whose memo carries this ATR's hash in LCP string form. A " +
+    "transaction under that body's id with that memo reached consensus with SUCCESS, and the memo is in the public " +
+    "transaction record; the fee payer, the seller's facilitator, could land another body under the same id. This " +
+    "does not show that amount, recipient, token or timing match the ATR's content.",
 });
 
 export const exactHedera = Object.freeze({
