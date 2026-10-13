@@ -75,7 +75,9 @@ describe("mpp-charge-hedera.json", () => {
     expect(u.complete({ publicKey, signature, type: "ed25519" })).toBe(V.build.expectTransactionBase64);
   });
 
-  it("build with credentialType hash hands the same body over as a push; transaction or none, as a pull", async () => {
+  // draft-hedera-charge-00 (abstract): "Two credential types are supported: `type="hash"` (default), where the client
+  // broadcasts the transaction itself ... and `type="transaction"` (pull mode)".
+  it("build with credentialType hash, or none, hands the same body over as a push; transaction, as a pull", async () => {
     const P = V.build.push;
     const at = (credentialType?: string) =>
       chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, V.fixed.request, {
@@ -88,7 +90,7 @@ describe("mpp-charge-hedera.json", () => {
     const asHex = (u: HederaUnsigned) => ({ ...u.request, bodyBytes: hex(u.request.bodyBytes) });
     expect(asHex((await at(P.credentialType)) as HederaUnsigned)).toEqual(P.expectRequest);
     expect(asHex((await at("transaction")) as HederaUnsigned)).toEqual(P.expectPullRequest);
-    expect(asHex((await at()) as HederaUnsigned)).toEqual(P.expectPullRequest);
+    expect(asHex((await at()) as HederaUnsigned)).toEqual(P.expectRequest);
     expect(await at(P.otherCredentialType)).toEqual({ refused: true, code: P.expectOther });
   });
 

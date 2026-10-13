@@ -1019,8 +1019,11 @@ function chargeNetwork(request: MppHederaRequest, defaultNetwork?: HederaNetwork
 /**
  * The body the payer signs for an MPP Hedera charge: the payer's own transaction id, MPP's attribution memo for this
  * challenge as the memo, and the token transfers of `currency`: the payer's debit, the recipient's remainder and each
- * split. With `credentialType` `hash` the request carries `broadcast: true`, for a signer that signs and broadcasts
- * the body; with `transaction`, the default, the signature completes the transaction.
+ * split. `credentialType` names the credential the payer returns. `hash` is the default when the caller names none, as
+ * MPP's Hedera charge makes it (draft-hedera-charge-00: "`type="hash"` (default)"): the request carries
+ * `broadcast: true`, for a signer that signs and broadcasts the body and presents the transaction id. With
+ * `transaction` (pull) the request carries no `broadcast`, and the signature completes the transaction for the server
+ * to broadcast. Any other value is `hedera/option-malformed`.
  */
 async function buildCharge(
   credentialChallenge: { id: string; realm: string },
@@ -1031,7 +1034,7 @@ async function buildCharge(
     validStart: { seconds: bigint; nanos: number };
     maxFee: bigint;
     clientId?: string;
-    credentialType?: "transaction" | "hash";
+    credentialType?: "hash" | "transaction";
   },
 ): Promise<HederaUnsigned | Refusal> {
   const { id, realm }: { id?: unknown; realm?: unknown } = isObject(credentialChallenge) ? credentialChallenge : {};
@@ -1076,7 +1079,7 @@ async function buildCharge(
     ...lenFieldNonEmpty(6, ENCODER.encode(memo)),
     ...lenField(14, lenField(2, tokenList)),
   ]);
-  const push = c.credentialType === "hash";
+  const push = c.credentialType !== "transaction";
   return {
     request: push ? { kind: "hedera-body", bodyBytes, broadcast: true } : { kind: "hedera-body", bodyBytes },
     complete: (s) => completeWith(bodyBytes, s),

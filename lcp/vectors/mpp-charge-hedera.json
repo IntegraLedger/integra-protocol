@@ -47,7 +47,7 @@
   "expectBodyBytes": "0a0d0a060880e2cfaa06120318b32b120218031880c2d72f220208783242307865663165643731323031376234333634343439643164633139613861376230303030303030303030303030303030303030306436363837336131646239353561722a12280a0318c92a120a0a0318b32b109f96800112090a0318d2091080897a120a0a0418b2920410a08d06",
   "expectTransactionBase64": "KvcBCowBCg0KBgiA4s+qBhIDGLMrEgIYAxiAwtcvIgIIeDJCMHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVhcioSKAoDGMkqEgoKAxizKxCfloABEgkKAxjSCRCAiXoSCgoEGLKSBBCgjQYSZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAiwuD9Gk81cKLOoeJorPC7RtvZ3NF6YrsAy6VisLW+hD30aJyePoD7++IGav/bsGzHhjPBVH4EdKsiuHSUXE2Ag==",
   "push": {
-   "case": "build with the buyer's credentialType hash: the same body, handed to the payer as a push its signer signs and broadcasts; credentialType transaction, or none, hands it over with no broadcast member",
+   "case": "build with the buyer's credentialType hash, or with none (hash is draft-hedera-charge-00's default credential type): the same body, handed to the payer as a push its signer signs and broadcasts; credentialType transaction hands it over with no broadcast member",
    "credentialType": "hash",
    "expectRequest": {
     "kind": "hedera-body",
