@@ -522,7 +522,7 @@ again.
 | **The payee** | The business settles only an option it offered, so the token goes to that option's `payTo`. |
 | **The bytes delivered** | The platform hashes the bytes it received from L, never a parsed or re-serialised copy. |
 | **What the ATR shows** | Anyone with L can read the ATR, and H is public once the payment settles. The ATR holds only what both parties may show. |
-| **Data residency** | The credential holds the payer's address and signature, and no other personal data. |
+| **Data residency** | The credential's members that this handler defines hold the payer's address and signature, and no other personal data. |
 
 ## References
 
