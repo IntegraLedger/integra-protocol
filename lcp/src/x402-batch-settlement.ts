@@ -1080,6 +1080,16 @@ function svmAdvertise(
   return withOption(placed, offeredAt(placed.accepts, offer), withExtra(offer, "memo", memo));
 }
 
+/**
+ * The option without `extra.memo`, on the SVM pairing: the option as the seller issued it, before the carrier was
+ * placed. An option that carries a `refused` member is `x402/option-malformed`; a value that is not an object comes
+ * back as it is.
+ */
+function svmUnplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
+  return withoutExtra(option, "memo");
+}
+
 export const batchSvm = Object.freeze({
   id: SVM_ID,
   pattern: Object.freeze({
@@ -1098,7 +1108,7 @@ export const batchSvm = Object.freeze({
   }) as LcpPattern,
   claims: true as boolean,
   carrier: "extra.memo" as const,
-  unplaced: (option: PaymentRequirements): PaymentRequirements => withoutExtra(option, "memo"),
+  unplaced: svmUnplaced,
   tie,
   advertise: svmAdvertise,
   read: (doc: PaymentRequired): X402Read | Refusal => readFor(filterOf(isId(SVM_ID)))(doc),
