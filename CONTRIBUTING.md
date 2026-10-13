@@ -50,7 +50,9 @@ node scripts/docs-reference.mjs --check
   way. Any other use of `refusal`, such as a call with another argument or through an alias, fails the check; a comment
   is not a use. After a change to the registry, the exports, the vectors or the refusal codes, run
   `node scripts/docs-reference.mjs` and commit what it writes.
-- The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder.
+- The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder. After a change
+  to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API pages it writes under
+  `docs/reference/api/`; CI checks that they match the source.
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.

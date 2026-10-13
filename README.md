@@ -129,6 +129,7 @@ To build the documentation site:
 ```sh
 cd website
 pnpm install --frozen-lockfile
+pnpm run api     # regenerate docs/reference/api/ from lcp/src; CI checks the committed pages match
 pnpm build
 ```
 
