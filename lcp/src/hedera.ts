@@ -1276,14 +1276,11 @@ export const chargeHedera = Object.freeze({
 });
 
 export {
-  APPROVE_SELECTOR,
   CHANNEL_CLOSED_TOPIC,
   CHANNEL_OPENED_TOPIC,
   ESCROW_OPEN_SELECTOR,
-  approveCalldata,
   hederaChannelId,
   hederaVoucher,
-  openCalldata,
   type HederaChannelConfig,
   type HederaCloseRef,
   type HederaEvmReader,

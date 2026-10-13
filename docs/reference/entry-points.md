@@ -225,12 +225,12 @@ import { AUTHORIZATION_STATE_SELECTOR, AUTHORIZATION_USED_TOPIC, authorizationId
 Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); and MPP's `mpp/charge/hedera`, whose signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash.
 
 ```ts no-check
-import { APPROVE_SELECTOR, approveCalldata, CHANNEL_CLOSED_TOPIC, … } from "@integraledger/lcp/hedera";
+import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, chargeHedera, … } from "@integraledger/lcp/hedera";
 ```
 
 **Pairings:** `mpp/charge/hedera`, `x402/exact/hedera`, `x402/exact/hedera/transfer-executor`.
 
-**Values (17):** `APPROVE_SELECTOR`, `approveCalldata`, `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `hederaChannelId`, `hederaIdDigest`, `hederaStatus`, `hederaVoucher`, `openCalldata`, `txIdMirror`, `txIdText`.
+**Values (14):** `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `hederaChannelId`, `hederaIdDigest`, `hederaStatus`, `hederaVoucher`, `txIdMirror`, `txIdText`.
 
 **Types (14):** `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `HederaVoucherTypedData`, `MirrorEntry`.
 
