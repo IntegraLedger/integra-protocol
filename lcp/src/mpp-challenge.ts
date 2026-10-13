@@ -144,7 +144,10 @@ export type MppPairing =
   | "mpp/charge/usdc/stacks"
   | "mpp/charge/usdc/gateway";
 
-/** The buyer's inputs to `build`. No check reads them. */
+/**
+ * The buyer's inputs to `build`. `build` checks their form and that the chosen challenge's id carries H; it compares no
+ * deal value.
+ */
 export interface MppChoice {
   challenge: MppChallenge & { id: string };
   from: Hex;
