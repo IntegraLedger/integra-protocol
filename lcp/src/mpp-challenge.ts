@@ -576,13 +576,13 @@ function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
 }
 
 /**
- * Lightning: `amount` in satoshis and `currency` "sat"; the payment hash as 64 lowercase hex digits, in
- * `methodDetails` (charge) or in `request` (session). The invoice is made after the hash, so it may be absent here.
+ * Lightning: the payment hash as 64 lowercase hex digits, in `methodDetails` (charge) or in `request` (session), and
+ * the invoice, when present, a string. The invoice is made after the hash, so it may be absent here. `amount` and
+ * `currency` are not read.
  */
 function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightning"): PairingCheck {
   const charge = pairing === "mpp/charge/lightning";
   return (r, d) => {
-    if (!isDecimal(r["amount"]) || r["currency"] !== "sat") return refusal("mpp/request-malformed");
     const hash = charge ? d["paymentHash"] : r["paymentHash"];
     if (typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)) return refusal("ln/payment-hash-required");
     const invoice = charge ? d["invoice"] : r["depositInvoice"];

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { decode as lightDecode } from "light-bolt11-decoder";
 import bolt11 from "bolt11";
 import { canonicalJson, type AtrHash, type Json } from "../src/index.js";
-import { issuedDigest, type MppChallenge, type MppCredential } from "../src/mpp.js";
+import { issuedDigest, pairingsOf, type MppChallenge, type MppCredential } from "../src/mpp.js";
 import { chargeLightning, decodeBolt11, sessionLightning, type Bolt11, type LnMppUnsigned } from "../src/lightning.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
@@ -263,6 +263,37 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
       });
     }
   });
+});
+
+// MPP's Lightning drafts give the request's `amount` in satoshis and its `currency` as "sat" (draft-lightning-charge-00,
+// draft-lightning-session-00). Neither pairing reads either member: H rides in the invoice's `h`, and the ATR commits the
+// request's `paymentHash`. A request with another currency, or no amount, names its pairing, is placed with the id each
+// file gives (L3's expectId, S1's B6 challenge), and binds the file's H.
+describe("the Lightning MPP pairings read no amount or currency", () => {
+  const rows: [string, Record<string, unknown>][] = [
+    ["currency BTC", { currency: "BTC" }],
+    ["no currency", { currency: null }],
+    ["an amount that is not a decimal integer", { amount: "2.5" }],
+    ["no amount", { amount: null }],
+  ];
+  for (const [name, change] of rows) {
+    it(`mpp/charge/lightning: ${name}`, async () => {
+      const offer = challengeOf(C.L3, change);
+      expect(pairingsOf(offer)).toEqual(["mpp/charge/lightning"]);
+      const doc = chargeLightning.advertise([offer], H, C.fixed.link, offer) as (MppChallenge & { id: string })[];
+      expect(doc[0]!.id).toBe(C.L3.expectId);
+      const u = (await chargeLightning.build({ challenge: doc[0]! }, H)) as LnMppUnsigned;
+      expect(await chargeLightning.bound(u.complete(C.fixed.preimage))).toBe(C.L3.expectBound);
+    });
+    it(`mpp/session/lightning: ${name}`, async () => {
+      const offer = challengeOf(S.S1, change);
+      expect(pairingsOf(offer)).toEqual(["mpp/session/lightning"]);
+      const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer) as (MppChallenge & { id: string })[];
+      expect(doc[0]!.id).toBe(S.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.challenge.id);
+      const u = (await sessionLightning.build({ challenge: doc[0]!, returnInvoice: S.fixed.returnInvoice }, H)) as LnMppUnsigned;
+      expect(await sessionLightning.bound(u.complete(S.fixed.preimage))).toBe(S.S1.expectBound);
+    });
+  }
 });
 
 // Both MPP Lightning pairings carry the ATR hash as the `mpp/charge` profile places it: the pattern names that profile.
