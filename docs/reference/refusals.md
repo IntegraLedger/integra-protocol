@@ -22,29 +22,29 @@ and the namespace counts below match its rows.
 | [`mpp`](#mpp) | 51 | MPP challenges and credentials, and the checks every MPP pairing shares (`@integraledger/lcp/mpp`). |
 | [`ack`](#ack) | 10 | ACK Payment Requests and receipts (`@integraledger/lcp/ack`). |
 | [`acp`](#acp) | 15 | ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`). |
-| [`ap2`](#ap2) | 17 | AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledger/lcp/ap2`). |
+| [`ap2`](#ap2) | 17 | AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledger/lcp/ap2`, and the AP2 Mandate pairings of `@integraledger/lcp/ucp`). |
 | [`ucp`](#ucp) | 13 | UCP checkouts and bookings (`@integraledger/lcp/ucp`). |
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
-| [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
-| [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
+| [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
+| [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
-| [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`). |
+| [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
 | [`avm`](#avm) | 13 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
 | [`cardano`](#cardano) | 12 | Cardano (`@integraledger/lcp/cardano`). |
 | [`casper`](#casper) | 13 | Casper (`@integraledger/lcp/casper`). |
 | [`ccd`](#ccd) | 17 | Concordium (`@integraledger/lcp/ccd`). |
-| [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`). |
+| [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
 | [`polkadot`](#polkadot) | 19 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 13 | Starknet (`@integraledger/lcp/starknet`). |
 | [`sui`](#sui) | 11 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 15 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 19 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`). |
-| [`stacks`](#stacks) | 6 | Stacks (`@integraledger/lcp/stacks`). |
+| [`stacks`](#stacks) | 6 | Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`). |
 
 ## core
 
@@ -223,7 +223,8 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 
 ## ap2
 
-AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledger/lcp/ap2`).
+AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledger/lcp/ap2`, and the AP2 Mandate
+pairings of `@integraledger/lcp/ucp`).
 
 | Code | Meaning |
 |---|---|
@@ -312,7 +313,8 @@ The A2A extension (`@integraledger/lcp/a2a`).
 
 ## evm
 
-EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`).
+EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of
+`@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`).
 
 | Code | Meaning |
 |---|---|
@@ -334,7 +336,8 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`).
 
 ## tempo
 
-Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`).
+Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and
+`keySearch` in `@integraledger/lcp/mpp`).
 
 | Code | Meaning |
 |---|---|
@@ -449,7 +452,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 
 ## hedera
 
-Hedera (`@integraledger/lcp/hedera`).
+Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`).
 
 | Code | Meaning |
 |---|---|
@@ -573,7 +576,7 @@ Concordium (`@integraledger/lcp/ccd`).
 
 ## near
 
-NEAR (`@integraledger/lcp/near`).
+NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`).
 
 | Code | Meaning |
 |---|---|
@@ -730,7 +733,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 
 ## stacks
 
-Stacks (`@integraledger/lcp/stacks`).
+Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`).
 
 | Code | Meaning |
 |---|---|
