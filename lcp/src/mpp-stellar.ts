@@ -199,8 +199,10 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
+ * Without @stellar/stellar-sdk the recipient and the transaction cannot be read: `stellar/peer-missing`.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
   const checked = chosenFor(choice.challenge, h, ID);
   if (isRefusal(checked)) return checked;

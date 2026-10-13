@@ -73,6 +73,16 @@ describe("without @stellar/stellar-sdk", () => {
     expect(await chargeStellar.reference(credential)).toEqual(refused);
   });
 
+  // The choice is the vectors' placed challenge with x402-exact-stellar.json's V2 simulated transaction and ledger, at a
+  // clock 60 seconds before the challenge expires: with the peer the pairing builds it, its entry expiring at V3's
+  // ledger 1000 (mpp-charges.test.ts).
+  it("mpp/charge/stellar's build refuses peer-missing, as its advertise does", { timeout: IMPORT_MS }, async () => {
+    const { chargeStellar } = await import("../src/mpp.js");
+    const now = Date.parse(M.fixed.expires) / 1000 - 60;
+    const choice = { challenge: M.place.expect, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, now, payer: V.fixed.payer };
+    expect(await chargeStellar.build(choice, M.fixed.H)).toEqual({ refused: true, code: CODE });
+  });
+
   // The placed challenge is the vectors' placement: with the peer, unplaced sets its muxed recipient back to the base
   // account, the issued challenge's recipient. Without the peer no recipient can be read, so no challenge comes back.
   it("mpp/charge/stellar's unplaced refuses peer-missing for a challenge, after a refused member", { timeout: IMPORT_MS }, async () => {
