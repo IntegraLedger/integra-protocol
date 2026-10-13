@@ -135,7 +135,10 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(filterOf(isThis))(doc);
 }
 
-/** The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. */
+/**
+ * The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. The
+ * payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is `svm/input-malformed`.
+ */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
@@ -153,6 +156,7 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
   const signer = extra["receiverAuthorizer"] as string;
   const channel = channelPda({ payer: c.payer, payee: feePayer, mint: accepted.asset, signer, salt: c.nonce, openSlot: c.openSlot });
   if (typeof channel !== "string") return channel;
+  if (c.openSlot > BigInt(Number.MAX_SAFE_INTEGER)) return refusal("svm/input-malformed");
   const amount = BigInt(accepted.amount);
   const message = await buildChannelMessage({
     feePayer,

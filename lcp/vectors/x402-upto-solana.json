@@ -337,6 +337,11 @@
    {
     "case": "advertise or build with an amount that is not a u64 in decimal or a non-positive maxTimeoutSeconds",
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with an openSlot above 2^53-1, the top of the integer range RFC 8259 §6 makes interoperable for the payload's JSON number",
+    "openSlot": "9007199254740993",
+    "expect": "svm/input-malformed"
    }
   ]
  },

@@ -152,6 +152,34 @@ describe("x402-upto-solana.json", () => {
     }
   });
 
+  // The payload carries openSlot as a JSON number, and RFC 8259 §6 makes integers in [-(2^53)+1, 2^53-1] interoperable:
+  // readers agree exactly on their values. The file's agreedRefusals row gives the slot above that range (2^53 + 1)
+  // and its code.
+  it("build refuses an openSlot above 2^53-1 with the agreedRefusals row's code, and writes 2^53-1 exactly", async () => {
+    const row = V.agreedRefusals.rows.find((r: { openSlot?: string }) => r.openSlot !== undefined);
+    expect(row.openSlot).toBe("9007199254740993");
+    const doc = uptoSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
+    if ("refused" in doc) throw new Error(doc.code);
+    const choice = (openSlot: bigint) => ({
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: V.fixed.payer,
+      nonce: BigInt(V.fixed.nonce),
+      openSlot,
+      now: V.fixed.now,
+      tokenProgram: V.fixed.tokenProgram,
+      recentBlockhash: V.fixed.blockhash,
+    });
+    for (const openSlot of [BigInt(row.openSlot), 2n ** 53n, 2n ** 64n - 1n]) {
+      expect(await uptoSvm.build(choice(openSlot), H), String(openSlot)).toEqual(refused(row.expect));
+    }
+    const u = await uptoSvm.build(choice(2n ** 53n - 1n), H);
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete(ed25519.sign(u.request.message, fromHex(V.fixed.payerSeed)));
+    if ("refused" in p) throw new Error(p.code);
+    expect(p.payload.openSlot).toBe(9007199254740991);
+  });
+
   it("EU4: bound and reference of the vector's wire; advertise without a flow", async () => {
     expect(b64(V.EU3.wireBase64).length).toBe(V.EU3.wireLength);
     const p = payment(V.EU3.wireBase64, V.EU4.accepted);
