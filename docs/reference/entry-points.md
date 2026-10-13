@@ -418,7 +418,7 @@ import { authCaptureEip3009, authCapturePermit2, chosen, … } from "@integraled
 
 **Pairings:** `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/upto/eip155/permit2`.
 
-**Values (24):** `authCaptureEip3009`, `authCapturePermit2`, `chosen`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `filterOf`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `legalContextOf`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `readFor`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
+**Values (23):** `authCaptureEip3009`, `authCapturePermit2`, `chosen`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `legalContextOf`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `readFor`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
 
 **Types (12):** `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
 

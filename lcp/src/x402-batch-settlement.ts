@@ -62,11 +62,10 @@ import {
   type SvmTx,
 } from "./internal/svm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
-import { advertiseFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, filterOf, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
-  filterOf,
   legalContextOf,
   offeredAt,
   paymentWith,

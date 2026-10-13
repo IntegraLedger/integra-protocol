@@ -19,11 +19,10 @@ import {
   type StellarUnsigned,
 } from "./internal/stellar.js";
 import { isObject, normalHash } from "./fields.js";
-import { advertiseFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, filterOf, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
-  filterOf,
   legalContextOf,
   offeredAt,
   readFor,

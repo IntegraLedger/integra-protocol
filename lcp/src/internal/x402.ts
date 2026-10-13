@@ -91,6 +91,17 @@ export function advertiseFor(filter: OptionFilter): X402Advertise {
   };
 }
 
+/**
+ * The filter for the options `pairs` accepts: those that `payable` also accepts (every one, without it) are served,
+ * and the rest are refused `x402/option-malformed`.
+ */
+export function filterOf(
+  pairs: (option: PaymentRequirements) => boolean,
+  payable?: (option: PaymentRequirements) => boolean,
+): OptionFilter {
+  return (o) => (!pairs(o) ? undefined : payable === undefined || payable(o) ? true : refusal("x402/option-malformed"));
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));

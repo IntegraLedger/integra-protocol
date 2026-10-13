@@ -4,7 +4,7 @@
  * the blob's hash.
  */
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
-import { advertiseFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, filterOf, type X402Read } from "./internal/x402.js";
 import {
   decodePresented,
   isXrplNetwork,
@@ -21,7 +21,6 @@ import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
-  filterOf,
   offeredAt,
   paymentWith,
   readFor,

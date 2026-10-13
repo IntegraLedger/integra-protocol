@@ -233,17 +233,6 @@ export function tie(
 }
 
 /**
- * The filter for the options `pairs` accepts: those that `payable` also accepts (every one, without it) are served,
- * and the rest are refused `x402/option-malformed`.
- */
-export function filterOf(
-  pairs: (option: PaymentRequirements) => boolean,
-  payable?: (option: PaymentRequirements) => boolean,
-): OptionFilter {
-  return (o) => (!pairs(o) ? undefined : payable === undefined || payable(o) ? true : refusal("x402/option-malformed"));
-}
-
-/**
  * The buyer's reading over a pairing's filter: the hash, the link, the agreement URL when `extensions.legalContext` carries one, and
  * the options the filter serves, in document order. A link or agreement URL of at most 2048 characters that parses as
  * an absolute URL with a scheme other than `https` is `x402/link-not-https`; any other value that is not a link, or two

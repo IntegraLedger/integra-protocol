@@ -6,12 +6,11 @@ import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { advertiseFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, filterOf, type X402Read } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
-  filterOf,
   paymentWith,
   readFor,
   tie,
