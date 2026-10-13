@@ -244,10 +244,9 @@ const delegatedPattern: LcpPattern = Object.freeze({
     "The checkout session this payment completed has this ATR's hash as its id, and its responses carried the ATR's " +
     "link in metadata. The payment handler required delegate_payment, so ACP has the buyer's agent obtain a vault " +
     "token whose allowance names this session as checkout_session_id, in a request the agent signs (a MUST in one " +
-    "section of ACP and RECOMMENDED in another) and the PSP SHOULD verify. The seller neither saw nor verified " +
-    "that allowance or its signature, and ACP does not require the PSP to hold the token to that session. The seller " +
-    "tied the payment to the hash in its report. This does not show that amount, payee or timing match the ATR's " +
-    "content.",
+    "section of ACP and RECOMMENDED in another) and the PSP SHOULD verify. No signature was verified here, and ACP " +
+    "does not require the PSP to hold the token to that session. The seller tied the payment to the hash in its " +
+    "report. This does not show that amount, payee or timing match the ATR's content.",
 });
 
 const undelegatedPattern: LcpPattern = Object.freeze({
