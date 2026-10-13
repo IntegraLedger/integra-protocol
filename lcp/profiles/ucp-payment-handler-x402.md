@@ -69,9 +69,9 @@ No identity is assigned: `identity.access_token` is not used.
 
 ### Handler configuration
 
-The schema's `$defs["com.integraledger.lcp.x402"]` holds `business_schema`, `platform_schema`, `response_schema` and
-`payment_instrument`, each composed over UCP's `payment_handler.json`. The shapes they use are in its `$defs`:
-`business_config`, `platform_config`, `response_config`, `instrument` and `credential`.
+The schema's `$defs["com.integraledger.lcp.x402"]` holds `business_schema`, `platform_schema` and `response_schema`,
+each composed over UCP's `payment_handler.json`, and `payment_instrument`, the `x402` instrument. The shapes they use
+are in its `$defs`: `business_config`, `platform_config`, `response_config`, `instrument` and `credential`.
 
 | Config variant | Context | Purpose |
 |---|---|---|
