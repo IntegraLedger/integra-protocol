@@ -39,6 +39,8 @@ Pairings that settle on a rail the package can read also have:
 | `recover(tx, reader)` | H read back from a settled transaction alone, where the rail keeps it (`pattern.zeroPartyRecoverable`). |
 | `authorizer(presented)` | On an EVM pull pairing, the account whose signature authorises the pull. With the reference's `authorization`, it lets a reader ask the chain whether the authorization executed before any transaction is named. |
 
+The Lightning pairings and `x402/exact/eip155/erc7710` have `reference` without `status`.
+
 Some pairings carry members for their own shape of payment:
 
 | Member | Where | What it does |
@@ -47,7 +49,9 @@ Some pairings carry members for their own shape of payment:
 | `channel` | channels, sessions and subscriptions | `kind` classifies a later payment as the opening, a payment within, or the close; `ref` names the channel; `boundWithin` reads H from a payment within, where one carries it; `until` gives the channel's end, where it has one. |
 | `buildWithin` | channels and sessions | Builds a later payment within an open channel. |
 | `closeRef` | the MPP sessions other than `mpp/session/lightning`, and `mpp/subscription/tempo` | The read keys of the channel's close. |
-| `landedTx`, `fetchPresented` | push-mode pairings | The transaction a credential names, and the credential completed with that landed transaction; `fetchPresented` refuses a landed transaction that failed. |
+| `landedTx`, `fetchPresented` | push-mode pairings; `mpp/session/evm` has `landedTx` only, for an opening the payer broadcast | The transaction a credential names, and the credential completed with that landed transaction; `fetchPresented` refuses a landed transaction that failed. |
+| `keySearch`, `keyProves` | `mpp/subscription/tempo` | The read keys of a transfer made under the subscription's access key, from the receipt that registered the key, and what the record proves for that transfer. |
+| `network` | `mpp/charge/hedera` | The CAIP-2 network of a charge request: `methodDetails.chainId` 295 or 296, or, where it names none, the default it is given. |
 | `advertiseBeforeCarrier` | pairings whose carrier the seller writes after H | `advertise`'s checks and placement, without the checks on that carrier. |
 
 ## The registry
