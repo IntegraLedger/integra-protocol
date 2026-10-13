@@ -92,7 +92,7 @@
  "agreedRefusals": {
   "about": "Refusal codes the specification leaves to the implementation, as this implementation applies them.",
   "rows": [
-   { "case": "pairingsOf with an EVM charge chainId, currency, recipient or amount malformed, or externalId not a string", "expect": "mpp/request-malformed" },
+   { "case": "pairingsOf with an EVM charge chainId, currency, recipient or amount malformed, or externalId not a string where a Permit2 pairing is offered", "expect": "mpp/request-malformed" },
    { "case": "pairingsOf with a Tempo charge supportedModes that is not a list of \"pull\" and \"push\"", "expect": "mpp/request-malformed" },
    { "case": "pairingsOf with an opaque that does not decode to a flat string map", "expect": "mpp/opaque-malformed" },
    { "case": "pairingsOf with an intent and method this entry point does not serve", "expect": "mpp/not-this-pairing" },

@@ -476,8 +476,6 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): 
   if (!isPositiveInt(d["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
   }
-  if (d["permit2Address"] !== undefined && !isAddress(d["permit2Address"])) return refusal("mpp/request-malformed");
-  if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
   let listed: MppPairing[];
   const types = d["credentialTypes"];
   if (types === undefined) listed = ["mpp/charge/evm/transaction", "mpp/charge/evm/hash"];
@@ -498,7 +496,13 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): 
     }
     listed = listed.filter((p) => p === "mpp/charge/evm/permit2");
   }
-  return listed.length === 0 ? refusal("mpp/credential-types") : listed;
+  if (listed.length === 0) return refusal("mpp/credential-types");
+  // The Permit2 build writes `permit2Address` as the verifying contract and `externalId` into the signed witness.
+  if (listed.includes("mpp/charge/evm/permit2")) {
+    if (d["permit2Address"] !== undefined && !isAddress(d["permit2Address"])) return refusal("mpp/request-malformed");
+    if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
+  }
+  return listed;
 }
 
 function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {

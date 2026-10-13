@@ -161,6 +161,17 @@ describe("mpp-challenge.json", () => {
     expect(pairingsOf(withOpaque({ order: "42" }))).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/authorization"]);
     const memoT = challenge("tempo", "charge", JSON.stringify({ amount: "1", currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { memo: "0x" + "00".repeat(32) } }));
     expect(pairingsOf(memoT)).toEqual({ refused: true, code: "mpp/carrier-taken" });
+    // The Permit2 build writes `permit2Address` as the verifying contract (draft-evm-charge-00 L281) and `externalId`
+    // into the signed witness (L453-456), so their form is checked where a Permit2 pairing is offered, and only there.
+    const reqMalformed = { refused: true, code: "mpp/request-malformed" };
+    expect(pairingsOf(md({ credentialTypes: ["transaction"], permit2Address: "nope" }))).toEqual(["mpp/charge/evm/transaction"]);
+    expect(pairingsOf(md({}, { externalId: 7 }))).toEqual(["mpp/charge/evm/transaction", "mpp/charge/evm/hash"]);
+    expect(pairingsOf(md({ credentialTypes: ["authorization", "hash"] }, { externalId: 7 }))).toEqual([
+      "mpp/charge/evm/authorization",
+      "mpp/charge/evm/hash",
+    ]);
+    expect(pairingsOf(md({ credentialTypes: ["transaction", "permit2"], permit2Address: "nope" }))).toEqual(reqMalformed);
+    expect(pairingsOf(md({ credentialTypes: ["permit2"] }, { externalId: 7 }))).toEqual(reqMalformed);
     const pushOnlyFeePayer = challenge("tempo", "charge", JSON.stringify({ amount: "1", currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { supportedModes: ["push"], feePayer: true } }));
     expect(pairingsOf(pushOnlyFeePayer)).toEqual({ refused: true, code: "mpp/modes-pull-only" });
   });
