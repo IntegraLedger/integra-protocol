@@ -122,9 +122,16 @@ owner and data, or null when no account exists at that address.
 
 ##### blockhashValid()
 
-> **blockhashValid**(`blockhash`): `Promise`\<`boolean`\>
+> **blockhashValid**(`blockhash`): `Promise`\<\{ `slot`: `bigint`; `valid`: `boolean`; \}\>
 
-`isBlockhashValid` at commitment `confirmed`.
+`isBlockhashValid` at commitment `confirmed`: `valid` is the response's `value` ("Whether the blockhash is still
+valid at the evaluated slot"), and `slot` its context slot, the slot the node evaluated it at. No function in this
+package calls it; it serves the caller's own verdict that a message with a blockhash reference never landed. A node
+also answers false for a blockhash whose block it has not reached, so a false answer at a slot below `fromSlot` +
+150, the bound `svmNonceMoved` sets for its read, shows nothing; the bound holds for a blockhash from a slot at or
+before `fromSlot` + 150. From a false answer at or past that bound, the caller passes `slot` to `svmLocate` as
+`minContextSlot`, so a node behind this read fails the search's call and the search is `complete` false; a search
+given that slot and `complete` with nothing found shows the message never landed.
 
 ###### Parameters
 
@@ -134,7 +141,7 @@ owner and data, or null when no account exists at that address.
 
 ###### Returns
 
-`Promise`\<`boolean`\>
+`Promise`\<\{ `slot`: `bigint`; `valid`: `boolean`; \}\>
 
 ##### firstAvailableBlock()
 
@@ -688,8 +695,9 @@ leaves the search incomplete. A ref or reader that is not an object, or a reader
 false, with nothing read.
 
 `minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
-context slot `svmNonceMoved` gives: every page names it, so a node that has not reached that slot fails the call and
-the search is `complete` false. A `minContextSlot` that is not a u64 bigint is `complete` false, with nothing read.
+context slot `svmNonceMoved` gives, or the `blockhashValid` read's `slot`: every page names it, so a node that has not
+reached that slot fails the call and the search is `complete` false. A `minContextSlot` that is not a u64 bigint is
+`complete` false, with nothing read.
 
 #### Parameters
 
