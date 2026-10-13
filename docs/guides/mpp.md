@@ -78,7 +78,7 @@ const issued: MppChallenge = {
 console.log(pairingsOf(issued));
 
 const h = await hash(new TextEncoder().encode("abc"));
-const placed = place([issued], h, `https://atr.seller.example/${h}`, issued);
+const placed = place([issued], h, "https://atr.seller.example/b3195b1f-4115-46b2-95a3-c9d61d7bfb01", issued);
 if (isRefusal(placed)) throw new Error(placed.code);
 const id = placed[0]!.id!;
 console.log(id, challengeH(id) === h);
@@ -92,7 +92,7 @@ console.log(offer.h === h, offer.offer.challenges.length);
 ```text
 [ 'mpp/charge/evm/permit2', 'mpp/charge/evm/authorization' ]
 ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0 true
-{"legalContext":"lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","legalContextUrl":"https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}
+{"legalContext":"lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","legalContextUrl":"https://atr.seller.example/b3195b1f-4115-46b2-95a3-c9d61d7bfb01"}
 true 1
 ```
 

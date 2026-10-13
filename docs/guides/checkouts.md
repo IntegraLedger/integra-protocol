@@ -44,7 +44,7 @@ session's `id`, and puts the link beside it in the session's `metadata.legal_con
     "legal_context": {
       "type": "sha256",
       "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-      "legal_context_url": "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+      "legal_context_url": "https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e"
     }
   }
 }
@@ -70,7 +70,7 @@ const handler: HandlerOption = { requires_delegate_payment: true };
 const terms = new TextEncoder().encode('{"line_items":[{"id":"li_1","quantity":1}],"total":19900}');
 const atr = await assemble(newAtrId(), tie([handler]), [["order", terms]]);
 if (isRefusal(atr)) throw new Error(atr.code);
-const link = `https://atr.seller.example/${atr.atrHash}`;
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
 const opened: Session = { currency: "usd", metadata: { order_ref: "A-100" } };
 const session = delegated.advertise(opened, atr.atrHash, link, handler);
 if (isRefusal(session)) throw new Error(String(session.code));
@@ -129,7 +129,7 @@ extension, signs it (`ap2.merchant_authorization`). This package appends one ent
 the business signs it:
 
 ```json no-check
-{ "type": "legal_context", "url": "https://atr.seller.example/0x…", "title": "lcp:sha256:0x…" }
+{ "type": "legal_context", "url": "https://atr.seller.example/…", "title": "lcp:sha256:0x…" }
 ```
 
 and, with an agreement URL, a second entry of type `legal_context_agreement`. The option names the checkout or the
@@ -153,7 +153,7 @@ import { hash, isRefusal } from "@integraledger/lcp";
 import { legalContextLink, unsigned, type Checkout } from "@integraledger/lcp/ucp";
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
-const link = `https://atr.seller.example/${h}`;
+const link = "https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e";
 const checkout: Checkout = {
   id: "chk_123",
   status: "ready_for_complete",
@@ -176,7 +176,7 @@ console.log(isRefusal(await unsigned.build({ checkout: placed }, h)));
   { type: 'terms_of_service', url: 'https://seller.example/tos' },
   {
     type: 'legal_context',
-    url: 'https://atr.seller.example/0x3283f4fc90a2f6d2782b0345c3b274acbe0218ec84ce2d8c3a1fdbe6d1cff263',
+    url: 'https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e',
     title: 'lcp:sha256:0x3283f4fc90a2f6d2782b0345c3b274acbe0218ec84ce2d8c3a1fdbe6d1cff263'
   }
 ]
@@ -235,7 +235,8 @@ import { checkoutMandate } from "@integraledger/lcp/ap2";
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const checkout = { id: "chk_42", total: { currency: "USD", value: "19.90" } };
-const payload = checkoutMandate.advertise(checkout, h, `https://atr.seller.example/${h}`, { checkout: "chk_42" });
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
+const payload = checkoutMandate.advertise(checkout, h, link, { checkout: "chk_42" });
 if (isRefusal(payload)) throw new Error(String(payload.code));
 console.log(Object.keys(payload));
 
@@ -310,7 +311,8 @@ import { visaTap, type CardOption } from "@integraledger/lcp/card";
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const option: CardOption = { scheme: "visa-tap", checkout: "order-7731" };
 
-const shown = visaTap.advertise({}, h, `https://atr.seller.example/${h}`, option);
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
+const shown = visaTap.advertise({}, h, link, option);
 if (isRefusal(shown)) throw new Error(shown.code);
 console.log(shown.reference === `lcp:sha256:${h}`);
 
@@ -355,10 +357,11 @@ const header = "https://lcp.integraledger.com/a2a/legal-context/v1";
 console.log(requested(header));
 
 const task: A2aTask = { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_INPUT_REQUIRED" } };
-const delivered = place(task, h, `https://atr.seller.example/${h}`, header);
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
+const delivered = place(task, h, link, header);
 if (isRefusal(delivered)) throw new Error(String(delivered.code));
 const got = read(delivered);
-console.log(isRefusal(got) ? got.code : got.h === h && got.link.endsWith(h));
+console.log(isRefusal(got) ? got.code : got.h === h && got.link === link);
 console.log(read(task));
 ```
 
