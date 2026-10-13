@@ -69,7 +69,7 @@ export function legalContextLink(c: Checkout): { h: AtrHash; link: string } | Re
   if (!isHttpsLink(url)) {
     return isOtherSchemeLink(url) ? refusal("ucp/link-not-https") : refusal("ucp/legal-context-malformed");
   }
-  if (url.length > MAX_LINK) return refusal("ucp/legal-context-malformed");
+  if (url.length > MAX_LINK) return refusal("ucp/too-large");
   return { h, link: url };
 }
 
@@ -145,7 +145,7 @@ function advertiseFor(key: "checkout" | "booking") {
     if (!isHttpsLink(link)) {
       return isOtherSchemeLink(link) ? refusal("ucp/link-not-https") : refusal("ucp/legal-context-malformed");
     }
-    if (link.length > MAX_LINK) return refusal("ucp/legal-context-malformed");
+    if (link.length > MAX_LINK) return refusal("ucp/too-large");
     const agreementFaulted = agreementUrlFault(agreementUrl);
     if (agreementFaulted?.fault === "link-not-https") return refusal("ucp/link-not-https");
     if (agreementFaulted !== undefined) return refusal("ucp/legal-context-malformed");

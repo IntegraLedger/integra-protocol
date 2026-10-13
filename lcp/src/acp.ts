@@ -103,7 +103,7 @@ function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption,
   if (!isHttpsLink(link)) {
     return isOtherSchemeLink(link) ? refusal("acp/link-not-https") : refusal("acp/legal-context-malformed");
   }
-  if (link.length > MAX_LINK) return refusal("acp/legal-context-malformed");
+  if (link.length > MAX_LINK) return refusal("acp/too-large");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("acp/link-not-https");
   if (agreementFaulted !== undefined) return refusal("acp/legal-context-malformed");
@@ -145,7 +145,7 @@ function read(doc: Session): { h: AtrHash; link: string; agreement?: string; off
   if (decoded === null) {
     return isHashWithNonHttpsLink(lc) ? refusal("acp/link-not-https") : refusal("acp/legal-context-malformed");
   }
-  if (decoded.url.length > MAX_LINK) return refusal("acp/legal-context-malformed");
+  if (decoded.url.length > MAX_LINK) return refusal("acp/too-large");
   if (!hashEquals(decoded.h, h)) return refusal("acp/legal-context-conflict");
   const agreement = agreementIn(lc);
   if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("acp/link-not-https");

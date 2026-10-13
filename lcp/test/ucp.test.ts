@@ -76,6 +76,17 @@ describe("ucp.json", () => {
     }
   });
 
+  // The 2,048-character link bound, read side: the code the file's advertise-long-link row gives for the same link.
+  it("read refuses a legal_context link of 2,049 characters as advertise does", () => {
+    const row = V.implementation.find((r: { name: string }) => r.name === "advertise-long-link");
+    const long = `https://atr.seller.example/${"a".repeat(2049 - "https://atr.seller.example/".length)}`;
+    expect(long.length).toBe(2049);
+    const c = V.V2.expectCheckout as Checkout;
+    const doc = { ...c, links: c.links!.map((l) => (l.type === "legal_context" ? { ...l, url: long } : l)) } as Checkout;
+    for (const p of [ap2Mandate, unsigned]) expect(p.read(doc)).toEqual(row.expect);
+    expect(legalContextLink(doc)).toEqual(row.expect);
+  });
+
   it("V2b: booking advertise and read", () => {
     const a = V.V2b.advertise;
     for (const p of [bookingAp2Mandate, bookingUnsigned]) {

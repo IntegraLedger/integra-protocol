@@ -44,6 +44,13 @@ const TOO_LONG_HTTP = `http://pay.seller.example/${"a".repeat(2049 - "http://pay
 const MALFORMED = ["", "not a url", "https://", "https://exa mple.com/", "https://u@pay.seller.example/", TOO_LONG, TOO_LONG_HTTP];
 /** The same bad values in the link's place. */
 const LINK_MALFORMED = MALFORMED;
+/**
+ * The pairings whose 2,048-character bound on the link answers their size code: an https link over it is
+ * `<ns>/too-large`, as acp-checkout.json and ucp.json give for a link of 2,049 characters.
+ */
+const LINK_SIZE_CODE = new Set(["acp", "ucp"]);
+const linkCode = (prefix: string, bad: string) =>
+  bad === TOO_LONG && LINK_SIZE_CODE.has(prefix) ? `${prefix}/too-large` : `${prefix}/legal-context-malformed`;
 
 type Doc = unknown;
 interface Case {
@@ -301,13 +308,14 @@ describe("the agreement URL", () => {
         }
       });
 
-      // The link takes the same split as the agreement URL, at advertise and at read alike.
+      // The link takes the same split as the agreement URL, at advertise and at read alike, except that an https link
+      // over 2,048 characters is the size code on the pairings LINK_SIZE_CODE names.
       it("advertise: a link whose scheme is not https is link-not-https; any other bad value is malformed", () => {
         const advertise = c.binding.advertise as (...a: unknown[]) => unknown;
         expect(advertise(c.args[0], h, HTTP, c.args[3])).toEqual(refused(`${c.prefix}/link-not-https`));
         for (const bad of LINK_MALFORMED) {
           const got = advertise(c.args[0], h, bad, c.args[3]);
-          expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(`${c.prefix}/legal-context-malformed`)]);
+          expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(linkCode(c.prefix, bad))]);
         }
       });
 
@@ -315,7 +323,7 @@ describe("the agreement URL", () => {
         expect(readOf(c, c.readable(withLink(c, c.before, HTTP)))).toEqual(refused(`${c.prefix}/link-not-https`));
         for (const bad of LINK_MALFORMED) {
           const got = readOf(c, c.readable(withLink(c, c.before, bad)));
-          expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(`${c.prefix}/legal-context-malformed`)]);
+          expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(linkCode(c.prefix, bad))]);
         }
       });
 

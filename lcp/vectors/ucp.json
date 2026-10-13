@@ -901,7 +901,7 @@
    },
    "expect": {
     "refused": true,
-    "code": "ucp/legal-context-malformed"
+    "code": "ucp/too-large"
    }
   },
   {

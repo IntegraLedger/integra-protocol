@@ -413,7 +413,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "acp/legal-context-malformed"
+     "code": "acp/too-large"
     }
    },
    {
@@ -632,7 +632,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "acp/legal-context-malformed"
+     "code": "acp/too-large"
     }
    },
    {

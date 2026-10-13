@@ -212,14 +212,14 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 | `acp/id-conflict` | `advertise` finds that the session already has an `id` other than H. |
 | `acp/id-not-hash` | `read` finds that the session's `id` is not an ATR hash, or `bound` finds that the allowance's `checkout_session_id` is not one. |
 | `acp/legal-context-conflict` | `advertise` finds a different `metadata.legal_context` already in the session, or `read` finds that the hash in `metadata.legal_context` differs from the session's `id`. |
-| `acp/legal-context-malformed` | `advertise` refuses an invalid ATR hash, a link that is not a usable `https` URL of at most 2048 characters, or a malformed agreement URL; `read` refuses a `metadata.legal_context` that does not decode, whose link exceeds 2048 characters, or whose agreement URL is malformed or given in both spellings with different values. |
+| `acp/legal-context-malformed` | `advertise` refuses an invalid ATR hash, a link that is not a usable `https` URL, or a malformed agreement URL; `read` refuses a `metadata.legal_context` that does not decode, or whose agreement URL is malformed or given in both spellings with different values. |
 | `acp/link-not-https` | The link or agreement URL given to `advertise`, or found in `metadata.legal_context` by `read`, is an absolute URL whose scheme is not `https`. |
 | `acp/no-legal-context` | `read` finds no `metadata.legal_context` in the session. |
 | `acp/not-buyer-signed` | `bound` of `acp/checkout/undelegated` always refuses, because nothing the buyer signs names the hash. |
 | `acp/nothing-to-sign` | `build` of `acp/checkout/undelegated` always refuses, because a handler that does not require `delegate_payment` gives the buyer nothing to sign. |
 | `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`. |
 | `acp/session-malformed` | `advertise` or `read` refuses a checkout session that is not a serialisable JSON object, or (in `advertise`) whose `metadata` is present but not an object. |
-| `acp/too-large` | The checkout session, or the session `advertise` would return, exceeds 1 MiB or is nested more than 64 levels deep, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
+| `acp/too-large` | The checkout session, or the session `advertise` would return, exceeds 1 MiB or is nested more than 64 levels deep, an `https` link given to `advertise` or read from `metadata.legal_context` exceeds 2048 characters, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
 
 ## ap2
 
@@ -256,14 +256,14 @@ UCP checkouts and bookings (`@integraledger/lcp/ucp`).
 | `ucp/checkout-malformed` | The checkout (or booking) is not a serialisable JSON object with a non-empty string `id`, its `links` is present but not an array, or the offer given to `build` is not an object. |
 | `ucp/hash-not-in-checkout` | The AP2 Mandate pairing's `build` finds that the checkout's `legal_context` link carries a hash other than H. |
 | `ucp/legal-context-conflict` | The checkout has more than one `legal_context` link or more than one `legal_context_agreement` link, or `advertise` finds an existing `legal_context` or `legal_context_agreement` link whose values differ from the ones it would write (including an existing `legal_context` link with no agreement link when an agreement URL is given). |
-| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form, its `url` or a `legal_context_agreement` link's `url` is not a usable `https` URL of at most 2048 characters, or the link, agreement URL or H given to `advertise` is invalid. |
+| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form, its `url` is not a usable `https` URL, a `legal_context_agreement` link's `url` is not a usable `https` URL of at most 2048 characters, or the link, agreement URL or H given to `advertise` is invalid. |
 | `ucp/link-not-https` | The link or agreement URL given to `advertise`, or the `url` of the checkout's `legal_context` or `legal_context_agreement` link, is an absolute URL whose scheme is not `https`. |
 | `ucp/no-legal-context` | The checkout has no `links` or no link whose `type` is `legal_context`. |
 | `ucp/not-buyer-signed` | `bound` of the unsigned checkout and booking pairings always refuses, because nothing the buyer signs carries the hash. |
 | `ucp/nothing-to-sign` | `build` of the unsigned checkout and booking pairings always refuses, because the buyer signs nothing. |
 | `ucp/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout` or `booking` as the pairing requires, a string of 1 to 256 characters. |
 | `ucp/option-not-this-checkout` | `advertise` finds that the option names a checkout or booking other than the document's `id`. |
-| `ucp/too-large` | The checkout exceeds 1 MiB as JSON or is nested more than 64 levels deep, its `id` exceeds 256 characters, or its `links` holds, or after `advertise` would hold, more than 64 entries. |
+| `ucp/too-large` | The checkout exceeds 1 MiB as JSON or is nested more than 64 levels deep, its `id` exceeds 256 characters, its `links` holds, or after `advertise` would hold, more than 64 entries, or the `legal_context` link's `url`, or the link given to `advertise`, is an `https` URL over 2048 characters. |
 
 ## card
 
