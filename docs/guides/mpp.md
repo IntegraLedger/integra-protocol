@@ -110,7 +110,7 @@ Payment scheme's problem type and HTTP status for a refusal code this package re
 | `usdc` | `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | The EIP-3009 nonce, or the Gateway burn intent's salt: `usdc`'s derivation over the challenge id. |
 | `usdc` | `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks` | The signed LCP-form Memo instruction (H's LCP string), or the SIP-010 `transfer` memo (H's 32 bytes). |
 | `nearintents` | `mpp/charge/nearintents` | The request's `externalId`; the deposit carries nothing. |
-| `card`, `stripe` | `mpp/charge/card`, `mpp/charge/stripe`, `mpp/subscription/stripe` | The request's `externalId`, or `methodDetails.metadata.legal_context`, which Stripe copies into the PaymentIntent. The buyer's card or token signs nothing that carries H. |
+| `card`, `stripe` | `mpp/charge/card`, `mpp/charge/stripe`, `mpp/subscription/stripe` | The request's `externalId`, or `methodDetails.metadata.legal_context`, which on a `stripe` charge the seller's server copies into the PaymentIntent it creates at settlement; MPP's Stripe subscription method does not say where the metadata goes. The buyer's card or token signs nothing that carries H. |
 | sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/hedera`, `mpp/session/solana`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
 | subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. |
 
