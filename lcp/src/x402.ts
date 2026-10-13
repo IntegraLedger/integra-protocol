@@ -1322,7 +1322,10 @@ export const uptoPermit2 = binding(
     zeroPartyRecoverable: true,
     forwardIndexable: false,
     publicProof: true,
-    proves: PERMIT2_PROVES + " The amount settled is the facilitator's, at most the signed maximum.",
+    proves:
+      PERMIT2_PROVES +
+      " The amount settled is the seller's, submitted by the facilitator the witness names, and at most the " +
+      "signed maximum.",
   }),
   true,
   {

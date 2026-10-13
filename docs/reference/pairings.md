@@ -377,7 +377,7 @@ The payer signed, with a single key, an XRPL Payment whose InvoiceID is the SHA-
 
 ### `x402/upto/eip155/permit2`
 
-The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 proxy as spender and the payee in the witness. Permit2 verified the signature when the proxy executed the transfer, and the hash is in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show that amount, payee, asset or timing match the ATR's content. The amount settled is the facilitator's, at most the signed maximum.
+The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 proxy as spender and the payee in the witness. Permit2 verified the signature when the proxy executed the transfer, and the hash is in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show that amount, payee, asset or timing match the ATR's content. The amount settled is the seller's, submitted by the facilitator the witness names, and at most the signed maximum.
 
 ### `x402/upto/solana`
 
