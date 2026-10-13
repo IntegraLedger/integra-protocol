@@ -4,7 +4,7 @@
 
 Report a vulnerability privately, through GitHub's
 [private vulnerability reporting](https://github.com/IntegraLedger/integra-protocol/security/advisories/new) on this
-repository. Do not open a public issue, pull request or discussion for it.
+repository. Do not open a public issue or pull request for it.
 
 Include:
 
