@@ -372,7 +372,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/channel-instruction` | The Solana transaction has more than one payment-channels instruction, or its one instruction has an unknown discriminator or the wrong accounts. |
 | `svm/channel-mismatch` | The MPP Solana session opening's `channelId` is not the channel account its `open` instruction opens. |
 | `svm/err` | The landed Solana transaction failed with an error: the one a recovery reads, or the one an MPP Solana `signature` credential names. |
-| `svm/input-malformed` | The buyer's input to a Solana `build`, `complete` or message helper is not valid: a payer, key or blockhash that is not a base58 key, a token program other than the option's, an out-of-range amount, slot or compute budget, a memo to write that is not a well-formed string, a signature that is not 64 bytes or not for a required signer, a session challenge with malformed Solana details, or MPP `splits` or `confidential` transfers, which are not built. |
+| `svm/input-malformed` | The buyer's input to a Solana `build`, `complete` or message helper is not valid: a payer, key or blockhash that is not a base58 key, a token program that is not Token or Token-2022 (on the x402 `upto` and `batch-settlement` pairings, not the option's own), an out-of-range amount, slot or compute budget, a memo to write that is not a well-formed string, a signature that is not 64 bytes or not for a required signer, or MPP `splits` or `confidential` transfers, which are not built; or an MPP Solana session challenge, wherever it is checked (`place` and `pairingsOf` included), has a malformed channel program, currency, recipient, recent blockhash or slot, or voucher signer. |
 | `svm/memo-count` | The Solana transaction has no top-level Memo instruction or more than one (x402 `exact` and `upto`), or more than one Memo instruction carrying an LCP string (MPP). An x402 `batch-settlement` opening has other than exactly one binding memo and exactly one other Memo instruction; a binding memo is a Memo instruction whose data starts with x402's receiver-authorizer prefix `x402:batch-settlement:svm:rcvauth:v1:`. |
 | `svm/memo-not-lcp` | The Solana transaction's one Memo instruction, or an x402 `batch-settlement` opening's Memo instruction beside its binding memo, does not carry an ATR hash in LCP string form. |
 | `svm/memo-not-utf8` | The data of the Solana transaction's one Memo instruction, or of an x402 `batch-settlement` opening's Memo instruction beside its binding memo, is not UTF-8. |
@@ -415,7 +415,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR, its operation or the payer's authorization entry nests ScVals or invocations deeper than `SCVAL_MAX_DEPTH`, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
 | `stellar/tx-failed` | The transaction an MPP Stellar `hash` credential names is recorded `FAILED` on the ledger, so it moved nothing. |
 | `stellar/tx-too-large` | A Stellar transaction envelope's base64 text exceeds the size bound. |
-| `stellar/unreadable` | The Stellar reader threw, returned a response that is not an object, or reported a status other than `SUCCESS`, `FAILED` or `NOT_FOUND`. |
+| `stellar/unreadable` | The Stellar reader threw, returned a response that is not an object, or returned an envelope under a status other than `SUCCESS`, `FAILED` or `NOT_FOUND`; such a status with no envelope is `stellar/not-found`. |
 | `stellar/wrong-reader` | The Stellar reader answers for a different network than the challenge names. |
 
 ## xrpl
@@ -425,7 +425,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | Code | Meaning |
 |---|---|
 | `xrpl/blob-malformed` | An XRPL signed blob is not a string of hex, nests fields deeper than `XRPL_MAX_DEPTH` (checked before it is decoded), does not decode, is not the canonical serialization of what it decodes to, lacks `TransactionType` or `Account`, or a credential or `complete` call carries no string blob. |
-| `xrpl/blob-too-large` | An XRPL signed blob exceeds 4 KiB. |
+| `xrpl/blob-too-large` | An XRPL signed blob exceeds 4096 hex characters (2048 bytes). |
 | `xrpl/carrier-mismatch` | The option's `extra.invoiceId` or the challenge's `invoiceId` is not the one derived from H when `build` is called, or the signed `Payment`'s `InvoiceID` is not the one the option or challenge names. |
 | `xrpl/carrier-not-lcp` | The x402 XRPL option's `extra.invoiceId` is not an ATR hash in LCP string form. |
 | `xrpl/carrier-occupied` | `advertise` finds the option's `extra.invoiceId`, or the MPP challenge's `invoiceId`, already holding a value other than the one derived from H. |
@@ -584,7 +584,7 @@ NEAR (`@integraledger/lcp/near`).
 | `near/memo-not-lcp` | The `ft_transfer` `memo` is not an ATR hash in LCP string form, or the NEAR Intents challenge's `externalId` is absent or a string that is not one. |
 | `near/network-malformed` | A NEAR option's network starts with `near:` but is not `near:mainnet` or `near:testnet`. |
 | `near/no-relayer` | The NEAR reader lists no relayer to ask for the transaction status. |
-| `near/not-found` | No relayer the NEAR reader lists knows the transaction, or its outcome carries no delegate action. |
+| `near/not-found` | None of the first four relayers the NEAR reader lists knows the transaction, or its outcome carries no delegate action. |
 | `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer`, or the delegate in the transaction a recovery reads calls another method. |
 | `near/not-hash-credential` | The NEAR Intents charge credential's payload `type` is not `hash`. |
 | `near/option-malformed` | A NEAR option's `extra` is not an object, or its `asset`, `payTo`, `amount` or `maxTimeoutSeconds` is not a valid account, u128 amount or integer timeout. |
@@ -603,21 +603,21 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/address-malformed` | A Polkadot address is not an SS58 string of at most 64 characters that decodes to 35 bytes with a simple prefix and a valid checksum. |
 | `polkadot/address-not-id` | The Polkadot extrinsic's signer is not a `MultiAddress::Id` of 32 bytes. |
 | `polkadot/call-not-profile` | The Polkadot call is not exactly the profile's `batchAll` of `transferKeepAlive` then `remarkWithEvent` with a remark of the fixed length, or the presented `call` is not lowercase hex, or the recovered extrinsic does not end with that call after its signature. |
-| `polkadot/call-not-suffix` | The signed Polkadot extrinsic does not end with the profile call, after its signature. |
+| `polkadot/call-not-suffix` | The signed Polkadot extrinsic does not end, after its signature, with the call it is checked against: the presented `call` for `bound` and `reference`, or the profile call `build` made for `complete`. |
 | `polkadot/extrinsic-malformed` | A Polkadot extrinsic is not lowercase hex whose compact length prefix matches its length, or the raw extrinsic a recovery reads is not hex. |
 | `polkadot/extrinsic-too-large` | A Polkadot extrinsic, or the raw extrinsic a recovery reads, is longer than 4,096 bytes. |
 | `polkadot/hash-mismatch` | The chain's record of the Polkadot extrinsic has a hash other than that of the raw bytes read. |
 | `polkadot/network-unsupported` | A Polkadot option's network starts with `polkadot:` but is not one this package supports. |
 | `polkadot/no-remark` | The Polkadot extrinsic did not dispatch successfully with a `Remarked` event for its remark. |
 | `polkadot/no-transfer` | The recovered Polkadot extrinsic's record carries no `Transferred` event of the asset its profile call names. |
-| `polkadot/not-found` | The Polkadot reader found no block, no extrinsic at the index, or no record of the extrinsic, or, for a recovery, the finalized chain has reached the named block's height and the canonical block there is another block that does not hold the same extrinsic at that index. |
+| `polkadot/not-found` | The Polkadot reader found no block (for `polkadotRecover`, also block extrinsics that are not an array), no extrinsic at the index, or no well-formed record of the extrinsic, or, for a recovery, the finalized chain has reached the named block's height and the canonical block there is another block that does not hold the same extrinsic at that index. |
 | `polkadot/not-signed-v4` | The Polkadot extrinsic is not a signed version 4 extrinsic. |
 | `polkadot/option-malformed` | A Polkadot option does not name the `lcp-assets-remark` transfer method, names another flow, or has an invalid asset id, amount or timeout (1 to 3600 seconds), or the choice given to `build` is not an object. |
 | `polkadot/range` | `polkadotLocate` is given a block range that is not non-negative bigints in order spanning at most 256 blocks. |
 | `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
 | `polkadot/transaction-malformed` | `polkadotRecover` is given a transaction reference that is not a `<block hash>-<index>` timepoint. |
-| `polkadot/unreadable` | The Polkadot reader threw, returned block extrinsics that are not an array, a finalized height that is not a bigint, or a record of the canonical block that is not an extrinsic's. |
+| `polkadot/unreadable` | The Polkadot reader threw, returned a finalized height that is not a bigint or a record of the canonical block that is not an extrinsic's, or, to `polkadotLocate`, returned block extrinsics that are not an array. |
 | `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names, or the reference given to `polkadotLocate` has an `extrinsicHash` that is not `0x` and 64 hex digits. |
 
 ## starknet
@@ -636,8 +636,8 @@ Starknet (`@integraledger/lcp/starknet`).
 | `starknet/option-malformed` | A Starknet option has no `extra` object, or its amount is not a u256 or its timeout is not positive, or the buyer's choice given to `build` is not an object or has an invalid `now`, or an amount or deadline given to a typed-data helper is out of range. |
 | `starknet/reverted` | The Starknet transaction the reference names reverted. |
 | `starknet/signature-malformed` | The signature given to the Starknet `complete` is not 1 to the allowed number of valid felts. |
-| `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, exceeds 16 KiB as JSON or nests more than 64 levels, or lacks one transfer call's calldata and a decimal `Execute Before`. |
-| `starknet/unreadable` | The Starknet reader threw or returned a receipt or events that are not well formed. |
+| `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, or exceeds 16 KiB as JSON or nests more than 64 levels; or, for `reference`, its `Calls` is not exactly one call whose `Calldata` is three felts (recipient, amount low and amount high, each half below 2^128), or its `Execute Before` is not a decimal. `reference` does not read the call's `Selector` or `To`. |
+| `starknet/unreadable` | The Starknet reader threw, or returned a receipt or events that are not well formed, or a trace that is missing, not well formed, nested deeper than 16 levels or holding more than 512 invocations; or the reference given to `starknetLandedNonce` has an `asset` that is not a felt. |
 | `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference names. |
 
 ## sui
@@ -651,7 +651,7 @@ Sui (`@integraledger/lcp/sui`).
 | `sui/hash-not-carried` | The Sui transaction has no unused `Pure` input, or its one unused `Pure` input is not 32 bytes. |
 | `sui/network-malformed` | A Sui option's network starts with `sui:` but is not `sui:mainnet`, `sui:testnet` or `sui:devnet`. |
 | `sui/not-found` | The Sui reader found no transaction for the digest. |
-| `sui/not-programmable` | The Sui transaction is not `TransactionData` V1 with a programmable transaction kind. |
+| `sui/not-programmable` | The Sui `TransactionData` V1's kind is not `ProgrammableTransaction`; a `TransactionData` of another version does not decode, and is `sui/tx-malformed`. |
 | `sui/peer-missing` | The optional peer dependency `@mysten/sui` cannot be loaded. |
 | `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, a programmable transaction with a type (a call's type argument, a vector's element type, a funds withdrawal's type) nested 16 levels deep, Sui's type depth limit, or a `Pure` input that is not valid base64 within the bound, or `suiCarrier` is given a transaction that is not a decoded one. |
 | `sui/tx-too-large` | `decodeSuiTx` is given a transaction larger than the size bound. |
@@ -664,7 +664,7 @@ Tron (`@integraledger/lcp/tron`).
 
 | Code | Meaning |
 |---|---|
-| `tron/address-malformed` | A TRON address is not a base58check address of 34 characters starting with byte `0x41`. |
+| `tron/address-malformed` | A TRON address is not 34 base58 characters decoding to 25 bytes that begin with `0x41`, or, for `tronAddress` and the payer, asset and `payTo` that `build` reads through it, its base58check checksum is wrong; `advertise`, `read`, `bound` and `reference` check the shape only. |
 | `tron/contracts` | The TRON raw data does not hold exactly one contract. |
 | `tron/fee-limit` | The fee limit given to the TRON `build` is not a bigint from 1 to the maximum. |
 | `tron/memo-not-lcp` | The TRON transaction's memo is not an ATR hash in LCP string form. |
@@ -691,9 +691,9 @@ TON (`@integraledger/lcp/tvm`).
 | `tvm/boc-too-large` | A TON bag of cells exceeds the byte, depth or cell-count bound. |
 | `tvm/carrier-mismatch` | The option's `extra.forwardPayload` is not H's comment when `build` is called, or the presented Jetton transfer's forward payload is not the option's. |
 | `tvm/carrier-occupied` | `advertise` finds the option's `extra.forwardPayload` already holding a payload other than H's comment. |
-| `tvm/network-malformed` | A TON option's network is not `tvm:` followed by a workchain number. |
+| `tvm/network-malformed` | A TON option's network is not `tvm:` followed by the network's global id, a decimal safe integer with no leading zero (`tvm:-239` mainnet, `tvm:-3` testnet). |
 | `tvm/not-found` | The TON reader found no transaction for the reference. |
-| `tvm/not-jetton-transfer` | The W5 request's outgoing message is not an internal message whose body is a Jetton `transfer`. |
+| `tvm/not-jetton-transfer` | The W5 request's outgoing message is not an internal message whose body is a Jetton `transfer`, or the inbound body of the transaction `tvmRecover` reads is not a Jetton `transfer`. |
 | `tvm/not-w5-signed` | The TON settlement message body is not a W5 `internal_signed` request with a trailing signature and no further references. |
 | `tvm/option-malformed` | A TON option's `extra` is not an object, or its asset, `payTo`, response destination or forward TON amount is invalid, or it does not set `areFeesSponsored` to `true`, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid. |
 | `tvm/payload-not-lcp` | The Jetton transfer carries no forward payload, or its forward payload is not a comment carrying an ATR hash in LCP string form. |
@@ -737,7 +737,7 @@ Stacks (`@integraledger/lcp/stacks`).
 | `stacks/no-memo` | The Stacks transaction is not a call to the reference's contract `transfer`, or its fourth argument is not `(some <32 bytes>)`. |
 | `stacks/not-found` | The reference's transaction id is not a 32-byte hash, or the Stacks reader answers that the API does not know the transaction (its not-found answer) or that the transaction is unmined. |
 | `stacks/not-success` | The mined Stacks transaction's status is not `success`. |
-| `stacks/peer-missing` | The optional peer dependency `@stacks/transactions` cannot be loaded. |
+| `stacks/peer-missing` | The `usdc` Stacks pairing's `bound` or `reference` (`chargeUsdcStacks`, from `@integraledger/lcp/mpp`) cannot load the optional peer dependency `@stacks/transactions`. |
 | `stacks/unreadable` | The reference or reader is not an object, or the Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer). |
 | `stacks/wrong-reader` | The Stacks reader answers for a different network than the reference names. |
 

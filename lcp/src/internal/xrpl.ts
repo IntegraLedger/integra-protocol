@@ -147,11 +147,11 @@ export function mppInvoiceId(h: AtrHash): string {
 }
 
 /**
- * Decodes a signed blob of at most 4 KiB of hex, and computes its transaction hash as the ledger does: SHA-512Half
- * over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its fields refuses a
- * blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep. The blob must be the canonical
- * serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes, so nothing
- * follows a top-level end marker and every array member is an object.
+ * Decodes a signed blob of at most 4096 hex characters (2048 bytes), and computes its transaction hash as the ledger
+ * does: SHA-512Half over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its
+ * fields refuses a blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep. The blob must be the
+ * canonical serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes,
+ * so nothing follows a top-level end marker and every array member is an object.
  */
 export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: string } | Refusal> {
   if (typeof hex !== "string" || !HEX.test(hex)) return refusal("xrpl/blob-malformed");
