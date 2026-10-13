@@ -22,7 +22,6 @@ import {
   eip3009Recover,
   eip3009Status,
   eip3009TypedData,
-  isLog,
   isReceipt,
   paymentHash,
   permit2TypedData,
@@ -44,7 +43,7 @@ import {
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { agreementIn } from "./internal/agreement.js";
-import { permit2Status, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
+import { isLog, permit2Status, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,

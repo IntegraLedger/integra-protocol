@@ -7,7 +7,8 @@
 import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
-import { evmStatus, isLog, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmRef } from "./evm.js";
+import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmRef } from "./evm.js";
+import { isLog } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
   CHANNEL_CLOSED_TOPIC,
