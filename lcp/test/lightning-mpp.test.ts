@@ -169,9 +169,9 @@ describe("mpp/session/lightning's channel members (draft-lightning-session-00's 
 
 // The session's read keys name the network the MPP challenge names in `methodDetails.network`, else the network of
 // the invoice's currency; its channel key is `{network: "lightning", channel: <payment hash>}` whatever that network.
-// The regtest and testnet invoices are S1's deposit invoice (L2, h = H) with its human-readable part changed to
-// `lnbcrt250n` and `lntb250n` and its BIP-173 checksum recomputed; lcp's decoder verifies no signature. BOLT11's
-// currency prefixes: `bcrt` is regtest, and `tb` is Bitcoin's testnets, testnet3 and testnet4.
+// The regtest, testnet and signet invoices are S1's deposit invoice (L2, h = H) with its human-readable part changed to
+// `lnbcrt250n`, `lntb250n` and `lntbs250n` and its BIP-173 checksum recomputed; lcp's decoder verifies no signature.
+// BOLT11's currency prefixes: `bcrt` is regtest, `tbs` is signet, and `tb` is Bitcoin's testnets, testnet3 and testnet4.
 describe("mpp/session/lightning's read keys name the challenge's network", () => {
   const CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
   const polymod = (values: number[]): number => {
@@ -201,10 +201,11 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
     return { challenge: doc[0]!, payload: { action: "open", preimage: S.fixed.preimage, returnInvoice: S.fixed.returnInvoice } };
   };
 
-  it("the rewritten invoices decode to the regtest and testnet currencies with S1's hash and h", async () => {
+  it("the rewritten invoices decode to the regtest, testnet and signet currencies with S1's hash and h", async () => {
     const r = (await decodeBolt11(rehrp(deposit, "lnbcrt250n"))) as Bolt11;
     const t = (await decodeBolt11(rehrp(deposit, "lntb250n"))) as Bolt11;
-    expect([r.currency, t.currency]).toEqual(["bcrt", "tb"]);
+    const s = (await decodeBolt11(rehrp(deposit, "lntbs250n"))) as Bolt11;
+    expect([r.currency, t.currency, s.currency]).toEqual(["bcrt", "tb", "tbs"]);
     expect(hex(r.paymentHash)).toBe(S.fixed.paymentHash);
   });
 
@@ -220,9 +221,47 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
     expect(await sessionLightning.reference(credential)).toMatchObject({ network: "regtest" });
   });
 
-  it("a testnet4 session naming testnet4: the read keys name testnet4", async () => {
-    const credential = opened(rehrp(deposit, "lntb250n"), { network: "testnet4" });
-    expect(await sessionLightning.reference(credential)).toMatchObject({ network: "testnet4" });
+  it("a signet session naming signet: the read keys name signet", async () => {
+    const credential = opened(rehrp(deposit, "lntbs250n"), { network: "signet" });
+    expect(await sessionLightning.reference(credential)).toMatchObject({ network: "signet" });
+  });
+
+  it("a testnet session naming no network: the read keys name the invoice currency's, testnet", async () => {
+    const credential = opened(rehrp(deposit, "lntb250n"));
+    expect(await sessionLightning.reference(credential)).toMatchObject({ network: "testnet" });
+  });
+
+  // draft-lightning-charge-00's `network`: "MUST be one of "mainnet", "regtest", or "signet". If present, MUST match the
+  // network implied by the invoice's human-readable prefix." BOLT 11 (11-payment-encoding.md), the invoice's prefix:
+  // "`ln` + BIP-0173 currency prefix (e.g. `lnbc` for Bitcoin mainnet, `lntb` for Bitcoin testnet, `lntbs` for Bitcoin
+  // signet, and `lnbcrt` for Bitcoin regtest)". draft-lightning-session-00 defines no `network`, so the session reads
+  // `methodDetails.network` by the charge's rule.
+  describe("advertise and build refuse a named network the invoice's currency does not match", () => {
+    const rows: [string, string, object][] = [
+      ["S1's mainnet invoice naming regtest", deposit, { network: "regtest" }],
+      ["a regtest invoice naming mainnet", rehrp(deposit, "lnbcrt250n"), { network: "mainnet" }],
+      ["a testnet invoice naming testnet4, which MPP Lightning does not name", rehrp(deposit, "lntb250n"), { network: "testnet4" }],
+      ["a testnet invoice naming signet", rehrp(deposit, "lntb250n"), { network: "signet" }],
+    ];
+    for (const [name, invoice, details] of rows) {
+      it(name, async () => {
+        const offer = challengeOf(S.S1, { depositInvoice: invoice, methodDetails: details });
+        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code: "ln/currency-network" });
+        const challenge = { ...offer, id: opened(deposit).challenge.id } as MppChallenge & { id: string };
+        expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual({ refused: true, code: "ln/currency-network" });
+      });
+    }
+  });
+
+  describe("S1's refusals: advertise and build", () => {
+    for (const row of S.S1.refusals) {
+      it(row.case, async () => {
+        const offer = challengeOf(S.S1, row.requestSet ?? {}, row.challengeSet ?? {});
+        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual(row.expect);
+        const challenge = { ...offer, id: opened(deposit).challenge.id } as MppChallenge & { id: string };
+        expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual(row.expect);
+      });
+    }
   });
 });
 

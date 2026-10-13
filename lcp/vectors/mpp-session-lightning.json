@@ -83,6 +83,21 @@
     "expectRefused": true,
     "expectCode": "ln/return-invoice-malformed"
    }
+  ],
+  "refusals": [
+   {
+    "case": "methodDetails.network regtest for S1's mainnet (lnbc) deposit invoice",
+    "about": "BOLT 11 (11-payment-encoding.md): an invoice's prefix is \"`ln` + BIP-0173 currency prefix (e.g. `lnbc` for Bitcoin mainnet, `lntb` for Bitcoin testnet, `lntbs` for Bitcoin signet, and `lnbcrt` for Bitcoin regtest)\". draft-lightning-charge-00's network: \"MUST be one of \"mainnet\", \"regtest\", or \"signet\". If present, MUST match the network implied by the invoice's human-readable prefix.\" draft-lightning-session-00 defines no network, so the session reads methodDetails.network by the charge's rule, at advertise and at build.",
+    "requestSet": {
+     "methodDetails": {
+      "network": "regtest"
+     }
+    },
+    "expect": {
+     "refused": true,
+     "code": "ln/currency-network"
+    }
+   }
   ]
  },
  "buyer": {

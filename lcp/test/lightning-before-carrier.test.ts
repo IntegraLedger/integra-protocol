@@ -115,6 +115,11 @@ describe("mpp/session/lightning before its deposit invoice", () => {
     const bad = challengeOf(S.S1, { depositInvoice: undefined, paymentHash: undefined });
     expect(sessionLightning.advertiseBeforeCarrier([bad], H, S.fixed.link, bad)).toEqual({ refused: true, code: "ln/payment-hash-required" });
   });
+
+  it("still refuses a network MPP Lightning does not name", () => {
+    const bad = challengeOf(S.S1, { depositInvoice: undefined, methodDetails: { network: "litecoin" } });
+    expect(sessionLightning.advertiseBeforeCarrier([bad], H, S.fixed.link, bad)).toEqual({ refused: true, code: "ln/currency-network" });
+  });
 });
 
 describe("which pairings declare a carrier written after H", () => {
