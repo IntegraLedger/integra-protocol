@@ -137,11 +137,6 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   return true;
 }
 
-/** The pairing's id for an option it can pay, or undefined. */
-export function avmPairingOf(o: PaymentRequirements): typeof ID | undefined {
-  return check(o) === true ? ID : undefined;
-}
-
 function fromBase64(s: unknown): Uint8Array | null {
   if (typeof s !== "string" || s.length % 4 !== 0 || !BASE64.test(s)) return null;
   const bin = atob(s);

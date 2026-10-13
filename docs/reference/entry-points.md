@@ -131,12 +131,12 @@ import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integrale
 Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. `algosdk` is an optional peer: this module loads it when present. Without it the pairing serves no option, and `avmCarrier` and `build` refuse `avm/peer-missing`.
 
 ```ts no-check
-import { avmCarrier, avmPairingOf, avmRecover, … } from "@integraledger/lcp/avm";
+import { avmCarrier, avmRecover, avmStatus, … } from "@integraledger/lcp/avm";
 ```
 
 **Pairings:** `x402/exact/algorand`.
 
-**Values (6):** `avmCarrier`, `avmPairingOf`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
+**Values (5):** `avmCarrier`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
 
 **Types (8):** `AlgorandNetwork`, `AvmParams`, `AvmPaymentPayload`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`.
 

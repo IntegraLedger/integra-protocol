@@ -5,7 +5,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { base32 } from "@scure/base";
 import { pairingOf, type AtrHash } from "../src/index.js";
-import { avmCarrier, avmPairingOf, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
+import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
@@ -135,8 +135,9 @@ describe("x402-exact-algorand.json", () => {
   });
 
   it("the option filter, advertise and read", () => {
-    expect(avmPairingOf(O)).toBe("x402/exact/algorand");
+    expect(pairingOf(O)).toBe("x402/exact/algorand");
     for (const row of V.options) {
+      expect(pairingOf(row.option)).toBeUndefined();
       expect(exactAvm.advertise(required(row.option), H, V.fixed.link, row.option)).toEqual({ refused: true, code: row.expect });
     }
     const doc = exactAvm.advertise(required(O), H, V.fixed.link, O);
