@@ -42,11 +42,13 @@ answered (see `StacksReader`).
 
 ### StacksReader
 
-Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. `height` is the block
-height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from the node that gave the
-answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and before a lookup that
-answers `notFound` or an unmined transaction, so the lookup is at or above it. It is null when the reader cannot read
-it from that node, and an answer naming no height never reads an unknown or dropped transaction as failed.
+Bounded reads of one network's Stacks Blockchain API. Any failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; a rejected tenure read counts as `block`, and any other rejection reads as unreadable.
+`height` is the block height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from
+the node that gave the answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and
+before a lookup that answers `notFound` or an unmined transaction, so the lookup is at or above it. It is null when
+the reader cannot read it from that node, and an answer naming no height never reads an unknown or dropped
+transaction as failed.
 
 #### Properties
 
@@ -179,8 +181,9 @@ an unknown or unmined transaction `stacks/not-found`, any other status `stacks/n
 
 The payment's settlement, in at most four reader calls. The origin's confirmed nonce is read first, then the
 transaction. A wrong reader, a failed transaction read, or an answer of no documented shape is pending
-`unreadable`. A mined transaction must be the origin's at its nonce, calling the contract's `transfer` with `(some H)`
-as its fourth argument, else failed `not-this-instrument`; then the API's `status` decides. A mined transaction's
+`unreadable`. A mined transaction must be the origin's at its nonce, calling `transfer` on the ref's `contract`, the
+contract the presented transaction called, with `(some H)` as its fourth argument, else failed `not-this-instrument`;
+then the API's `status` decides. A mined transaction's
 answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
 two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
 failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce

@@ -21,7 +21,8 @@ description: "The exports of @integraledger/lcp/near."
 
 ### NearReader
 
-Bounded, read-only calls against one network's RPC. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's RPC. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; any rejection reads as unreadable, except in `nearLapsed`, which answers false.
 
 #### Properties
 

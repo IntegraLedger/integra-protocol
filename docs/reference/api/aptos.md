@@ -50,7 +50,8 @@ The transfer the payer signed, in one normal form shared by the signed bytes and
 
 ### AptosReader
 
-Bounded, read-only calls against one network's REST endpoint. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's REST endpoint. Every failure rejects, for example with `ReaderError`
+from `@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 

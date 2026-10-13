@@ -99,7 +99,8 @@ The bytes the payer signs, and how the signature completes the payment.
 
 > **complete**(`signature`): [`Refusal`](index.md#refusal) \| `AvmPaymentPayload`
 
-A 64-byte Ed25519 signature.
+Completes the payment with the payer's 64-byte Ed25519 signature over `request.bytes`; a signature of any other
+length is `avm/signature-malformed`.
 
 ###### Parameters
 

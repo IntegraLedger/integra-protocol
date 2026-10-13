@@ -9,7 +9,8 @@ description: "The exports of @integraledger/lcp/ccd."
 
 ### CcdReader
 
-Bounded, read-only calls against one network's node. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 
@@ -220,6 +221,9 @@ Reads the named block item. Settled when it is finalized and successful, with ex
 `memoCarrier` reads as `ref.h` (a PLT memo with tag 24 unwrapped) and whose sender, receiver and amount hash to
 `ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending. A ref whose `h`
 or `idDigest` is not `0x` and 64 hex digits is pending `unreadable`, with nothing read; hashes compare in either case.
+`ref.asset` is not read, and the transfer's kind (which decides only whether a PLT memo's tag 24 is unwrapped) and
+token id are compared with nothing: a transfer of another token, or of CCD, with the same sender, receiver, amount
+and memo reads as settled.
 
 #### Parameters
 

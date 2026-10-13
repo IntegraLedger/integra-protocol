@@ -24,7 +24,8 @@ description: "The exports of @integraledger/lcp/xrpl."
 
 ### XrplReader
 
-Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 
@@ -197,11 +198,11 @@ its container, and an array's member object one level below the array.
 
 > **decodeBlob**(`hex`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `hash`: `string`; `tx`: [`XrplTxJson`](#xrpltxjson); \}\>
 
-Decodes a signed blob of at most 4 KiB of hex, and computes its transaction hash as the ledger does: SHA-512Half
-over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its fields refuses a
-blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep. The blob must be the canonical
-serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes, so nothing
-follows a top-level end marker and every array member is an object.
+Decodes a signed blob of at most 4096 hex characters (2048 bytes), and computes its transaction hash as the ledger
+does: SHA-512Half over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its
+fields refuses a blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep. The blob must be the
+canonical serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes,
+so nothing follows a top-level end marker and every array member is an object.
 
 #### Parameters
 

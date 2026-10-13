@@ -30,7 +30,8 @@ One executed contract call, as the reader reports it.
 
 ### CasperReader
 
-Bounded, read-only calls against one network's node. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 

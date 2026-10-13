@@ -230,6 +230,8 @@ The opening's read keys: the reported open transaction and its `ChannelOpened` l
 
 > `const` **CHANNEL\_CLOSED\_TOPIC**: `"0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51"` = `"0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51"`
 
+`ChannelClosed(bytes32,address,address,uint256,uint256)`.
+
 ***
 
 ### CHANNEL\_OPENED\_TOPIC
@@ -356,7 +358,9 @@ The core's hash over the ASCII of `payer`: the payer's identity, never shown in 
 Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
 records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
 not this instrument, and any other result is failed with that result. A failed read, or a reader for another
-network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read.
+network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read. It never
+answers expired: a transaction id that no entry uses stays pending `not-found`, and `validUntil` is not read, so the
+caller decides when to stop reading.
 
 #### Parameters
 

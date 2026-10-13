@@ -90,10 +90,12 @@ the message carries in its blockhash field.
 
 ### SvmReader
 
-Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. `transaction`
-answers `notFound` when the node holds no such transaction at that commitment, with `slot`: the node's slot at that
-commitment (`getSlot`), read from that same node before the lookup, so the lookup is at or past it, or null when the
-reader cannot read it from that node. A lookup naming no slot never reads failed.
+Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; a rejected `transaction` reads as unreadable, and a rejected `account`,
+`firstAvailableBlock` or `signatures` call counts as finding nothing. `transaction` answers `notFound` when the node
+holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`), read from
+that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it from that
+node. A lookup naming no slot never reads failed.
 
 #### Properties
 
@@ -275,8 +277,7 @@ CAIP-2: `solana:` and 32 base58 characters.
 
 > `const` **ATA\_PROGRAM**: `"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"` = `"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The Associated Token Account program id.
 
 ***
 
@@ -284,8 +285,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **COMPUTE\_BUDGET**: `"ComputeBudget111111111111111111111111111111"` = `"ComputeBudget111111111111111111111111111111"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The Compute Budget program id.
 
 ***
 
@@ -293,8 +293,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **MEMO\_V3**: `"MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"` = `"MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+An SPL Memo program id: a top-level instruction to it is a Memo instruction.
 
 ***
 
@@ -302,8 +301,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **MEMO\_V4**: `"Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH"` = `"Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+An SPL Memo program id: a top-level instruction to it is a Memo instruction.
 
 ***
 
@@ -317,8 +315,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **PAYMENT\_CHANNELS**: `"CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"` = `"CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The payment-channels program id.
 
 ***
 
@@ -326,8 +323,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **RENT\_SYSVAR**: `"SysvarRent111111111111111111111111111111111"` = `"SysvarRent111111111111111111111111111111111"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The Rent sysvar id.
 
 ***
 
@@ -347,8 +343,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **SYSTEM**: `"11111111111111111111111111111111"` = `"11111111111111111111111111111111"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The System program id.
 
 ***
 
@@ -356,8 +351,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **TOKEN**: `"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"` = `"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The SPL Token program id.
 
 ***
 
@@ -365,8 +359,7 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 > `const` **TOKEN\_2022**: `"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"` = `"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
+The SPL Token-2022 program id.
 
 ## Functions
 

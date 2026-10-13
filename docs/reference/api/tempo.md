@@ -248,7 +248,9 @@ with an empty `to` read as null. `valid_before` written empty is null.
 > **encodeKeyAuthorization**(`a`, `signature?`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
 
 rlp([chain_id, key_type, key_id, expiry, limits, allowed_calls, witness]); with a signature,
-rlp([that list, signature]). At most 16 limits and 16 scopes, 16 selector rules each and 16 recipients each.
+rlp([that list, signature]). At most 16 limits and 16 scopes, 16 selector rules each and 16 recipients each. Every
+item is written, the empty ones included: an `expiry` of 0 as `0x80`, which Tempo reads as no expiry, and an empty
+`limits` or `allowedCalls` as an empty list, which Tempo reads as no spending or no calls, never as the absent item.
 
 #### Parameters
 

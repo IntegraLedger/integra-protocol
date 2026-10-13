@@ -253,7 +253,7 @@ The channel id: the EIP-712 digest of the configuration under the `x402 Batch Se
 
 > **erc3009DepositNonce**(`channelId`, `authSalt`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
-The ERC-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)).
+The EIP-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)).
 
 #### Parameters
 

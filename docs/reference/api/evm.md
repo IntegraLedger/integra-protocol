@@ -191,7 +191,9 @@ One receipt log: the emitter, its topics and its data.
 
 ### EvmReader
 
-Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError`; a
+rejected `receipt`, `transaction` or `call` reads as unreadable, and a rejected `blockNumber` counts as a mark not
+reached.
 
 #### Properties
 
@@ -392,7 +394,7 @@ The signed pull authorization of a payment that has not landed, as the chain rec
 reader needs to decide, with `authorizationUsed` and the payment's authorizer, whether it executed or can still
 execute.
 - `eip3009`: the token `at` answers `authorizationState(authorizer, nonce)`, true once the authorization is used. It
-  executes only in a block whose timestamp is below `deadline` (ERC-3009's `validBefore`).
+  executes only in a block whose timestamp is below `deadline` (EIP-3009's `validBefore`).
 - `permit2`: the Permit2 deployment `at` answers `nonceBitmap(authorizer, nonce >> 8)`, whose bit `nonce & 0xff` is
   set once the nonce is used. The permit executes only in a block whose timestamp is at most `deadline`.
 
@@ -504,7 +506,8 @@ MetaMask's reference DelegationManager, v1.3.0, at one CREATE2 address.
 
 > `const` **DELEGATION\_MANAGER\_CHAINS**: readonly `number`[]
 
-The chain ids whose deployment record holds a DelegationManager at `DELEGATION_MANAGER`.
+The chain ids on which an `erc7710` payment through `DELEGATION_MANAGER` is read at the salt level,
+`x402/exact/eip155/erc7710-salt`; on any other chain that pairing refuses it with `x402/manager-not-reference`.
 
 ***
 
@@ -653,9 +656,10 @@ keccak256(abi.encode(SALT_BINDING_TYPEHASH, receiverAuthorizer, policy, h)).
 
 > **decodePermissionContext**(`ctx`): [`Refusal`](index.md#refusal) \| [`Delegation`](#delegation)[]
 
-Decodes `abi.encode(Delegation[])`, strictly: every offset and length lies inside the input and is 32-byte aligned,
-address words carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8 KiB per `bytes`. The
-array is returned in the input's order, leaf first. An empty array decodes to `[]`.
+Decodes `abi.encode(Delegation[])` of at most 32 KiB, strictly: the input is a non-empty multiple of 32 bytes, every
+offset and length word lies inside it at a 32-byte-aligned position, every offset is a multiple of 32, address words
+carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8 KiB per `bytes`; the padding after a
+`bytes` value is not read. The array is returned in the input's order, leaf first. An empty array decodes to `[]`.
 
 #### Parameters
 
@@ -696,7 +700,7 @@ that `asset` emitted in it. One call.
 Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
 pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
 third equal to `h`, and the `Transfer` paired with it, which `transferLog` identifies. The pair follows the order in
-which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; ERC-3009
+which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; EIP-3009
 itself states no order. The `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and
 before the token's next `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the
 token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` log is failed
@@ -704,11 +708,12 @@ token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` 
 token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
 pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
 use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
-receipt's block. A failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the
-receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
-cannot be read, the same reason is pending. A failed read, a reader for another network, a `transaction` or `h` that
-is not a 32-byte hash, an `asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`,
-never failed. At most three calls.
+receipt's block. A receipt the reader does not hold is pending `not-found`, and a reverted one failed `reverted`. A
+failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the receipt's block is
+at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the same reason is pending. A
+failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an `asset` that is not
+an address, a `transferLog` that is not one, or a reader answer that is not a receipt or holds a log entry that is
+not an object is pending `unreadable`, never failed. At most three calls.
 
 #### Parameters
 
@@ -727,7 +732,7 @@ never failed. At most three calls.
 
 > **eip3009TypedData**(`a`): [`Refusal`](index.md#refusal) \| [`Eip3009TypedData`](#eip3009typeddata)
 
-The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in ERC-3009's order. The domain's
+The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in EIP-3009's order. The domain's
 `verifyingContract` is the token.
 
 #### Parameters
@@ -759,7 +764,7 @@ The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in 
 Reads the named transaction. A reader for another network, or a failed read, is pending; no receipt is pending
 `not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
 the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
-Where the binding log is ERC-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
+Where the binding log is EIP-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
 authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired with a use of the binding's
 value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log and the transfer log
 name one event of one contract, as Tempo's `TransferWithMemo` carries the memo and the transfer together, they are
@@ -768,10 +773,12 @@ binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log c
 word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
 is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
 redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
-finality mark reached. A failed answer is given only where the receipt's block is at or below the reader's
-`finalized` mark; above it, or where that mark cannot be read, the same reason is pending.
-A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is present and not of the
-form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
+finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
+present and not of the form a reference writes, is pending `unreadable`, with nothing read. Where a log the ref names
+is missing and the receipt holds a `Transfer` that the token of the ref's transfer log, or else of its binding log,
+emitted to `RECEIVE_POLICY_GUARD`, the reason is `receive-policy-blocked` instead. A failed answer is given only where
+the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the
+same reason is pending. At most three calls.
 
 #### Parameters
 
@@ -812,7 +819,8 @@ With `payer` zero it is x402's `signatureNonce`.
 > **permit2TypedData**(`a`): [`Refusal`](index.md#refusal) \| [`Permit2TypedData`](#permit2typeddata)
 
 Permit2's typed data under its domain (`name` "Permit2", no version). No witness gives `PermitTransferFrom`; a
-witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` when `permitted` is an array.
+witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` when `permitted` is an array. An empty
+`permitted` array, one of more than 32 entries, and an array with no witness are refused `evm/field-malformed`.
 
 #### Parameters
 

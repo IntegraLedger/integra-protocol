@@ -75,7 +75,8 @@ One event of a receipt: the emitting contract, its keys and its data.
 
 ### StarknetReader
 
-Bounded, read-only calls against one network's JSON-RPC node. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's JSON-RPC node. Every failure rejects, for example with `ReaderError`
+from `@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 

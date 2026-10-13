@@ -41,7 +41,8 @@ The `Transaction.raw` fields this profile uses.
 
 ### TronReader
 
-Bounded, read-only calls against one network's FullNode and SolidityNode. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's FullNode and SolidityNode. Every failure rejects, for example with
+`ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 
@@ -304,13 +305,14 @@ Recovers the hash from the transaction id alone: the memo of the transaction who
 > **tronStatus**(`ref`, `reader`): `Promise`\<[`TronStatus`](#tronstatus)\>
 
 Reads the latest solidified block first, then the transaction by id: at the Solidity node, then at the FullNode's
-head. Settled when its receipt result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`. Failed as
+head. Settled when its receipt result is `SUCCESS` and it holds a `Transfer` log from `ref.asset`; otherwise failed,
+at whichever lookup finds the transaction first, the head's included, and a failed answer names no level. Failed as
 `expired` only when that earlier solidified block is two slots past the expiration and neither lookup finds the
 transaction, each naming a block time at or past that earlier block's: a lookup whose node lags the block read first,
 or that names no time, is pending `not-found`. A failed read, an answer of neither documented shape, or a reader for
-another network is pending `unreadable`. A ref whose `txid` is not `0x` and 64 hex digits, or whose `asset` is not the
-token's 21-byte address in hex (`41` and 20 bytes, `0x` optional), is pending `unreadable`, with nothing read; the
-reader is given the txid in lowercase. At most three calls.
+another network is pending `unreadable`. A ref whose `txid` is not `0x` and 64 hex digits, or whose `asset` is not
+the token's 21-byte address in hex (`41` and 20 bytes, `0x` optional), is pending `unreadable`, with nothing read;
+the reader is given the txid in lowercase. At most three calls.
 
 #### Parameters
 

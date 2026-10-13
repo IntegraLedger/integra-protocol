@@ -30,7 +30,8 @@ description: "The exports of @integraledger/lcp/stellar."
 
 ### StellarReader
 
-Bounded, read-only calls against one network's RPC. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's RPC. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 
@@ -171,8 +172,7 @@ successful transaction that is `not-this-instrument`) or that a read failed (`un
 
 > `const` **PASSPHRASE**: `Readonly`\<`Record`\<[`StellarNetwork`](#stellarnetwork), `string`\>\>
 
-Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8
-bytes, the digest of the signed authorization entry, and settlement read through a bounded reader.
+Each network's passphrase; its SHA-256 is the network id.
 
 ***
 
@@ -192,7 +192,8 @@ not make the envelope unreadable.
 
 > **decodeStellarTx**(`xdrB64`, `network`): [`Refusal`](index.md#refusal) \| [`StellarPayment`](#stellarpayment)
 
-Decodes a base64 `TransactionEnvelope` (v1, or a fee bump's inner v1) of at most 8 KiB holding exactly one
+Decodes a base64 `TransactionEnvelope` (v1, or a fee bump's inner v1) of at most 8,192 base64 characters (6 KiB of
+XDR) holding exactly one
 `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract, and the one authorization entry
 with address credentials (`sorobanCredentialsAddress` or `sorobanCredentialsAddressV2`) whose address is `from`.
 The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's

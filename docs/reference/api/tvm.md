@@ -44,20 +44,21 @@ A transaction as a TON Center v3 endpoint reports it. `inBody` is the inbound me
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-aborted"></a> `aborted` | `boolean` |
-| <a id="property-account"></a> `account` | `string` |
-| <a id="property-finality"></a> `finality` | `0` \| `1` \| `2` |
-| <a id="property-hash"></a> `hash` | `string` |
-| <a id="property-inbody"></a> `inBody` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` |
-| <a id="property-outmsgs"></a> `outMsgs` | readonly `object`[] |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-aborted"></a> `aborted` | `boolean` | - |
+| <a id="property-account"></a> `account` | `string` | - |
+| <a id="property-finality"></a> `finality` | `0` \| `1` \| `2` | TON Center v3's `FinalityState`: 0 pending, 1 confirmed, 2 finalized. |
+| <a id="property-hash"></a> `hash` | `string` | - |
+| <a id="property-inbody"></a> `inBody` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
+| <a id="property-outmsgs"></a> `outMsgs` | readonly `object`[] | - |
 
 ***
 
 ### TvmReader
 
-Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects, for example with
+`ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 #### Properties
 
@@ -280,7 +281,8 @@ Recovers the hash from the payer Jetton wallet's transaction: the comment in its
 Reads the head's time first. Then finds the signed request by its body hash on the payer's W5 wallet: only a W5
 transaction there that did not abort and emitted the Jetton transfer counts, because W5 checks the request's
 signature before any action runs, so a request the payer did not sign sends nothing from that wallet. It follows that
-message to the payer's Jetton wallet, and that wallet's `internal_transfer` to the payee's Jetton wallet: settled
+message to the payer's Jetton wallet, and that wallet's `internal_transfer` to whichever Jetton wallet
+takes it, which is not compared with `payTo`: settled
 when both Jetton wallets executed without aborting, at the lower finality of the two. An equal Jetton body executed
 any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
 Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
@@ -293,10 +295,10 @@ only through the blocks its index holds, and an internal request that aborts lea
 commits the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose
 index lags that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted
 is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`,
-at any head. A transaction on any other account is ignored. A failed or malformed read, a malformed reference (a
-`requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another network is pending
-`unreadable`, a malformed reference with nothing read; the request's body hash is looked up in lowercase. At most
-four calls.
+at any head and at any finality. A transaction on any other account is ignored. A failed or malformed read, a
+malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
+network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
+lowercase. At most four calls.
 
 #### Parameters
 

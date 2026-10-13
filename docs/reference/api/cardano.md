@@ -35,11 +35,12 @@ The payload x402's Cardano scheme defines.
 
 ### CardanoReader
 
-Bounded, read-only calls against one network's indexer. Every failure rejects with `ReaderError`. `slotAt` answers
-the slot of the block at a height, or null when the indexer holds no block at it. `transaction` answers `notFound`
-when the indexer does not hold the transaction, with `slot`: the slot of the latest block the indexer that answered
-held, read from that same indexer before the lookup, or null when the reader cannot read it from that indexer. A
-lookup naming no slot never reads failed.
+Bounded, read-only calls against one network's indexer. Every failure rejects, for example with `ReaderError` from
+`@integraledger/lcp/evm`; any rejection reads as unreadable. `slotAt` answers the slot of the block at a height, or
+null when the indexer holds no block at it. `transaction` answers `notFound` when the indexer does not hold the
+transaction, with `slot`: the slot of the latest block the indexer that answered held, read from that same indexer
+before the lookup, or null when the reader cannot read it from that indexer. A lookup naming no slot never reads
+failed.
 
 #### Properties
 
