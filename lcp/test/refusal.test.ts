@@ -234,7 +234,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
           .map((r) => [r.pairing, r.input.doc?.accepts?.[0]] as const);
       }),
   );
-  const carrierX402 = ["x402/exact/solana"];
+  const carrierX402 = ["x402/exact/solana", "x402/upto/solana"];
   for (const id of carrierX402) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
       const option = placedOf.get(id);
