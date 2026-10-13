@@ -103,5 +103,5 @@ under `/md/`, such as [`/md/getting-started.md`](https://lcp.integraledger.com/m
 The source is at [github.com/IntegraLedger/integra-protocol](https://github.com/IntegraLedger/integra-protocol),
 under the [Apache-2.0](https://github.com/IntegraLedger/integra-protocol/blob/main/LICENSE) license. The buyer
 packages are in [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms), and the seller
-door's contract and connectors in
+door's contract and an x402 facilitator for the LCP profiles on Tron and Polkadot in
 [`integra-agentic-connectors`](https://github.com/IntegraLedger/integra-agentic-connectors).

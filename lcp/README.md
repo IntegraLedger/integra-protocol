@@ -301,7 +301,7 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
 - [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms): the buyer gate as packages for
   TypeScript, Python and MCP clients.
 - [`integra-agentic-connectors`](https://github.com/IntegraLedger/integra-agentic-connectors): the seller door's
-  contract and connectors.
+  contract and an x402 facilitator for the LCP profiles on Tron and Polkadot.
 
 ## Contributing
 

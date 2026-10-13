@@ -27,7 +27,7 @@ flowchart LR
     gate["Buyer gate<br>TypeScript, Python, MCP"]
   end
   subgraph connectors["integra-agentic-connectors"]
-    door["Seller door contract<br>and connectors"]
+    door["Seller door contract<br>and profile facilitator"]
   end
   gate -->|imports| lcp
   door -->|imports| lcp
