@@ -275,21 +275,3 @@ and the base58 of 32 bytes or `secp256k1:` and of 64.
 #### Returns
 
 `Promise`\<[`NearStatus`](#nearstatus)\>
-
-***
-
-### pairingOf()
-
-> **pairingOf**(`option`): `"x402/exact/near"` \| `undefined`
-
-This pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/near"` \| `undefined`

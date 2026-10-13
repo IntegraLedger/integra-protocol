@@ -260,26 +260,6 @@ The hash's first 8 bytes, big-endian, as a u64. Throws TypeError when `h` is not
 
 ***
 
-### scValsWithinCaps()
-
-> **scValsWithinCaps**(`wire`): `boolean`
-
-True when every ScVal in a decoded XDR value nests at most `SCVAL_MAX_DEPTH` vectors and maps, every authorized
-invocation at most `SCVAL_MAX_DEPTH` sub-invocations, and the value holds at most `SCVAL_MAX_ELEMENTS` vector
-elements and map entries. The walk keeps its own stack.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `wire` | `unknown` |
-
-#### Returns
-
-`boolean`
-
-***
-
 ### stellarLocate()
 
 > **stellarLocate**(`ref`, `reader`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
@@ -291,8 +271,9 @@ only when every page was read, the reader reported events enabled on each, the R
 (`oldestLedger` ≤ `fromLedger`) and had reached the expiration ledger (`latestLedger` ≥ `expiration`), and every
 candidate was read: a listed candidate whose transaction is not found, or cannot be read, leaves the search
 incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
-has no entry to search for, and a ref whose `authDigest` is not a string names none: `complete` is false. A ref or
-reader that is not an object, or a reader for another network, is `complete` false too, with nothing read.
+has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
+or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
+`asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read.
 
 #### Parameters
 
@@ -319,8 +300,12 @@ transaction that is not found, failed, or succeeded with another entry is pendin
 ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
 transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
 `latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
-is never read as absence. A failed read, or a reader for another network, is pending, and a ref whose `authDigest` is
-present and not a string is pending `unreadable`, with nothing read. One call when the named transaction settles or
+is never read as absence. A failed read, or a reader for another network, is pending. A ref that lacks a field the
+read uses, or holds one in another form than `reference` writes, is pending `unreadable`, with nothing read: a
+`transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
+an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
+strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
+`expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. One call when the named transaction settles or
 a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
 without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
 `expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
