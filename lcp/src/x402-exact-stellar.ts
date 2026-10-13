@@ -29,7 +29,7 @@ import {
   withOption,
   type X402Read,
 } from "./internal/x402.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -71,8 +71,12 @@ function payable(o: PaymentRequirements): boolean {
   );
 }
 
-/** The option with `payTo` back to its base `G…` account: the option as the seller issued it. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option with `payTo` back to its base `G…` account: the option as the seller issued it. An option that carries a
+ * `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   const m = unmux(option?.payTo);
   return m === null ? option : { ...option, payTo: m.base };
 }
