@@ -9,6 +9,7 @@ import type * as Borsh from "borsh";
 import { base58 } from "@scure/base";
 import { fromLcpString, hash, hashEquals, parseJson, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import type { NearPayment } from "./internal/near.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -23,7 +24,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 /** The optional peers, loaded once; undefined when any is not installed, and every function needing them refuses. */
@@ -91,8 +91,6 @@ export type NearStatus =
   | { state: "settled"; finality: "final" | "optimistic" }
   | { state: "pending"; why: "not-found" | "in-flight" | "unreadable" }
   | { state: "failed"; why: "not-this-instrument" | "transfer-failed" };
-
-export type NearPayment = X402Payment<{ signedDelegateAction: string }>;
 
 export interface NearChoice {
   required: PaymentRequired;

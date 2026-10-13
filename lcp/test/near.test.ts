@@ -14,7 +14,6 @@ import {
   nearLapsed,
   pairingOf,
   type NearOutcome,
-  type NearPayment,
   type NearReader,
   type NearRef,
 } from "../src/near.js";
@@ -34,7 +33,7 @@ const choice = () => ({
   accessKeyNonce: BigInt(V.fixed.accessKeyNonce),
   finalHeight: BigInt(V.fixed.finalHeight),
 });
-const payment = (signedDelegateAction: string): NearPayment => ({
+const payment = (signedDelegateAction: string) => ({
   x402Version: 2,
   resource: V.fixed.resource,
   accepted: O,
@@ -90,7 +89,8 @@ describe("x402-exact-near.json", () => {
     const hexSig = Buffer.from(sig).toString("hex");
     expect(hexSig.startsWith(V.V1.expectSignature.prefix) && hexSig.endsWith(V.V1.expectSignature.suffix)).toBe(true);
     expect(ed25519.verify(sig, u.request.hash, ed25519.getPublicKey(seed))).toBe(true);
-    const signed = u.complete({ keyType: 0, bytes: sig }) as NearPayment;
+    const signed = u.complete({ keyType: 0, bytes: sig });
+    if ("refused" in signed) throw new Error(signed.code);
     const bytes = Buffer.from(signed.payload.signedDelegateAction, "base64");
     // SignedDelegate = DelegateAction ‖ key type ‖ 64-byte signature.
     const delegateBytes = bytes.subarray(0, bytes.length - 65);
@@ -102,7 +102,8 @@ describe("x402-exact-near.json", () => {
   it("V2: complete, bound and reference, and each refusal", async () => {
     const u = await exactNear.build(choice(), H);
     if ("refused" in u) throw new Error(u.code);
-    const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) }) as NearPayment;
+    const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) });
+    if ("refused" in p) throw new Error(p.code);
     expect(p.payload.signedDelegateAction).toBe(V.V2.expectSignedDelegateAction);
     expect(p).toEqual(payment(V.V2.expectSignedDelegateAction));
     expect(await exactNear.bound(p)).toBe(V.V2.expectBound);
@@ -130,7 +131,8 @@ describe("x402-exact-near.json", () => {
     const accepted = { ...O, maxTimeoutSeconds: 0 };
     const u = await exactNear.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
     if ("refused" in u) throw new Error(u.code);
-    const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) }) as NearPayment;
+    const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) });
+    if ("refused" in p) throw new Error(p.code);
     const ref = await exactNear.reference(p);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.maxBlockHeight).toBe((BigInt(V.fixed.finalHeight) + 1n).toString());

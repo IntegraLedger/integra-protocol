@@ -274,7 +274,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 **Values (9):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `nearCarrier`, `nearLapsed`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`, `pairingOf`.
 
-**Types (8):** `NearChoice`, `NearNetwork`, `NearOutcome`, `NearPayment`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
+**Types (7):** `NearChoice`, `NearNetwork`, `NearOutcome`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
 
 ## `@integraledger/lcp/polkadot`
 
