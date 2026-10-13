@@ -426,7 +426,7 @@ describe("x402-exact-solana.json durableNonce", () => {
     }
   });
 
-  it("svmNonceMoved on that reference is false while the nonce account holds the value the message carries", async () => {
+  it("svmNonceMoved on that reference is null while the nonce account holds the value the message carries", async () => {
     const row = D.lookupTable.rows.find((r: { expectReference?: unknown }) => r.expectReference !== undefined);
     const ref: SvmRef = { ...row.expectReference, fromSlot: D.nonceMoved.fromSlot };
     const readerOf = (name: string | null): SvmReader => ({
@@ -436,9 +436,9 @@ describe("x402-exact-solana.json durableNonce", () => {
         return { slot: 1150n, value: accountOf(name) };
       },
     });
-    expect(await svmNonceMoved(ref, readerOf("moved"))).toBe(false);
-    expect(await svmNonceMoved(ref, readerOf("held"))).toBe(true);
-    expect(await svmNonceMoved(ref, readerOf(null))).toBe(true);
+    expect(await svmNonceMoved(ref, readerOf("moved"))).toBe(null);
+    expect(await svmNonceMoved(ref, readerOf("held"))).toBe(1150n);
+    expect(await svmNonceMoved(ref, readerOf(null))).toBe(1150n);
   });
 
   it("LiteSVM landed only the durable message", () => {
@@ -449,7 +449,7 @@ describe("x402-exact-solana.json durableNonce", () => {
     expect(Buffer.from(D.accounts.held.dataBase64, "base64").length).toBe(80);
   });
 
-  it("svmNonceMoved reads the nonce account at a slot at least 150 past fromSlot", async () => {
+  it("svmNonceMoved reads the nonce account at a slot at least 150 past fromSlot, and answers that read's slot", async () => {
     const ref: SvmRef = { ...D.reference[0].expect, fromSlot: D.nonceMoved.fromSlot };
     for (const row of D.nonceMoved.rows) {
       const reader: SvmReader = {
@@ -460,11 +460,11 @@ describe("x402-exact-solana.json durableNonce", () => {
           return { slot: BigInt(row.slot), value: accountOf(row.account) };
         },
       };
-      expect(await svmNonceMoved(ref, reader), row.case).toBe(row.expect);
+      expect(await svmNonceMoved(ref, reader), row.case).toBe(row.expect === null ? null : BigInt(row.expect));
     }
     const plain: SvmRef = { ...V.V4.ref, fromSlot: D.nonceMoved.fromSlot };
     delete (plain as { transaction?: string }).transaction;
-    expect(await svmNonceMoved(plain, readerFor(null, landed(new Uint8Array())))).toBe(false);
+    expect(await svmNonceMoved(plain, readerFor(null, landed(new Uint8Array())))).toBe(null);
   });
 
   // A lookup that finds nothing shows the transaction absent only up to the slot its node had reached: Solana's
@@ -503,6 +503,96 @@ describe("x402-exact-solana.json durableNonce", () => {
       expect(answers, row.case).toEqual([]);
       expect(accountReads, row.case).toBe(row.accountReads);
     }
+  });
+
+  // getSignaturesForAddress takes minContextSlot, "The minimum slot that the request can be evaluated at"
+  // (solana.com/docs/rpc/http/getsignaturesforaddress), and a node whose slot is below it fails the call (Agave v3.1.8,
+  // rpc/src/rpc.rs get_signatures_for_address: MinContextSlotNotReached, JSON-RPC error -32016, "Minimum context slot
+  // has not been reached"). The nonce account read shows the nonce moved on as of its context slot, 1150 here as in
+  // the status rows, so only a search from a node at or past that slot shows the durable message never landed.
+  describe("svmLocate given the nonce read's slot", () => {
+    const ref: SvmRef = { ...D.reference[0].expect, fromSlot: D.status.fromSlot };
+    const movedAt = 1150n;
+    const wire = b64(D.status.landedWireBase64);
+    const carrier: string = V.V5.memoRendering.carrier;
+    type Sig = { signature: string; slot: bigint; memo: string | null };
+    /** A node at slot `at` that lists `list`, as getSignaturesForAddress answers, and holds the durable message at finalized. */
+    const nodeAt = (at: bigint, list: Sig[] = [], pages: unknown[] = []): SvmReader => ({
+      network: V.V4.network,
+      transaction: async (sig, commitment) =>
+        sig === D.txid && commitment === "finalized" ? landed(wire) : { notFound: true, slot: at },
+      signatures: async (_address, page) => {
+        pages.push(page);
+        if (page.minContextSlot !== undefined && at < page.minContextSlot) throw new ReaderError("transport");
+        return list;
+      },
+      blockhashValid: async () => false,
+      firstAvailableBlock: async () => 0n,
+      account: async () => ({ slot: movedAt, value: accountOf("moved") }),
+    });
+
+    it("a node behind the nonce read fails the call, and the search is incomplete though it lists nothing", async () => {
+      expect(await svmLocate(ref, nodeAt(movedAt - 1n), H, undefined, movedAt)).toEqual({ complete: false });
+    });
+
+    it("a node at or past the nonce read answers as it does with no slot given", async () => {
+      const found = [
+        { signature: D.txid, slot: 1100n, memo: carrier },
+        { signature: "older", slot: 999n, memo: null },
+      ];
+      for (const at of [movedAt, movedAt + 1n]) {
+        expect(await svmLocate(ref, nodeAt(at), H, undefined, movedAt), String(at)).toEqual({ complete: true });
+        expect(await svmLocate(ref, nodeAt(at), H), String(at)).toEqual({ complete: true });
+        expect(await svmLocate(ref, nodeAt(at, found), H, undefined, movedAt), String(at)).toEqual({ found: D.txid, complete: true });
+        expect(await svmLocate(ref, nodeAt(at, found), H), String(at)).toEqual({ found: D.txid, complete: true });
+      }
+    });
+
+    it("every page names the slot, and a node behind it on a later page leaves the search incomplete", async () => {
+      const full: Sig[] = Array.from({ length: 1000 }, (_, i) => ({ signature: `other-${i}`, slot: 5000n - BigInt(i), memo: null }));
+      const tail: Sig[] = [{ signature: "older", slot: 999n, memo: null }];
+      const pages: unknown[] = [];
+      let served = 0;
+      const paged = (at: (page: number) => bigint): SvmReader => {
+        const nodes = [nodeAt(at(0), full, pages), nodeAt(at(1), tail, pages)];
+        return { ...nodes[0]!, signatures: (address, page) => nodes[Math.min(served++, 1)]!.signatures(address, page) };
+      };
+      expect(await svmLocate(ref, paged(() => movedAt), H, undefined, movedAt)).toEqual({ complete: true });
+      expect(pages).toEqual([
+        { limit: 1000, minContextSlot: movedAt },
+        { before: "other-999", limit: 1000, minContextSlot: movedAt },
+      ]);
+      served = 0;
+      expect(await svmLocate(ref, paged((p) => (p === 0 ? movedAt : movedAt - 1n)), H, undefined, movedAt)).toEqual({ complete: false });
+    });
+
+    it("with no slot given, no page names one", async () => {
+      const pages: unknown[] = [];
+      expect(await svmLocate(ref, nodeAt(movedAt - 1n, [], pages), H)).toEqual({ complete: true });
+      expect(pages).toStrictEqual([{ limit: 1000 }]);
+    });
+
+    it("a slot that is not a u64 bigint is incomplete, with nothing read", async () => {
+      for (const bad of [-1n, 2n ** 64n, 1150, "1150", null]) {
+        const pages: unknown[] = [];
+        let first = 0;
+        const reader: SvmReader = {
+          ...nodeAt(movedAt, [], pages),
+          firstAvailableBlock: async () => {
+            first++;
+            return 0n;
+          },
+        };
+        expect(await svmLocate(ref, reader, H, undefined, bad as never), String(bad)).toEqual({ complete: false });
+        expect([pages.length, first], String(bad)).toEqual([0, 0]);
+      }
+    });
+
+    it("the caller's sequence: svmNonceMoved's slot, passed to svmLocate, holds a lagging node's empty list incomplete", async () => {
+      const at = await svmNonceMoved(ref, nodeAt(movedAt));
+      expect(at).toBe(movedAt);
+      expect(await svmLocate(ref, nodeAt(movedAt - 1n), H, undefined, at!)).toEqual({ complete: false });
+    });
   });
 
   it("status on a reference without a nonce never reads a nonce account", async () => {

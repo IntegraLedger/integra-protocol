@@ -487,7 +487,7 @@ describe("svm", () => {
     ["svmStatus", svmStatus, file, UNREADABLE],
     ["svmChannelStatus", svmChannelStatus, file, UNREADABLE],
     ["svmRecover", svmRecover, file, refused("svm/wrong-reader")],
-    ["svmNonceMoved", svmNonceMoved, file, false],
+    ["svmNonceMoved", svmNonceMoved, file, null],
     ["svmLocate", svmLocate, file, { complete: false }, H],
   ]);
   answers([

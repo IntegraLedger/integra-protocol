@@ -228,7 +228,7 @@ however late, because an internal message carries no expiry.
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |
-| Solana | `SvmReader` | `getTransaction` at a commitment, with the node's slot at that commitment (`getSlot`) read before it when it finds nothing, `getSignaturesForAddress`, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
+| Solana | `SvmReader` | `getTransaction` at a commitment, with the node's slot at that commitment (`getSlot`) read before it when it finds nothing, `getSignaturesForAddress`, with `minContextSlot` when the search names one, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events with `getEvents`' `latestLedger`, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
 | Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
@@ -257,12 +257,13 @@ and an empty `blockhash`. The sysvar may come from an address lookup table: the 
 `AdvanceNonceAccount` runs, and the reference records the nonce the same way. A durable message names its nonce account
 as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `AdvanceNonceAccount` takes its nonce
 account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at
-`finalized` and is true once the account holds another value, or is not a nonce account, at a read at least 150 slots
-past `fromSlot`. A named transaction then not found, by a lookup whose node had reached that read's context slot, is
-failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot, leaves it pending. With no
-transaction named, a `svmLocate` that starts after `svmNonceMoved` reads true, and is complete with nothing found,
-shows the message never landed when the node that lists the signatures holds every block through that read's context
-slot: the signature pages name no slot.
+`finalized` and answers that read's context slot once the account holds another value, or is not a nonce account, at a
+read at least 150 slots past `fromSlot`, and null otherwise. A named transaction then not found, by a lookup whose node
+had reached that slot, is failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot,
+leaves it pending. With no transaction named, pass that slot to `svmLocate` as `minContextSlot`: every
+`getSignaturesForAddress` page carries it as the RPC's `minContextSlot`, "the minimum slot that the request can be
+evaluated at", so a node behind the nonce read fails the call and the search is incomplete. A search given that slot
+and complete with nothing found shows the message never landed.
 
 Lightning has no settlement read: the invoice and its preimage, which the parties hold, are the proof of payment, and
 no public ledger shows it. Its pairings give `reference` and no `status`.

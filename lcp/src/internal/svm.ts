@@ -102,11 +102,13 @@ export interface SvmReader {
   ): Promise<SvmLanded | { notFound: true; slot: bigint | null }>;
   /**
    * `getSignaturesForAddress`, newest first. `memo` is the RPC's rendering of the transaction's memos (`[len] text`,
-   * joined by `; `), or null when it has none.
+   * joined by `; `), or null when it has none. When the page names `minContextSlot`, the reader passes it to the RPC as
+   * `minContextSlot`, "the minimum slot that the request can be evaluated at", so a node that has not reached that slot
+   * fails the call, and the reader rejects with `ReaderError`.
    */
   signatures(
     address: string,
-    page: { before?: string; limit: 1000 },
+    page: { before?: string; limit: 1000; minContextSlot?: bigint },
   ): Promise<readonly { signature: string; slot: bigint; memo: string | null }[]>;
   /** `isBlockhashValid` at commitment `confirmed`. */
   blockhashValid(blockhash: string): Promise<boolean>;
@@ -716,11 +718,11 @@ function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
  * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
  * without error, and must carry a token or SOL transfer. A failed read, an answer of neither documented shape, or a
  * reader for another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`,
- * with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first
- * available block is at or before `fromSlot`, is read once more at `finalized`; still not found by a lookup naming a
- * slot at or past the context slot of the nonce account read, it is failed `nonce-moved`: the message can never land.
- * A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
- * durable-nonce reference.
+ * with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's
+ * first available block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot
+ * at or past the context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can
+ * never land. A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or
+ * five for a durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
   return settledBy(ref, reader, (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer"));
@@ -765,24 +767,20 @@ export async function settledBy<W extends string>(
 }
 
 /**
- * True when the durable nonce `ref.nonce` records is spent or gone: a `finalized` read of the nonce account, at a
- * context slot at least 150 slots past `fromSlot`, finds no account, an account the System program does not own, an
- * account that is not an initialized nonce account, or an initialized current-version nonce account holding another
- * value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce`, a
- * ref or reader that is not an object and a reader for another network are false. One call.
+ * The context slot of the nonce account read when that read shows the durable nonce `ref.nonce` records is spent or
+ * gone, else null. The read is at `finalized`, and shows it at a context slot at least 150 slots past `fromSlot` when
+ * it finds no account, an account the System program does not own, an account that is not an initialized nonce
+ * account, or an initialized current-version nonce account holding another value. A legacy-version nonce account, a
+ * read too early, a failed or malformed read, a reference without `nonce`, a ref or reader that is not an object and a
+ * reader for another network are null. One call.
  *
  * The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
  * lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
  * finds nothing shows the message never landed only from a node at or past that read's context slot, as `svmStatus`
- * reads it. With no transaction named, a `svmLocate` that starts after this reads true, and is complete with nothing
- * found, shows the message never landed when the node that lists the signatures holds every block through that slot.
+ * reads it. With no transaction named, a `svmLocate` given this slot as `minContextSlot`, and complete with nothing
+ * found, shows the message never landed.
  */
-export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<boolean> {
-  return (await nonceMovedAt(ref, reader)) !== null;
-}
-
-/** The context slot of the nonce account read when `svmNonceMoved` reads true, else null. */
-async function nonceMovedAt(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
+export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return null;
   const nonce: unknown = ref.nonce;
   if (typeof nonce !== "object" || nonce === null) return null;
@@ -812,12 +810,9 @@ async function nonceMovedAt(ref: SvmRef, reader: SvmReader): Promise<bigint | nu
   return keyString(data.subarray(40, 72)) !== value ? read.slot : null;
 }
 
-/**
- * The context slot of the nonce account read when `svmNonceMoved` reads true and the node still holds every block from
- * `fromSlot`, else null.
- */
+/** `svmNonceMoved`'s slot when it names one and the node holds every block from `fromSlot`, else null. */
 async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
-  const movedAt = await nonceMovedAt(ref, reader);
+  const movedAt = await svmNonceMoved(ref, reader);
   if (movedAt === null) return null;
   try {
     const first = await reader.firstAvailableBlock();
@@ -837,15 +832,21 @@ async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | nul
  * `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
  * leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is `complete`
  * false, with nothing read.
+ *
+ * `minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
+ * context slot `svmNonceMoved` gives: every page names it, so a node that has not reached that slot fails the call and
+ * the search is `complete` false. A `minContextSlot` that is not a u64 bigint is `complete` false, with nothing read.
  */
 export async function svmLocate(
   ref: SvmRef,
   reader: SvmReader,
   h: AtrHash,
   status: (ref: SvmRef & { transaction: string }, reader: SvmReader) => Promise<{ state: string; why?: string }> = svmStatus,
+  minContextSlot?: bigint,
 ): Promise<{ found?: string; complete: boolean }> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return { complete: false };
   if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return { complete: false };
+  if (minContextSlot !== undefined && !isU64(minContextSlot)) return { complete: false };
   if (ref.channel !== undefined && !isKey(ref.channel)) return { complete: false };
   const address = ref.channel ?? ref.feePayer;
   let carrier: string;
@@ -867,7 +868,11 @@ export async function svmLocate(
   for (let page = 0; page < MAX_LOCATE_PAGES; page++) {
     let list: readonly { signature: string; slot: bigint; memo: string | null }[];
     try {
-      list = await reader.signatures(address, before === undefined ? { limit: LOCATE_PAGE } : { before, limit: LOCATE_PAGE });
+      list = await reader.signatures(address, {
+        ...(before === undefined ? {} : { before }),
+        limit: LOCATE_PAGE,
+        ...(minContextSlot === undefined ? {} : { minContextSlot }),
+      });
     } catch {
       return { complete: false };
     }

@@ -632,56 +632,56 @@
    }
   },
   "nonceMoved": {
-   "case": "svmNonceMoved on the durable reference with fromSlot 1000: a finalized read of the nonce account at a context slot at least 150 slots past fromSlot (a blockhash's lifetime: Solana's transaction documentation gives a blockhash 150 slots) shows whether the recorded nonce has moved on",
+   "case": "svmNonceMoved on the durable reference with fromSlot 1000: a finalized read of the nonce account at a context slot at least 150 slots past fromSlot (a blockhash's lifetime: Solana's transaction documentation gives a blockhash 150 slots) shows whether the recorded nonce has moved on: svmNonceMoved answers that read's context slot when it shows the nonce moved on, else null",
    "fromSlot": "1000",
    "rows": [
     {
      "case": "the account holds the recorded value",
      "account": "held",
      "slot": "1150",
-     "expect": false
+     "expect": null
     },
     {
      "case": "the account holds another value",
      "account": "moved",
      "slot": "1150",
-     "expect": true
+     "expect": "1150"
     },
     {
      "case": "another value, read 149 slots past fromSlot",
      "account": "moved",
      "slot": "1149",
-     "expect": false
+     "expect": null
     },
     {
      "case": "no account",
      "account": null,
      "slot": "1150",
-     "expect": true
+     "expect": "1150"
     },
     {
      "case": "an uninitialized System account",
      "account": "uninitialized",
      "slot": "1150",
-     "expect": true
+     "expect": "1150"
     },
     {
      "case": "an account the System program does not own",
      "account": "notSystem",
      "slot": "1150",
-     "expect": true
+     "expect": "1150"
     },
     {
      "case": "a legacy-version nonce account, which an upgrade turns into a current one",
      "account": "legacyHeld",
      "slot": "1150",
-     "expect": false
+     "expect": null
     },
     {
      "case": "the reader fails",
      "account": "reader-error",
      "slot": "1150",
-     "expect": false
+     "expect": null
     }
    ]
   },
