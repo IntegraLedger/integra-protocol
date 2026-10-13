@@ -56,7 +56,6 @@ import {
   advertiseFor,
   isOffered,
   readFor,
-  sameJson,
   type OptionFilter,
   type X402Advertise,
   type X402Payment,
@@ -240,11 +239,6 @@ export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequi
     payload,
     ...(required.extensions !== undefined ? { extensions: required.extensions } : {}),
   };
-}
-
-/** The index of the first of `accepts` that is `offer`, by identity or by equal RFC 8785 form, or -1. */
-export function offeredAt(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): number {
-  return accepts.findIndex((a) => a === offer || sameJson(a, offer));
 }
 
 /** The document with option `at` replaced. */

@@ -79,8 +79,7 @@ The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which ar
 These exports throw a `TypeError` too:
 
 - on a null or missing argument: `paymentWith` (its document) and `withExtra` (its option);
-- on any argument outside its type: `offeredAt` (an `accepts` that is not an array) and `withOption` (a document whose
-  `accepts` is not an array).
+- on any argument outside its type: `withOption` (a document whose `accepts` is not an array).
 
 Every other function answers a caller's input with a value, never a throw: a refusal, a pending state, `false` or
 `{ complete: false }` from a read, or, for `unplaced`, its argument itself when that is not an option.

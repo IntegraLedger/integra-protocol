@@ -180,6 +180,11 @@ export function presentedWith(
   return { accepted: accepted as PaymentRequirements, payload, extensions: presented["extensions"] };
 }
 
+/** The index of the first of `accepts` that is `offer`, by identity or by equal RFC 8785 form, or -1. */
+export function offeredAt(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): number {
+  return accepts.findIndex((a) => a === offer || sameJson(a, offer));
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));
