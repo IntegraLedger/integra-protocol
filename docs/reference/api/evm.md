@@ -678,7 +678,9 @@ carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8
 > **eip3009Recover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
-that `asset` emitted in it. One call.
+that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
+a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
+`evm/unreadable`; no receipt (`null`) is `evm/not-found`. One call.
 
 #### Parameters
 
@@ -712,8 +714,9 @@ receipt's block. A receipt the reader does not hold is pending `not-found`, and 
 failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the receipt's block is
 at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the same reason is pending. A
 failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an `asset` that is not
-an address, a `transferLog` that is not one, or a reader answer that is not a receipt or holds a log entry that is
-not an object is pending `unreadable`, never failed. At most three calls.
+an address, a `transferLog` that is not one, a reader answer that is neither `null` nor a receipt, or a receipt
+holding a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
+pending `unreadable`, never failed. At most three calls.
 
 #### Parameters
 
