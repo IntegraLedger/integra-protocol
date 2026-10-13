@@ -88,6 +88,7 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 | `pairing-not-supported` | The pairing id is not one the gate implements. |
 | `agreement-pending` | An agreement payment was made and its receipt did not arrive in time; the full payment is not signed. |
 | `agreement-failed` | The agreement's receipt names another ATR's hash, or an agreement answer is in a content coding other than `identity`; the full payment is not signed. |
+| `agreement-not-offered` | The chosen pairing's payment is not a public proof of H (`pattern.publicProof` is false) and the offer names no agreement URL. The link is fetched and compared first; nothing is signed. |
 
 ## The agreement URL
 
@@ -106,7 +107,7 @@ The agreement payment is a payment like any other, so the buyer's agent approves
 4. **Pay and wait** for the `200` receipt. The exchange is bounded by the chosen option's `maxTimeoutSeconds` plus
    180 seconds; `maxTimeoutSeconds` is a JSON number with an integral value, so `60.0` is `60`.
 
-The buyer vector rows `BA1` to `BA11` fix this order, the approval and the bounds.
+The buyer vector rows `BA1` to `BA13` fix this exchange: its order, the approval and the bounds.
 
 ## What the gate checks, and what it does not
 

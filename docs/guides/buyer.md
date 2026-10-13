@@ -158,10 +158,11 @@ pairing's `build`. The same H rides in whichever you choose.
 
 ## When the challenge carries an agreement URL
 
-Some pairings' payments carry H in nothing public. For those, `read` also returns `agreement`: an `https` URL the
-buyer pays first, whose payment carries H publicly. The agreement payment is approved like any other: hand the agent
-its amount, token, payee and network, and sign it only once the agent approves. Pay the full payment only after the
-agreement's `200` receipt names the same H. See [the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
+Some pairings' payments carry H in nothing public: their `pattern.publicProof` is false. `read` returns `agreement`, an
+`https` URL, whenever the challenge carries one. Pay it only when the chosen pairing's `pattern.publicProof` is false,
+and pay it first, with a payment that carries H publicly. The agreement payment is approved like any other: hand the
+agent its amount, token, payee and network, and sign it only once the agent approves. Pay the full payment only after
+the agreement's `200` receipt names the same H. See [the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
 
 ## Channels and sessions
 

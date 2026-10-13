@@ -926,6 +926,37 @@
    "note": "maxTimeoutSeconds written 60.0 is the number 60 (RFC 8259 section 6: a number is a sequence of digits with an optional fraction), so validBefore is now + 60 and the agreement signature is BA1's."
   },
   {
+   "name": "BA12",
+   "input": {
+    "doc": "D, through a stub of the pairing whose pattern has publicProof false and whose read gives no agreement; the link serves A",
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "the link serves A"
+     },
+     {
+      "case": "the link serves C",
+      "serves": "C",
+      "expect": {
+       "decline": "hash-mismatch",
+       "fetches": 1,
+       "agreementFetches": 0,
+       "signCalls": 0,
+       "paidRequests": 0
+      }
+     }
+    ]
+   },
+   "expect": {
+    "decline": "agreement-not-offered",
+    "fetches": 1,
+    "agreementFetches": 0,
+    "signCalls": 0,
+    "paidRequests": 0
+   },
+   "note": "The pairing's payment is not a public proof of the hash and the offer names no agreement URL: the gate fetches the link and compares the bytes with the hash first, then declines agreement-not-offered, fetching no agreement URL and signing nothing. With the link serving C, whose hash is not the advertised hash, the gate declines hash-mismatch first."
+  },
+  {
    "name": "BA13",
    "input": {
     "doc": "as BA1",

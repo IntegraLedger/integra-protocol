@@ -76,6 +76,26 @@ describe("buyer.json BA13: a PAYMENT-REQUIRED without its pad characters is not 
   });
 });
 
+describe("buyer.json BA12: an offer naming no agreement URL, for a pairing whose payment is not a public proof", () => {
+  it("D's read gives no agreement URL, A hashes to D's hash and C does not", async () => {
+    const r = exactEip3009.read(B.fixed.D);
+    if (isRefusal(r)) throw new Error(r.code);
+    expect(r.agreement).toBeUndefined();
+    expect(hashEquals(r.h, H)).toBe(true);
+    expect(hashEquals(await hash(fromHex(B.fixed.A)), H)).toBe(true);
+    expect(hashEquals(await hash(fromHex(B.fixed.C)), H)).toBe(false);
+  });
+
+  it("the row's C case is the one that serves other bytes, and it signs and pays nothing either way", () => {
+    const r = row("BA12");
+    expect(r.input.approve).toBeUndefined();
+    expect(r.input.cases.map((c: { serves?: string }) => c.serves)).toEqual([undefined, "C"]);
+    for (const e of [r.expect, r.input.cases[1].expect]) {
+      expect([e.signCalls, e.paidRequests, e.agreementFetches]).toEqual([0, 0, 0]);
+    }
+  });
+});
+
 describe("buyer.json BE1: the served bodies decode to A under the coding each case names", () => {
   const A = fromHex(B.fixed.A);
   const C = fromHex(B.fixed.C);
