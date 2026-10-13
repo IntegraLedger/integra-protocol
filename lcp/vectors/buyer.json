@@ -1159,7 +1159,7 @@
        "info": {
         "type": "sha256",
         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-        "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
        },
        "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1253,7 +1253,7 @@
       "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0In0sInJlY2lwaWVudCI6Ik1ERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haT1RZQzI3WTZBT1A1TEpRTyJ9",
       "expires": "2026-09-21T14:14:20Z",
       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
-      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
      }
     ],
     "servesHex": "616263",

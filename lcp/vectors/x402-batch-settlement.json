@@ -4,7 +4,7 @@
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "resource": {
    "url": "https://api.seller.example/v1/quote"
   },
@@ -685,12 +685,12 @@
      "info": {
       "type": "sha256",
       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-      "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
      }
     }
    }
   },
-  "payloadLength": 469,
+  "payloadLength": 439,
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "withoutExtensions": "x402/no-legal-context",
   "expectPairing": "x402/batch-settlement/cloudflare"
@@ -759,7 +759,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -823,7 +823,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         }
        }
       }
@@ -878,7 +878,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -978,7 +978,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1056,7 +1056,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",

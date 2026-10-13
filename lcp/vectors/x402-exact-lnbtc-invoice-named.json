@@ -9,6 +9,7 @@
   "resource": {
    "url": "https://api.example.com/article/A"
   },
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "O_N": {
    "scheme": "exact",
    "network": "lnbtc:000000000019d6689c085ae165831e93",
@@ -85,7 +86,7 @@
      "info": {
       "type": "sha256",
       "value": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
-      "legalContextUrl": "https://atr.seller.example/0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+      "legalContextUrl": "https://atr.seller.example/3a3a6b3c-0233-4af9-babf-ae7e7bebeefa"
      }
     }
    }
@@ -155,7 +156,7 @@
         "info": {
          "type": "sha256",
          "value": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
-         "legalContextUrl": "https://atr.seller.example/0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+         "legalContextUrl": "https://atr.seller.example/3a3a6b3c-0233-4af9-babf-ae7e7bebeefa"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -235,7 +236,7 @@
         "info": {
          "type": "sha256",
          "value": "0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea",
-         "legalContextUrl": "https://atr.seller.example/0xe50636c118a7f2262c77b91336fcc0a02c6283ff611e9bbba63a273cd447adea"
+         "legalContextUrl": "https://atr.seller.example/3a3a6b3c-0233-4af9-babf-ae7e7bebeefa"
         }
        }
       }

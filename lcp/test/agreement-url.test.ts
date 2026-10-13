@@ -113,7 +113,7 @@ const X402_CASES: Case[] = [
     "x402/exact/lnbtc/invoice-named",
     exactLnbtcNamed,
     LNN.fixed.H,
-    `https://atr.seller.example/${LNN.fixed.H}`,
+    LNN.fixed.link,
     LNN.fixed.resource,
     LNN.fixed.O_N,
   ),

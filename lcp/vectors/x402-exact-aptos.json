@@ -13,7 +13,7 @@
   "resource": {
    "url": "https://api.seller.example/v1/quote"
   },
-  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "committed": {
    "type": "user_transaction",
    "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
@@ -95,7 +95,7 @@
   "echoedInfo": {
    "type": "sha256",
    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
    "clientNote": "x"
   },
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -603,7 +603,7 @@
         "info": {
          "type": "sha256",
          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "legalContextUrl": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
         },
         "schema": {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
