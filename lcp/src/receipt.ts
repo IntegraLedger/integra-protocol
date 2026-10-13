@@ -1,6 +1,6 @@
 /** One bounded receipt read for the Tempo pieces, with every outcome a value. */
-import { isReceipt, type EvmReader, type EvmReceipt, type Hex } from "./evm.js";
-import { isLog } from "./internal/evm.js";
+import type { EvmReader, EvmReceipt, Hex } from "./evm.js";
+import { isLog, isReceipt } from "./internal/evm.js";
 import { normalHash } from "./fields.js";
 import { refusal, type Refusal } from "./refusal.js";
 
