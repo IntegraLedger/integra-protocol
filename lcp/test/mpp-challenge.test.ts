@@ -19,6 +19,7 @@ import {
   problem,
   read,
   sessionHedera,
+  sessionResume,
   tempoPush,
   tie,
   type MppChallenge,
@@ -232,6 +233,11 @@ describe("mpp-challenge.json", () => {
     const rows = V.agreedRefusals.rows as { case: string; expect: string }[];
     const notHttps = rows.find((r) => r.case.startsWith("read with a legalContextAgreementUrl of at most 2048"))!.expect;
     const malformed = rows.find((r) => r.case.startsWith("read with a legalContextAgreementUrl that is not a string"))!.expect;
+    // A challenge of no session pairing names no channel to resume; a session challenge with no channelId names a new
+    // channel and gives null (mpp-session-evm.json's ES8 reads one that names it).
+    const notSession = rows.find((r) => r.case === "sessionResume of a challenge of no session pairing")!.expect;
+    expect(sessionResume(C_E)).toEqual({ refused: true, code: notSession });
+    expect(sessionResume(C_T)).toEqual({ refused: true, code: notSession });
     const placed = place([C_E], H, link, C_E) as MppChallenge[];
     const withAgreement = (a: string) => [
       { ...placed[0]!, opaque: b64u(JSON.stringify({ legalContext: `lcp:sha256:${H}`, legalContextAgreementUrl: a, legalContextUrl: link })) },
