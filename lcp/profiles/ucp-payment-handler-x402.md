@@ -14,8 +14,9 @@ Transaction Record (ATR) that states the checkout's terms, and a payment the buy
 proof that the buyer accepted that record.
 
 1. The credential is the buyer's signed x402 payment, whole: `{type: "x402", x402Version: 2, paymentPayload,
-   paymentRequirements}`. It is the credential Finance District's `xyz.fd.prism_payment` handler takes, so a wallet
-   that builds one builds the other.
+   paymentRequirements}`. Its `x402Version`, `paymentPayload` and `paymentRequirements` are the members Finance
+   District's `xyz.fd.prism_payment` credential requires; this handler adds `type: "x402"`, and, without AP2 mandates,
+   the payment carries H.
 2. What this handler adds, without AP2 mandates: the payment carries H, the SHA-256 of the ATR's exact bytes, in the
    place the LCP profile of its x402 pairing defines (for `exact` with EIP-3009, the authorization's `nonce`), and the
    ATR names the checkout. A payment made for one checkout completes no other, and the settled transaction commits to
