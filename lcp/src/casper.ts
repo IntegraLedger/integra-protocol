@@ -51,7 +51,10 @@ export interface CasperCall {
   args: { from?: CasperAddress; to?: CasperAddress; value?: bigint; nonce?: Uint8Array };
 }
 
-/** Bounded, read-only calls against one network's node. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
+ * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ */
 export interface CasperReader {
   readonly network: CasperNetwork;
   /** `info_get_transaction`, as a `Version1` transaction and then as a `Deploy`; null when the node knows neither. */

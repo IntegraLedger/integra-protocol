@@ -53,7 +53,10 @@ export interface AptosCommitted {
   payload: { type: string; function: string; type_arguments: string[]; arguments: unknown[] };
 }
 
-/** Bounded, read-only calls against one network's REST endpoint. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's REST endpoint. Every failure rejects, for example with `ReaderError`
+ * from `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ */
 export interface AptosReader {
   readonly network: AptosNetwork;
   /** `GET /v1/transactions/by_hash/{hash}`; null on 404. */

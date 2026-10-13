@@ -64,7 +64,10 @@ export interface TonTx {
   outMsgs: readonly { hash: string; opcode: number | null }[];
 }
 
-/** Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects, for example with
+ * `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ */
 export interface TvmReader {
   readonly network: TvmNetwork;
   /**

@@ -88,10 +88,12 @@ export interface SvmLanded {
 }
 
 /**
- * Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. `transaction`
- * answers `notFound` when the node holds no such transaction at that commitment, with `slot`: the node's slot at that
- * commitment (`getSlot`), read from that same node before the lookup, so the lookup is at or past it, or null when the
- * reader cannot read it from that node. A lookup naming no slot never reads failed.
+ * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
+ * `@integraledger/lcp/evm`; a rejected `transaction` reads as unreadable, and a rejected `account`,
+ * `firstAvailableBlock` or `signatures` call counts as finding nothing. `transaction` answers `notFound` when the node
+ * holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`), read from
+ * that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it from that
+ * node. A lookup naming no slot never reads failed.
  */
 export interface SvmReader {
   readonly network: SolanaNetwork;

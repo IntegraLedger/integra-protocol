@@ -162,7 +162,11 @@ export interface EvmReceipt {
 /** Hedera's CAIP-2 networks, read through their JSON-RPC relay with the same reader shape. */
 type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
 
-/** Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError`; a
+ * rejected `receipt`, `transaction` or `call` reads as unreadable, and a rejected `blockNumber` counts as a mark not
+ * reached.
+ */
 export interface EvmReader {
   readonly network: Eip155 | HederaNetwork;
   /** `eth_getTransactionReceipt`; null when the node holds none. */

@@ -53,9 +53,9 @@ export interface SuiExecuted {
 }
 
 /**
- * Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects with `ReaderError`.
- * `read` is one request, so one snapshot:
- * `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}}}
+ * Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects, for example with
+ * `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable. `read` is one request, so one
+ * snapshot: `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}}}
  * checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}}}`.
  * `epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first checkpoint from which the endpoint holds
  * transactions (the available range's inclusive lower bound), or null when the endpoint states none.

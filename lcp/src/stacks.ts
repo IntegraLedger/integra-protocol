@@ -41,11 +41,13 @@ export interface StacksMempool {
 }
 
 /**
- * Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. `height` is the block
- * height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from the node that gave the
- * answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and before a lookup that
- * answers `notFound` or an unmined transaction, so the lookup is at or above it. It is null when the reader cannot read
- * it from that node, and an answer naming no height never reads an unknown or dropped transaction as failed.
+ * Bounded reads of one network's Stacks Blockchain API. Any failure rejects, for example with `ReaderError` from
+ * `@integraledger/lcp/evm`; a rejected tenure read counts as `block`, and any other rejection reads as unreadable.
+ * `height` is the block height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from
+ * the node that gave the answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and
+ * before a lookup that answers `notFound` or an unmined transaction, so the lookup is at or above it. It is null when
+ * the reader cannot read it from that node, and an answer naming no height never reads an unknown or dropped
+ * transaction as failed.
  */
 export interface StacksReader {
   readonly network: StacksNetwork;

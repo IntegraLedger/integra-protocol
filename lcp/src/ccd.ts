@@ -38,7 +38,10 @@ export type CcdItem =
   | { state: "committed" }
   | { state: "finalized"; success: boolean; sender: Uint8Array | null; transfers: readonly CcdTransfer[] };
 
-/** Bounded, read-only calls against one network's node. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
+ * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ */
 export interface CcdReader {
   readonly network: CcdNetwork;
   /** gRPC v2 `GetBlockItemStatus`; null when the node does not know the item. */

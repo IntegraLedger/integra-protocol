@@ -21,7 +21,10 @@ export interface XrplTxJson {
   [field: string]: unknown;
 }
 
-/** Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
+ * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ */
 export interface XrplReader {
   readonly network: XrplNetwork;
   /** `tx` by hash, with `min_ledger` and `max_ledger` when a range is given. */

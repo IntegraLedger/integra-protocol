@@ -57,7 +57,10 @@ export interface TronInfo {
   logs: readonly { address: string; topics: readonly string[] }[];
 }
 
-/** Bounded, read-only calls against one network's FullNode and SolidityNode. Every failure rejects with `ReaderError`. */
+/**
+ * Bounded, read-only calls against one network's FullNode and SolidityNode. Every failure rejects, for example with
+ * `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ */
 export interface TronReader {
   readonly network: TronNetwork;
   /**
