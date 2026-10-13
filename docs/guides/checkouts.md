@@ -290,8 +290,8 @@ shows before payment, and `reference`, H's LCP string, for the seller to place i
   [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) states the rules.
 - **[Mastercard Verifiable Intent](https://github.com/agent-intent/verifiable-intent).** The pairings target Verifiable
   Intent 0.1 (draft). H rides in the merchant's `checkout_jwt` as its `legalContext`, and a mandate signs that JWT's
-  SHA-256 as `checkout_hash`. `build` returns the checkout mandate to sign and the payment mandate's `transactionId`,
-  both that digest.
+  SHA-256 as `checkout_hash`. `build` returns `checkoutMandate`, the checkout mandate to sign, and `transactionId`, the
+  value for the payment mandate's `transaction_id`: both carry that digest.
   `card/mastercard-vi/immediate` reads H from the checkout mandate the user's L2 mandate references, and checks the
   `checkout_hash` and any disclosed `transaction_id`; it verifies no signature. `card/mastercard-vi/autonomous` reads
   H from the agent's L3b checkout mandate, and verifies the ES256 signatures of L2 and L3b and their `sd_hash` links,
