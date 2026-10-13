@@ -65,6 +65,7 @@ import {
   type ReceiveTypedData,
 } from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
+import { keyAccount } from "./internal/tempo.js";
 import { readReceipt } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -84,7 +85,6 @@ import {
   decodeTempoTx,
   encodeKeyAuthorization,
   expiringNonceHash,
-  keyAccount,
   tempoChannelId,
   witnessRecover,
   type KeyAuthorizationUnsigned,
@@ -641,9 +641,9 @@ function keychainLog(logs: readonly EvmLog[], topic0: Hex, addresses: readonly u
 
 /**
  * The read keys of a transfer made under the subscription's access key, from a receipt of the key's registration: the
- * account whose key authorization carried `h` and registered the key (`keyAccount`), then `accessKey` with that
- * account, the token's `Transfer` to the recipient's digest, and the keychain's `AccessKeySpend` filter for the account,
- * the key and the token. Refused when `ref` carries no access key, or the receipt did not register it under `h`.
+ * account whose key authorization carried `h` and registered the key, then `accessKey` with that account, the token's
+ * `Transfer` to the recipient's digest, and the keychain's `AccessKeySpend` filter for the account, the key and the
+ * token. Refused when `ref` carries no access key, or the receipt did not register it under `h`.
  */
 export function keySearch(ref: SessionRef, receipt: EvmReceipt, h: AtrHash): SessionRef | Refusal {
   const k = isObject(ref) ? ref.accessKey : undefined;

@@ -13,7 +13,7 @@ import {
   uintWord,
   type Hex,
 } from "./evm-abi.js";
-import type { EvmReader, EvmReceipt } from "./evm.js";
+import type { EvmReader } from "./evm.js";
 import { readReceipt } from "./receipt.js";
 import { isAddress, isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -48,8 +48,6 @@ export const KEY_AUTHORIZATION_WITNESS_TOPIC =
   "0x1f09d8956d18ea185372a3f7f40aca24bb45f303920c37c5f0605f4871da41f6" as const;
 /** KeyRevoked(address,address) */
 export const KEY_REVOKED_TOPIC = "0x14ce4f0c8c12936436b733974fb13d10fc13e8c41c06dc8e19d82001c93d7989" as const;
-/** KeyAuthorized(address,address,uint8,uint64): the account and the key id are topics 1 and 2. */
-export const KEY_AUTHORIZED_TOPIC = "0x7c46af0758d3eca5e8195833bff1e5153f6249fc0f2968a878fd28544315a03c" as const;
 /**
  * AccessKeySpend(address,address,address,uint256,uint256): the account, the key id and the token are topics 1 to 3; the
  * keychain emits it for each spend an access key with enforced limits makes against its limit.
@@ -381,39 +379,6 @@ export async function witnessRecover(
   if (witnesses.length === 0) return refusal("tempo/no-witness");
   if (witnesses.length > 1) return refusal("tempo/ambiguous");
   return witnesses[0]!;
-}
-
-/**
- * The account for which a receipt's key authorization carried witness `h` and registered `keyId`: topic 1 of the
- * account keychain's `KeyAuthorizationWitness` logs whose topic 2 is `h`, when the keychain's `KeyAuthorized` log in
- * the same receipt names that account and `keyId`. The receipt's status is not read: the authorization is applied
- * before the transaction's calls run.
- */
-export function keyAccount(receipt: EvmReceipt, h: AtrHash, keyId: Hex): Hex | Refusal {
-  const witness = normalHash(h);
-  if (witness === null || !isAddress(keyId) || typeof receipt !== "object" || receipt === null || !Array.isArray(receipt.logs)) {
-    return refusal("tempo/unreadable");
-  }
-  const fromKeychain = receipt.logs.filter(
-    (l) => typeof l === "object" && l !== null && typeof l.address === "string" && l.address.toLowerCase() === ACCOUNT_KEYCHAIN &&
-      Array.isArray(l.topics) && l.topics.length === 3,
-  );
-  const accounts = new Set<string>();
-  for (const l of fromKeychain) {
-    if (normalHash(l.topics[0]) === KEY_AUTHORIZATION_WITNESS_TOPIC && normalHash(l.topics[2]) === witness) {
-      const a = normalHash(l.topics[1]);
-      if (a === null || !a.startsWith(`0x${"0".repeat(24)}`)) return refusal("tempo/unreadable");
-      accounts.add(a);
-    }
-  }
-  if (accounts.size === 0) return refusal("tempo/no-witness");
-  if (accounts.size > 1) return refusal("tempo/ambiguous");
-  const account = [...accounts][0]!;
-  const key = hexOf(addressWord(keyId));
-  const registered = fromKeychain.some(
-    (l) => normalHash(l.topics[0]) === KEY_AUTHORIZED_TOPIC && normalHash(l.topics[1]) === account && normalHash(l.topics[2]) === key,
-  );
-  return registered ? (`0x${account.slice(26)}` as Hex) : refusal("tempo/key-not-authorized");
 }
 
 function isUint(v: unknown, bits: bigint): v is bigint {

@@ -9,7 +9,9 @@ import { describe, expect, it } from "vitest";
 import { keccak256, stringToHex } from "viem";
 import { TRANSFER_TOPIC } from "../src/evm.js";
 import { keySearch, sessionStatus, subscriptionTempo, type SessionRef } from "../src/mpp.js";
-import { ACCESS_KEY_SPEND_TOPIC, ACCOUNT_KEYCHAIN, KEY_AUTHORIZED_TOPIC } from "../src/tempo.js";
+import { KEY_AUTHORIZED_TOPIC } from "../src/internal/tempo.js";
+import { ACCESS_KEY_SPEND_TOPIC, ACCOUNT_KEYCHAIN, KEY_AUTHORIZATION_WITNESS_TOPIC } from "../src/tempo.js";
+import * as tempo from "../src/tempo.js";
 import { readerFor } from "./mpp-fixtures.js";
 
 const NETWORK = "eip155:42431";
@@ -70,10 +72,29 @@ describe("keySearch: the account the witness names, and the key's read keys", ()
     expect(keySearch({ network: NETWORK }, r, F.revertedActivation.witness)).toEqual({ refused: true, code: "tempo/no-access-key" });
   });
 
+  it("refuses an H or a receipt it cannot read, and a witness log naming H whose account topic is not a padded address, as tempo/unreadable", () => {
+    const r = receiptOf(F.revertedActivation.receipt);
+    const unreadable = { refused: true, code: "tempo/unreadable" };
+    expect(keySearch(recorded, r, "0x1234" as Hex)).toEqual(unreadable);
+    expect(keySearch(recorded, { ...r, logs: null } as never, F.revertedActivation.witness)).toEqual(unreadable);
+    const logs = r.logs.map((l) =>
+      l.topics[0] === KEY_AUTHORIZATION_WITNESS_TOPIC ? { ...l, topics: [l.topics[0]!, `0x${"ff".repeat(32)}` as Hex, l.topics[2]!] } : l,
+    );
+    expect(logs).not.toEqual(r.logs);
+    expect(keySearch(recorded, { ...r, logs }, F.revertedActivation.witness)).toEqual(unreadable);
+  });
+
   it("refuses the same logs from a contract other than the account keychain", () => {
     const moved = receiptOf(F.revertedActivation.receipt);
     const logs = moved.logs.map((l) => ({ ...l, address: "0x20c0000000000000000000000000000000000001" as Hex }));
     expect(keySearch(recorded, { ...moved, logs }, F.revertedActivation.witness)).toEqual({ refused: true, code: "tempo/no-witness" });
+  });
+});
+
+describe("the ./tempo entry point", () => {
+  it("exports neither the KeyAuthorized topic nor the account read: keySearch, in ./mpp, answers what they find", () => {
+    expect("KEY_AUTHORIZED_TOPIC" in tempo).toBe(false);
+    expect("keyAccount" in tempo).toBe(false);
   });
 });
 

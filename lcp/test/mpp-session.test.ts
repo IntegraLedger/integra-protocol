@@ -21,6 +21,7 @@ import {
 import { privateKeyToAccount, sign } from "viem/accounts";
 import { Transaction as TempoTransaction } from "viem/tempo";
 import { TRANSFER_TOPIC, transferDigest, type EvmLog, type EvmReader } from "../src/evm.js";
+import { KEY_AUTHORIZED_TOPIC } from "../src/internal/tempo.js";
 import {
   challengeId,
   evmChannelId,
@@ -43,7 +44,6 @@ import {
   CHANNEL_OPENED_V1_TOPIC,
   CHANNEL_OPENED_V2_TOPIC,
   KEY_AUTHORIZATION_WITNESS_TOPIC,
-  KEY_AUTHORIZED_TOPIC,
   KEY_REVOKED_TOPIC,
   OPEN_V1_SELECTOR,
   OPEN_V2_SELECTOR,

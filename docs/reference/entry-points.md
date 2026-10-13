@@ -362,7 +362,7 @@ Tempo rail pieces: the `0x76` transaction's calls, the TIP-20 `transferWithMemo`
 import { ACCESS_KEY_SPEND_TOPIC, ACCOUNT_KEYCHAIN, CHANNEL_CLOSED_V1_TOPIC, … } from "@integraledger/lcp/tempo";
 ```
 
-**Values (23):** `ACCESS_KEY_SPEND_TOPIC`, `ACCOUNT_KEYCHAIN`, `CHANNEL_CLOSED_V1_TOPIC`, `CHANNEL_CLOSED_V2_TOPIC`, `CHANNEL_OPENED_V1_TOPIC`, `CHANNEL_OPENED_V2_TOPIC`, `decodeKeyAuthorization`, `decodeTempoTx`, `encodeKeyAuthorization`, `expiringNonceHash`, `KEY_AUTHORIZATION_WITNESS_TOPIC`, `KEY_AUTHORIZED_TOPIC`, `KEY_REVOKED_TOPIC`, `keyAccount`, `memoCalldata`, `OPEN_V1_SELECTOR`, `OPEN_V2_SELECTOR`, `RECEIVE_POLICY_GUARD`, `tempoChannelId`, `TIP20_CHANNEL_RESERVE`, `TRANSFER_WITH_MEMO_SELECTOR`, `TRANSFER_WITH_MEMO_TOPIC`, `witnessRecover`.
+**Values (21):** `ACCESS_KEY_SPEND_TOPIC`, `ACCOUNT_KEYCHAIN`, `CHANNEL_CLOSED_V1_TOPIC`, `CHANNEL_CLOSED_V2_TOPIC`, `CHANNEL_OPENED_V1_TOPIC`, `CHANNEL_OPENED_V2_TOPIC`, `decodeKeyAuthorization`, `decodeTempoTx`, `encodeKeyAuthorization`, `expiringNonceHash`, `KEY_AUTHORIZATION_WITNESS_TOPIC`, `KEY_REVOKED_TOPIC`, `memoCalldata`, `OPEN_V1_SELECTOR`, `OPEN_V2_SELECTOR`, `RECEIVE_POLICY_GUARD`, `tempoChannelId`, `TIP20_CHANNEL_RESERVE`, `TRANSFER_WITH_MEMO_SELECTOR`, `TRANSFER_WITH_MEMO_TOPIC`, `witnessRecover`.
 
 **Types (4):** `KeyAuthorizationUnsigned`, `TempoCall`, `TempoDescriptor`, `TempoKeyAuthorization`.
 

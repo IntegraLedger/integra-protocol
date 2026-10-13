@@ -344,10 +344,10 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/ambiguous` | More than one candidate carries the binding: several `transferWithMemo` calls or logs with the challenge's attribution memo, several `KeyAuthorizationWitness` logs, several accounts whose key authorization carried H, or `ChannelOpened` logs of the TIP-20 channel reserve giving more than one salt. |
 | `tempo/descriptor-mismatch` | A Tempo v2 session descriptor is missing or malformed (a non-address party, an invalid salt, nonce hash or chain), its channel id is not the payload's `channelId`, or its `salt` is not H. |
 | `tempo/key-authorization-malformed` | A Tempo key authorization does not encode or decode as the bounded RLP structure (items, limits, scopes, witness and signature), or the subscription credential's `signature` is not a string, or, for the `mpp/subscription/tempo` `reference`, the authorization does not name exactly one token, as its limit and its allowed-call target, and exactly one recipient. |
-| `tempo/key-not-authorized` | `keyAccount` finds that the receipt has no `KeyAuthorized` log registering the key for the account whose key authorization carried H. |
+| `tempo/key-not-authorized` | `keySearch` finds that the receipt has no `KeyAuthorized` log registering the reference's access key for the account whose key authorization carried H. |
 | `tempo/memo-not-bound` | The signed or landed Tempo transfer carries no `transferWithMemo` to the challenge's currency whose memo is the challenge's attribution memo. |
 | `tempo/no-access-key` | `keySearch` is given a reference with no well-formed access key (key id, token and recipient digest). |
-| `tempo/no-witness` | The Tempo subscription's key authorization carries no witness, or a receipt holds no `KeyAuthorizationWitness` log (for `witnessRecover`, or naming H for `keyAccount`). |
+| `tempo/no-witness` | The Tempo subscription's key authorization carries no witness, or a receipt holds no `KeyAuthorizationWitness` log (for `witnessRecover`, or naming H for `keySearch`). |
 | `tempo/not-final` | The transaction an MPP Tempo push `hash` credential names reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
 | `tempo/not-found` | The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
 | `tempo/open-ambiguous` | The signed Tempo session opening has more than one `open` call to the challenge's escrow contract. |
@@ -357,7 +357,7 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/salt-not-bound` | The salt word of the Tempo session opening's `open` call is not H. |
 | `tempo/tx-malformed` | A Tempo transaction does not decode as a type-`0x76` RLP envelope with the expected fields and at most the allowed calls, `memoCalldata` is given an invalid recipient, amount or memo, `expiringNonceHash` is given a sender that is not an address, or a Tempo session opening's `open` call input has the wrong length. |
 | `tempo/tx-too-large` | A Tempo transaction's wire bytes exceed the size bound. |
-| `tempo/unreadable` | The Tempo reader threw, the receipt or its logs are not well formed, or `keyAccount` is given an invalid H, key id or receipt, or finds a keychain log whose account topic is not a padded address. |
+| `tempo/unreadable` | The Tempo reader threw, the receipt or its logs are not well formed, or `keySearch` is given an invalid H or receipt, or finds a `KeyAuthorizationWitness` log naming H whose account topic is not a padded address. |
 | `tempo/witness-not-bound` | The Tempo subscription's key authorization witness is not the hash the echoed challenge's id derives from. |
 | `tempo/wrong-reader` | The Tempo reader is missing or answers for a different network than the challenge or reference names. |
 
