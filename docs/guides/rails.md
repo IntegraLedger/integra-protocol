@@ -307,9 +307,9 @@ equal to the option's, and its expiry) are the payer's, done by its wallet or no
 
 ## Recovering H from the chain alone
 
-On some rails the settled transaction keeps H itself, so anyone can read it back without either party. Those
-pairings have `recover(tx, reader)` and `pattern.zeroPartyRecoverable` set. This example lists them from the
-registry:
+On some pairings anyone can read H back from the settled transaction alone, without either party. Those pairings have
+`recover(ref, reader)` and `pattern.zeroPartyRecoverable` set; `ref` names the network and the settlement transaction,
+in the shape each rail's API page gives. This example lists them from the registry:
 
 ```ts
 import { BINDINGS } from "@integraledger/lcp";
