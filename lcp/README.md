@@ -31,7 +31,7 @@ places the hash in the payment and reads it back.
 
 | Term | Meaning |
 |---|---|
-| **Agentic Transaction Record (ATR)** | The agreement's record, a JSON document the seller serves. |
+| **Agentic Transaction Record (ATR)** | The agreement's record: the exact bytes the seller serves; `assemble` writes them as one JSON object. |
 | **ATR hash (H)** | SHA-256 over the ATR's exact bytes. |
 | **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
