@@ -8,7 +8,7 @@ import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash } from "./co
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
 import type { TronPayment } from "./internal/tron.js";
-import { advertiseFor, type OptionFilter } from "./internal/x402.js";
+import { advertiseFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow, hexDigits } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -20,7 +20,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 /** CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta. */

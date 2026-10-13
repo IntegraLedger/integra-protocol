@@ -10,7 +10,7 @@ import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { TvmPayment } from "./internal/tvm.js";
-import { advertiseFor, type OptionFilter } from "./internal/x402.js";
+import { advertiseFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -33,7 +33,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */

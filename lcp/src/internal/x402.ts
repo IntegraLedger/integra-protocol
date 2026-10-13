@@ -7,7 +7,7 @@
 import { canonicalJson, isHttpsLink, isOtherSchemeLink, toLegalContext, type AtrHash, type Json } from "../core.js";
 import { deepFreeze, isObject, normalHash } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
-import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "../x402.js";
+import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Offer } from "../x402.js";
 import { AGREEMENT_URL, agreementUrlFault } from "./agreement.js";
 
 export const LEGAL_CONTEXT = "legalContext";
@@ -43,6 +43,14 @@ export type X402Advertise = (
   offer: PaymentRequirements,
   agreementUrl?: string,
 ) => PaymentRequired | Refusal;
+
+/** What a pairing's `read` returns: the hash, the link, the agreement URL when the document carries one, the offer. */
+export interface X402Read {
+  h: AtrHash;
+  link: string;
+  agreement?: string;
+  offer: X402Offer;
+}
 
 /**
  * The seller's placement over a pairing's filter: a copy of `doc` whose `extensions.legalContext` carries the hash, the link and, when

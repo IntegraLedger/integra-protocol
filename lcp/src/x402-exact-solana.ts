@@ -23,7 +23,7 @@ import {
   type SvmTx,
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
@@ -38,7 +38,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 const ID = "x402/exact/solana" as const;

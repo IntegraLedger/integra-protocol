@@ -18,7 +18,7 @@ import {
   type ExecutorPayload,
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
@@ -40,7 +40,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";

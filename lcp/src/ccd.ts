@@ -13,7 +13,7 @@ import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
@@ -24,7 +24,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 /** CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash. */

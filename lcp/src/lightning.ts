@@ -7,7 +7,7 @@
 import { canonicalJson, fromLegalContext, fromRawBytes, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { decode, FIELD, isLnOffer, isLnOption, lnbtcPairs, namedPairs, NETWORKS } from "./internal/lightning.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import {
   b64uEncode,
   credentialOf,
@@ -30,7 +30,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 /** CAIP-2 for Lightning: `lnbtc:` and the first 32 hex digits of the Bitcoin network's genesis block hash. */

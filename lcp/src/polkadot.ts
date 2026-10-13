@@ -10,7 +10,7 @@ import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from 
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
@@ -21,7 +21,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 export type PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1" | "polkadot:67f9723393ef76214df0118c34bbbd3d";

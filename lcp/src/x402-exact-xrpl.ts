@@ -4,7 +4,7 @@
  * the blob's hash.
  */
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import {
   decodePresented,
   isXrplNetwork,
@@ -32,7 +32,6 @@ import {
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
-  type X402Read,
 } from "./x402.js";
 
 const ID = "x402/exact/xrpl" as const;

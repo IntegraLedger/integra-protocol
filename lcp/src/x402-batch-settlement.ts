@@ -62,7 +62,7 @@ import {
   type SvmTx,
 } from "./internal/svm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
-import { advertiseFor } from "./internal/x402.js";
+import { advertiseFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
@@ -79,7 +79,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Choice,
-  type X402Read,
 } from "./x402.js";
 
 // ── EVM pieces ───────────────────────────────────────────────────────────────────────────────────────────────────
