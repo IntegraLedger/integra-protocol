@@ -329,6 +329,10 @@ payment. What it can do is deliver H and the link with the task. This package de
 exports no pairing: `binding` is the refusal `a2a/no-signed-place`, and the payment made for the task uses its own
 pairing, whose record states what it proves. The extension targets A2A 1.0.
 
+When the task carries an x402 payment under the a2a-x402 extension, H and the link ride in the embedded x402 challenge's
+`extensions.legalContext`, as in any x402 challenge: the x402 pairing's `read` reads them there, and `read` here, which
+reads only the Task's `metadata` under this extension's URI, does not.
+
 | Export | What it does |
 |---|---|
 | `A2A_EXTENSION_URIS` | The extension's URI: `https://lcp.integraledger.com/a2a/legal-context/v1`. |
