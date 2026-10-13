@@ -238,8 +238,8 @@ worth, and when to settle, are the seller's to decide under the scheme. The chan
 name its channel; none of them reads a voucher's amount.
 
 **The buyer** keeps the ATR's bytes it compared at the opening, and the opening itself. On MPP, a session challenge
-that names a `channelId` resumes a channel (`evmSessionResume` reads it on EVM and Tempo): the buyer pays it with a
-voucher only for a channel it opened for an ATR it compared.
+that names a `channelId` resumes a channel (`sessionResume` reads it on the MPP sessions on EVM, Tempo, Hedera, Solana
+and the XRP Ledger): the buyer pays it with a voucher only for a channel it opened for an ATR it compared.
 
 ## What the record says
 
