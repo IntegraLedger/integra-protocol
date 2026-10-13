@@ -1,12 +1,12 @@
-// The decoder caps: vectors/decoder-caps.json. XRPL binary, msgpack and ScVal each have a nesting cap and an element
-// cap, and each row says whether the caps admit its input.
+// The decoder caps: vectors/decoder-caps.json. XRPL binary has a nesting cap and a field cap, msgpack and ScVal a
+// nesting cap, and each row says whether the caps admit its input.
 import { readFileSync } from "node:fs";
 import { xdr } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 import { MSGPACK_MAX_DEPTH } from "../src/avm.js";
 import { msgpackWithinCaps } from "../src/internal/avm.js";
 import { scValsWithinCaps } from "../src/internal/stellar.js";
-import { decodeStellarTx, SCVAL_MAX_DEPTH, SCVAL_MAX_ELEMENTS } from "../src/stellar.js";
+import { decodeStellarTx, SCVAL_MAX_DEPTH } from "../src/stellar.js";
 import { decodeBlob, XRPL_MAX_DEPTH, XRPL_MAX_FIELDS } from "../src/xrpl.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/decoder-caps.json", import.meta.url), "utf8"));
@@ -44,9 +44,9 @@ describe("msgpack: array and map nesting, declared lengths, one value", () => {
   });
 });
 
-describe("ScVal: vector and map nesting, elements, and invocation nesting", () => {
-  it("the caps are the vectors'", () => {
-    expect([SCVAL_MAX_DEPTH, SCVAL_MAX_ELEMENTS]).toEqual([V.scval.maxDepth, V.scval.maxElements]);
+describe("ScVal: vector and map nesting, and invocation nesting", () => {
+  it("the cap is the vectors'", () => {
+    expect(SCVAL_MAX_DEPTH).toBe(V.scval.maxDepth);
   });
   for (const r of V.scval.rows as (Row & { xdr: string })[]) {
     it(`${r.name}: ${r.case} → ${r.accept}`, () => {

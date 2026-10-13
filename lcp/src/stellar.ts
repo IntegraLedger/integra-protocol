@@ -5,7 +5,6 @@
 export {
   PASSPHRASE,
   SCVAL_MAX_DEPTH,
-  SCVAL_MAX_ELEMENTS,
   decodeStellarTx,
   muxedFor,
   muxedId,

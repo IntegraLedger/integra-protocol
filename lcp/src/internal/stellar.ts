@@ -44,11 +44,6 @@ export const MAX_XDR = 8192;
  * the outermost container being level 1, and of authorized invocations within one authorization entry.
  */
 export const SCVAL_MAX_DEPTH = 64;
-/**
- * The most ScVal vector elements and map entries in one envelope. Each takes at least its 4-byte discriminant, so no
- * envelope within `MAX_XDR` base64 characters holds more.
- */
-export const SCVAL_MAX_ELEMENTS = (MAX_XDR * 3) / 4 / 4;
 const MAX_LOCATE_PAGES = 10;
 const MAX_CANDIDATES = 50;
 
@@ -305,12 +300,10 @@ function transferOf(
 }
 
 /**
- * True when every ScVal in a decoded XDR value nests at most `SCVAL_MAX_DEPTH` vectors and maps, every authorized
- * invocation at most `SCVAL_MAX_DEPTH` sub-invocations, and the value holds at most `SCVAL_MAX_ELEMENTS` vector
- * elements and map entries. The walk keeps its own stack.
+ * True when every ScVal in a decoded XDR value nests at most `SCVAL_MAX_DEPTH` vectors and maps, and authorized
+ * invocations nest at most `SCVAL_MAX_DEPTH` levels. The walk keeps its own stack.
  */
 export function scValsWithinCaps(wire: unknown): boolean {
-  let elements = 0;
   const stack: { node: unknown; sc: number; inv: number }[] = [{ node: wire, sc: 0, inv: 0 }];
   while (stack.length > 0) {
     const { node, sc, inv } = stack.pop()!;
@@ -329,8 +322,6 @@ export function scValsWithinCaps(wire: unknown): boolean {
     }
     if (children !== undefined) {
       if (sc + 1 > SCVAL_MAX_DEPTH) return false;
-      elements += children.length;
-      if (elements > SCVAL_MAX_ELEMENTS) return false;
       for (const x of children) stack.push({ node: x, sc: sc + 1, inv });
       continue;
     }
