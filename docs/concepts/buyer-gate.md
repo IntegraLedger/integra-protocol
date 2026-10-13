@@ -80,7 +80,7 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 | `hash-mismatch` | The served bytes do not hash to H: one changed byte, the same JSON written another way, or an agreement resource advertising another ATR's hash. |
 | `signed-not-bound` | What the signer returned does not carry the H the buyer compared. |
 | `offer-unreadable` | The pairing's `read` refused the document, or its `build` refused the option with the buyer's inputs, such as a Stellar simulated transfer whose amount, token or payer is not the option's; the row carries the refusal code, and nothing is signed. |
-| `link-not-https` | The link or the agreement URL is not `https`. Nothing is fetched. |
+| `link-not-https` | The link or the agreement URL that `read` gave is not an `https` link, and it is not fetched. Each pairing's own `read` refuses a link or agreement URL of another scheme, which declines `offer-unreadable` with the refusal's code. |
 | `atr-unfetchable` | The fetch redirected, returned an error status, failed, did not answer in time, or answered in a content coding other than `identity`. |
 | `atr-too-large` | The body is larger than 1 MiB. The fetch is cancelled. |
 | `signer-failed` | The signer rejected. |
