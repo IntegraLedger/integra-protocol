@@ -412,9 +412,10 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The payer signed a Solana transaction whose one Memo instruction carries this ATR's hash in LCP string form, " +
-    "and the transaction executed without error, carrying a token or SOL transfer. The memo is in the transaction's " +
-    "instruction data on chain. This does not show that amount, recipient, mint or timing match the ATR's content.",
+    "The payer signed a Solana transaction whose one LCP-form Memo instruction carries this ATR's hash in LCP " +
+    "string form, and the transaction executed without error, carrying a token or SOL transfer. The memo is in " +
+    "the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match " +
+    "the ATR's content.",
 });
 
 /** The members of the Solana charge pairing `spec` describes, pull mode only. */

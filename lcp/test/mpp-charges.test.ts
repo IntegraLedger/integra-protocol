@@ -188,6 +188,16 @@ describe("mpp-charge-solana.json", () => {
     );
   });
 
+  // The published profile's clause 6 states what a record of this pairing proves: the one memo bound is the LCP-form
+  // one among the transaction's Memo instructions (clause 3), so the record says so.
+  it("the record's proves is the profile's clause 6: one LCP-form Memo instruction", () => {
+    const profile = readFileSync(new URL("../profiles/mpp-charge-solana.md", import.meta.url), "utf8");
+    const clause = /^6\. What a record of this pairing proves: (.+)$/m.exec(profile)?.[1];
+    if (clause === undefined) throw new Error("the profile has no clause 6");
+    expect(chargeSolana.pattern.proves).toBe(clause[0]!.toUpperCase() + clause.slice(1));
+    expect(chargeSolana.pattern.proves).toContain("whose one LCP-form Memo instruction carries this ATR's hash");
+  });
+
   it("push: fetchPresented reads the landed wire, then bound and reference; recover", async () => {
     const landed: SvmLanded = {
       wire: Uint8Array.from(Buffer.from(V.push.landedWireBase64, "base64")),
