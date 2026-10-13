@@ -560,10 +560,10 @@ export const chargeUsdcStacks = Object.freeze({
     forwardIndexable: false,
     publicProof: true,
     proves:
-      "The payer signed a Stacks transaction whose SIP-010 transfer carries this ATR's hash as its memo argument. The " +
-      "chain verified the signature, the transaction executed with status success, and the memo is in the mined " +
-      "transaction on chain. " +
-      LIMIT,
+      "The payer signed a Stacks transaction calling a contract's `transfer` with this ATR's hash as its fourth (memo) " +
+      "argument. The chain verified the signature, the transaction executed with status success, and the memo is in " +
+      "the mined transaction on chain. This does not show that the contract is a SIP-010 token, or that amount, payee, " +
+      "asset or timing match the ATR's content.",
   }),
   claims: true as boolean,
   carrier: null,
