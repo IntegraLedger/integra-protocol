@@ -1506,9 +1506,8 @@ function subscriptionCloseRef(chosen: MppChallenge, _channel: string, account?: 
 
 // ── The records.
 
-const LATER_VOUCHERS =
-  "Later requests in this channel were paid under this ATR by vouchers the seller did not meter; each voucher " +
-  "signs a commitment to this ATR's hash.";
+/** Each voucher signs the channel id, which commits to the salt, H. */
+const VOUCHERS_COMMIT = "Each voucher in this channel signs a commitment to this ATR's hash.";
 
 function sessionPattern(proves: string): LcpPattern {
   return deepFreeze({
@@ -1553,7 +1552,7 @@ export const sessionEvm = Object.freeze({
       "seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and " +
       "authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the " +
       "transfer. This does not show that amount, payee, asset or timing match the ATR's content. " +
-      LATER_VOUCHERS,
+      VOUCHERS_COMMIT,
   ),
   claims: true as const,
   unplaced,
@@ -1579,7 +1578,7 @@ export const sessionTempo = Object.freeze({
       "channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The " +
       "escrow's ChannelOpened event names the channel, whose id commits to the salt; on the TIP-1034 escrow the event " +
       "also carries the salt itself. This does not show that amount, payee, asset or timing match the ATR's content. " +
-      LATER_VOUCHERS,
+      VOUCHERS_COMMIT,
   ),
   claims: true as const,
   unplaced,

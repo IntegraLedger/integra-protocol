@@ -587,6 +587,18 @@ describe("mpp-session-tempo.json", () => {
   });
 });
 
+describe("the EVM and Tempo sessions' records", () => {
+  // The record reads the opening, never a later voucher, so each proves states what the opening shows and none says
+  // that later requests in the channel were paid under this ATR. Each voucher signs the channel id, which commits to the
+  // salt, H, so each proves ends with that sentence, written word for word.
+  it("each proves ends with the voucher's commitment, and none speaks of later requests", () => {
+    for (const b of [sessionEvm, sessionTempo]) {
+      expect(b.pattern.proves.endsWith(" Each voucher in this channel signs a commitment to this ATR's hash.")).toBe(true);
+      expect(b.pattern.proves).not.toMatch(/later requests|paid under this ATR|did not meter/i);
+    }
+  });
+});
+
 describe("mpp-subscription-tempo.json", () => {
   const f = U.fixed;
   const SUB = challenge("tempo", "subscription", f.request);
