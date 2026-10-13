@@ -37,6 +37,8 @@ import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
 import {
   carriesBinding,
   failedIfFinal,
+  isLog,
+  isReceipt,
   receiveTypedData,
   transferParts,
   type ReceiveTypedData,
@@ -650,7 +652,12 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
   return failedIfFinal(s, "transfer-not-found");
 }
 
-/** Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. */
+/**
+ * Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. A failed
+ * read, a reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a
+ * string `address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
+ * `evm/not-found`.
+ */
 async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
   const chainId = chainIdOf(ref.network);
@@ -662,14 +669,10 @@ async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: Ev
     return refusal("evm/unreadable");
   }
   if (receipt === null) return refusal("evm/not-found");
-  if (typeof receipt !== "object" || !Array.isArray(receipt.logs)) return refusal("evm/unreadable");
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
   if (receipt.status !== 1) return refusal("evm/reverted");
-  const created = (receipt.logs as readonly EvmLog[]).filter(
-    (l) =>
-      typeof l?.address === "string" &&
-      l.address.toLowerCase() === BATCH_SETTLEMENT.toLowerCase() &&
-      Array.isArray(l.topics) &&
-      sameBytes(l.topics[0], CHANNEL_CREATED_TOPIC),
+  const created = receipt.logs.filter(
+    (l) => l.address.toLowerCase() === BATCH_SETTLEMENT.toLowerCase() && sameBytes(l.topics[0], CHANNEL_CREATED_TOPIC),
   );
   if (created.length === 0) return refusal("evm/no-channel-created");
   if (created.length > 1) return refusal("evm/ambiguous");

@@ -168,6 +168,41 @@ function throwsTypeError(name: string, calls: readonly (() => unknown)[]): void 
   });
 }
 
+// A node's receipt log carries `address`, `topics` and `data`, and its receipt a status of 0x0 or 0x1 and a block number
+// (the Ethereum JSON-RPC API's eth_getTransactionReceipt), which a reader gives as the 0 or 1 and the bigint of the
+// package's receipt type. Each shape below is not such a log: no object, or a member missing or of another type than the
+// string address, array of string topics and string data the API gives. A receipt holding one is a reader answer that
+// is not well formed: docs/reference/refusals.md gives `evm/unreadable` for a receipt or log that is not well formed,
+// and `hedera/unreadable` for a Hedera reader's response that is not, and a reader that fails is never a failed payment
+// (docs/concepts/refusals.md, "Readers").
+const without = (member: string) => (l: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(l).filter(([k]) => k !== member));
+const NOT_LOGS: readonly [string, (l: Record<string, unknown>) => unknown][] = [
+  ["null", () => null],
+  ["7", () => 7],
+  ["no address", without("address")],
+  ["a number address", (l) => ({ ...l, address: 1 })],
+  ["no topics", without("topics")],
+  ["topics as one string", (l) => ({ ...l, topics: (l.topics as string[]).join("") })],
+  ["a number topic", (l) => ({ ...l, topics: [...(l.topics as unknown[]).slice(0, -1), 1] })],
+  ["no data", without("data")],
+  ["null data", (l) => ({ ...l, data: null })],
+];
+/** `logs` with each shape in place of its first log, in place of the log at `read`, and after its last log. */
+function misshapen(logs: Record<string, unknown>[], read: number): [string, unknown[]][] {
+  expect(read).toBeGreaterThan(0);
+  return NOT_LOGS.flatMap(([shape, make]): [string, unknown[]][] => [
+    [`${shape} first`, logs.map((l, i) => (i === 0 ? make(l) : l))],
+    [`${shape} as the log read`, logs.map((l, i) => (i === read ? make(l) : l))],
+    [`${shape} last`, [...logs, make(logs[0]!)]],
+  ]);
+}
+/** `receipt` with its status, and then its block number, left as the node's hex string. */
+const notReceipts = (receipt: Record<string, unknown>): [string, unknown][] => [
+  ["status 0x1", { ...receipt, status: "0x1" }],
+  ["block number as hex", { ...receipt, blockNumber: `0x${(receipt.blockNumber as bigint).toString(16)}` }],
+];
+
 describe("evm", () => {
   const evm = "x402-exact-eip155-eip3009.json";
   reads([
@@ -210,35 +245,10 @@ describe("evm", () => {
       }
     }
   });
-  // A node's receipt log carries `address`, `topics` and `data` (the Ethereum JSON-RPC API's
-  // eth_getTransactionReceipt), and V6's logs carry all three: `AuthorizationUsed` indexes both its members (EIP-3009),
-  // so its `data` is "0x". Each shape below is not such a log: no object, or a member missing or of another type than
-  // the string address, array of string topics and string data the API gives. The answer for a receipt holding one is
-  // evmStatus's and redeemedLeafRecover's: docs/reference/refusals.md gives `evm/unreadable` for a receipt or log that
-  // is not well formed, and a reader that fails is never a failed payment (docs/concepts/refusals.md, "Readers").
-  const without = (member: string) => (l: Record<string, unknown>) =>
-    Object.fromEntries(Object.entries(l).filter(([k]) => k !== member));
-  const NOT_LOGS: readonly [string, (l: Record<string, unknown>) => unknown][] = [
-    ["null", () => null],
-    ["7", () => 7],
-    ["no address", without("address")],
-    ["a number address", (l) => ({ ...l, address: 1 })],
-    ["no topics", without("topics")],
-    ["topics as one string", (l) => ({ ...l, topics: (l.topics as string[]).join("") })],
-    ["a number topic", (l) => ({ ...l, topics: [...(l.topics as unknown[]).slice(0, -1), 1] })],
-    ["no data", without("data")],
-    ["null data", (l) => ({ ...l, data: null })],
-  ];
-  /** `logs` with each shape in place of its first log, in place of the use of `h`, and after its last log. */
-  const misshapen = (logs: Record<string, unknown>[], h: string): [string, unknown[]][] => {
-    const use = logs.findIndex((l) => (l.topics as string[])[2] === h);
-    expect(use).toBeGreaterThan(0);
-    return NOT_LOGS.flatMap(([shape, make]): [string, unknown[]][] => [
-      [`${shape} first`, logs.map((l, i) => (i === 0 ? make(l) : l))],
-      [`${shape} as the use of h`, logs.map((l, i) => (i === use ? make(l) : l))],
-      [`${shape} last`, [...logs, make(logs[0]!)]],
-    ]);
-  };
+  // V6's logs carry all three members: `AuthorizationUsed` indexes both its members (EIP-3009), so its `data` is "0x".
+  // The answer for a receipt holding a log of another shape is evmStatus's and redeemedLeafRecover's.
+  /** The index of the log in `logs` that uses `h`: `AuthorizationUsed`'s topic 2 is the nonce. */
+  const useOf = (logs: Record<string, unknown>[], h: string) => logs.findIndex((l) => (l.topics as string[])[2] === h);
   const receiptReader = (v: { reader: Record<string, string> }, receipt: { status: number; blockNumber: string }) =>
     (logs: unknown[]) => ({
       network: v.reader.network,
@@ -253,7 +263,7 @@ describe("evm", () => {
     const settled = { ...row.expect, blockNumber: BigInt(row.expect.blockNumber) };
     expect(await eip3009Status(v.ref, reader(row.receipt.logs) as never)).toEqual(settled);
     expect(await evmStatus(evmRef as never, reader(row.receipt.logs) as never)).toEqual(settled);
-    for (const [label, logs] of misshapen(row.receipt.logs, v.ref.h)) {
+    for (const [label, logs] of misshapen(row.receipt.logs, useOf(row.receipt.logs, v.ref.h))) {
       expect(await eip3009Status(v.ref, reader(logs) as never), label).toEqual(UNREADABLE);
       expect(await evmStatus(evmRef as never, reader(logs) as never), label).toEqual(UNREADABLE);
     }
@@ -264,7 +274,7 @@ describe("evm", () => {
     const reader = receiptReader(v, row.receipt);
     const tx = { network: v.ref.network, asset: v.ref.asset, transaction: v.ref.transaction };
     expect(await eip3009Recover(tx, reader(row.receipt.logs) as never)).toBe(row.expect);
-    for (const [label, logs] of misshapen(row.receipt.logs, v.ref.h)) {
+    for (const [label, logs] of misshapen(row.receipt.logs, useOf(row.receipt.logs, v.ref.h))) {
       expect(await eip3009Recover(tx, reader(logs) as never), label).toEqual(refused("evm/unreadable"));
       expect(await redeemedLeafRecover(tx, reader(logs) as never), label).toEqual(refused("evm/unreadable"));
     }
@@ -593,6 +603,27 @@ describe("x402 batch settlement", () => {
     expect(await batchEvm.status(ref as never, quiet as never)).toEqual({ state: "pending", why: "not-found" });
     expect(quiet.reads()).toBe(1);
     for (const bad of MALFORMED) expect(await batchEvm.status(ref as never, bad as never), String(bad)).toEqual(UNREADABLE);
+  });
+  // EB8's receipt holds its one ChannelCreated log, and EB7's full deposit call the same log fourth of five, beside the
+  // token's AuthorizationUsed and Transfers and the channel contract's Deposited (x402-batch-settlement.json): recover
+  // gives EB8's H from each.
+  it("batchEvm.recover reads a reader answer that is not a receipt, or a receipt holding a log that is not an object with a string address, an array of string topics and a string data, as evm/unreadable, as eip3009Recover does", async () => {
+    const V = load("x402-batch-settlement.json");
+    const full = V.EB7.fullCall.receipt;
+    const network = `eip155:${V.fixed.evm.chainId}`;
+    const tx = { network, transaction: `0x${"cd".repeat(32)}` };
+    const answering = (receipt: unknown) => ({ network, receipt: async () => receipt });
+    const holding = (logs: unknown[]) => answering({ status: full.status, blockNumber: BigInt(full.blockNumber), logs });
+    expect(await batchEvm.recover(tx as never, holding([V.EB8.log]) as never)).toBe(V.EB8.expect);
+    expect(await batchEvm.recover(tx as never, holding(full.logs) as never)).toBe(V.EB8.expect);
+    const read = full.logs.findIndex((l: unknown) => JSON.stringify(l) === JSON.stringify(V.EB8.log));
+    for (const [label, logs] of misshapen(full.logs, read)) {
+      expect(await batchEvm.recover(tx as never, holding(logs) as never), label).toEqual(refused("evm/unreadable"));
+    }
+    const receipt = { status: full.status, blockNumber: BigInt(full.blockNumber), logs: full.logs };
+    for (const [label, bad] of notReceipts(receipt)) {
+      expect(await batchEvm.recover(tx as never, answering(bad) as never), label).toEqual(refused("evm/unreadable"));
+    }
   });
   answers([
     ["batchEvm.build", batchEvm.build, [undefined, H], 0, refused("x402/not-v2")],
