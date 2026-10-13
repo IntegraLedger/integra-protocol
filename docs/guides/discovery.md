@@ -13,7 +13,9 @@ serves it (`LCP §2.1`: *"A service implementing this standard MUST serve a JSON
 
 The discovery document is not an ATR. It describes the seller's standing terms and is the same for every request; an
 ATR is the record of one transaction, and its hash rides in that transaction's payment. Nothing in a pairing reads
-the discovery document.
+the discovery document. `LCP §2.5` says of `atrHash` that *"the ATR is the terms document itself (the standalone
+artifact of Section 2.3), and `atrHash` is its digest"*; in this package the ATR is the per-transaction record whose
+hash rides in the payment, so a discovery `atrHash` is the digest of the standing terms, not a payment's H.
 
 Import the pieces from `@integraledger/lcp/discovery`:
 
@@ -48,8 +50,9 @@ Every member other than `terms` is optional. An absent member is left out, never
 ## Writing the document
 
 `emit(document)` checks each member, then writes the members in the table's order, with no whitespace, strings escaped
-as `JSON.stringify` escapes them, and `atrHash` in lowercase. A member the table does not name is not written. The
-result is at most `MAX_DOCUMENT_BYTES`.
+as `JSON.stringify` escapes them, and `atrHash` in lowercase. A member the table does not name is not written, so a
+seller cannot publish an extension member with `emit`; `LCP §2.5` says *"The field set is extensible."* The result is
+at most `MAX_DOCUMENT_BYTES`.
 
 This example writes the reference document from the package's vectors, whose `atrHash` is SHA-256 of `"abc"` given in
 upper case:
@@ -82,9 +85,10 @@ console.log(`ETag: "${(await hash(bytes)).slice(2)}"`);
 ETag: "027d93681365deb2f485c4c34f7b0da7de8741db90a9fa6ea2437aa70bebd31a"
 ```
 
-Serve those bytes at `WELL_KNOWN_PATH`. The same input always gives the same bytes, so a strong ETag over them is
-stable: [`vectors/discovery.json`](../../lcp/vectors/discovery.json) fixes it as the SHA-256 in hex, in double
-quotes.
+Serve those bytes at `WELL_KNOWN_PATH`, over `https` (`LCP §2.1`), with `Content-Type: application/json` (`LCP §2.2`:
+*"The discovery document MUST be valid JSON (`application/json`)."*). The same input always gives the same bytes, so a
+strong ETag over them is stable: [`vectors/discovery.json`](../../lcp/vectors/discovery.json) fixes it as the SHA-256
+in hex, in double quotes.
 
 ## Reading a document
 
@@ -147,7 +151,8 @@ hold the same bytes.
 
 The fetch is yours. Bound it as you bound any fetch of a seller's bytes: one `GET` to
 `https://<host>/.well-known/legal-context.json`, a deadline, and a body cancelled once it passes `MAX_DOCUMENT_BYTES`.
-Then pass the bytes to `parse`.
+Then pass the bytes to `parse`. Cache what `parse` returns for at most 24 hours, and fetch the document again once that
+expires (`LCP §2.6`).
 
 ## Next
 
