@@ -316,8 +316,14 @@ function strictBase64(s: string): Uint8Array | null {
  * The envelope's one `transfer` operation and the one address-credential entry whose address is its `from`. The
  * payment's contract, `to` and amount are read from the entry's `rootInvocation`, the invocation the payer signs, which
  * must itself be one `transfer(from, to, amount)` with no sub-invocations.
+ *
+ * With `landed`, the transaction is one the ledger recorded, and the entry read is the first address-credential entry
+ * of `from` whose `rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations. The host tries
+ * the entries in order, skips one whose address or root invocation does not match, and authenticates the first that
+ * matches, so other entries of `from` may ride unused. With no such entry, `from` must have exactly one entry, as
+ * without `landed`.
  */
-function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork): Parsed | Refusal {
+function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, landed: boolean): Parsed | Refusal {
   const bytes = strictBase64(xdrB64);
   if (bytes === null) return refusal("stellar/tx-malformed");
   let wire: TransactionEnvelopeWire;
@@ -346,16 +352,19 @@ function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork): 
       const who = addressOf(S, a.c.address);
       return who !== null && who.s === operation.from.s ? [{ e, a }] : [];
     });
-    if (entries.length !== 1) return refusal("stellar/no-address-auth");
-    const { e: entry, a: cred } = entries[0]!;
+    const callBytes = S.xdr.InvokeContractArgs.fromXdrObject(call).toXdr("raw");
+    const signsCall = (e: SorobanAuthorizationEntryWire): boolean =>
+      e.rootInvocation.function.type === 0 &&
+      e.rootInvocation.subInvocations.length === 0 &&
+      equalBytes(callBytes, S.xdr.InvokeContractArgs.fromXdrObject(e.rootInvocation.function.contractFn).toXdr("raw"));
+    const used = landed ? entries.find(({ e }) => signsCall(e)) : undefined;
+    if (used === undefined && entries.length !== 1) return refusal("stellar/no-address-auth");
+    const { e: entry, a: cred } = used ?? entries[0]!;
     const root = entry.rootInvocation;
     if (root.function.type !== 0 || root.subInvocations.length !== 0) return refusal("stellar/not-one-transfer");
     const signed = transferOf(S, root.function.contractFn);
     if (signed === null) return refusal("stellar/not-one-transfer");
-    const agrees = equalBytes(
-      S.xdr.InvokeContractArgs.fromXdrObject(call).toXdr("raw"),
-      S.xdr.InvokeContractArgs.fromXdrObject(root.function.contractFn).toXdr("raw"),
-    );
+    const agrees = equalBytes(callBytes, S.xdr.InvokeContractArgs.fromXdrObject(root.function.contractFn).toXdr("raw"));
     const preimageHash = S.hash(preimageOf(S, network, entry, cred));
     return {
       wire,
@@ -391,18 +400,21 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 /**
  * The payment the payer's entry signs, and whether the operation invokes exactly that: the input checks of
- * `decodeStellarTx`, without refusing an operation that differs from the signed invocation.
+ * `decodeStellarTx`, without refusing an operation that differs from the signed invocation. With `landed` (a
+ * transaction the ledger recorded), the entry is the first entry of `from` that carries the operation's `transfer`;
+ * without it (before anything lands), `from` must have exactly one entry.
  */
 export function readSignedTransfer(
   xdrB64: string,
   network: StellarNetwork,
+  landed: boolean,
 ): { payment: StellarPayment; agrees: boolean } | Refusal {
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
   if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
   if (typeof xdrB64 !== "string" || xdrB64.length === 0) return refusal("stellar/tx-malformed");
   if (xdrB64.length > MAX_XDR) return refusal("stellar/tx-too-large");
-  const p = parse(S, xdrB64, network);
+  const p = parse(S, xdrB64, network, landed);
   return isRefusal(p) ? p : { payment: p.payment, agrees: p.agrees };
 }
 
@@ -416,7 +428,7 @@ export function readSignedTransfer(
  * passphrase: the V1 form, or for V2 the form with the address.
  */
 export function decodeStellarTx(xdrB64: string, network: StellarNetwork): StellarPayment | Refusal {
-  const p = readSignedTransfer(xdrB64, network);
+  const p = readSignedTransfer(xdrB64, network, false);
   if (isRefusal(p)) return p;
   return p.agrees ? p.payment : refusal("stellar/not-one-transfer");
 }
@@ -437,7 +449,7 @@ export function signingFor(
   if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
   if (typeof simulatedXdr !== "string" || simulatedXdr.length === 0) return refusal("stellar/tx-malformed");
   if (simulatedXdr.length > MAX_XDR) return refusal("stellar/tx-too-large");
-  const parsed = parse(S, simulatedXdr, network);
+  const parsed = parse(S, simulatedXdr, network, false);
   if (isRefusal(parsed)) return parsed;
   const { payment, wire, entry, cred } = parsed;
   if (!Number.isInteger(expiration) || expiration < 0 || expiration > 0xffffffff) return refusal("stellar/tx-malformed");
@@ -545,9 +557,9 @@ type Named =
   | { state: "other"; why: "transaction-failed" | "not-this-instrument" };
 
 /**
- * Reads one transaction. Settled when it succeeded and its authorization entry's preimage digest and `to` id are the
- * ones recorded at claim. A transaction that failed, or succeeded with another entry, is `other`: the entry was not
- * used there. One call.
+ * Reads one transaction. Settled when it succeeded and the payer's first address-credential entry that carries its
+ * `transfer` has the preimage digest and `to` id the ref records. A transaction that failed, or succeeded with another
+ * entry, is `other`: the entry was not used there. One call.
  */
 async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): Promise<Named> {
   let r: Awaited<ReturnType<StellarReader["transaction"]>>;
@@ -562,9 +574,10 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
   if (r.status !== "SUCCESS" || typeof r.envelopeXdr !== "string" || !Number.isInteger(r.ledger)) {
     return { state: "pending", why: "unreadable" };
   }
-  const p = decodeStellarTx(r.envelopeXdr, ref.network);
-  if (isRefusal(p) && p.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
-  if (isRefusal(p)) return { state: "other", why: "not-this-instrument" };
+  const t = readSignedTransfer(r.envelopeXdr, ref.network, true);
+  if (isRefusal(t) && t.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
+  if (isRefusal(t) || !t.agrees) return { state: "other", why: "not-this-instrument" };
+  const p = t.payment;
   if (p.auth.preimageHash !== ref.authDigest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
     return { state: "other", why: "not-this-instrument" };
   }
@@ -572,10 +585,12 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
 }
 
 /**
- * Reads the instrument through a named transaction. Settled when that transaction used the authorization entry recorded
- * at claim and succeeded. Otherwise the entry can still be used by another transaction until its expiration ledger, so
- * a named transaction that is not found, failed, or succeeded with another entry is pending. The read is final only
- * past that ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
+ * Reads the instrument through a named transaction. Settled when that transaction succeeded and used the authorization
+ * entry `ref.authDigest` names. A landed transaction is read by the payer's first address-credential entry whose
+ * `rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations; other entries of the payer in
+ * it are not read. Otherwise the entry can still be used by another transaction until its expiration ledger, so a named
+ * transaction that is not found, failed, or succeeded with another entry is pending. The read is final only past that
+ * ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
  * transaction that used the entry, failed `expired` when it is complete and finds none, and pending when it is
  * incomplete. A failed read, or a reader for another network, is pending. One call when the named transaction settles
  * or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well.

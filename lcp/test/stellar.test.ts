@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { Keypair, Networks, StrKey, buildAuthorizationEntryPreimage, xdr } from "@stellar/stellar-sdk";
+import { Keypair, Networks, StrKey, authorizeEntry, buildAuthorizationEntryPreimage, xdr } from "@stellar/stellar-sdk";
 import { ScVal, TransactionEnvelope } from "@stellar/stellar-sdk/xdr";
 import { ReaderError } from "../src/evm.js";
 import type { AtrHash } from "../src/index.js";
@@ -192,6 +192,66 @@ describe("x402-exact-stellar.json", () => {
     if ("refused" in a || "refused" in b) throw new Error("decode");
     expect(b.auth.preimageHash).toBe(V.V3.expectReference.authDigest);
     expect([b.auth.preimageHash, b.toId]).toEqual([a.auth.preimageHash, a.toId]);
+  });
+
+  describe("V5 two entries: a landed transaction is read by the payer's first entry that carries its transfer", () => {
+    const row = V.V5.rows.find((r: { case: string }) => r.case.startsWith("the named transaction succeeded carrying two entries"));
+    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
+    const payer = Keypair.fromRawEd25519Seed(Buffer.from(V.fixed.payerSeed, "hex"));
+
+    /**
+     * V3's envelope with another entry of the payer ahead of V3's signed entry: V3's transfer at `amount`, nonce `nonce`,
+     * signed by `authorizeEntry` for expiration 1000 on testnet; and that entry's preimage digest, as the SDK builds it.
+     */
+    async function withEntryAhead(nonce: bigint, amount: bigint) {
+      const env = xdr.TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
+      if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
+      const auth = env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth;
+      const first = xdr.SorobanAuthorizationEntry.fromXdr(xdr.SorobanAuthorizationEntry.fromXdrObject(auth[0]!).toXdr()).toXdrObject();
+      if (first.credentials.type !== 1 || first.rootInvocation.function.type !== 0) throw new Error("not an address entry");
+      first.credentials.address.nonce = nonce;
+      first.credentials.address.signature = { type: 1 };
+      first.rootInvocation.function.contractFn.args[2] = { type: 10, i128: { hi: 0n, lo: amount } };
+      const signed = await authorizeEntry(xdr.SorobanAuthorizationEntry.fromXdrObject(first), payer, 1000, Networks.TESTNET);
+      const preimage = buildAuthorizationEntryPreimage(signed, 1000, Networks.TESTNET).toXdr("raw");
+      env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth = [signed.toXdrObject(), auth[0]!];
+      return { envelope: xdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64"), digest: `0x${sha256(preimage)}` };
+    }
+
+    it("@stellar/stellar-sdk 17.1.0 writes the row's envelope: V3's, with the payer's entry for an amount of 1, nonce 2, ahead", async () => {
+      expect(row).toBeDefined();
+      expect((await withEntryAhead(2n, 1n)).envelope).toBe(row.envelope);
+    });
+
+    it("status and stellarLocate read it by V3's entry; before anything lands it is refused (agreedRefusals row 3)", async () => {
+      expect(await stellarStatus(ref, readerFor(row))).toEqual(row.expect);
+      const listed: StellarReader = {
+        ...readerFor({ status: "NOT_FOUND" }),
+        transaction: async (hash) => (hash === "bb".repeat(32) ? readerFor(row).transaction(hash) : { status: "NOT_FOUND", oldestLedger: 1 }),
+        transfers: async () => ({ events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }], complete: true, oldestLedger: ref.fromLedger }),
+      };
+      expect(await stellarLocate(ref, listed)).toEqual({ found: "bb".repeat(32), complete: true });
+      const code = V.agreedRefusals.rows[3].expect;
+      expect(decodeStellarTx(row.envelope, "stellar:testnet")).toEqual(refused(code));
+      const p: StellarPaymentPayload = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: row.envelope }, extensions: V.V3.extensions };
+      expect(await exactStellar.bound(p)).toEqual(refused(code));
+      expect(await exactStellar.reference(p)).toEqual(refused(code));
+    });
+
+    // rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing: the host tries the entries in order, skips one
+    // whose address or root invocation does not match, and authenticates the first that matches. A second signing of
+    // V3's transfer, with no sub-invocations, ahead of V3's entry is then the entry the transaction used, and V3's entry
+    // rides unused.
+    it("a second signing of the same transfer ahead of V3's entry is the one read, so V3's ref is not this instrument", async () => {
+      const ahead = await withEntryAhead(2n, 10_000_000n);
+      expect(ahead.digest).not.toBe(ref.authDigest);
+      const landed = { status: "SUCCESS", envelope: ahead.envelope, ledger: 990, latestLedger: 995 };
+      expect(await stellarStatus(ref, readerFor(landed))).toEqual({ state: "pending", why: "not-this-instrument" });
+      expect(await stellarStatus({ ...ref, authDigest: ahead.digest as StellarRef["authDigest"] }, readerFor(landed))).toEqual({
+        state: "settled",
+        ledger: 990,
+      });
+    });
   });
 
   it("V3v2: sorobanCredentialsAddressV2 decodes, builds and settles", async () => {

@@ -318,6 +318,25 @@ describe("mpp-charge-stellar.json", () => {
     expect(ref.transaction).toBe(V.refusals[0].payload.hash);
   });
 
+  it("push: a landed transaction carrying another entry of the payer binds H by the entry it used (x402-exact-stellar.json V5's two-entry row)", async () => {
+    const row = XST.V5.rows.find((r: { case: string }) => r.case.startsWith("the named transaction succeeded carrying two entries"));
+    const reader: StellarReader = {
+      network: "stellar:testnet",
+      transaction: async () => ({ status: "SUCCESS", envelopeXdr: row.envelope, ledger: 990, oldestLedger: 1 }),
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }),
+      latestLedger: async () => 995,
+    };
+    const fetched = await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader);
+    if ("refused" in fetched) throw new Error(fetched.code);
+    expect(await chargeStellar.bound(fetched)).toBe(H);
+    const ref = await chargeStellar.reference(fetched);
+    if ("refused" in ref) throw new Error(ref.code);
+    expect(ref.authDigest).toBe(XST.V3.expectReference.authDigest);
+    expect(await chargeStellar.status({ ...ref, transaction: ref.transaction! }, reader)).toEqual(row.expect);
+    const pull = credential(placed, { type: "transaction", transaction: row.envelope });
+    expect(await chargeStellar.bound(pull)).toEqual(refused(XST.agreedRefusals.rows[3].expect));
+  });
+
   it("push: fetchPresented refuses a transaction the reader reports FAILED", async () => {
     const row = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "stellar/tx-failed");
     const reader: StellarReader = {

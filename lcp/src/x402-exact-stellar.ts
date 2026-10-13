@@ -139,7 +139,7 @@ function presentedOf(presented: unknown) {
   if (isRefusal(lc)) return lc;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
-  const signed = readSignedTransfer(payload["transaction"] as string, accepted.network as "stellar:pubnet");
+  const signed = readSignedTransfer(payload["transaction"] as string, accepted.network as "stellar:pubnet", false);
   if (isRefusal(signed)) return signed;
   const { payment } = signed;
   if (payment.toId === null) return refusal("stellar/no-carrier");

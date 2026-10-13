@@ -357,7 +357,7 @@
   }
  ],
  "V5": {
-  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists; a listed transaction bbbb… reads as candidate.",
+  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists; a listed transaction bbbb… reads as candidate. The Soroban host tries a transaction's authorization entries in order, skips one whose address or root invocation does not match, and authenticates the first that matches (rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing), so a landed transaction is read by the payer's first address-credential entry whose rootInvocation is the operation's transfer with no sub-invocations, and another entry of the payer in the same transaction is not read.",
   "ref": {
    "network": "stellar:testnet",
    "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -492,6 +492,17 @@
      "state": "pending",
      "why": "unreadable"
     }
+   },
+   {
+    "case": "the named transaction succeeded carrying two entries of the payer: first one for transfer(payer, V1's M, 1), nonce 2, which does not match the operation and is not used, then V3's signed entry; written from V3's envelope with @stellar/stellar-sdk 17.1.0's XDR types, the first entry signed by its authorizeEntry for expiration 1000 on testnet",
+    "status": "SUCCESS",
+    "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAgAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAIAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQNZXr4kbTk1wEK14gkTcdYQ7uZJTLdvU921+OdM0+39lULGQhmcJrnH5AFE61TzZ3FqH4Zzp/Siqx7PeAX2ZhAoAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAANOCzoWRdmGtGUn4blns3v6kcyz0lmFw/i3zc7+XuyTZqSAQU6Vn5B9w2mdBX9DmEgRCfMr+yu12ncVkKP+ZCwAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+    "ledger": 990,
+    "latestLedger": 995,
+    "expect": {
+     "state": "settled",
+     "ledger": 990
+    }
    }
   ],
   "rebuilt": {
@@ -550,7 +561,7 @@
     "expect": "stellar/tx-too-large"
    },
    {
-    "case": "no single authorization entry with sorobanCredentialsAddress or sorobanCredentialsAddressV2 whose address is from",
+    "case": "before a transaction lands (decodeStellarTx, build, bound and reference): not exactly one authorization entry with sorobanCredentialsAddress or sorobanCredentialsAddressV2 whose address is from, so the envelope of V5's two-entry row is refused; status and stellarLocate read a landed transaction as V5 says",
     "expect": "stellar/no-address-auth"
    },
    {

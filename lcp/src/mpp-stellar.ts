@@ -68,7 +68,8 @@ function bindingOf(credential: MppCredential): { h: AtrHash; checked: Checked; p
   if (isRefusal(e)) return e;
   const xdr = presentedXdr(e.payload);
   if (isRefusal(xdr)) return xdr;
-  const signed = readSignedTransfer(xdr, e.checked.details["network"] as StellarNetwork);
+  const landed = e.payload["type"] === "hash";
+  const signed = readSignedTransfer(xdr, e.checked.details["network"] as StellarNetwork, landed);
   if (isRefusal(signed)) return signed;
   const { payment } = signed;
   if (payment.toId === null) return refusal("stellar/no-carrier");
@@ -81,7 +82,10 @@ function bindingOf(credential: MppCredential): { h: AtrHash; checked: Checked; p
 
 /**
  * H from the echoed challenge, once the `to` of the invocation the payer's entry signs is the request's muxed
- * `recipient` whose id is H's first 8 bytes, and the operation invokes exactly that.
+ * `recipient` whose id is H's first 8 bytes, and the operation invokes exactly that. For a `transaction` credential,
+ * not yet submitted, the operation carries exactly one address-credential entry of the payer. For a `hash` credential,
+ * whose transaction landed, the entry is the payer's first address-credential entry whose `rootInvocation` is the
+ * operation's `transfer`, byte for byte; other entries of the payer are not read.
  * The authorization's signature is not verified here; the network verifies it when the entry is used.
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
@@ -91,7 +95,10 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(b) ? b : b.h;
 }
 
-/** The read keys from the signed entry; `transaction` only for a credential the client submitted itself. */
+/**
+ * The read keys from the signed entry, the one `bound` reads; `transaction` only for a credential the client submitted
+ * itself.
+ */
 async function reference(input: unknown): Promise<StellarRef | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
