@@ -324,7 +324,7 @@ Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8
 import { decodeStellarTx, muxedFor, muxedId, … } from "@integraledger/lcp/stellar";
 ```
 
-**Values (11):** `decodeStellarTx`, `muxedFor`, `muxedId`, `PASSPHRASE`, `SCVAL_MAX_DEPTH`, `SCVAL_MAX_ELEMENTS`, `scValsWithinCaps`, `stellarLocate`, `stellarStatus`, `transferEventOf`, `transferEventTopics`.
+**Values (10):** `decodeStellarTx`, `muxedFor`, `muxedId`, `PASSPHRASE`, `SCVAL_MAX_DEPTH`, `SCVAL_MAX_ELEMENTS`, `stellarLocate`, `stellarStatus`, `transferEventOf`, `transferEventTopics`.
 
 **Types (6):** `StellarNetwork`, `StellarPayment`, `StellarReader`, `StellarRef`, `StellarStatus`, `StellarUnsigned`.
 

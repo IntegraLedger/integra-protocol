@@ -9,7 +9,6 @@ export {
   decodeStellarTx,
   muxedFor,
   muxedId,
-  scValsWithinCaps,
   stellarLocate,
   stellarStatus,
   transferEventOf,

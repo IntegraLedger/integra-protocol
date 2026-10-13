@@ -5,7 +5,8 @@ import { xdr } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 import { MSGPACK_MAX_DEPTH } from "../src/avm.js";
 import { msgpackWithinCaps } from "../src/internal/avm.js";
-import { decodeStellarTx, SCVAL_MAX_DEPTH, SCVAL_MAX_ELEMENTS, scValsWithinCaps } from "../src/stellar.js";
+import { scValsWithinCaps } from "../src/internal/stellar.js";
+import { decodeStellarTx, SCVAL_MAX_DEPTH, SCVAL_MAX_ELEMENTS } from "../src/stellar.js";
 import { decodeBlob, XRPL_MAX_DEPTH, XRPL_MAX_FIELDS } from "../src/xrpl.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/decoder-caps.json", import.meta.url), "utf8"));
