@@ -18,6 +18,7 @@ import {
   wireOf,
   TOKEN,
   TOKEN_2022,
+  type SvmPaymentPayload,
   type SvmRef,
   type SvmTx,
 } from "./internal/svm.js";
@@ -44,15 +45,6 @@ const ID = "x402/exact/solana" as const;
 const MAX_MEMO = 256;
 const U64_LIMIT = 1n << 64n;
 const DECIMAL = /^[0-9]{1,20}$/;
-
-/** A payment on this pairing: the base64 partially signed versioned transaction. */
-export interface SvmPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { transaction: string };
-  extensions?: PaymentRequired["extensions"];
-}
 
 /** What the payer signs, and how its signature completes the payment. */
 export interface SvmUnsigned<P = SvmPaymentPayload> {

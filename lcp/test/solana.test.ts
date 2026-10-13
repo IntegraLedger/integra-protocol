@@ -11,7 +11,7 @@ import {
   isWritableRole,
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
-import { hash, type AtrHash } from "../src/index.js";
+import { hash, type AtrHash, type Refusal } from "../src/index.js";
 import {
   decodeSvmTx,
   svmCarrier,
@@ -23,7 +23,7 @@ import {
   type SvmReader,
   type SvmRef,
 } from "../src/svm.js";
-import { exactSvm, pairingOf, type SvmPaymentPayload } from "../src/x402-exact-solana.js";
+import { exactSvm, pairingOf, type SvmUnsigned } from "../src/x402-exact-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-solana.json", import.meta.url), "utf8"));
@@ -33,6 +33,7 @@ const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex")
 const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.option;
 const refused = (code: string) => ({ refused: true, code });
+type Payment = Exclude<ReturnType<SvmUnsigned["complete"]>, Refusal>;
 
 const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({
   wire,
@@ -175,7 +176,7 @@ describe("x402-exact-solana.json", () => {
   it("V2: bound and reference of the partially signed wire", async () => {
     const wire = b64(V.V2.wireBase64);
     expect(wire.length).toBe(V.V2.wireLength);
-    const p: SvmPaymentPayload = { x402Version: 2, accepted: V.V2.accepted, payload: { transaction: V.V2.wireBase64 } };
+    const p: Payment = { x402Version: 2, accepted: V.V2.accepted, payload: { transaction: V.V2.wireBase64 } };
     expect(await exactSvm.bound(p)).toBe(V.V2.expectBound);
     expect(await exactSvm.reference(p)).toEqual(V.V2.expectReference);
     const ref = await exactSvm.reference(p);
@@ -195,7 +196,7 @@ describe("x402-exact-solana.json", () => {
         );
         continue;
       }
-      const p: SvmPaymentPayload = { x402Version: 2, accepted: row.accepted, payload: { transaction: row.wireBase64 } };
+      const p: Payment = { x402Version: 2, accepted: row.accepted, payload: { transaction: row.wireBase64 } };
       expect(await exactSvm.bound(p), row.case).toEqual(refused(row.expect));
     }
   });
@@ -300,7 +301,7 @@ describe("x402-exact-solana.json carrierSpelling", () => {
   const C = V.carrierSpelling;
 
   it("bound refuses the hash in upper-case hex, though the echoed extra.memo carries that spelling", async () => {
-    const p: SvmPaymentPayload = {
+    const p: Payment = {
       x402Version: 2,
       accepted: C.bound.accepted,
       payload: { transaction: C.bound.wireBase64 },
@@ -346,7 +347,7 @@ describe("x402-exact-solana.json durableNonce", () => {
 
   it("reference records the nonce only for AdvanceNonceAccount naming the nonce accounts", async () => {
     for (const row of D.reference) {
-      const p: SvmPaymentPayload = {
+      const p: Payment = {
         x402Version: 2,
         accepted: V.V2.accepted,
         payload: { transaction: row.wireBase64 },
@@ -363,7 +364,7 @@ describe("x402-exact-solana.json durableNonce", () => {
     expect(rows.length).toBe(1);
     for (const row of rows) {
       expect(row.instruction0Accounts[0], row.case).toBeGreaterThanOrEqual(row.staticKeys);
-      const p: SvmPaymentPayload = {
+      const p: Payment = {
         x402Version: 2,
         accepted: V.V2.accepted,
         payload: { transaction: row.wireBase64 },
@@ -397,7 +398,7 @@ describe("x402-exact-solana.json durableNonce", () => {
       expect(row.expectReference.nonce.value).toBe(D.movedValue);
       expect(row.expectReference.digest).toBe(`0x${row.messageSha256}`);
       expect(row.expectReference.digest).toBe(`0x${createHash("sha256").update(Uint8Array.from(signed.messageBytes)).digest("hex")}`);
-      const p: SvmPaymentPayload = {
+      const p: Payment = {
         x402Version: 2,
         accepted: V.V2.accepted,
         payload: { transaction: row.wireBase64 },

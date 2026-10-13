@@ -1,7 +1,7 @@
 /**
  * Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
  * digest of the message the payer signed, and settlement read through a bounded reader. The public names are
- * re-exported by `../svm.ts`; the rest serve the Solana pairings.
+ * re-exported by `../svm.ts`; the rest serve the Solana pairings and the root's `Presented`.
  */
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -10,9 +10,22 @@ import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
 import { isObject } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 
 /** CAIP-2: `solana:` and 32 base58 characters. */
 export type SolanaNetwork = `solana:${string}`;
+
+/**
+ * A payment on `x402/exact/solana`: the base64 partially signed versioned transaction. `../x402-exact-solana.ts`
+ * returns it from `complete`, and the root names it among the payments `Presented` covers; no entry point exports it.
+ */
+export interface SvmPaymentPayload {
+  x402Version: 2;
+  resource?: PaymentRequired["resource"];
+  accepted: PaymentRequirements;
+  payload: { transaction: string };
+  extensions?: PaymentRequired["extensions"];
+}
 
 export const MEMO_V3 = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 export const MEMO_V4 = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH";
