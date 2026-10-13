@@ -4,12 +4,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { pairingOf, toLcpString, type AtrHash } from "../src/index.js";
 import {
+  chargeHedera,
   decodeHederaTx,
   exactHedera,
   exactHederaExecutor,
   executorStatus,
   hederaIdDigest,
-  hederaNetworkOfChainId,
   hederaPairingOf,
   hederaStatus,
   txIdMirror,
@@ -220,9 +220,10 @@ describe("x402-exact-hedera.json", () => {
   });
 
   it("MPP chain ids map to the two networks named, and nothing else", () => {
-    expect(hederaNetworkOfChainId(295)).toBe("hedera:mainnet");
-    expect(hederaNetworkOfChainId(296)).toBe("hedera:testnet");
-    expect(hederaNetworkOfChainId(297)).toEqual({ refused: true, code: "hedera/chain-id-unnamed" });
+    const network = (chainId: number) => chargeHedera.network({ methodDetails: { chainId } });
+    expect(network(295)).toBe("hedera:mainnet");
+    expect(network(296)).toBe("hedera:testnet");
+    expect(network(297)).toEqual({ refused: true, code: "hedera/chain-id-unnamed" });
   });
 });
 

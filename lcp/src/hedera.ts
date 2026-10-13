@@ -49,7 +49,7 @@ const HEDERA_CHAIN_IDS: Readonly<Record<number, HederaNetwork>> = Object.freeze(
 });
 
 /** The CAIP-2 network of an MPP `methodDetails.chainId`: 295 and 296 only. */
-export function hederaNetworkOfChainId(chainId: unknown): HederaNetwork | Refusal {
+function hederaNetworkOfChainId(chainId: unknown): HederaNetwork | Refusal {
   if (typeof chainId !== "number" || !Object.hasOwn(HEDERA_CHAIN_IDS, chainId)) return refusal("hedera/chain-id-unnamed");
   return HEDERA_CHAIN_IDS[chainId]!;
 }
