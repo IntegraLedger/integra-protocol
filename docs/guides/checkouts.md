@@ -320,7 +320,7 @@ lcp-hash lcp-hash true
 The [Agent2Agent protocol](https://a2a-protocol.org) signs nothing per transaction, so it has no place for H in a
 payment. What it can do is deliver H and the link with the task. This package defines an A2A extension for that, and
 exports no pairing: `binding` is the refusal `a2a/no-signed-place`, and the payment made for the task uses its own
-pairing, whose record states what it proves.
+pairing, whose record states what it proves. The extension targets A2A 1.0.
 
 | Export | What it does |
 |---|---|
@@ -341,7 +341,7 @@ const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const header = "https://lcp.integraledger.com/a2a/legal-context/v1";
 console.log(requested(header));
 
-const task: A2aTask = { id: "task-1", contextId: "ctx-1", status: { state: "input-required" }, kind: "task" };
+const task: A2aTask = { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_INPUT_REQUIRED" } };
 const delivered = place(task, h, `https://atr.seller.example/${h}`, header);
 if (isRefusal(delivered)) throw new Error(String(delivered.code));
 const got = read(delivered);
