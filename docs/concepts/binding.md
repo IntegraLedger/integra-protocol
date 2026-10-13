@@ -87,8 +87,9 @@ true true
 
 On x402, the ATR's binding slot also records the request the challenge answers: its method, path, query and a SHA-256
 of its body (`requestCommitment`), beside every option the challenge offers, exactly as issued (`tie`). On MPP, the
-binding slot records every challenge's bound parameters as issued. H therefore commits to the payment options and the
-request, as well as to the parties' content.
+binding slot records every challenge's bound parameters as issued, including the body's `digest` when the seller sets
+one; MPP binds no HTTP method, path or query. H therefore commits to the payment options and the request, as well as to
+the parties' content.
 
 ## Next
 
