@@ -183,7 +183,7 @@ The response config is an x402 version 2 `PaymentRequired`, with two members add
         "x402Version": 2,
         "resource": {
           "url": "https://shop.example/checkout-sessions/chk_123",
-          "description": "House roast, 1 lb",
+          "description": "Example item",
           "mimeType": "application/json"
         },
         "accepts": [
@@ -392,7 +392,7 @@ Other members are the platform's own.
             "x402Version": 2,
             "resource": {
               "url": "https://shop.example/checkout-sessions/chk_123",
-              "description": "House roast, 1 lb",
+              "description": "Example item",
               "mimeType": "application/json"
             },
             "accepted": {
