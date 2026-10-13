@@ -204,7 +204,9 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
  * Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
  * identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
  * transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. The
- * ledger is read first: failed `expired` only when its timestamp is past `expiresAt` and the lookup by sequence number
+ * ledger is read first. The Aptos prologue takes a transaction only while the ledger's time in whole seconds is below
+ * its expiry (aptos-core's `transaction_validation.move`: `timestamp::now_seconds() < txn_expiration_time`), so status
+ * is failed `expired` only when the ledger's timestamp is at or past `expiresAt` and the lookup by sequence number
  * finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
  * is pending `not-found`. A failed read, or a reader for another network, is pending. A ref whose sequence number or
  * expiry is not a decimal string below 2^64, or whose `sender`, `idDigest` or named `transaction` is not `0x` and 64
@@ -241,7 +243,7 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
     const readTo = notFoundPoint(found, "timestampUsecs");
     if (readTo !== undefined) {
       const covered = readTo !== null && readTo >= ledger.timestampUsecs;
-      return covered && ledger.timestampUsecs / 1_000_000n > expiresAt
+      return covered && ledger.timestampUsecs / 1_000_000n >= expiresAt
         ? { state: "failed", why: "expired" }
         : { state: "pending", why: "not-found" };
     }

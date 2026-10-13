@@ -256,8 +256,8 @@ describe("V4 · status", () => {
     });
   });
   // Every successful Aptos REST response carries X-Aptos-Ledger-TimestampUsec, the ledger timestamp of that answer, and a
-  // transaction cannot commit past its expiration_timestamp_secs. A lookup computed at a ledger before the one read
-  // first cannot show the transaction absent at that ledger, whatever the ledger read first says.
+  // transaction cannot commit at or past its expiration_timestamp_secs. A lookup computed at a ledger before the one
+  // read first cannot show the transaction absent at that ledger, whatever the ledger read first says.
   it("a not-found lookup computed before the ledger read first is pending, never expired", async () => {
     const [row] = V.V4.status.filter((r: { case: string }) => r.case.endsWith("1790300896 s"));
     const ledgerUsecs = 1790300896000000n;
@@ -270,6 +270,21 @@ describe("V4 · status", () => {
     expect(await exactAptos.status(refOf(row.ref), unnamed)).toEqual({ state: "pending", why: "not-found" });
     const bare = { ...reader(row), bySequence: async () => null as never };
     expect(await exactAptos.status(refOf(row.ref), bare)).toEqual({ state: "pending", why: "unreadable" });
+  });
+  // aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move:134-137: the
+  // prologue asserts `timestamp::now_seconds() < txn_expiration_time` and refuses with PROLOGUE_ETRANSACTION_EXPIRED
+  // otherwise; timestamp.move:67-69 gives now_seconds as the ledger's microseconds / 1000000. So from the ledger second
+  // equal to expiresAt the transaction cannot commit, and a lookup that covers that ledger shows it never will.
+  it("an absent transaction is expired from the ledger second that equals expiresAt, not-found before", async () => {
+    const [row] = V.V4.status.filter((r: { case: string }) => r.case.endsWith("1790300896 s"));
+    const expiresAt = BigInt(row.ref.expiresAt);
+    const second = expiresAt * 1_000_000n;
+    for (const at of [second - 1_000_000n, second - 1n, second, second + 1n, second + 999_999n, second + 1_000_000n]) {
+      const covering = { notFound: true, timestampUsecs: at.toString() };
+      const r = reader({ ...row, ledgerUsecs: at.toString(), bySequence: covering });
+      const want = at >= second ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+      expect([at, await exactAptos.status(refOf(row.ref), r)]).toEqual([at, want]);
+    }
   });
   it("a reader for another network, or a ledger for another chain, is unreadable", async () => {
     const row = V.V4.status[0];

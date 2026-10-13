@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e\u2026ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.3.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. Ledger times are microseconds. A lookup by sequence number that finds nothing answers notFound with the ledger timestamp of that answer (the REST API's X-Aptos-Ledger-TimestampUsec header), so it shows absence only through that ledger.",
+ "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e\u2026ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.3.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. Ledger times are microseconds. A lookup by sequence number that finds nothing answers notFound with the ledger timestamp of that answer (the REST API's X-Aptos-Ledger-TimestampUsec header), so it shows absence only through that ledger. An absent transaction is expired only once the ledger time read first, in whole seconds, is at or past expiresAt: the Aptos prologue takes a transaction only while timestamp::now_seconds() < txn_expiration_time, and refuses it from that second with PROLOGUE_ETRANSACTION_EXPIRED (aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -394,7 +394,7 @@
     }
    },
    {
-    "case": "byHash null, bySequence not found at the ledger time read first, 1790300895 s",
+    "case": "byHash null, bySequence not found at the ledger time read first, 1790300895 s, the expiry itself",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -410,8 +410,8 @@
      "timestampUsecs": "1790300895000000"
     },
     "expect": {
-     "state": "pending",
-     "why": "not-found"
+     "state": "failed",
+     "why": "expired"
     }
    },
    {
@@ -467,6 +467,27 @@
     "bySequence": {
      "notFound": true,
      "timestampUsecs": "1790300865000000"
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-found"
+    }
+   },
+   {
+    "case": "byHash null, bySequence not found at the ledger time read first, 1790300894.999999 s, the microsecond before the expiry",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+    },
+    "ledgerUsecs": "1790300894999999",
+    "byHash": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300894999999"
     },
     "expect": {
      "state": "pending",

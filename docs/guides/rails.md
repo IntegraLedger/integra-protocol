@@ -185,6 +185,11 @@ the tip is at or past the transaction's TTL slot, so a rollback above that depth
 `not-found`, never failed. The ledger takes a transaction only in a slot below its TTL (`invalid_hereafter`), so the
 TTL slot is the first in which it cannot land.
 
+On Aptos, the ledger takes a transaction only while its time, in whole seconds, is below the transaction's
+`expiration_timestamp_secs` (the prologue's `timestamp::now_seconds() < txn_expiration_time`), so that second is the
+first in which it cannot commit. `aptosStatus(ref, reader)` answers failed `expired` for an absent transaction only once
+the ledger's timestamp, read first, is at or past the reference's `expiresAt`.
+
 On the rails in the table below, a verdict that a payment will never land rests on a reference point: a head time, a
 ledger, a confirmed nonce, a final height or a chain tip. The reference point is read before the lookup it judges, and
 a lookup shows the payment absent only up to the point its own source had reached. So the reader's answer names that
