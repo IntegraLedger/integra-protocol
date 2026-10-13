@@ -33,6 +33,19 @@ describe("without @stellar/stellar-sdk", () => {
     });
   });
 
+  // The choice is V2's simulated transaction for V3's option and the payment is V3's, which the pairing builds, binds and
+  // references with the peer (x402-exact-stellar.json).
+  it("x402/exact/stellar's build, bound and reference refuse peer-missing, as its advertise does", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const refused = { refused: true, code: CODE };
+    const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.V3.accepted] };
+    const choice = { required, accepted: V.V3.accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer };
+    expect(await exactStellar.build(choice, V.fixed.H)).toEqual(refused);
+    const presented = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: V.V3.envelope }, extensions: V.V3.extensions };
+    expect(await exactStellar.bound(presented)).toEqual(refused);
+    expect(await exactStellar.reference(presented)).toEqual(refused);
+  });
+
   it("mpp/charge/stellar's advertise refuses peer-missing, as its bound and reference do", { timeout: IMPORT_MS }, async () => {
     const { chargeStellar } = await import("../src/mpp.js");
     const refused = { refused: true, code: CODE };

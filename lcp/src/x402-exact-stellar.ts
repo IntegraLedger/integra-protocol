@@ -107,6 +107,7 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * Nothing reaches the signer unless every one holds.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isThis));
   if (ok !== true) return ok;
@@ -129,6 +130,7 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
 
 /** The option, the echoed hash and the decoded transfer of a payment, or the refusal that names what is wrong. */
 function presentedOf(presented: unknown) {
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = presented["accepted"] as PaymentRequirements;
   if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
