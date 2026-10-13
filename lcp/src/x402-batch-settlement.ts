@@ -317,10 +317,11 @@ function nonZeroAddress(v: unknown): v is Hex {
 }
 
 /**
- * The batch-settlement pairing an option names, or undefined. A Solana option names `extra.receiverAuthorizer` and
- * client voucher signing (`extra.voucherSigner` absent or `"client"`).
+ * The batch-settlement pairing an option names, or undefined: the filter each of the three pairings applies to an
+ * option, through which the root `pairingOf` names it. A Solana option names `extra.receiverAuthorizer` and client
+ * voucher signing (`extra.voucherSigner` absent or `"client"`).
  */
-export function pairingOf(option: PaymentRequirements): BatchPairingId | undefined {
+function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
   if (!isObject(option) || option.scheme !== "batch-settlement" || !isObject(option.extra)) return undefined;
   const extra = option.extra;
   const flow = extra["paymentFlow"];
@@ -366,12 +367,12 @@ function payable(o: PaymentRequirements): boolean {
   );
 }
 
-const isId = (id: BatchPairingId) => (o: PaymentRequirements): boolean => pairingOf(o) === id;
+const isId = (id: BatchPairingId) => (o: PaymentRequirements): boolean => batchIdOf(o) === id;
 
 function payloadOf(p: unknown, id: BatchPairingId): { accepted: PaymentRequirements; payload: Record<string, unknown> } | Refusal {
   if (!isObject(p) || p["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = p["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || pairingOf(accepted) !== id) return refusal("x402/option-not-this-pairing");
+  if (!isObject(accepted) || batchIdOf(accepted) !== id) return refusal("x402/option-not-this-pairing");
   const payload = p["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   return { accepted, payload };
@@ -1153,7 +1154,7 @@ async function cfBuild(
 async function cfBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = presented["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || pairingOf(accepted) !== CF_ID) return refusal("x402/option-not-this-pairing");
+  if (!isObject(accepted) || batchIdOf(accepted) !== CF_ID) return refusal("x402/option-not-this-pairing");
   const lc = legalContextOf(presented["extensions"]);
   return isRefusal(lc) ? lc : lc.h;
 }

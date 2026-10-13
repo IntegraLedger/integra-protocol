@@ -74,6 +74,28 @@ describe("the root pairingOf, walking BINDINGS", () => {
     expect(pairingOf(bare as PaymentRequirements)).toBeUndefined();
   });
 
+  // Every option x402-batch-settlement.json holds (the fixed EVM and Solana options, ES4's and EC1's accepted options,
+  // and the buyer rows' documents and payments) names its pairing by its network's CAIP-2 namespace.
+  it("names the batch-settlement pairing of every option in x402-batch-settlement.json", () => {
+    const byNamespace: Record<string, string> = {
+      eip155: "x402/batch-settlement/eip155",
+      solana: "x402/batch-settlement/solana",
+      cloudflare: "x402/batch-settlement/cloudflare",
+    };
+    const options: [string, PaymentRequirements][] = [];
+    const walk = (v: unknown, path: string): void => {
+      if (typeof v !== "object" || v === null) return;
+      if (!Array.isArray(v) && "scheme" in v && "network" in v) options.push([path, v as PaymentRequirements]);
+      for (const [k, x] of Object.entries(v)) walk(x, `${path}.${k}`);
+    };
+    walk(vectors("x402-batch-settlement"), "x402-batch-settlement");
+    for (const [path, o] of options) {
+      expect(o.scheme, path).toBe("batch-settlement");
+      expect(pairingOf(o), path).toBe(byNamespace[o.network.split(":")[0]!]);
+    }
+    expect(new Set(options.map(([, o]) => pairingOf(o)))).toEqual(new Set(Object.values(byNamespace)));
+  });
+
   it("names nothing for an option no pairing serves", () => {
     const o = at(vectors("x402-exact-eip155-eip3009"), "fixed.O");
     expect(pairingOf({ ...o, scheme: "unknown" })).toBeUndefined();

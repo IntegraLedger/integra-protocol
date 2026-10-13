@@ -1,6 +1,6 @@
-// Runs x402-batch-settlement.json through the x402-batch-settlement and svm entry points. Every expected value is the
-// file's, except the pairingOf test's, which are the x402 SVM batch-settlement option table's, as its name says. A
-// durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
+// Runs x402-batch-settlement.json through the x402-batch-settlement and svm entry points, and the root pairingOf. Every
+// expected value is the file's, except the pairingOf test's, which are the x402 SVM batch-settlement option table's, as
+// its name says. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
 // x402-exact-solana.json's nonce; its digest is node:crypto's SHA-256 of kit's message.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -16,7 +16,7 @@ import {
 import { hashDomain, hashTypedData, keccak256, toBytes, toEventSelector } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { ReaderError, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
-import type { AtrHash, Refusal } from "../src/index.js";
+import { pairingOf, type AtrHash, type Refusal } from "../src/index.js";
 import {
   PAYMENT_CHANNELS,
   channelPda,
@@ -37,10 +37,10 @@ import {
   batchEvm,
   batchSvm,
   erc3009DepositNonce,
-  pairingOf,
   type BatchUnsigned,
   type ChannelConfig,
 } from "../src/x402-batch-settlement.js";
+import * as batchSettlement from "../src/x402-batch-settlement.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 
@@ -460,7 +460,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     }
   });
 
-  it("pairingOf: a Solana option names extra.receiverAuthorizer and client voucher signing (x402 751590a2, scheme_batch_settlement_svm.md L244-246)", () => {
+  it("the root pairingOf: a Solana option names extra.receiverAuthorizer and client voucher signing (x402 751590a2, scheme_batch_settlement_svm.md L244-246)", () => {
     const o: PaymentRequirements = S.option;
     const extra = o.extra!;
     const { receiverAuthorizer: _ra, ...noAuthorizer } = extra;
@@ -496,5 +496,11 @@ describe("x402-batch-settlement.json: Cloudflare", () => {
     const built = unwrap(await batchCloudflare.build({ required: doc, accepted: doc.accepts[0]! }, H));
     expect(built.payload).toEqual(V.EC1.payload.payload);
     expect(await batchCloudflare.bound(built)).toBe(H);
+  });
+});
+
+describe("the x402-batch-settlement entry point", () => {
+  it("exports no pairingOf of its own: the root pairingOf names the three pairings", () => {
+    expect("pairingOf" in batchSettlement).toBe(false);
   });
 });

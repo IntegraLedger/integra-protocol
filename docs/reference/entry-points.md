@@ -432,7 +432,7 @@ import { BATCH_SETTLEMENT, batchChannelCreated, batchChannelId, … } from "@int
 
 **Pairings:** `x402/batch-settlement/cloudflare`, `x402/batch-settlement/eip155`, `x402/batch-settlement/solana`.
 
-**Values (14):** `BATCH_SETTLEMENT`, `batchChannelCreated`, `batchChannelId`, `batchCloudflare`, `batchEvm`, `batchSvm`, `CHANNEL_CONFIG_TYPEHASH`, `CHANNEL_CREATED_TOPIC`, `DEPOSITED_TOPIC`, `ERC3009_DEPOSIT_COLLECTOR`, `erc3009DepositNonce`, `pairingOf`, `PERMIT2_DEPOSIT_COLLECTOR`, `VOUCHER_TYPEHASH`.
+**Values (13):** `BATCH_SETTLEMENT`, `batchChannelCreated`, `batchChannelId`, `batchCloudflare`, `batchEvm`, `batchSvm`, `CHANNEL_CONFIG_TYPEHASH`, `CHANNEL_CREATED_TOPIC`, `DEPOSITED_TOPIC`, `ERC3009_DEPOSIT_COLLECTOR`, `erc3009DepositNonce`, `PERMIT2_DEPOSIT_COLLECTOR`, `VOUCHER_TYPEHASH`.
 
 **Types (8):** `BatchEvmOpen`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `ChannelConfig`, `ChannelMembers`, `Eip712Request`, `SigningRequest`.
 
