@@ -73,10 +73,12 @@ function payable(o: PaymentRequirements): boolean {
 
 /**
  * The option with `payTo` back to its base `G…` account: the option as the seller issued it. An option that carries a
- * `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ * `refused` member is `x402/option-malformed`. Without @stellar/stellar-sdk no `payTo` can be read, so any other option
+ * is `stellar/peer-missing`. A value that is not an object comes back as it is.
  */
 function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
+  if (isObject(option) && !hasPeer()) return refusal("stellar/peer-missing");
   const m = unmux(option?.payTo);
   return m === null ? option : { ...option, payTo: m.base };
 }

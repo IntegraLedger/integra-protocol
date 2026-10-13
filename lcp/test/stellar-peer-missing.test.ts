@@ -53,6 +53,17 @@ describe("without @stellar/stellar-sdk", () => {
     expect(exactStellar.read(required)).toEqual({ refused: true, code: CODE });
   });
 
+  // V3's option is placed: with the peer, unplaced sets its muxed payTo back to the base account, which is the fixed
+  // option's payTo. Without the peer no payTo can be read, so no option comes back as issued.
+  it("x402/exact/stellar's unplaced refuses peer-missing for an option, after a refused member", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const refused = { refused: true, code: CODE };
+    expect(exactStellar.unplaced(V.V3.accepted)).toEqual(refused);
+    expect(exactStellar.unplaced(V.fixed.option)).toEqual(refused);
+    expect(exactStellar.unplaced({ ...V.V3.accepted, refused: true })).toEqual({ refused: true, code: "x402/option-malformed" });
+    expect(exactStellar.unplaced(V.fixed.network)).toBe(V.fixed.network);
+  });
+
   it("mpp/charge/stellar's advertise refuses peer-missing, as its bound and reference do", { timeout: IMPORT_MS }, async () => {
     const { chargeStellar } = await import("../src/mpp.js");
     const refused = { refused: true, code: CODE };
