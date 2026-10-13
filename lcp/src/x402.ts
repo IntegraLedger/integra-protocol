@@ -59,6 +59,7 @@ import {
   isOffered,
   sameJson,
   type OptionFilter,
+  type X402Advertise,
   type X402Payment,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -240,15 +241,6 @@ export function filterOf(
 ): OptionFilter {
   return (o) => (!pairs(o) ? undefined : payable === undefined || payable(o) ? true : refusal("x402/option-malformed"));
 }
-
-/** A pairing's `advertise`: the document with the legal context placed, and the agreement URL when one is given. */
-export type X402Advertise = (
-  doc: PaymentRequired,
-  h: AtrHash,
-  link: string,
-  offer: PaymentRequirements,
-  agreementUrl?: string,
-) => PaymentRequired | Refusal;
 
 /** What a pairing's `read` returns: the hash, the link, the agreement URL when the document carries one, the offer. */
 export interface X402Read {

@@ -4,10 +4,10 @@
  * link, an option's match by RFC 8785 form, and the other types and helpers the pairings' modules are built from.
  * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
  */
-import { canonicalJson, isHttpsLink, isOtherSchemeLink, toLegalContext, type Json } from "../core.js";
+import { canonicalJson, isHttpsLink, isOtherSchemeLink, toLegalContext, type AtrHash, type Json } from "../core.js";
 import { deepFreeze, isObject, normalHash } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
-import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Advertise } from "../x402.js";
+import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "../x402.js";
 import { AGREEMENT_URL, agreementUrlFault } from "./agreement.js";
 
 export const LEGAL_CONTEXT = "legalContext";
@@ -34,6 +34,15 @@ export type OptionFilter = (option: PaymentRequirements) => true | Refusal | und
 
 /** An x402 v2 payment whose `payload` is the pairing's own. */
 export type X402Payment<P> = Omit<PaymentPayload, "payload"> & { payload: P };
+
+/** A pairing's `advertise`: the document with the legal context placed, and the agreement URL when one is given. */
+export type X402Advertise = (
+  doc: PaymentRequired,
+  h: AtrHash,
+  link: string,
+  offer: PaymentRequirements,
+  agreementUrl?: string,
+) => PaymentRequired | Refusal;
 
 /**
  * The seller's placement over a pairing's filter: a copy of `doc` whose `extensions.legalContext` carries the hash, the link and, when
