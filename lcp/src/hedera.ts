@@ -4,9 +4,18 @@
  * `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); and MPP's `mpp/charge/hedera`, whose
  * signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash.
  */
-import { fromLcpString, fromLegalContext, hash, parseJson, toLcpString, type AtrHash, type Json } from "./core.js";
+import { fromLcpString, fromLegalContext, hash, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import {
+  amountOf,
+  chargeLegs,
+  fromBase64,
+  hederaChargeRequest,
+  hederaNetworkOfChainId,
+  INT64_LIMIT,
+  isEntity,
+} from "./internal/hedera.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
@@ -41,18 +50,6 @@ const HEDERA_NETWORKS: readonly HederaNetwork[] = Object.freeze([
   "hedera:previewnet",
   "hedera:devnet",
 ]);
-
-/** MPP's EIP-155 chain ids for Hedera, mapped to their CAIP-2 networks. */
-const HEDERA_CHAIN_IDS: Readonly<Record<number, HederaNetwork>> = Object.freeze({
-  295: "hedera:mainnet",
-  296: "hedera:testnet",
-});
-
-/** The CAIP-2 network of an MPP `methodDetails.chainId`: 295 and 296 only. */
-function hederaNetworkOfChainId(chainId: unknown): HederaNetwork | Refusal {
-  if (typeof chainId !== "number" || !Object.hasOwn(HEDERA_CHAIN_IDS, chainId)) return refusal("hedera/chain-id-unnamed");
-  return HEDERA_CHAIN_IDS[chainId]!;
-}
 
 export interface HederaTxId {
   /** "shard.realm.num" */
@@ -186,12 +183,8 @@ const NOT_COUNTED: ReadonlySet<string> = new Set([
 /** The account that pays HIP-406 staking rewards. */
 const STAKING_REWARD_ACCOUNT = "0.0.800";
 const SUCCESS = "SUCCESS";
-const ENTITY = /^(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})$/;
 const MIRROR_ID = /^((?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18}))-(\d{1,19})-(\d{1,9})$/;
-const DECIMAL = /^(0|[1-9][0-9]{0,18})$/;
 const HEX_BYTES = /^0x(?:[0-9a-fA-F]{2})*$/;
-const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-const INT64_LIMIT = 1n << 63n;
 const UINT64_LIMIT = 1n << 64n;
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const ENCODER = new TextEncoder();
@@ -473,14 +466,6 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-function fromBase64(s: unknown): Uint8Array | null {
-  if (typeof s !== "string" || s.length % 4 !== 0 || !BASE64.test(s)) return null;
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 async function entriesOf(
@@ -576,25 +561,8 @@ async function recover(
 
 // ── the options ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-function isEntity(s: unknown): s is string {
-  return typeof s === "string" && ENTITY.test(s);
-}
-
 function isHederaNetwork(s: unknown): s is HederaNetwork {
   return typeof s === "string" && (HEDERA_NETWORKS as readonly string[]).includes(s);
-}
-
-/** A decimal below 2^63, zero included: an x402 Hedera option's amount. */
-function amountOf(s: unknown): bigint | undefined {
-  if (typeof s !== "string" || !DECIMAL.test(s)) return undefined;
-  const v = BigInt(s);
-  return v < INT64_LIMIT ? v : undefined;
-}
-
-/** A positive decimal below 2^63: an MPP Hedera charge request's amount, and each split's. */
-function positiveAmountOf(s: unknown): bigint | undefined {
-  const v = amountOf(s);
-  return v !== undefined && v > 0n ? v : undefined;
 }
 
 function methodOf(o: PaymentRequirements): unknown {
@@ -1048,11 +1016,6 @@ export const exactHederaExecutor = Object.freeze({
 // ── mpp/charge/hedera ────────────────────────────────────────────────────────────────────────────────────────────────
 
 const CHARGE = "mpp/charge/hedera" as const;
-/**
- * The most splits a charge carries: the payer's debit, the recipient's remainder and eight splits are ten token
- * transfer entries, the most a Hedera transaction may carry (the network's `tokenTransfers.maxLen`, 10).
- */
-const MAX_SPLITS = 8;
 const TX_ID_TEXT = /^((?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18}))@(\d{1,19})\.(\d{1,9})$/;
 const ATTRIBUTION = /^0x[0-9a-fA-F]{64}$/;
 /** The longest valid duration a Hedera transaction may declare, in seconds. */
@@ -1060,63 +1023,6 @@ const MAX_VALID_DURATION = 180;
 
 /** An MPP Hedera charge request as decoded from the challenge's `request`. */
 type MppHederaRequest = { [k: string]: Json };
-
-/** The request's legs: the payer's debit of `amount`, the recipient's remainder, and each split, in `currency`. */
-function chargeLegs(
-  request: MppHederaRequest,
-): { currency: string; amount: bigint; legs: readonly { account: string; amount: bigint }[] } | Refusal {
-  if (!isObject(request)) return refusal("hedera/option-malformed");
-  const amount = positiveAmountOf(request["amount"]);
-  const currency = request["currency"];
-  const recipient = request["recipient"];
-  if (amount === undefined || !isEntity(currency) || !isEntity(recipient)) return refusal("hedera/option-malformed");
-  const splits = request["splits"] ?? [];
-  if (!Array.isArray(splits) || splits.length > MAX_SPLITS) return refusal("hedera/option-malformed");
-  const legs: { account: string; amount: bigint }[] = [];
-  let splitTotal = 0n;
-  for (const sp of splits) {
-    const a = isObject(sp) ? positiveAmountOf(sp["amount"]) : undefined;
-    if (!isObject(sp) || !isEntity(sp["recipient"]) || a === undefined) return refusal("hedera/option-malformed");
-    legs.push({ account: sp["recipient"], amount: a });
-    splitTotal += a;
-  }
-  if (splitTotal >= amount) return refusal("hedera/option-malformed");
-  const all = [{ account: recipient, amount: amount - splitTotal }, ...legs];
-  const accounts = new Set(all.map((l) => l.account));
-  if (accounts.size !== all.length) return refusal("hedera/option-malformed");
-  return { currency, amount, legs: all };
-}
-
-/** The Hedera request checks a charge challenge must pass before it is placed. */
-export function hederaChargeRequest(c: MppChallenge): true | Refusal {
-  if (!isObject(c) || c.method !== "hedera" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
-  let request: unknown;
-  try {
-    request = parseJson(new TextDecoder("utf-8", { fatal: true }).decode(fromBase64Url(c.request)));
-  } catch {
-    return refusal("mpp/request-malformed");
-  }
-  if (!isObject(request)) return refusal("mpp/request-malformed");
-  const legs = chargeLegs(request as MppHederaRequest);
-  if (isRefusal(legs)) return legs;
-  const md = request["methodDetails"];
-  if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
-  const chainId = isObject(md) ? md["chainId"] : undefined;
-  if (chainId !== undefined) {
-    const n = hederaNetworkOfChainId(chainId);
-    if (isRefusal(n)) return n;
-  }
-  return true;
-}
-
-function fromBase64Url(s: unknown): Uint8Array {
-  if (typeof s !== "string" || !/^[A-Za-z0-9_-]*={0,2}$/.test(s)) throw new Error("not base64url");
-  const plain = s.replace(/=+$/, "").replaceAll("-", "+").replaceAll("_", "/");
-  const padded = plain + "=".repeat((4 - (plain.length % 4)) % 4);
-  const bytes = fromBase64(padded);
-  if (bytes === null) throw new Error("not base64url");
-  return bytes;
-}
 
 /**
  * The CAIP-2 network of a charge request: `methodDetails.chainId` 295 or 296; absent, `defaultNetwork`. A

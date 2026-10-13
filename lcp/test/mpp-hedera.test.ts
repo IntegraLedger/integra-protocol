@@ -3,7 +3,7 @@ import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, toLcpString, type AtrHash } from "../src/index.js";
-import { chargeHedera, hederaChargeRequest, hederaStatus, type HederaUnsigned } from "../src/hedera.js";
+import { chargeHedera, hederaStatus, type HederaUnsigned } from "../src/hedera.js";
 import { attributionMemo, checkAttribution, type MppChallenge, type MppCredential } from "../src/mpp.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-charge-hedera.json", import.meta.url), "utf8"));
@@ -151,22 +151,27 @@ describe("mpp-charge-hedera.json", () => {
     expect(await hederaStatus(V.bound.expectReference, reader)).toEqual(V.status.expect);
   });
 
+  /** `advertise` of the challenge before placement: the Hedera request checks, then MPP's `place`. */
+  const advertised = (c: MppChallenge) => {
+    const { id: _id, opaque: _opaque, ...offer } = c;
+    return chargeHedera.advertise([offer], H, V.fixed.link, offer);
+  };
+
   it("the request checks", () => {
-    expect(hederaChargeRequest(placed())).toBe(true);
-    for (const row of V.requests) expect(hederaChargeRequest(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
+    expect(advertised(placed())).toEqual([placed()]);
+    for (const row of V.requests) expect(advertised(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
   });
 
   // MPP's Hedera charge draft (draft-hedera-charge-00, the request's `amount`): "The value MUST be a positive integer
   // that fits in a 64-bit signed integer".
   it("a request amount of 0 is refused", () => {
-    const c = placed({ ...V.fixed.request, amount: "0", splits: [] });
-    expect(chargeHedera.advertise([c], H, V.fixed.link, c)).toEqual({ refused: true, code: "hedera/option-malformed" });
+    expect(advertised(placed({ ...V.fixed.request, amount: "0", splits: [] }))).toEqual({ refused: true, code: "hedera/option-malformed" });
   });
 
   it("eight splits build ten token transfer entries, the most a Hedera transaction carries (hiero-consensus-node LedgerConfig tokenTransfers.maxLen, default 10)", async () => {
     const splits = Array.from({ length: 8 }, (_, i) => ({ recipient: `0.0.${70000 + i}`, amount: "1" }));
     const request = { ...V.fixed.request, splits };
-    expect(hederaChargeRequest(placed(request))).toBe(true);
+    expect(advertised(placed(request))).toEqual([placed(request)]);
     const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, request, {
       payer: V.fixed.payer,
       node: V.fixed.node,

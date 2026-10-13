@@ -5,7 +5,8 @@
  */
 import type { Json } from "./core.js";
 import { isAddress } from "./fields.js";
-import { hederaChargeRequest, type HederaNetwork } from "./hedera.js";
+import type { HederaNetwork } from "./hedera.js";
+import { hederaChargeRequest } from "./internal/hedera.js";
 import { keyBytes, type SolanaNetwork } from "./internal/svm.js";
 import type { XrplNetwork } from "./internal/xrpl.js";
 import type { MppChallenge, MppPairing } from "./mpp-challenge.js";

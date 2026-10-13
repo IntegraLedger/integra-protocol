@@ -230,7 +230,7 @@ import { APPROVE_SELECTOR, approveCalldata, CHANNEL_CLOSED_TOPIC, … } from "@i
 
 **Pairings:** `mpp/charge/hedera`, `x402/exact/hedera`, `x402/exact/hedera/transfer-executor`.
 
-**Values (19):** `APPROVE_SELECTOR`, `approveCalldata`, `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `hederaChannelId`, `hederaChargeRequest`, `hederaIdDigest`, `hederaPairingOf`, `hederaStatus`, `hederaVoucher`, `openCalldata`, `txIdMirror`, `txIdText`.
+**Values (18):** `APPROVE_SELECTOR`, `approveCalldata`, `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `hederaChannelId`, `hederaIdDigest`, `hederaPairingOf`, `hederaStatus`, `hederaVoucher`, `openCalldata`, `txIdMirror`, `txIdText`.
 
 **Types (18):** `ExecutorPayload`, `ExecutorPaymentPayload`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaPayload`, `HederaPaymentPayload`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `HederaVoucherTypedData`, `MirrorEntry`.
 
