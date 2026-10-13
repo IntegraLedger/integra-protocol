@@ -553,7 +553,7 @@ Concordium (`@integraledger/lcp/ccd`).
 | `ccd/address-malformed` | A Concordium account address is missing, is not base58check of the account form, or its bytes are not 32 long. |
 | `ccd/memo-not-cbor-text` | The Concordium memo is not exactly one CBOR text string within the memo bound. |
 | `ccd/memo-not-lcp` | The Concordium memo's text is not an ATR hash in LCP string form under the preferred encoding, or H given to `build` is not a valid ATR hash. |
-| `ccd/no-carrier` | The finalized Concordium block item does not hold exactly one transfer with a memo, or that memo carries no ATR hash. |
+| `ccd/no-carrier` | The finalized Concordium block item does not hold exactly one transfer whose memo carries an ATR hash as `memoCarrier` reads it. |
 | `ccd/no-memo` | The Concordium transaction is a plain `transfer` with no memo, or its PLT transfer operation has no memo. |
 | `ccd/not-finalized` | The Concordium block item is not finalized. |
 | `ccd/not-found` | The Concordium reader found no block item for the reference. |

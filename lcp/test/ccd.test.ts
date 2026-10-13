@@ -207,6 +207,43 @@ describe("x402/exact/ccd", () => {
         V.D5.wrongReader.expectRecover,
       );
     });
+    // One block item can hold several transfers, as a PLT TokenUpdate holds a list of operations. status settles on the
+    // one transfer whose memo carries ref.h, and recover gives H from the one transfer whose memo memoCarrier reads,
+    // whatever memos the others hold; more than one such transfer is ccd/no-carrier. The other memo is the CBOR text
+    // string "IETF", 64 49 45 54 46 (RFC 8949 Appendix A), wrapped for a PLT in tag 24 around a 5-byte string, d8 18 45
+    // (RFC 8949 §3.4.5.1, §3.1); the second hash is SHA-256 of the empty string (GNU coreutils sha256sum), its memo written by cborg.
+    describe("recover reads the one transfer whose memo memoCarrier reads, beside the item's other transfers", () => {
+      const H2 = "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+      const ccdH: FixtureTransfer = V.D5.rows[0].item.transfers[0];
+      const pltH: FixtureTransfer = V.D5.rows[1].item.transfers[0];
+      const ietf: FixtureTransfer = { kind: "ccd", receiver: V.fixed.payerBytes, amount: "1", memo: "6449455446" };
+      const ietfPlt: FixtureTransfer = { ...pltH, receiver: V.fixed.payerBytes, amount: "1", memo: "d818456449455446" };
+      const noCarrier = { refused: true, code: "ccd/no-carrier" };
+      const settled = V.D5.rows[0].expectStatus;
+      const cases: [string, "ref" | "refPlt", FixtureTransfer[], unknown, unknown][] = [
+        ['the H transfer, then a transfer whose memo is "IETF"', "ref", [ccdH, ietf], settled, H],
+        ['a transfer whose memo is "IETF", then the H transfer', "ref", [ietf, ccdH], settled, H],
+        ['a PLT H transfer beside a PLT transfer whose memo is "IETF"', "refPlt", [ietfPlt, pltH], settled, H],
+        ["the H transfer beside a transfer without a memo", "ref", [ccdH, { ...ietf, memo: null }], settled, H],
+        [
+          "the H transfer beside a transfer whose memo carries another hash",
+          "ref",
+          [ccdH, { ...ietf, memo: hex(cborg.encode(`lcp:sha256:${H2}`)) }],
+          settled,
+          noCarrier,
+        ],
+        ['one transfer, whose memo is "IETF"', "ref", [ietf], { state: "failed", why: "not-this-instrument" }, noCarrier],
+      ];
+      for (const [name, ref, transfers, status, recovered] of cases) {
+        it(name, async () => {
+          const reader = readerFor({ state: "finalized", success: true, sender: V.fixed.payerBytes, transfers });
+          expect(await exactCcd.status(V.D5[ref], reader)).toEqual(status);
+          expect(await exactCcd.recover({ network: V.D5.ref.network, transaction: V.D5.transaction }, reader)).toEqual(
+            recovered,
+          );
+        });
+      }
+    });
     // A missing or malformed ref field cannot name the landed transfer, so the read is pending, never
     // failed (docs/guides/rails.md, "Reading settlement"); a hash in either case is the same 32 bytes.
     it("a ref whose h or idDigest is malformed is pending unreadable, with nothing read", async () => {

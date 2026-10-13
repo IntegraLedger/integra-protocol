@@ -187,7 +187,12 @@ export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash 
   return { state: "settled", finality: "finalized" };
 }
 
-/** The hash from a settlement block item alone: its one memo-carrying transfer's memo, through `memoCarrier`. */
+/**
+ * The hash from a settlement block item alone, when it is finalized and successful: the memo of its one transfer whose
+ * memo `memoCarrier` reads (a PLT memo with tag 24 unwrapped), as `status` counts the transfers whose memo carries
+ * `ref.h`. A transfer without a memo, or whose memo `memoCarrier` refuses, is passed over; no such transfer, or more
+ * than one, is `ccd/no-carrier`.
+ */
 export async function ccdRecover(ref: { network: CcdNetwork; transaction: string }, reader: CcdReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("ccd/wrong-reader");
   let it: CcdItem | null;
@@ -200,10 +205,11 @@ export async function ccdRecover(ref: { network: CcdNetwork; transaction: string
   if (!isItem(it)) return refusal("ccd/unreadable");
   if (it.state !== "finalized") return refusal("ccd/not-finalized");
   if (!it.success) return refusal("ccd/rejected");
-  const withMemo = it.transfers.filter((t) => t.memo !== null);
-  if (withMemo.length !== 1) return refusal("ccd/no-carrier");
-  const h = memoCarrier(innerMemo(withMemo[0]!));
-  return isRefusal(h) ? refusal("ccd/no-carrier") : h;
+  const carried = it.transfers.flatMap((t) => {
+    const h = t.memo === null ? null : memoCarrier(innerMemo(t));
+    return h === null || isRefusal(h) ? [] : [h];
+  });
+  return carried.length === 1 ? carried[0]! : refusal("ccd/no-carrier");
 }
 
 /** Whether `memoCarrier` reads the memo as `h`. */
