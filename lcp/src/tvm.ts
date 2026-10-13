@@ -136,6 +136,13 @@ const RAW_ADDRESS = /^-?[0-9]{1,10}:[0-9a-fA-F]{64}$/;
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const SIGNATURE_BITS = 512;
 const SEND_MODE = 3;
+/**
+ * The head read first must pass `validUntil` by more than this many seconds before a request whose Jetton transfer no
+ * W5 transaction emitted reads failed. A W5 transaction runs at its shard block's time, and a masterchain block
+ * references that shard block only later, so the masterchain head can pass `validUntil` before an index holds a
+ * transaction that ran in time.
+ */
+const EXPIRY_MARGIN = 60;
 
 const utf8 = new TextEncoder();
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
@@ -328,14 +335,15 @@ function sendMessage(actions: Cell): Cell | Refusal {
  * any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
  * Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
  * emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
- * pending `not-found` up to `validUntil`; past it, failed `expired` when the W5 wallet holds no transaction with the
- * request, `no-transfer` when one executed and emitted nothing, and `aborted` when every one aborted, each only when
- * the lookup names an indexed time at or past the head read first. The lookup shows the W5 wallet's transactions only
- * through the blocks its index holds, and an internal request that aborts leaves its seqno unused (wallet_v5.fc commits
- * the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose index lags
- * that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted is failed
- * `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`, at any
- * head. A transaction on any other account is ignored. A failed or malformed read, a malformed reference (a
+ * pending `not-found` up to 60 seconds past `validUntil`, since a W5 transaction runs at its shard block's time, which
+ * a masterchain block references only later; past that, failed `expired` when the W5 wallet holds no transaction with
+ * the request, `no-transfer` when one executed and emitted nothing, and `aborted` when every one aborted, each only
+ * when the lookup names an indexed time at or past the head read first. The lookup shows the W5 wallet's transactions
+ * only through the blocks its index holds, and an internal request that aborts leaves its seqno unused (wallet_v5.fc
+ * commits the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose
+ * index lags that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted
+ * is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`,
+ * at any head. A transaction on any other account is ignored. A failed or malformed read, a malformed reference (a
  * `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another network is pending
  * `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in lowercase. At most
  * four calls.
@@ -380,7 +388,7 @@ export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStat
  */
 function unsent(ref: TvmRef, w5: OnAccount, head: number | null): TvmStatus {
   if (head === null) return { state: "pending", why: "unreadable" };
-  if (head <= ref.validUntil) return { state: "pending", why: "not-found" };
+  if (head <= ref.validUntil + EXPIRY_MARGIN) return { state: "pending", why: "not-found" };
   const covered = w5.headUtime !== null && w5.headUtime >= head;
   if (!covered) return { state: "pending", why: "not-found" };
   if (w5.transactions.length === 0) return { state: "failed", why: "expired" };

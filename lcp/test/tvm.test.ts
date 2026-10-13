@@ -436,6 +436,46 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
+  // A W5 transaction runs at its shard block's time, and a masterchain block references that shard block only later,
+  // so an index that holds every block through a masterchain head past `validUntil` can still lack a request W5 ran in
+  // time. The reader answers from a chain on which W5 runs the request one second before `validUntil` in a shard block
+  // the masterchain references `lag` seconds later; its index holds every block through the head and lists the request's
+  // transaction once it holds that masterchain block. Until the head is more than 60 seconds past `validUntil`, a
+  // request no W5 transaction sent is pending `not-found`, whichever of its arms the lookup shows.
+  it("a request no W5 transaction sent reads failed only more than 60 seconds past validUntil", async () => {
+    const executed = REF.validUntil - 1;
+    const request = { hash: "tx-w5", account: REF.wallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "j", opcode: 0x0f8a7ea5 }] };
+    const payer = { hash: "tx-payer", account: REF.jettonWallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [{ hash: "m", opcode: 0x178d4519 }] };
+    const payee = { hash: "tx-payee", account: "0:" + "33".repeat(32), aborted: false, finality: 2 as const, inBody: null, outMsgs: [] };
+    for (const lag of [1, 20, 61]) {
+      for (let head = REF.validUntil - 5; head <= executed + lag + 5; head++) {
+        const reader: TvmReader = {
+          network: REF.network,
+          headUtime: async () => head,
+          byInBody: async () => ({ transactions: head >= executed + lag ? [request] : [], headUtime: head }),
+          byInMessage: async (msgHash) => (msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
+          byHash: async () => null,
+        };
+        const got = await exactTvm.status(REF, reader);
+        const want = head >= executed + lag ? { state: "settled", finality: "finalized" } : { state: "pending", why: "not-found" };
+        expect([lag, head, got]).toEqual([lag, head, want]);
+      }
+    }
+    const ran = { hash: "tx-w5", account: REF.wallet, aborted: false, finality: 2 as const, inBody: null, outMsgs: [] };
+    const aborted = { ...ran, aborted: true };
+    for (const [found, why] of [[[], "expired"], [[ran], "no-transfer"], [[aborted], "aborted"]] as const) {
+      for (const [past, want] of [
+        [1, { state: "pending", why: "not-found" }],
+        [60, { state: "pending", why: "not-found" }],
+        [61, { state: "failed", why }],
+      ] as const) {
+        const head = REF.validUntil + past;
+        const reader: TvmReader = { ...readerFor({ headUtime: head }), byInBody: async () => ({ transactions: [...found], headUtime: head }) };
+        expect([why, past, await exactTvm.status(REF, reader)]).toEqual([why, past, want]);
+      }
+    }
+  });
+
   // An empty TON Center v3 transactionsByMessage answer names no block, so a reader takes the indexed time from a
   // second call, which a load-balanced endpoint can send to another index. A reader that cannot read the time from the
   // index that answered names none.
