@@ -18,7 +18,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { base64Bytes, hexOf, sameBytes } from "./rail-bytes.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -282,8 +282,12 @@ async function presentedTx(presented: unknown): Promise<{ network: CardanoNetwor
   return { network: NETWORKS[parts.accepted.network]!, tx };
 }
 
-/** The option unchanged: the hash rides in the transaction's metadata, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: the hash rides in the transaction's metadata, not in the option. An option that carries a
+ * `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 
