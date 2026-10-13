@@ -489,10 +489,9 @@ const sellerReferencePattern: LcpPattern = deepFreeze({
   publicProof: false,
   proves:
     AFTER_AGREEMENT +
-    "The ATR was in the seller's storage before payment, and its hash and link were given to the seller to show the " +
-    "buyer and to place in its processor reference. Nothing the buyer signed carries the hash. The seller checked " +
-    "nothing the buyer signed, and settlement is the seller's report. This record does not show that the buyer's " +
-    "approval carried the hash.",
+    "This ATR's hash and link are for the seller to show the buyer and to put in its processor reference. Nothing the " +
+    "buyer signed carries the hash, nothing the buyer signed was checked, and settlement is the seller's report. This " +
+    "record does not show that the buyer's approval carried the hash.",
 });
 
 export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze({
