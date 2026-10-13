@@ -131,7 +131,8 @@ function write(o: Record<string, unknown>, members: Members): string {
  * inside `disputeResolution` and `contact`, are left out of `document` and named in `ignored` by dotted path.
  */
 export function parse(bytes: Uint8Array): { document: LegalContextDocument; ignored: string[] } | Refusal {
-  if (!(bytes instanceof Uint8Array) || bytes.length > MAX_DOCUMENT_BYTES) return refusal("discovery/too-large");
+  if (!(bytes instanceof Uint8Array)) return refusal("discovery/not-json-object");
+  if (bytes.length > MAX_DOCUMENT_BYTES) return refusal("discovery/too-large");
   let v: unknown;
   try {
     v = parseJson(decoder.decode(bytes));

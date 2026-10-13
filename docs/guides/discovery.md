@@ -134,7 +134,7 @@ hold the same bytes.
 | Code | When |
 |---|---|
 | `discovery/too-large` | The bytes, or the document `emit` would write, exceed `MAX_DOCUMENT_BYTES`. |
-| `discovery/not-json-object` | The bytes are not one JSON object: not JSON, not UTF-8, a byte-order mark, an array, or nested more than 64 levels. `emit` gives it for an input that is not an object. |
+| `discovery/not-json-object` | The input is not a `Uint8Array`, or the bytes are not one JSON object: not JSON, not UTF-8, a byte-order mark, an array, or nested more than 64 levels. `emit` gives it for an input that is not an object. |
 | `discovery/terms-missing` | `terms` is absent. |
 | `discovery/terms-not-https` | `terms` is not an absolute `https` URL that meets the link rule. |
 | `discovery/atr-hash-malformed` | `atrHash` is not `0x` and 64 hex digits. |

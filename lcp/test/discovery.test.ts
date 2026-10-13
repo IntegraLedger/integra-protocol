@@ -120,6 +120,19 @@ describe("discovery · neither function throws", () => {
   });
 });
 
+// parse reads bytes. An input that is not a Uint8Array is not one JSON object's bytes, the case
+// docs/reference/refusals.md lists under discovery/not-json-object; discovery/too-large is for size alone (65,537
+// bytes, one over MAX_DOCUMENT_BYTES).
+describe("discovery · parse of an input that is not bytes", () => {
+  it("is discovery/not-json-object, whatever its length", () => {
+    const text = `{"terms":"https://seller.example/t.md","x":"${"a".repeat(MAX_DOCUMENT_BYTES)}"}`;
+    for (const j of [text, '{"terms":"https://seller.example/t.md"}', null, undefined, 7, [123], new ArrayBuffer(4), { terms: "https://seller.example/t.md" }]) {
+      expect(parse(j as unknown as Uint8Array), String(j).slice(0, 20)).toEqual({ refused: true, code: "discovery/not-json-object" });
+    }
+    expect(parse(new Uint8Array(MAX_DOCUMENT_BYTES + 1))).toEqual({ refused: true, code: "discovery/too-large" });
+  });
+});
+
 // LCP §2.4–§2.5's member tables: a member present with a value that is not of its kind answers
 // `discovery/member-malformed/` and the member's dotted path, the code docs/reference/refusals.md lists for it, from
 // parse and emit alike. 7 is a number, which no member of these kinds takes.

@@ -81,10 +81,10 @@ The discovery document (`@integraledger/lcp/discovery`).
 | `discovery/member-malformed/returns` | `parse` or `emit` finds the discovery document's `returns` present but not a non-empty string. |
 | `discovery/member-malformed/terms` | `parse` or `emit` finds the discovery document's `terms` present but not a string. |
 | `discovery/member-malformed/termsFormat` | `parse` or `emit` finds the discovery document's `termsFormat` present but not a non-empty string. |
-| `discovery/not-json-object` | `parse` refuses bytes that are not UTF-8 JSON or whose value is not an object, and `emit` refuses a document that is not an object. |
+| `discovery/not-json-object` | `parse` refuses an input that is not a `Uint8Array`, or bytes that are not UTF-8 JSON or whose value is not an object, and `emit` refuses a document that is not an object. |
 | `discovery/terms-missing` | The discovery document has no `terms` member. |
 | `discovery/terms-not-https` | The discovery document's `terms` is a string that is not an absolute `https` URL. |
-| `discovery/too-large` | `parse` refuses input that is not a `Uint8Array` or exceeds 65536 bytes, and `emit` refuses a document whose written bytes exceed 65536. |
+| `discovery/too-large` | `parse` refuses bytes that exceed 65536, and `emit` refuses a document whose written bytes exceed 65536. |
 
 ## x402
 
