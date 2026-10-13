@@ -569,7 +569,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply the option, delegate-action, key and signature rows. The two recover rows and the missing-peer row are the TypeScript implementation's alone: the Python one has no recover, and decodes NEAR with no optional package.",
   "rows": [
    {
     "case": "an option on near:betanet",
