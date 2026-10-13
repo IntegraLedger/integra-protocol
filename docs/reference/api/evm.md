@@ -827,25 +827,6 @@ present and not of the form a reference writes, is pending `unreadable`, with no
 
 ***
 
-### isGuardTransfer()
-
-> **isGuardTransfer**(`log`, `token`): `boolean`
-
-A `Transfer` log from `token` whose recipient is `RECEIVE_POLICY_GUARD`: a transfer a Tempo receive policy blocked.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `log` | [`EvmLog`](#evmlog) |
-| `token` | `` `0x${string}` `` |
-
-#### Returns
-
-`boolean`
-
-***
-
 ### isLog()
 
 > **isLog**(`l`): `l is EvmLog`
@@ -900,35 +881,6 @@ With `payer` zero it is x402's `signatureNonce`.
 #### Returns
 
 [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-***
-
-### permit2Status()
-
-> **permit2Status**(`ref`, `reader`): `Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
-
-Reads the named transaction as a Permit2 payment: `evmStatus`'s checks, then the permit in the transaction and
-Permit2's record of its nonce. The ref's `authorization` must be a `permit2` one and its `transferLog` must name
-`from`, else pending `unreadable`. The transaction (`eth_getTransactionByHash`) must carry the permit's nonce,
-`authorization.nonce`, as 32 bytes at any byte offset of its input: a direct call to the proxy, a batched call and an
-ERC-4337 bundle place it at different offsets. A transaction the node does not hold is pending `not-found`, and a
-failed read, or an input that is not hex bytes, pending `unreadable`. Then, where `from` is the matched transfer's,
-`nonceBitmap(from, nonce >> 8)` on `authorization.at` must have bit `nonce & 0xff` set at the receipt's block and
-unset at the block before it, so that the nonce is spent in that block. A transaction without the nonce, or a nonce
-unused at the receipt's block or used before it, is failed `nonce-not-used`. A failed call is pending `unreadable`.
-A payer who writes the nonce into a transaction of its own that makes the reference's transfer, and uses the nonce in
-the same block, by spending the permit or by invalidating the nonce, is read as paying. At most six calls.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `ref` | [`EvmRef`](#evmref) & `object` |
-| `reader` | [`EvmReader`](#evmreader) |
-
-#### Returns
-
-`Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
 
 ***
 
