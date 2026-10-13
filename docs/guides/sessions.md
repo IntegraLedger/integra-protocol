@@ -10,8 +10,9 @@ voucher. An MPP `session` does the same with a payment channel, and an MPP `subs
 each period. Paying request by request under a fresh ATR each time would make every voucher an agreement of its own.
 
 These pairings bind **one ATR to the whole channel, session or subscription**. H rides where the channel opens: in its
-salt, its memo, or the authorization that activates it. The later payments within it carry no ATR of their own.
-Another agreement opens another channel.
+salt, its memo, the authorization that activates it, the deposit invoice's description hash on Lightning, or the
+request's metadata on Stripe. The later payments within it carry no ATR of their own. Another agreement opens another
+channel.
 
 ```mermaid
 sequenceDiagram
