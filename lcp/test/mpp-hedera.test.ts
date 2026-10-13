@@ -156,6 +156,13 @@ describe("mpp-charge-hedera.json", () => {
     for (const row of V.requests) expect(hederaChargeRequest(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
   });
 
+  // MPP's Hedera charge draft (draft-hedera-charge-00, the request's `amount`): "The value MUST be a positive integer
+  // that fits in a 64-bit signed integer".
+  it("a request amount of 0 is refused", () => {
+    const c = placed({ ...V.fixed.request, amount: "0", splits: [] });
+    expect(chargeHedera.advertise([c], H, V.fixed.link, c)).toEqual({ refused: true, code: "hedera/option-malformed" });
+  });
+
   it("eight splits build ten token transfer entries, the most a Hedera transaction carries (hiero-consensus-node LedgerConfig tokenTransfers.maxLen, default 10)", async () => {
     const splits = Array.from({ length: 8 }, (_, i) => ({ recipient: `0.0.${70000 + i}`, amount: "1" }));
     const request = { ...V.fixed.request, splits };

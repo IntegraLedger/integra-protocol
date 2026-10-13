@@ -1,8 +1,8 @@
-// Runs the Hedera vector files through the hedera entry point. Every expected value is the files'.
+// Runs the Hedera vector files through the hedera entry point. Every expected value is the files', or names its source.
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { toLcpString, type AtrHash } from "../src/index.js";
+import { pairingOf, toLcpString, type AtrHash } from "../src/index.js";
 import {
   decodeHederaTx,
   exactHedera,
@@ -100,10 +100,13 @@ describe("x402-exact-hedera.json", () => {
       const p = presentedOf(V.V2.expectTransactionBase64, row.accepted);
       expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
       expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
-      // advertise and build need both: build writes the transfers from the amount.
-      const doc = { ...required, accepts: [row.accepted] };
-      expect(exactHedera.advertise(doc, H, V.fixed.link, row.accepted)).toEqual({ refused: true, code: "hedera/option-malformed" });
-      await expect(unsigned(row.accepted)).rejects.toThrow("hedera/option-malformed");
+    }
+    // advertise and build need a positive timeout and a decimal amount: build writes the transfers from the amount.
+    const timeoutZero = V.V2.presentedOptions.find((r: { accepted: PaymentRequirements }) => r.accepted.maxTimeoutSeconds === 0).accepted;
+    for (const accepted of [timeoutZero, { ...O, amount: "x" }]) {
+      const doc = { ...required, accepts: [accepted] };
+      expect(exactHedera.advertise(doc, H, V.fixed.link, accepted)).toEqual({ refused: true, code: "hedera/option-malformed" });
+      await expect(unsigned(accepted)).rejects.toThrow("hedera/option-malformed");
     }
     const { maxTimeoutSeconds: _, ...noTimeout } = O;
     for (const accepted of [noTimeout, { ...O, amount: "x" }]) {
@@ -111,6 +114,30 @@ describe("x402-exact-hedera.json", () => {
     }
     const { feePayer: __, ...noFeePayer } = O.extra!;
     expect(await exactHedera.bound(presentedOf(V.V2.expectTransactionBase64, { ...O, extra: noFeePayer }))).toEqual({
+      refused: true,
+      code: "hedera/option-malformed",
+    });
+  });
+
+  // x402's Hedera scheme gives `amount` no sign rule, and hiero-consensus-node's CryptoTransferValidator refuses a
+  // transfer list for a non-zero sum or a repeated account, not for a zero row. The body bytes are hiero-sdk-python
+  // 0.2.10's generated protobufs (protobuf 7.36.2, SerializeToString(deterministic=True)) for V2's inputs with amount
+  // 0, the tool that wrote V2: a zero `amount` (AccountAmount field 2) is not written.
+  const zeroAmountBody =
+    "0a0d0a060880e2cfaa06120318d309120218031880c2d72f22020878324d6c63703a7368613235363a30786261373831366266386630316366" +
+    "656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616472100a0e0a050a" +
+    "0318b32b0a050a0318d209";
+  it("an option whose amount is 0 is served: advertise, read, pairingOf and build", async () => {
+    const zero = { ...O, amount: "0" };
+    const doc = exactHedera.advertise({ ...required, accepts: [zero] }, H, V.fixed.link, zero);
+    if ("refused" in doc) throw new Error(doc.code);
+    const r = exactHedera.read(doc);
+    if ("refused" in r) throw new Error(r.code);
+    expect(r.offer.options).toEqual([zero]);
+    expect(pairingOf(zero)).toBe("x402/exact/hedera");
+    expect(hex((await unsigned(zero)).request.bodyBytes)).toBe(zeroAmountBody);
+    const tooLarge = { ...O, amount: "9223372036854775808" };
+    expect(exactHedera.advertise({ ...required, accepts: [tooLarge] }, H, V.fixed.link, tooLarge)).toEqual({
       refused: true,
       code: "hedera/option-malformed",
     });
@@ -218,6 +245,20 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
       const got = hederaPairingOf(row.option);
       expect(typeof got === "string" ? got : got?.code).toBe(row.expect);
     }
+  });
+
+  // x402's Hedera scheme gives `amount` no sign rule; the request carries the option's amount as written.
+  it("an option whose amount is 0 is served: advertise, read, pairingOf and build", async () => {
+    const zero = { ...OX, amount: "0" };
+    const doc = exactHederaExecutor.advertise({ ...required, accepts: [zero] }, H, X.fixed.link, zero);
+    if ("refused" in doc) throw new Error(doc.code);
+    const r = exactHederaExecutor.read(doc);
+    if ("refused" in r) throw new Error(r.code);
+    expect(r.offer.options).toEqual([zero]);
+    expect(pairingOf(zero)).toBe("x402/exact/hedera/transfer-executor");
+    const b = await exactHederaExecutor.build({ required: doc, accepted: zero, now: X.fixed.now }, H);
+    if ("refused" in b) throw new Error(b.code);
+    expect(b.request).toEqual({ ...X.build.expectRequest, amount: "0" });
   });
 
   it("build's request, and complete", async () => {

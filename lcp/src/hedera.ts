@@ -583,11 +583,17 @@ function isHederaNetwork(s: unknown): s is HederaNetwork {
   return typeof s === "string" && (HEDERA_NETWORKS as readonly string[]).includes(s);
 }
 
-/** Positive decimal below 2^63. */
+/** A decimal below 2^63, zero included: an x402 Hedera option's amount. */
 function amountOf(s: unknown): bigint | undefined {
   if (typeof s !== "string" || !DECIMAL.test(s)) return undefined;
   const v = BigInt(s);
-  return v > 0n && v < INT64_LIMIT ? v : undefined;
+  return v < INT64_LIMIT ? v : undefined;
+}
+
+/** A positive decimal below 2^63: an MPP Hedera charge request's amount, and each split's. */
+function positiveAmountOf(s: unknown): bigint | undefined {
+  const v = amountOf(s);
+  return v !== undefined && v > 0n ? v : undefined;
 }
 
 function methodOf(o: PaymentRequirements): unknown {
@@ -1059,7 +1065,7 @@ function chargeLegs(
   request: MppHederaRequest,
 ): { currency: string; amount: bigint; legs: readonly { account: string; amount: bigint }[] } | Refusal {
   if (!isObject(request)) return refusal("hedera/option-malformed");
-  const amount = amountOf(request["amount"]);
+  const amount = positiveAmountOf(request["amount"]);
   const currency = request["currency"];
   const recipient = request["recipient"];
   if (amount === undefined || !isEntity(currency) || !isEntity(recipient)) return refusal("hedera/option-malformed");
@@ -1068,7 +1074,7 @@ function chargeLegs(
   const legs: { account: string; amount: bigint }[] = [];
   let splitTotal = 0n;
   for (const sp of splits) {
-    const a = isObject(sp) ? amountOf(sp["amount"]) : undefined;
+    const a = isObject(sp) ? positiveAmountOf(sp["amount"]) : undefined;
     if (!isObject(sp) || !isEntity(sp["recipient"]) || a === undefined) return refusal("hedera/option-malformed");
     legs.push({ account: sp["recipient"], amount: a });
     splitTotal += a;
