@@ -332,7 +332,7 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, 
 | `evm/not-found` | The reader found no receipt for the transaction the reference names, or, where an EVM `recover` reads the transaction itself, no transaction. |
 | `evm/reverted` | The transaction the reference names reverted. |
 | `evm/unreadable` | The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction or when `authorizationUsed` made its `eth_call` (an answer that is not one 32-byte word, or for `eip3009` a word other than 0 or 1); or the `mpp/session/evm` `recover` read calldata longer than 131,072 bytes. |
-| `evm/wrong-reader` | The reader passed to an EVM `recover` or `status` answers for a different network than the reference names. |
+| `evm/wrong-reader` | The reader passed to an EVM `recover` or to `authorizationUsed` is missing or declares a different network than the reference names, or the ref given to an EVM `recover` is not an object. An EVM `status` gives such a reader pending `unreadable` instead, with nothing read. |
 
 ## tempo
 

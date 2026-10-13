@@ -84,11 +84,14 @@ Every other function answers a caller's input with a value, never a throw: a ref
 ## Readers
 
 The functions that read a rail (`status`, `recover`, `fetchPresented`) take a reader you supply, so the network calls
-are yours. A reader that fails, times out or answers for another network is never a failed payment: `status` returns
-a pending state with the reason `unreadable`, and a later read can settle it. A ref or reader that is not an object is
-read the same way, with nothing read: `status` is pending `unreadable`, and `recover` refuses with the code it gives a
-reader for another network (`<namespace>/wrong-reader` on most rails), except on `mpp/charge/usdc/stacks`, which
-refuses `stacks/unreadable`.
+are yours. A reader that fails or times out is never a failed payment: a rejected read of the transaction makes `status`
+return a pending state with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark
+counts as that mark not reached. A reader that declares a network other than the one the reference names is never a
+failed payment either, and nothing is read through it: `status` returns pending `unreadable` on every read, so no later
+read settles it, and `recover` refuses `<namespace>/wrong-reader`. A ref or reader that is not an object is read the
+same way, with nothing read: `status` is pending `unreadable`, and `recover` refuses with the code it gives a reader for
+another network, except on `mpp/charge/usdc/stacks`, which refuses `stacks/unreadable`. Check `reader.network` against
+the reference's network before you poll, and give every polling loop a deadline of its own.
 
 ## Next
 
