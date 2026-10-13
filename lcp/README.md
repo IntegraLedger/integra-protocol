@@ -277,8 +277,10 @@ The package ships its test vectors in `vectors/`: one JSON file per entry point 
 names where its expected values come from (published specification examples, standard test values, live network reads
 and independent tools). They fix the ATR's exact bytes and hash, the link rule, the buyer gate's rows, and for each
 pairing the placed challenge, what the payer signs, H read back and the settlement read, with the refusals they name.
-The package's own tests run every file, and the buyer packages in
-[`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) run them from TypeScript and Python.
+The package's own tests load every file and run every row they can check; `buyer.json`'s gate rows run in the buyer
+packages. The buyer packages in
+[`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) run every row of `buyer.json` and the
+`buyer` rows of every other vector file, from TypeScript and from Python, at the version of this package they pin.
 
 `profiles/` holds the LCP profiles, one Markdown file per profile, each stating its binding's rules. The profile of
 UCP's x402 payment handler, `ucp-payment-handler-x402.md` with its schema, is a specification with no code in this

@@ -38,7 +38,8 @@ flowchart LR
 pairing's binding. The buyer packages in
 [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) and the seller-side packages in
 [`integra-agentic-connectors`](https://github.com/IntegraLedger/integra-agentic-connectors) import it and add nothing
-to those rules. The Python buyer gate implements the same rules a second time and passes the same vectors.
+to those rules. The Python buyer gate implements the same rules a second time. Both buyer gates run every row of
+`buyer.json` and the `buyer` rows of every other vector file, at the version of `@integraledger/lcp` they pin.
 
 ## Packages
 
