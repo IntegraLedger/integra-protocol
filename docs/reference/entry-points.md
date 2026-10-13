@@ -7,7 +7,7 @@ description: Every entry point of @integraledger/lcp and what it exports.
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-Import each entry point by its subpath. Every entry point is ESM with its own type declarations. The [API reference](./api/index.md) gives each export's signature and documentation.
+Import each entry point by its subpath. Every entry point is ESM with its own type declarations. The [API reference](./api/index.md) gives each export's signature, and its doc comment where it has one.
 
 | Entry point | What it holds |
 |---|---|

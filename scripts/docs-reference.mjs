@@ -102,10 +102,11 @@ function pairingsPage() {
   s += generatedNote;
   s +=
     `\`BINDINGS\` holds ${rows.length} pairings on ${surfaces.length} surfaces (${surfaces.map(code).join(", ")}). ` +
-    "Each row gives the pairing's id, the export that implements it, and its `pattern` record: the binding pattern, " +
-    "whether the buyer's signature covers the ATR hash, whether the binding is visible on a public ledger, whether the settlement " +
-    "is a public proof, whether the hash can be recovered from the chain alone, and the LCP profile that defines the " +
-    "binding, where one does. [Binding](../concepts/binding.md) explains each field.\n\n";
+    "Each row gives the pairing's id, the export that implements it, and these members of its `pattern` record: " +
+    "the binding pattern, whether the buyer's signature covers the ATR hash, whether the binding is visible on a " +
+    "public ledger, whether the settlement is a public proof, whether the hash can be recovered from the chain " +
+    "alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) " +
+    "explains each member, `canonical` and `forwardIndexable` included.\n\n";
   for (const surface of surfaces) {
     s += `## ${code(surface)}\n\n`;
     s += "| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |\n";
@@ -142,7 +143,7 @@ function entryPointsPage() {
   s += generatedNote;
   s +=
     "Import each entry point by its subpath. Every entry point is ESM with its own type declarations. The " +
-    "[API reference](./api/index.md) gives each export's signature and documentation.\n\n";
+    "[API reference](./api/index.md) gives each export's signature, and its doc comment where it has one.\n\n";
   s += "| Entry point | What it holds |\n|---|---|\n";
   for (const e of entries) s += `| [${code(subpath(e))}](#${anchor(subpath(e))}) | ${cell(moduleSummary(e) || indexSummary(e))} |\n`;
   s += "\n";
