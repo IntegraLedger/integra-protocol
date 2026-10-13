@@ -30,7 +30,6 @@ import {
   evmStatus,
   paymentHash,
   permit2TypedData,
-  redeemedLeafRecover,
   transferDigest,
 } from "./internal/evm.js";
 
@@ -61,7 +60,6 @@ export {
   evmStatus,
   paymentHash,
   permit2TypedData,
-  redeemedLeafRecover,
   transferDigest,
 };
 export type {

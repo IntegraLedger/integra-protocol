@@ -24,7 +24,6 @@ import {
   eip3009TypedData,
   paymentHash,
   permit2TypedData,
-  redeemedLeafRecover,
   transferDigest,
   type Eip155,
   type Eip3009Ref,
@@ -47,6 +46,7 @@ import {
   isReceipt,
   permit2Status,
   receiveTypedData,
+  redeemedLeafRecover,
   transferParts,
   type ReceiveTypedData,
 } from "./internal/evm.js";

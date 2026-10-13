@@ -20,7 +20,6 @@ import {
   evmStatus,
   paymentHash,
   permit2TypedData,
-  redeemedLeafRecover,
   TRANSFER_TOPIC,
   transferDigest,
 } from "../src/evm.js";
@@ -34,7 +33,7 @@ import {
   txIdText,
 } from "../src/hedera.js";
 import { BINDINGS } from "../src/index.js";
-import { permit2Status } from "../src/internal/evm.js";
+import { permit2Status, redeemedLeafRecover } from "../src/internal/evm.js";
 import { xrplCloseStatus } from "../src/internal/xrpl-session.js";
 import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
 import {
