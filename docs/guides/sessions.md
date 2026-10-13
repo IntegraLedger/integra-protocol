@@ -97,7 +97,7 @@ On top of the members every pairing has, a channel pairing has:
 | `channel.ref(payment)` | seller | The channel's key: `{ network, channel }`. The opening and every payment within share it. |
 | `channel.boundWithin(payment)` | seller | H from a payment within the channel, where the pairing's payments within carry it; otherwise a refusal. |
 | `channel.until(payment)` | seller | The channel's end in Unix seconds, where its opening sets one. |
-| `buildWithin(within, h)` | buyer | A later voucher, or the close, for a channel opened under H. It refuses a channel that was not. |
+| `buildWithin(within, h)` | buyer | A later voucher, or the close, for a channel opened under H. It refuses a channel that was not, except on `x402/batch-settlement/solana`, whose configuration does not carry H. |
 | `closeRef(challenge, channel)` | seller | The read keys of the channel's close, on the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger, and on `mpp/subscription/tempo`, where a third argument names the payer's account. |
 
 `buildWithin` exists on the two x402 channels and the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger.
