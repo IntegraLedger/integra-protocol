@@ -217,6 +217,46 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     });
   }
 
+  // The MPP pairings whose unplaced hands the challenge back as given (the hash rides in the challenge id and opaque,
+  // never in request) refuse a challenge that carries a refused member with mpp/challenge-malformed, the code the
+  // challenge checks give a challenge that is not challenge-shaped (docs/reference/refusals.md); a value that is not an
+  // object comes back as it is. Each challenge is the one its pairing's vector file advertises (buyer row B2).
+  const advertisedOf: Map<string, unknown> = new Map(
+    readdirSync(dir)
+      .filter((n) => n.endsWith(".json"))
+      .flatMap((n) => {
+        const d = JSON.parse(readFileSync(new URL(n, dir), "utf8")) as {
+          buyer?: { rows: { name: string; pairing: string; input: { doc?: unknown[] } }[] };
+        };
+        return (d.buyer?.rows ?? [])
+          .filter((r) => r.name === "B2" && r.pairing.startsWith("mpp/"))
+          .map((r) => [r.pairing, r.input.doc?.[0]] as const);
+      }),
+  );
+  const sameChallenge = [
+    "mpp/charge/evm/authorization",
+    "mpp/charge/evm/permit2",
+    "mpp/charge/evm/transaction",
+    "mpp/charge/evm/hash",
+    "mpp/charge/tempo/memo",
+    "mpp/charge/tempo/push",
+  ];
+  for (const id of sameChallenge) {
+    it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
+      const challenge = advertisedOf.get(id);
+      expect(challenge).toBeTypeOf("object");
+      const unplaced = BINDINGS.find((b) => b.id === id)?.unplaced as (c: unknown) => unknown;
+      expect(unplaced(challenge)).toBe(challenge);
+      const expected = { refused: true, code: "mpp/challenge-malformed" };
+      for (const v of [withRefused(challenge), shaped(), refusal("ack/token-malformed")]) {
+        const out = unplaced(v);
+        expect(out).toEqual(expected);
+        expect(isRefusal(out)).toBe(true);
+      }
+      for (const v of ["charge", 7, null]) expect(unplaced(v)).toBe(v);
+    });
+  }
+
   for (const b of BINDINGS) {
     const fetchPresented = (b as { fetchPresented?: (c: unknown, r: unknown) => Promise<unknown> }).fetchPresented;
     const p = presentedOf.get(b.id);

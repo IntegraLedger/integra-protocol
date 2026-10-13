@@ -266,7 +266,12 @@ function advertiseAs(pairing: ChargeId) {
   };
 }
 
-function unplaced(option: MppChallenge): Json {
+/**
+ * The challenge as given: the hash rides in the challenge id and `opaque`, never in `request`. A challenge that carries
+ * a `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): Json | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return option as unknown as Json;
 }
 
