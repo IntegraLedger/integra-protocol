@@ -7,7 +7,9 @@ description: The discovery document a seller publishes at /.well-known/legal-con
 
 A seller can publish a **discovery document** (`LCP §2`): one small JSON object, served at
 `/.well-known/legal-context.json` on the seller's host, that names the seller's terms document and how to reach the
-seller. Because the path is fixed, an agent finds it from the host name alone.
+seller. Because the path is fixed, an agent finds it from the host name alone. A service that implements the standard
+serves it (`LCP §2.1`: *"A service implementing this standard MUST serve a JSON document"* at
+`https://{domain}/.well-known/legal-context.json`).
 
 The discovery document is not an ATR. It describes the seller's standing terms and is the same for every request; an
 ATR is the record of one transaction, and its hash rides in that transaction's payment. Nothing in a pairing reads
