@@ -118,7 +118,7 @@ dependency. Install the one for each rail you use:
 | XRP Ledger | `ripple-binary-codec` |
 | Sui | `@mysten/sui` |
 | NEAR | `@near-js/crypto`, `@near-js/transactions`, `borsh` |
-| TON | `@ton/core` |
+| TON | `@ton/core` and its peer `@ton/crypto` |
 | Algorand | `algosdk` |
 | Stacks | `@stacks/transactions` |
 
