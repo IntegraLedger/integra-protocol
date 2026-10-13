@@ -81,7 +81,7 @@ export interface TvmReader {
   headUtime(): Promise<number>;
 }
 
-/** The read keys recorded at claim. */
+/** The read keys a payment's settlement is read by. */
 export interface TvmRef {
   network: TvmNetwork;
   /** The representation hash of the Jetton transfer body the W5 request sends. */
