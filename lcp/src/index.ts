@@ -33,12 +33,12 @@ import { sellerReference, type TapPresented, viAutonomous, type ViAutonomous, vi
 import { exactCardano } from "./cardano.js";
 import { exactCasper } from "./casper.js";
 import { exactCcd } from "./ccd.js";
-import { exactHedera, exactHederaExecutor, type ExecutorPaymentPayload } from "./hedera.js";
+import { exactHedera, exactHederaExecutor } from "./hedera.js";
 import type { AptosPaymentPayload } from "./internal/aptos.js";
 import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import type { CasperPaymentPayload } from "./internal/casper.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
-import type { HederaPaymentPayload } from "./internal/hedera.js";
+import type { ExecutorPaymentPayload, HederaPaymentPayload } from "./internal/hedera.js";
 import type { NearPayment } from "./internal/near.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import type { StarknetPayment } from "./internal/starknet.js";

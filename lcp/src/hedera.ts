@@ -15,6 +15,8 @@ import {
   hederaNetworkOfChainId,
   INT64_LIMIT,
   isEntity,
+  type ExecutorPayload,
+  type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -39,7 +41,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
@@ -140,10 +141,6 @@ export interface HederaUnsigned {
   /** The signed `Transaction`, base64. */
   complete(s: { publicKey: Uint8Array; signature: Uint8Array; type: "ed25519" | "ecdsa-secp256k1" }): string | Refusal;
 }
-
-/** The x402 `transferExecutor` payload. */
-export type ExecutorPayload = { payer: string; executor: string; authorization: Hex };
-export type ExecutorPaymentPayload = X402Payment<ExecutorPayload>;
 
 export interface ExecutorRef {
   network: HederaNetwork;
