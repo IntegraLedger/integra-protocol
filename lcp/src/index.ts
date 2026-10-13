@@ -96,7 +96,7 @@ export type X402Binding =
 /** An MPP pairing of intent and method. */
 export type MppBinding = (typeof MPP_BINDINGS)[number];
 /** The optional member of a push-mode pairing: the transaction its credential names, or undefined. */
-export interface PushMode {
+interface PushMode {
   landedTx?(presented: unknown): string | undefined;
 }
 /**
