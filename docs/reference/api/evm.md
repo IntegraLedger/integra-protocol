@@ -454,13 +454,13 @@ token, `validBefore` and the transfer digest.
 
 ### EvmBreadthStatus
 
-> **EvmBreadthStatus** = [`EvmStatus`](#evmstatus) \| \{ `state`: `"failed"`; `why`: `"binding-log-not-found"` \| `"transfer-not-found"` \| `"receive-policy-blocked"` \| `"nonce-not-used"`; \}
+> **EvmBreadthStatus** = [`EvmStatus`](#evmstatus) \| \{ `state`: `"failed"` \| `"pending"`; `why`: `"binding-log-not-found"` \| `"transfer-not-found"` \| `"receive-policy-blocked"` \| `"nonce-not-used"`; \}
 
 ***
 
 ### EvmStatus
 
-> **EvmStatus** = \{ `blockNumber`: `bigint`; `finality`: `"latest"` \| `"safe"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"authorization-not-used"` \| `"transfer-not-found"`; \}
+> **EvmStatus** = \{ `blockNumber`: `bigint`; `finality`: `"latest"` \| `"safe"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"reverted"` \| `"authorization-not-used"` \| `"transfer-not-found"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"authorization-not-used"` \| `"transfer-not-found"`; \}
 
 ***
 
@@ -704,9 +704,11 @@ token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` 
 token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
 pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
 use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
-receipt's block. A failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an
-`asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`, never failed. At most
-three calls.
+receipt's block. A failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the
+receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+cannot be read, the same reason is pending. A failed read, a reader for another network, a `transaction` or `h` that
+is not a 32-byte hash, an `asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`,
+never failed. At most three calls.
 
 #### Parameters
 
@@ -766,8 +768,10 @@ binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log c
 word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
 is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
 redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
-finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
-present and not of the form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
+finality mark reached. A failed answer is given only where the receipt's block is at or below the reader's
+`finalized` mark; above it, or where that mark cannot be read, the same reason is pending.
+A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is present and not of the
+form a reference writes, is pending `unreadable`, with nothing read. At most three calls.
 
 #### Parameters
 

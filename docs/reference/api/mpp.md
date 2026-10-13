@@ -957,7 +957,9 @@ succeeded transaction must be a call to that escrow whose calldata starts with o
 whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
 succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
 failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
-`KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. An `opens` that is not an object
+`KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. Each failed answer, `evmStatus`'s
+and these, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where
+that mark cannot be read, the same reason is pending. An `opens` that is not an object
 whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, an `opened` that is
 not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h` 32-byte hashes and `chainId` a
 positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
@@ -1014,7 +1016,9 @@ topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies an
 `RECEIVE_POLICY_GUARD`. `ref.transferLog` must identify a `Transfer` from `ref.asset` by its sender alone (identity
 `from`), as the pairing's `reference` records it, else pending `unreadable`. Without such a log, a `Transfer` from
 that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`: another
-account's `Transfer` in the same transaction is not this payment. At most three calls.
+account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and these, is
+given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+cannot be read, the same reason is pending. At most three calls.
 
 #### Parameters
 
