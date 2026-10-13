@@ -98,7 +98,7 @@ const subpath = (e) => (e === "index" ? "@integraledger/lcp" : `@integraledger/l
 function pairingsPage() {
   const rows = [...index.BINDINGS].sort((a, b) => a.id.localeCompare(b.id));
   const surfaces = [...new Set(rows.map((b) => b.id.split("/")[0]))];
-  let s = header("Pairings", "Every pairing @integraledger/lcp implements, generated from its registry.");
+  let s = header("Pairing registry", "Every pairing @integraledger/lcp implements, generated from its registry.");
   s += generatedNote;
   s +=
     `\`BINDINGS\` holds ${rows.length} pairings on ${surfaces.length} surfaces (${surfaces.map(code).join(", ")}). ` +

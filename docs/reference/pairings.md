@@ -1,9 +1,9 @@
 ---
-title: Pairings
+title: Pairing registry
 description: Every pairing @integraledger/lcp implements, generated from its registry.
 ---
 
-# Pairings
+# Pairing registry
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
