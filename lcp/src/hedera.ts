@@ -1252,8 +1252,7 @@ const chargePattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The ATR was assembled, written to the seller's storage and linked in the challenge before approval, " +
-    "and its hash is in the MPP challenge this payment " +
+    "The ATR was assembled and delivered before approval, and its hash is in the MPP challenge this payment " +
     "answered, protected by the server's binding of the challenge, not by the payer's signature. The payer signed a " +
     "memo whose 7-byte nonce is keccak256 of that challenge's id. It ties the payment to the challenge instance, and " +
     "binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose " +
