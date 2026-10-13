@@ -158,4 +158,5 @@ expires (`LCP §2.6`).
 
 - [The ATR](../concepts/atr.md): the per-transaction record a payment is bound to.
 - [Vectors](../concepts/vectors.md): `vectors/discovery.json` fixes what `emit` writes and what `parse` reads or
-  refuses, including every example of `LCP §2.7`.
+  refuses. Its `parse` rows include the four examples of `LCP §2.7`, byte for byte, each read as a document, and one
+  `emit` row writes the values of the Full example.

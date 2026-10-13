@@ -1,5 +1,5 @@
 {
- "about": "The discovery document (LCP §2): what emit writes and what parse reads or refuses. 'bytes' is UTF-8 text; 'bytesHex' is used where the bytes are not valid UTF-8 text. The LCP §2.7 examples are cut from LCP §2.7 byte for byte. Expected emitted bytes were written by Python's json.dumps with separators (',', ':') over members in LCP §2.4-§2.5's table order; digests with hashlib.sha256, agreeing with GNU coreutils sha256sum 9.4. The ETag is '\"' + the digest's hex + '\"'. 'inputRepeat' sets that member of 'input' to 'char' repeated 'count' times. 'padTo' is the bytes '{\"terms\":\"https://seller.example/t.md\",\"x-pad\":\"' + 'a' repeated + '\"}', exactly that many bytes long.",
+ "about": "The discovery document (LCP §2): what emit writes and what parse reads or refuses. 'bytes' is UTF-8 text; 'bytesHex' is used where the bytes are not valid UTF-8 text. The parse rows named LCP §2.7 are its four examples, cut from it byte for byte. Expected emitted bytes were written by Python's json.dumps with separators (',', ':') over members in LCP §2.4-§2.5's table order; digests with hashlib.sha256, agreeing with GNU coreutils sha256sum 9.4. The ETag is '\"' + the digest's hex + '\"'. 'inputRepeat' sets that member of 'input' to 'char' repeated 'count' times. 'padTo' is the bytes '{\"terms\":\"https://seller.example/t.md\",\"x-pad\":\"' + 'a' repeated + '\"}', exactly that many bytes long.",
  "emit": [
   {
    "name": "a reference document",
@@ -19,7 +19,7 @@
   },
   {
    "name": "full, members given out of order",
-   "source": "LCP §2.4-§2.5 table order; LCP §2.7's Full example with a real clauseId",
+   "source": "LCP §2.4-§2.5 table order; the values of LCP §2.7's Full example",
    "input": {
     "api": "https://api.example.com/legal-context/v1",
     "contact": {
@@ -28,9 +28,9 @@
     },
     "returns": "https://example.com/api/returns",
     "disputeResolution": {
-     "catalog": "https://www.{dispute_resolution_service}.org/.well-known/dispute-services.json",
-     "source": "https://www.{dispute_resolution_service}.org/clauses/commercial-arbitration",
-     "clauseId": "sha256:0x9d96e17fd46eb91085fe8e47f714bd58f95300e1a6eb7792fb30d3efdf85446c",
+     "catalog": "https://adr.example.org/.well-known/dispute-services.json",
+     "source": "https://adr.example.org/clauses/dispute-resolution-service-rules",
+     "clauseId": "sha256:0xc2eb26d28ff4e229ff35917bd53339d82c1b30ec69435572a8872a4d7609c1dd",
      "contact": "disputes@example.com",
      "jurisdiction": "New York, USA",
      "method": "Dispute Resolution Service Rules"
@@ -40,8 +40,8 @@
     "termsFormat": "json",
     "terms": "https://example.com/terms/v3.json"
    },
-   "bytes": "{\"terms\":\"https://example.com/terms/v3.json\",\"termsFormat\":\"json\",\"atrHash\":\"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\"acceptanceRequired\":true,\"disputeResolution\":{\"method\":\"Dispute Resolution Service Rules\",\"jurisdiction\":\"New York, USA\",\"contact\":\"disputes@example.com\",\"clauseId\":\"sha256:0x9d96e17fd46eb91085fe8e47f714bd58f95300e1a6eb7792fb30d3efdf85446c\",\"source\":\"https://www.{dispute_resolution_service}.org/clauses/commercial-arbitration\",\"catalog\":\"https://www.{dispute_resolution_service}.org/.well-known/dispute-services.json\"},\"returns\":\"https://example.com/api/returns\",\"contact\":{\"legal\":\"legal@example.com\",\"technical\":\"api-support@example.com\"},\"api\":\"https://api.example.com/legal-context/v1\"}",
-   "sha256": "2551df0f7242e97e2cd6864c36355625ba15133135572ca566910bc42267a604"
+   "bytes": "{\"terms\":\"https://example.com/terms/v3.json\",\"termsFormat\":\"json\",\"atrHash\":\"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\"acceptanceRequired\":true,\"disputeResolution\":{\"method\":\"Dispute Resolution Service Rules\",\"jurisdiction\":\"New York, USA\",\"contact\":\"disputes@example.com\",\"clauseId\":\"sha256:0xc2eb26d28ff4e229ff35917bd53339d82c1b30ec69435572a8872a4d7609c1dd\",\"source\":\"https://adr.example.org/clauses/dispute-resolution-service-rules\",\"catalog\":\"https://adr.example.org/.well-known/dispute-services.json\"},\"returns\":\"https://example.com/api/returns\",\"contact\":{\"legal\":\"legal@example.com\",\"technical\":\"api-support@example.com\"},\"api\":\"https://api.example.com/legal-context/v1\"}",
+   "sha256": "8661e962ecfafa942340d6467ae8f30fb7500cbd649a0e3419f69b9c29c7d09c"
   },
   {
    "name": "strings escaped as JSON.stringify escapes them, UTF-8",
@@ -105,7 +105,7 @@
   },
   {
    "name": "clauseId placeholder",
-   "source": "LCP §2.5 'Format: sha256:0x<hex>'",
+   "source": "LCP §2.5 'Format: `sha256:0x` followed by 64 hex characters.'",
    "input": {
     "terms": "https://seller.example/t.md",
     "disputeResolution": {
@@ -200,9 +200,35 @@
    "ignored": []
   },
   {
-   "name": "LCP §2.7 Full: its clauseId is a placeholder",
-   "source": "LCP §2.5 'Format: sha256:0x<hex>'",
-   "bytes": "{\n  \"terms\": \"https://example.com/terms/v3.json\",\n  \"termsFormat\": \"json\",\n  \"atrHash\": \"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\n  \"acceptanceRequired\": true,\n  \"disputeResolution\": {\n    \"method\": \"Dispute Resolution Service Rules\",\n    \"jurisdiction\": \"New York, USA\",\n    \"contact\": \"disputes@example.com\",\n    \"clauseId\": \"sha256:0x<hex>\",\n    \"source\": \"https://www.{dispute_resolution_service}.org/clauses/commercial-arbitration\",\n    \"catalog\": \"https://www.{dispute_resolution_service}.org/.well-known/dispute-services.json\"\n  },\n  \"returns\": \"https://example.com/api/returns\",\n  \"contact\": {\n    \"legal\": \"legal@example.com\",\n    \"technical\": \"api-support@example.com\"\n  },\n  \"api\": \"https://api.example.com/legal-context/v1\"\n}\n",
+   "name": "LCP §2.7 Full",
+   "source": "LCP §2.7",
+   "bytes": "{\n  \"terms\": \"https://example.com/terms/v3.json\",\n  \"termsFormat\": \"json\",\n  \"atrHash\": \"0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069\",\n  \"acceptanceRequired\": true,\n  \"disputeResolution\": {\n    \"method\": \"Dispute Resolution Service Rules\",\n    \"jurisdiction\": \"New York, USA\",\n    \"contact\": \"disputes@example.com\",\n    \"clauseId\": \"sha256:0xc2eb26d28ff4e229ff35917bd53339d82c1b30ec69435572a8872a4d7609c1dd\",\n    \"source\": \"https://adr.example.org/clauses/dispute-resolution-service-rules\",\n    \"catalog\": \"https://adr.example.org/.well-known/dispute-services.json\"\n  },\n  \"returns\": \"https://example.com/api/returns\",\n  \"contact\": {\n    \"legal\": \"legal@example.com\",\n    \"technical\": \"api-support@example.com\"\n  },\n  \"api\": \"https://api.example.com/legal-context/v1\"\n}\n",
+   "document": {
+    "terms": "https://example.com/terms/v3.json",
+    "termsFormat": "json",
+    "atrHash": "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+    "acceptanceRequired": true,
+    "disputeResolution": {
+     "method": "Dispute Resolution Service Rules",
+     "jurisdiction": "New York, USA",
+     "contact": "disputes@example.com",
+     "clauseId": "sha256:0xc2eb26d28ff4e229ff35917bd53339d82c1b30ec69435572a8872a4d7609c1dd",
+     "source": "https://adr.example.org/clauses/dispute-resolution-service-rules",
+     "catalog": "https://adr.example.org/.well-known/dispute-services.json"
+    },
+    "returns": "https://example.com/api/returns",
+    "contact": {
+     "legal": "legal@example.com",
+     "technical": "api-support@example.com"
+    },
+    "api": "https://api.example.com/legal-context/v1"
+   },
+   "ignored": []
+  },
+  {
+   "name": "clauseId placeholder",
+   "source": "LCP §2.5 'Format: `sha256:0x` followed by 64 hex characters.'",
+   "bytes": "{\"terms\":\"https://seller.example/t.md\",\"disputeResolution\":{\"clauseId\":\"sha256:0x<hex>\"}}",
    "refused": "discovery/clause-id-malformed"
   },
   {
