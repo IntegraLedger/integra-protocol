@@ -289,9 +289,11 @@ of [Processing payments](#processing-payments). Every other rule holds.
 
 On completion the business verifies the checkout mandate, as the extension's Business Verification says: its first
 SD-JWT with the key its `kid` names in the platform's profile `keys[]`, each later one with the key the one before it
-delegates to (`cnf`), and none expired. The checkout mandate's `checkout_jwt` is the business's own
-`ap2.merchant_authorization` with its payload attached, and that payload is the checkout's current state: the same
-`id`, `line_items`, `totals` and `legal_context` link. A refusal is one of [the errors under AP2 mandates](#errors).
+delegates to (`cnf`), and none expired. UCP does not define the checkout mandate's `checkout_jwt`. This handler defines
+it as the business's own `ap2.merchant_authorization` with its payload attached (the checkout without `ap2`, in RFC 8785
+form, base64url), and a platform paying through this handler builds it this way. That payload is the checkout's current
+state: the same `id`, `line_items`, `totals` and `legal_context` link. A refusal is one of [the errors under AP2
+mandates](#errors).
 
 #### Example: the checkout's links, under AP2 mandates
 
