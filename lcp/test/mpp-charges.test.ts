@@ -107,8 +107,9 @@ describe("mpp-charge-solana.json", () => {
   });
 
   it("unplaced gives the challenge as issued: its request without externalId", async () => {
-    expect(chargeSolana.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
-    expect(await issuedDigest(chargeSolana.unplaced(placed))).toBe(await issuedDigest(V.challenge));
+    const issued = chargeSolana.unplaced(placed) as MppChallenge;
+    expect(issued).toEqual({ ...placed, request: V.challenge.request });
+    expect(await issuedDigest(issued)).toBe(await issuedDigest(V.challenge));
   });
 
   it("V2: bound and reference of the vector's wire", async () => {
