@@ -21,7 +21,6 @@ import {
   evmAuthorization,
   evmHash,
   evmPermit2,
-  gatewayAccount,
   pairingsOf,
   sessionEvm,
   sessionHedera,
@@ -35,6 +34,7 @@ import {
   usdcRequestHash,
   type MppCredential,
 } from "../src/mpp.js";
+import { gatewayAccount } from "../src/mpp-usdc.js";
 import { load } from "./mpp-fixtures.js";
 
 type Edit = (request: { [k: string]: Json }, challenge: { [k: string]: unknown }) => void;

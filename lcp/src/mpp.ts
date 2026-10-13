@@ -100,7 +100,6 @@ export {
   chargeUsdcGateway,
   chargeUsdcSolana,
   chargeUsdcStacks,
-  gatewayAccount,
   usdcGatewaySalt,
   usdcNonce,
   usdcRequestHash,
