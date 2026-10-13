@@ -27,29 +27,13 @@ description: "The exports of @integraledger/lcp/x402-batch-settlement."
 
 ***
 
-### BatchPaymentPayload
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted-1"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions"></a> `extensions?` | `object` |
-| <a id="property-payload"></a> `payload` | `object` |
-| `payload.type` | `string` |
-| <a id="property-resource"></a> `resource?` | `object` |
-| `resource.url` | `string` |
-| <a id="property-x402version"></a> `x402Version` | `2` |
-
-***
-
 ### BatchSvmOpen
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-accepted-2"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-accepted-1"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
 | <a id="property-computeunitlimit"></a> `computeUnitLimit?` | `number` |
 | <a id="property-computeunitprice"></a> `computeUnitPrice?` | `bigint` |
 | <a id="property-deposit-1"></a> `deposit` | `bigint` |
@@ -78,7 +62,7 @@ base58 for `solana-message` and `ed25519-raw`.
 
 ##### complete()
 
-> **complete**(`signatures`): [`Refusal`](index.md#refusal) \| [`BatchPaymentPayload`](#batchpaymentpayload)
+> **complete**(`signatures`): [`Refusal`](index.md#refusal) \| `BatchPaymentPayload`
 
 ###### Parameters
 
@@ -88,7 +72,7 @@ base58 for `solana-message` and `ed25519-raw`.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`BatchPaymentPayload`](#batchpaymentpayload)
+[`Refusal`](index.md#refusal) \| `BatchPaymentPayload`
 
 ***
 
@@ -98,7 +82,7 @@ base58 for `solana-message` and `ed25519-raw`.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-accepted-3"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
+| <a id="property-accepted-2"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
 | <a id="property-channelconfig"></a> `channelConfig` | [`Json`](index.md#json) | Exactly as sent at the opening. |
 | <a id="property-computeunitlimit-1"></a> `computeUnitLimit?` | `number` | SVM refund's `request_close`: the Compute Budget values, 200 000 units and 1 microlamport when absent. |
 | <a id="property-computeunitprice-1"></a> `computeUnitPrice?` | `bigint` | - |
@@ -140,23 +124,6 @@ base58 for `solana-message` and `ed25519-raw`.
 
 ***
 
-### CloudflarePaymentPayload
-
-The request's payment document: the option's amount and asset, with the challenge's `extensions` echoed.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted-4"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-extensions-1"></a> `extensions` | `object` |
-| <a id="property-payload-1"></a> `payload` | `object` |
-| `payload.amount` | `string` |
-| `payload.asset` | `string` |
-| <a id="property-x402version-1"></a> `x402Version` | `2` |
-
-***
-
 ### Eip712Request
 
 An EIP-712 request for the buyer's signer; numbers in `message` are decimal strings.
@@ -176,12 +143,6 @@ An EIP-712 request for the buyer's signer; numbers in `message` are decimal stri
 
 ## Type Aliases
 
-### BatchPairingId
-
-> **BatchPairingId** = *typeof* `EVM_ID` \| *typeof* `SVM_ID` \| *typeof* `CF_ID`
-
-***
-
 ### SigningRequest
 
 > **SigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`Eip712Request`](#eip712request) \| [`ReceiveTypedData`](evm.md#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `kind`: `"solana-message"`; `message`: `Uint8Array`; \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`; `signer`: `string`; \}
@@ -198,7 +159,7 @@ A request to the buyer's signer.
 
 ### batchCloudflare
 
-> `const` **batchCloudflare**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CloudflarePaymentPayload`](#cloudflarepaymentpayload)\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/cloudflare"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **batchCloudflare**: `Readonly`\<\{ `advertise`: [`X402Advertise`](x402.md#x402advertise); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `CloudflarePaymentPayload`\>; `claims`: `boolean`; `id`: `"x402/batch-settlement/cloudflare"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](x402.md#x402read); `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 ***
 
@@ -309,7 +270,7 @@ The ERC-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 au
 
 ### pairingOf()
 
-> **pairingOf**(`option`): [`BatchPairingId`](#batchpairingid) \| `undefined`
+> **pairingOf**(`option`): `BatchPairingId` \| `undefined`
 
 The batch-settlement pairing an option names, or undefined. A Solana option names `extra.receiverAuthorizer` and
 client voucher signing (`extra.voucherSigner` absent or `"client"`).
@@ -322,4 +283,4 @@ client voucher signing (`extra.voucherSigner` absent or `"client"`).
 
 #### Returns
 
-[`BatchPairingId`](#batchpairingid) \| `undefined`
+`BatchPairingId` \| `undefined`
