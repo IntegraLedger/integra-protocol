@@ -34,7 +34,6 @@ import {
   paymentHash,
   permit2TypedData,
   redeemedLeafRecover,
-  settledAt,
   transferDigest,
   transferParts,
 } from "./internal/evm.js";
@@ -70,7 +69,6 @@ export {
   paymentHash,
   permit2TypedData,
   redeemedLeafRecover,
-  settledAt,
   transferDigest,
   transferParts,
 };
