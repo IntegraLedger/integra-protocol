@@ -639,7 +639,8 @@ any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded 
 > **svmChannelStatus**(`ref`, `reader`): `Promise`\<[`ChannelStatus`](#channelstatus)\>
 
 `svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
-discriminator is `open` (1) or `top_up` (3). At most two calls.
+discriminator is `open` (1) or `top_up` (3). At most two calls, or five for a durable-nonce reference: the two
+`transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
 
 #### Parameters
 

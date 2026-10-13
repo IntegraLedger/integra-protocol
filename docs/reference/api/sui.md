@@ -215,9 +215,9 @@ executed in, such as the latest checkpoint when the payment is requested. An abs
 latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
 pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. One
 with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
-bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, or whose
-`h` is not `0x` and 64 hex digits, and a `position` that is not a non-negative bigint, are pending `unreadable`, with
-nothing read. One call.
+bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, whose `h`
+is not `0x` and 64 hex digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and a
+`position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call.
 
 #### Parameters
 

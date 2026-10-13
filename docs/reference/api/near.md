@@ -29,7 +29,7 @@ Bounded, read-only calls against one network's RPC. Every failure rejects, for e
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
 | <a id="property-network"></a> `network` | `readonly` | [`NearNetwork`](#nearnetwork) | - |
-| <a id="property-relayers"></a> `relayers` | `readonly` | readonly `string`[] | The facilitator's `/supported` `signers["near:*"]`. |
+| <a id="property-relayers"></a> `relayers` | `readonly` | readonly `string`[] | The relayer accounts the transaction is looked up under, the first four. x402's NEAR scheme leaves relayer selection to the facilitator, which may list them under `/supported` `signers["near:*"]`. |
 
 #### Methods
 
@@ -255,9 +255,9 @@ that calls another method is `near/not-ft-transfer`.
 
 > **nearStatus**(`ref`, `reader`): `Promise`\<[`NearStatus`](#nearstatus)\>
 
-Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be the
-instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success is
-settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
+Finds the relayed transaction under each relayer the reader lists (at most four), then requires its delegate to be
+the instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success
+is settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
 `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
 on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
 the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
