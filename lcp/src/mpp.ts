@@ -384,7 +384,7 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
   return {
     request: { kind: "eip712", typedData },
     complete(signature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(signature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       return {
         challenge,
         source: did(chainId, from),
@@ -496,7 +496,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
   return {
     request: { kind: "eip712", typedData },
     complete(signature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(signature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       return {
         challenge,
         source: did(chainId, from),

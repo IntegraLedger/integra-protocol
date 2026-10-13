@@ -102,7 +102,7 @@
    { "case": "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed", "expect": "mpp/request-malformed" },
    { "case": "challengeId, place or build with an H that is not 0x and 64 hex digits, or a position outside 0-31", "expect": "mpp/challenge-malformed" },
    { "case": "build with a malformed from, a missing tokenDomain or spender, or a clientId that is not a string", "expect": "mpp/input-malformed" },
-   { "case": "complete with a signature outside 65 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction over 64 KiB", "expect": "mpp/credential-malformed" },
+   { "case": "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction over 64 KiB", "expect": "mpp/credential-malformed" },
    { "case": "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects", "expect": "mpp/credential-malformed" },
    { "case": "bound with a payload type other than the pairing's", "expect": "mpp/credential-type" },
    { "case": "a WWW-Authenticate value over 8 KiB, not following RFC 9110's grammar, or over 32 Payment challenges", "expect": "mpp/header-malformed" },

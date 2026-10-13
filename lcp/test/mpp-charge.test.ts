@@ -11,7 +11,10 @@ import {
   hashTypedData,
   keccak256,
   parseAbi,
+  parseSignature,
   recoverTypedDataAddress,
+  serializeCompactSignature,
+  signatureToCompactSignature,
   toBytes,
   toHex,
   toRlp,
@@ -127,9 +130,25 @@ describe("mpp-charge-evm-authorization.json", () => {
       .toEqual({ refused: true, code: "mpp/nonce-not-challenge-hash" });
     expect(await evmAuthorization.bound({ ...cred, challenge: { ...cred.challenge, opaque: undefined } as never }))
       .toEqual({ refused: true, code: "mpp/opaque-not-this-hash" });
-    expect(u.complete("0x1234")).toEqual({ refused: true, code: "mpp/credential-malformed" });
+    expect(u.complete("0x")).toEqual({ refused: true, code: "mpp/credential-malformed" });
     expect(evmAuthorization.pattern).toEqual(Object.fromEntries(Object.entries(A.pattern).filter(([k]) => k !== "claims")));
     expect(evmAuthorization.claims).toBe(A.pattern.claims);
+  });
+
+  // EIP-2098 writes a secp256k1 signature in 64 bytes (viem's serializeCompactSignature of MV5's and MV6's), and an
+  // ERC-1271 contract signature has no fixed length, so `complete` takes a signature of 1 to 8192 bytes of hex.
+  it("complete takes a signature of 1 to 8192 bytes: EIP-2098's 64-byte form of MV5's and MV6's", async () => {
+    const compact = (s: ViemHex) => serializeCompactSignature(signatureToCompactSignature(parseSignature(s)));
+    const a = eip712(await evmAuthorization.build({ challenge: ch, from: A.fixed.payer, now: 0, tokenDomain: A.fixed.tokenDomain }, H));
+    const p = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: 0, spender: P.fixed.spender }, H));
+    for (const [u, signature] of [[a, compact(A.MV5.expectSignature)], [p, compact(P.MV6.expectSignature)]] as const) {
+      expect(toBytes(signature).length).toBe(64);
+      expect((u.complete(signature) as MppCredential).payload["signature"]).toBe(signature);
+      expect((u.complete("0x01") as MppCredential).payload["signature"]).toBe("0x01");
+      for (const bad of ["0x", "0x123", `0x${"11".repeat(8193)}`] as const) {
+        expect([bad.slice(0, 8), u.complete(bad)]).toEqual([bad.slice(0, 8), { refused: true, code: "mpp/credential-malformed" }]);
+      }
+    }
   });
 
   // Profile mpp/charge rule 2: "The challenge `id` is the base64url (no padding) of H's 32 bytes, then `.` and the

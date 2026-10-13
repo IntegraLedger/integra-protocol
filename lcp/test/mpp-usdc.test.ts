@@ -4,7 +4,15 @@
 import canonicalize from "canonicalize";
 import sha3 from "js-sha3";
 import { describe, expect, it } from "vitest";
-import { domainSeparator, hashTypedData, type TypedDataDefinition } from "viem";
+import {
+  domainSeparator,
+  hashTypedData,
+  parseSignature,
+  serializeCompactSignature,
+  signatureToCompactSignature,
+  toBytes,
+  type TypedDataDefinition,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   chargeSolana,
@@ -87,6 +95,22 @@ describe("mpp/charge/usdc/evm (M3)", () => {
   it("build's EIP-3009 digest is the vector's, and bound of the completed credential gives H", async () => {
     const cred = await signed();
     expect(await chargeUsdcEvm.bound(cred)).toBe(F.H);
+  });
+
+  // EIP-2098 writes a secp256k1 signature in 64 bytes (viem's serializeCompactSignature of the payer's), and an ERC-1271
+  // contract signature has no fixed length, so `complete` takes a signature of 1 to 8192 bytes of hex.
+  it("complete takes a signature of 1 to 8192 bytes: EIP-2098's 64-byte form of the payer's", async () => {
+    const challenge = placedWith(chargeUsdcEvm, c);
+    const u = await chargeUsdcEvm.build({ challenge, from: F.payer, now: F.now, tokenDomain: F.tokenDomain }, F.H);
+    if ("refused" in u || u.request.kind !== "eip712") throw new Error("not eip712");
+    const complete = (u as { complete(s: `0x${string}`): MppCredential | { refused: true; code: string } }).complete;
+    const full = await privateKeyToAccount(F.payerKey).signTypedData(u.request.typedData as unknown as TypedDataDefinition);
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(full)));
+    expect(toBytes(compact).length).toBe(64);
+    expect((complete(compact) as MppCredential).payload["signature"]).toBe(compact);
+    for (const bad of ["0x", `0x${"11".repeat(8193)}`] as const) {
+      expect(complete(bad)).toEqual({ refused: true, code: "mpp/credential-malformed" });
+    }
   });
 
   it("a nonce taken for another realm gives mpp/nonce-not-usdc-derivation", async () => {

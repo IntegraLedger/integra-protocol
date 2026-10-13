@@ -9,7 +9,10 @@ import {
   hashTypedData,
   isAddress,
   keccak256,
+  parseSignature,
   recoverAddress,
+  serializeCompactSignature,
+  signatureToCompactSignature,
   toBytes,
   toHex,
   toRlp,
@@ -81,6 +84,13 @@ const unsignedOf = (u: unknown) => {
 };
 const num = (n: number | bigint) => (BigInt(n) === 0n ? "0x" : toHex(BigInt(n)));
 const typeHash = (s: string) => keccak256(toBytes(s));
+/**
+ * EIP-2098's 64-byte form of a secp256k1 signature (viem's serializeCompactSignature). An ERC-1271 contract signature
+ * has no fixed length either, so each `complete` takes a signature of 1 to 8192 bytes of hex.
+ */
+const compact = (s: ViemHex) => serializeCompactSignature(signatureToCompactSignature(parseSignature(s)));
+const BAD_SIGNATURES = ["0x", `0x${"11".repeat(8193)}`] as const;
+const malformed = { refused: true, code: "mpp/credential-malformed" };
 /** A 65-byte secp256k1 signature, r ‖ s ‖ v with v 27 or 28. */
 async function sig65(hash: ViemHex): Promise<ViemHex> {
   const s = await sign({ hash, privateKey: E.fixed.payerKey });
@@ -186,6 +196,24 @@ describe("mpp-session-evm.json", () => {
     expect(sessionEvm.landedTx(cred)).toBe(hash);
     expect(sessionEvm.landedTx({ ...cred, payload: { ...cred.payload, type: "authorization" } })).toBeUndefined();
     expect(await transferDigest({ from: f.payer, to: f.escrow, value: deposit })).toBe(E.ES7.expectIdentity);
+  });
+
+  it("the openings' complete takes signatures of 1 to 8192 bytes: EIP-2098's 64-byte form", async () => {
+    const a = await build("authorization");
+    if (a.funding.kind !== "eip712") throw new Error("not eip712");
+    const signature = compact(await payer.signTypedData(forViem(a.funding.typedData)));
+    const voucher = compact(await voucherSig(a, signature));
+    expect(toBytes(signature).length).toBe(64);
+    expect(a.complete(signature, voucher)).toMatchObject({ payload: { signature, voucherSignature: voucher } });
+    const u = await build("hash");
+    const hash = `0x${"55".repeat(32)}` as ViemHex;
+    const hashVoucher = compact(await voucherSig(u, hash));
+    expect(u.complete(hash, hashVoucher)).toMatchObject({ payload: { hash, signature: hashVoucher } });
+    for (const bad of BAD_SIGNATURES) {
+      expect(a.complete(bad, voucher)).toEqual(malformed);
+      expect(a.complete(signature, bad)).toEqual(malformed);
+      expect(u.complete(hash, bad)).toEqual(malformed);
+    }
   });
 
   it("ES8: refusals, the deposit merge, a voucher, and a named channel", async () => {
@@ -533,6 +561,16 @@ describe("mpp-session-tempo.json", () => {
     expect(await sessionTempo.recover(null as never, other)).toEqual(await witnessRecover(null as never, other));
   });
 
+  it("complete takes a voucher signature of 1 to 8192 bytes: EIP-2098's 64-byte form", async () => {
+    const u = unsignedOf(await sessionTempo.build({ challenge: placed(V2), from: f.payer, now: f.now, deposit }, H));
+    if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+    const wire = toHex(await openWire(u.funding.call.data));
+    const voucher = compact(await payer.signTypedData(forViem(u.voucher(wire))));
+    expect(toBytes(voucher).length).toBe(64);
+    expect(u.complete(wire, voucher)).toMatchObject({ payload: { signature: voucher } });
+    for (const bad of BAD_SIGNATURES) expect(u.complete(wire, bad)).toEqual(malformed);
+  });
+
   it("plant 1: an opening whose signed salt is another ATR's hash", async () => {
     const ch = placed(V2);
     const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
@@ -587,6 +625,15 @@ describe("mpp-subscription-tempo.json", () => {
     const cred = u.complete(rootSignature) as MppCredential;
     expect(toBytes(cred.payload["signature"] as ViemHex).length).toBe(U.SUB1.expectSignedLength);
     expect(toHex(encodeKeyAuthorization(a, rootSignature) as Uint8Array)).toBe(toRlp([fromRlp(viemRlp), rootSignature] as never).toLowerCase());
+  });
+
+  it("complete takes a root signature of 1 to 8192 bytes: EIP-2098's 64-byte form, in viem's RLP", async () => {
+    const u = (await subscriptionTempo.build({ challenge: ch, from: f.payer, now: f.now }, H)) as KeyAuthorizationUnsigned;
+    const root = compact(await sig65(u.request.digest));
+    expect(toBytes(root).length).toBe(64);
+    const unsigned = toHex(encodeKeyAuthorization(authOf(U.SUB1.authorization, H)) as Uint8Array);
+    expect(u.complete(root)).toMatchObject({ payload: { signature: toRlp([fromRlp(unsigned), root] as never).toLowerCase() } });
+    for (const bad of BAD_SIGNATURES) expect(u.complete(bad)).toEqual(malformed);
   });
 
   it("SUB2 and SUB3: bound, the channel members and reference", async () => {

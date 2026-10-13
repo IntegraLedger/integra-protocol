@@ -9,7 +9,18 @@ import { base58 } from "@scure/base";
 import { getCompiledTransactionMessageDecoder, getTransactionDecoder } from "@solana/kit";
 import { encodeForSigningClaim } from "ripple-binary-codec";
 import { describe, expect, it } from "vitest";
-import { concat, hashTypedData, keccak256, recoverTypedDataAddress, toHex, toRlp, type Hex as ViemHex } from "viem";
+import {
+  concat,
+  hashTypedData,
+  keccak256,
+  parseSignature,
+  recoverTypedDataAddress,
+  serializeCompactSignature,
+  signatureToCompactSignature,
+  toHex,
+  toRlp,
+  type Hex as ViemHex,
+} from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
 import {
   place,
@@ -99,7 +110,12 @@ describe("mpp/session/evm: buildWithin", async () => {
     });
     const close = unsigned(await sessionEvm.buildWithin(w(250n, "close"), H));
     expect(close.complete([signature])).toMatchObject({ payload: { action: "close", cumulativeAmount: "250" } });
-    expect(at.complete(["0x12"])).toEqual(refused("mpp/credential-malformed"));
+    // EIP-2098's 64-byte form of the same signature (viem's serializeCompactSignature) is a signature too; one of no
+    // bytes, or over 8192, is not.
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(signature)));
+    expect(at.complete([compact])).toMatchObject({ payload: { signature: compact } });
+    expect(at.complete(["0x"])).toEqual(refused("mpp/credential-malformed"));
+    expect(at.complete([`0x${"11".repeat(8193)}`])).toEqual(refused("mpp/credential-malformed"));
     expect(at.complete([signature, signature])).toEqual(refused("mpp/credential-malformed"));
   });
 

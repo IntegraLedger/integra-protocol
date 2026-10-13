@@ -214,7 +214,7 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
   return {
     request: { kind: "eip712" as const, typedData },
     complete(signature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(signature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       return {
         challenge,
         source: `did:pkh:eip155:${chainId}:${from}`,

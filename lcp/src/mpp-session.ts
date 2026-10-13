@@ -201,11 +201,11 @@ export async function withinChecks<O>(
   return o;
 }
 
-/** The one signature of a within `complete`: `0x` and 65 bytes or more of hex. */
+/** The one signature of a within `complete`: `0x` and 1 to 8192 bytes of hex. */
 function oneHexSignature(signatures: readonly string[]): Hex | Refusal {
   if (!Array.isArray(signatures) || signatures.length !== 1) return refusal("mpp/credential-malformed");
   const [s] = signatures;
-  return isHexBytes(s, 65, MAX_SIGNATURE) ? s : refusal("mpp/credential-malformed");
+  return isHexBytes(s, 1, MAX_SIGNATURE) ? s : refusal("mpp/credential-malformed");
 }
 
 const SESSION_EVM = "mpp/session/evm" as const;
@@ -784,7 +784,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
       funding: { kind: "evm-calls", chainId, calls, broadcast: true },
       voucher,
       complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal {
-        if (normalHash(funded) === null || !isHexBytes(voucherSignature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+        if (normalHash(funded) === null || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
         return { challenge, source, payload: { ...base, type: "hash", hash: funded, signature: voucherSignature } };
       },
     };
@@ -842,7 +842,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
     funding: { kind: "eip712", typedData },
     voucher,
     complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(funded, 65, MAX_SIGNATURE) || !isHexBytes(voucherSignature, 65, MAX_SIGNATURE)) {
+      if (!isHexBytes(funded, 1, MAX_SIGNATURE) || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) {
         return refusal("mpp/credential-malformed");
       }
       return {
@@ -1237,7 +1237,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
     complete(signedTx: Hex, voucherSignature: Hex): MppCredential | Refusal {
       const c = opened(signedTx);
       if (isRefusal(c)) return c;
-      if (!isHexBytes(voucherSignature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       return {
         challenge,
         source,
@@ -1405,7 +1405,7 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
   return {
     request: { kind: "tempo-key-authorization", authorization, digest: keccakHex(unsigned) },
     complete(rootSignature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(rootSignature, 65, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(rootSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       const signed = encodeKeyAuthorization(authorization, rootSignature);
       if (!(signed instanceof Uint8Array)) return signed;
       return { challenge, source, payload: { type: "keyAuthorization", signature: hexOf(signed) } };
