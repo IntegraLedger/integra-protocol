@@ -135,8 +135,10 @@ pnpm build
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. Every commit is signed off under the
-[Developer Certificate of Origin](https://developercert.org): add `Signed-off-by: Your Name <you@example.com>` with
-`git commit -s`. CI checks the commits on `main` for it after each push. The TypeScript samples in the READMEs and
+[Developer Certificate of Origin](https://developercertificate.org): add `Signed-off-by: Your Name <you@example.com>`
+with `git commit -s`. On every push to `main`, CI reads every commit in `main`'s history except one merge commit, exempt
+by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message matches the agent pattern in
+`.github/workflows/ci.yml`. The TypeScript samples in the READMEs and
 `docs/` not marked `no-check` are compiled and run in CI after each push to `main`, so a change that alters behaviour
 updates the samples that show it.
 

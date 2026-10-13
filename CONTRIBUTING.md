@@ -81,9 +81,9 @@ once it is on `main`.
 
 ## Commits and the Developer Certificate of Origin
 
-Every commit is signed off under the [Developer Certificate of Origin 1.1](https://developercert.org). The sign-off
-certifies that you wrote the change, or otherwise have the right to submit it under this project's license. Add it
-with `git commit -s`, which appends:
+Every commit is signed off under the [Developer Certificate of Origin 1.1](https://developercertificate.org). The
+sign-off certifies that you wrote the change, or otherwise have the right to submit it under this project's license.
+Add it with `git commit -s`, which appends:
 
 ```text
 Signed-off-by: Your Name <you@example.com>
