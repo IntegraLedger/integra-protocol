@@ -3,7 +3,7 @@
 // made under access key K for account A in token T is a status-1 receipt holding the account keychain's
 // `AccessKeySpend(A, K, T)`; the receipt that registered K for A holds `KeyAuthorizationWitness(A, W)` and
 // `KeyAuthorized(A, K)` whatever its status. Every expected value below is the recording's (topics and data as the node
-// returned them), a constant computed with viem 2.56.8's keccak256, or a digest computed with `sha256sum`.
+// returned them), a constant computed with viem 2.57.4's keccak256, or a digest computed with `sha256sum`.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { keccak256, stringToHex } from "viem";

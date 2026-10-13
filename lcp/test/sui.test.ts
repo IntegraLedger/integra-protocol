@@ -1,6 +1,6 @@
 // Expected values come from vectors/x402-exact-sui.json: its V2 bytes and recipe R, a real testnet
 // transaction read over GraphQL, Python's hashlib Blake2b digests, and Sui's GraphQL schema for the endpoint's
-// available range; and from @mysten/sui 2.31.3, which builds a transaction and gives its digest. Nothing here is a
+// available range; and from @mysten/sui 2.35.0, which builds a transaction and gives its digest. Nothing here is a
 // snapshot of this code.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -86,7 +86,7 @@ async function recipeR(epoch: number | string): Promise<Uint8Array> {
 }
 
 describe("recipe R", () => {
-  it("@mysten/sui 2.31.3 builds the vector's V2 bytes", async () => {
+  it("@mysten/sui 2.35.0 builds the vector's V2 bytes", async () => {
     expect(Buffer.from(await recipeR(1234)).toString("base64")).toBe(V.V2.tx.transactionBase64);
   });
 });
@@ -125,7 +125,7 @@ describe("an Epoch expiration above 2^53 - 1", () => {
 // node's depth below it for a call's type arguments and a vector's element type; a funds withdrawal's `Balance<T>`
 // holds at most 16 nodes (`max_accumulator_type_nodes`), so its T holds at most 15 (MystenLabs/sui 2d56d0e,
 // crates/sui-protocol-config/src/lib.rs, crates/sui-types/src/transaction.rs and accumulator_root.rs). @mysten/sui
-// 2.31.3 writes each transaction; its one type is then written by hand, as BCS writes a TypeTag (a
+// 2.35.0 writes each transaction; its one type is then written by hand, as BCS writes a TypeTag (a
 // vector is the byte 0x06 before its element type, `u8` is 0x01), so that building the deepest ones reads no stack.
 describe("a type nested to Sui's type depth limit", () => {
   const ADDR = `0x${"11".repeat(32)}`;

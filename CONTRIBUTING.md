@@ -23,7 +23,9 @@ pnpm -r --if-present run build
 ```
 
 The workspace installs with `minimumReleaseAge: 1440` (no package version younger than a day), `trustPolicy:
-no-downgrade` and `strictDepBuilds: true`, and every dependency is pinned to an exact version.
+no-downgrade` and `strictDepBuilds: true`. Every dependency and devDependency is pinned to an exact version. The
+optional peer dependencies of `@integraledger/lcp`, the rails' own libraries, are ranges, each a caret or a tilde. Each
+of them is also a devDependency, so the tests and vectors run on the version it pins.
 
 ## Checking your change
 

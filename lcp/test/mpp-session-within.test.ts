@@ -1,7 +1,7 @@
 // In-channel payments (`buildWithin`) for the five MPP session pairings: a voucher, or a close's final voucher, on the
 // channel the held opening opened. Each expected digest or byte string is a vector file's value, or is recomputed here
-// from the voucher's type definition in MPP's session drafts with an independent tool: viem 2.56.8 for EIP-712,
-// @noble/curves 2.4.0 for Ed25519, @solana/kit 8.3.0 for the Solana opening's accounts, and ripple-binary-codec
+// from the voucher's type definition in MPP's session drafts with an independent tool: viem 2.57.4 for EIP-712,
+// @noble/curves 2.4.0 for Ed25519, @solana/kit 8.4.0 for the Solana opening's accounts, and ripple-binary-codec
 // 2.11.0 for the XRPL claim.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";

@@ -1,5 +1,5 @@
 // The six MPP charge pairings against their vector files. Every expected value is the files';
-// viem 2.56.8 is the independent tool for EIP-712, signatures, RLP and keccak.
+// viem 2.57.4 is the independent tool for EIP-712, signatures, RLP and keccak.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {

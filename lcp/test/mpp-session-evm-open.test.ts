@@ -5,7 +5,7 @@
 // that calls `open`, or `openWithPermit2`'s `from`. A hash opening is sent "either directly or through an ERC-4337
 // EntryPoint-mediated UserOperation" (the draft's open verification); the account's calldata does not show which contract
 // the account called, so one sent through an EntryPoint reads as pending, never failed. Every expected value is the
-// file's; viem 2.56.8 encodes the calldata independently here.
+// file's; viem 2.57.4 encodes the calldata independently here.
 import { decodeFunctionData, encodeFunctionData, parseAbi, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { ReaderError, type EvmLog, type EvmReader, type EvmTransaction } from "../src/evm.js";

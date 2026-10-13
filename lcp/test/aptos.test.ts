@@ -1,5 +1,5 @@
 // Expected values come from vectors/x402-exact-aptos.json: a real Aptos mainnet transfer read over REST, fixture F
-// built with @aptos-labs/ts-sdk 7.3.0 and checked against the vector's SHA-256, and Python's hashlib digests. The
+// built with @aptos-labs/ts-sdk 7.5.0 and checked against the vector's SHA-256, and Python's hashlib digests. The
 // signing key is generated here, at test time: the pairing never verifies the signer.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";

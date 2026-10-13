@@ -1,5 +1,5 @@
 // The session and subscription pairings against their vector files. Every expected value is the files', computed
-// or read from Tempo Moderato; viem 2.56.8 is the independent tool for EIP-712, signatures, RLP and keccak.
+// or read from Tempo Moderato; viem 2.57.4 is the independent tool for EIP-712, signatures, RLP and keccak.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
@@ -346,7 +346,7 @@ describe("mpp-session-tempo.json", () => {
     expect(typeHash(c.KEY_REVOKED)).toBe(KEY_REVOKED_TOPIC);
     expect(TIP20_CHANNEL_RESERVE).toBe(c.expectTip20ChannelReserve);
     expect(ACCOUNT_KEYCHAIN).toBe(c.expectAccountKeychain);
-    // Lowercase, so that a checksum-validating client accepts them: viem 2.56.8's isAddress.
+    // Lowercase, so that a checksum-validating client accepts them: viem 2.57.4's isAddress.
     expect(isAddress(TIP20_CHANNEL_RESERVE)).toBe(true);
     expect(isAddress(ACCOUNT_KEYCHAIN)).toBe(true);
   });

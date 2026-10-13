@@ -3,7 +3,7 @@
 //   the integer 3 (`03`), and simple(32) (`f8 20`) is not 32;
 // - §3.1, major type 3: a text string is Unicode characters in UTF-8, so U+FEFF (`ef bb bf`) is one of its characters;
 // - §5.6: a protocol may treat a map with identical keys as malformed; the PLT operations this reader serves are
-//   refused on chain for a repeated key, so the reader refuses one (cborg 6.1.2's rejectDuplicateMapKeys agrees);
+//   refused on chain for a repeated key, so the reader refuses one (cborg 6.1.3's rejectDuplicateMapKeys agrees);
 // - an array or a byte string is never read as a map.
 import { describe, expect, it } from "vitest";
 import * as cborg from "cborg";

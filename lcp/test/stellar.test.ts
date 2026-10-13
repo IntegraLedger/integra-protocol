@@ -331,7 +331,7 @@ describe("x402-exact-stellar.json", () => {
       return { envelope: xdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64"), digest: `0x${sha256(preimage)}` };
     }
 
-    it("@stellar/stellar-sdk 17.1.0 writes the row's envelope: V3's, with the payer's entry for an amount of 1, nonce 2, ahead", async () => {
+    it("@stellar/stellar-sdk 17.2.1 writes the row's envelope: V3's, with the payer's entry for an amount of 1, nonce 2, ahead", async () => {
       expect(row).toBeDefined();
       expect((await withEntryAhead(2n, 1n)).envelope).toBe(row.envelope);
     });
@@ -513,7 +513,7 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
     moved(A, { from: otherPayer.rawPublicKey() }),
   ];
 
-  it("@stellar/stellar-sdk 17.1.0 reproduces V2's simulated envelope, V3's and V4's plain-G envelope, and every row built with it", async () => {
+  it("@stellar/stellar-sdk 17.2.1 reproduces V2's simulated envelope, V3's and V4's plain-G envelope, and every row built with it", async () => {
     expect(simulated(V.V2.simulatedXdr, agree)).toBe(V.V2.simulatedXdr);
     expect(await signed(V.V2.simulatedXdr, agree, seed, 1000)).toBe(V.V3.envelope);
     const plain: Case = { operation: { to: G, amount: A }, signed: { to: G, amount: A } };
@@ -561,7 +561,7 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
   // (x402-foundation/x402 8228bd6d specs/schemes/exact/scheme_exact_stellar.md:121), and the Stellar Asset Contract's
   // `transfer` refuses only a negative amount (rs-soroban-env soroban-env-host/src/builtin_contracts/
   // stellar_asset_contract/contract.rs, check_nonnegative_amount: "negative amount is not allowed"). The preimage is
-  // @stellar/stellar-sdk 17.1.0's buildAuthorizationEntryPreimage for the simulated entry at the expiration build writes.
+  // @stellar/stellar-sdk 17.2.1's buildAuthorizationEntryPreimage for the simulated entry at the expiration build writes.
   it("an option whose amount is 0 is served: advertise, read, pairingOf and build", async () => {
     const zero: PaymentRequirements = { ...V.fixed.option, amount: "0" };
     const doc = exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [zero] }, H, V.fixed.link, zero);
@@ -590,7 +590,7 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
   });
 
   // The transfer's amount is an i128 (x402-foundation/x402 8228bd6d specs/schemes/exact/scheme_exact_stellar.md:121),
-  // whose XDR is Int128Parts { int64 hi; uint64 lo; } (stellar-xdr, as @stellar/stellar-sdk 17.1.0 generates it): its
+  // whose XDR is Int128Parts { int64 hi; uint64 lo; } (stellar-xdr, as @stellar/stellar-sdk 17.2.1 generates it): its
   // largest value is 2^127 - 1, which has 39 decimal digits, as 10^38 does. The SDK's nativeToScVal encodes 10^38 and
   // 2^127 - 1 as an i128 and throws RangeError for 2^127 and 10^39; an option asking for either of those is
   // x402-exact-stellar.json's agreed refusal for an amount that is not an i128 of 0 or more.

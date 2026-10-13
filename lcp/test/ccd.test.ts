@@ -165,7 +165,7 @@ describe("x402/exact/ccd", () => {
       });
     }
 
-    it("the rows' inputs, read with bs58check 4.0.0 and cborg 6.1.2", () => {
+    it("the rows' inputs, read with bs58check 4.0.0 and cborg 6.1.3", () => {
       expect(rows.map((r) => r.expectBound)).toEqual(rows.map(() => H));
       const value = (r: Row) => Object.values(r.set)[0];
       const address = rows.find((r) => "payload.signedTransaction.payload.toAddress" in r.set)!;
@@ -317,7 +317,7 @@ describe("x402/exact/ccd", () => {
     }
   });
 
-  it("the non-canonical memo rows: cborg 6.1.2's strict decode refuses the non-preferred head, and upper-case or U+FEFF text is not ccdMemo(H)", () => {
+  it("the non-canonical memo rows: cborg 6.1.3's strict decode refuses the non-preferred head, and upper-case or U+FEFF text is not ccdMemo(H)", () => {
     const rows = V.D3.rows.filter((r: { expect: { code: string } }) => r.expect.code === "ccd/memo-not-lcp");
     const memos = rows.map((r: { set: Record<string, string> }) => bytes(r.set["payload.signedTransaction.payload.memo"]!.slice(4)));
     const nonPreferred = memos.find((m: Uint8Array) => hex(m).startsWith("79004d"))!;

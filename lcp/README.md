@@ -69,7 +69,7 @@ The package is ESM only, with type declarations for every entry point. Its three
 `@noble/hashes` and `@scure/base`.
 
 Some rails parse their wire formats with the rail's own library. Those libraries are optional peer dependencies:
-install the one for each rail you use, at the version the package names.
+install the one for each rail you use, at a version in the range the package names.
 
 | Rail | Install | Used by |
 |---|---|---|
@@ -78,7 +78,7 @@ install the one for each rail you use, at the version the package names.
 | XRP Ledger | `ripple-binary-codec` | the XRPL pairings on x402 and MPP |
 | Sui | `@mysten/sui` | `x402/exact/sui` |
 | NEAR | `near-api-js`, `borsh` | `x402/exact/near` |
-| TON | `@ton/core` | `x402/exact/tvm` |
+| TON | `@ton/core` and its peer `@ton/crypto` | `x402/exact/tvm` |
 | Algorand | `algosdk` | `x402/exact/algorand` |
 | Stacks | `@stacks/transactions` | `mpp/charge/usdc/stacks` |
 

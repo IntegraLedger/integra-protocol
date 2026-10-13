@@ -407,7 +407,7 @@ describe("mpp-charge-stellar.json", () => {
       latestLedger: async () => latest,
     });
 
-    it("@stellar/stellar-sdk 17.1.0 writes each envelope from V3's as its write says, and the challenge is the place section's with feePayer false", () => {
+    it("@stellar/stellar-sdk 17.2.1 writes each envelope from V3's as its write says, and the challenge is the place section's with feePayer false", () => {
       type Write = { source: string; operationSource?: string; subInvocation?: boolean };
       const key = (b: string) => Keypair.fromRawEd25519Seed(Buffer.from(b.repeat(32), "hex"));
       const write = (w: Write) => {

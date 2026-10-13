@@ -1,5 +1,5 @@
 {
- "about": "Vectors for MPP's challenge pieces in the mpp entry point of @integraledger/lcp, shared by every MPP pairing. H is SHA-256(\"abc\") from FIPS 180-2. C_E and C_T are fixed challenges; their request values are JSON, base64url without padding. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.56.8 and GNU coreutils 9.4. MV9's field values are MPP's own example (draft-httpauth-payment-01 at 08e7dd87, lines 1427-1430).",
+ "about": "Vectors for MPP's challenge pieces in the mpp entry point of @integraledger/lcp, shared by every MPP pairing. H is SHA-256(\"abc\") from FIPS 180-2. C_E and C_T are fixed challenges; their request values are JSON, base64url without padding. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and GNU coreutils 9.4. MV9's field values are MPP's own example (draft-httpauth-payment-01 at 08e7dd87, lines 1427-1430).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",

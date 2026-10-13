@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/evm. Expected values were computed with canonicalize 5.1.0, viem 2.56.8 and js-sha3 on Node, and json.dumps(sort_keys=True, separators=(',',':')) with eth-utils keccak on Python 3.12.3. A.1 is the usdc draft's example (draft-usdc-charge-00, blob ec7fc1868b, lines 1035-1090), whose request parameter is copied verbatim. Truncated values hold their prefix and suffix. The payer key is the published Anvil development key #0.",
+ "about": "Vectors for mpp/charge/usdc/evm. Expected values were computed with canonicalize 5.1.0, viem 2.57.4 and js-sha3 on Node, and json.dumps(sort_keys=True, separators=(',',':')) with eth-utils keccak on Python 3.12.3. A.1 is the usdc draft's example (draft-usdc-charge-00, blob ec7fc1868b, lines 1035-1090), whose request parameter is copied verbatim. Truncated values hold their prefix and suffix. The payer key is the published Anvil development key #0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",

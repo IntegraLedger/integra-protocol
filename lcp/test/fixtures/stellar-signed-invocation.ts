@@ -1,4 +1,4 @@
-// Builds Soroban `transfer` envelopes with @stellar/stellar-sdk 17.1.0: the XDR codec encodes them and `authorizeEntry`
+// Builds Soroban `transfer` envelopes with @stellar/stellar-sdk 17.2.1: the XDR codec encodes them and `authorizeEntry`
 // computes the payer's HashIDPreimage and signs it. Each case starts from x402-exact-stellar.json's simulated envelope
 // (the unsigned V2 form) and sets the operation's `transfer` and the invocation the payer's entry signs, and, where a
 // case names them, the token contract both call and the `from` both pass, with the entry's address credential for it.

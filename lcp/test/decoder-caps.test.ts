@@ -68,7 +68,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
     });
   }
   // The cap bounds nesting only: a value holding more vector elements than an 8 KiB envelope could carry is within it.
-  // The value is written with @stellar/stellar-sdk 17.1.0's XDR types: one vector of 1537 voids.
+  // The value is written with @stellar/stellar-sdk 17.2.1's XDR types: one vector of 1537 voids.
   it("one vector of 1537 voids is within the cap", () => {
     const voids: ScValWire = { type: 16, vec: Array.from({ length: 1537 }, (): ScValWire => ({ type: 1 })) };
     expect(scValsWithinCaps(xdr.ScVal.fromXdr(xdr.ScVal.fromXdrObject(voids).toXdr()).toXdrObject())).toBe(true);
@@ -82,7 +82,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
   }
 
   // The envelope rows as the file's `about` gives them: x402-exact-stellar.json V2's signed envelope, edited with
-  // @stellar/stellar-sdk 17.1.0's XDR types. Each nesting is counted by construction, the outermost level being 1.
+  // @stellar/stellar-sdk 17.2.1's XDR types. Each nesting is counted by construction, the outermost level being 1.
   const X = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
   const vectors = (levels: number, inner: ScValWire): ScValWire => {
     let v = inner;
@@ -134,7 +134,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
       f.invokeContract.args.push(vectors(levels, { type: 1 }));
     });
 
-  it("@stellar/stellar-sdk 17.1.0 writes each envelope row from V2's", () => {
+  it("@stellar/stellar-sdk 17.2.1 writes each envelope row from V2's", () => {
     const built = [
       payerSignature(64),
       payerSignature(65),
