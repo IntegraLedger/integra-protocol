@@ -575,7 +575,7 @@ function isVisibleAscii(s: string): boolean {
 // ── EVM breadth: `exact` over Permit2 and ERC-7710, `upto` over Permit2, and `auth-capture` on the
 // commerce-payments escrow.
 
-export type X402PairingId =
+type X402PairingId =
   | typeof ID
   | "x402/exact/eip155/permit2"
   | "x402/exact/eip155/erc7710"
