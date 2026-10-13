@@ -336,7 +336,8 @@ function sendMessage(actions: Cell): Cell | Refusal {
  * Reads the head's time first. Then finds the signed request by its body hash on the payer's W5 wallet: only a W5
  * transaction there that did not abort and emitted the Jetton transfer counts, because W5 checks the request's
  * signature before any action runs, so a request the payer did not sign sends nothing from that wallet. It follows that
- * message to the payer's Jetton wallet, and that wallet's `internal_transfer` to the payee's Jetton wallet: settled
+ * message to the payer's Jetton wallet, and that wallet's `internal_transfer` to whichever Jetton wallet
+ * takes it, which is not compared with `payTo`: settled
  * when both Jetton wallets executed without aborting, at the lower finality of the two. An equal Jetton body executed
  * any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
  * Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
