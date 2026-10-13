@@ -10,6 +10,7 @@ import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { TvmPayment } from "./internal/tvm.js";
+import { advertiseFor, type OptionFilter } from "./internal/x402.js";
 import { decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -23,7 +24,6 @@ export interface TonCell {
   hash(level?: number): Uint8Array;
 }
 import {
-  advertiseFor,
   chosen,
   offeredAt,
   paymentWith,
@@ -31,7 +31,6 @@ import {
   readFor,
   tie,
   type LcpPattern,
-  type OptionFilter,
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,

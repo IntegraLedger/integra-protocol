@@ -413,14 +413,14 @@ import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, … } from "@integraled
 x402 v2 documents and the `x402/exact/eip155/eip3009` pairing: the ATR hash advertised in the challenge's `extensions.legalContext`, signed by the payer as the EIP-3009 nonce, read back from the payment, and read from the settlement.
 
 ```ts no-check
-import { advertiseFor, authCaptureEip3009, authCapturePermit2, … } from "@integraledger/lcp/x402";
+import { authCaptureEip3009, authCapturePermit2, chosen, … } from "@integraledger/lcp/x402";
 ```
 
 **Pairings:** `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/upto/eip155/permit2`.
 
-**Values (25):** `advertiseFor`, `authCaptureEip3009`, `authCapturePermit2`, `chosen`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `filterOf`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `legalContextOf`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `readFor`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
+**Values (24):** `authCaptureEip3009`, `authCapturePermit2`, `chosen`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `filterOf`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `legalContextOf`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `readFor`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
 
-**Types (20):** `Eip3009Authorization`, `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `OptionFilter`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `Permit2Authorization`, `RequestCommitment`, `Unsigned`, `X402Advertise`, `X402Choice`, `X402Offer`, `X402PairingId`, `X402Payment`, `X402Read`, `X402SchemePayload`, `X402Unsigned`.
+**Types (19):** `Eip3009Authorization`, `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `Permit2Authorization`, `RequestCommitment`, `Unsigned`, `X402Advertise`, `X402Choice`, `X402Offer`, `X402PairingId`, `X402Payment`, `X402Read`, `X402SchemePayload`, `X402Unsigned`.
 
 ## `@integraledger/lcp/x402-batch-settlement`
 

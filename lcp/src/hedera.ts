@@ -18,6 +18,7 @@ import {
   type ExecutorPayload,
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
+import { advertiseFor } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
@@ -31,7 +32,6 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import {
-  advertiseFor,
   chosen,
   paymentWith,
   presentedWith,

@@ -8,9 +8,9 @@ import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { msgpackWithinCaps, type AvmPaymentPayload } from "./internal/avm.js";
+import { advertiseFor } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  advertiseFor,
   chosen,
   paymentWith,
   presentedWith,

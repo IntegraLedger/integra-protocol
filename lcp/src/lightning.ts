@@ -6,6 +6,7 @@
  */
 import { canonicalJson, fromLegalContext, fromRawBytes, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { advertiseFor } from "./internal/x402.js";
 import {
   b64uEncode,
   challengeBound,
@@ -20,7 +21,6 @@ import {
 } from "./mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  advertiseFor,
   chosen,
   filterOf,
   paymentWith,
