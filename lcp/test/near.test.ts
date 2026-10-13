@@ -12,12 +12,12 @@ import {
   ftTransferArgs,
   nearCarrier,
   nearLapsed,
-  pairingOf,
   type NearOutcome,
   type NearReader,
   type NearRef,
 } from "../src/near.js";
 import type { AtrHash } from "../src/core.js";
+import { pairingOf } from "../src/index.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-near.json", import.meta.url), "utf8"));

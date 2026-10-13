@@ -272,7 +272,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 **Pairings:** `x402/exact/near`.
 
-**Values (9):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `nearCarrier`, `nearLapsed`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`, `pairingOf`.
+**Values (8):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `nearCarrier`, `nearLapsed`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`.
 
 **Types (6):** `NearNetwork`, `NearOutcome`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
 
