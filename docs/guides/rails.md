@@ -138,7 +138,9 @@ credentials, the timeouts and the retries are yours. Each `status` makes a bound
 
 A reader that throws or times out never makes a payment failed: a rejected read of the transaction makes `status` answer
 pending, with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark counts as that
-mark not reached. A reader that declares a network other than the reference's is read the same way, with nothing read,
+mark not reached. On EVM chains and Tempo, a receipt holding a log that is not an object with a string `address`, an
+array of string `topics` and a string `data` makes `status` answer pending `unreadable` as well. A reader that declares
+a network other than the reference's is read the same way, with nothing read,
 so no later read through it settles the payment. The package compares only the `network` a reader declares and never
 asks its endpoint which network it serves, so a reader declares its endpoint's own: one that declares the payment's
 network over another network's endpoint finds nothing, and where a verdict rests on a point it reads, such as a head,
