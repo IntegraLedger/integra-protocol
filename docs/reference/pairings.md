@@ -277,7 +277,7 @@ The payment presented a Permit2 authorization whose nonce commits, through the e
 
 ### `x402/batch-settlement/cloudflare`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The buyer's agent signed, with the HTTP message signature key it registered with Cloudflare, a request whose PAYMENT-SIGNATURE header echoes this ATR's hash in the x402 legalContext extension. Cloudflare verifies that signature and bills the agent's registered identity off chain. This does not show that amount, asset or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The buyer's agent signed, with the HTTP message signature key it registered with Cloudflare, a request whose PAYMENT-SIGNATURE header echoes this ATR's hash in the legalContext entry of x402's extensions. Cloudflare verifies that signature and bills the agent's registered identity off chain. This does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/batch-settlement/eip155`
 
@@ -313,7 +313,7 @@ The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's ha
 
 ### `x402/exact/eip155/erc7710`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment payload echoed this ATR's hash in the x402 legalContext extension. The buyer's delegation does not sign the hash, and the settlement transaction does not carry it.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment payload echoed this ATR's hash in the legalContext entry of x402's extensions. The buyer's delegation does not sign the hash, and the settlement transaction does not carry it.
 
 ### `x402/exact/eip155/erc7710-salt`
 

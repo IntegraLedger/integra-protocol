@@ -1355,7 +1355,7 @@ export const exactErc7710 = binding(
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
       "recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment " +
-      "payload echoed this ATR's hash in the x402 legalContext extension. " +
+      "payload echoed this ATR's hash in the legalContext entry of x402's extensions. " +
       "The buyer's delegation does not sign the hash, and the settlement transaction does not carry it.",
   }),
   false,
