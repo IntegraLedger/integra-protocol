@@ -575,8 +575,8 @@ async function namedBuild(
 }
 
 /**
- * The candidate hash: the echoed legal context's value. The paid invoice carries none; the issuer's digest over the issued
- * option, invoice included, is what ties this payment to the ATR.
+ * The candidate hash: the echoed legal context's value. The paid invoice carries none; the seller's digest over the option
+ * it issued, invoice included, is what ties this payment to the ATR.
  */
 async function namedBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");

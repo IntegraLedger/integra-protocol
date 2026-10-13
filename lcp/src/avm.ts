@@ -52,8 +52,10 @@ export interface AvmReader {
   search(txid: string): Promise<{ currentRound: bigint; found: null | { confirmedRound: bigint; note: Uint8Array } }>;
 }
 
-/** The read keys recorded at claim, computed from the signed bytes. `lastValid` is a decimal string, so the issuer stores the
- * reference as JSON. */
+/**
+ * The read keys `reference` returns, computed from the signed bytes. `lastValid` is a decimal string, so the reference
+ * is JSON-serialisable.
+ */
 export interface AvmRef {
   network: AlgorandNetwork;
   txid: string;
