@@ -789,6 +789,58 @@ describe("mpp", () => {
     }
     expect(marks).toBe(0);
   });
+  // The ref reference writes for HS4's opening (mpp-session-hedera-solana-xrpl.json) names the transaction, a 32-byte
+  // hash, and the binding log, whose address is the escrow's and whose value is the channel, a 32-byte hash; hex digits
+  // read the same in either case (docs/guides/rails.md). A ref whose transaction or binding log is not of that form is a
+  // ref recover cannot read: `hedera/wrong-reader`, with nothing read, as the XRPL session's recover answers one
+  // (docs/guides/mpp.md, "Answering the buyer").
+  it("sessionHedera.recover refuses a ref whose transaction is not a 32-byte hash, or whose bindingLog is not an object with an address and a 32-byte value, as hedera/wrong-reader, with nothing read", async () => {
+    const S = load("mpp-session-hedera-solana-xrpl.json");
+    const network = "hedera:testnet";
+    const open = S.HS4.openReceipt;
+    let reads = 0;
+    const reader = {
+      network,
+      receipt: async () => {
+        reads++;
+        return { status: open.status, blockNumber: BigInt(open.blockNumber), logs: open.logs };
+      },
+    };
+    const b = { address: S.fixed.escrow.toLowerCase(), topic0: CHANNEL_OPENED_TOPIC, index: 1, value: S.HS4.channel };
+    const ref = { network, transaction: S.HS4.openTx, bindingLog: b };
+    const upper = (h: string) => `0x${h.slice(2).toUpperCase()}`;
+    const controls = [
+      ref,
+      { ...ref, transaction: upper(ref.transaction) },
+      { ...ref, bindingLog: { ...b, address: upper(b.address), value: upper(b.value) } },
+    ];
+    for (const control of controls) {
+      reads = 0;
+      expect(await sessionHedera.recover(control as never, reader as never)).toBe(S.HS4.salt);
+      expect(reads).toBe(1);
+    }
+    const bindingLogs: unknown[] = [
+      ...NOT_OBJECTS,
+      [],
+      {},
+      without("address")(b),
+      without("value")(b),
+      ...[1, null, H, b.address.slice(0, 40)].map((address) => ({ ...b, address })),
+      ...[5, null, b.address, `${b.value}00`].map((value) => ({ ...b, value })),
+    ];
+    const malformed: [string, unknown][] = [
+      ...bindingLogs
+        .filter((bl) => bl !== undefined)
+        .map((bl): [string, unknown] => [`bindingLog ${JSON.stringify(bl)}`, { ...ref, bindingLog: bl }]),
+      ...[null, 1, H.slice(0, 64), `${H}00`].map((t): [string, unknown] => [`transaction ${String(t)}`, { ...ref, transaction: t }]),
+      ["no transaction", without("transaction")(ref)],
+    ];
+    for (const [label, bad] of malformed) {
+      reads = 0;
+      expect(await sessionHedera.recover(bad as never, reader as never), label).toEqual(refused("hedera/wrong-reader"));
+      expect(reads, label).toBe(0);
+    }
+  });
 });
 
 describe("tempo", () => {

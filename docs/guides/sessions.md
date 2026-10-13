@@ -268,7 +268,9 @@ opening's receipt before `bound`, refuses a revert by the same mark: an opening 
 once its block is at or below the reader's `finalized` mark, and `hedera/not-final`, a read to repeat, above that mark
 or where it cannot be read. A reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a
 list of logs), or that holds a log that is not an object with a string `address`, an array of string `topics` and a
-string `data`, is `hedera/unreadable`, a read to repeat, and no mark is read for it. On `mpp/subscription/tempo`,
+string `data`, is `hedera/unreadable`, a read to repeat, and no mark is read for it. `recover` reads no mark: it refuses
+an opening that reverted as `hedera/reverted` in any block, whether or not its receipt holds the opening's log. On
+`mpp/subscription/tempo`,
 the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
 channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
 activation's receipt as `accessKey.account`; without it, `closeRef` refuses `mpp/input-malformed`. Another account's

@@ -153,6 +153,34 @@ describe("mpp/session/hedera", () => {
     expect(await sessionHedera.recover(ref, hederaReader({ [V.HS3.txHash]: receipt }))).toBe(H);
   });
 
+  // A receipt status of 0 is a transaction that failed (EIP-658, the JSON-RPC receipt's 0x0), whose logs the chain
+  // reverted: refusals.md gives `hedera/reverted` for a session opening that reverted. HS3's and HS4's openings with
+  // status 1 give H and HS4's salt; with status 0 each is a revert, whatever logs the reader gives with it, and a ref
+  // naming no binding log reads the revert first. A log of another shape is read first of all: `hedera/unreadable`.
+  it("recover: a reverted opening is hedera/reverted, as the EVM and Tempo recovers answer a revert", async () => {
+    const r4 = V.HS4;
+    const opaque = b64u(canonicalJson({ legalContext: toLcpString(r4.salt), legalContextUrl: V.fixed.link }) as string);
+    const hs3 = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
+    const hs4 = cred({ ...C_H, id: r4.challengeId, opaque }, { action: "open", channelId: r4.channel, txHash: r4.openTx, cumulativeAmount: "0", signature: "0x00" });
+    const openings: [MppCredential, EvmReceipt, string][] = [
+      [hs3, { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] }, H],
+      [hs4, asReceipt(r4.openReceipt), r4.salt],
+    ];
+    for (const [c, receipt, salt] of openings) {
+      const ref = await sessionHedera.reference(c);
+      if ("refused" in ref) throw new Error(ref.code);
+      const at = (r: unknown) => hederaReader({ [ref.transaction]: r as EvmReceipt });
+      expect(await sessionHedera.recover(ref, at(receipt))).toBe(salt);
+      expect(await sessionHedera.recover(ref, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
+      expect(await sessionHedera.recover(ref, at({ ...receipt, status: 0, logs: [] }))).toEqual(refused("hedera/reverted"));
+      const { bindingLog: _bindingLog, ...unbound } = ref;
+      expect(await sessionHedera.recover(unbound, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
+      expect(await sessionHedera.recover(unbound, at(receipt))).toEqual(refused("hedera/channel-log-not-found"));
+      const misshapen = { ...receipt, status: 0, logs: [...receipt.logs, { ...receipt.logs[0], data: undefined }] };
+      expect(await sessionHedera.recover(ref, at(misshapen))).toEqual(refused("hedera/unreadable"));
+    }
+  });
+
   it("HS4: a real testnet opening and close", async () => {
     const r4 = V.HS4;
     expect(r4.salt.startsWith(r4.expectSaltPrefix) && r4.salt.endsWith(r4.expectSaltSuffix)).toBe(true);

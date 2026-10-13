@@ -472,11 +472,11 @@ Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges 
 | `hedera/not-success` | The transaction an MPP Hedera `hash` charge credential names reached consensus with no `SUCCESS` among its counted user entries, so its transfers were not made. |
 | `hedera/option-malformed` | A Hedera option names an unknown transfer method or lacks what its pairing needs (an asset and `payTo`, a `feePayer`, 1 to the allowed number of `executors`, or a decimal amount below 2^63 and a positive timeout, which `x402/exact/hedera`'s `bound` and `reference` do not read), the buyer's choice carries an invalid payer, node, valid start, fee or decimals, or a client id that is not a well-formed string, or a transfer-executor `now` that is not a non-negative safe integer or whose sum with `maxTimeoutSeconds` is not one, or an MPP Hedera charge request has an invalid amount, currency, recipient or splits (too many, not less than the amount, or repeating an account). |
 | `hedera/read-first` | An MPP Hedera `hash` charge credential or session opening carries no landed data yet; the seller reads it with `fetchPresented` before `bound`. |
-| `hedera/reverted` | The Hedera session opening transaction reverted, in a block at or below the reader's `finalized` mark. |
+| `hedera/reverted` | The Hedera session opening transaction reverted: in a block at or below the reader's `finalized` mark, as `fetchPresented` reads it, or in any block, as `recover` reads it. |
 | `hedera/tx-malformed` | A Hedera transaction is not base64 of a wire `Transaction` or `TransactionList` whose signed body decodes within the depth bound, a signature pair given to `complete` has the wrong key or signature length, or a push credential's `transactionId` is not `shard.realm.num@seconds.nanos`. |
 | `hedera/tx-too-large` | A Hedera transaction's wire bytes exceed the size bound. |
 | `hedera/unreadable` | The Hedera reader failed or returned a response that is not well formed. |
-| `hedera/wrong-reader` | The Hedera reader is missing or answers for a different network than the reference or request names. |
+| `hedera/wrong-reader` | The Hedera reader is missing or answers for a different network than the reference or request names, or the reference given to the `mpp/session/hedera` `recover` names a `transaction` that is not a 32-byte hash, or a `bindingLog` that is not an object with an address `address` and a 32-byte `value`. |
 
 ## avm
 

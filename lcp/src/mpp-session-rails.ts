@@ -334,12 +334,18 @@ async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: Hede
 
 /**
  * Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log naming the channel. A ref or reader that is
- * not an object, or a reader for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge. A
- * failed read, or a reader answer that is not a receipt or holds a log that is not an object with a string `address`,
- * an array of string `topics` and a string `data`, is `hedera/unreadable`.
+ * not an object, or a reader for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge, and
+ * so is a ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` is present and not an object with an
+ * address `address` and a 32-byte `value`, the members `recover` reads; nothing is read for any of them. A failed read,
+ * or a reader answer that is not a receipt or holds a log that is not an object with a string `address`, an array of
+ * string `topics` and a string `data`, is `hedera/unreadable`. No receipt is `hedera/not-found`, and a reverted one
+ * `hedera/reverted`, whether or not it holds the opening's log, as the EVM and Tempo recovers answer a revert.
  */
 async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
+  const b = ref.bindingLog;
+  const readable = b === undefined || (isObject(b) && isAddress(b.address) && normalHash(b.value) !== null);
+  if (normalHash(ref.transaction) === null || !readable) return refusal("hedera/wrong-reader");
   let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -348,7 +354,7 @@ async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Pr
   }
   if (receipt === null) return refusal("hedera/not-found");
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
-  const b = ref.bindingLog;
+  if (receipt.status === 0) return refusal("hedera/reverted");
   if (b === undefined) return refusal("hedera/channel-log-not-found");
   const log = receipt.logs.find(
     (l) =>
