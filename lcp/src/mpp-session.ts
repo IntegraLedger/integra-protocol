@@ -1612,8 +1612,7 @@ export const subscriptionTempo = Object.freeze({
       "verified that signature when the activation transaction registered the key, and the account keychain's " +
       "KeyAuthorizationWitness event carries the payer's account and this hash as topics. The same transaction " +
       "transferred the token the payer's key authorization limits to the recipient it allows. This does not show that " +
-      "amount, period, payee, asset or timing match the ATR's content. Later billing periods were paid under this ATR " +
-      "by renewal transfers the seller did not read.",
+      "amount, period, payee, asset or timing match the ATR's content.",
   } satisfies LcpPattern),
   claims: true as const,
   unplaced,
@@ -1639,5 +1638,5 @@ export const subscriptionTempo = Object.freeze({
     "KeyAuthorizationWitness event carries the payer's account and this hash as topics. The payment is a later " +
     "transfer, <transaction>, made under that key: the account keychain's AccessKeySpend event in it names the payer's " +
     "account, the key and the token. This does not show that amount, period, payee, asset or timing match the ATR's " +
-    "content. Later billing periods were paid under this ATR by renewal transfers the seller did not read.",
+    "content.",
 });

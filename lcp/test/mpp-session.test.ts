@@ -895,4 +895,15 @@ describe("mpp-subscription-tempo.json", () => {
     expect(pairingsOf(challenge("tempo", "subscription", JSON.stringify(badKey)))).toEqual({ refused: true, code: "mpp/access-key-malformed" });
     expect(subscriptionTempo.pattern).toEqual(Object.fromEntries(Object.entries(U.pattern).filter(([k]) => k !== "claims")));
   });
+
+  // The record reads the activation, or through keySearch one transfer made under the key, and neither proves says
+  // that later billing periods were paid under this ATR: each ends with what it does not show, the sentence written
+  // word for word.
+  it("proves and keyProves say nothing of later billing periods", () => {
+    const end = "This does not show that amount, period, payee, asset or timing match the ATR's content.";
+    for (const p of [subscriptionTempo.pattern.proves, subscriptionTempo.keyProves]) {
+      expect(p.endsWith(` ${end}`)).toBe(true);
+      expect(p).not.toMatch(/later billing|renewal|paid under this ATR/i);
+    }
+  });
 });
