@@ -597,7 +597,7 @@
   "latestLedger": 995
  },
  "agreedRefusals": {
-  "about": "Refusal codes the Stellar specification leaves to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes the Stellar specification leaves to the implementation. The TypeScript implementation applies every row; the Python implementation applies every row except the missing-peer row and the transfer-event row.",
   "rows": [
    {
     "case": "any Stellar function that needs the XDR codec when @stellar/stellar-sdk is not installed",
