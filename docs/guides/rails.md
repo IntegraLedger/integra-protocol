@@ -181,8 +181,9 @@ A transaction that sets no maximum epoch can execute in any later epoch: `refere
 
 On Cardano, a recent block can still be rolled back. `cardanoStatus(ref, reader, depth)` takes the number of newer
 blocks at which you take a settlement as final, and answers failed `expired` only when the block that many blocks below
-the tip is past the transaction's TTL, so a rollback above that depth leaves a payment that landed pending `not-found`,
-never failed.
+the tip is at or past the transaction's TTL slot, so a rollback above that depth leaves a payment that landed pending
+`not-found`, never failed. The ledger takes a transaction only in a slot below its TTL (`invalid_hereafter`), so the
+TTL slot is the first in which it cannot land.
 
 On the rails in the table below, a verdict that a payment will never land rests on a reference point: a head time, a
 ledger, a confirmed nonce, a final height or a chain tip. The reference point is read before the lookup it judges, and

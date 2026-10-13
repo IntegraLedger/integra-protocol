@@ -1,6 +1,6 @@
 // Expected values come from vectors/x402-exact-cardano.json: cbor2 and pycardano encodings, a real preprod
-// transaction read through Koios, Python's hashlib Blake2b digests, and x402's Cardano scheme for the TTL and the
-// confirmation depth. Nothing here is a snapshot of this code.
+// transaction read through Koios, Python's hashlib Blake2b digests, x402's Cardano scheme for the TTL and the
+// confirmation depth, and cardano-ledger's validity interval for the TTL slot. Nothing here is a snapshot of this code.
 import { describe, expect, it } from "vitest";
 import type { AtrHash } from "../src/core.js";
 import { readFileSync } from "node:fs";
@@ -183,7 +183,7 @@ describe("V5 · status and recover", () => {
   // The block `depth` below the tip decides expiry; above it a block can still be rolled back (x402's Cardano scheme),
   // so an absent transaction whose expiry that block does not show is pending not-found.
   const PAST = { blockHeight: "5216538", slot: "134620400" };
-  it("status: slotAt is read only for an absent transaction once the tip's slot is past the TTL", async () => {
+  it("status: slotAt is read only for an absent transaction once the tip's slot is at or past the TTL slot", async () => {
     const included = reader(PAST, V.V5.status[0].tx);
     expect(plain(await exactCardano.status(refOf(V.V5.ref), included, DEPTH))).toEqual(V.V5.status[0].expect);
     const early = reader(V.V5.tip, null);
@@ -198,6 +198,26 @@ describe("V5 · status and recover", () => {
     expect(await exactCardano.status(refOf(V.V5.ref), none, DEPTH)).toEqual({ state: "pending", why: "not-found" });
     expect(none.heights).toEqual([5216518n]);
   });
+  // cardano-ledger b1097d47, eras/allegra/impl/src/Cardano/Ledger/Allegra/Scripts.hs: "a ValidityInterval is a half
+  // Open interval", `inInterval slot (ValidityInterval SNothing (SJust top)) = slot < top`; the Allegra, Babbage and
+  // Conway UTXO rules run it on the body's validity interval, whose top is invalid_hereafter (body key 3). A transaction
+  // lands only in a slot below ttlSlot, so a final block at ttlSlot or later shows an absent one can never land.
+  it("status: an absent transaction is expired from the TTL slot itself, at depth and at the tip", async () => {
+    const ttl = BigInt(V.V5.ref.ttlSlot);
+    const notFound = { state: "pending", why: "not-found" };
+    const expired = { state: "failed", why: "expired" };
+    for (const [slot, want] of [[ttl - 1n, notFound], [ttl, expired], [ttl + 1n, expired]] as const) {
+      const at = { blockHeight: "5216518", slot: slot.toString() };
+      const deep = reader(PAST, null, undefined, undefined, at);
+      expect([slot, await exactCardano.status(refOf(V.V5.ref), deep, DEPTH)]).toEqual([slot, want]);
+      expect(deep.heights).toEqual([5216518n]);
+      const tip = reader({ blockHeight: "5216538", slot: slot.toString() }, null);
+      expect([slot, await exactCardano.status(refOf(V.V5.ref), tip, 0n)]).toEqual([slot, want]);
+      const both = reader({ blockHeight: "5216538", slot: slot.toString() }, null, undefined, undefined, at);
+      expect([slot, await exactCardano.status(refOf(V.V5.ref), both, DEPTH)]).toEqual([slot, want]);
+      expect([slot, both.heights]).toEqual([slot, slot < ttl ? [] : [5216518n]]);
+    }
+  });
   it("status: depth 0 reads expiry at the tip's own slot, with no slotAt call", async () => {
     const r = reader(PAST, null);
     expect(await exactCardano.status(refOf(V.V5.ref), r, 0n)).toEqual({ state: "failed", why: "expired" });
@@ -205,8 +225,8 @@ describe("V5 · status and recover", () => {
   });
   // An indexer's lookup shows a transaction absent only through the latest block it holds, so a lookup from an
   // indexer behind the tip read first cannot show that a transaction which landed before the TTL is missing; the
-  // transaction landed in a block at or below the TTL slot (x402's Cardano scheme: a transaction can land only inside
-  // its validity window).
+  // transaction landed in a block below the TTL slot (x402's Cardano scheme: a transaction can land only inside its
+  // validity window).
   it("status: a lookup from an indexer behind the tip read first is pending, never expired", async () => {
     const deep = { blockHeight: "5216518", slot: "134620001" };
     for (const depth of [0n, DEPTH]) {

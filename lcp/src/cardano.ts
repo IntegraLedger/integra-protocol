@@ -131,15 +131,16 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
 
 /**
  * Reads the tip first, then the recorded id. A failed read, or a reader for another network, is pending. `depth` is
- * the number of newer blocks at which the caller takes a settlement as final. An absent transaction is expired once the
- * slot of the block `depth` below the tip is past its TTL and the lookup names a slot at or past the tip's, so a
- * rollback of fewer than `depth` blocks, or a lookup that lags the tip read first, never turns a payment that landed
- * into a failed one; while that block's slot is not past the TTL, the tip is fewer than `depth` blocks high, the
- * reader holds no block at that height, or the lookup names an earlier slot or none, it is pending `not-found`. A
- * present one fails only when the ledger marks it invalid. A `depth` that is not a non-negative bigint is pending
- * `unreadable`, and so is a ref whose `txId` is not `0x` and 64 hex digits, with nothing read; the id is looked up in
- * lowercase. At most three calls: `slotAt` only for an absent transaction once the tip's slot is past the TTL and the
- * lookup covers the tip, and not at `depth` 0, where the tip is that block.
+ * the number of newer blocks at which the caller takes a settlement as final. The ledger takes a transaction only in a
+ * slot below its TTL (cardano-ledger's Allegra `inInterval`: `slot < top`, the check Babbage and Conway run), so an
+ * absent transaction is expired once the slot of the block `depth` below the tip is at or past `ttlSlot` and the lookup
+ * names a slot at or past the tip's: a rollback of fewer than `depth` blocks, or a lookup that lags the tip read first,
+ * never turns a payment that landed into a failed one. While that block's slot is below `ttlSlot`, the tip is fewer
+ * than `depth` blocks high, the reader holds no block at that height, or the lookup names an earlier slot or none, it
+ * is pending `not-found`. A present one fails only when the ledger marks it invalid. A `depth` that is not a
+ * non-negative bigint is pending `unreadable`, and so is a ref whose `txId` is not `0x` and 64 hex digits, with nothing
+ * read; the id is looked up in lowercase. At most three calls: `slotAt` only for an absent transaction once the tip's
+ * slot is at or past `ttlSlot` and the lookup covers the tip, and not at `depth` 0, where the tip is that block.
  */
 export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, depth: bigint): Promise<CardanoStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
@@ -155,12 +156,12 @@ export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, dept
     const tx: unknown = await reader.transaction(txId, false);
     const readTo = notFoundPoint(tx, "slot");
     if (readTo !== undefined) {
-      if (tip.slot <= ttlSlot || tip.blockHeight < depth) return notFound;
+      if (tip.slot < ttlSlot || tip.blockHeight < depth) return notFound;
       if (readTo === null || readTo < tip.slot) return notFound;
       const slot = depth === 0n ? tip.slot : await reader.slotAt(tip.blockHeight - depth);
       if (slot === null) return notFound;
       if (typeof slot !== "bigint") return unreadable;
-      return slot > ttlSlot ? { state: "failed", why: "expired" } : notFound;
+      return slot >= ttlSlot ? { state: "failed", why: "expired" } : notFound;
     }
     if (!isOnChain(tx)) return unreadable;
     if (!tx.valid) return { state: "failed", why: "phase-2-invalid" };
