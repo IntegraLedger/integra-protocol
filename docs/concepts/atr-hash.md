@@ -68,9 +68,10 @@ applies to it:
 
 A pairing's `advertise`, and MPP's and A2A's `place`, refuse any link that fails the rule as
 `<surface>/link-not-https`: the link MUST be `https://` (LCP §8.1). A pairing's `read` refuses a link of another
-scheme as `<surface>/link-not-https`, and any other link that fails the rule as `<surface>/legal-context-malformed`.
-A link is at most 2048 characters: an `https` link over that is `<surface>/legal-context-malformed`, or
-`<surface>/too-large` on ACP, AP2 and UCP.
+scheme as `<surface>/link-not-https`, and any other link that fails the rule as `<surface>/legal-context-malformed`;
+card's, ACK's and AP2's `read` refuse every link that fails the rule as `<surface>/legal-context-malformed`. A link is
+at most 2048 characters: an `https` link over that is `<surface>/legal-context-malformed`, or `<surface>/too-large` on
+ACP, AP2 and UCP.
 
 ## Next
 

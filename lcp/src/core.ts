@@ -548,6 +548,7 @@ const MAX_LINK = 2048;
 /**
  * True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`: the one
  * failing link a pairing's `read` refuses as `link-not-https`, where every other failing link is
+ * `legal-context-malformed`. Card's, ACK's and AP2's `read` refuse every link that is not `https` as
  * `legal-context-malformed`. A pairing's `advertise`, and MPP's and A2A's `place`, refuse every link that is not
  * `https` as `link-not-https`.
  */

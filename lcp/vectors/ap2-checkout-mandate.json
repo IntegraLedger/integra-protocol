@@ -261,7 +261,7 @@
    },
    "expect": {
     "refused": true,
-    "code": "ap2/link-not-https"
+    "code": "ap2/legal-context-malformed"
    }
   },
   {

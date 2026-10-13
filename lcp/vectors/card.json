@@ -228,7 +228,7 @@
    },
    {
     "case": "read with a legalContext whose link is not https",
-    "expect": "card/link-not-https"
+    "expect": "card/legal-context-malformed"
    },
    {
     "case": "read with a legalContext whose link is over 2048 characters",

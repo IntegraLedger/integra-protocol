@@ -51,6 +51,13 @@ const LINK_MALFORMED = MALFORMED;
  * `<ns>/too-large`, as acp-checkout.json, ap2-checkout-mandate.json and ucp.json give for a link of 2,049 characters.
  */
 const LINK_SIZE_CODE = new Set(["acp", "ap2", "ucp"]);
+/**
+ * The pairings whose `read` gives `legal-context-malformed` to every link that is not https, a link of another scheme
+ * included, as card.json, ack-payment-request.json and ap2-checkout-mandate.json give for an http link.
+ */
+const READ_UNSPLIT = new Set(["card", "ack", "ap2"]);
+const readHttpCode = (prefix: string) =>
+  READ_UNSPLIT.has(prefix) ? `${prefix}/legal-context-malformed` : `${prefix}/link-not-https`;
 const linkCode = (prefix: string, bad: string) =>
   bad === TOO_LONG && LINK_SIZE_CODE.has(prefix) ? `${prefix}/too-large` : `${prefix}/legal-context-malformed`;
 
@@ -331,18 +338,18 @@ describe("the agreement URL", () => {
       });
 
       // At read only a URL of at most 2048 characters that parses with a scheme other than https is the pairing's link
-      // refusal; every other value is `legal-context-malformed`. vectors/buyer.json BA5 declines an http agreement URL
-      // "link-not-https".
-      it("read: a link whose scheme is not https is link-not-https; any other bad value is malformed", () => {
-        expect(readOf(c, c.readable(withLink(c, c.before, HTTP)))).toEqual(refused(`${c.prefix}/link-not-https`));
+      // refusal, except on the pairings READ_UNSPLIT names; every other value is `legal-context-malformed`.
+      // vectors/buyer.json BA5 declines an http agreement URL "link-not-https".
+      it("read: a link of another scheme is link-not-https, malformed on card, ack and ap2; other bad values are malformed", () => {
+        expect(readOf(c, c.readable(withLink(c, c.before, HTTP)))).toEqual(refused(readHttpCode(c.prefix)));
         for (const bad of LINK_MALFORMED) {
           const got = readOf(c, c.readable(withLink(c, c.before, bad)));
           expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(linkCode(c.prefix, bad))]);
         }
       });
 
-      it("read: an agreement URL whose scheme is not https is link-not-https; any other bad value is malformed", () => {
-        expect(readOf(c, c.readable(c.after(HTTP)))).toEqual(refused(`${c.prefix}/link-not-https`));
+      it("read: an agreement URL of another scheme is link-not-https, malformed on card, ack and ap2; others are malformed", () => {
+        expect(readOf(c, c.readable(c.after(HTTP)))).toEqual(refused(readHttpCode(c.prefix)));
         for (const bad of MALFORMED) {
           const got = readOf(c, c.readable(c.after(bad)));
           expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(`${c.prefix}/legal-context-malformed`)]);

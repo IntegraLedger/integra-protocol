@@ -136,7 +136,7 @@ describe("C2 TAP", () => {
     expect(visaTap.read({})).toEqual(refused("card/no-legal-context"));
     expect(visaTap.read({ legalContext: { type: "sha256", value: "0x12" } })).toEqual(refused("card/legal-context-malformed"));
     const http = { legalContext: { type: "sha256", value: H, legalContextUrl: V.C1.httpLink.link } };
-    expect(visaTap.read(http)).toEqual(refused("card/link-not-https"));
+    expect(visaTap.read(http)).toEqual(refused("card/legal-context-malformed"));
   });
 });
 
@@ -250,6 +250,15 @@ describe("C5 VI read and build", () => {
     expect(await viImmediate.build(VI.CJ, V.C5.conflict.h)).toEqual(refused(V.C5.conflict.expect));
   });
 
+  // build takes the checkout_jwt's legal context as read does: card.json agreedRefusals, "read with a legalContext
+  // whose link is not https".
+  it("build of a checkout_jwt whose link is not https is card/legal-context-malformed, as read gives", async () => {
+    const legalContext = { type: "sha256", value: H, legalContextUrl: V.C1.httpLink.link };
+    const cj = jws({ alg: "ES256", typ: "JWT" }, { legalContext });
+    expect(viImmediate.read(cj)).toEqual(refused("card/legal-context-malformed"));
+    for (const p of [viImmediate, viAutonomous]) expect(await p.build(cj, H)).toEqual(refused("card/legal-context-malformed"));
+  });
+
   it("a checkout_jwt that is not a JWS, or too large, is refused", () => {
     expect(viImmediate.read("a.b")).toEqual(refused("card/vi-malformed"));
     expect(viImmediate.read(42)).toEqual(refused("card/vi-malformed"));
@@ -280,6 +289,14 @@ describe("C6 VI Immediate", () => {
     const d = disc("c2FsdA", { vct: "mandate.checkout.1", checkout_jwt: VI.CJ, checkout_hash: VI.printed["D(dc)"] });
     const layer = `${jws({ alg: "ES256", typ: "kb-sd-jwt" }, { _sd_alg: "sha-256", delegate_payload: [{ "...": await disclosureDigest(d) }] })}~${d}~`;
     expect(await viImmediate.bound({ l2: layer })).toEqual(refused("card/vi-checkout-hash-mismatch"));
+  });
+
+  it("bound of a checkout_jwt whose link is not https is card/legal-context-malformed, as read gives", async () => {
+    const legalContext = { type: "sha256", value: H, legalContextUrl: V.C1.httpLink.link };
+    const cj = jws({ alg: "ES256", typ: "JWT" }, { legalContext });
+    const d = disc("c2FsdA", { vct: "mandate.checkout.1", checkout_jwt: cj, checkout_hash: await disclosureDigest(cj) });
+    const layer = `${jws({ alg: "ES256", typ: "kb-sd-jwt" }, { _sd_alg: "sha-256", delegate_payload: [{ "...": await disclosureDigest(d) }] })}~${d}~`;
+    expect(await viImmediate.bound({ l2: layer })).toEqual(refused("card/legal-context-malformed"));
   });
 
   it("layout refusals", async () => {

@@ -8,7 +8,6 @@ import {
   fromLcpString,
   fromLegalContext,
   hashEquals,
-  isHashWithNonHttpsLink,
   isHttpsLink,
   toLcpString,
   toLegalContext,
@@ -106,13 +105,10 @@ function read(
   const lc: unknown = doc["legalContext"];
   if (lc === undefined) return refusal("ack/no-legal-context");
   const decoded = fromLegalContext({ legalContext: lc });
-  if (decoded === null) {
-    return isHashWithNonHttpsLink(lc) ? refusal("ack/link-not-https") : refusal("ack/legal-context-malformed");
-  }
+  if (decoded === null) return refusal("ack/legal-context-malformed");
   if (decoded.url.length > MAX_LINK) return refusal("ack/legal-context-malformed");
   if (!hashEquals(signed, decoded.h)) return refusal("ack/legal-context-conflict");
   const agreement = agreementIn(lc);
-  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("ack/link-not-https");
   if (typeof agreement === "object") return refusal("ack/legal-context-malformed");
   const options = payload["paymentOptions"];
   if (!Array.isArray(options)) return refusal("ack/token-malformed");

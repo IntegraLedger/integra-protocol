@@ -471,9 +471,9 @@ describe("newAtrId", () => {
 });
 
 // a link in an otherwise well-formed legal context that is at most 2048 characters and parses as an absolute URL whose
-// scheme is not https is `<ns>/link-not-https`, the same case on every entry point; every other failing link is
-// `<ns>/legal-context-malformed` (core-vectors.json `links`, `refusedAs`). The core owns the one test that tells them
-// apart.
+// scheme is not https is `<ns>/link-not-https`, the same case on every entry point but card's, ACK's and AP2's `read`,
+// which give `<ns>/legal-context-malformed`; every other failing link is `<ns>/legal-context-malformed`
+// (core-vectors.json `links`, `refusedAs`). The core owns the one test that tells them apart.
 describe("isHashWithNonHttpsLink", () => {
   const H = `0x${"ab".repeat(32)}`;
   it("is true for a well-formed hash whose one link, in either spelling, parses with a scheme other than https", () => {

@@ -10,7 +10,6 @@ import {
   digestJson,
   fromLegalContext,
   hashEquals,
-  isHashWithNonHttpsLink,
   isHttpsLink,
   toLegalContext,
   type AtrHash,
@@ -226,7 +225,6 @@ function read(doc: Jws): { h: AtrHash; link: string; agreement?: string; offer: 
   const r = readCheckout(doc);
   if (isRefusal(r)) return r;
   const agreement = agreementIn(r.offer.payload["legalContext"]);
-  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("ap2/link-not-https");
   if (typeof agreement === "object") return refusal("ap2/legal-context-malformed");
   return agreement === undefined ? r : { h: r.h, link: r.link, agreement, offer: r.offer };
 }
@@ -240,11 +238,7 @@ function readCheckout(doc: Jws): { h: AtrHash; link: string; offer: Ap2Offer } |
   if (id.length > MAX_ID) return refusal("ap2/too-large");
   if (!Object.hasOwn(payload, "legalContext")) return refusal("ap2/no-legal-context");
   const lc = fromLegalContext(payload);
-  if (lc === null) {
-    return isHashWithNonHttpsLink(payload["legalContext"])
-      ? refusal("ap2/link-not-https")
-      : refusal("ap2/legal-context-malformed");
-  }
+  if (lc === null) return refusal("ap2/legal-context-malformed");
   if (lc.url.length > MAX_LINK) return refusal("ap2/too-large");
   return { h: lc.h, link: lc.url, offer: { checkoutJwt: doc, payload, checkout: id } };
 }
@@ -274,11 +268,7 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   if (isRefusal(b)) return b;
   if (!Object.hasOwn(b.payload, "legalContext")) return refusal("ap2/no-legal-context");
   const lc = fromLegalContext(b.payload);
-  if (lc === null) {
-    return isHashWithNonHttpsLink(b.payload["legalContext"])
-      ? refusal("ap2/link-not-https")
-      : refusal("ap2/legal-context-malformed");
-  }
+  if (lc === null) return refusal("ap2/legal-context-malformed");
   if (lc.url.length > MAX_LINK) return refusal("ap2/too-large");
   return lc.h;
 }

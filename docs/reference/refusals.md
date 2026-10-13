@@ -190,8 +190,8 @@ ACK Payment Requests and receipts (`@integraledger/lcp/ack`).
 |---|---|
 | `ack/id-not-lcp` | `read` finds that the signed token's `id` is not an ATR hash in LCP's string form (`lcp:sha256:H`). |
 | `ack/legal-context-conflict` | `read` finds that the hash in the body's `legalContext` differs from the hash in the signed token's `id`. |
-| `ack/legal-context-malformed` | `advertise` refuses an invalid ATR hash, or a link or agreement URL that is an `https` link over 2048 characters; `read` refuses a body `legalContext` that does not decode, whose link exceeds 2048 characters, or whose agreement URL is malformed or given twice with different values. |
-| `ack/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or one found in the body's `legalContext` by `read` is an absolute URL whose scheme is not `https`. |
+| `ack/legal-context-malformed` | `advertise` refuses an invalid ATR hash, or a link or agreement URL that is an `https` link over 2048 characters; `read` refuses a body `legalContext` that does not decode (a link that is not `https` included), whose link exceeds 2048 characters, or whose agreement URL is not an `https` link of at most 2048 characters or is given twice with different values. |
+| `ack/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link. |
 | `ack/no-legal-context` | `read` finds no `legalContext` in the 402 body. |
 | `ack/no-signed-place` | ACK defines no payer signature, so `build` and `bound` of `ack/payment-request` always return this refusal. |
 | `ack/option-malformed` | `advertise` refuses a payment option that is not an object with a non-empty string `id`, and `unplaced` refuses an option that carries a `refused` member. |
@@ -234,8 +234,8 @@ AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledg
 | `ap2/hash-not-in-checkout` | `build` finds that the hash in the offer's checkout JWT is not H. |
 | `ap2/jws-malformed` | A checkout JWT (given to `jwsPayload`, `read`, `build` or `bound`, or as a payload to `advertise`) is not a compact JWS whose payload is one JSON object, or `advertise` is given a payload that is not a serialisable JSON object. |
 | `ap2/legal-context-conflict` | `advertise` finds a different `legalContext` already in the checkout payload. |
-| `ap2/legal-context-malformed` | The agreement URL given to `advertise` is an `https` link over 2048 characters, or H is invalid, or the checkout payload's `legalContext` does not decode, or has an agreement URL that is malformed or given in both spellings with different values. |
-| `ap2/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the link or agreement URL found in the checkout payload's `legalContext` by `read`, `build` or `bound` is an absolute URL whose scheme is not `https`. |
+| `ap2/legal-context-malformed` | The agreement URL given to `advertise` is an `https` link over 2048 characters, or H is invalid, or the checkout payload's `legalContext`, as `read`, `build` or `bound` finds it, does not decode (a link that is not `https` included), or, as `read` finds it, has an agreement URL that is not an `https` link of at most 2048 characters or is given in both spellings with different values. |
+| `ap2/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link. |
 | `ap2/mandate-ambiguous` | The resolved SD-JWT (the last hop of a chain) contains more than one object whose `vct` is `mandate.checkout.1`. |
 | `ap2/mandate-malformed` | The Checkout Mandate is not a well-formed SD-JWT presentation (bad segments, disclosures, a digest referenced twice, or a digest that names no disclosure listed twice in `_sd`), or is a chain joined by `~~` with more than two hops or a hop that is not one, its `checkout_hash` is not 43 base64url characters, its `checkout_jwt` is present but not a string, the presentation given to `bound` is not an object, or `checkoutJwtOf` finds no disclosed `checkout_jwt`. |
 | `ap2/no-checkout-mandate` | The resolved SD-JWT (the last hop of a chain) contains no object whose `vct` is `mandate.checkout.1`. |
@@ -271,8 +271,8 @@ Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraled
 
 | Code | Meaning |
 |---|---|
-| `card/legal-context-malformed` | The link or agreement URL given to `advertise` is an `https` link over 2048 characters, or H given to `advertise` or to the Visa TAP `build` is invalid, or a `legalContext` read from the shown JSON or a `checkout_jwt` does not decode, has a link over 2048 characters, or has an agreement URL that is malformed or given in both spellings with different values. |
-| `card/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the link or agreement URL found in a `legalContext` by `read` is an absolute URL whose scheme is not `https`. |
+| `card/legal-context-malformed` | The link or agreement URL given to `advertise` is an `https` link over 2048 characters, or H given to `advertise` or to the Visa TAP `build` is invalid, or a `legalContext` read from the shown JSON or a `checkout_jwt` does not decode (a link that is not `https` included), has a link over 2048 characters, or has an agreement URL that is not an `https` link of at most 2048 characters or is given in both spellings with different values. |
+| `card/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link. |
 | `card/no-legal-context` | The JSON the seller showed (for `card/visa-tap` and `card/seller-reference`) or the payload of a `checkout_jwt` (for Verifiable Intent) has no `legalContext` member. |
 | `card/no-signed-place` | `build` and `bound` of `card/seller-reference` always refuse, because nothing the buyer signs carries the hash. |
 | `card/option-malformed` | `advertise` refuses a card option that is not an object with a known `scheme` and a `checkout` of 1 to 128 visible ASCII characters, and `unplaced` refuses an option that carries a `refused` member. |

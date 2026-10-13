@@ -10,7 +10,7 @@
  *
  * Pure: no I/O, no state. WebCrypto supplies SHA-256 and ES256. No function throws.
  */
-import { fromLegalContext, hashEquals, isHashWithNonHttpsLink, isHttpsLink, toLcpString, type AtrHash } from "./core.js";
+import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash } from "./core.js";
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -192,11 +192,7 @@ function checkoutPayload(doc: unknown): Record<string, unknown> | Refusal {
 
 function legalContextOf(o: Record<string, unknown>): { h: AtrHash; link: string } | Refusal {
   const d = fromLegalContext(o);
-  if (d === null) {
-    return isHashWithNonHttpsLink(o["legalContext"])
-      ? refusal("card/link-not-https")
-      : refusal("card/legal-context-malformed");
-  }
+  if (d === null) return refusal("card/legal-context-malformed");
   if (d.url.length > MAX_LINK) return refusal("card/legal-context-malformed");
   return { h: d.h, link: d.url };
 }
@@ -208,7 +204,6 @@ function withAgreement(
 ): { h: AtrHash; link: string; agreement?: string } | Refusal {
   if (isRefusal(r)) return r;
   const agreement = agreementIn(o["legalContext"]);
-  if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("card/link-not-https");
   if (typeof agreement === "object") return refusal("card/legal-context-malformed");
   return agreement === undefined ? r : { ...r, agreement };
 }

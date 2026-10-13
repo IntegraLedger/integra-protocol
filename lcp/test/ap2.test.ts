@@ -223,9 +223,10 @@ describe("ap2-checkout-mandate.json", () => {
   });
 });
 
-// A well-formed legal context whose link is not https: the pairing's refusal codes list `link-not-https`, and `read` and
-// `bound` give it for the same checkout JWT (RFC 9901 §4 builds the closed mandate's disclosure).
-describe("a non-https link gives one code on read and bound", () => {
+// A legal context whose link is not https is one `fromLegalContext` does not decode: `read`, `build` and `bound` give
+// `ap2/legal-context-malformed` for the same checkout JWT, as for any legal context that does not decode
+// (ap2-checkout-mandate.json implementation row read-http-link; RFC 9901 §4 builds the closed mandate's disclosure).
+describe("a non-https link gives one code on read, build and bound", () => {
   const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
   const sha256b64u = (s: string) => createHash("sha256").update(Buffer.from(s, "ascii")).digest("base64url");
   const HX = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
@@ -237,14 +238,19 @@ describe("a non-https link gives one code on read and bound", () => {
     `${b64u(JSON.stringify({ vct: "mandate.checkout.1", checkout_hash: sha256b64u(J), _sd: [sha256b64u(D)], _sd_alg: "sha-256" }))}.` +
     `${"A".repeat(86)}~${D}~`;
 
-  it("read gives ap2/link-not-https", () => {
-    expect(checkoutMandate.read(J)).toEqual({ refused: true, code: "ap2/link-not-https" });
+  it("read gives ap2/legal-context-malformed", () => {
+    expect(checkoutMandate.read(J)).toEqual({ refused: true, code: "ap2/legal-context-malformed" });
   });
 
-  it("bound gives ap2/link-not-https", async () => {
+  it("build gives ap2/legal-context-malformed", async () => {
+    const offer = { checkoutJwt: J, payload, checkout: "chk_2" };
+    expect(await checkoutMandate.build(offer, HX)).toEqual({ refused: true, code: "ap2/legal-context-malformed" });
+  });
+
+  it("bound gives ap2/legal-context-malformed", async () => {
     expect(await checkoutMandate.bound({ checkout_mandate: M, checkout_jwt: J })).toEqual({
       refused: true,
-      code: "ap2/link-not-https",
+      code: "ap2/legal-context-malformed",
     });
   });
 });
