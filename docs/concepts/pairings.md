@@ -56,8 +56,8 @@ Some pairings carry members for their own shape of payment:
 
 ## The registry
 
-`BINDINGS` holds every pairing. `pairingOf(option)` names the x402 pairing that serves an x402 option; MPP's
-`pairingsOf(challenge)` names the MPP pairings a challenge offers.
+`BINDINGS` holds every pairing. `pairingOf(option)` names the x402 pairing that serves an x402 option;
+`pairingsOf(challenge)`, from `@integraledger/lcp/mpp`, names the MPP pairings a challenge offers.
 
 ```ts
 import { BINDINGS, pairingOf } from "@integraledger/lcp";
