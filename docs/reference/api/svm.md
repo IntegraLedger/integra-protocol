@@ -90,7 +90,10 @@ the message carries in its blockhash field.
 
 ### SvmReader
 
-Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`.
+Bounded, read-only calls against one network's endpoint. Every failure rejects with `ReaderError`. `transaction`
+answers `notFound` when the node holds no such transaction at that commitment, with `slot`: the node's slot at that
+commitment (`getSlot`), read from that same node before the lookup, so the lookup is at or past it, or null when the
+reader cannot read it from that node. A lookup naming no slot never reads failed.
 
 #### Properties
 
@@ -165,9 +168,9 @@ joined by `; `), or null when it has none.
 
 ##### transaction()
 
-> **transaction**(`signature`, `commitment`): `Promise`\<[`SvmLanded`](#svmlanded) \| `null`\>
+> **transaction**(`signature`, `commitment`): `Promise`\<[`SvmLanded`](#svmlanded) \| \{ `notFound`: `true`; `slot`: `bigint` \| `null`; \}\>
 
-`getTransaction`; null when none is found at that commitment.
+`getTransaction` at that commitment, or `notFound` with the node's slot there.
 
 ###### Parameters
 
@@ -178,7 +181,7 @@ joined by `; `), or null when it has none.
 
 ###### Returns
 
-`Promise`\<[`SvmLanded`](#svmlanded) \| `null`\>
+`Promise`\<[`SvmLanded`](#svmlanded) \| \{ `notFound`: `true`; `slot`: `bigint` \| `null`; \}\>
 
 ***
 
@@ -302,15 +305,6 @@ digest of the message the payer signed, and settlement read through a bounded re
 ### PAYMENT\_CHANNELS
 
 > `const` **PAYMENT\_CHANNELS**: `"CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"` = `"CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"`
-
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
-digest of the message the payer signed, and settlement read through a bounded reader.
-
-***
-
-### RECENT\_BLOCKHASHES
-
-> `const` **RECENT\_BLOCKHASHES**: `"SysvarRecentB1ockHashes11111111111111111111"` = `"SysvarRecentB1ockHashes11111111111111111111"`
 
 Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
 digest of the message the payer signed, and settlement read through a bounded reader.
@@ -656,28 +650,6 @@ discriminator is `open` (1) or `top_up` (3). At most two calls.
 
 ***
 
-### svmCloseStatus()
-
-> **svmCloseStatus**(`ref`, `reader`): `Promise`\<[`SvmCloseStatus`](#svmclosestatus)\>
-
-Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
-`settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel is settled; any other
-landed transaction is failed `not-a-close`. A ref whose program or channel is not the base58 of a 32-byte key is
-pending `unreadable`, with nothing read. At most two calls.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `ref` | [`SvmCloseRef`](#svmcloseref) |
-| `reader` | [`SvmReader`](#svmreader) |
-
-#### Returns
-
-`Promise`\<[`SvmCloseStatus`](#svmclosestatus)\>
-
-***
-
 ### svmDigest()
 
 > **svmDigest**(`tx`): `Promise`\<`` `0x${string}` ``\>
@@ -736,9 +708,11 @@ account that is not an initialized nonce account, or an initialized current-vers
 value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce`, a
 ref or reader that is not an object and a reader for another network are false. One call.
 
-The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. So
-a durable-nonce reference with no named transaction lapses when this reads true and a `svmLocate` that starts after
-it is complete with nothing found.
+The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
+lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
+finds nothing shows the message never landed only from a node at or past that read's context slot, as `svmStatus`
+reads it. With no transaction named, a `svmLocate` that starts after this reads true, and is complete with nothing
+found, shows the message never landed when the node that lists the signatures holds every block through that slot.
 
 #### Parameters
 
@@ -779,11 +753,13 @@ Zero-party recovery: the ATR hash in the landed transaction's one memo. One or t
 > **svmStatus**(`ref`, `reader`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
 Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
-without error, and must carry a token or SOL transfer. A failed read, or a reader for another network, is pending.
-A ref whose `digest` is not a string is pending `unreadable`, with nothing read. A durable-nonce transaction that is
-not found, once `svmNonceMoved` holds and the node's first available block is at or before `fromSlot`, is read once
-more at `finalized`; still not found, it is failed `nonce-moved`: the message can never land. At most two calls, or
-five for a durable-nonce reference.
+without error, and must carry a token or SOL transfer. A failed read, an answer of neither documented shape, or a
+reader for another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`,
+with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first
+available block is at or before `fromSlot`, is read once more at `finalized`; still not found by a lookup naming a
+slot at or past the context slot of the nonce account read, it is failed `nonce-moved`: the message can never land.
+A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
+durable-nonce reference.
 
 #### Parameters
 

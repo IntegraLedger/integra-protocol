@@ -1098,26 +1098,6 @@ the key and the token. Refused when `ref` carries no access key, or the receipt 
 
 ***
 
-### mppSvmCarrier()
-
-> **mppSvmCarrier**(`tx`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `memo`: `string`; \}
-
-The one top-level Memo instruction (v3 or v4) whose UTF-8 data parses as an LCP string, and its hash. Memo
-instructions whose data is not an LCP string are not read. None is `svm/no-carrier`; more than one `svm/memo-count`.
-The one found must be `toLcpString(h)` exactly, in lowercase hex, else `svm/carrier-not-canonical`.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `tx` | [`SvmTx`](svm.md#svmtx) |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `memo`: `string`; \}
-
-***
-
 ### network()
 
 > **network**(`challenge`): `string` \| [`Refusal`](index.md#refusal)
