@@ -22,6 +22,7 @@ import { toRawBytes, type AtrHash } from "../core.js";
 import { isObject } from "../fields.js";
 import type { Hex } from "../evm.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 
 const peer: typeof StellarBase | undefined = await import("@stellar/stellar-sdk/base").then(
   (m) => m,
@@ -137,6 +138,18 @@ export interface StellarUnsigned {
   request: { kind: "stellar-auth"; preimage: Uint8Array };
   /** The base64 XDR of the transaction with the entry signed. */
   complete(signature: Uint8Array): string | Refusal;
+}
+
+/**
+ * A payment on `x402/exact/stellar`: the base64 XDR of the transaction with the payer's entry signed. The root names it
+ * among the payments `Presented` covers; no entry point exports it.
+ */
+export interface StellarPaymentPayload {
+  x402Version: 2;
+  resource?: PaymentRequired["resource"];
+  accepted: PaymentRequirements;
+  payload: { transaction: string };
+  extensions?: PaymentRequired["extensions"];
 }
 
 // ── the carrier ──────────────────────────────────────────────────────────────────────────────────────────────────

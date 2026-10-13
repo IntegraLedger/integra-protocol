@@ -462,7 +462,7 @@ import { exactStellar, pairingOf } from "@integraledger/lcp/x402-exact-stellar";
 
 **Values (2):** `exactStellar`, `pairingOf`.
 
-**Types (2):** `StellarChoice`, `StellarPaymentPayload`.
+**Types (1):** `StellarChoice`.
 
 ## `@integraledger/lcp/x402-exact-xrpl`
 

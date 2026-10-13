@@ -38,15 +38,6 @@ const ID = "x402/exact/stellar" as const;
 const AMOUNT = /^[1-9][0-9]{0,37}$/;
 const I128_LIMIT = 1n << 127n;
 
-/** A payment on this pairing: the base64 XDR of the transaction with the payer's entry signed. */
-export interface StellarPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { transaction: string };
-  extensions?: PaymentRequired["extensions"];
-}
-
 /**
  * The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
  * payer's account (`G…`), which must be the simulated transfer's `from`.

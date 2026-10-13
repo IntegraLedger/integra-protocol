@@ -44,6 +44,7 @@ import { lnbtcPairingOf } from "./internal/lightning.js";
 import type { NearPayment } from "./internal/near.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import type { StarknetPayment } from "./internal/starknet.js";
+import type { StellarPaymentPayload } from "./internal/stellar.js";
 import type { SuiPaymentPayload } from "./internal/sui.js";
 import type { SvmPaymentPayload, UptoSvmPaymentPayload } from "./internal/svm.js";
 import type { TronPayment } from "./internal/tron.js";
@@ -62,7 +63,7 @@ import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "./ucp.
 import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, uptoPermit2 } from "./x402.js";
 import { batchCloudflare, batchEvm, batchSvm } from "./x402-batch-settlement.js";
 import { exactSvm } from "./x402-exact-solana.js";
-import { exactStellar, type StellarPaymentPayload } from "./x402-exact-stellar.js";
+import { exactStellar } from "./x402-exact-stellar.js";
 import { exactXrpl } from "./x402-exact-xrpl.js";
 import { uptoSvm } from "./x402-upto-solana.js";
 
