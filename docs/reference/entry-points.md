@@ -136,7 +136,7 @@ import { avmCarrier, avmPairingOf, avmRecover, … } from "@integraledger/lcp/av
 
 **Pairings:** `x402/exact/algorand`.
 
-**Values (7):** `avmCarrier`, `avmPairingOf`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`, `msgpackWithinCaps`.
+**Values (6):** `avmCarrier`, `avmPairingOf`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
 
 **Types (8):** `AlgorandNetwork`, `AvmParams`, `AvmPaymentPayload`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`.
 

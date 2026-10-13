@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { xdr } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
-import { MSGPACK_MAX_DEPTH, msgpackWithinCaps } from "../src/avm.js";
+import { MSGPACK_MAX_DEPTH } from "../src/avm.js";
+import { msgpackWithinCaps } from "../src/internal/avm.js";
 import { decodeStellarTx, SCVAL_MAX_DEPTH, SCVAL_MAX_ELEMENTS, scValsWithinCaps } from "../src/stellar.js";
 import { decodeBlob, XRPL_MAX_DEPTH, XRPL_MAX_FIELDS } from "../src/xrpl.js";
 
@@ -29,14 +30,16 @@ describe("msgpack: array and map nesting, declared lengths, one value", () => {
   });
   for (const r of V.msgpack.rows as (Row & { hex: string })[]) {
     it(`${r.name}: ${r.case} → ${r.accept}`, () => {
-      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(r.hex, "hex")))).toBe(r.accept);
+      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(r.hex, "hex")), MSGPACK_MAX_DEPTH)).toBe(r.accept);
     });
   }
   it("every signed transaction in the Algorand vectors is within the caps", () => {
     const A = readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8");
     const entries = [...A.matchAll(/"(g[A-Za-z0-9+/]{40,}={0,2})"/g)].map((m) => m[1]!);
     expect(entries.length).toBeGreaterThan(0);
-    for (const e of entries) expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")))).toBe(true);
+    for (const e of entries) {
+      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")), MSGPACK_MAX_DEPTH)).toBe(true);
+    }
   });
 });
 
