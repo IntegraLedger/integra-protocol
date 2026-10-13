@@ -50,9 +50,10 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 | `mpp/subscription/tempo` | The `witness` of the key authorization the payer's root key signs. | Only the activation, a key authorization, is classified: it is the opening. | Refuses `mpp/not-bound-within`. | The request's `subscriptionExpires`. |
 | `mpp/subscription/stripe` | The request's `methodDetails.metadata.legal_context`. | Every payment the seller reports on this pairing is the activation. | Refuses `mpp/not-bound-within`. | none |
 
-An `mpp/session/xrpl` challenge's `amount` is the first claim's cumulative total in drops, which the claim signs as a
-big-endian u64. `pairingsOf`, and so `build`, refuses an `amount` that is not a u64 written in decimal with no sign,
-point or leading zero, with `mpp/request-malformed`.
+An `mpp/session/xrpl` challenge's `amount` is the increment, in drops, charged for its request. `pairingsOf` takes only
+an opening challenge, whose `channelId` is absent or empty, and on it `build` signs that `amount` as the first claim's
+cumulative total, a big-endian u64. `pairingsOf`, and so `build`, refuses an `amount` that is not a u64 written in
+decimal with no sign, point or leading zero, with `mpp/request-malformed`.
 
 This example lists them from the registry:
 
@@ -303,8 +304,10 @@ when it holds the escrow's open call for the channel, with H as its salt:
   address from, uint256 nonce, uint256 deadline, bytes signature)`, sent to the escrow, whose `from` is the payer.
 
 In each, the payer, payee, token and authorized signer give the channel id, and the payer is read from the chain, not
-from the credential's `source`. Calldata past the call's arguments, such as a data suffix a wallet appends, is not
-read. An open call sent to the escrow that opens another channel reads as failed, with the
+from the credential's `source`. `reference` computed the channel id from the `source` on a `hash` opening and from the
+authorization's `from` on a `permit2` one, so an open call whose payer is any other account opens another channel.
+Calldata past the call's arguments, such as a data suffix a wallet appends, is not read. An open call sent to the
+escrow that opens another channel reads as failed, with the
 reason `open-call-not-found`, on a `hash` opening, whose named transaction is the payment, once the transaction's block
 is at or below the `finalized` mark; above it, where the block can still be replaced, and on a `permit2` opening, which
 can land until its deadline, it reads as pending. Any other transaction, such as a plain token transfer to the
