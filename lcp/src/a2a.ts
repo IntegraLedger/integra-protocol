@@ -61,7 +61,8 @@ export function agentExtension(o?: { required?: boolean }): A2aAgentExtension[] 
 
 /**
  * True when the request's `A2A-Extensions` value names a listed URI exactly: the value split on commas, each element
- * trimmed of SP and HTAB, compared case-sensitively.
+ * trimmed of SP and HTAB, compared case-sensitively. The value is at most 8,192 characters with at most 64 elements;
+ * a longer value, or one with more elements, is false.
  */
 export function requested(a2aExtensions: string | undefined): boolean {
   return activated(a2aExtensions) !== undefined;
