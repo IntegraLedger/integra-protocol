@@ -200,9 +200,15 @@ function checkOption(o: PaymentRequirements & { extra: { invoice: string } }, h:
   if (typeof requestHash !== "string" || !REQUEST_HASH.test(requestHash) || d !== `0x${requestHash}`) {
     return refusal("ln/request-hash-mismatch");
   }
-  if (NETWORKS[o.network as LnNetwork] !== b.currency) return refusal("ln/currency-network");
+  const network = optionNetworkRefused(o, b);
+  if (network !== null) return network;
   const malformed = optionFields(o);
   return malformed ?? b;
+}
+
+/** `ln/currency-network` unless the invoice's currency is the one x402 gives the option's `network`. */
+function optionNetworkRefused(o: PaymentRequirements, b: Bolt11): Refusal | null {
+  return NETWORKS[o.network as LnNetwork] === b.currency ? null : refusal("ln/currency-network");
 }
 
 /** x402's client checks on the option's own fields: `paymentFlow`, `asset`, `payTo`, `amount`, `maxTimeoutSeconds`. */
@@ -237,7 +243,10 @@ function completeFor(required: PaymentRequired, accepted: PaymentRequirements): 
   };
 }
 
-/** The read keys: the network, the invoice's payment hash, and its timestamp plus expiry plus x402's 60 s skew. */
+/**
+ * The read keys: the network of the invoice's currency, which is the option's `network`, as `advertise` checks it
+ * (`ln/currency-network` otherwise); the invoice's payment hash; and its timestamp plus expiry plus x402's 60 s skew.
+ */
 async function x402Reference(presented: unknown, want: boolean): Promise<LnRef | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = presented["accepted"];
@@ -245,6 +254,8 @@ async function x402Reference(presented: unknown, want: boolean): Promise<LnRef |
   const b = decode(accepted.extra.invoice);
   if (isRefusal(b)) return b;
   if (b.tags.includes(FIELD.m) !== want) return want ? refusal("ln/no-metadata") : refusal("ln/not-this-pairing");
+  const network = optionNetworkRefused(accepted, b);
+  if (network !== null) return network;
   return { network: accepted.network, paymentHash: hex(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
 }
 
@@ -311,14 +322,19 @@ async function lnbtcBuild(c: { required: PaymentRequired; accepted: PaymentRequi
   return { request: { kind: "bolt11-pay", invoice: accepted.extra.invoice }, complete: completeFor(c.required, c.accepted) };
 }
 
-/** The hash in the invoice the payer paid: its `m` field. No signature is verified here. */
+/**
+ * The hash in the invoice the payer paid: its `m` field, from an invoice whose currency is the one the option's
+ * `network` names, as `advertise` checks it (`ln/currency-network` otherwise). No signature is verified here.
+ */
 async function lnbtcBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = presented["accepted"];
   if (!isLnOption(accepted)) return refusal("x402/option-not-this-pairing");
   const b = decode(accepted.extra.invoice);
   if (isRefusal(b)) return b;
-  return invoiceH(b, "m");
+  const m = invoiceH(b, "m");
+  if (isRefusal(m)) return m;
+  return optionNetworkRefused(accepted, b) ?? m;
 }
 
 export const exactLnbtc = Object.freeze({

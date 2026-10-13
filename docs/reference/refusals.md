@@ -706,7 +706,7 @@ Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/light
 
 | Code | Meaning |
 |---|---|
-| `ln/currency-network` | The invoice's currency is not the one the option's or challenge's network names, or the MPP challenge names a network MPP Lightning does not define; the MPP pairings' `bound` and `reference` check the echoed challenge the same way. |
+| `ln/currency-network` | The invoice's currency is not the one the option's or challenge's network names, or the MPP challenge names a network MPP Lightning does not define; every Lightning pairing's `bound` and `reference` check the echoed option or challenge the same way. |
 | `ln/description-inline` | The MPP challenge's invoice carries an inline `d` description. |
 | `ln/description-present` | The MPP Lightning challenge's request carries a `description`. |
 | `ln/expires-after-invoice` | The MPP challenge's `expires` is later than the invoice's own expiry. |

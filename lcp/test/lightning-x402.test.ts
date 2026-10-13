@@ -3,6 +3,7 @@
 // the invoices are also read by light-bolt11-decoder and bolt11 as a cross-check.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { bech32 } from "@scure/base";
 import { decode as lightDecode } from "light-bolt11-decoder";
 import bolt11 from "bolt11";
 import { assemble, pairingOf, type AtrHash } from "../src/index.js";
@@ -209,4 +210,64 @@ describe("x402/exact/lnbtc/invoice-named", () => {
       N.plant2.expect,
     );
   });
+});
+
+// x402's scheme_exact_lnbtc.md (x402-foundation/x402, blob 0324b6fae9), "Scheme and Networks": "Mainnet MUST use
+// `lnbtc:000000000019d6689c085ae165831e93` and BOLT11 currency `bc`" and "Bitcoin testnet MUST use
+// `lnbtc:000000000933ea01ad0ee984209779ba` and BOLT11 currency `tb`"; "Network and Currency Confusion": "Servers,
+// clients, and facilitators MUST map the concrete `lnbtc` network to the expected BOLT11 currency and reject
+// mismatches." The vector row "advertise: option on the testnet network with a bc invoice" states that rule for
+// advertise. The testnet and signet invoices are L4 and N with their human-readable part changed to `lntb250n` and
+// `lntbs250n` and their BIP-173 checksum recomputed by @scure/base's bech32, which re-encodes L4 and N byte for byte;
+// light-bolt11-decoder reads their currencies as `tb` and `tbs`. The data part, with the payment hash, timestamp and
+// expiry, is unchanged. lcp's decoder verifies no signature.
+describe("x402 Lightning: bound and reference hold the option's network to the invoice's currency, as advertise does", () => {
+  const MAINNET = "lnbtc:000000000019d6689c085ae165831e93";
+  const TESTNET = "lnbtc:000000000933ea01ad0ee984209779ba";
+  const rehrp = (invoice: string, hrp: string): string => bech32.encode(hrp, bech32.decode(invoice, false).words, false);
+  const currencyOf = (invoice: string) => (section(lightDecode(invoice), "coin_network") as { bech32: string }).bech32;
+  const rows = (V.refusals.rows as { case: string; optionSet?: Record<string, unknown>; expect: { code?: string } }[]).filter(
+    (r) => r.expect.code === "ln/currency-network",
+  );
+
+  it("the vectors' invoices re-encode unchanged, and the rewritten ones are on testnet and signet", () => {
+    for (const invoice of [V.L4.invoice as string, N.L6.invoice as string]) {
+      expect(rehrp(invoice, "lnbc250n")).toBe(invoice);
+      expect([invoice, rehrp(invoice, "lntb250n"), rehrp(invoice, "lntbs250n")].map(currencyOf)).toEqual(["bc", "tb", "tbs"]);
+    }
+    expect(rows.map((r) => r.optionSet)).toEqual([{ network: TESTNET }]);
+  });
+
+  const pairings = [
+    { b: exactLnbtc, invoice: V.L4.invoice as string, payment: V.L5.payment, bound: V.L5.expectBound, reference: V.L5.expectReference },
+    { b: exactLnbtcNamed, invoice: N.L6.invoice as string, payment: N.L6.payment, bound: N.L6.expectBound, reference: N.L6.expectReference },
+  ];
+  for (const p of pairings) {
+    const option = (changes: Record<string, unknown>) => set<PaymentRequirements>(p.payment.accepted, changes);
+    const advertised = (o: PaymentRequirements) => p.b.advertise(required(o), p.bound, V.fixed.link, o);
+    const paid = (o: PaymentRequirements) => set<unknown>(p.payment, { accepted: o });
+
+    describe(p.b.id, () => {
+      const refusedRows: [string, Record<string, unknown>][] = [
+        ["a bc invoice under the testnet network, the vector row's option", rows[0]!.optionSet!],
+        ["a tb invoice under the mainnet network", { network: MAINNET, "extra.invoice": rehrp(p.invoice, "lntb250n") }],
+        ["a tbs invoice under the testnet network", { network: TESTNET, "extra.invoice": rehrp(p.invoice, "lntbs250n") }],
+      ];
+      for (const [name, changes] of refusedRows) {
+        it(`${name}: advertise, bound and reference refuse ln/currency-network`, async () => {
+          const o = option(changes);
+          expect(advertised(o)).toEqual({ refused: true, code: "ln/currency-network" });
+          expect(await p.b.bound(paid(o))).toEqual({ refused: true, code: "ln/currency-network" });
+          expect(await p.b.reference(paid(o))).toEqual({ refused: true, code: "ln/currency-network" });
+        });
+      }
+
+      it("a tb invoice under the testnet network: advertise places it, bound gives H, and reference names testnet", async () => {
+        const o = option({ network: TESTNET, "extra.invoice": rehrp(p.invoice, "lntb250n") });
+        expect((advertised(o) as PaymentRequired).accepts).toEqual([o]);
+        expect(await p.b.bound(paid(o))).toBe(p.bound);
+        expect(await p.b.reference(paid(o))).toEqual({ ...p.reference, network: TESTNET });
+      });
+    });
+  }
 });
