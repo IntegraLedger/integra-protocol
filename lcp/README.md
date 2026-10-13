@@ -292,9 +292,9 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
 - Node.js `>=26.10.0`.
 - ESM. TypeScript users need `"moduleResolution": "nodenext"` (or `"bundler"`) to resolve the subpath exports.
 - Cloudflare Workers, with or without the `nodejs_compat` flag, except the NEAR and TON entry points, which need it:
-  they use Node's `Buffer`, and `near-api-js` loads Node's `util`. Install the optional peer dependencies before
-  bundling: without them, wrangler's bundler cannot resolve `@mysten/sui/bcs`, `@mysten/sui/utils`, `near-api-js` and
-  `borsh`.
+  they use Node's `Buffer`, and `near-api-js` loads Node's `util`. Workers turns the flag on by default from
+  compatibility date 2026-08-04. Install the optional peer dependencies before bundling: without them, wrangler's
+  bundler cannot resolve `@mysten/sui/bcs`, `@mysten/sui/utils`, `near-api-js` and `borsh`.
 
 ## Related packages
 
