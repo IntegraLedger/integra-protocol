@@ -8,7 +8,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
 import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmRef } from "./evm.js";
-import { isLog } from "./internal/evm.js";
+import { failedAt, isLog } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
   CHANNEL_CLOSED_TOPIC,
@@ -221,8 +221,10 @@ function hederaChain(network: string): 295 | 296 {
 /**
  * The opening's receipt, read by `payload.txHash`, with its logs from the escrow added as `landed`. A reader that is
  * missing or for another network than the challenge's is `hedera/wrong-reader`. No receipt is `hedera/not-found` and a
- * failed read `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert is `hedera/reverted`: nothing
- * moved.
+ * failed read `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below
+ * the reader's `finalized` mark is `hedera/reverted`: nothing moved. A revert above that mark, or where the mark cannot
+ * be read, is `hedera/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds.
+ * The mark is read only for a revert.
  */
 async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
   const e = opening(presented, HEDERA);
@@ -242,7 +244,10 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   }
   if (receipt === null) return refusal("hedera/not-found");
   if (!isObject(receipt) || !Array.isArray(receipt.logs) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
-  if (receipt.status === 0) return refusal("hedera/reverted");
+  if (receipt.status === 0) {
+    const read = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
+    return read.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
+  }
   const logs = receipt.logs.filter((l) => sameBytes(l.address.toLowerCase(), escrow)).slice(0, MAX_LANDED_LOGS);
   return { ...presented, landed: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
 }

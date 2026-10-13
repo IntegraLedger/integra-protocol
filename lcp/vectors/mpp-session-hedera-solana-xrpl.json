@@ -563,6 +563,10 @@
     "expect": "hedera/wrong-reader"
    },
    {
+    "case": "fetchPresented of a hedera opening whose transaction reverted, in a block above the reader's finalized mark or with a reader that cannot give that mark",
+    "expect": "hedera/not-final"
+   },
+   {
     "case": "an xrpl opening with more than 8 memos",
     "expect": "xrpl/memo-count"
    },

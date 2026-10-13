@@ -10,7 +10,7 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 490 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 492 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -27,11 +27,11 @@ and the namespace counts below match its rows.
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
-| [`tempo`](#tempo) | 18 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
+| [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
-| [`hedera`](#hedera) | 20 | Hedera (`@integraledger/lcp/hedera`). |
+| [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`). |
 | [`avm`](#avm) | 13 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
 | [`cardano`](#cardano) | 12 | Cardano (`@integraledger/lcp/cardano`). |
@@ -345,11 +345,12 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/memo-not-bound` | The signed or landed Tempo transfer carries no `transferWithMemo` to the challenge's currency whose memo is the challenge's attribution memo. |
 | `tempo/no-access-key` | `keySearch` is given a reference with no well-formed access key (key id, token and recipient digest). |
 | `tempo/no-witness` | The Tempo subscription's key authorization carries no witness, or a receipt holds no `KeyAuthorizationWitness` log (for `witnessRecover`, or naming H for `keyAccount`). |
+| `tempo/not-final` | The transaction an MPP Tempo push `hash` credential names reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
 | `tempo/not-found` | The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
 | `tempo/open-ambiguous` | The signed Tempo session opening has more than one `open` call to the challenge's escrow contract. |
 | `tempo/open-not-found` | The signed Tempo session opening has no `open` call to the challenge's escrow contract, or the receipt the `mpp/session/tempo` `recover` reads holds no `ChannelOpened` of the TIP-20 channel reserve, whose data carries the salt (a v1 escrow's `ChannelOpened` carries none). |
 | `tempo/read-first` | An MPP Tempo push `hash` credential carries no landed logs yet; the seller reads it with `fetchPresented` before `bound` or `reference`. |
-| `tempo/reverted` | The Tempo transaction reverted. |
+| `tempo/reverted` | The Tempo transaction reverted; for an MPP Tempo push `hash` credential, in a block at or below the reader's `finalized` mark. |
 | `tempo/salt-not-bound` | The salt word of the Tempo session opening's `open` call is not H. |
 | `tempo/tx-malformed` | A Tempo transaction does not decode as a type-`0x76` RLP envelope with the expected fields and at most the allowed calls, `memoCalldata` is given an invalid recipient, amount or memo, `expiringNonceHash` is given a sender that is not an address, or a Tempo session opening's `open` call input has the wrong length. |
 | `tempo/tx-too-large` | A Tempo transaction's wire bytes exceed the size bound. |
@@ -463,11 +464,12 @@ Hedera (`@integraledger/lcp/hedera`).
 | `hedera/network-malformed` | The network written by `fetchPresented` for an MPP Hedera charge is not a Hedera network. |
 | `hedera/no-legal-context` | The transfer-executor pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |
 | `hedera/no-memo` | The signed Hedera body, or the landed transaction a recovery reads, has an empty memo. |
+| `hedera/not-final` | The Hedera session opening transaction reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
 | `hedera/not-found` | The Hedera reader found no transaction, or a recovery found no successful entry for it, or an MPP Hedera `hash` charge credential's transaction has no counted user entry yet, or the reader found no receipt for the session transaction. |
 | `hedera/not-success` | The transaction an MPP Hedera `hash` charge credential names reached consensus with no `SUCCESS` among its counted user entries, so its transfers were not made. |
 | `hedera/option-malformed` | A Hedera option names an unknown transfer method or lacks what its pairing needs (an asset and `payTo`, a `feePayer`, 1 to the allowed number of `executors`, or a decimal amount below 2^63 and a positive timeout, which `x402/exact/hedera`'s `bound` and `reference` do not read), the buyer's choice carries an invalid payer, node, valid start, fee or decimals, or a client id that is not a well-formed string, or a transfer-executor `now` that is not a non-negative safe integer or whose sum with `maxTimeoutSeconds` is not one, or an MPP Hedera charge request has an invalid amount, currency, recipient or splits (too many, not less than the amount, or repeating an account). |
 | `hedera/read-first` | An MPP Hedera `hash` charge credential or session opening carries no landed data yet; the seller reads it with `fetchPresented` before `bound`. |
-| `hedera/reverted` | The Hedera session opening transaction reverted. |
+| `hedera/reverted` | The Hedera session opening transaction reverted, in a block at or below the reader's `finalized` mark. |
 | `hedera/tx-malformed` | A Hedera transaction is not base64 of a wire `Transaction` or `TransactionList` whose signed body decodes within the depth bound, a signature pair given to `complete` has the wrong key or signature length, or a push credential's `transactionId` is not `shard.realm.num@seconds.nanos`. |
 | `hedera/tx-too-large` | A Hedera transaction's wire bytes exceed the size bound. |
 | `hedera/unreadable` | The Hedera reader failed or returned a response that is not well formed. |

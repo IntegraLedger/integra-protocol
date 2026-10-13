@@ -1032,9 +1032,13 @@ export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairing): 
 
 const MALFORMED = ["mpp/credential-malformed", "mpp/request-malformed", "mpp/opaque-malformed"];
 const INVALID_CHALLENGE = ["mpp/id-not-ours"];
-/** The codes a `fetchPresented` returns when its read fails or cannot yet read the landed payment. */
+/**
+ * The codes a `fetchPresented` returns when its read fails, cannot yet read the landed payment, or reads a revert above
+ * the reader's `finalized` mark.
+ */
 const READ_TO_REPEAT = [
   "tempo/not-found",
+  "tempo/not-final",
   "tempo/unreadable",
   "svm/not-found",
   "svm/unreadable",
@@ -1044,6 +1048,7 @@ const READ_TO_REPEAT = [
   "xrpl/not-validated",
   "xrpl/unreadable",
   "hedera/not-found",
+  "hedera/not-final",
   "hedera/unreadable",
 ];
 /**
@@ -1069,10 +1074,11 @@ const CANNOT_READ = [
  * Codes and Error Codes tables, under `https://paymentauth.org/problems/`:
  * - 402 `malformed-credential`: `mpp/credential-malformed`, `mpp/request-malformed` and `mpp/opaque-malformed`;
  * - 402 `invalid-challenge`: `mpp/id-not-ours`;
- * - 500 `internal-payment-error`: a read to repeat, which a `fetchPresented` returns when its read fails or cannot yet
- *   read the landed payment, so the seller asks again later: `tempo/not-found`, `tempo/unreadable`, `svm/not-found`,
- *   `svm/unreadable`, `stellar/not-found`, `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`,
- *   `xrpl/unreadable`, `hedera/not-found` and `hedera/unreadable`;
+ * - 500 `internal-payment-error`: a read to repeat, which a `fetchPresented` returns when its read fails, cannot yet
+ *   read the landed payment, or reads a revert above the reader's `finalized` mark, so the seller asks again later:
+ *   `tempo/not-found`, `tempo/not-final`, `tempo/unreadable`, `svm/not-found`, `svm/unreadable`, `stellar/not-found`,
+ *   `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`, `xrpl/unreadable`, `hedera/not-found`,
+ *   `hedera/not-final` and `hedera/unreadable`;
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
  *   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
  *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader` and

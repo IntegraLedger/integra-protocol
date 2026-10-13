@@ -280,8 +280,8 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // 11 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five read-first codes.
-    expect(answered500.length).toBe(21);
+    // 13 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five read-first codes.
+    expect(answered500.length).toBe(23);
     for (const code of REFUSAL_CODES) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);

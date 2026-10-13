@@ -66,7 +66,7 @@ import { railSessionResume, sessionHedera, sessionSolana, sessionXrpl } from "./
 import { chargeSolana } from "./mpp-solana.js";
 import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
-import { readReceipt } from "./receipt.js";
+import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { failedIfFinal, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
@@ -777,7 +777,9 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
 /**
  * Reads the pushed transaction's receipt and returns the credential with `landed`: the transaction, its block and
  * the receipt's logs from `currency`. No receipt is `tempo/not-found` and a failed read `tempo/unreadable`: reads to
- * repeat, not a refusal of the payment. A revert is `tempo/reverted`: nothing moved. A reader that is missing or for
+ * repeat, not a refusal of the payment. A revert whose block is at or below the reader's `finalized` mark is
+ * `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is `tempo/not-final`, a
+ * read to repeat: the block can be replaced by one in which the transaction succeeds. A reader that is missing or for
  * another network than the challenge names is `tempo/wrong-reader`.
  */
 async function pushFetchPresented(presented: MppCredential, reader: EvmReader): Promise<LandedCredential | Refusal> {
@@ -798,7 +800,7 @@ async function pushFetchPresented(presented: MppCredential, reader: EvmReader): 
   if (isRefusal(currency)) return currency;
   const chainId = echoedChain(e.checked);
   if (isRefusal(chainId)) return chainId;
-  const receipt = await readReceipt(`eip155:${chainId}`, hash, reader);
+  const receipt = await readReceiptAtMark(`eip155:${chainId}`, hash, reader);
   if (isRefusal(receipt)) return receipt;
   const logs = receipt.logs.filter((l) => sameBytes(l.address, currency));
   return { ...presented, landed: { transaction: hash, blockNumber: receipt.blockNumber, logs } };

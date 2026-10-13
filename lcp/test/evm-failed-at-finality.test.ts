@@ -36,7 +36,10 @@ import {
   TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
 import { BATCH_SETTLEMENT, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
+import { problem, type MppCredential } from "../src/mpp.js";
 import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC } from "../src/internal/hedera-session.js";
+import { REFUSAL_CODES } from "../src/internal/codes.js";
+import { load } from "./mpp-fixtures.js";
 
 const BASE = "eip155:84532";
 const TEMPO = "eip155:42431";
@@ -441,5 +444,78 @@ describe("an EVM failed answer is given only at or below the finalized mark", ()
         "nonce-not-used",
       ]),
     );
+  });
+});
+
+// `fetchPresented` on the Tempo push charge and on the Hedera session reads the presented transaction's receipt and
+// refuses one that reverted. That refusal is a failed answer read from a receipt, so it takes the same mark:
+// `<ns>/reverted` only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
+// mark cannot be read, `<ns>/not-final`, a read to repeat, which MPP answers 500 `internal-payment-error` with no
+// challenge (mpp-challenge.json MV10). The Hedera code is mpp-session-hedera-solana-xrpl.json's agreedRefusals row.
+// Each credential is its vector file's B6 buyer row as sent, without the `landed` member `fetchPresented` adds.
+describe("a fetchPresented revert is refused only at or below the finalized mark", () => {
+  const PU = load("mpp-charge-tempo-push.json");
+  const HS = load("mpp-session-hedera-solana-xrpl.json");
+  const MV10 = load("mpp-challenge.json").MV10.rows as { code: string; expect: { status: number; type: string } }[];
+  const asSent = (file: typeof PU, pairing: string) => {
+    const row = file.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B6" && r.pairing === pairing);
+    const { landed: _landed, ...credential } = row.input.presented;
+    return credential as MppCredential;
+  };
+  const hederaNotFinal = (HS.agreedRefusals.rows as { case: string; expect: string }[]).find((r) =>
+    r.case.startsWith("fetchPresented of a hedera opening whose transaction reverted"),
+  )!.expect;
+  const CASES: [id: string, network: string, credential: MppCredential, reverted: string, notFinal: string][] = [
+    ["mpp/charge/tempo/push", TEMPO, asSent(PU, "mpp/charge/tempo/push"), "tempo/reverted", "tempo/not-final"],
+    ["mpp/session/hedera", HEDERA, asSent(HS, "mpp/session/hedera"), "hedera/reverted", hederaNotFinal],
+  ];
+  const fetchOf = (id: string) =>
+    (BINDINGS.find((b) => b.id === id) as unknown as {
+      fetchPresented: (c: MppCredential, reader: EvmReader) => Promise<{ refused: true; code: string } | { landed: unknown }>;
+    }).fetchPresented;
+  const reverted: Failure = { why: "reverted", logs: [], reverted: true };
+
+  for (const [id, network, credential, revertedCode, notFinal] of CASES) {
+    it(`${id}: ${revertedCode} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
+      const fetchPresented = fetchOf(id);
+      for (const [finalized, safe] of [
+        [BLOCK, BLOCK],
+        [BLOCK + 5n, BLOCK + 10n],
+      ] as const) {
+        const marks: string[] = [];
+        expect(await fetchPresented(credential, reader(network, reverted, finalized, safe, marks)), `finalized ${finalized}`).toEqual({
+          refused: true,
+          code: revertedCode,
+        });
+        expect(marks).toContain("finalized");
+      }
+      for (const [finalized, safe] of [
+        [BLOCK - 1n, BLOCK],
+        [BLOCK - 1n, BLOCK - 1n],
+        ["fails", BLOCK],
+        ["fails", "fails"],
+      ] as const) {
+        const marks: string[] = [];
+        expect(
+          await fetchPresented(credential, reader(network, reverted, finalized, safe, marks)),
+          `finalized ${finalized}, safe ${safe}`,
+        ).toEqual({ refused: true, code: notFinal });
+        expect(marks).toContain("finalized");
+      }
+      // A receipt that succeeded is not held to the mark: it lands above it, and no mark is read.
+      const marks: string[] = [];
+      const landed = await fetchPresented(credential, reader(network, { why: "", logs: [] }, BLOCK - 1n, BLOCK - 1n, marks));
+      expect("landed" in landed && landed.landed).toMatchObject({ blockNumber: BLOCK });
+      expect(marks).toEqual([]);
+    });
+  }
+
+  it("tempo/not-final and hedera/not-final are codes the package returns, and reads to repeat: 500, no challenge", () => {
+    const internal = MV10.find((r) => r.code === "mpp/not-a-code")!.expect;
+    for (const code of ["tempo/not-final", hederaNotFinal]) {
+      expect(REFUSAL_CODES.has(code), code).toBe(true);
+      expect(MV10.find((r) => r.code === code)?.expect, code).toEqual(internal);
+      expect(problem(code), code).toEqual(internal);
+    }
   });
 });

@@ -261,7 +261,10 @@ sessions, the Tempo subscription and `x402/batch-settlement/eip155`, an opening,
 subscription's access key reads as failed only once the
 receipt's block is at or below the reader's `finalized` mark; above that mark, where the block can be replaced,
 or where the mark cannot be read, it reads as pending with the same reason
-([Reading settlement](./rails.md#reading-settlement)). On `mpp/subscription/tempo`,
+([Reading settlement](./rails.md#reading-settlement)). On `mpp/session/hedera`, `fetchPresented`, which reads the
+opening's receipt before `bound`, refuses a revert by the same mark: an opening that reverted is `hedera/reverted` only
+once its block is at or below the reader's `finalized` mark, and `hedera/not-final`, a read to repeat, above that mark
+or where it cannot be read. On `mpp/subscription/tempo`,
 the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
 channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
 activation's receipt as `accessKey.account`; without it, `closeRef` refuses `mpp/input-malformed`. Another account's

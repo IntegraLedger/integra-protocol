@@ -162,8 +162,11 @@ above the `finalized` mark can be replaced, by one in which the same transaction
 failed answer names no mark, so `status` gives one read from a receipt (`reverted`, `authorization-not-used`,
 `transfer-not-found`, `binding-log-not-found`, `receive-policy-blocked`, `nonce-not-used` or `open-call-not-found`)
 only when the receipt's block is at or below the reader's `finalized` mark. Above it, or where that mark cannot be
-read, `status` answers pending with the same reason, and a later read gives the verdict. Settled answers are not held
-to the mark: they carry the mark they reached.
+read, `status` answers pending with the same reason, and a later read gives the verdict. Where `fetchPresented` refuses
+a reverted transaction, on `mpp/charge/tempo/push` and `mpp/session/hedera`, the same mark places the refusal:
+`tempo/reverted` or `hedera/reverted` at or below it, and above it, or where it cannot be read, `tempo/not-final` or
+`hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). Settled answers are not
+held to the mark: they carry the mark they reached.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
