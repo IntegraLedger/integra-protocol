@@ -1552,8 +1552,7 @@ export const sessionEvm = Object.freeze({
       "deposit to the escrow. Where the payer sent the open call, or a relayer sent the escrow's Permit2 opening, the " +
       "seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and " +
       "authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the " +
-      "transfer. Where the opening is an EIP-3009 authorization, the seller's server verified that the transaction " +
-      "created this channel. This does not show that amount, payee, asset or timing match the ATR's content. " +
+      "transfer. This does not show that amount, payee, asset or timing match the ATR's content. " +
       LATER_VOUCHERS,
   ),
   claims: true as const,
