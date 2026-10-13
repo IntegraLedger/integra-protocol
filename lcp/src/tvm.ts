@@ -59,6 +59,7 @@ export interface TonTx {
   hash: string;
   account: string;
   aborted: boolean;
+  /** TON Center v3's `FinalityState`: 0 pending, 1 confirmed, 2 finalized. */
   finality: 0 | 1 | 2;
   inBody: Uint8Array | null;
   outMsgs: readonly { hash: string; opcode: number | null }[];

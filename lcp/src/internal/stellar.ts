@@ -33,6 +33,7 @@ const peer: typeof StellarBase | undefined = await import("@stellar/stellar-sdk/
 
 export type StellarNetwork = "stellar:pubnet" | "stellar:testnet";
 
+/** Each network's passphrase; its SHA-256 is the network id. */
 export const PASSPHRASE: Readonly<Record<StellarNetwork, string>> = Object.freeze({
   "stellar:pubnet": "Public Global Stellar Network ; September 2015",
   "stellar:testnet": "Test SDF Network ; September 2015",
@@ -529,7 +530,8 @@ export function readSourceTransfer(xdrB64: string, network: StellarNetwork): Sou
 }
 
 /**
- * Decodes a base64 `TransactionEnvelope` (v1, or a fee bump's inner v1) of at most 8 KiB holding exactly one
+ * Decodes a base64 `TransactionEnvelope` (v1, or a fee bump's inner v1) of at most 8,192 base64 characters (6 KiB of
+ * XDR) holding exactly one
  * `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract, and the one authorization entry
  * with address credentials (`sorobanCredentialsAddress` or `sorobanCredentialsAddressV2`) whose address is `from`.
  * The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's

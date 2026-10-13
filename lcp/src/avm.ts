@@ -66,7 +66,10 @@ export type AvmStatus =
 export interface AvmUnsigned {
   /** "TX" ‖ msgpack(txn) */
   request: { kind: "algorand-txn"; bytes: Uint8Array };
-  /** A 64-byte Ed25519 signature. */
+  /**
+   * Completes the payment with the payer's 64-byte Ed25519 signature over `request.bytes`; a signature of any other
+   * length is `avm/signature-malformed`.
+   */
   complete(signature: Uint8Array): AvmPaymentPayload | Refusal;
 }
 

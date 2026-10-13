@@ -12,9 +12,11 @@ type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" |
 
 /** `open(address,address,uint128,bytes32,address)`. */
 export const ESCROW_OPEN_SELECTOR = "0xc79ea485";
+/** `approve(address,uint256)`. */
 export const APPROVE_SELECTOR = "0x095ea7b3";
 /** `ChannelOpened(bytes32,address,address,address,address,bytes32,uint256)`: channel, payer, payee indexed. */
 export const CHANNEL_OPENED_TOPIC = "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94";
+/** `ChannelClosed(bytes32,address,address,uint256,uint256)`. */
 export const CHANNEL_CLOSED_TOPIC = "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51";
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 

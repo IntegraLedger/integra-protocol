@@ -504,7 +504,9 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
  * Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
  * records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
  * not this instrument, and any other result is failed with that result. A failed read, or a reader for another
- * network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read.
+ * network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read. It never
+ * answers expired: a transaction id that no entry uses stays pending `not-found`, and `validUntil` is not read, so the
+ * caller decides when to stop reading.
  */
 export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promise<HederaStatus> {
   if (!isObject(ref) || typeof ref.expectMemo !== "string") return { state: "pending", why: "unreadable" };

@@ -41,14 +41,21 @@ export interface UptoSvmPaymentPayload {
   extensions?: PaymentRequired["extensions"];
 }
 
+/** An SPL Memo program id: a top-level instruction to it is a Memo instruction. */
 export const MEMO_V3 = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
+/** An SPL Memo program id: a top-level instruction to it is a Memo instruction. */
 export const MEMO_V4 = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH";
+/** The SPL Token program id. */
 export const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+/** The SPL Token-2022 program id. */
 export const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+/** The System program id. */
 export const SYSTEM = "11111111111111111111111111111111";
 /** The `RecentBlockhashes` sysvar, which a durable message's `AdvanceNonceAccount` names after its nonce account. */
 const RECENT_BLOCKHASHES = "SysvarRecentB1ockHashes11111111111111111111";
+/** The Compute Budget program id. */
 export const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
+/** The Associated Token Account program id. */
 export const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 export const MAX_WIRE = 1232;
@@ -931,7 +938,9 @@ export async function landedTransaction(
 
 // ── the payment-channels program ─────────────────────────────────────────────────────────────────────────────────
 
+/** The payment-channels program id. */
 export const PAYMENT_CHANNELS = "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX";
+/** The Rent sysvar id. */
 export const RENT_SYSVAR = "SysvarRent111111111111111111111111111111111";
 
 const PAYMENT_CHANNELS_BYTES = base58.decode(PAYMENT_CHANNELS);
