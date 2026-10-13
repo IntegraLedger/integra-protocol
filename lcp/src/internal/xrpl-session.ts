@@ -66,14 +66,14 @@ export function accountIdOf(address: string): Uint8Array | null {
 
 /**
  * The PayChannel id: SHA-512Half of `0x0078` ‖ the source's AccountID ‖ the destination's AccountID ‖ the creating
- * transaction's sequence (or ticket sequence), big-endian; upper-case hex. A malformed address or sequence is
- * `xrpl/not-channel-create`.
+ * transaction's sequence (or ticket sequence), big-endian; upper-case hex. An address that is not a classic address,
+ * or a sequence that is not a UInt32, is `mpp/input-malformed`.
  */
 export function xrplChannelId(account: string, destination: string, sequence: number): string | Refusal {
   const a = accountIdOf(account);
   const d = accountIdOf(destination);
   if (a === null || d === null || !Number.isInteger(sequence) || sequence < 0 || sequence > 0xffffffff) {
-    return refusal("xrpl/not-channel-create");
+    return refusal("mpp/input-malformed");
   }
   const input = new Uint8Array(2 + 20 + 20 + 4);
   input.set(PAY_CHANNEL_SPACE, 0);
@@ -83,10 +83,13 @@ export function xrplChannelId(account: string, destination: string, sequence: nu
   return upperHex(sha512(input).subarray(0, 32));
 }
 
-/** The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as u64 big-endian. */
+/**
+ * The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as u64 big-endian. A channel id that is not
+ * 64 hex digits, or drops that are not a `bigint` UInt64, is `mpp/input-malformed`.
+ */
 export function xrplClaim(channelId: string, drops: bigint): Uint8Array | Refusal {
   if (typeof channelId !== "string" || !HASH256.test(channelId) || typeof drops !== "bigint" || drops < 0n || drops >= 1n << 64n) {
-    return refusal("xrpl/not-channel-create");
+    return refusal("mpp/input-malformed");
   }
   const out = new Uint8Array(44);
   out.set(CLAIM_PREFIX, 0);

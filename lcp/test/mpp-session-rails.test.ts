@@ -23,7 +23,16 @@ import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/inde
 import type { EvmReceipt } from "../src/evm.js";
 import { ReaderError } from "../src/evm.js";
 import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
-import { issuedDigest, pairingsOf, sessionHedera, sessionSolana, sessionXrpl, type MppChallenge, type MppCredential } from "../src/mpp.js";
+import {
+  issuedDigest,
+  pairingsOf,
+  sessionHedera,
+  sessionSolana,
+  sessionXrpl,
+  type MppChallenge,
+  type MppCredential,
+  type SessionWithin,
+} from "../src/mpp.js";
 import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocate, type SvmLanded, type SvmReader } from "../src/svm.js";
 import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -412,6 +421,68 @@ describe("mpp/session/xrpl", () => {
 
   it("XS1: the channel id", () => {
     expect(xrplChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
+  });
+
+  // The codes are the file's agreedRefusals rows: one for the two helpers, one for build. A classic address ends in a
+  // four-byte double-SHA-256 checksum (xrpl.org, "Addresses"), so XS1's account with its last character changed is not
+  // one; a transaction's Sequence is a UInt32 (xrpl.org, "Transaction Common Fields"); a channel id is a Hash256, 64 hex
+  // digits (xrpl.org, "Basic Data Types"); a claim signs its drops as a 64-bit unsigned integer (xrpl.org,
+  // "PaymentChannelClaim").
+  it("xrplChannelId, xrplClaim and build refuse malformed input with the agreedRefusals rows' code", async () => {
+    const row = (head: string) => V.agreedRefusals.rows.find((r: { case: string }) => r.case.startsWith(head)).expect as string;
+    const helpers = row("xrplChannelId with a malformed");
+    const notAddress = "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpm";
+    expect(V.XS1.account).toBe("rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn");
+    const ids: [unknown, unknown, unknown][] = [
+      [notAddress, V.XS1.destination, V.XS1.sequence],
+      [V.XS1.account, notAddress, V.XS1.sequence],
+      [7, V.XS1.destination, V.XS1.sequence],
+      [V.XS1.account, V.XS1.destination, -1],
+      [V.XS1.account, V.XS1.destination, 2 ** 32],
+      [V.XS1.account, V.XS1.destination, 1.5],
+    ];
+    for (const [account, destination, sequence] of ids) {
+      expect(xrplChannelId(account as string, destination as string, sequence as number), String([account, destination, sequence])).toEqual(
+        refused(helpers),
+      );
+    }
+    const claims: [unknown, unknown][] = [
+      ["zz", 100n],
+      [V.XS2.expectChannel.slice(2), 100n],
+      [V.XS2.expectChannel, 100],
+      [V.XS2.expectChannel, -1n],
+      [V.XS2.expectChannel, 1n << 64n],
+    ];
+    for (const [channelId, drops] of claims) {
+      expect(xrplClaim(channelId as string, drops as bigint), String([channelId, drops])).toEqual(refused(helpers));
+    }
+    const choice = {
+      challenge: C_X,
+      from: V.XS2.account,
+      now: 1790000000,
+      deposit: BigInt(V.XS2.deposit),
+      xrpl: { publicKey: `ED${"11".repeat(32)}`, settleDelay: 3600, fee: "12", sequence: 7, lastLedgerSequence: 1000 },
+    };
+    expect(await sessionXrpl.build({ ...choice, from: notAddress }, H)).toEqual(refused(row("build with a malformed from")));
+    // The request's recipient holds the shape the challenge check reads, and only its checksum fails.
+    const request = JSON.parse(Buffer.from(V.SS1.xrpl.challenge.request, "base64url").toString("utf8"));
+    const asked: MppChallenge = { ...V.SS1.xrpl.challenge, request: b64u(canonicalJson({ ...request, recipient: notAddress }) as string) };
+    const placed = (sessionXrpl.advertise([asked], H, V.fixed.link, asked) as (MppChallenge & { id: string })[])[0]!;
+    expect(await sessionXrpl.build({ ...choice, challenge: placed }, H)).toEqual(refused(helpers));
+  });
+
+  // A PaymentChannelCreate names its Destination (xrpl.org, "PaymentChannelCreate"), and a Sequence of 0 leaves the
+  // sequence to TicketSequence (xrpl.org, "Transaction Common Fields"). An opening that lacks either derives no channel
+  // id: channel.ref and buildWithin answer the code docs/reference/refusals.md gives it.
+  it("channel.ref and buildWithin refuse an opening that lacks its destination or sequence", async () => {
+    const tx = decodeXrpl(V.XS2.blob) as Record<string, unknown>;
+    const { Destination: _, ...noDestination } = tx;
+    const within = { ...V.SS1.xrpl.challenge, id: "seller-own-id" };
+    for (const blob of [encodeXrpl(noDestination as never), encodeXrpl({ ...tx, Sequence: 0 } as never)]) {
+      expect(await sessionXrpl.channel.ref(open(blob))).toEqual(refused("xrpl/not-channel-create"));
+      const w = { challenge: within, opening: open(blob), cumulativeAmount: 100n, action: "voucher" } as SessionWithin;
+      expect(await sessionXrpl.buildWithin(w, H)).toEqual(refused("xrpl/not-channel-create"));
+    }
   });
 
   it("XS2: bound, reference, channel ref and until", async () => {

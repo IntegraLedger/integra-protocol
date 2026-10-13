@@ -725,7 +725,20 @@ async function xrplReference(input: unknown): Promise<Omit<XrplRef, "fromLedger"
   return { network, transaction: o.hash, lastLedgerSequence: typeof last === "number" ? last : null };
 }
 
-/** The channel: on `open` its id from the signed blob; on `voucher` and `close` the payload's, in upper case. */
+/**
+ * The channel id of an opening's signed blob: `xrplChannelId(Account, Destination, Sequence, or TicketSequence when
+ * Sequence is 0)`; `xrpl/not-channel-create` when the blob lacks the source, destination or sequence.
+ */
+function xrplOpeningChannel(tx: XrplTxJson): string | Refusal {
+  const seq = tx["Sequence"] === 0 ? tx["TicketSequence"] : tx["Sequence"];
+  const id = xrplChannelId(tx.Account, tx["Destination"] as string, seq as number);
+  return isRefusal(id) ? refusal("xrpl/not-channel-create") : id;
+}
+
+/**
+ * The channel: on `open` its id from the signed blob (`xrplOpeningChannel`); on `voucher` and `close` the payload's, in
+ * upper case.
+ */
 async function xrplRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const k = actionKind(presented, ["voucher"]);
   if (isRefusal(k)) return k;
@@ -745,9 +758,7 @@ async function xrplRef(presented: MppCredential): Promise<{ network: string; cha
   if (typeof blob !== "string") return refusal("xrpl/blob-malformed");
   const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
-  const { tx } = decoded;
-  const seq = tx["Sequence"] === 0 ? tx["TicketSequence"] : tx["Sequence"];
-  const id = xrplChannelId(tx.Account, tx["Destination"] as string, seq as number);
+  const id = xrplOpeningChannel(decoded.tx);
   return isRefusal(id) ? id : { network, channel: id };
 }
 
@@ -883,13 +894,13 @@ async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSes
 
 /**
  * A claim, or a close's final claim, on the channel the held opening created: one `xrpl-claim` request over
- * `xrplClaim(channelId, drops)`, for the channel's key, with the channel id derived from the opening's signed blob.
+ * `xrplClaim(channelId, drops)`, for the channel's key, with the channel id derived from the opening's signed blob
+ * (`xrplOpeningChannel`).
  */
 async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const o = await withinChecks(w, h, "session/xrpl", (p) => xrplOpening(p), U64);
   if (isRefusal(o)) return o;
-  const seq = o.tx["Sequence"] === 0 ? o.tx["TicketSequence"] : o.tx["Sequence"];
-  const channelId = xrplChannelId(o.tx.Account, o.tx["Destination"] as string, seq as number);
+  const channelId = xrplOpeningChannel(o.tx);
   if (isRefusal(channelId)) return channelId;
   const drops = w.cumulativeAmount;
   const bytes = xrplClaim(channelId, drops);

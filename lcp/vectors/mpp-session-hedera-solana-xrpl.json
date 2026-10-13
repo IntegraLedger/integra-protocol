@@ -568,7 +568,7 @@
    },
    {
     "case": "xrplChannelId with a malformed address or sequence, or xrplClaim with a malformed id or drops",
-    "expect": "xrpl/not-channel-create"
+    "expect": "mpp/input-malformed"
    },
    {
     "case": "solanaVoucher with a malformed channel id or an out-of-range number",
