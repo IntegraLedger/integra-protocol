@@ -5,7 +5,7 @@
   "realm": "api.seller.example",
   "expires": "2026-09-21T14:14:20Z",
   "expiresUnix": 1790000060,
-  "link": "https://atr.seller.example/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "agreementUrl": "https://pay.seller.example/agreement/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "R_E": "{\"amount\":\"10000\",\"currency\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"methodDetails\":{\"chainId\":84532,\"credentialTypes\":[\"permit2\",\"authorization\"],\"permit2Address\":\"0x000000000022D473030F116dDEE9F6B43aC78BA3\"},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",
   "R_T": "{\"amount\":\"1000000\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"supportedModes\":[\"pull\"]},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
@@ -26,7 +26,7 @@
  "MV3": {
   "case": "place([C_E], H, link, C_E) and place([C_T], H, link, C_T); read of each",
   "expectId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
-  "expectOpaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9"
+  "expectOpaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
  },
  "MV4": {
   "case": "issuedDigest of C_E, of MV3's echoed challenge, of C_E with header, and of C_T and its echo",
@@ -83,8 +83,8 @@
  },
  "MV14": {
   "case": "place([C_E], H, link, C_E, agreementUrl); issuedDigest of the echo; read",
-  "expectOpaqueLength": 458,
-  "expectOpaqueSha256": "0xe3c34522ded279e1a1df02ce64f5aaf33be5f975826e124486fb678c2083518b",
+  "expectOpaqueLength": 418,
+  "expectOpaqueSha256": "0x5b25d47a2ca311ca0d618047603983c9ccb08e04f66123b407e4950d08f66b46",
   "expectIssuedDigest": "0x287e16b6d4424f7d078ac0fbb78936f961d59f2fb5cf3b623d72f96ed8c0ebd4"
  },
  "S1": {
