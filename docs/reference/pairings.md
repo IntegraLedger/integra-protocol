@@ -249,7 +249,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `mpp/subscription/tempo`
 
-The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a Tempo key authorization whose witness is this ATR's hash, granting the seller's access key a per-period limit. The chain verified that signature when the activation transaction registered the key, and the account keychain's KeyAuthorizationWitness event carries the payer's account and this hash as topics. The same transaction transferred the first period's payment to the recipient. This does not show that amount, period, payee, asset or timing match the ATR's content. Later billing periods were paid under this ATR by renewal transfers the seller did not read.
+The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a Tempo key authorization whose witness is this ATR's hash, granting the seller's access key a per-period limit. The chain verified that signature when the activation transaction registered the key, and the account keychain's KeyAuthorizationWitness event carries the payer's account and this hash as topics. The same transaction transferred the token the payer's key authorization limits to the recipient it allows. This does not show that amount, period, payee, asset or timing match the ATR's content. Later billing periods were paid under this ATR by renewal transfers the seller did not read.
 
 ### `ucp/booking/ap2-mandate`
 
