@@ -413,7 +413,8 @@ describe("problem", () => {
     inner: [],
   });
 
-  const stellarPush = pushed(ST, ST.refusals[0].payload);
+  // A push under the sourceAccount section's challenge, whose feePayer is false: under feePayer true nothing is read.
+  const stellarPush: MppCredential = { challenge: ST.sourceAccount.challenge, payload: ST.refusals[0].payload };
   const stellar = (transaction: StellarReader["transaction"], network: StellarReader["network"] = "stellar:testnet"): StellarReader => ({
     network,
     transaction,
@@ -483,7 +484,7 @@ describe("problem", () => {
     ],
     [
       "mpp/charge/stellar: bound on the push credential before fetchPresented",
-      () => chargeStellar.bound(pushed(ST, notYetFetched(ST).payload)),
+      () => chargeStellar.bound({ ...stellarPush, payload: notYetFetched(ST).payload }),
       notYetFetched(ST).expect,
       internal,
     ],

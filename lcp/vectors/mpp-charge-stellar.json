@@ -80,7 +80,8 @@
  },
  "refusals": [
   {
-   "case": "type=hash not yet fetched",
+   "case": "under the sourceAccount section's challenge, whose feePayer is false, type=hash not yet fetched",
+   "challenge": "sourceAccount",
    "payload": {
     "type": "hash",
     "hash": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
@@ -104,15 +105,15 @@
     "expect": "stellar/option-malformed"
    },
    {
-    "case": "fetchPresented when the reader fails",
+    "case": "fetchPresented under a challenge whose feePayer is false or absent, when the reader fails",
     "expect": "stellar/unreadable"
    },
    {
-    "case": "fetchPresented when the transaction is not found or has no envelope",
+    "case": "fetchPresented under a challenge whose feePayer is false or absent, when the transaction is not found or has no envelope",
     "expect": "stellar/not-found"
    },
    {
-    "case": "fetchPresented when the reader reports the transaction FAILED",
+    "case": "fetchPresented under a challenge whose feePayer is false or absent, when the reader reports the transaction FAILED",
     "expect": "stellar/tx-failed"
    },
    {
@@ -197,7 +198,7 @@
   ]
  },
  "sourceAccount": {
-  "about": "Push (a hash credential) under a request whose methodDetails.feePayer is false or absent, where the payer submits the transaction as its source account and authorizes the transfer with sorobanCredentialsSourceAccount, the credential simulation gives a payer that is the source: such an entry carries no signature of its own, and the transaction's signature, which the network verifies, covers the whole transaction, to included. A source-account entry authorizes the source account of the operation that carries it, its own when it names one and otherwise the transaction's, so the payer must be both; and, as before anything lands, the entry's rootInvocation is the operation's transfer with no sub-invocations. The transaction is the instrument: reference records it by transaction, with no authDigest or expiration; status settles on that transaction's SUCCESS with that shape and is otherwise pending; stellarLocate has no entry to search for. x402 (scheme_exact_stellar: auth entries MUST use an address-based credential type), the sponsored flow (draft-stellar-charge-00: \"Servers MUST reject `type=\"hash\"` credentials when the challenge specifies `feePayer: true`\") and a transaction credential keep refusing stellar/no-address-auth. The envelopes were written with @stellar/stellar-sdk 17.1.0 from x402-exact-stellar.json's V3 envelope: the entry's credentials set to sorobanCredentialsSourceAccount and the sources set as each write says, naming each account by the byte its Ed25519 seed repeats (05 is the payer) and whether the entry's rootInvocation carries a copy of the transfer as a sub-invocation; every source named signs with its Transaction.sign on testnet, and each hash is its Transaction.hash. The challenge is the place section's with methodDetails.feePayer false, its request computed with Python 3 json and base64url.",
+  "about": "Push (a hash credential) under a request whose methodDetails.feePayer is false or absent, where the payer submits the transaction as its source account and authorizes the transfer with sorobanCredentialsSourceAccount, the credential simulation gives a payer that is the source: such an entry carries no signature of its own, and the transaction's signature, which the network verifies, covers the whole transaction, to included. A source-account entry authorizes the source account of the operation that carries it, its own when it names one and otherwise the transaction's, so the payer must be both; and, as before anything lands, the entry's rootInvocation is the operation's transfer with no sub-invocations. The transaction is the instrument: reference records it by transaction, with no authDigest or expiration; status settles on that transaction's SUCCESS with that shape and is otherwise pending; stellarLocate has no entry to search for. x402 (scheme_exact_stellar: auth entries MUST use an address-based credential type) and a transaction credential refuse stellar/no-address-auth, and the sponsored flow refuses mpp/credential-type before any read (draft-stellar-charge-00: \"Servers MUST reject `type=\"hash\"` credentials when the challenge specifies `feePayer: true`\"). The envelopes were written with @stellar/stellar-sdk 17.1.0 from x402-exact-stellar.json's V3 envelope: the entry's credentials set to sorobanCredentialsSourceAccount and the sources set as each write says, naming each account by the byte its Ed25519 seed repeats (05 is the payer) and whether the entry's rootInvocation carries a copy of the transfer as a sub-invocation; every source named signs with its Transaction.sign on testnet, and each hash is its Transaction.hash. The challenge is the place section's with methodDetails.feePayer false, its request computed with Python 3 json and base64url.",
   "challenge": {
    "realm": "api.seller.example",
    "method": "stellar",
@@ -260,10 +261,11 @@
   ],
   "refusals": [
    {
-    "case": "this envelope pushed under the place section's challenge, whose feePayer is true",
+    "case": "this envelope pushed under the place section's challenge, whose feePayer is true: fetchPresented reads nothing, and bound and reference refuse it carrying its transaction",
     "challenge": "place",
     "type": "hash",
-    "expect": "stellar/no-address-auth"
+    "carriesTransaction": true,
+    "expect": "mpp/credential-type"
    },
    {
     "case": "this envelope in a transaction credential under this challenge, before it lands",

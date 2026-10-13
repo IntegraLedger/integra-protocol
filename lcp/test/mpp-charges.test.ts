@@ -317,7 +317,7 @@ describe("mpp-charge-stellar.json", () => {
   });
 
   it("refusals, and fetchPresented of a hash credential", async () => {
-    expect(await chargeStellar.bound(credential(placed, V.refusals[0].payload))).toEqual(refused(V.refusals[0].expect));
+    expect(await chargeStellar.bound(credential(V.sourceAccount.challenge, V.refusals[0].payload))).toEqual(refused(V.refusals[0].expect));
     const other = { ...placed, id: "47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU.0" };
     const otherOpaque = b64u(
       canonicalJson({ legalContext: `lcp:sha256:${V.fixed.H2}`, legalContextUrl: V.fixed.link }) as string,
@@ -331,12 +331,40 @@ describe("mpp-charge-stellar.json", () => {
       transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
       latestLedger: async () => 1000,
     } as StellarReader;
-    const fetched = await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader);
+    // Pushed under the sourceAccount section's challenge: the place section's with feePayer false.
+    const fetched = await chargeStellar.fetchPresented(credential(V.sourceAccount.challenge, V.refusals[0].payload), reader);
     if ("refused" in fetched) throw new Error(fetched.code);
     expect(await chargeStellar.bound(fetched)).toBe(H);
     const ref = await chargeStellar.reference(fetched);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.transaction).toBe(V.refusals[0].payload.hash);
+  });
+
+  // "Push mode MUST NOT be used when `feePayer` is `true` in the challenge request. [...] Servers MUST reject
+  // `type="hash"` credentials when the challenge specifies `feePayer: true`." (draft-stellar-charge-00 L364-367.) The
+  // place section's challenge sets feePayer true; the sourceAccount section's is the same challenge with it false.
+  it("push under feePayer true: fetchPresented, bound and reference refuse the hash credential mpp/credential-type", async () => {
+    let reads = 0;
+    const reader: StellarReader = {
+      network: "stellar:testnet",
+      transaction: async () => {
+        reads++;
+        return { status: "SUCCESS", envelopeXdr: V.V3.envelope, ledger: 990, oldestLedger: 1 };
+      },
+      transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
+      latestLedger: async () => 1000,
+    };
+    expect(await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader)).toEqual(refused("mpp/credential-type"));
+    expect(reads).toBe(0);
+    const sponsored = credential(placed, { ...V.refusals[0].payload, transaction: V.V3.envelope });
+    expect(await chargeStellar.bound(credential(placed, V.refusals[0].payload))).toEqual(refused("mpp/credential-type"));
+    expect(await chargeStellar.bound(sponsored)).toEqual(refused("mpp/credential-type"));
+    expect(await chargeStellar.reference(sponsored)).toEqual(refused("mpp/credential-type"));
+    const pushed = await chargeStellar.fetchPresented(credential(V.sourceAccount.challenge, V.refusals[0].payload), reader);
+    if ("refused" in pushed) throw new Error(pushed.code);
+    expect(await chargeStellar.bound(pushed)).toBe(H);
+    // The sponsored flow's own credential, a transaction the server submits, binds H under feePayer true.
+    expect(await chargeStellar.bound(credential(placed, { type: "transaction", transaction: V.V3.envelope }))).toBe(H);
   });
 
   it("push: a landed transaction carrying another entry of the payer binds H by the entry it used (x402-exact-stellar.json V5's two-entry row)", async () => {
@@ -347,7 +375,7 @@ describe("mpp-charge-stellar.json", () => {
       transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 995 }),
       latestLedger: async () => 995,
     };
-    const fetched = await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader);
+    const fetched = await chargeStellar.fetchPresented(credential(V.sourceAccount.challenge, V.refusals[0].payload), reader);
     if ("refused" in fetched) throw new Error(fetched.code);
     expect(await chargeStellar.bound(fetched)).toBe(H);
     const ref = await chargeStellar.reference(fetched);
@@ -486,7 +514,7 @@ describe("mpp-charge-stellar.json", () => {
       transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
       latestLedger: async () => 1000,
     } as StellarReader;
-    expect(await chargeStellar.fetchPresented(credential(placed, V.refusals[0].payload), reader)).toEqual(refused(row.expect));
+    expect(await chargeStellar.fetchPresented(credential(V.sourceAccount.challenge, V.refusals[0].payload), reader)).toEqual(refused(row.expect));
   });
 
   it("bound and build read the invocation the payer's entry signs (x402-exact-stellar.json's V4 and V4build rows)", async () => {

@@ -77,10 +77,11 @@ function networkOf(e: Echoed): StellarNetwork | Refusal {
 /**
  * The echoed challenge's binding: its `network` and its request's `recipient`, an account or its muxed form, read as
  * `advertise` reads them (else `stellar/option-malformed`), and the payment read from its transaction. A `hash`
- * credential whose transaction carries no address entry of the payer, under a request with `feePayer` false or absent,
- * is read as a payer that authorized the transfer as the transaction's source account; that transaction is the
- * instrument, so the credential's `hash` must name it. There `feePayer` is read as `advertise` reads it: one that is
- * present and not a boolean is `stellar/option-malformed`.
+ * credential under a request with `feePayer` true is `mpp/credential-type`: MPP's Stellar charge forbids push mode
+ * when the server sponsors the fee. A `hash` credential whose transaction carries no address entry of the payer, under
+ * a request with `feePayer` false or absent, is read as a payer that authorized the transfer as the transaction's
+ * source account; that transaction is the instrument, so the credential's `hash` must name it. There `feePayer` is read
+ * as `advertise` reads it: one that is present and not a boolean is `stellar/option-malformed`.
  */
 function bindingOf(
   credential: MppCredential,
@@ -90,12 +91,13 @@ function bindingOf(
   const network = networkOf(e.checked);
   if (isRefusal(network)) return network;
   if (!isStellarRecipient(e.checked.request["recipient"])) return refusal("stellar/option-malformed");
+  const feePayer = e.checked.details["feePayer"];
+  if (e.payload["type"] === "hash" && feePayer === true) return refusal("mpp/credential-type");
   const xdr = presentedXdr(e.payload);
   if (isRefusal(xdr)) return xdr;
   const landed = e.payload["type"] === "hash";
   let signed: { payment: StellarPayment | SourcePayment; agrees: boolean } | Refusal = readSignedTransfer(xdr, network, landed);
-  const feePayer = e.checked.details["feePayer"];
-  if (isRefusal(signed) && signed.code === "stellar/no-address-auth" && landed && feePayer !== true) {
+  if (isRefusal(signed) && signed.code === "stellar/no-address-auth" && landed) {
     if (!isFeePayer(feePayer)) return refusal("stellar/option-malformed");
     const source = readSourceTransfer(xdr, network);
     if (!isRefusal(source)) {
@@ -122,9 +124,9 @@ function bindingOf(
  * operation's `transfer`, byte for byte; other entries of the payer are not read. A `hash` credential whose transaction
  * carries no address entry of the payer, under a request with `feePayer` false or absent, binds H when the payer is the
  * source account of the transaction and of its operation and an entry with source-account credentials is that
- * `transfer`: the payer signed the whole transaction, `to` included. With `feePayer` true, or for a `transaction`
- * credential, such a payment is `stellar/no-address-auth`; with a `feePayer` that is not a boolean, it is
- * `stellar/option-malformed`.
+ * `transfer`: the payer signed the whole transaction, `to` included. For a `transaction` credential such a payment is
+ * `stellar/no-address-auth`; with a `feePayer` that is not a boolean, it is `stellar/option-malformed`. Under a request
+ * with `feePayer` true, a `hash` credential is `mpp/credential-type`, fetched or not, whatever its entries.
  * The authorization's signature is not verified here; the network verifies it when the entry is used.
  */
 async function bound(input: unknown): Promise<AtrHash | Refusal> {
@@ -160,8 +162,9 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
 
 /**
  * A push credential (`type="hash"`) with the landed envelope added as `transaction`. Other credentials are returned
- * unchanged. A read that fails, or finds nothing, is a refusal the seller retries; a transaction the ledger records as
- * `FAILED` is refused `stellar/tx-failed`.
+ * unchanged. Under a request with `feePayer` true a push credential is `mpp/credential-type`, and nothing is read: MPP's
+ * Stellar charge forbids push mode when the server sponsors the fee. A read that fails, or finds nothing, is a refusal
+ * the seller retries; a transaction the ledger records as `FAILED` is refused `stellar/tx-failed`.
  */
 async function fetchPresented(credential: MppCredential, reader: StellarReader): Promise<MppCredential | Refusal> {
   if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
@@ -170,6 +173,7 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
   if (credential.payload["type"] !== "hash") return credential;
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;
+  if (e.checked.details["feePayer"] === true) return refusal("mpp/credential-type");
   const network = networkOf(e.checked);
   if (isRefusal(network)) return network;
   if (!isObject(reader) || reader.network !== network) return refusal("stellar/wrong-reader");
