@@ -269,11 +269,11 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `x402/auth-capture/eip155/eip3009`
 
-The payer signed a token authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The token contract or Permit2 verified the signature when the escrow collected the payment, and the escrow's event carries the salt. A holder of the ATR can confirm the hash from the salt; the chain alone does not reveal it. This record covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.
+The payer signed a token authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The token contract verified the signature when the escrow collected the payment, and the escrow's event carries the salt. When unbound, the salt is this ATR's hash, so the settled transaction itself shows it. When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; the chain alone does not reveal it. This record covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.
 
 ### `x402/auth-capture/eip155/permit2`
 
-The payer signed a token authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The token contract or Permit2 verified the signature when the escrow collected the payment, and the escrow's event carries the salt. A holder of the ATR can confirm the hash from the salt; the chain alone does not reveal it. This record covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.
+The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The escrow's event in the settlement transaction carries that PaymentInfo, salt included; it does not show which collector funded the payment. When unbound, the salt is this ATR's hash, so the settled transaction itself shows it. When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; the chain alone does not reveal it. This record covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.
 
 ### `x402/batch-settlement/cloudflare`
 

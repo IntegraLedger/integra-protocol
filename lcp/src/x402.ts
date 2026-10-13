@@ -1224,12 +1224,25 @@ const PERMIT2_PROVES =
   "hash is in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show " +
   "that amount, payee, asset or timing match the ATR's content.";
 
-const AUTH_CAPTURE_PROVES =
+const AUTH_CAPTURE_SALT =
+  "When unbound, the salt is this ATR's hash, so the settled transaction itself shows it. " +
+  "When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; " +
+  "the chain alone does not reveal it. This record covers that first collection; capture, void, refund and " +
+  "reclaim are the operator's and the payer's.";
+
+const AUTH_CAPTURE_EIP3009_PROVES =
   "The payer signed a token authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is " +
-  "this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The token " +
-  "contract or Permit2 verified the signature when the escrow collected the payment, and the escrow's event carries " +
-  "the salt. A holder of the ATR can confirm the hash from the salt; the chain alone does not reveal it. This record " +
-  "covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.";
+  "this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The " +
+  "token contract verified the signature when the escrow collected the payment, and the escrow's event carries the " +
+  "salt. " +
+  AUTH_CAPTURE_SALT;
+
+const AUTH_CAPTURE_PERMIT2_PROVES =
+  "The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to a salt " +
+  "that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. " +
+  "The escrow's event in the settlement transaction carries that PaymentInfo, salt included; it does not show which " +
+  "collector funded the payment. " +
+  AUTH_CAPTURE_SALT;
 
 function record(p: LcpPattern): LcpPattern {
   return deepFreeze(p);
@@ -1387,7 +1400,7 @@ export const authCaptureEip3009 = binding(
     zeroPartyRecoverable: false,
     forwardIndexable: false,
     publicProof: true,
-    proves: AUTH_CAPTURE_PROVES,
+    proves: AUTH_CAPTURE_EIP3009_PROVES,
   }),
   true,
   {
@@ -1410,7 +1423,7 @@ export const authCapturePermit2 = binding(
     zeroPartyRecoverable: false,
     forwardIndexable: false,
     publicProof: true,
-    proves: AUTH_CAPTURE_PROVES,
+    proves: AUTH_CAPTURE_PERMIT2_PROVES,
   }),
   true,
   {
