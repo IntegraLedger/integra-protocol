@@ -119,7 +119,7 @@ The buyer's inputs to `build`. No check reads them.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-challenge-1"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
-| <a id="property-clientid"></a> `clientId?` | `string` | tempo only: the payer's label in the attribution memo. |
+| <a id="property-clientid"></a> `clientId?` | `string` | tempo only: the payer's label in the attribution memo, a well-formed string. |
 | <a id="property-from"></a> `from` | `` `0x${string}` `` | - |
 | <a id="property-now"></a> `now` | `number` | - |
 | <a id="property-spender"></a> `spender?` | `` `0x${string}` `` | permit2 only: the seller server's submitting address. |
@@ -181,7 +181,7 @@ The buyer's inputs to `build`. No check reads them.
 | ------ | ------ | ------ | ------ |
 | <a id="property-authorizedsigner"></a> `authorizedSigner?` | `` `0x${string}` `` | sessions: default the zero address, which means the payer. | - |
 | <a id="property-challenge-4"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - | [`MppChoice`](#mppchoice).[`challenge`](#property-challenge-1) |
-| <a id="property-clientid-1"></a> `clientId?` | `string` | tempo only: the payer's label in the attribution memo. | [`MppChoice`](#mppchoice).[`clientId`](#property-clientid) |
+| <a id="property-clientid-1"></a> `clientId?` | `string` | tempo only: the payer's label in the attribution memo, a well-formed string. | [`MppChoice`](#mppchoice).[`clientId`](#property-clientid) |
 | <a id="property-credentialtype"></a> `credentialType?` | `"permit2"` \| `"authorization"` \| `"hash"` | EVM: default the first listed type. | - |
 | <a id="property-deposit-1"></a> `deposit?` | `bigint` | sessions: the buyer's deposit; `suggestedDeposit` is advice. | - |
 | <a id="property-from-2"></a> `from` | `` `0x${string}` `` | - | [`MppChoice`](#mppchoice).[`from`](#property-from) |
@@ -893,7 +893,9 @@ The request member `usdc` writes H into, by `methodDetails.type`; null where no 
 > **attributionMemo**(`realm`, `challengeId`, `clientId?`): `` `0x${string}` ``
 
 MPP's 32-byte attribution memo: keccak256("mpp")[0..3], `0x01`, keccak256(realm)[0..9], keccak256(clientId)[0..9]
-or ten zero bytes, then keccak256(challengeId)[0..6], each over the string's UTF-8.
+or ten zero bytes, then keccak256(challengeId)[0..6], each over the string's UTF-8. A string that is not well-formed
+is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate; the pairings refuse such a realm,
+challenge id or client id before they call it.
 
 #### Parameters
 
@@ -950,7 +952,9 @@ H from an id `challengeId` wrote, or from the bare base64url of H; anything else
 
 > **challengeHash**(`id`, `realm`): `` `0x${string}` ``
 
-keccak256(UTF-8(id) ‖ UTF-8(realm)), lowercase: Solidity's `abi.encodePacked(string, string)`.
+keccak256(UTF-8(id) ‖ UTF-8(realm)), lowercase: Solidity's `abi.encodePacked(string, string)`. A string that is not
+well-formed is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate; the pairings refuse such an id
+or realm before they call it.
 
 #### Parameters
 
@@ -988,7 +992,9 @@ base64url, without padding, of H's 32 bytes, then `.` and the challenge's positi
 
 > **checkAttribution**(`memo`, `realm`, `challengeId`): `true` \| [`Refusal`](index.md#refusal)
 
-Checks a memo's tag, version, server id for `realm` and nonce for `challengeId`. The client id is not read.
+Checks a memo's tag, version, server id for `realm` and nonce for `challengeId`. The client id is not read. A `realm`
+or `challengeId` that is not well-formed is hashed as `attributionMemo` hashes it, with U+FFFD for each lone
+surrogate; the pairings refuse such a challenge before they call it.
 
 #### Parameters
 

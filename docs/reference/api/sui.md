@@ -146,7 +146,11 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 > **decodeSuiTx**(`base64`): [`Refusal`](index.md#refusal) \| [`SuiTx`](#suitx)
 
-Decodes a base64 `TransactionData` V1 with a programmable kind.
+Decodes a base64 `TransactionData` V1 with a programmable kind. A programmable transaction with a type (a call's
+type argument, a vector's element type, a funds withdrawal's type) that has a node at depth 16, Sui's type depth
+limit, is `sui/tx-malformed`, the code of bytes that do not decode: @mysten/sui decodes a type by recursion, and the
+bound gives the same answer whether this host's stack would hold the type or not. A V1 `TransactionData` of another
+kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded.
 
 #### Parameters
 

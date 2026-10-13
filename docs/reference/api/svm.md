@@ -17,7 +17,7 @@ description: "The exports of @integraledger/lcp/svm."
 | <a id="property-computeunitprice"></a> `computeUnitPrice` | `bigint` | - |
 | <a id="property-feepayer"></a> `feePayer` | `string` | - |
 | <a id="property-instruction"></a> `instruction` | \{ `channel`: `string`; `deposit`: `bigint`; `gracePeriod`: `number`; `kind`: `"open"`; `openSlot`: `bigint`; `recipient`: `string`; `salt`: `bigint`; `signer`: `string`; \} \| \{ `amount`: `bigint`; `channel`: `string`; `kind`: `"top_up"`; \} \| \{ `channel`: `string`; `kind`: `"request_close"`; \} | - |
-| <a id="property-memo"></a> `memo?` | `string` | The one Memo v3 instruction's text; absent, the message carries no memo. |
+| <a id="property-memo"></a> `memo?` | `string` | The one Memo v3 instruction's text, a well-formed string; absent, the message carries no memo. |
 | <a id="property-mint"></a> `mint` | `string` | - |
 | <a id="property-payer"></a> `payer` | `string` | - |
 | <a id="property-recentblockhash"></a> `recentBlockhash` | `string` | - |
@@ -371,7 +371,8 @@ digest of the message the payer signed, and settlement read through a bounded re
 
 The v0 message for a channel instruction: `SetComputeUnitLimit`, `SetComputeUnitPrice`, the payment-channels
 instruction with its accounts in the program's order, then one v3 Memo instruction when `memo` is given. The fee
-payer is also the `open`'s rent payer and payee.
+payer is also the `open`'s rent payer and payee. A memo that is not a well-formed string (one holding a lone
+surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
 #### Parameters
 
@@ -391,7 +392,8 @@ payer is also the `open`'s rent payer and payee.
 
 The versioned (v0) message bytes for a token payment: `SetComputeUnitLimit`, `SetComputeUnitPrice`,
 `TransferChecked` from the payer's associated token account to the payee's, then one v3 Memo instruction whose data
-is the memo's UTF-8 bytes. No lookup tables.
+is the memo's UTF-8 bytes. No lookup tables. A memo that is not a well-formed string (one holding a lone surrogate
+has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
 #### Parameters
 
@@ -556,6 +558,8 @@ data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel 
 > **sessionProof**(`p`): `Uint8Array`
 
 The UTF-8 of the core's `canonicalJson` of `{channelId, domain: "mpp-session-auth-v1", payer, sessionChallengeId}`.
+Throws TypeError when `p` is not an object, or when its `channelId`, `payer` or `challengeId` is not a well-formed
+string (one holding a lone surrogate has no UTF-8 form): it never returns a message the caller did not write.
 
 #### Parameters
 
