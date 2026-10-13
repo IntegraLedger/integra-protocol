@@ -343,8 +343,12 @@ async function authorizer(presented: unknown): Promise<Hex | Refusal> {
   return isAddress(from) ? (from.toLowerCase() as Hex) : refusal("x402/payload-malformed");
 }
 
-/** The option unchanged: on this pairing the hash rides in the authorization, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: no x402 EVM pairing carries the hash inside the option. An option that carries a `refused`
+ * member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 
@@ -1233,7 +1237,7 @@ type BreadthBase<Id extends X402PairingId> = {
   readonly id: Id;
   readonly pattern: LcpPattern;
   readonly claims: boolean;
-  readonly unplaced: (option: PaymentRequirements) => PaymentRequirements;
+  readonly unplaced: (option: PaymentRequirements) => PaymentRequirements | Refusal;
   readonly tie: typeof tie;
   readonly advertise: X402Advertise;
   readonly read: (doc: unknown) => X402Read | Refusal;

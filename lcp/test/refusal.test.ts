@@ -137,6 +137,39 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     for (const v of ["lnbc", 7, null]) expect(unplaced(v)).toBe(v);
   });
 
+  // The x402 EVM pairings' unplaced hands the option back unchanged as well (none carries the hash inside the option),
+  // so it refuses one that carries a refused member with x402/option-malformed, the code their option checks give; a
+  // value that is not an object comes back as it is. Each option is its pairing's vector file's.
+  const evm = BINDINGS.filter((b) => /^x402\/[a-z-]+\/eip155\//.test(b.id));
+  it("the x402 EVM pairings are seven", () => {
+    expect(evm.map((b) => b.id).sort()).toEqual([
+      "x402/auth-capture/eip155/eip3009",
+      "x402/auth-capture/eip155/permit2",
+      "x402/exact/eip155/eip3009",
+      "x402/exact/eip155/erc7710",
+      "x402/exact/eip155/erc7710-salt",
+      "x402/exact/eip155/permit2",
+      "x402/upto/eip155/permit2",
+    ]);
+  });
+  for (const b of evm) {
+    it(`${b.id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
+      const file = new URL(`${b.id.replaceAll("/", "-")}.json`, dir);
+      const fixed = (JSON.parse(readFileSync(file, "utf8")) as { fixed: Record<string, object> }).fixed;
+      const option = fixed["O"] ?? fixed["option"];
+      expect(option).toBeTypeOf("object");
+      const unplaced = b.unplaced as (o: unknown) => unknown;
+      expect(unplaced(option)).toBe(option);
+      const expected = { refused: true, code: "x402/option-malformed" };
+      for (const v of [withRefused(option), shaped(), refusal("ack/token-malformed")]) {
+        const out = unplaced(v);
+        expect(out).toEqual(expected);
+        expect(isRefusal(out)).toBe(true);
+      }
+      for (const v of ["exact", 7, null]) expect(unplaced(v)).toBe(v);
+    });
+  }
+
   for (const b of BINDINGS) {
     const fetchPresented = (b as { fetchPresented?: (c: unknown, r: unknown) => Promise<unknown> }).fetchPresented;
     const p = presentedOf.get(b.id);

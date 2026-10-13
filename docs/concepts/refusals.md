@@ -48,9 +48,10 @@ where it was made, not by its members, so a value you pass in is never returned 
 holds. A presented payment or credential that the package would otherwise hand back to you unchanged is refused as
 malformed when it carries a `refused` member: `mpp/credential-malformed` for an MPP credential, `x402/payload-malformed`
 for an x402 EIP-3009 payment and `casper/payload-malformed` for a Casper payment. An option handed to `unplaced` on the
-ACK, ACP, AP2, card and UCP pairings and on `x402/exact/lnbtc/invoice-named`, which return it unchanged, is refused the
-same way, with that pairing's `option-malformed` code. Every other entry point reads a presented value only for the
-members its pairing defines, and returns either a value it built or its own refusal.
+ACK, ACP, AP2, card and UCP pairings, on the seven pairings of `@integraledger/lcp/x402` and on
+`x402/exact/lnbtc/invoice-named`, which return it unchanged, is refused the same way, with that pairing's
+`option-malformed` code. Every other entry point reads a presented value only for the members its pairing defines, and
+returns either a value it built or its own refusal.
 
 ## What throws
 
