@@ -295,10 +295,10 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 Stacks rail pieces: the transaction id, the reader a settlement read goes through, the reading of a SIP-010 `transfer` whose memo argument is the ATR hash's 32 bytes, and the zero-party recovery of that hash from a mined transaction.
 
 ```ts no-check
-import { MEMO_PREFIX, memoArgument, memoHash, … } from "@integraledger/lcp/stacks";
+import { stacksRecover, stacksStatus, stacksTxid } from "@integraledger/lcp/stacks";
 ```
 
-**Values (6):** `MEMO_PREFIX`, `memoArgument`, `memoHash`, `stacksRecover`, `stacksStatus`, `stacksTxid`.
+**Values (3):** `stacksRecover`, `stacksStatus`, `stacksTxid`.
 
 **Types (6):** `StacksLanded`, `StacksMempool`, `StacksNetwork`, `StacksReader`, `StacksRef`, `StacksStatus`.
 

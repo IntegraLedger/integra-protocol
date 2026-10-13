@@ -18,6 +18,7 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { boundStatus } from "./internal/evm-status.js";
+import { memoArgument } from "./internal/stacks.js";
 import { keyString } from "./internal/svm.js";
 import {
   b64uDecode,
@@ -41,7 +42,7 @@ import {
 import { stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing } from "./mpp-solana.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
-import { memoArgument, stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
+import { stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
 
 const EVM = "mpp/charge/usdc/evm" as const;

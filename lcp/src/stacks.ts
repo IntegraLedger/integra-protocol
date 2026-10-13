@@ -6,13 +6,11 @@ import { sha512_256 } from "@noble/hashes/sha2.js";
 import { fromRawBytes, type AtrHash } from "./core.js";
 import { bytesOf, hexOf, type Hex } from "./evm-abi.js";
 import { isObject, normalHash, notFoundPoint } from "./fields.js";
+import { MEMO_PREFIX, memoArgument } from "./internal/stacks.js";
 import { refusal, type Refusal } from "./refusal.js";
 
 /** CAIP-2: `stacks:1` (mainnet), `stacks:2147483648` (testnet). */
 export type StacksNetwork = `stacks:${string}`;
-
-/** The Clarity serialization of `(some <32-byte buffer>)` before its bytes: `0x0a`, `0x02`, then the length 32. */
-export const MEMO_PREFIX = "0x0a0200000020";
 
 /**
  * SHA-512/256 of a transaction's whole consensus serialization, as `0x` and lowercase hex. Throws TypeError when `wire`
@@ -91,14 +89,8 @@ const PRINCIPAL = /^S[0-9A-HJKMNP-TV-Z]{27,40}$/;
 /** A contract principal: a standard principal, `.` and a Clarity contract name of at most 128 characters. */
 const CONTRACT = /^S[0-9A-HJKMNP-TV-Z]{27,40}\.[a-zA-Z][a-zA-Z0-9_-]{0,127}$/;
 
-/** The memo argument's serialization for `h`: `(some h)` as a 32-byte buffer, lowercase. */
-export function memoArgument(h: AtrHash): Hex | undefined {
-  const n = normalHash(h);
-  return n === null ? undefined : (`${MEMO_PREFIX}${n.slice(2)}` as Hex);
-}
-
 /** H from a memo argument that is `(some <32-byte buffer>)`, or null. */
-export function memoHash(arg: unknown): AtrHash | null {
+function memoHash(arg: unknown): AtrHash | null {
   if (typeof arg !== "string" || arg.length !== MEMO_PREFIX.length + 64) return null;
   if (arg.slice(0, MEMO_PREFIX.length).toLowerCase() !== MEMO_PREFIX) return null;
   const raw = bytesOf(`0x${arg.slice(MEMO_PREFIX.length)}`);
