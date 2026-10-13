@@ -44,6 +44,11 @@ Every pairing declares one binding pattern in its `pattern.pattern`. The six thi
 
 The `LcpPattern` type also names `overlay-contract` and `sidecar-attestation`. No pairing in this package uses them.
 
+These names are this package's. `LCP §8.3` defines six settlement binding patterns: Native Field, Overlay Contract,
+Sidecar Attestation, Opaque Challenge Parameter, Id-Reuse (Hashed Binding) and Protocol Extension. `truncated-field`
+is the "truncated Native Field" of `LCP §8.3.8`, and `http-advisory` is the HTTP-Layer Advisory Reference of
+`LCP §8.3.7`, which "is not one of the six patterns above; it is the no-binding baseline".
+
 ## What each binding proves
 
 Each pairing's `pattern` record states what a payment through it shows, and never claims more:
@@ -51,7 +56,7 @@ Each pairing's `pattern` record states what a payment through it shows, and neve
 | Field | Meaning |
 |---|---|
 | `pattern` | The binding pattern above. |
-| `buyerSigns` | The buyer's signature covers H, or a value derived from H. |
+| `buyerSigns` | The buyer's signature covers H, or a value derived from H that no second ATR can feasibly be made to match: a part of 7 or 8 bytes does not count. |
 | `onChain` | The binding is visible on a public ledger after settlement (`LCP §8.3`): the settlement carries H, part of it, or a value derived from it. |
 | `publicProof` | Settlement leaves a public record that commits to H. |
 | `zeroPartyRecoverable` | H can be read back from the settled transaction alone, without either party (the pairing's `recover`). |
