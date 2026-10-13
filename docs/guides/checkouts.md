@@ -197,9 +197,10 @@ addresses are `https://lcp.integraledger.com/ucp/x402/2026-10-02` and
 
 ## AP2
 
-In [AP2](https://ap2-protocol.org), the merchant signs a `checkout_jwt` and the buyer's closed Checkout Mandate
-commits to it through `checkout_hash`, the SHA-256 of that JWT. The pairing targets AP2 v0.2 (Checkout Mandates,
-`mandate.checkout.1`). This package puts H in the JWT's payload:
+In [AP2](https://ap2-protocol.org), the merchant signs a `checkout_jwt` and the buyer's closed Checkout Mandate commits
+to it through `checkout_hash`, the SHA-256 of that JWT. AP2 lets the mandate's `_sd_alg` choose that hash; this package
+reads a mandate whose `_sd_alg` is `sha-256` or absent, and refuses one with any other value (`ap2/sd-alg-unsupported`).
+The pairing targets AP2 v0.2 (Checkout Mandates, `mandate.checkout.1`). This package puts H in the JWT's payload:
 
 - **Seller.** `advertise(payload, h, link, { checkout: id })` appends a `legalContext` member,
   `{"type":"sha256","value":H,"legalContextUrl":link}`, to the checkout payload whose `id` is the option's. The
