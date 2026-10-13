@@ -338,7 +338,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes the Solana specification leaves to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes the Solana specification leaves to the implementation. The TypeScript and Python implementations both apply every row but the four whose case starts with recover, which the TypeScript implementation alone applies: the Python one has no recover.",
   "rows": [
    {
     "case": "svmCarrier (and so bound and recover) on a transaction with no top-level Memo instruction, or with two or more",
