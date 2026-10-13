@@ -291,7 +291,8 @@ function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: st
       if (row.txAnswer !== undefined) return answer(row.txAnswer);
       if (row.tx === "reader-error") throw new ReaderError("transport");
       if (row.tx !== undefined && "notFound" in row.tx) return { notFound: true, height: BigInt(row.tx.height) };
-      if (row.tx !== undefined) return row.tx;
+      // The vector's unmined rows name no height.
+      if (row.tx !== undefined) return { ...row.tx, height: null };
       return landed(row);
     },
     async blockTenure(height: bigint) {
@@ -401,6 +402,43 @@ describe("usdc/stacks status and recover (M4b)", () => {
     expect(await stacksRecover(r, bare)).toEqual({ refused: true, code: "stacks/unreadable" });
   });
 
+  // A transaction the API lists as dropped can still be mined (SIP-005: it stays valid until its origin's nonce is
+  // used), and an API learns of that only once its index holds the block. Below, block 9021832 mines the transaction
+  // and confirms the origin's nonce 0; the confirmed nonce comes from an API whose tip has it, and the lookup from one
+  // whose tip is at `lookupAt` and lists the transaction as dropped until its index holds 9021832. Each answer names
+  // its API's chain-tip height, so a dropped answer shows the transaction unmined only up to that height. The dropped
+  // states are the Stacks Blockchain API's mempool transaction statuses other than `pending`.
+  it("a dropped answer from an API behind the nonce read is pending dropped, and nonce-used waits for one that has caught up", async () => {
+    const minedAt = BigInt(V.M4b.L.blockHeight);
+    const nonceAt = minedAt + 8n;
+    const dropped = (height: bigint | null): StacksMempool => ({ mined: false, status: "dropped_replace_by_fee", height });
+    const readerAt = (lookupAt: bigint, ours: boolean): StacksReader => ({
+      ...readerFor({ tip: "256358" }),
+      confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
+      transaction: async () => (ours && lookupAt >= minedAt ? landed({}) : dropped(lookupAt)),
+    });
+    for (const lookupAt of [minedAt - 2n, minedAt - 1n, minedAt, nonceAt - 1n, nonceAt, nonceAt + 1n]) {
+      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true)));
+      const want = lookupAt >= minedAt ? { state: "settled", finality: "bitcoin", blockHeight: minedAt.toString() } : { state: "pending", why: "dropped" };
+      expect([lookupAt.toString(), got]).toEqual([lookupAt.toString(), want]);
+      const other = await stacksStatus(ref, readerAt(lookupAt, false));
+      const spent = lookupAt >= nonceAt ? { state: "failed", why: "nonce-used", finality: "block" } : { state: "pending", why: "dropped" };
+      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), spent]);
+    }
+    for (const status of ["dropped_replace_across_fork", "dropped_too_expensive", "dropped_stale_garbage_collect", "dropped_problematic"]) {
+      const at = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status, height: nonceAt }) };
+      expect([status, await stacksStatus(ref, at)]).toEqual([status, { state: "failed", why: "nonce-used", finality: "block" }]);
+      const behind = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status, height: nonceAt - 1n }) };
+      expect([status, await stacksStatus(ref, behind)]).toEqual([status, { state: "pending", why: "dropped" }]);
+    }
+    const unnamed = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false, status: "dropped_replace_by_fee" }) as never };
+    expect(await stacksStatus(ref, unnamed)).toEqual({ state: "pending", why: "dropped" });
+    const pending = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status: "pending", height: minedAt - 1n }) };
+    expect(await stacksStatus(ref, pending)).toEqual({ state: "pending", why: "mempool" });
+    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    expect(await stacksRecover(r, readerAt(nonceAt, false))).toEqual({ refused: true, code: "stacks/not-found" });
+  });
+
   // A block can land between a reader's two calls to one node. The nonce read's height is read after the nonce
   // (GET /extended's chain_tip.block_height), so the nonce read is at or below it, and a lookup's height before the
   // lookup, so the lookup is at or above it. Below, block 9021832 mines the transaction, confirming the origin's nonce
@@ -430,9 +468,9 @@ describe("usdc/stacks status and recover (M4b)", () => {
 
   // The Stacks Blockchain API's 404 for an unknown transaction and its nonces answer name no height, so a reader takes
   // the height from a second call (/extended), which a load-balanced endpoint can send to another node. A reader that
-  // cannot read the height from the node that answered names none: an unknown transaction then never reads nonce-used,
-  // and a dropped one reads it from the confirmed nonce alone.
-  it("a lookup or nonce read naming a null height leaves an unknown transaction pending not-found", async () => {
+  // cannot read the height from the node that answered names none: an unknown or dropped transaction then never reads
+  // nonce-used.
+  it("a lookup or nonce read naming a null height leaves an unknown or dropped transaction pending", async () => {
     const at = 9021840n;
     const readerWith = (nonceAt: bigint | null, lookup: { notFound: true; height: bigint | null } | StacksMempool): StacksReader => ({
       ...readerFor({ tip: "256358" }),
@@ -443,7 +481,10 @@ describe("usdc/stacks status and recover (M4b)", () => {
     expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: null }))).toEqual({ state: "pending", why: "not-found" });
     expect(await stacksStatus(ref, readerWith(null, { notFound: true, height: at }))).toEqual({ state: "pending", why: "not-found" });
     expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: at }))).toEqual(spent);
-    expect(await stacksStatus(ref, readerWith(null, { mined: false, status: "dropped_stale_garbage_collect" }))).toEqual(spent);
+    const dropped = (height: bigint | null): StacksMempool => ({ mined: false, status: "dropped_stale_garbage_collect", height });
+    expect(await stacksStatus(ref, readerWith(at, dropped(null)))).toEqual({ state: "pending", why: "dropped" });
+    expect(await stacksStatus(ref, readerWith(null, dropped(at)))).toEqual({ state: "pending", why: "dropped" });
+    expect(await stacksStatus(ref, readerWith(at, dropped(at)))).toEqual(spent);
     const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
     expect(await stacksRecover(r, readerWith(at, { notFound: true, height: null }))).toEqual({ refused: true, code: "stacks/not-found" });
   });

@@ -30,18 +30,22 @@ export interface StacksLanded {
   call: { contractId: string; functionName: string; args: readonly Hex[] } | null;
 }
 
-/** An unmined transaction: `pending`, or one of the `dropped_…` states. */
+/**
+ * An unmined transaction: `pending`, or one of the `dropped_…` states, with the `height` its API had reached when it
+ * answered (see `StacksReader`).
+ */
 export interface StacksMempool {
   mined: false;
   status: string;
+  height: bigint | null;
 }
 
 /**
  * Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. `height` is the block
  * height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from the node that gave the
  * answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and before a lookup that
- * answers `notFound`, so the lookup is at or above it. It is null when the reader cannot read it from that node, and an
- * answer naming no height never reads an unknown transaction as failed.
+ * answers `notFound` or an unmined transaction, so the lookup is at or above it. It is null when the reader cannot read
+ * it from that node, and an answer naming no height never reads an unknown or dropped transaction as failed.
  */
 export interface StacksReader {
   readonly network: StacksNetwork;
@@ -105,11 +109,11 @@ function memoHash(arg: unknown): AtrHash | null {
  * answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
  * two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
  * failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
- * was read at the API's tip, so `block`. An unknown transaction counts so only when the lookup names a height at or
- * above the one the nonce read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is
- * pending `not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32
- * address in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`,
- * with nothing read.
+ * was read at the API's tip, so `block`. It counts so only when the lookup names a height at or above the one the nonce
+ * read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is pending `dropped` or
+ * `not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32 address
+ * in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`, with
+ * nothing read.
  */
 export async function stacksStatus(
   ref: StacksRef & { transaction: Hex; h: AtrHash },
@@ -163,18 +167,22 @@ export async function stacksStatus(
     }
     return { state: "settled", finality: await mark(), blockHeight: tx.blockHeight };
   }
-  const readTo = notFoundPoint(tx, "height");
-  if (readTo === undefined) {
+  const notFound = notFoundPoint(tx, "height");
+  let readTo: bigint | null;
+  if (notFound !== undefined) {
+    readTo = notFound;
+  } else {
     if (!isMempool(tx)) return { state: "pending", why: "unreadable" };
     if (tx.status === "pending") return { state: "pending", why: "mempool" };
     if (!tx.status.startsWith("dropped_")) return { state: "pending", why: "unreadable" };
+    readTo = typeof tx.height === "bigint" ? tx.height : null;
   }
   if (confirmed === undefined) return { state: "pending", why: "unreadable" };
-  const covered = readTo === undefined || (readTo !== null && confirmed.height !== null && readTo >= confirmed.height);
+  const covered = readTo !== null && confirmed.height !== null && readTo >= confirmed.height;
   if (confirmed.nonce !== null && confirmed.nonce >= nonce && covered) {
     return { state: "failed", why: "nonce-used", finality: "block" };
   }
-  return { state: "pending", why: readTo === undefined ? "dropped" : "not-found" };
+  return { state: "pending", why: notFound === undefined ? "dropped" : "not-found" };
 }
 
 /**

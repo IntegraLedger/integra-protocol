@@ -191,17 +191,16 @@ past the reference point. A payment that lands between the two reads, or that a 
 the reference point, as one node behind a load-balanced endpoint can, stays pending (`nearLapsed` answers false), never
 failed, and so does one whose answer names no point. A later read, once that source has caught up, gives the verdict.
 The rule governs `expired` on Tron, TON, Aptos, Stellar and Cardano, `aborted` when every W5 transaction with a TON
-request aborted, `nonce-used` for a transaction the Stacks API does not know, and `nearLapsed`. On TON, `no-transfer`
-reads the W5 wallet's own transaction with the request at any indexed time; on Stacks, a transaction the API lists as
-dropped reads `nonce-used` from the confirmed nonce alone. On Stacks the API's answers name no height, so a reader
-reads the API's chain tip from the node that answered, after the nonce read and before the lookup, and must pin one
-node to name it; a reader that cannot names no height.
+request aborted, `nonce-used` for a transaction the Stacks API does not know or lists as dropped, and `nearLapsed`. On
+TON, `no-transfer` reads the W5 wallet's own transaction with the request at any indexed time. On Stacks the API's
+answers name no height, so a reader reads the API's chain tip from the node that answered, after the nonce read and
+before the lookup, and must pin one node to name it; a reader that cannot names no height.
 
 | Rail | The reference point, read first | What the answer that finds nothing names |
 |---|---|---|
 | Tron | the latest solidified block's time | `{ notFound: true, timestamp }`: the time of the latest block at the lookup's level on the node that answered |
 | TON | the masterchain head's `gen_utime` | `byInBody`'s `headUtime`: the `gen_utime` of a masterchain block through which the index that answered holds every block |
-| Stacks | the origin's confirmed nonce, with its `height` read after it | `{ notFound: true, height }`: the block height of the chain tip of the API that answered, read before the lookup |
+| Stacks | the origin's confirmed nonce, with its `height` read after it | `{ notFound: true, height }`, or an unmined transaction's `height`: the block height of the chain tip of the API that answered, read before the lookup |
 | Aptos | the ledger's timestamp | `{ notFound: true, timestampUsecs }`: the ledger timestamp of the answer |
 | Stellar | `getLatestLedger`, read after the named transaction and before the events search | each events page's `latestLedger` |
 | NEAR | the final block height | the key read's `blockHeight`, `view_access_key`'s `block_height` |
@@ -230,7 +229,7 @@ however late, because an internal message carries no expiry.
 | Sui | `SuiReader` | the transaction by digest, with the current epoch and the first checkpoint the endpoint holds transactions from | the checkpoint |
 | Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level, with the node's latest block time at that level when it finds nothing; `gettransactionbyid` | `solidified` or `head` |
 | TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the signed W5 request's), with the `gen_utime` of a masterchain block through which the index holds every block, by message hash (the Jetton transfer the W5 transaction sent, then the `internal_transfer` it led to) and by hash | `confirmed` or `finalized` |
-| Stacks | `StacksReader` | the origin's confirmed nonce, read first, with the chain tip's height (`GET /extended`) read after it from the same node; the transaction by id, with the chain tip's height read before it from the same node when the API does not know it; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
+| Stacks | `StacksReader` | the origin's confirmed nonce, read first, with the chain tip's height (`GET /extended`) read after it from the same node; the transaction by id, with the chain tip's height read before it from the same node when the API does not know it or lists it unmined; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
 
 On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport` or
 `malformed`. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a
