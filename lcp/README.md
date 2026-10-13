@@ -77,7 +77,7 @@ install the one for each rail you use, at the version the package names.
 | Stellar | `@stellar/stellar-sdk` | the Stellar pairings on x402 and MPP |
 | XRP Ledger | `ripple-binary-codec` | the XRPL pairings on x402 and MPP |
 | Sui | `@mysten/sui` | `x402/exact/sui` |
-| NEAR | `@near-js/crypto`, `@near-js/transactions`, `borsh` | `x402/exact/near` |
+| NEAR | `near-api-js`, `borsh` | `x402/exact/near` |
 | TON | `@ton/core` | `x402/exact/tvm` |
 | Algorand | `algosdk` | `x402/exact/algorand` |
 | Stacks | `@stacks/transactions` | `mpp/charge/usdc/stacks` |
@@ -291,9 +291,10 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
 
 - Node.js `>=26.10.0`.
 - ESM. TypeScript users need `"moduleResolution": "nodenext"` (or `"bundler"`) to resolve the subpath exports.
-- Cloudflare Workers, with or without the `nodejs_compat` flag. Install the optional peer dependencies before
-  bundling: without them, wrangler's bundler cannot resolve `@mysten/sui/bcs`, `@mysten/sui/utils`, `@near-js/crypto`,
-  `@near-js/transactions` and `borsh`.
+- Cloudflare Workers, with or without the `nodejs_compat` flag, except the NEAR and TON entry points, which need it:
+  they use Node's `Buffer`, and `near-api-js` loads Node's `util`. Install the optional peer dependencies before
+  bundling: without them, wrangler's bundler cannot resolve `@mysten/sui/bcs`, `@mysten/sui/utils`, `near-api-js` and
+  `borsh`.
 
 ## Related packages
 
