@@ -293,7 +293,7 @@ Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraled
 | `card/vi-malformed` | A Verifiable Intent input is not what it must be: the presentation is not an object, a layer or `checkout_jwt` is not a string, not a well-formed compact JWS or SD-JWT with a JSON object payload, has no disclosures or trailing `~`, has an `_sd_alg` other than `sha-256`, or lacks a `delegate_payload` array of `{"...": digest}` entries. |
 | `card/vi-no-checkout-mandate` | A Verifiable Intent layer's `delegate_payload` does not reference exactly one `mandate.checkout.1` mandate. |
 | `card/vi-sd-hash-mismatch` | In autonomous mode, L3b's `sd_hash` is not the digest of L2, or L2's `sd_hash` is not the digest of L1. |
-| `card/vi-signature-invalid` | In autonomous mode, the ES256 signature on L3b or L2 is not 64 bytes or does not verify under the delegated key. |
+| `card/vi-signature-invalid` | In autonomous mode, L3b's ES256 signature does not verify under the key L2 delegates, or L2's under L1's `cnf.jwk`, or a signature is not 64 bytes of base64url. |
 | `card/vi-transaction-id-mismatch` | A `mandate.payment.1` mandate in the same layer has a `transaction_id` other than the digest of the checkout mandate's `checkout_jwt`. |
 | `card/vi-typ` | A Verifiable Intent layer's header does not have `alg` `ES256` and the expected `typ`, or (in autonomous mode) L3b's header has no string `kid`. |
 
