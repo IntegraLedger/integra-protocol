@@ -115,9 +115,9 @@ bound to H: true
 ```
 
 `advertise` keeps every other member and metadata key, sets the session `id` only when it is absent or already H
-(`acp/id-conflict` otherwise), and refuses a session larger than 1 MiB as JSON or nested more than 64 levels deep
-(`acp/too-large`). `read` takes H from `id` alone and refuses a `metadata.legal_context` whose value is another hash
-(`acp/legal-context-conflict`). The LCP profile
+(`acp/id-conflict` otherwise), and refuses a session, given or as it would return it, larger than 1 MiB as JSON or
+nested more than 64 levels deep (`acp/too-large`). `read` takes H from `id` alone and refuses a `metadata.legal_context`
+whose value is another hash (`acp/legal-context-conflict`). The LCP profile
 [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) states the rules.
 
 ## UCP

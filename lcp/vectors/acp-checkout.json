@@ -322,6 +322,33 @@
     }
    },
    {
+    "case": "advertise of a session of 1048566 bytes, 10 under 1 MiB, whose id and legal_context take it over 1 MiB (1048867 bytes)",
+    "call": "delegated.advertise",
+    "args": [
+     {
+      "currency": "usd",
+      "metadata": {
+       "order_ref": "A-100"
+      },
+      "pad": {
+       "$repeat": [
+        "a",
+        1048506
+       ]
+      }
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     "https://atr.seller.example/0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+     {
+      "requires_delegate_payment": true
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/too-large"
+    }
+   },
+   {
     "case": "advertise with an offer that is not {requires_delegate_payment: boolean}",
     "call": "delegated.advertise",
     "args": [

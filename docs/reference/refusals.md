@@ -219,7 +219,7 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 | `acp/nothing-to-sign` | `build` of `acp/checkout/undelegated` always refuses, because a handler that does not require `delegate_payment` gives the buyer nothing to sign. |
 | `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`. |
 | `acp/session-malformed` | `advertise` or `read` refuses a checkout session that is not a serialisable JSON object, or (in `advertise`) whose `metadata` is present but not an object. |
-| `acp/too-large` | The checkout session exceeds 1 MiB or is nested more than 64 levels deep, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
+| `acp/too-large` | The checkout session, or the session `advertise` would return, exceeds 1 MiB or is nested more than 64 levels deep, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
 
 ## ap2
 

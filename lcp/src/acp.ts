@@ -87,7 +87,8 @@ export function tie(options: readonly HandlerOption[]): ["acp", { options: reado
 /**
  * A copy of the session with `id` = h and `metadata.legal_context` = `{type, value, legal_context_url}`, followed by
  * `legal_context_agreement_url` when `agreementUrl` is given. Other metadata members and every other member are kept.
- * With the same values already present it returns an equal session.
+ * With the same values already present it returns an equal session. The session it returns is at most 1 MiB as JSON,
+ * as `read` requires.
  */
 function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption, agreementUrl?: string): Session | Refusal {
   if (!isObject(doc)) return refusal("acp/session-malformed");
@@ -117,7 +118,11 @@ function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption,
   const existing = metadata?.[METADATA_KEY];
   if (existing !== undefined && !sameJson(existing, legalContext)) return refusal("acp/legal-context-conflict");
   const { id: _replaced, ...rest } = doc;
-  return { id, ...rest, metadata: { ...(metadata as { [k: string]: Json } | undefined), [METADATA_KEY]: legalContext } };
+  const out: Session = { id, ...rest, metadata: { ...(metadata as { [k: string]: Json } | undefined), [METADATA_KEY]: legalContext } };
+  const written = jsonBytes(out);
+  if (written === undefined) return refusal("acp/session-malformed");
+  if (written > MAX_SESSION_BYTES) return refusal("acp/too-large");
+  return out;
 }
 
 /**
