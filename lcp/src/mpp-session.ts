@@ -91,7 +91,10 @@ import type { LcpPattern } from "./x402.js";
 
 export type { ReceiveTypedData } from "./evm.js";
 
-/** The buyer's inputs to `build`. No check reads them. */
+/**
+ * The buyer's inputs to `build`. `build` checks their form and that the chosen challenge's id carries H; it compares no
+ * deal value.
+ */
 export interface SessionChoice extends MppChoice {
   /** sessions: the buyer's deposit; `suggestedDeposit` is advice. */
   deposit?: bigint;
