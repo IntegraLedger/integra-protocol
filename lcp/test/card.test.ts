@@ -7,7 +7,6 @@ import { digestJson, type AtrHash } from "../src/index.js";
 import {
   TAP_FIELD,
   disclosureDigest,
-  pairingsOf,
   sellerReference,
   tie,
   viAutonomous,
@@ -100,16 +99,6 @@ describe("C1 values and digests", () => {
     expect(slot).toEqual(["card", { options }]);
     expect(slot[1].options).toBe(options);
     for (const p of PAIRINGS) expect(p.unplaced(options[0]!)).toBe(options[0]);
-  });
-
-  it("pairingsOf maps each scheme to its pairings", () => {
-    expect(pairingsOf({ scheme: "visa-tap", checkout: "chk_1001" })).toEqual(["card/visa-tap"]);
-    expect(pairingsOf({ scheme: "mastercard-vi", checkout: "chk_1001" })).toEqual([
-      "card/mastercard-vi/immediate",
-      "card/mastercard-vi/autonomous",
-    ]);
-    expect(pairingsOf({ scheme: "seller-reference", checkout: "chk_1001" })).toEqual(["card/seller-reference"]);
-    expect(pairingsOf({ scheme: "amex", checkout: "chk_1001" } as unknown as CardOption)).toEqual([]);
   });
 });
 
@@ -422,7 +411,6 @@ describe("no function throws", () => {
         expect(p.read(x)).toBeDefined();
         expect(p.advertise({}, x as AtrHash, x as string, x as CardOption)).toBeDefined();
       }
-      expect(pairingsOf(x as CardOption)).toEqual([]);
     }
   });
 });

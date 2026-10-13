@@ -270,9 +270,8 @@ rules.
 
 The `card` entry point covers three ways to pay a card checkout. The option is the seller's own
 `{ scheme, checkout }`, where `scheme` is `"visa-tap"`, `"mastercard-vi"` or `"seller-reference"` and `checkout` is
-the seller's checkout id; `pairingsOf(option)` names the pairings that pay it. `advertise` gives the same values for
-every card pairing: the `legalContext` the seller shows before payment, and `reference`, H's LCP string, for the
-seller to place in its processor reference.
+the seller's checkout id. `advertise` gives the same values for every card pairing: the `legalContext` the seller
+shows before payment, and `reference`, H's LCP string, for the seller to place in its processor reference.
 
 - **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** The agent sends
   H in an `lcp-hash` field and lists that field among the covered components of every `agent-payer-auth` message
@@ -295,11 +294,10 @@ seller to place in its processor reference.
 
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
-import { pairingsOf, visaTap, type CardOption } from "@integraledger/lcp/card";
+import { visaTap, type CardOption } from "@integraledger/lcp/card";
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const option: CardOption = { scheme: "visa-tap", checkout: "order-7731" };
-console.log(pairingsOf(option), pairingsOf({ scheme: "mastercard-vi", checkout: "order-7731" }));
 
 const shown = visaTap.advertise({}, h, `https://atr.seller.example/${h}`, option);
 if (isRefusal(shown)) throw new Error(shown.code);
@@ -311,7 +309,6 @@ console.log(field.field, field.component, field.value === h);
 ```
 
 ```text
-[ 'card/visa-tap' ] [ 'card/mastercard-vi/immediate', 'card/mastercard-vi/autonomous' ]
 true
 lcp-hash lcp-hash true
 ```

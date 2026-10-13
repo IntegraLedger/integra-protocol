@@ -145,12 +145,12 @@ import { avmCarrier, avmPairingOf, avmRecover, … } from "@integraledger/lcp/av
 The `card` entry point: the ATR hash on a card checkout, on three paths.
 
 ```ts no-check
-import { disclosureDigest, pairingsOf, sellerReference, … } from "@integraledger/lcp/card";
+import { disclosureDigest, sellerReference, TAP_FIELD, … } from "@integraledger/lcp/card";
 ```
 
 **Pairings:** `card/mastercard-vi/autonomous`, `card/mastercard-vi/immediate`, `card/seller-reference`, `card/visa-tap`.
 
-**Values (8):** `disclosureDigest`, `pairingsOf`, `sellerReference`, `TAP_FIELD`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`.
+**Values (7):** `disclosureDigest`, `sellerReference`, `TAP_FIELD`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`.
 
 **Types (10):** `CardOption`, `CardPairing`, `CardPairingId`, `CardScheme`, `CardValues`, `TapPresented`, `TapUnsigned`, `ViAutonomous`, `ViImmediate`, `ViUnsigned`.
 

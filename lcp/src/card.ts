@@ -120,19 +120,6 @@ export function tie(options: readonly CardOption[]): ["card", { options: readonl
   return ["card", { options }];
 }
 
-/** The pairings a well-formed option can be paid through: Verifiable Intent has two. Anything else has none. */
-export function pairingsOf(o: CardOption): readonly CardPairingId[] {
-  if (!isOption(o)) return [];
-  switch (o.scheme) {
-    case "visa-tap":
-      return ["card/visa-tap"];
-    case "mastercard-vi":
-      return ["card/mastercard-vi/immediate", "card/mastercard-vi/autonomous"];
-    case "seller-reference":
-      return ["card/seller-reference"];
-  }
-}
-
 /**
  * The legal context, with `legalContextAgreementUrl` after the link when `agreementUrl` is given, and the
  * `lcp:sha256:0x…` reference for the seller to place. Equal for every card pairing.
