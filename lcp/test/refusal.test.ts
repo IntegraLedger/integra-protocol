@@ -244,6 +244,9 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/session/tempo",
     "mpp/subscription/tempo",
     "mpp/charge/hedera",
+    "mpp/session/hedera",
+    "mpp/session/solana",
+    "mpp/session/xrpl",
   ];
   for (const id of sameChallenge) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {

@@ -76,7 +76,7 @@ import {
 import { hederaSessionNetworkOf, solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import type { LandedCredential } from "./mpp.js";
 import { withinChecks, type SessionWithin, type SessionWithinUnsigned } from "./mpp-session.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const HEDERA = "mpp/session/hedera" as const;
@@ -182,8 +182,12 @@ function echoedDetails(presented: MppCredential, method: "hedera" | "solana" | "
   return isObject(md) ? (md as { [k: string]: Json }) : refusal("mpp/request-malformed");
 }
 
-/** The challenge as issued: no request member carries H on these pairings. */
-function unplaced(option: MppChallenge): MppChallenge {
+/**
+ * The challenge as issued: no request member carries H on these pairings. A challenge that carries a `refused` member
+ * is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return option;
 }
 
