@@ -469,8 +469,9 @@ When the checkout negotiates the extension, these steps take the place of steps 
 
 ## Errors
 
-A failure answers with one error in the checkout's `messages[]`: `code` `payment_failed`, `path` the instrument's, and
-the severity below. The checkout's `status` follows from the severity, as UCP's checkout says.
+A failure answers with one error in the checkout's `messages[]`: `code` `payment_failed`, `path` the instrument's, the
+severity below, and `content`, UCP's human-readable message, which, under this handler, begins with the failure's name.
+The checkout's `status` follows from the severity, as UCP's checkout says.
 
 | Failure | When | Severity |
 |---|---|---|
@@ -484,6 +485,9 @@ the severity below. The checkout's `status` follows from the severity, as UCP's 
 | `settle-failed` | Nothing was broadcast, or the transfer failed on chain. Nothing was taken. | `recoverable` |
 | `checkout-expired` | The checkout expired before it was paid. | `unrecoverable` |
 
+`agreement-changed` is `requires_buyer_review`, not the `recoverable` UCP asks of standard errors: the buyer reviews
+the new terms before paying.
+
 x402's reasons, as the facilitator returns them:
 
 | x402 reason | Failure |
@@ -495,9 +499,10 @@ x402's reasons, as the facilitator returns them:
 
 `settlement_pending` is not a failure: the checkout is `complete_in_progress`.
 
-Under AP2 mandates, a mandate refused at completion answers with one error whose `code` is the extension's, at the
-mandate's `path`, `$.ap2.checkout_mandate`, `recoverable`: the checkout stays as it was, and the platform may complete
-again.
+Under AP2 mandates, a checkout mandate refused at completion, or an agreement step whose payment has not settled,
+answers with one error, `recoverable`: the checkout keeps its state, and the platform may complete again. Its `code`
+is one of the extension's, at the mandate's `path`, `$.ap2.checkout_mandate`, or this handler's
+`agreement_payment_required`, at the `path` its row gives.
 
 | Code | When |
 |---|---|
