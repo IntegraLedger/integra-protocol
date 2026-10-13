@@ -22,7 +22,6 @@ import {
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
-  carriesBinding,
   permit2TypedData,
   transferDigest,
   type Eip155,
@@ -35,7 +34,7 @@ import {
   type Permit2TypedData,
 } from "./evm.js";
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
-import { receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
+import { carriesBinding, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   buildChannelMessage,
