@@ -849,7 +849,9 @@ function readExecutor(doc: PaymentRequired): X402Read | Refusal {
 
 /**
  * What the buyer's wallet or executor tooling needs to obtain an authorization, and how that authorization completes
- * the payment. Nothing here carries the hash.
+ * the payment. Nothing here carries the hash. `validBefore` is `now` plus the option's `maxTimeoutSeconds`; a `now`
+ * that is not a non-negative safe integer, or whose sum with `maxTimeoutSeconds` is not a safe integer, is
+ * `hedera/option-malformed`.
  */
 async function buildExecutor(
   c: { required: PaymentRequired; accepted: PaymentRequirements; now: number },
@@ -873,6 +875,8 @@ async function buildExecutor(
   const ok = chosen(c.required, c.accepted, checkExecutor);
   if (ok !== true) return ok;
   if (!Number.isSafeInteger(c.now) || c.now < 0) return refusal("hedera/option-malformed");
+  const validBefore = c.now + c.accepted.maxTimeoutSeconds;
+  if (!Number.isSafeInteger(validBefore)) return refusal("hedera/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const { required, accepted } = c;
   const executors = executorsOf(accepted)!;
@@ -884,7 +888,7 @@ async function buildExecutor(
       asset: accepted.asset,
       payTo: accepted.payTo,
       amount: accepted.amount,
-      validBefore: c.now + accepted.maxTimeoutSeconds,
+      validBefore,
     },
     complete(a) {
       if (!isObject(a)) return refusal("hedera/executor-malformed");

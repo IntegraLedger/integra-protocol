@@ -233,6 +233,18 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     }
   });
 
+  // validBefore is now plus the option's maxTimeoutSeconds, 120 here; 9007199254740991 is Number.MAX_SAFE_INTEGER,
+  // 2^53 - 1 (ECMA-262, Number.MAX_SAFE_INTEGER), the last integer a number holds exactly with its successor.
+  it("build: validBefore is now plus maxTimeoutSeconds, and a now whose sum passes 2^53 - 1 is refused", async () => {
+    const at = (now: number) => exactHederaExecutor.build({ required: advertised(), accepted: OX, now }, H);
+    const last = await at(9007199254740991 - 120);
+    if ("refused" in last) throw new Error(last.code);
+    expect(last.request.validBefore).toBe(9007199254740991);
+    for (const now of [9007199254740991 - 119, 9007199254740991]) {
+      expect(await at(now)).toEqual({ refused: true, code: "hedera/option-malformed" });
+    }
+  });
+
   it("bound reads the echoed extension; reference gives the payer's digest", async () => {
     const payment = (await built()).complete(X.fixed.payload);
     if ("refused" in payment) throw new Error(payment.code);
