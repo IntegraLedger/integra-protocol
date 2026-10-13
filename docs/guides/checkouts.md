@@ -280,9 +280,9 @@ The `card` entry point covers three ways to pay a card checkout. The option is t
 the seller's checkout id. `advertise` gives the same values for every card pairing: the `legalContext` the seller
 shows before payment, and `reference`, H's LCP string, for the seller to place in its processor reference.
 
-- **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** The agent sends
-  H in an `lcp-hash` field and lists that field among the covered components of every `agent-payer-auth` message
-  signature it sends (RFC 9421). `build` returns the field for the agent's signer to add:
+- **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** The agent sends H
+  in an `lcp-hash` HTTP header field, and lists `"lcp-hash"` among the covered components of every `agent-payer-auth`
+  message signature it sends (RFC 9421). `build` returns the field for the agent's signer to add:
   `{ field: "lcp-hash", value: H, component: "lcp-hash" }`. `bound` reads the one `lcp-hash` line when every
   `agent-payer-auth` signature in the request lists `"lcp-hash"` without parameters, so whichever payer signature the
   seller's TAP recognition verifies covers H. It verifies no signature, key, window or nonce. The LCP profile
