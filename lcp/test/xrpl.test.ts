@@ -116,7 +116,7 @@ describe("x402-exact-xrpl.json", () => {
     expect(await xrplStatus({ ...V.V5.ref, expect: V.V5.ref.expect.toLowerCase() }, readerFor(landed.tx))).toEqual(landed.expect);
   });
 
-  // A transaction's identifying hash is 64 hex digits (xrpl.org, "Transaction identifying hash"), and decodeBlob writes
+  // A transaction's identifying hash is 64 hex digits (xrpl.org, Basic Data Types, "Hashes"), and decodeBlob writes
   // it in upper case. A transaction in any other form cannot name the landed Payment, so the read is pending, never
   // expired (docs/guides/rails.md, "Reading settlement"). This reader holds V5's landed Payment under the hash
   // decodeBlob wrote and answers V5's not-found, whole-range, past-LastLedgerSequence row for any other hash.

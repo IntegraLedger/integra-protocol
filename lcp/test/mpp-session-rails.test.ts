@@ -530,7 +530,7 @@ describe("mpp/session/xrpl", () => {
     }
     const failing: XrplReader = { ...reader({ notFound: true, searchedAll: false }), tx: async () => { throw new ReaderError("transport"); } };
     expect(await sessionXrpl.status({ ...close, transaction: "AB".repeat(32) }, failing)).toEqual({ state: "pending", why: "unreadable" });
-    // An opening transaction that is not 64 hex digits (xrpl.org, "Transaction identifying hash") cannot name the
+    // An opening transaction that is not 64 hex digits (xrpl.org, Basic Data Types, "Hashes") cannot name the
     // opening, so the read is pending, never expired (docs/guides/rails.md, "Reading settlement"), even from a reader
     // that answers any other hash as not found with the whole range searched and LastLedgerSequence passed; the lookup
     // asks for the hash in the upper case decodeBlob writes.
