@@ -7,8 +7,8 @@ description: The ATR hash on ACP, UCP, AP2 and ACK checkouts, on card networks, 
 
 Not every agent pays through a `402` challenge. Many buy through a checkout: the seller opens a checkout or a payment
 request, the buyer's agent completes it, and a payment service provider, a card network or a credential provider
-moves the money. This package binds H into each of these checkouts in the field its protocol provides, and says so
-plainly where the protocol gives the buyer nothing to sign.
+moves the money. This package places H in each of these checkouts in the field its protocol provides, delivers it in
+A2A task metadata, and says plainly where the buyer signs nothing.
 
 The members are the ones [every pairing has](../concepts/pairings.md#the-members). What differs is the document the
 seller advertises into and what the buyer presents:
