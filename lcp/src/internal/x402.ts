@@ -4,7 +4,16 @@
  * link, an option's match by RFC 8785 form, and the other types and helpers the pairings' modules are built from.
  * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
  */
-import { canonicalJson, isHttpsLink, isOtherSchemeLink, toLegalContext, type AtrHash, type Json } from "../core.js";
+import {
+  canonicalJson,
+  fromLegalContext,
+  isHashWithNonHttpsLink,
+  isHttpsLink,
+  isOtherSchemeLink,
+  toLegalContext,
+  type AtrHash,
+  type Json,
+} from "../core.js";
 import { deepFreeze, isObject, normalHash } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
 import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Offer } from "../x402.js";
@@ -100,6 +109,19 @@ export function filterOf(
   payable?: (option: PaymentRequirements) => boolean,
 ): OptionFilter {
   return (o) => (!pairs(o) ? undefined : payable === undefined || payable(o) ? true : refusal("x402/option-malformed"));
+}
+
+/** The hash and link in a document's `extensions.legalContext`, or the refusal that names what is wrong. */
+export function legalContextOf(extensions: unknown): { h: AtrHash; link: string } | Refusal {
+  const lc = isObject(extensions) ? extensions[LEGAL_CONTEXT] : undefined;
+  if (lc === undefined) return refusal("x402/no-legal-context");
+  const info = isObject(lc) ? lc["info"] : undefined;
+  const decoded = fromLegalContext({ legalContext: info });
+  if (decoded === null) {
+    return isHashWithNonHttpsLink(info) ? refusal("x402/link-not-https") : refusal("x402/legal-context-malformed");
+  }
+  if (decoded.url.length > MAX_LINK) return refusal("x402/legal-context-malformed");
+  return { h: decoded.h, link: decoded.url };
 }
 
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */

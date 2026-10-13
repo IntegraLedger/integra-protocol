@@ -3,7 +3,7 @@
  * `extensions.legalContext`, signed by the payer as the EIP-3009 nonce, read back from the payment, and read from the
  * settlement.
  */
-import { digestJson, fromLegalContext, hash, isHashWithNonHttpsLink, type AtrHash, type Json } from "./core.js";
+import { digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   DELEGATION_MANAGER,
@@ -53,10 +53,10 @@ import {
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
-  MAX_LINK,
   MAX_OPTIONS,
   advertiseFor,
   isOffered,
+  legalContextOf,
   sameJson,
   type OptionFilter,
   type X402Advertise,
@@ -255,19 +255,6 @@ export function readFor(filter: OptionFilter): (doc: unknown) => X402Read | Refu
     const offer = { required: doc as PaymentRequired, options };
     return agreement === undefined ? { h: lc.h, link: lc.link, offer } : { h: lc.h, link: lc.link, agreement, offer };
   };
-}
-
-/** The hash and link in a document's `extensions.legalContext`, or the refusal that names what is wrong. */
-export function legalContextOf(extensions: unknown): { h: AtrHash; link: string } | Refusal {
-  const lc = isObject(extensions) ? extensions[LEGAL_CONTEXT] : undefined;
-  if (lc === undefined) return refusal("x402/no-legal-context");
-  const info = isObject(lc) ? lc["info"] : undefined;
-  const decoded = fromLegalContext({ legalContext: info });
-  if (decoded === null) {
-    return isHashWithNonHttpsLink(info) ? refusal("x402/link-not-https") : refusal("x402/legal-context-malformed");
-  }
-  if (decoded.url.length > MAX_LINK) return refusal("x402/legal-context-malformed");
-  return { h: decoded.h, link: decoded.url };
 }
 
 /**

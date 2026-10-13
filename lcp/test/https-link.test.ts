@@ -7,7 +7,8 @@ import { visaTap } from "../src/card.js";
 import { fromLegalContext, isHashWithNonHttpsLink, isHttpsLink, toLegalContext } from "../src/core.js";
 import { parse as parseDiscovery } from "../src/discovery.js";
 import { place, read as readMpp } from "../src/mpp.js";
-import { exactEip3009, legalContextOf, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
+import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
+import { legalContextOf } from "../src/internal/x402.js";
 import { C_E } from "./mpp-fixtures.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
