@@ -210,6 +210,28 @@ describe("evm", () => {
       }
     }
   });
+  it("eip3009Status reads a receipt holding a log that is not an object as pending unreadable, as evmStatus does", async () => {
+    // V6's settled receipt, each log given the `data` member a node's receipt carries. The settled answer is V6's own;
+    // the answer for the same receipt with a log entry that is not an object is evmStatus's, and the reader contract's
+    // (docs/concepts/refusals.md, "Readers"): a reader answer outside its form is a failed read, never a failure.
+    const v = load(evm).V6;
+    const row = v.status[1];
+    const logs = row.receipt.logs.map((log: object) => ({ data: "0x", ...log }));
+    const reader = (entries: unknown[]) => ({
+      network: v.reader.network,
+      receipt: async () => ({ status: row.receipt.status, blockNumber: BigInt(row.receipt.blockNumber), logs: entries }),
+      blockNumber: async (tag: "safe" | "finalized") => BigInt(v.reader[tag]),
+    });
+    const evmRef = { network: v.ref.network, transaction: v.ref.transaction, transferLog: v.ref.transferLog };
+    const settled = { ...row.expect, blockNumber: BigInt(row.expect.blockNumber) };
+    expect(await eip3009Status(v.ref, reader(logs) as never)).toEqual(settled);
+    expect(await evmStatus(evmRef as never, reader(logs) as never)).toEqual(settled);
+    for (const entries of [[...logs, null], [null, ...logs], [null], [...logs.slice(0, 2), 7, ...logs.slice(2)]]) {
+      const label = JSON.stringify(entries.map((e) => (e === null || typeof e !== "object" ? e : "log")));
+      expect(await eip3009Status(v.ref, reader(entries) as never), label).toEqual(UNREADABLE);
+      expect(await evmStatus(evmRef as never, reader(entries) as never), label).toEqual(UNREADABLE);
+    }
+  });
 });
 
 describe("x402 over EVM", () => {

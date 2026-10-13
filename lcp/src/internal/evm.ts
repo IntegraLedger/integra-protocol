@@ -224,8 +224,8 @@ export type EvmStatus =
  * receipt's block. A failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the
  * receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
  * cannot be read, the same reason is pending. A failed read, a reader for another network, a `transaction` or `h` that
- * is not a 32-byte hash, an `asset` that is not an address, or a `transferLog` that is not one is pending `unreadable`,
- * never failed. At most three calls.
+ * is not a 32-byte hash, an `asset` that is not an address, a `transferLog` that is not one, or a reader answer that is
+ * not a receipt or holds a log entry that is not an object is pending `unreadable`, never failed. At most three calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
@@ -244,7 +244,9 @@ export async function eip3009Status(
     return { state: "pending", why: "unreadable" };
   }
   if (receipt === null) return { state: "pending", why: "not-found" };
-  if (!isReceipt(receipt)) return { state: "pending", why: "unreadable" };
+  if (!isReceipt(receipt) || receipt.logs.some((log) => typeof log !== "object" || log === null)) {
+    return { state: "pending", why: "unreadable" };
+  }
   const at = receipt.blockNumber;
   if (receipt.status === 0) return failedAt(at, "reverted", reader);
 
