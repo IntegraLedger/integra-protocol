@@ -21,7 +21,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { decimalBelow } from "./rail-bytes.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /**
  * A TON cell, as `@ton/core`'s `Cell` gives one: its data bits, its references and its representation hash. The entry
@@ -529,8 +529,12 @@ const check: OptionFilter = (o) => {
   return true;
 };
 
-/** The option without `extra.forwardPayload`, where the hash rides; a value that is not an option, unchanged. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option without `extra.forwardPayload`, where the hash rides. An option that carries a `refused` member is
+ * `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   if (!isObject(option) || !isObject(option.extra) || !("forwardPayload" in option.extra)) return option;
   const { forwardPayload: _placed, ...extra } = option.extra;
   return { ...option, extra };

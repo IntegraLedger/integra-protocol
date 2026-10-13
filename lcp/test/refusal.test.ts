@@ -240,6 +240,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/batch-settlement/solana",
     "x402/exact/xrpl",
     "x402/exact/stellar",
+    "x402/exact/tvm",
   ];
   for (const id of carrierX402) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
