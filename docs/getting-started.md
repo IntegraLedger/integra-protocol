@@ -135,8 +135,8 @@ const terms = new TextEncoder().encode('{"text":"One market report for 10000 bas
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
 if (isRefusal(atr)) throw new Error(atr.code);
 
-// Seller, b: store the bytes at an https link before the challenge goes out.
-const link = `https://atr.seller.example/${atr.atrHash}`;
+// Seller, b: store the bytes at an https link, from a random token, before the challenge goes out.
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
 const storage = new Map([[link, atr.bytes]]);
 
 // Seller, c: advertise H and the link in the challenge's legalContext extension.
@@ -182,7 +182,7 @@ What each step did:
 | Step | Side | Call | What it gives |
 |---|---|---|---|
 | a | seller | `requestCommitment`, `tie`, `assemble` | The ATR's bytes and H, with the challenge's options and the request in the binding slot. |
-| b | seller | your storage | The bytes at an `https` link, before any buyer can ask for them. |
+| b | seller | your storage | The bytes at an `https` link built from a random token, not from H ([serving the link](./guides/seller.md#serving-the-link)), before any buyer can ask for them. |
 | c | seller | `advertise` | The challenge with `extensions.legalContext` set to H and the link. |
 | d | buyer | `read`, `hash`, `hashEquals` | H and the link from the challenge, and the check that the served bytes hash to H. |
 | e | buyer | `build`, `complete` | EIP-712 typed data whose `nonce` is H, and the x402 payment around the buyer's signature. |

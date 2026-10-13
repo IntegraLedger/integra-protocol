@@ -171,10 +171,16 @@ describe("buyer.json: the rows the core and the binding can check", () => {
     expect(hashEquals(B.fixed.hashC, row("B1").expect.h)).toBe(false);
   });
 
-  it("D is the V5 document for hash(A)", () => {
-    const link = `https://atr.seller.example/${row("B1").expect.h}`;
+  it("D is the V5 document for hash(A) at the fixed link, a path that does not hold the hash", () => {
+    // The seller guide's "Serving the link": build the link from a random token, not from H.
+    const link: string = B.fixed.link;
+    expect(link.startsWith("https://atr.seller.example/")).toBe(true);
+    expect(link.toLowerCase()).not.toContain(row("B1").expect.h.slice(2));
     expect(exactEip3009.advertise({ x402Version: 2, resource: P.fixed.resource, accepts: [O] }, row("B1").expect.h, link, O))
       .toEqual(B.fixed.D);
+    for (const doc of [B.fixed.agreement.required, B.fixed.agreement.requiredMixed]) {
+      expect(doc.extensions.legalContext.info.legalContextUrl).toBe(link);
+    }
   });
 
   it("B2b, B3 and B4 serve bytes whose hash is not the advertised one", async () => {

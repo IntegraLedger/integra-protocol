@@ -128,7 +128,7 @@ if (isRefusal(request)) throw new Error(request.code);
 const terms = new TextEncoder().encode('{"text":"One quote for 10000 base units of USDC."}');
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
 if (isRefusal(atr)) throw new Error(atr.code);
-const link = `https://atr.seller.example/${atr.atrHash}`;
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
 const storage = new Map([[link, atr.bytes]]);
 const advertised = exactEip3009.advertise(challenge, atr.atrHash, link, option);
 if (isRefusal(advertised)) throw new Error(advertised.code);

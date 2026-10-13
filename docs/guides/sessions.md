@@ -159,7 +159,8 @@ if (isRefusal(request)) throw new Error(request.code);
 const terms = new TextEncoder().encode('{"text":"1000 base units of USDC per request."}');
 const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms", terms]]);
 if (isRefusal(atr)) throw new Error(atr.code);
-const advertised = batchEvm.advertise(challenge, atr.atrHash, `https://atr.seller.example/${atr.atrHash}`, option);
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
+const advertised = batchEvm.advertise(challenge, atr.atrHash, link, option);
 if (isRefusal(advertised)) throw new Error(advertised.code);
 
 // Buyer: read H, compare the served bytes with it as the buyer guide shows, then open the channel with H as its salt.

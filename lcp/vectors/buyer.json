@@ -1,9 +1,10 @@
 {
- "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A). The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. The BW rows run the gate's within on a channel of the pairing they name. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding (BE1), or with an opaque holding only the LCP members that name the held H (BW1, BW2). A BX1 case's refusal is what the protocol package's checks of the placed challenge return; the gate then has no challenge it can pay, and declines no-payable-option. A BW row's hold is what openChannel gives for the ATR atrHex and the opening hold.opening names; its challenge is the seller's own within challenge on that channel: the issued request with methodDetails.channelId naming the held channel, JCS-serialized (RFC 8785) and base64url without padding, an id of the seller's, and an opaque whose JSON is opaqueText.",
+ "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; link is where the seller serves A, a path from a random token, not from the hash; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A) and link. The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. The BW rows run the gate's within on a channel of the pairing they name. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding (BE1), or with an opaque holding only the LCP members that name the held H (BW1, BW2). A BX1 case's refusal is what the protocol package's checks of the placed challenge return; the gate then has no challenge it can pay, and declines no-payable-option. A BW row's hold is what openChannel gives for the ATR atrHex and the opening hold.opening names; its challenge is the seller's own within challenge on that channel: the issued request with methodDetails.channelId naming the held channel, JCS-serialized (RFC 8785) and base64url without padding, an id of the seller's, and an opaque whose JSON is opaqueText.",
  "fixed": {
   "A": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033302064c3ad617320e29c93227d7d",
   "C": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033312064c3ad617320e29c93227d7d",
   "hashC": "0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec",
+  "link": "https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072",
   "D": {
    "x402Version": 2,
    "resource": {
@@ -28,7 +29,7 @@
      "info": {
       "type": "sha256",
       "value": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
-      "legalContextUrl": "https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+      "legalContextUrl": "https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072"
      },
      "schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -97,7 +98,7 @@
       "info": {
        "type": "sha256",
        "value": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
-       "legalContextUrl": "https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+       "legalContextUrl": "https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072"
       },
       "schema": {
        "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -148,7 +149,7 @@
       "info": {
        "type": "sha256",
        "value": "0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec",
-       "legalContextUrl": "https://atr.seller.example/0xd873c15dbf9458f138fb1c89ec6a4257ff80e10e70b190810368a1a7f1535cec"
+       "legalContextUrl": "https://atr.seller.example/5f61f209-951f-4ef9-84cc-29e34bc9903b"
       },
       "schema": {
        "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -222,7 +223,7 @@
       "info": {
        "type": "sha256",
        "value": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938",
-       "legalContextUrl": "https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+       "legalContextUrl": "https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072"
       },
       "schema": {
        "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -249,8 +250,8 @@
      }
     }
    },
-   "requiredTimeoutText": "{\"x402Version\":2,\"resource\":{\"url\":\"https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\"},\"accepts\":[{\"scheme\":\"exact\",\"network\":\"eip155:84532\",\"amount\":\"1\",\"asset\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"payTo\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\",\"maxTimeoutSeconds\":60.0,\"extra\":{\"name\":\"USDC\",\"version\":\"2\"}}],\"extensions\":{\"legalContext\":{\"info\":{\"type\":\"sha256\",\"value\":\"0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\",\"legalContextUrl\":\"https://atr.seller.example/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\"},\"schema\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"type\":{\"const\":\"sha256\"},\"value\":{\"type\":\"string\",\"pattern\":\"^0x[0-9a-f]{64}$\"},\"legalContextUrl\":{\"type\":\"string\",\"pattern\":\"^https://\"}},\"required\":[\"type\",\"value\",\"legalContextUrl\"]}}}}",
-   "requiredUnpadded": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50LzB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4In0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ"
+   "requiredTimeoutText": "{\"x402Version\":2,\"resource\":{\"url\":\"https://api.seller.example/agreement/0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\"},\"accepts\":[{\"scheme\":\"exact\",\"network\":\"eip155:84532\",\"amount\":\"1\",\"asset\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"payTo\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\",\"maxTimeoutSeconds\":60.0,\"extra\":{\"name\":\"USDC\",\"version\":\"2\"}}],\"extensions\":{\"legalContext\":{\"info\":{\"type\":\"sha256\",\"value\":\"0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\",\"legalContextUrl\":\"https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072\"},\"schema\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"type\":{\"const\":\"sha256\"},\"value\":{\"type\":\"string\",\"pattern\":\"^0x[0-9a-f]{64}$\"},\"legalContextUrl\":{\"type\":\"string\",\"pattern\":\"^https://\"}},\"required\":[\"type\",\"value\",\"legalContextUrl\"]}}}}",
+   "requiredUnpadded": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50LzB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ"
   }
  },
  "rows": [

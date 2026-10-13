@@ -18,7 +18,7 @@ const row = (name: string) => B.rows.find((r: { name: string }) => r.name === na
 const fromHex = (h: string): Uint8Array => Uint8Array.from(Buffer.from(h, "hex"));
 const AG = B.fixed.agreement;
 const H: AtrHash = row("B1").expect.h;
-const LINK = `https://atr.seller.example/${H}`;
+const LINK: string = B.fixed.link;
 const request = (c: { request: string }) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
 
 describe("buyer.json: the agreement option the gate asks approval for", () => {
