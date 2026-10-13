@@ -4,7 +4,7 @@
  * depth; the root names the payment among the payments `Presented` covers. No entry point exports either name.
  */
 import type { AvmPresented } from "../avm.js";
-import type { X402Payment } from "../x402.js";
+import type { X402Payment } from "./x402.js";
 
 export type AvmPaymentPayload = X402Payment<AvmPresented>;
 

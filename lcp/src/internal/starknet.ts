@@ -3,7 +3,7 @@
  * the payments `Presented` covers; no entry point exports the name.
  */
 import type { Felt, OutsideExecutionTypedData } from "../starknet.js";
-import type { X402Payment } from "../x402.js";
+import type { X402Payment } from "./x402.js";
 
 export type StarknetPayment = X402Payment<{
   from: Felt;

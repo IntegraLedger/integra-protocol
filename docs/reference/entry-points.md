@@ -420,7 +420,7 @@ import { authCaptureEip3009, authCapturePermit2, chosen, … } from "@integraled
 
 **Values (24):** `authCaptureEip3009`, `authCapturePermit2`, `chosen`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `filterOf`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `legalContextOf`, `offeredAt`, `optionPairingOf`, `pairingOfPayment`, `paymentWith`, `presentedWith`, `readFor`, `requestCommitment`, `tie`, `uptoPermit2`, `withExtra`, `withOption`, `withoutExtra`.
 
-**Types (15):** `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Advertise`, `X402Choice`, `X402Offer`, `X402Payment`, `X402Read`, `X402Unsigned`.
+**Types (14):** `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Advertise`, `X402Choice`, `X402Offer`, `X402Read`, `X402Unsigned`.
 
 ## `@integraledger/lcp/x402-batch-settlement`
 

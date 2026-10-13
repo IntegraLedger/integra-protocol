@@ -3,7 +3,7 @@
  * the payments `Presented` covers; no entry point exports the name.
  */
 import type { Hex } from "../evm.js";
-import type { X402Payment } from "../x402.js";
+import type { X402Payment } from "./x402.js";
 
 /** The x402 payload: the signed extrinsic and its call, lowercase hex. */
 type PolkadotPayload = { extrinsic: Hex; call: Hex };

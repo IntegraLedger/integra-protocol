@@ -1,13 +1,13 @@
 /**
- * The seller's placement over an x402 pairing's option filter, which each x402 pairing's `advertise` is, with the
- * filter's type and the pieces it shares with `../x402.ts`: the legal context's extension key and schema, the bounds
- * on a document's options and on a link, and an option's match by RFC 8785 form. `../x402.ts` re-exports
- * `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
+ * The pieces the x402 pairings share: the option filter's type, the seller's placement over a filter (each x402
+ * pairing's `advertise`), the legal context's extension key and schema, the bounds on a document's options and on a
+ * link, an option's match by RFC 8785 form, and the other types and helpers the pairings' modules are built from.
+ * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
  */
 import { canonicalJson, isHttpsLink, isOtherSchemeLink, toLegalContext, type Json } from "../core.js";
 import { deepFreeze, isObject, normalHash } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
-import type { PaymentRequired, PaymentRequirements, X402Advertise } from "../x402.js";
+import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Advertise } from "../x402.js";
 import { AGREEMENT_URL, agreementUrlFault } from "./agreement.js";
 
 export const LEGAL_CONTEXT = "legalContext";
@@ -31,6 +31,9 @@ export const MAX_LINK = 2048;
  * cannot be served, and undefined for an option that is not this pairing's.
  */
 export type OptionFilter = (option: PaymentRequirements) => true | Refusal | undefined;
+
+/** An x402 v2 payment whose `payload` is the pairing's own. */
+export type X402Payment<P> = Omit<PaymentPayload, "payload"> & { payload: P };
 
 /**
  * The seller's placement over a pairing's filter: a copy of `doc` whose `extensions.legalContext` carries the hash, the link and, when

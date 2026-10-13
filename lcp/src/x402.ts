@@ -59,6 +59,7 @@ import {
   isOffered,
   sameJson,
   type OptionFilter,
+  type X402Payment,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -228,9 +229,6 @@ export function tie(
 ): ["x402", { accepts: readonly PaymentRequirements[]; request: RequestCommitment }] {
   return ["x402", { accepts, request }];
 }
-
-/** An x402 v2 payment whose `payload` is the pairing's own. */
-export type X402Payment<P> = Omit<PaymentPayload, "payload"> & { payload: P };
 
 /**
  * The filter for the options `pairs` accepts: those that `payable` also accepts (every one, without it) are served,

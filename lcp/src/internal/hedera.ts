@@ -10,7 +10,7 @@ import { isObject } from "../fields.js";
 import type { HederaNetwork } from "../hedera.js";
 import type { MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
-import type { X402Payment } from "../x402.js";
+import type { X402Payment } from "./x402.js";
 
 /** The x402 `exact` payload on Hedera: the partially signed transaction, base64. */
 type HederaPayload = { transaction: string };
