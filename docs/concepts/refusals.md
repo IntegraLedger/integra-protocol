@@ -48,12 +48,11 @@ Only the package makes refusals. `isRefusal`, which the package's own entry poin
 where it was made, not by its members, so a value you pass in is never returned to you as a refusal, whatever it holds.
 A presented payment or credential that the package would otherwise hand back to you unchanged is refused as malformed
 when it carries a `refused` member: `mpp/credential-malformed` for an MPP credential, `x402/payload-malformed` for an
-x402 EIP-3009 payment and `casper/payload-malformed` for a Casper payment. An option handed to `unplaced` on the ACK,
-ACP, AP2, card and UCP pairings and on every x402 pairing whose option carries no hash, which return it unchanged, is
-refused the same way, with that pairing's `option-malformed` code (`x402/option-malformed` on x402). A challenge handed
-to `unplaced` on an MPP pairing whose `request` carries no hash, which returns the challenge as given, is refused the
-same way, with `mpp/challenge-malformed`. Every other entry point reads a presented value only for the members its
-pairing defines, and returns either a value it built or its own refusal.
+x402 EIP-3009 payment and `casper/payload-malformed` for a Casper payment. `unplaced`, which gives back the option or
+challenge you pass or a copy of it without the pairing's carrier, refuses one that carries a `refused` member the same
+way on every pairing: with `mpp/challenge-malformed` on MPP, `x402/option-malformed` on x402, and the pairing's
+`option-malformed` code on the ACK, ACP, AP2, card and UCP pairings. Every other entry point reads a presented value
+only for the members its pairing defines, and returns either a value it built or its own refusal.
 
 ## What throws
 
