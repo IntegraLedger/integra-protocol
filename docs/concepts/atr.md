@@ -70,7 +70,10 @@ The same inputs always give the same bytes. A party slot keeps its own spacing a
 ## The rules `assemble` enforces
 
 `assemble(id, binding, content, limits?)` returns `{ bytes, atrHash }`, or a [refusal](./refusals.md) that names the
-first rule an input breaks:
+first rule an input breaks. It checks `limits.maxBytes` first (one that is not a safe integer of at least 0 is
+`core/too-large`), then `id`, the shapes of `binding` and `content`, the binding slot's name, the number of party
+slots, each party slot in turn (its shape, its name, and that its bytes are a `Uint8Array`), the binding value, the
+record's size, and last the JSON each party slot holds:
 
 | Rule | Refusal |
 |---|---|
