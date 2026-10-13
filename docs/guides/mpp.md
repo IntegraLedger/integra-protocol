@@ -16,8 +16,11 @@ it pays. Import the MPP pieces from `@integraledger/lcp/mpp`.
 On every MPP pairing, H rides in the challenge itself, in two places:
 
 - **The challenge `id`** is the base64url (no padding) of H's 32 bytes, then `.` and the challenge's position in the
-  402 response. A Tempo `subscription` challenge's id is the bare base64url of H. `challengeId(h, index)` writes it and
-  `challengeH(id)` reads H back.
+  402 response. A Tempo `subscription` challenge's id is the bare base64url of H, so a 402 that carries H holds one
+  Tempo `subscription` challenge at most: `place` refuses a Tempo `subscription` challenge in a 402 that holds another
+  (`mpp/witness-taken`). The `mppx` SDK's `tempo.subscription()` offers one subscription challenge per currency, by
+  default two on Tempo's mainnet and testnet; a seller placing H there names one `currency`. `challengeId(h, index)`
+  writes the id and `challengeH(id)` reads H back.
 - **The challenge's `opaque`** map carries `legalContext`, H's LCP string, and `legalContextUrl`, the link. Where the
   pairing's payment carries H in nothing public, it also carries `legalContextAgreementUrl`.
 
