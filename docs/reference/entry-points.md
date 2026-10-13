@@ -434,7 +434,7 @@ import { BATCH_SETTLEMENT, batchChannelCreated, batchChannelId, … } from "@int
 
 **Values (14):** `BATCH_SETTLEMENT`, `batchChannelCreated`, `batchChannelId`, `batchCloudflare`, `batchEvm`, `batchSvm`, `CHANNEL_CONFIG_TYPEHASH`, `CHANNEL_CREATED_TOPIC`, `DEPOSITED_TOPIC`, `ERC3009_DEPOSIT_COLLECTOR`, `erc3009DepositNonce`, `pairingOf`, `PERMIT2_DEPOSIT_COLLECTOR`, `VOUCHER_TYPEHASH`.
 
-**Types (11):** `BatchEvmOpen`, `BatchPairingId`, `BatchPaymentPayload`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `ChannelConfig`, `ChannelMembers`, `CloudflarePaymentPayload`, `Eip712Request`, `SigningRequest`.
+**Types (10):** `BatchEvmOpen`, `BatchPairingId`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `ChannelConfig`, `ChannelMembers`, `CloudflarePaymentPayload`, `Eip712Request`, `SigningRequest`.
 
 ## `@integraledger/lcp/x402-exact-solana`
 

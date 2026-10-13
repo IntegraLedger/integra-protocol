@@ -64,6 +64,7 @@ import {
   type SvmRef,
   type SvmTx,
 } from "./internal/svm.js";
+import type { BatchPaymentPayload } from "./internal/x402-batch-settlement.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -229,14 +230,6 @@ export type SigningRequest =
   | { kind: "eip712"; typedData: Eip712Request | ReceiveTypedData | Permit2TypedData }
   | { kind: "solana-message"; message: Uint8Array }
   | { kind: "ed25519-raw"; message: Uint8Array; signer: string };
-
-export interface BatchPaymentPayload {
-  x402Version: 2;
-  resource?: PaymentRequired["resource"];
-  accepted: PaymentRequirements;
-  payload: { type: string; [k: string]: Json };
-  extensions?: PaymentRequired["extensions"];
-}
 
 /**
  * Several signing requests, signed in order. `complete` takes one signature per request: `0x` hex for `eip712`,

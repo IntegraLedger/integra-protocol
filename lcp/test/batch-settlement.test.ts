@@ -16,7 +16,7 @@ import {
 import { hashDomain, hashTypedData, keccak256, toBytes, toEventSelector } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { ReaderError, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
-import type { AtrHash } from "../src/index.js";
+import type { AtrHash, Refusal } from "../src/index.js";
 import {
   PAYMENT_CHANNELS,
   channelPda,
@@ -38,7 +38,6 @@ import {
   batchSvm,
   erc3009DepositNonce,
   pairingOf,
-  type BatchPaymentPayload,
   type BatchUnsigned,
   type ChannelConfig,
 } from "../src/x402-batch-settlement.js";
@@ -50,6 +49,7 @@ const E = V.fixed.evm;
 const S = V.fixed.svm;
 const H: AtrHash = V.fixed.H;
 const H2: AtrHash = V.fixed.Hprime;
+type Payment = Exclude<ReturnType<BatchUnsigned["complete"]>, Refusal>;
 const hex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
 const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
 const b64 = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "base64"));
@@ -65,7 +65,7 @@ const evmDoc = (): PaymentRequired => {
   return unwrap(batchEvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o));
 };
 
-async function evmOpening(method?: "permit2"): Promise<{ u: BatchUnsigned; payment: BatchPaymentPayload }> {
+async function evmOpening(method?: "permit2"): Promise<{ u: BatchUnsigned; payment: Payment }> {
   const doc = evmDoc();
   const accepted: PaymentRequirements =
     method === undefined ? doc.accepts[0]! : { ...doc.accepts[0]!, extra: { ...doc.accepts[0]!.extra, assetTransferMethod: method } };
@@ -155,7 +155,7 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(batchEvm.channel.kind(payment)).toBe(V.EB6.expectKindDeposit);
     expect(await batchEvm.channel.ref(payment)).toEqual(V.EB6.expectRef);
     const p = payment.payload as Record<string, any>;
-    const voucherPayment: BatchPaymentPayload = { ...payment, payload: { type: "voucher", channelConfig: p["channelConfig"], voucher: p["voucher"] } };
+    const voucherPayment: Payment = { ...payment, payload: { type: "voucher", channelConfig: p["channelConfig"], voucher: p["voucher"] } };
     expect(batchEvm.channel.kind(voucherPayment)).toBe(V.EB6.expectKindVoucher);
     expect(await batchEvm.channel.boundWithin(voucherPayment)).toBe(V.EB6.expectBoundWithin);
     expect(batchEvm.channel.kind({ ...voucherPayment, payload: { ...voucherPayment.payload, type: "refund" } })).toBe(V.EB6.expectKindRefund);
@@ -203,10 +203,10 @@ describe("x402-batch-settlement.json: EVM", () => {
   });
 });
 
-const svmPayment = (payload: Record<string, unknown>): BatchPaymentPayload => ({
+const svmPayment = (payload: Record<string, unknown>): Payment => ({
   x402Version: 2,
   accepted: V.ES4.accepted,
-  payload: payload as BatchPaymentPayload["payload"],
+  payload: payload as Payment["payload"],
 });
 const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, err, loaded: { writable: [], readonly: [] }, inner: [] });
 function svmReaderFor(at: "finalized" | null, l: SvmLanded, txid: string): SvmReader {
