@@ -198,6 +198,11 @@ describe("mpp/session/hedera: buildWithin", () => {
       challenge: within,
       payload: { action: "close", channelId: R.HS1.expectChannelId, cumulativeAmount: "25", signature },
     });
+    // EIP-2098's 64-byte form of the same signature (viem's serializeCompactSignature) is a signature too; one of no
+    // bytes is not.
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(signature)));
+    expect(at.complete([compact])).toMatchObject({ payload: { signature: compact } });
+    expect(at.complete(["0x"])).toEqual(refused("mpp/credential-malformed"));
     expect(await sessionHedera.buildWithin(w(1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
     expect(await sessionHedera.buildWithin(w(1n), H2)).toEqual(refused("mpp/id-not-ours"));
   });

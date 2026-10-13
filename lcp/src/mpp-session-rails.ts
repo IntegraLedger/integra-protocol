@@ -459,7 +459,7 @@ async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
     requests: [{ kind: "eip712", typedData }],
     complete(signatures: readonly string[]): MppCredential | Refusal {
       const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
-      if (typeof signature !== "string" || (bytesOf(signature)?.length ?? 0) < 65) return refusal("mpp/credential-malformed");
+      if (typeof signature !== "string" || (bytesOf(signature)?.length ?? 0) < 1) return refusal("mpp/credential-malformed");
       return { challenge, payload: { action, channelId, cumulativeAmount, signature } };
     },
   };
