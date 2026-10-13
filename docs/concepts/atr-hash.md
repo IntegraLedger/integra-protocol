@@ -14,13 +14,22 @@ seller issues it.
 
 ## The forms of H
 
-The same 32 bytes are written in four forms. The package writes every hash in lowercase and reads either case, with
-one exception: a Solana memo, which the payer signs and the chain keeps, must be `toLcpString(h)` exactly, and the same
-hash in another spelling is refused `svm/carrier-not-canonical`.
+The same 32 bytes are written in four forms. The package writes H in lowercase, except on MPP XRPL, whose
+`methodDetails.invoiceId` and Payment `InvoiceID` hold H's 64 hex digits in upper case (`mppInvoiceId`). It reads
+either case, except in five carriers that must hold H's LCP string with lowercase hex exactly; the same hash in another
+spelling is refused:
+
+- a Solana memo (`svm/carrier-not-canonical`), with an x402 option's `extra.memo` and an MPP request's `externalId`
+  (`svm/carrier-mismatch`);
+- a Cardano CIP-20 message, whose two lines are the string's `lcp:sha256:0x` and its digits
+  (`cardano/hash-not-carried`);
+- a Polkadot remark (`polkadot/remark-not-lcp`);
+- the x402 XRPL option's `extra.invoiceId`, whose SHA-256 is the Payment's `InvoiceID` (`xrpl/carrier-mismatch`);
+- a Concordium memo, which must equal `ccdMemo(h)` (`ccd/memo-not-lcp`).
 
 | Form | Example | Written by | Read by |
 |---|---|---|---|
-| Hex | `0xba7816bf…f20015ad` | `hash`, `assemble` | `hashEquals`, every `bound` |
+| Hex | `0xba7816bf…f20015ad` | `hash`, `assemble`, every `bound` | `hashEquals` |
 | LCP string (`LCP §8.1`) | `lcp:sha256:0xba7816bf…f20015ad` | `toLcpString` | `fromLcpString` |
 | Structured (`LCP §8.1`) | `{"legalContext":{"type":"sha256","value":"0x…","legalContextUrl":"https://…"}}` | `toLegalContext` | `fromLegalContext` |
 | Raw bytes | 32 bytes | `toRawBytes` | `fromRawBytes` |
