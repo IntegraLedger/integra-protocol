@@ -241,13 +241,6 @@ export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequi
   };
 }
 
-/** The document with option `at` replaced. */
-export function withOption(doc: PaymentRequired, at: number, option: PaymentRequirements): PaymentRequired {
-  const accepts = doc.accepts.slice();
-  accepts[at] = option;
-  return { ...doc, accepts };
-}
-
 /** A copy of an option with `extra[key] = value`. */
 export function withExtra(option: PaymentRequirements, key: string, value: Json): PaymentRequirements {
   return { ...option, extra: { ...(option.extra ?? {}), [key]: value } };

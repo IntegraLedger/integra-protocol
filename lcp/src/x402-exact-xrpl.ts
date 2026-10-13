@@ -4,7 +4,7 @@
  * the blob's hash.
  */
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
-import { advertiseFor, chosen, filterOf, offeredAt, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, filterOf, offeredAt, readFor, withOption, type X402Read } from "./internal/x402.js";
 import {
   decodePresented,
   isXrplNetwork,
@@ -23,7 +23,6 @@ import {
   paymentWith,
   tie,
   withExtra,
-  withOption,
   withoutExtra,
   type LcpPattern,
   type PaymentRequired,

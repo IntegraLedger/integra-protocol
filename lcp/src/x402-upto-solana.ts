@@ -25,14 +25,13 @@ import {
   type UptoSvmPaymentPayload,
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
-import { advertiseFor, chosen, filterOf, offeredAt, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, filterOf, offeredAt, readFor, withOption, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
   paymentWith,
   tie,
   withExtra,
-  withOption,
   withoutExtra,
   type LcpPattern,
   type PaymentRequired,

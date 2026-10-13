@@ -185,6 +185,13 @@ export function offeredAt(accepts: readonly PaymentRequirements[], offer: Paymen
   return accepts.findIndex((a) => a === offer || sameJson(a, offer));
 }
 
+/** The document with option `at` replaced. */
+export function withOption(doc: PaymentRequired, at: number, option: PaymentRequirements): PaymentRequired {
+  const accepts = doc.accepts.slice();
+  accepts[at] = option;
+  return { ...doc, accepts };
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));
