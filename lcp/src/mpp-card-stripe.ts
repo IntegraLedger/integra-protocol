@@ -32,12 +32,12 @@ type ConfirmOnly = "mpp/charge/card" | "mpp/charge/stripe" | "mpp/subscription/s
 
 const PROVES =
   "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. The ATR was in the seller's storage before payment. The seller's MPP challenge carried " +
-  "this ATR's hash in its id and its opaque reference, bound to the challenge by the seller's own server, and the " +
-  "buyer's credential echoed that challenge. The seller also placed the hash in the method's reference field " +
-  "(externalId for card; the PaymentIntent's metadata for Stripe). Nothing the buyer or its card or Stripe token " +
-  "signed carries the hash, and the seller checked nothing the buyer signed. Settlement is the seller's report. " +
-  "This record does not show that the buyer's approval carried the hash.";
+  "recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its id and its opaque " +
+  "reference, bound to the challenge by the seller's own server, and the buyer's credential echoed that challenge. " +
+  "The seller also placed the hash in the method's reference field (externalId for card; the PaymentIntent's " +
+  "metadata for Stripe). Nothing the buyer or its card or Stripe token signed carries the hash, and nothing the " +
+  "buyer signed was checked. Settlement is the seller's report. This record does not show that the buyer's " +
+  "approval carried the hash.";
 
 const SUBSCRIPTION_PROVES =
   PROVES +
