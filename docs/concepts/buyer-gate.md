@@ -108,6 +108,25 @@ The agreement payment is a payment like any other, so the buyer's agent approves
 
 The buyer vector rows `BA1` to `BA11` fix this order, the approval and the bounds.
 
+## What the gate checks, and what it does not
+
+The gate compares the served bytes with H before anything is signed. It never parses the ATR.
+
+- **The bytes it compared are the record.** Evaluate, and show a person, those bytes, never a second fetch of the
+  link: `LCP §12.7` requires that "the document presented for human review is byte-identical to the document whose
+  hash is signed".
+- **The ATR's text is the seller's statement.** The gate acts on nothing a party slot says. An agent that reads the
+  slots takes their text as the seller's statement, not as instructions to it: `LCP §12.7` says free-text prose in the
+  terms body should not "drive policy decisions directly".
+- **The binding slot is the seller's statement too.** The gate compares the bytes with H; it does not compare the
+  options and request the binding slot records with the challenge it received.
+- **The link is the seller's choice.** `isHttpsLink` accepts loopback, private and link-local hosts, such as
+  `127.0.0.1`, `10.0.0.1`, `169.254.169.254`, `localhost` and `[::1]`. A buyer that fetches from inside a private
+  network refuses such destinations itself.
+- **Some proofs hold part of H.** Where a pairing's proof holds only 7 or 8 bytes of H, or of a value derived from it,
+  whoever assembles the ATR can construct a second ATR that shares them. The gate compares the whole H with the bytes
+  served; the pairing's `proves` states what the payment binds.
+
 ## Next
 
 - [Buyer](../guides/buyer.md): the gate in code, step by step.
