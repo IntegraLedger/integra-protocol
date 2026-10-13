@@ -1237,8 +1237,12 @@ function advertiseCharge(
   return place(doc, h, link, offer, agreementUrl);
 }
 
-/** The challenge unchanged: the hash rides in the challenge id and `opaque`, never in `request`. */
-function unplacedCharge(option: MppChallenge): MppChallenge {
+/**
+ * The challenge as given: the hash rides in the challenge id and `opaque`, never in `request`. A challenge that carries
+ * a `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplacedCharge(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return option;
 }
 
