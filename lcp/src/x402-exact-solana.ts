@@ -68,18 +68,18 @@ function utf8Length(s: string): number {
   return new TextEncoder().encode(s).length;
 }
 
-/** This pairing's id for an option it can pay, or undefined. */
-export function pairingOf(option: PaymentRequirements): typeof ID | undefined {
-  if (!isObject(option) || option.scheme !== "exact") return undefined;
-  if (!isSolanaNetwork(option.network) || !isKey(option.asset) || !isKey(option.payTo)) return undefined;
+/**
+ * True for an option of this pairing: `exact` on a Solana network, with `asset`, `payTo` and `extra.feePayer` each the
+ * base58 of a 32-byte key, and an `extra.memo`, when present, of at most 256 UTF-8 bytes.
+ */
+function isThis(option: PaymentRequirements): boolean {
+  if (!isObject(option) || option.scheme !== "exact") return false;
+  if (!isSolanaNetwork(option.network) || !isKey(option.asset) || !isKey(option.payTo)) return false;
   const extra: unknown = option.extra;
-  if (!isObject(extra) || !isKey(extra["feePayer"])) return undefined;
+  if (!isObject(extra) || !isKey(extra["feePayer"])) return false;
   const memo = extra["memo"];
-  if (memo !== undefined && (typeof memo !== "string" || utf8Length(memo) > MAX_MEMO)) return undefined;
-  return ID;
+  return memo === undefined || (typeof memo === "string" && utf8Length(memo) <= MAX_MEMO);
 }
-
-const isThis = (o: PaymentRequirements): boolean => pairingOf(o) !== undefined;
 
 /** True when the amount is a u64 in decimal. */
 function payable(o: PaymentRequirements): boolean {

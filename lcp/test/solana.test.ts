@@ -11,7 +11,7 @@ import {
   isWritableRole,
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
-import { hash, type AtrHash, type Refusal } from "../src/index.js";
+import { hash, pairingOf, type AtrHash, type Refusal } from "../src/index.js";
 import {
   decodeSvmTx,
   svmCarrier,
@@ -23,7 +23,7 @@ import {
   type SvmReader,
   type SvmRef,
 } from "../src/svm.js";
-import { exactSvm, pairingOf, type SvmUnsigned } from "../src/x402-exact-solana.js";
+import { exactSvm, type SvmUnsigned } from "../src/x402-exact-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-solana.json", import.meta.url), "utf8"));

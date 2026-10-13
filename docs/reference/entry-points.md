@@ -441,12 +441,12 @@ import { BATCH_SETTLEMENT, batchChannelCreated, batchChannelId, … } from "@int
 The `x402/exact/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the transaction's one Memo instruction, read back from the signed message, and read from the settlement.
 
 ```ts no-check
-import { exactSvm, pairingOf } from "@integraledger/lcp/x402-exact-solana";
+import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 ```
 
 **Pairings:** `x402/exact/solana`.
 
-**Values (2):** `exactSvm`, `pairingOf`.
+**Values (1):** `exactSvm`.
 
 **Types (1):** `SvmUnsigned`.
 
