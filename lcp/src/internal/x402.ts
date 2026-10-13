@@ -192,6 +192,11 @@ export function withOption(doc: PaymentRequired, at: number, option: PaymentRequ
   return { ...doc, accepts };
 }
 
+/** A copy of an option with `extra[key] = value`. */
+export function withExtra(option: PaymentRequirements, key: string, value: Json): PaymentRequirements {
+  return { ...option, extra: { ...(option.extra ?? {}), [key]: value } };
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));

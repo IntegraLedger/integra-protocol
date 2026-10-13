@@ -23,12 +23,20 @@ import {
   type SvmTx,
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
-import { advertiseFor, chosen, filterOf, offeredAt, readFor, withOption, type X402Read } from "./internal/x402.js";
+import {
+  advertiseFor,
+  chosen,
+  filterOf,
+  offeredAt,
+  readFor,
+  withExtra,
+  withOption,
+  type X402Read,
+} from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   paymentWith,
   tie,
-  withExtra,
   withoutExtra,
   type LcpPattern,
   type PaymentRequired,

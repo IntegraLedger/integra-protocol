@@ -241,11 +241,6 @@ export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequi
   };
 }
 
-/** A copy of an option with `extra[key] = value`. */
-export function withExtra(option: PaymentRequirements, key: string, value: Json): PaymentRequirements {
-  return { ...option, extra: { ...(option.extra ?? {}), [key]: value } };
-}
-
 /** A copy of an option with `extra[key]` removed; `extra` itself is removed when that leaves it empty. */
 export function withoutExtra(option: PaymentRequirements, key: string): PaymentRequirements {
   if (!isObject(option) || !isObject(option.extra) || !(key in option.extra)) return option;

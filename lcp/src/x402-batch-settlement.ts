@@ -69,6 +69,7 @@ import {
   legalContextOf,
   offeredAt,
   readFor,
+  withExtra,
   withOption,
   type X402Read,
 } from "./internal/x402.js";
@@ -76,7 +77,6 @@ import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   paymentWith,
   tie,
-  withExtra,
   withoutExtra,
   type LcpPattern,
   type PaymentRequired,
