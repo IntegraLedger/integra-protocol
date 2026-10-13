@@ -81,11 +81,6 @@ export const MAX_BLOB_HEX = 4096;
  * its container, and an array's member object one level below the array.
  */
 export const XRPL_MAX_DEPTH = 64;
-/**
- * The most fields, counting array members, that one blob may hold. Every field takes at least its one-byte header, so
- * no blob within `MAX_BLOB_HEX` holds more.
- */
-export const XRPL_MAX_FIELDS = MAX_BLOB_HEX / 2;
 const NETWORK = /^xrpl:(0|[1-9][0-9]{0,9})$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 const HASH256 = /^[0-9A-Fa-f]{64}$/;
@@ -151,10 +146,9 @@ export function mppInvoiceId(h: AtrHash): string {
 /**
  * Decodes a signed blob of at most 4 KiB of hex, and computes its transaction hash as the ledger does: SHA-512Half
  * over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its fields refuses a
- * blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep or holds more than `XRPL_MAX_FIELDS`
- * fields and array members. The blob must be the canonical serialization of what it decodes to: the codec's encoding
- * of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and every array member is
- * an object.
+ * blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep. The blob must be the canonical
+ * serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes, so nothing
+ * follows a top-level end marker and every array member is an object.
  */
 export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: string } | Refusal> {
   if (typeof hex !== "string" || !HEX.test(hex)) return refusal("xrpl/blob-malformed");
@@ -184,16 +178,15 @@ export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: s
 }
 
 /**
- * True when the serialized transaction nests STObject and STArray fields at most `XRPL_MAX_DEPTH` deep and holds at
- * most `XRPL_MAX_FIELDS` fields and array members, and every object and array it opens is closed. It reads each field
- * header once: an object or array field opens a level in place, its end marker closes it, and every other field's
- * value is read as a leaf, so the pass is linear in the blob's length. Levels open and close as the codec's decode
- * reads them: inside an object only `ObjectEndMarker` closes, inside an array only `ArrayEndMarker` closes, and any
- * other field whose type is STObject or STArray opens a level.
+ * True when the serialized transaction nests STObject and STArray fields at most `XRPL_MAX_DEPTH` deep, and every
+ * object and array it opens is closed. It reads each field header once: an object or array field opens a level in
+ * place, its end marker closes it, and every other field's value is read as a leaf, so the pass is linear in the
+ * blob's length. Levels open and close as the codec's decode reads them: inside an object only `ObjectEndMarker`
+ * closes, inside an array only `ArrayEndMarker` closes, and any other field whose type is STObject or STArray opens a
+ * level.
  */
 function withinCaps(parser: InstanceType<Parser>): boolean {
   const open: ("STObject" | "STArray")[] = [];
-  let fields = 0;
   try {
     while (!parser.end()) {
       const field = parser.readField();
@@ -203,7 +196,6 @@ function withinCaps(parser: InstanceType<Parser>): boolean {
         if (open.pop() === undefined) return false;
         continue;
       }
-      if (++fields > XRPL_MAX_FIELDS) return false;
       const type = field.type.name;
       if (type === "STObject" || type === "STArray") {
         if (open.length >= XRPL_MAX_DEPTH) return false;

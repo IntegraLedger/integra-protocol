@@ -1,5 +1,5 @@
-// The decoder caps: vectors/decoder-caps.json. XRPL binary has a nesting cap and a field cap, msgpack and ScVal a
-// nesting cap, and each row says whether the caps admit its input.
+// The decoder caps: vectors/decoder-caps.json. XRPL binary, msgpack and ScVal each have a nesting cap, and each row
+// says whether the caps admit its input.
 import { readFileSync } from "node:fs";
 import { xdr } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
@@ -21,14 +21,14 @@ import {
   type StellarRef,
 } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
-import { decodeBlob, XRPL_MAX_DEPTH, XRPL_MAX_FIELDS } from "../src/xrpl.js";
+import { decodeBlob, XRPL_MAX_DEPTH } from "../src/xrpl.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/decoder-caps.json", import.meta.url), "utf8"));
 type Row = { name: string; case: string; accept: boolean };
 
-describe("XRPL binary: STObject and STArray nesting, and fields", () => {
-  it("the caps are the vectors'", () => {
-    expect([XRPL_MAX_DEPTH, XRPL_MAX_FIELDS]).toEqual([V.xrpl.maxDepth, V.xrpl.maxFields]);
+describe("XRPL binary: STObject and STArray nesting", () => {
+  it("the cap is the vectors'", () => {
+    expect(XRPL_MAX_DEPTH).toBe(V.xrpl.maxDepth);
   });
   for (const r of V.xrpl.rows as (Row & { blob: string })[]) {
     it(`${r.name}: ${r.case} → ${r.accept ? "decoded" : "xrpl/blob-malformed"}`, async () => {
