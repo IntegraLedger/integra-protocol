@@ -627,7 +627,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation, as the TypeScript and Python implementations both apply them.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply the option, build, complete and bound rows, the Python one the option rows through build. The advertise, recover and missing-peer rows are the TypeScript implementation's alone: the Python one has no advertise, no recover and no optional peer.",
   "rows": [
    {
     "case": "an option whose network is tvm: and not an integer",
