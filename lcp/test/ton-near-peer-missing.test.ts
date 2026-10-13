@@ -12,11 +12,8 @@ const code = (v: { agreedRefusals: { rows: { expect: string }[] } }) =>
 vi.mock("@ton/core", () => {
   throw new Error("Cannot find package '@ton/core'");
 });
-vi.mock("@near-js/crypto", () => {
-  throw new Error("Cannot find package '@near-js/crypto'");
-});
-vi.mock("@near-js/transactions", () => {
-  throw new Error("Cannot find package '@near-js/transactions'");
+vi.mock("near-api-js", () => {
+  throw new Error("Cannot find package 'near-api-js'");
 });
 vi.mock("borsh", () => {
   throw new Error("Cannot find package 'borsh'");

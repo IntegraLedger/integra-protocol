@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { KeyType, PublicKey } from "@near-js/crypto";
+import { base58 } from "@scure/base";
+import { KeyType, PublicKey } from "near-api-js";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -121,6 +122,71 @@ describe("x402-exact-near.json", () => {
     expect(c.h).toBe(H);
   });
 
+  // V2's signed delegate is borsh: the delegate action (sender and receiver as u32-length strings, a u32 count of
+  // actions, nonce, max height, then the key as a one-byte type and its bytes), then the signature as a one-byte type
+  // and its bytes. Its key is Ed25519 (type 0, 32 bytes) and its signature Ed25519 (type 0, 64 bytes).
+  const v2Bytes = () => Buffer.from(V.V2.expectSignedDelegateAction, "base64");
+  const u32 = (n: number) => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(n);
+    return b;
+  };
+
+  // The borsh specification encodes a String as the u32 length and the bytes of its UTF-8 (github.com/near/borsh,
+  // "String": utf8_encoding(x) as Vec<u8>). A receiver whose bytes are not UTF-8 is no borsh string; a sender in UTF-8
+  // beyond ASCII reads as the characters it encodes.
+  it("V2: a delegate's strings are read as UTF-8, and bytes that are not UTF-8 are near/sda-malformed", async () => {
+    const bytes = v2Bytes();
+    const senderEnd = 4 + bytes.readUInt32LE(0);
+    const receiverAt = senderEnd + 4;
+    expect(bytes.subarray(receiverAt, receiverAt + 12).toString("latin1")).toBe(O.asset);
+    const notUtf8 = Buffer.from(bytes);
+    notUtf8[receiverAt + 4] = 0xff;
+    const refused = { refused: true, code: "near/sda-malformed" };
+    expect(nearCarrier(notUtf8.toString("base64"))).toEqual(refused);
+    expect(await exactNear.bound(payment(notUtf8.toString("base64")))).toEqual(refused);
+    const payer = "payer-\u00e9.testnet";
+    const named = Buffer.concat([u32(Buffer.byteLength(payer)), Buffer.from(payer, "utf8"), bytes.subarray(senderEnd)]);
+    const c = nearCarrier(named.toString("base64"));
+    if ("refused" in c) throw new Error(c.code);
+    expect([c.payer, c.h]).toEqual([payer, H]);
+  });
+
+  // NEAR's key and signature enums give type 0 to Ed25519 and 1 to secp256k1, the two x402's NEAR scheme admits
+  // ("Signature type and key type MUST be valid NEAR-supported types (`ed25519` or `secp256k1`)",
+  // scheme_exact_near.md at f5dd40ef). near-api-js 7.3.1's schema adds type 2, ML-DSA-65, with a 1952-byte key and a
+  // 3309-byte signature. V2 with the signature, the delegate's key, or the key of a second action written as type 2 is
+  // no delegate this pairing reads.
+  it("V2: a delegate whose signature or a key in it is neither Ed25519 nor secp256k1 is near/sda-malformed", async () => {
+    const bytes = v2Bytes();
+    const delegate = bytes.subarray(0, bytes.length - 65);
+    const keyAt = delegate.length - 33;
+    const tail = delegate.subarray(delegate.length - 49);
+    const senderEnd = 4 + bytes.readUInt32LE(0);
+    const actionsAt = senderEnd + 4 + bytes.readUInt32LE(senderEnd);
+    const zeroSignature = Buffer.concat([Buffer.from([0]), Buffer.alloc(64)]);
+    const mlDsaKey = Buffer.concat([Buffer.from([2]), Buffer.alloc(1952, 1)]);
+    const cases = [
+      Buffer.concat([delegate, Buffer.from([2]), Buffer.alloc(3309)]),
+      Buffer.concat([delegate.subarray(0, keyAt), mlDsaKey, zeroSignature]),
+      Buffer.concat([
+        delegate.subarray(0, actionsAt),
+        u32(2),
+        delegate.subarray(actionsAt + 4, delegate.length - tail.length),
+        Buffer.from([6]),
+        mlDsaKey,
+        tail,
+        zeroSignature,
+      ]),
+    ];
+    for (const [i, sda] of cases.map((b) => b.toString("base64")).entries()) {
+      expect([i, nearCarrier(sda)]).toEqual([i, { refused: true, code: "near/sda-malformed" }]);
+      expect([i, await exactNear.bound(payment(sda))]).toEqual([i, { refused: true, code: "near/sda-malformed" }]);
+    }
+    const mlDsaPublicKey = `ml-dsa-65:${base58.encode(new Uint8Array(1952).fill(1))}`;
+    expect(await exactNear.build({ ...choice(), publicKey: mlDsaPublicKey }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
+  });
+
   it("V2 presented under an option with timeout 0 gives H; build opens a window of one block", async () => {
     for (const row of V.V2.presentedOptions) {
       const p = { ...payment(V.V2.expectSignedDelegateAction), accepted: row.accepted };
@@ -185,7 +251,7 @@ describe("x402-exact-near.json", () => {
   });
 
   // A ref that cannot name the delegate is pending before any read. NEAR account ids are lowercase (nearcore's account id
-  // rules); a public key is written `ed25519:` and the base58 of its 32 bytes (@near-js/crypto PublicKey.toString).
+  // rules); a public key is written `ed25519:` and the base58 of its 32 bytes (near-api-js PublicKey.toString).
   it("V3: a ref whose nonce, asset, payer, public key or digest is malformed is pending unreadable, with nothing read", async () => {
     const settled = V.V3.status[0];
     const [, key] = REF.publicKey.split(":") as [string, string];
@@ -203,10 +269,10 @@ describe("x402-exact-near.json", () => {
     expect(await exactNear.status(REF, readerFor(settled))).toEqual(settled.expect);
   });
 
-  // A secp256k1 key is written `secp256k1:` and the base58 of its 64 bytes, x then y (@near-js/crypto 2.5.1
+  // A secp256k1 key is written `secp256k1:` and the base58 of its 64 bytes, x then y (near-api-js 7.3.1
   // PublicKey.toString). The key here is the public key of the scalar 1, the generator G of secp256k1 (SEC 2 v2.0,
   // §2.4.1). A delegate under such a key, otherwise V3's settled outcome, settles as that row.
-  it("V3: a ref whose public key is a secp256k1 key as @near-js/crypto writes it settles", async () => {
+  it("V3: a ref whose public key is a secp256k1 key as near-api-js writes it settles", async () => {
     const G =
       "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798" +
       "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8";

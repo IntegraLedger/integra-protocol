@@ -3,9 +3,8 @@
  * `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. Settlement is read from the
  * relayed transaction's receipts through a bounded reader.
  */
-import type * as NearCrypto from "@near-js/crypto";
-import type * as NearTransactions from "@near-js/transactions";
 import type * as Borsh from "borsh";
+import type * as NearApi from "near-api-js";
 import { base58 } from "@scure/base";
 import { fromLcpString, hash, hashEquals, parseJson, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
@@ -28,13 +27,12 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 
-/** The optional peers, loaded once; undefined when any is not installed, and every function needing them refuses. */
-const peer: { crypto: typeof NearCrypto; tx: typeof NearTransactions; borsh: typeof Borsh } | undefined = await Promise.all([
-  import("@near-js/crypto"),
-  import("@near-js/transactions"),
+/** The optional peers, loaded once; undefined when either is not installed, and every function needing them refuses. */
+const peer: { near: typeof NearApi; borsh: typeof Borsh } | undefined = await Promise.all([
+  import("near-api-js"),
   import("borsh"),
 ]).then(
-  ([crypto, tx, borsh]) => ({ crypto, tx, borsh }),
+  ([near, borsh]) => ({ near, borsh }),
   () => undefined,
 );
 
@@ -151,7 +149,8 @@ type Decoded = {
 
 /**
  * Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
- * arguments whose `memo` is an LCP string. The bytes must be exactly the borsh encoding of what is read.
+ * arguments whose `memo` is an LCP string. The bytes must be exactly the borsh encoding of what is read, every string
+ * in it UTF-8 and every key and the signature Ed25519 or secp256k1, or they are `near/sda-malformed`.
  */
 export function nearCarrier(signedDelegateAction: string): {
   h: AtrHash;
@@ -184,11 +183,12 @@ function carrierOf(signedDelegateAction: string): {
   const bytes = Uint8Array.from(Buffer.from(signedDelegateAction, "base64"));
   let d: Decoded;
   try {
-    d = peer.borsh.deserialize(peer.tx.SCHEMA.SignedDelegate, bytes) as Decoded;
-    if (!sameBytes(peer.borsh.serialize(peer.tx.SCHEMA.SignedDelegate, d), bytes)) return refusal("near/sda-malformed");
+    d = peer.borsh.deserialize(peer.near.SCHEMA.SignedDelegate, bytes) as Decoded;
+    if (!sameBytes(peer.borsh.serialize(peer.near.SCHEMA.SignedDelegate, d), bytes)) return refusal("near/sda-malformed");
   } catch {
     return refusal("near/sda-malformed");
   }
+  if (!edOrSecp(d)) return refusal("near/sda-malformed");
   const da = d.delegateAction;
   if (da.actions.length !== 1) return refusal("near/actions");
   const call = da.actions[0]!["functionCall"] as { methodName: string; args: number[] | Uint8Array } | undefined;
@@ -218,7 +218,7 @@ function memoOf(args: Uint8Array): AtrHash | Refusal {
 
 function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | null {
   if (peer === undefined) return null;
-  const { PublicKey } = peer.crypto;
+  const { PublicKey } = peer.near;
   const ed = k["ed25519Key"];
   const secp = k["secp256k1Key"];
   try {
@@ -228,6 +228,28 @@ function publicKeyString(k: Decoded["delegateAction"]["publicKey"]): string | nu
     return null;
   }
   return null;
+}
+
+const KEY_KINDS: ReadonlySet<string> = new Set(["ed25519Key", "secp256k1Key"]);
+const SIGNATURE_KINDS: ReadonlySet<string> = new Set(["ed25519Signature", "secp256k1Signature"]);
+
+/** True when a decoded borsh enum value is one of `kinds`. */
+function isKind(v: unknown, kinds: ReadonlySet<string>): boolean {
+  if (!isObject(v)) return false;
+  const names = Object.keys(v);
+  return names.length === 1 && kinds.has(names[0]!);
+}
+
+/**
+ * True when the signature and every key in a decoded signed delegate are Ed25519 or secp256k1: the delegate's key and
+ * the key of each `stake`, `addKey` or `deleteKey` action.
+ */
+function edOrSecp(d: Decoded): boolean {
+  if (!isKind(d.signature, SIGNATURE_KINDS) || !isKind(d.delegateAction.publicKey, KEY_KINDS)) return false;
+  return d.delegateAction.actions.every((a) => {
+    const keyed = a["stake"] ?? a["addKey"] ?? a["deleteKey"];
+    return keyed === undefined || (isObject(keyed) && isKind(keyed["publicKey"], KEY_KINDS));
+  });
 }
 
 // ── Settlement.
@@ -389,8 +411,7 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 /** The delegate action for the chosen option: one `ft_transfer` whose memo is the hash's LCP string. */
 async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal> {
   if (peer === undefined) return refusal("near/peer-missing");
-  const { PublicKey } = peer.crypto;
-  const { SignedDelegate, Signature, actionCreators, buildDelegateAction, encodeDelegateAction, encodeSignedDelegate } = peer.tx;
+  const { PublicKey, Signature, actions, buildDelegateAction, encodeDelegateAction, encodeSignedDelegate } = peer.near;
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, payer, publicKey, accessKeyNonce, finalHeight } = c;
   const ok = chosen(required, accepted, check);
@@ -398,12 +419,13 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   if (typeof payer !== "string" || !ACCOUNT.test(payer)) return refusal("x402/option-malformed");
-  let key: NearCrypto.PublicKey;
+  let key: NearApi.PublicKey;
   try {
     key = PublicKey.fromString(publicKey);
   } catch {
     return refusal("x402/option-malformed");
   }
+  if (key.keyType !== 0 && key.keyType !== 1) return refusal("x402/option-malformed");
   if (typeof accessKeyNonce !== "bigint" || accessKeyNonce < 0n || accessKeyNonce + 1n >= U64_LIMIT) {
     return refusal("x402/option-malformed");
   }
@@ -416,7 +438,7 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   const delegateAction = buildDelegateAction({
     senderId: payer,
     receiverId: accepted.asset,
-    actions: [actionCreators.functionCall("ft_transfer", args, FT_TRANSFER_GAS, 1n)],
+    actions: [actions.functionCall("ft_transfer", args, FT_TRANSFER_GAS, 1n)],
     nonce: accessKeyNonce + 1n,
     maxBlockHeight: finalHeight + window,
     publicKey: key,
@@ -430,10 +452,10 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
       if (!((keyType === 0 && bytes.length === 64) || (keyType === 1 && bytes.length === 65))) {
         return refusal("x402/signature-malformed");
       }
-      const signed = new SignedDelegate({
+      const signed: NearApi.SignedDelegate = {
         delegateAction,
         signature: new Signature({ keyType, data: Uint8Array.from(bytes) }),
-      });
+      };
       const signedDelegateAction = Buffer.from(encodeSignedDelegate(signed)).toString("base64");
       return paymentWith(required, accepted, { signedDelegateAction });
     },

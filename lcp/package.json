@@ -187,24 +187,17 @@
   },
   "peerDependencies": {
     "@mysten/sui": "2.31.3",
-    "@near-js/crypto": "2.5.1",
-    "@near-js/transactions": "2.5.1",
     "@solana/kit": "8.3.0",
     "@stacks/transactions": "7.6.0",
     "@stellar/stellar-sdk": "17.1.0",
     "@ton/core": "0.63.1",
     "algosdk": "3.8.0",
-    "borsh": "1.0.0",
+    "borsh": "^2.0.0",
+    "near-api-js": "^7.3.1",
     "ripple-binary-codec": "2.11.0"
   },
   "peerDependenciesMeta": {
     "@mysten/sui": {
-      "optional": true
-    },
-    "@near-js/crypto": {
-      "optional": true
-    },
-    "@near-js/transactions": {
       "optional": true
     },
     "@solana/kit": {
@@ -225,6 +218,9 @@
     "borsh": {
       "optional": true
     },
+    "near-api-js": {
+      "optional": true
+    },
     "ripple-binary-codec": {
       "optional": true
     }
@@ -233,8 +229,6 @@
     "@aptos-labs/ts-sdk": "7.3.0",
     "@casper-ecosystem/casper-eip-712": "1.2.1",
     "@mysten/sui": "2.31.3",
-    "@near-js/crypto": "2.5.1",
-    "@near-js/transactions": "2.5.1",
     "@solana/kit": "8.3.0",
     "@stacks/transactions": "7.6.0",
     "@stellar/stellar-sdk": "17.1.0",
@@ -242,13 +236,14 @@
     "@ton/crypto": "3.3.0",
     "algosdk": "3.8.0",
     "bolt11": "1.4.1",
-    "borsh": "1.0.0",
+    "borsh": "2.0.0",
     "bs58check": "4.0.0",
     "canonicalize": "5.1.0",
     "cborg": "6.1.2",
     "esbuild": "0.28.2",
     "js-sha3": "0.13.0",
     "light-bolt11-decoder": "3.2.0",
+    "near-api-js": "7.3.1",
     "ripple-binary-codec": "2.11.0",
     "starknet": "10.7.6",
     "viem": "2.56.8"
