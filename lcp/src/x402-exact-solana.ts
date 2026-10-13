@@ -35,7 +35,7 @@ import {
   withoutExtra,
   type X402Read,
 } from "./internal/x402.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -88,8 +88,12 @@ function payable(o: PaymentRequirements): boolean {
   return typeof o.amount === "string" && DECIMAL.test(o.amount) && BigInt(o.amount) < U64_LIMIT;
 }
 
-/** The option without `extra.memo`: the option as the seller issued it, before the carrier was placed. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option without `extra.memo`: the option as the seller issued it, before the carrier was placed. An option that
+ * carries a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return withoutExtra(option, "memo");
 }
 

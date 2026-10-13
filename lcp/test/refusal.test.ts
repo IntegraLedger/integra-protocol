@@ -217,6 +217,42 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     });
   }
 
+  // On the x402 pairings whose option carries the hash (in the member the pairing's carrier names), unplaced gives the
+  // option as the seller issued it: without that member, or on x402/exact/stellar with payTo back to its base account.
+  // It refuses an option that carries a refused member with x402/option-malformed before it removes anything, whether
+  // or not the carrier is in place; a value that is not an object comes back as it is. Each option is the one its
+  // pairing's vector file advertises (buyer row B2, the document's one option), with the carrier in place.
+  const placedOf: Map<string, unknown> = new Map(
+    readdirSync(dir)
+      .filter((n) => n.endsWith(".json"))
+      .flatMap((n) => {
+        const d = JSON.parse(readFileSync(new URL(n, dir), "utf8")) as {
+          buyer?: { rows: { name: string; pairing: string; input: { doc?: { accepts?: unknown[] } } }[] };
+        };
+        return (d.buyer?.rows ?? [])
+          .filter((r) => r.name === "B2" && r.pairing.startsWith("x402/") && r.input.doc?.accepts?.length === 1)
+          .map((r) => [r.pairing, r.input.doc?.accepts?.[0]] as const);
+      }),
+  );
+  const carrierX402 = ["x402/exact/solana"];
+  for (const id of carrierX402) {
+    it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
+      const option = placedOf.get(id);
+      expect(option).toBeTypeOf("object");
+      const unplaced = BINDINGS.find((b) => b.id === id)?.unplaced as (o: unknown) => unknown;
+      const issued = unplaced(option);
+      expect(isRefusal(issued)).toBe(false);
+      expect(issued).not.toEqual(option);
+      const expected = { refused: true, code: "x402/option-malformed" };
+      for (const v of [withRefused(option), withRefused(issued), shaped(), refusal("ack/token-malformed")]) {
+        const out = unplaced(v);
+        expect(out).toEqual(expected);
+        expect(isRefusal(out)).toBe(true);
+      }
+      for (const v of ["exact", 7, null]) expect(unplaced(v)).toBe(v);
+    });
+  }
+
   // The MPP pairings whose unplaced hands the challenge back as given (the hash rides in the challenge id and opaque,
   // never in request) refuse a challenge that carries a refused member with mpp/challenge-malformed, the code the
   // challenge checks give a challenge that is not challenge-shaped (docs/reference/refusals.md); a value that is not an
