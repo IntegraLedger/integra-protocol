@@ -138,7 +138,7 @@ option's (`ucp/option-not-this-checkout`).
 
 | Pairing | Buyer side | `bound` |
 |---|---|---|
-| `ucp/checkout/ap2-mandate`, `ucp/booking/ap2-mandate` | `read` requires the business's `ap2.merchant_authorization` (`ucp/ap2-not-active` otherwise). `build` returns the checkout unchanged for the buyer's mandate issuer, once its link carries H, and `complete(checkout_mandate)` gives what the buyer presents: the mandate and the checkout JWT its closed mandate discloses, so `bound` on it checks only that the two agree. | Reads the buyer's mandate, one SD-JWT or AP2's chain of the open and closed mandates joined by `~~`, checks AP2's `checkout_hash` against the presented `checkout_jwt`, and that any checkout the closed mandate discloses is that JWT, then reads H from that checkout's `legal_context` link. It verifies no signature, no `cnf` delegation and no link between the chained mandates. For AP2's latest-checkout check, build `checkout_jwt` from your own `ap2.merchant_authorization` for the checkout's current state, with its payload attached, not from the mandate: `bound` then refuses `ap2/checkout-not-latest` when the mandate commits to another state of the checkout. |
+| `ucp/checkout/ap2-mandate`, `ucp/booking/ap2-mandate` | `read` requires the business's `ap2.merchant_authorization` (`ucp/ap2-not-active` otherwise). `build` returns the checkout unchanged for the buyer's mandate issuer, once its link carries H, and `complete(checkout_mandate)` gives what the buyer presents: the mandate and the checkout JWT its closed mandate discloses, so `bound` on it checks only that the two agree. | Reads the buyer's mandate, one SD-JWT or AP2's chain of the open and closed mandates joined by `~~`, checks AP2's `checkout_hash` against the presented `checkout_jwt`, and that any checkout the closed mandate discloses is that JWT, then reads H from that checkout's `legal_context` link. It verifies no signature, no `cnf` delegation and no link between the chained mandates. UCP's AP2 Mandates extension has the business verify the checkout mandate's signatures, key binding and expiry itself; `bound` does not, so run that verification before relying on its result. For AP2's latest-checkout check, build `checkout_jwt` from your own `ap2.merchant_authorization` for the checkout's current state, with its payload attached, not from the mandate: `bound` then refuses `ap2/checkout-not-latest` when the mandate commits to another state of the checkout. |
 | `ucp/checkout/unsigned`, `ucp/booking/unsigned` | `read` gives H and the link. `build` refuses `ucp/nothing-to-sign`: UCP without the AP2 Mandates extension defines no buyer signature. | Refuses `ucp/not-buyer-signed`. |
 
 `legalContextLink(checkout)` reads the one `legal_context` entry of any checkout: two such entries are
@@ -213,8 +213,9 @@ commits to it through `checkout_hash`, the SHA-256 of that JWT. The pairing targ
   last SD-JWT, checks that its `checkout_hash` is the hash of the presented `checkout_jwt`
   (`ap2/checkout-not-latest` otherwise), and reads H from that JWT's payload. It verifies no signature, no `cnf`
   delegation and no `sd_hash` or `issuer_jwt_hash` link between the hops, and does not evaluate the open mandate's
-  constraints. Your AP2 stack verifies the chain: the first SD-JWT with the issuer's key, the closed mandate with the
-  key the open mandate delegates to in `cnf`, its `sd_hash` or `issuer_jwt_hash`, and the open mandate's constraints.
+  constraints. AP2 has the merchant verify the Checkout Mandate, and `bound` does not, so before relying on its result
+  your AP2 stack verifies the chain: the first SD-JWT with the issuer's key, the closed mandate with the key the open
+  mandate delegates to in `cnf`, its `sd_hash` or `issuer_jwt_hash`, and the open mandate's constraints.
 
 AP2 has the merchant check that `checkout_hash` matches the latest `checkout_jwt`. For that check, build `presented`
 from the mandate and the `checkout_jwt` you last sent for that checkout, not the buyer's copy: `bound` then refuses
