@@ -43,7 +43,7 @@ const HEDERA_NETWORKS: readonly HederaNetwork[] = Object.freeze([
 ]);
 
 /** MPP's EIP-155 chain ids for Hedera, mapped to their CAIP-2 networks. */
-export const HEDERA_CHAIN_IDS: Readonly<Record<number, HederaNetwork>> = Object.freeze({
+const HEDERA_CHAIN_IDS: Readonly<Record<number, HederaNetwork>> = Object.freeze({
   295: "hedera:mainnet",
   296: "hedera:testnet",
 });
