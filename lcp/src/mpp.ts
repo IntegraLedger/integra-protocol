@@ -863,20 +863,21 @@ function pattern(p: Omit<LcpPattern, "canonical" | "zeroPartyRecoverable" | "for
 const MEMO_PROVES =
   "The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the " +
   "challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction " +
-  "whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that id. The chain " +
-  "verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's " +
-  "TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash only through those " +
-  "7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. " +
+  "whose transferWithMemo call carries the attribution memo MPP's SDKs write, whose 7-byte nonce is keccak256 of " +
+  "that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic " +
+  "of the token's TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash " +
+  "only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the " +
+  "same 7 bytes. " +
   LIMIT;
 
 const PUSH_PROVES =
   "The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the " +
   "challenge's position, protected by the server's binding of the challenge. The payer signed and broadcast a Tempo " +
-  "transaction whose transferWithMemo call carries MPP's attribution memo, whose 7-byte nonce is keccak256 of that " +
-  "id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of " +
-  "the token's TransferWithMemo event, read after the money had moved. It ties the payment to the challenge " +
-  "instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second " +
-  "ATR whose challenge id gives the same 7 bytes. " +
+  "transaction whose transferWithMemo call carries the attribution memo MPP's SDKs write, whose 7-byte nonce is " +
+  "keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the " +
+  "memo topic of the token's TransferWithMemo event, read after the money had moved. It ties the payment to the " +
+  "challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct " +
+  "a second ATR whose challenge id gives the same 7 bytes. " +
   LIMIT;
 
 const CALL_PROVES =

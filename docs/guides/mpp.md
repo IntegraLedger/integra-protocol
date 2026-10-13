@@ -101,7 +101,7 @@ Payment scheme's problem type and HTTP status for a refusal code this package re
 |---|---|---|
 | `evm` | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` | The signed nonce, or the witness's `challengeHash`: keccak256 of the challenge id and realm (`challengeHash`). |
 | `evm` | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | Nothing signed or landed; H is in the challenge. |
-| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | MPP's attribution memo on the `transferWithMemo`, whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`): H is bound through those 7 bytes only. |
+| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | The attribution memo MPP's SDKs write on the `transferWithMemo` (the layout MPP's Hedera method specifies), whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`): H is bound through those 7 bytes only. A Tempo charge challenge whose `amount` is not 0 and that sets its own `methodDetails.memo` is refused (`mpp/carrier-taken`). |
 | `solana` | `mpp/charge/solana` | The one LCP-form Memo instruction, holding H's LCP string (the request's `externalId`); other Memo instructions, such as split labels, are not read. |
 | `stellar` | `mpp/charge/stellar` | The seller's muxed recipient address, whose 8-byte id is H's first 8 bytes: H is bound through those 8 bytes only. |
 | `xrpl` | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H itself (the request's `methodDetails.invoiceId`), in a Payment the payer signs with a single key. |
