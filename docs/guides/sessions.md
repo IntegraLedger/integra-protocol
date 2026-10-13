@@ -98,7 +98,7 @@ On top of the members every pairing has, a channel pairing has:
 | `channel.boundWithin(payment)` | seller | H from a payment within the channel, where the pairing's payments within carry it; otherwise a refusal. |
 | `channel.until(payment)` | seller | The channel's end in Unix seconds, where its opening sets one. |
 | `buildWithin(within, h)` | buyer | A later voucher, or the close, for a channel opened under H. It refuses a channel that was not. |
-| `closeRef(challenge, channel)` | seller | The read keys of the channel's close, on the MPP sessions and on `mpp/subscription/tempo`, where a third argument names the payer's account. |
+| `closeRef(challenge, channel)` | seller | The read keys of the channel's close, on the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger, and on `mpp/subscription/tempo`, where a third argument names the payer's account. |
 
 `buildWithin` exists on the two x402 channels and the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger.
 On MPP it builds a voucher or the close. It does not build a top-up, which is a further deposit, or Solana's operator
@@ -254,8 +254,9 @@ Ledger session, each voucher signs the channel id and an amount, not H. The
 ## Reading settlement
 
 `reference(opening)` and `status(ref, reader)` read the opening's settlement, as on any pairing. On the MPP sessions
-and `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives the read keys of the close from the issued
-challenge and the channel, and `status` reads the close through the same reader. On `mpp/session/evm`, a transaction
+on EVM, Tempo, Hedera, Solana and the XRP Ledger, and on `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives
+the read keys of the close from the issued challenge and the channel, and `status` reads the close through the same
+reader. On `mpp/session/evm`, a transaction
 that is not a call closing that channel reads as pending, with the reason `not-a-close`. On `mpp/subscription/tempo`,
 the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
 channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
