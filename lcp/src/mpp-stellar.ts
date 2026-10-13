@@ -228,7 +228,12 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   };
 }
 
-/** The challenge as issued: a muxed `recipient` back to its base `G…` account, the member that stays in the digest. */
+/**
+ * The placed challenge with only the muxed id taken out: `request`'s muxed `recipient` back to its base `G…`
+ * account, the member that stays in the digest, and `request` re-encoded as base64url of the core's `canonicalJson`.
+ * `id`, `opaque` and every other member stay as placed. Without @stellar/stellar-sdk the challenge is returned
+ * unchanged.
+ */
 function unplaced(option: MppChallenge): MppChallenge {
   return withoutCarrier(option, unmux);
 }
