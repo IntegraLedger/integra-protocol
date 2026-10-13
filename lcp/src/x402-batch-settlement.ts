@@ -64,7 +64,7 @@ import {
   type SvmRef,
   type SvmTx,
 } from "./internal/svm.js";
-import type { BatchPaymentPayload } from "./internal/x402-batch-settlement.js";
+import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -1104,14 +1104,6 @@ export const batchSvm = Object.freeze({
 });
 
 // ── Cloudflare pairing ───────────────────────────────────────────────────────────────────────────────────────────
-
-/** The request's payment document: the option's amount and asset, with the challenge's `extensions` echoed. */
-export interface CloudflarePaymentPayload {
-  x402Version: 2;
-  payload: { amount: string; asset: string };
-  accepted: PaymentRequirements;
-  extensions: NonNullable<PaymentRequired["extensions"]>;
-}
 
 async function cfBuild(
   c: { required: PaymentRequired; accepted: PaymentRequirements },
