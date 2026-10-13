@@ -197,6 +197,14 @@ export function withExtra(option: PaymentRequirements, key: string, value: Json)
   return { ...option, extra: { ...(option.extra ?? {}), [key]: value } };
 }
 
+/** A copy of an option with `extra[key]` removed; `extra` itself is removed when that leaves it empty. */
+export function withoutExtra(option: PaymentRequirements, key: string): PaymentRequirements {
+  if (!isObject(option) || !isObject(option.extra) || !(key in option.extra)) return option;
+  const { [key]: _, ...rest } = option.extra;
+  const { extra: __, ...base } = option;
+  return Object.keys(rest).length === 0 ? base : { ...base, extra: rest };
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));

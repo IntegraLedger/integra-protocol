@@ -33,6 +33,7 @@ import {
   readFor,
   withExtra,
   withOption,
+  withoutExtra,
   type X402Read,
 } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -40,7 +41,6 @@ import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
   paymentWith,
   tie,
-  withoutExtra,
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,

@@ -241,14 +241,6 @@ export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequi
   };
 }
 
-/** A copy of an option with `extra[key]` removed; `extra` itself is removed when that leaves it empty. */
-export function withoutExtra(option: PaymentRequirements, key: string): PaymentRequirements {
-  if (!isObject(option) || !isObject(option.extra) || !(key in option.extra)) return option;
-  const { [key]: _, ...rest } = option.extra;
-  const { extra: __, ...base } = option;
-  return Object.keys(rest).length === 0 ? base : { ...base, extra: rest };
-}
-
 /** The filter of EVM pairing `id` at advertise: the option names `id`, and `build` can pay it. */
 function evmServes(id: X402PairingId, payable: (o: PaymentRequirements) => boolean): OptionFilter {
   return (o) => {
