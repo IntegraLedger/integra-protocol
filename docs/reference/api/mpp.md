@@ -963,8 +963,16 @@ not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h`
 positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
 `accessKey` that is not an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
 present, an address, or a `revokes` that is not an object whose `account` and `keyId` are addresses, is pending
-`unreadable`, with no call made; so is a ref that names none of the keys these pairings' references write for the
-opening or the close (`namesTheRead`), and what `evmStatus` reads as `unreadable`. At most four calls.
+`unreadable`, with no call made; so is a ref that names none of the keys the three pairings' `reference`, `closeRef`
+and `keySearch` write for the opening or the close (`opens`, `opened`, `closes`, `revokes`, an `accessKey` with
+`account`, or a binding log under `AuthorizationUsed`, `ChannelClosed` or `KeyAuthorizationWitness`), and what
+`evmStatus` reads as `unreadable`. At most four calls.
+
+This function accepts a key of any of the three pairings. Each pairing's own `status` reads a ref only when it names
+one of the keys that pairing writes and none of the other two pairings' keys: on `mpp/session/evm` `opens`, `closes`
+or a binding log under `AuthorizationUsed`; on `mpp/session/tempo` `opened` or a binding log under `ChannelClosed`;
+on `mpp/subscription/tempo` `revokes`, an `accessKey` with `account` or a binding log under
+`KeyAuthorizationWitness`. Any other ref is pending `unreadable` there, with no call made.
 
 #### Parameters
 
