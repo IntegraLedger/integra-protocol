@@ -49,6 +49,5 @@ export {
   sessionProof,
   sessionSalt,
   solanaVoucher,
-  svmCloseStatus,
 } from "./internal/svm-session.js";
 export type { SvmCloseRef, SvmCloseStatus } from "./internal/svm-session.js";

@@ -1,7 +1,7 @@
 /**
  * MPP Solana session pieces: the channel program's `open` instruction and its 8-byte salt, the 50-byte voucher, the
  * session bearer proof, and the read of a reported close. Discriminators are the reference program's. The public names
- * are re-exported by `../svm.ts`.
+ * are re-exported by `../svm.ts`; the read of a reported close serves `mpp/session/solana`'s `status`.
  */
 import { canonicalJson, toRawBytes, type AtrHash } from "../core.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
