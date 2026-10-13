@@ -20,7 +20,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, sameBytes, toBase64, U64_LIMIT } from "./rail-bytes.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -336,8 +336,12 @@ function presentedTx(presented: unknown): { network: SuiNetwork; tx: SuiTx } | R
   return { network: parts.accepted.network as SuiNetwork, tx };
 }
 
-/** The option unchanged: the hash rides in the transaction, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: the hash rides in the transaction, not in the option. An option that carries a `refused` member
+ * is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 
