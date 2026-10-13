@@ -448,7 +448,7 @@ import { exactSvm, pairingOf } from "@integraledger/lcp/x402-exact-solana";
 
 **Values (2):** `exactSvm`, `pairingOf`.
 
-**Types (2):** `SvmChoice`, `SvmUnsigned`.
+**Types (1):** `SvmUnsigned`.
 
 ## `@integraledger/lcp/x402-exact-stellar`
 

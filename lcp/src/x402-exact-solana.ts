@@ -53,7 +53,7 @@ export interface SvmUnsigned<P = SvmPaymentPayload> {
   complete(signature: Uint8Array): P | Refusal;
 }
 
-export interface SvmChoice {
+interface SvmChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   payer: string;
