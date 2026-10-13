@@ -24,8 +24,7 @@ seller advertises into and what the buyer presents:
 
 The "Buyer signs H" column is each pairing's `pattern.buyerSigns`. The
 [pairings reference](../reference/pairings.md#what-each-binding-proves) gives the sentence each pairing's record
-states about what a payment through it proves, including which signatures this package verifies and which it leaves
-to the network or the provider.
+states about what a payment through it proves.
 
 Where the pairing's `publicProof` is false, the seller advertises an
 [agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the link; the buyer gate declines such an offer
