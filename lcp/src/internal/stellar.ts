@@ -660,6 +660,35 @@ type Named =
   | { state: "pending"; why: "not-found" | "unreadable" }
   | { state: "other"; why: "transaction-failed" | "not-this-instrument" };
 
+const TX_HASH = /^[0-9a-fA-F]{64}$/;
+const AUTH_DIGEST = /^0x[0-9a-fA-F]{64}$/;
+const U64_DECIMAL = /^(0|[1-9][0-9]{0,19})$/;
+
+/** A ledger sequence number: an integer from 0 to 2^32 − 1. */
+function isLedger(n: unknown): n is number {
+  return Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
+}
+
+/**
+ * True when the fields a read compares the payment with, or looks it up by, are in the forms `reference` writes and
+ * the caller completes: a Stellar network; an `authDigest` of `0x` and 64 hex digits with an `expiration` ledger, or
+ * neither (the MPP push form whose payer is the transaction's source account); `asset` a contract strkey and `toBase`
+ * an account or contract strkey; `toId` a u64 in decimal; and a `fromLedger` ledger.
+ */
+function refWellFormed(ref: StellarRef): boolean {
+  const entry = ref.authDigest !== undefined || ref.expiration !== undefined;
+  return (
+    isStellarNetwork(ref.network) &&
+    (!entry || (typeof ref.authDigest === "string" && AUTH_DIGEST.test(ref.authDigest) && isLedger(ref.expiration))) &&
+    isContract(ref.asset) &&
+    (isAccount(ref.toBase) || isContract(ref.toBase)) &&
+    typeof ref.toId === "string" &&
+    U64_DECIMAL.test(ref.toId) &&
+    BigInt(ref.toId) < 1n << 64n &&
+    isLedger(ref.fromLedger)
+  );
+}
+
 /**
  * Reads one transaction. Settled when it succeeded and the payer's first address-credential entry that carries its
  * `transfer` has the preimage digest and `to` id the ref records. A transaction that failed, or succeeded with another
@@ -708,8 +737,12 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
  * ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
  * transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
  * `latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
- * is never read as absence. A failed read, or a reader for another network, is pending, and a ref whose `authDigest` is
- * present and not a string is pending `unreadable`, with nothing read. One call when the named transaction settles or
+ * is never read as absence. A failed read, or a reader for another network, is pending. A ref that lacks a field the
+ * read uses, or holds one in another form than `reference` writes, is pending `unreadable`, with nothing read: a
+ * `transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
+ * an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
+ * strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
+ * `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. One call when the named transaction settles or
  * a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
  * without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
  * `expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
@@ -723,11 +756,13 @@ export async function stellarStatus(
     !isObject(ref) ||
     !isObject(reader) ||
     reader.network !== ref.network ||
-    (ref.authDigest !== undefined && typeof ref.authDigest !== "string")
+    typeof ref.transaction !== "string" ||
+    !TX_HASH.test(ref.transaction) ||
+    !refWellFormed(ref)
   ) {
     return { state: "pending", why: "unreadable" };
   }
-  const named = await readNamed(ref, ref.transaction, reader);
+  const named = await readNamed(ref, ref.transaction.toLowerCase(), reader);
   if (named.state === "settled") return named;
   if (named.why === "unreadable") return { state: "pending", why: "unreadable" };
   const expiration = ref.expiration;

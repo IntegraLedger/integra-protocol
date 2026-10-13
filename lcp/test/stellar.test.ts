@@ -22,6 +22,7 @@ import {
 } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { counting } from "./fixtures/counting-reader.js";
 import { account, muxed, signed, simulated, type Case } from "./fixtures/stellar-signed-invocation.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
@@ -228,6 +229,46 @@ describe("x402-exact-stellar.json", () => {
       transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }) as never,
     };
     expect(await stellarStatus(ref, unnamed)).toEqual({ state: "pending", why: "not-found" });
+  });
+
+  // The forms `reference` writes (V3.expectReference, V5.ref): a 64-hex transaction hash, a 0x-prefixed 64-hex entry
+  // digest with its u32 expiration ledger, a contract asset, an account toBase, the muxed id as a u64 in decimal, and a
+  // u32 fromLedger. docs/guides/rails.md: a reference that lacks a field status reads, or holds it malformed, is pending
+  // unreadable, with nothing read. The reader answers V5's row whose well-formed ref reads failed expired.
+  it("V5: a ref field outside the form reference writes is pending unreadable, with nothing read", async () => {
+    const expired = V.V5.rows.find(
+      (r: { case: string }) => r.case === "the named transaction is not found; past the expiration ledger, the search is complete and lists nothing",
+    );
+    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
+    expect(await stellarStatus(ref, readerFor(expired))).toEqual({ state: "failed", why: "expired" });
+    const { authDigest: _digest, ...noDigest } = V.V5.ref;
+    const { expiration: _expiration, ...noExpiration } = V.V5.ref;
+    const bad: readonly (readonly [string, Record<string, unknown>])[] = [
+      ["transaction x", { ...V.V5.ref, transaction: "x" }],
+      ["transaction with 0x", { ...V.V5.ref, transaction: `0x${V.V5.ref.transaction}` }],
+      ["authDigest of 31 bytes", { ...V.V5.ref, authDigest: V.V5.ref.authDigest.slice(0, -2) }],
+      ["authDigest without 0x", { ...V.V5.ref, authDigest: V.V5.ref.authDigest.slice(2) }],
+      ["expiration without authDigest", noDigest],
+      ["authDigest without expiration", noExpiration],
+      ["expiration a string", { ...V.V5.ref, expiration: "1000" }],
+      ["expiration 2^32", { ...V.V5.ref, expiration: 2 ** 32 }],
+      ["asset x", { ...V.V5.ref, asset: "x" }],
+      ["asset an account", { ...V.V5.ref, asset: V.V5.ref.toBase }],
+      ["toBase the muxed form", { ...V.V5.ref, toBase: V.V1.M }],
+      ["toId x", { ...V.V5.ref, toId: "x" }],
+      ["toId -1", { ...V.V5.ref, toId: "-1" }],
+      ["toId 2^64", { ...V.V5.ref, toId: "18446744073709551616" }],
+      ["fromLedger a string", { ...V.V5.ref, fromLedger: "900" }],
+      ["fromLedger -1", { ...V.V5.ref, fromLedger: -1 }],
+    ];
+    for (const [name, r] of bad) {
+      const { reader, calls } = counting(readerFor(expired));
+      expect([name, await stellarStatus(refOf(r) as StellarRef & { transaction: string }, reader), calls]).toEqual([
+        name,
+        { state: "pending", why: "unreadable" },
+        [],
+      ]);
+    }
   });
 
   it("V5 rebuilt: V3's signed entry in another transaction is the same instrument", () => {
