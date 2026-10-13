@@ -12,6 +12,7 @@ import {
   advertiseFor,
   chosen,
   legalContextOf,
+  paymentWith,
   presentedWith,
   readFor,
   type OptionFilter,
@@ -20,7 +21,6 @@ import {
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  paymentWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

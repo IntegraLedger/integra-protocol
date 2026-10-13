@@ -9,6 +9,7 @@ import {
   chosen,
   filterOf,
   offeredAt,
+  paymentWith,
   readFor,
   withExtra,
   withOption,
@@ -30,7 +31,6 @@ import {
 import { isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  paymentWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

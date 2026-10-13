@@ -55,10 +55,10 @@ import {
   MAX_OPTIONS,
   advertiseFor,
   isOffered,
+  paymentWith,
   readFor,
   type OptionFilter,
   type X402Advertise,
-  type X402Payment,
   type X402Read,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -228,17 +228,6 @@ export function tie(
   request: RequestCommitment,
 ): ["x402", { accepts: readonly PaymentRequirements[]; request: RequestCommitment }] {
   return ["x402", { accepts, request }];
-}
-
-/** The payment for the chosen option: the challenge's `resource` and `extensions` unchanged, omitted when absent. */
-export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequirements, payload: P): X402Payment<P> {
-  return {
-    x402Version: 2,
-    ...(required.resource !== undefined ? { resource: required.resource } : {}),
-    accepted,
-    payload,
-    ...(required.extensions !== undefined ? { extensions: required.extensions } : {}),
-  };
 }
 
 /** The filter of EVM pairing `id` at advertise: the option names `id`, and `build` can pay it. */

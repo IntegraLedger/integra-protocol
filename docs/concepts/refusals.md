@@ -76,10 +76,6 @@ The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which ar
   is not one;
 - on a network other than `starknet:SN_MAIN` and `starknet:SN_SEPOLIA`: `chainIdFelt`.
 
-These exports throw a `TypeError` too:
-
-- on a null or missing argument: `paymentWith` (its document).
-
 Every other function answers a caller's input with a value, never a throw: a refusal, a pending state, `false` or
 `{ complete: false }` from a read, or, for `unplaced`, its argument itself when that is not an option.
 

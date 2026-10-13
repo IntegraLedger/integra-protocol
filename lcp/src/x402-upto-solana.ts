@@ -30,6 +30,7 @@ import {
   chosen,
   filterOf,
   offeredAt,
+  paymentWith,
   readFor,
   withExtra,
   withOption,
@@ -39,7 +40,6 @@ import {
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
-  paymentWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

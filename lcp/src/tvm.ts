@@ -14,6 +14,7 @@ import {
   advertiseFor,
   chosen,
   offeredAt,
+  paymentWith,
   presentedWith,
   readFor,
   type OptionFilter,
@@ -32,7 +33,6 @@ export interface TonCell {
   hash(level?: number): Uint8Array;
 }
 import {
-  paymentWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

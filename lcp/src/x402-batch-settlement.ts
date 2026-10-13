@@ -68,6 +68,7 @@ import {
   filterOf,
   legalContextOf,
   offeredAt,
+  paymentWith,
   readFor,
   withExtra,
   withOption,
@@ -76,7 +77,6 @@ import {
 } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
-  paymentWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

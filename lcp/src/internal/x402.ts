@@ -205,6 +205,17 @@ export function withoutExtra(option: PaymentRequirements, key: string): PaymentR
   return Object.keys(rest).length === 0 ? base : { ...base, extra: rest };
 }
 
+/** The payment for the chosen option: the challenge's `resource` and `extensions` unchanged, omitted when absent. */
+export function paymentWith<P>(required: PaymentRequired, accepted: PaymentRequirements, payload: P): X402Payment<P> {
+  return {
+    x402Version: 2,
+    ...(required.resource !== undefined ? { resource: required.resource } : {}),
+    accepted,
+    payload,
+    ...(required.extensions !== undefined ? { extensions: required.extensions } : {}),
+  };
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));
