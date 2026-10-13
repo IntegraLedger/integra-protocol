@@ -114,7 +114,8 @@ deal value.
 
 ### SessionChoice
 
-The buyer's inputs to `build`. No check reads them.
+The buyer's inputs to `build`. `build` checks their form and that the chosen challenge's id carries H; it compares no
+deal value.
 
 #### Extends
 
@@ -202,8 +203,9 @@ as signed; the cumulative amount to sign; and the action.
 
 ### StripeSubscriptionReceipt
 
-The Stripe subscription's activation receipt, the `Payment-Receipt` payload decoded from its base64url JSON (or the
-MCP transport's receipt object as given). The seller passes it when it reports the opening paid.
+The Stripe subscription's activation receipt: the `Payment-Receipt` payload the seller's server answered the opening
+with, decoded from its base64url JSON (or the MCP transport's receipt object as given). `channel.ref` takes it with
+the opening.
 
 #### Properties
 
@@ -448,16 +450,6 @@ its muxed id only: its base account stays a member of what was issued.
 ### chargeXrpl
 
 > `const` **chargeXrpl**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `XrplChargeUnsigned`\>; `carrier`: `"request.methodDetails.invoiceId"`; `claims`: `boolean`; `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)\>; `id`: `"mpp/charge/xrpl"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`MppChallenge`](#mppchallenge); \}\>
-
-***
-
-### EVM\_CLOSE\_SELECTORS
-
-> `const` **EVM\_CLOSE\_SELECTORS**: readonly \[`"0x0d65c51d"`, `"0x79d35ded"`, `"0x8e19899e"`\]
-
-The EVM session escrow's functions that finalize a channel, each taking the channel id as its first argument:
-`close(bytes32,uint128,bytes)`, `closeWithAuthorization(bytes32,uint128,uint256,uint256,bytes,bytes)` and
-`withdraw(bytes32)`.
 
 ***
 
@@ -941,8 +933,9 @@ naming the channel: on v2 its data word 3 (the salt) is `h`; on v1 the channel i
 salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction, read by `eth_getTransactionByHash`,
 must be sent to the escrow and hold its open call for the channel: `open` from the payer, or `openWithPermit2` with
 the payer as its `from`. An open call sent to the escrow that opens another channel is failed `open-call-not-found`
-where `ref.settleBy` is absent and pending where it is present; any other transaction, one sent through an ERC-4337
-EntryPoint included, is pending `open-call-not-found`. Where `ref.closes` is present, the
+where `ref.settleBy` is absent and the receipt's block is at or below the `finalized` mark, and pending otherwise;
+any other transaction, one sent through an ERC-4337 EntryPoint included, is pending `open-call-not-found`. Where
+`ref.closes` is present, the
 succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
 whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
 succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
@@ -953,7 +946,8 @@ not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h`
 positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
 `accessKey` that is not an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
 present, an address, or a `revokes` that is not an object whose `account` and `keyId` are addresses, is pending
-`unreadable`, with no call made; so is what `evmStatus` reads as `unreadable`. At most four calls.
+`unreadable`, with no call made; so is a ref that names none of the keys these pairings' references write for the
+opening or the close (`namesTheRead`), and what `evmStatus` reads as `unreadable`. At most four calls.
 
 #### Parameters
 
