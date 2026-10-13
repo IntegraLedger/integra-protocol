@@ -151,7 +151,7 @@ describe("mpp-challenge.json", () => {
     expect(pairingsOf(md({ credentialTypes: ["permit2", "card"] }))).toEqual({ refused: true, code: "mpp/credential-types" });
     expect(pairingsOf(md({ credentialTypes: [] }))).toEqual({ refused: true, code: "mpp/credential-types" });
     expect(pairingsOf(md({ credentialTypes: ["permit2"], splits: [] }))).toEqual({ refused: true, code: "mpp/splits-malformed" });
-    expect(pairingsOf(md({ credentialTypes: ["permit2"], splits: [{ recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72", amount: "0" }] })))
+    expect(pairingsOf(md({ credentialTypes: ["permit2"], splits: [{ recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72", amount: "1.5" }] })))
       .toEqual({ refused: true, code: "mpp/splits-malformed" });
     const eleven = Array.from({ length: 11 }, () => ({ recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72", amount: "1" }));
     expect(pairingsOf(md({ credentialTypes: ["permit2"], splits: eleven }))).toEqual({ refused: true, code: "mpp/splits-malformed" });
@@ -163,6 +163,16 @@ describe("mpp-challenge.json", () => {
     expect(pairingsOf(memoT)).toEqual({ refused: true, code: "mpp/carrier-taken" });
     const pushOnlyFeePayer = challenge("tempo", "charge", JSON.stringify({ amount: "1", currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { supportedModes: ["push"], feePayer: true } }));
     expect(pairingsOf(pushOnlyFeePayer)).toEqual({ refused: true, code: "mpp/modes-pull-only" });
+  });
+
+  // MPP's EVM charge draft (draft-evm-charge-00, "Payment Splits"): a split's `amount` is "Amount in base units for this
+  // recipient", and the constraints bound the splits' count and their sum ("strictly less than `amount`"), not the sign
+  // of one split.
+  it("an EVM split of amount 0 is accepted, and leaves Permit2", () => {
+    const zeroSplit = challenge("evm", "charge", JSON.stringify({ amount: "10000", currency: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", recipient: "0x209693Bc6afc0C5328bA36FaF03C514EF312287C", methodDetails: { chainId: 84532, splits: [{ recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72", amount: "0" }] } }));
+    expect(pairingsOf(zeroSplit)).toEqual({ refused: true, code: "mpp/credential-types" });
+    const permit2 = challenge("evm", "charge", JSON.stringify({ amount: "10000", currency: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", recipient: "0x209693Bc6afc0C5328bA36FaF03C514EF312287C", methodDetails: { chainId: 84532, credentialTypes: ["permit2", "authorization"], splits: [{ recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72", amount: "0" }] } }));
+    expect(pairingsOf(permit2)).toEqual(["mpp/charge/evm/permit2"]);
   });
 
   it("place and read refusals", () => {

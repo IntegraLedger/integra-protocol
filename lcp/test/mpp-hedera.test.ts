@@ -180,6 +180,28 @@ describe("mpp-charge-hedera.json", () => {
     expect(advertised(placed({ ...V.fixed.request, amount: "0", splits: [] }))).toEqual({ refused: true, code: "hedera/option-malformed" });
   });
 
+  // draft-hedera-charge-00 (`splits`): each entry's `amount` is "Amount in the same base units and token as the primary
+  // `amount`", with no sign rule of its own; the primary recipient's remainder "MUST be greater than zero". A token
+  // transfer list's checks (hiero-consensus-node CryptoTransferValidator.validateNonDuplicateFungibleTransfers) ask for
+  // a zero sum and no repeated account, not a non-zero entry.
+  it("a split of amount 0 is accepted, and built as its own token transfer entry", async () => {
+    const request = { ...V.fixed.request, splits: [{ recipient: "0.0.67890", amount: "0" }] };
+    expect(advertised(placed(request))).toEqual([placed(request)]);
+    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, request, {
+      payer: V.fixed.payer,
+      node: V.fixed.node,
+      validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
+      maxFee: BigInt(V.fixed.maxFee),
+    })) as HederaUnsigned;
+    const entries = lengthDelimited(u.request.bodyBytes, 14)
+      .flatMap((t) => lengthDelimited(t, 2))
+      .flatMap((l) => lengthDelimited(l, 2));
+    expect(entries.length).toBe(3);
+    // AccountAmount{accountID: AccountID{accountNum: 67890}}: a proto3 scalar set to its default is not serialized
+    // (the proto3 language guide, "Default Values"), so the entry is field 1 alone, `0a 04 18 b2 92 04`.
+    expect(hex(entries[2]!)).toBe("0a0418b29204");
+  });
+
   it("eight splits build ten token transfer entries, the most a Hedera transaction carries (hiero-consensus-node LedgerConfig tokenTransfers.maxLen, default 10)", async () => {
     const splits = Array.from({ length: 8 }, (_, i) => ({ recipient: `0.0.${70000 + i}`, amount: "1" }));
     const request = { ...V.fixed.request, splits };

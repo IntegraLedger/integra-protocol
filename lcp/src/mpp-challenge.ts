@@ -466,6 +466,12 @@ export type PairingCheck = (
   challenge: MppChallenge,
 ) => readonly MppPairing[] | Refusal;
 
+/**
+ * `charge` on `evm`: `chainId` a positive safe integer, `currency` and `recipient` addresses, `amount` a decimal, and
+ * `permit2Address` and `externalId`, when present, an address and a string; then the pairings `credentialTypes` names
+ * (absent: `transaction` and `hash`). `splits`, when present, holds 1 to 10 entries, each an address `recipient` and a
+ * decimal `amount`, zero included, and leaves only `permit2`.
+ */
 function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {
   if (!isPositiveInt(d["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
@@ -488,9 +494,7 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): 
   if (splits !== undefined) {
     if (!Array.isArray(splits) || splits.length < 1 || splits.length > 10) return refusal("mpp/splits-malformed");
     for (const s of splits) {
-      if (!isObject(s) || !isAddress(s["recipient"]) || !isDecimal(s["amount"]) || BigInt(s["amount"] as string) === 0n) {
-        return refusal("mpp/splits-malformed");
-      }
+      if (!isObject(s) || !isAddress(s["recipient"]) || !isDecimal(s["amount"])) return refusal("mpp/splits-malformed");
     }
     listed = listed.filter((p) => p === "mpp/charge/evm/permit2");
   }

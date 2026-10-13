@@ -47,14 +47,14 @@ export function isEntity(s: unknown): s is string {
   return typeof s === "string" && ENTITY.test(s);
 }
 
-/** A decimal below 2^63, zero included: an x402 Hedera option's amount. */
+/** A decimal below 2^63, zero included: an x402 Hedera option's amount, and each MPP Hedera charge split's amount. */
 export function amountOf(s: unknown): bigint | undefined {
   if (typeof s !== "string" || !DECIMAL.test(s)) return undefined;
   const v = BigInt(s);
   return v < INT64_LIMIT ? v : undefined;
 }
 
-/** A positive decimal below 2^63: an MPP Hedera charge request's amount, and each split's. */
+/** A positive decimal below 2^63: an MPP Hedera charge request's amount. */
 function positiveAmountOf(s: unknown): bigint | undefined {
   const v = amountOf(s);
   return v !== undefined && v > 0n ? v : undefined;
@@ -69,7 +69,10 @@ export function fromBase64(s: unknown): Uint8Array | null {
   return out;
 }
 
-/** The request's legs: the payer's debit of `amount`, the recipient's remainder, and each split, in `currency`. */
+/**
+ * The request's legs: the payer's debit of `amount`, the recipient's remainder, and each split, in `currency`. `amount`
+ * is positive and each split's amount a decimal below 2^63, zero included; the splits sum to less than `amount`.
+ */
 export function chargeLegs(
   request: unknown,
 ): { currency: string; amount: bigint; legs: readonly { account: string; amount: bigint }[] } | Refusal {
@@ -83,7 +86,7 @@ export function chargeLegs(
   const legs: { account: string; amount: bigint }[] = [];
   let splitTotal = 0n;
   for (const sp of splits) {
-    const a = isObject(sp) ? positiveAmountOf(sp["amount"]) : undefined;
+    const a = isObject(sp) ? amountOf(sp["amount"]) : undefined;
     if (!isObject(sp) || !isEntity(sp["recipient"]) || a === undefined) return refusal("hedera/option-malformed");
     legs.push({ account: sp["recipient"], amount: a });
     splitTotal += a;

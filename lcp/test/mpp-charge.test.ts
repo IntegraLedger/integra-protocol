@@ -338,6 +338,21 @@ describe("mpp-charge-evm-permit2.json", () => {
       code: "mpp/input-malformed",
     });
   });
+
+  // draft-evm-charge-00 ("Payment Splits"): the primary recipient receives `amount` minus the sum of the splits, and
+  // `transferDetails[0]` is the primary transfer and `transferDetails[i+1]` is `splits[i]`.
+  it("build writes a split of amount 0 as its own transfer, after the primary", async () => {
+    const r = JSON.parse(P.fixed.R_E6b);
+    r.methodDetails.splits = [{ amount: "0", recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72" }];
+    const ch = placedOf(challenge("evm", "charge", JSON.stringify(r)));
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    expect(u.request.typedData.primaryType).toBe("PermitBatchWitnessTransferFrom");
+    const cred = u.complete(P.MV6b.expectSignature) as MppCredential;
+    expect(cred.payload["transferDetails"]).toEqual([
+      { to: RECIPIENT_E, requestedAmount: "10000" },
+      { to: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72", requestedAmount: "0" },
+    ]);
+  });
 });
 
 describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
