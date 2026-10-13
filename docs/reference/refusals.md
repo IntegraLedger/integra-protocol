@@ -490,7 +490,7 @@ Algorand (`@integraledger/lcp/avm`).
 | `avm/peer-missing` | The optional peer dependency `algosdk` cannot be loaded to decode or build an Algorand transaction. |
 | `avm/signature-malformed` | The signature given to the Algorand `complete` is not 64 bytes. |
 | `avm/txn-malformed` | The Algorand payload has no `paymentGroup` array, the payment entry is not base64 msgpack within the caps that decodes as a signed transaction, or its note exceeds the bound. |
-| `avm/unreadable` | The Algorand reader threw or returned an answer that is not well formed. |
+| `avm/unreadable` | The Algorand reader threw or returned an answer that is not well formed; or the reference's transaction id is not the 52 base32 characters of a 32-byte hash, and nothing is read. |
 | `avm/wrong-reader` | The Algorand reader is missing or answers for a different network than the reference names. |
 
 ## aptos

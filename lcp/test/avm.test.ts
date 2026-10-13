@@ -171,6 +171,42 @@ describe("x402-exact-algorand.json", () => {
     expect(searched).toEqual([]);
   });
 
+  // As above for recover, beside a reader that answers V4's recover fixture, whose note gives the file's H, for any id.
+  it("V4: recover is avm/unreadable for a ref whose txid is not as reference writes it, with nothing read", async () => {
+    const ref = { network: V.V4.reference.network, txid: V.V4.reference.txid };
+    const searched: unknown[] = [];
+    const reader: AvmReader = {
+      network: V.V4.readerNetwork,
+      search: async (txid) => {
+        searched.push(txid);
+        return readerOf({}, V.V4.recover.answer).search(txid);
+      },
+    };
+    for (const txid of [ref.txid, V.V2.expectFeePayerTxid]) {
+      expect(await exactAvm.recover({ ...ref, txid }, reader)).toBe(V.V4.recover.expect);
+    }
+    expect(searched).toEqual([ref.txid, V.V2.expectFeePayerTxid]);
+    searched.length = 0;
+    const digest = base32.decode(ref.txid + "====");
+    const txids = [
+      ref.txid.toLowerCase(),
+      ref.txid.slice(0, 51),
+      ref.txid + "====",
+      ref.txid.slice(0, 51) + "B",
+      Buffer.from(digest).toString("hex"),
+      "",
+      null,
+      1,
+    ];
+    for (const txid of txids) {
+      expect(await exactAvm.recover({ ...ref, txid }, reader)).toEqual({ refused: true, code: "avm/unreadable" });
+    }
+    expect(searched).toEqual([]);
+    // A ref on another network than the reader's is avm/wrong-reader, whatever its txid.
+    const otherNetwork = { network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k", txid: null };
+    expect(await exactAvm.recover(otherNetwork as never, reader)).toEqual({ refused: true, code: "avm/wrong-reader" });
+  });
+
   // x402's Algorand scheme (x402-foundation/x402, specs/schemes/exact/scheme_exact_algo.md, "Signature Scheme") lets
   // a top-level transaction be authorized by an Ed25519 signature (sig), a k-of-n multisignature (msig) or a logic
   // signature (lsig). V2's payment transaction under each gives the file's H (FIPS 180-2's "abc") and V3's reference
