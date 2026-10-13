@@ -170,9 +170,18 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     });
   }
 
-  // The x402 pairings on other rails whose option carries no hash hand it back unchanged too, so their unplaced refuses
-  // one that carries a refused member with x402/option-malformed, the option-malformed code of the namespace the
-  // pairing's id begins with; a value that is not an object comes back as it is. Each option is its vector file's O.
+  // On the x402 pairings of other rails whose option carries no hash, unplaced hands the option back as it is given, so
+  // it refuses one that carries a refused member with x402/option-malformed, the option-malformed code of the namespace
+  // the pairing's id begins with; a value that is not an object comes back as it is. Each option is its vector file's
+  // O, and the batch pairings' are x402-batch-settlement.json's: the EVM channel's fixed option and EC1's accepted one.
+  const batch = JSON.parse(readFileSync(new URL("x402-batch-settlement.json", dir), "utf8")) as {
+    fixed: { evm: { option: object } };
+    EC1: { payload: { accepted: object } };
+  };
+  const batchOptions: Record<string, object> = {
+    "x402/batch-settlement/eip155": batch.fixed.evm.option,
+    "x402/batch-settlement/cloudflare": batch.EC1.payload.accepted,
+  };
   const noCarrier = [
     "x402/exact/algorand",
     "x402/exact/aptos",
@@ -186,13 +195,15 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/exact/starknet",
     "x402/exact/sui",
     "x402/exact/tron/lcp-trc20-memo",
+    "x402/batch-settlement/eip155",
+    "x402/batch-settlement/cloudflare",
   ];
   for (const id of noCarrier) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
       const b = BINDINGS.find((p) => p.id === id);
       expect(b).toBeDefined();
       const file = new URL(`${id.replaceAll("/", "-")}.json`, dir);
-      const option = (JSON.parse(readFileSync(file, "utf8")) as { fixed: { O: object } }).fixed.O;
+      const option = batchOptions[id] ?? (JSON.parse(readFileSync(file, "utf8")) as { fixed: { O: object } }).fixed.O;
       expect(option).toBeTypeOf("object");
       const unplaced = b!.unplaced as (o: unknown) => unknown;
       expect(unplaced(option)).toBe(option);

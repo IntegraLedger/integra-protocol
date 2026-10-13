@@ -75,7 +75,7 @@ import {
   withoutExtra,
   type X402Read,
 } from "./internal/x402.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -680,7 +680,14 @@ function evmAdvertise(
   return advertiseFor(filterOf(isId(EVM_ID), payable))(doc, h, link, offer, agreementUrl);
 }
 
-const identity = (option: PaymentRequirements): PaymentRequirements => option;
+/**
+ * The option unchanged, on the EVM and Cloudflare pairings: neither carries the hash inside the option. An option that
+ * carries a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
+  return option;
+}
 
 export const batchEvm = Object.freeze({
   id: EVM_ID,
@@ -701,7 +708,7 @@ export const batchEvm = Object.freeze({
       "ATR's hash. This does not show that amount, payee, asset or timing match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
-  unplaced: identity,
+  unplaced,
   tie,
   advertise: evmAdvertise,
   read: (doc: PaymentRequired): X402Read | Refusal => readFor(filterOf(isId(EVM_ID)))(doc),
@@ -1148,7 +1155,7 @@ export const batchCloudflare = Object.freeze({
       "match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
-  unplaced: identity,
+  unplaced,
   tie,
   advertise: advertiseFor(filterOf(isId(CF_ID))),
   read: (doc: PaymentRequired): X402Read | Refusal => readFor(filterOf(isId(CF_ID)))(doc),
