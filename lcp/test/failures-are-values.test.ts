@@ -19,7 +19,6 @@ import {
   eip3009TypedData,
   evmStatus,
   paymentHash,
-  permit2Status,
   permit2TypedData,
   redeemedLeafRecover,
   TRANSFER_TOPIC,
@@ -35,6 +34,7 @@ import {
   txIdText,
 } from "../src/hedera.js";
 import { BINDINGS } from "../src/index.js";
+import { permit2Status } from "../src/internal/evm.js";
 import { xrplCloseStatus } from "../src/internal/xrpl-session.js";
 import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
 import {

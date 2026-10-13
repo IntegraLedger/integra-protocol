@@ -25,7 +25,6 @@ import {
   isLog,
   isReceipt,
   paymentHash,
-  permit2Status,
   permit2TypedData,
   receiveTypedData,
   redeemedLeafRecover,
@@ -48,6 +47,7 @@ import {
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import { agreementIn } from "./internal/agreement.js";
+import { permit2Status } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
