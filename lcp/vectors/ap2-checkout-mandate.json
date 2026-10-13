@@ -357,7 +357,7 @@
    },
    "expect": {
     "refused": true,
-    "code": "ap2/legal-context-malformed"
+    "code": "ap2/too-large"
    }
   },
   {

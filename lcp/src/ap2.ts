@@ -201,7 +201,7 @@ function advertise(
   if (!isHttpsLink(link)) {
     return isOtherSchemeLink(link) ? refusal("ap2/link-not-https") : refusal("ap2/legal-context-malformed");
   }
-  if (link.length > MAX_LINK) return refusal("ap2/legal-context-malformed");
+  if (link.length > MAX_LINK) return refusal("ap2/too-large");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("ap2/link-not-https");
   if (agreementFaulted !== undefined) return refusal("ap2/legal-context-malformed");
@@ -248,7 +248,7 @@ function readCheckout(doc: Jws): { h: AtrHash; link: string; offer: Ap2Offer } |
       ? refusal("ap2/link-not-https")
       : refusal("ap2/legal-context-malformed");
   }
-  if (lc.url.length > MAX_LINK) return refusal("ap2/legal-context-malformed");
+  if (lc.url.length > MAX_LINK) return refusal("ap2/too-large");
   return { h: lc.h, link: lc.url, offer: { checkoutJwt: doc, payload, checkout: id } };
 }
 
@@ -282,7 +282,7 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
       ? refusal("ap2/link-not-https")
       : refusal("ap2/legal-context-malformed");
   }
-  if (lc.url.length > MAX_LINK) return refusal("ap2/legal-context-malformed");
+  if (lc.url.length > MAX_LINK) return refusal("ap2/too-large");
   return lc.h;
 }
 

@@ -248,3 +248,31 @@ describe("a non-https link gives one code on read and bound", () => {
     });
   });
 });
+
+// The 2,048-character link bound on read and bound: the code the file's advertise-long-link row gives for a link of
+// 2,049 characters (RFC 9901 §4 builds the closed mandate's disclosure).
+describe("a link of 2,049 characters gives one code on advertise, read and bound", () => {
+  const row = V.implementation.find((r: { name: string }) => r.name === "advertise-long-link");
+  const HX = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+  const long = `https://atr.seller.example/${"a".repeat(2049 - "https://atr.seller.example/".length)}`;
+  const payload = { id: "chk_2", legalContext: { type: "sha256", value: HX, legalContextUrl: long } };
+  const J = `${b64u('{"alg":"ES256","typ":"JWT"}')}.${b64u(JSON.stringify(payload))}.${"A".repeat(86)}`;
+  const D = b64u(JSON.stringify(["c2FsdA", "checkout_jwt", J]));
+  const M =
+    `${b64u('{"alg":"ES256","typ":"dc+sd-jwt"}')}.` +
+    `${b64u(JSON.stringify({ vct: "mandate.checkout.1", checkout_hash: sha256b64u(J), _sd: [sha256b64u(D)], _sd_alg: "sha-256" }))}.` +
+    `${"A".repeat(86)}~${D}~`;
+
+  it("the row's link is 2,049 characters and its code is the size code", () => {
+    expect(long.length).toBe(2049);
+    expect(row.expect).toEqual({ refused: true, code: "ap2/too-large" });
+  });
+
+  it("read gives the row's code", () => {
+    expect(checkoutMandate.read(J)).toEqual(row.expect);
+  });
+
+  it("bound gives the row's code", async () => {
+    expect(await checkoutMandate.bound({ checkout_mandate: M, checkout_jwt: J })).toEqual(row.expect);
+  });
+});

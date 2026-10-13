@@ -46,9 +46,9 @@ const MALFORMED = ["", "not a url", "https://", "https://exa mple.com/", "https:
 const LINK_MALFORMED = MALFORMED;
 /**
  * The pairings whose 2,048-character bound on the link answers their size code: an https link over it is
- * `<ns>/too-large`, as acp-checkout.json and ucp.json give for a link of 2,049 characters.
+ * `<ns>/too-large`, as acp-checkout.json, ap2-checkout-mandate.json and ucp.json give for a link of 2,049 characters.
  */
-const LINK_SIZE_CODE = new Set(["acp", "ucp"]);
+const LINK_SIZE_CODE = new Set(["acp", "ap2", "ucp"]);
 const linkCode = (prefix: string, bad: string) =>
   bad === TOO_LONG && LINK_SIZE_CODE.has(prefix) ? `${prefix}/too-large` : `${prefix}/legal-context-malformed`;
 
