@@ -232,7 +232,7 @@ import { APPROVE_SELECTOR, approveCalldata, CHANNEL_CLOSED_TOPIC, … } from "@i
 
 **Values (19):** `APPROVE_SELECTOR`, `approveCalldata`, `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `hederaChannelId`, `hederaChargeRequest`, `hederaIdDigest`, `hederaPairingOf`, `hederaStatus`, `hederaVoucher`, `openCalldata`, `txIdMirror`, `txIdText`.
 
-**Types (19):** `ExecutorPayload`, `ExecutorPaymentPayload`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaLandedCharge`, `HederaNetwork`, `HederaPayload`, `HederaPaymentPayload`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `HederaVoucherTypedData`, `MirrorEntry`.
+**Types (18):** `ExecutorPayload`, `ExecutorPaymentPayload`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaPayload`, `HederaPaymentPayload`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `HederaVoucherTypedData`, `MirrorEntry`.
 
 ## `@integraledger/lcp/lightning`
 

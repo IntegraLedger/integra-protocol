@@ -1212,7 +1212,7 @@ function chargeCredential(
 }
 
 /** A Hedera charge credential with what `fetchPresented` read: the network, and for a push the landed memo. */
-export type HederaLandedCharge = MppCredential & { landed: { network: HederaNetwork; memo?: string } };
+type HederaLandedCharge = MppCredential & { landed: { network: HederaNetwork; memo?: string } };
 
 /**
  * The credential with `landed` written from the reader: the charge's network (the request's `chainId`, or
