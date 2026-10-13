@@ -35,9 +35,9 @@ import {
   type EvmRef,
   type Field,
   type Permit2TypedData,
-  type ReceiveTypedData,
 } from "./evm.js";
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
+import type { ReceiveTypedData } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   buildChannelMessage,

@@ -21,7 +21,7 @@ import { rlpBytes, rlpDecode, rlpList, rlpUint, rlpUintBytes, type RlpItem } fro
 import type { AtrHash } from "./core.js";
 import type { MppCredential } from "./mpp-challenge.js";
 
-export { RECEIVE_POLICY_GUARD } from "./evm.js";
+export { RECEIVE_POLICY_GUARD } from "./internal/evm.js";
 
 /** The first four bytes of keccak256("transferWithMemo(address,uint256,bytes32)"). */
 export const TRANSFER_WITH_MEMO_SELECTOR = "0x95777d59" as const;

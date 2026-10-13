@@ -35,7 +35,6 @@ import {
   type EvmReceipt,
   type EvmRef,
   type Permit2TypedData,
-  type ReceiveTypedData,
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
@@ -61,6 +60,7 @@ import {
   type MppChoice,
   type MppCredential,
 } from "./mpp-challenge.js";
+import type { ReceiveTypedData } from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readReceipt } from "./receipt.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -89,7 +89,7 @@ import {
 } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
 
-export type { ReceiveTypedData } from "./evm.js";
+export type { ReceiveTypedData } from "./internal/evm.js";
 
 /**
  * The buyer's inputs to `build`. `build` checks their form and that the chosen challenge's id carries H; it compares no

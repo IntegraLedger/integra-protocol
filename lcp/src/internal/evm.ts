@@ -1,9 +1,10 @@
 /**
  * EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, the settlement read from
  * the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use
- * before any transaction is named. Nothing here knows x402. The public names are re-exported by `../evm.ts`; the
- * Permit2 status read serves the Permit2 pairings' `status`, and the guard-transfer check serves `evmStatus` and MPP's
- * `transferPresent`: a `Transfer` to `RECEIVE_POLICY_GUARD` is one a Tempo receive policy blocked.
+ * before any transaction is named. Nothing here knows x402. `../evm.ts` re-exports the public names but two:
+ * `RECEIVE_POLICY_GUARD`, which `../tempo.ts` re-exports, and `ReceiveTypedData`, which `../mpp-session.ts` re-exports.
+ * The Permit2 status read serves the Permit2 pairings' `status`, and the guard-transfer check serves `evmStatus` and
+ * MPP's `transferPresent`: a `Transfer` to `RECEIVE_POLICY_GUARD` is one a Tempo receive policy blocked.
  */
 import { hash, hashEquals, type AtrHash, type Json } from "../core.js";
 import {

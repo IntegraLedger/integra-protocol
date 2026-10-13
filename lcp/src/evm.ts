@@ -14,7 +14,6 @@ import {
   PAYMENT_AUTHORIZED_TOPIC,
   PAYMENT_INFO_TYPEHASH,
   PERMIT2,
-  RECEIVE_POLICY_GUARD,
   REDEEMED_DELEGATION_TOPIC,
   ReaderError,
   SALT_BINDING_TYPEHASH,
@@ -52,7 +51,6 @@ export {
   PAYMENT_AUTHORIZED_TOPIC,
   PAYMENT_INFO_TYPEHASH,
   PERMIT2,
-  RECEIVE_POLICY_GUARD,
   REDEEMED_DELEGATION_TOPIC,
   ReaderError,
   SALT_BINDING_TYPEHASH,
@@ -96,7 +94,6 @@ export type {
   PaymentInfo,
   Permit2TypedData,
   PullAuthorization,
-  ReceiveTypedData,
   TransferIdentity,
   TransferLog,
 } from "./internal/evm.js";

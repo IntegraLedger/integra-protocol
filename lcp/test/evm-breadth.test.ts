@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { encodeAbiParameters, encodeFunctionData, keccak256, parseAbi, toBytes } from "viem";
 import {
   DELEGATION_MANAGER_CHAINS,
-  RECEIVE_POLICY_GUARD,
   TRANSFER_TOPIC,
   ReaderError,
   authorizationIdDigest,
@@ -17,6 +16,7 @@ import {
   type EvmReceipt,
   type Hex,
 } from "../src/evm.js";
+import { RECEIVE_POLICY_GUARD } from "../src/tempo.js";
 
 const PAYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Hex;
 const PAYTO = "0x209693Bc6afc0C5328bA36FaF03C514EF312287C" as Hex;

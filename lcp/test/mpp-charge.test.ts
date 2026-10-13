@@ -21,7 +21,7 @@ import {
   type Hex as ViemHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { RECEIVE_POLICY_GUARD, TRANSFER_TOPIC, type EvmLog, type EvmRef, type Permit2TypedData } from "../src/evm.js";
+import { TRANSFER_TOPIC, type EvmLog, type EvmRef, type Permit2TypedData } from "../src/evm.js";
 import {
   attributionMemo,
   challengeHash,
@@ -40,7 +40,13 @@ import {
   type MppCredential,
   type MppUnsigned,
 } from "../src/mpp.js";
-import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "../src/tempo.js";
+import {
+  RECEIVE_POLICY_GUARD,
+  TRANSFER_WITH_MEMO_SELECTOR,
+  TRANSFER_WITH_MEMO_TOPIC,
+  decodeTempoTx,
+  memoCalldata,
+} from "../src/tempo.js";
 import { C_E, C_T, H, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 
 const A = load("mpp-charge-evm-authorization.json");
