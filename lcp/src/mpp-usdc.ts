@@ -42,7 +42,7 @@ import {
 } from "./mpp-challenge.js";
 import { stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing } from "./mpp-solana.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -171,7 +171,12 @@ function advertiseAs(pairing: UsdcDirect) {
   };
 }
 
-function unplaced(option: MppChallenge): MppChallenge {
+/**
+ * The challenge as given: no member of `request` carries H on the `evm`, `stacks` and `gateway` profiles. A challenge
+ * that carries a `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return option;
 }
 

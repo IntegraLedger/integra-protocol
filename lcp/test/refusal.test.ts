@@ -247,7 +247,17 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/session/hedera",
     "mpp/session/solana",
     "mpp/session/xrpl",
+    "mpp/charge/usdc/evm",
+    "mpp/charge/usdc/stacks",
+    "mpp/charge/usdc/gateway",
   ];
+  it("the MPP pairings whose unplaced returns the advertised challenge as given are these sixteen", () => {
+    const mpp = BINDINGS.filter((b) => b.id.startsWith("mpp/"));
+    for (const b of mpp) expect(advertisedOf.get(b.id), b.id).toBeTypeOf("object");
+    const same = mpp.filter((b) => (b.unplaced as (c: unknown) => unknown)(advertisedOf.get(b.id)) === advertisedOf.get(b.id));
+    expect(same.map((b) => b.id).sort()).toEqual([...sameChallenge].sort());
+    expect(sameChallenge.length).toBe(16);
+  });
   for (const id of sameChallenge) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
       const challenge = advertisedOf.get(id);
