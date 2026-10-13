@@ -103,7 +103,7 @@ description: "The exports of @integraledger/lcp/ucp."
 
 ##### unplaced()
 
-> **unplaced**(`option`): `O`
+> **unplaced**(`option`): [`Refusal`](index.md#refusal) \| `O`
 
 ###### Parameters
 
@@ -113,7 +113,7 @@ description: "The exports of @integraledger/lcp/ucp."
 
 ###### Returns
 
-`O`
+[`Refusal`](index.md#refusal) \| `O`
 
 ***
 
@@ -208,12 +208,6 @@ A checkout's own `id`, 1–256 characters.
 | <a id="property-url"></a> `url` | `string` |
 
 ## Variables
-
-### AGREEMENT\_LINK\_TYPE
-
-> `const` **AGREEMENT\_LINK\_TYPE**: `"legal_context_agreement"` = `"legal_context_agreement"`
-
-***
 
 ### ap2Mandate
 

@@ -103,7 +103,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 ##### unplaced()
 
-> **unplaced**(`option`): [`CardOption`](#cardoption)
+> **unplaced**(`option`): [`Refusal`](index.md#refusal) \| [`CardOption`](#cardoption)
 
 ###### Parameters
 
@@ -113,7 +113,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 ###### Returns
 
-[`CardOption`](#cardoption)
+[`Refusal`](index.md#refusal) \| [`CardOption`](#cardoption)
 
 ***
 
@@ -262,24 +262,6 @@ base64url, unpadded, of SHA-256 over the US-ASCII characters of `s` (RFC 9901 §
 #### Returns
 
 `Promise`\<`string`\>
-
-***
-
-### pairingsOf()
-
-> **pairingsOf**(`o`): readonly [`CardPairingId`](#cardpairingid-1)[]
-
-The pairings a well-formed option can be paid through: Verifiable Intent has two. Anything else has none.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `o` | [`CardOption`](#cardoption) |
-
-#### Returns
-
-readonly [`CardPairingId`](#cardpairingid-1)[]
 
 ***
 

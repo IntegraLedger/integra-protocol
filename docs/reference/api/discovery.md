@@ -68,8 +68,9 @@ The document's bytes: its checked members in table order, `atrHash` in lowercase
 
 > **parse**(`bytes`): [`Refusal`](index.md#refusal) \| \{ `document`: [`LegalContextDocument`](#legalcontextdocument); `ignored`: `string`[]; \}
 
-One UTF-8 JSON object of at most `MAX_DOCUMENT_BYTES`, checked as LCP §2 states. Unknown members, at the top level or
-inside `disputeResolution` and `contact`, are left out of `document` and named in `ignored` by dotted path.
+One UTF-8 JSON object of at most `MAX_DOCUMENT_BYTES`, nested at most 64 levels, with the members LCP §2.4–§2.5
+define checked: each string member non-empty and `terms` an https URL. Unknown members, at the top level or inside
+`disputeResolution` and `contact`, are left out of `document` and named in `ignored` by dotted path.
 
 #### Parameters
 

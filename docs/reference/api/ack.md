@@ -57,7 +57,7 @@ agreement URL after the link when one is given.
 
 ### paymentRequest
 
-> `const` **paymentRequest**: `Readonly`\<\{ `advertise`: (`_doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`AckValues`](#ackvalues); `bound`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `build`: (`_doc`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `id`: `"ack/payment-request"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `options`: readonly [`Json`](index.md#json)[]; \}; \}; `tie`: (`options`) => \[`"ack"`, \{ `paymentOptions`: readonly [`AckPaymentOption`](#ackpaymentoption)[]; \}\]; `unplaced`: (`option`) => [`AckPaymentOption`](#ackpaymentoption); \}\>
+> `const` **paymentRequest**: `Readonly`\<\{ `advertise`: (`_doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`AckValues`](#ackvalues); `bound`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `build`: (`_doc`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `id`: `"ack/payment-request"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `options`: readonly [`Json`](index.md#json)[]; \}; \}; `tie`: (`options`) => \[`"ack"`, \{ `paymentOptions`: readonly [`AckPaymentOption`](#ackpaymentoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`AckPaymentOption`](#ackpaymentoption); \}\>
 
 ## Functions
 

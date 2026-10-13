@@ -45,7 +45,8 @@ The extension's URIs, in order of preference. The first is the one written when 
 
 > `const` **binding**: [`Refusal`](index.md#refusal)
 
-A2A binds nothing: the refusal given wherever an A2A pairing is asked for.
+A2A signs nothing per transaction, so it has no pairing: a caller asked for an A2A pairing can answer with this
+refusal.
 
 ***
 
@@ -128,7 +129,8 @@ URIs must agree.
 > **requested**(`a2aExtensions`): `boolean`
 
 True when the request's `A2A-Extensions` value names a listed URI exactly: the value split on commas, each element
-trimmed of SP and HTAB, compared case-sensitively.
+trimmed of SP and HTAB, compared case-sensitively. The value is at most 8,192 characters with at most 64 elements;
+a longer value, or one with more elements, is false.
 
 #### Parameters
 

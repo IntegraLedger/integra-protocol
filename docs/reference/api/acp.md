@@ -89,7 +89,7 @@ description: "The exports of @integraledger/lcp/acp."
 
 ##### unplaced()
 
-> **unplaced**(`option`): [`HandlerOption`](#handleroption)
+> **unplaced**(`option`): [`Refusal`](index.md#refusal) \| [`HandlerOption`](#handleroption)
 
 ###### Parameters
 
@@ -99,7 +99,7 @@ description: "The exports of @integraledger/lcp/acp."
 
 ###### Returns
 
-[`HandlerOption`](#handleroption)
+[`Refusal`](index.md#refusal) \| [`HandlerOption`](#handleroption)
 
 ***
 
