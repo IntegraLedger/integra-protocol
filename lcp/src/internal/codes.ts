@@ -396,6 +396,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "tempo/tx-too-large",
   "tempo/unreadable",
   "tempo/witness-not-bound",
+  "tempo/wrong-reader",
   "tron/address-malformed",
   "tron/contracts",
   "tron/fee-limit",

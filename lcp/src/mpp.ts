@@ -776,7 +776,8 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
 /**
  * Reads the pushed transaction's receipt and returns the credential with `landed`: the transaction, its block and
  * the receipt's logs from `currency`. No receipt is `tempo/not-found` and a failed read `tempo/unreadable`: reads to
- * repeat, not a refusal of the payment. A revert is `tempo/reverted`: nothing moved.
+ * repeat, not a refusal of the payment. A revert is `tempo/reverted`: nothing moved. A reader that is missing or for
+ * another network than the challenge names is `tempo/wrong-reader`.
  */
 async function pushFetchPresented(presented: MppCredential, reader: EvmReader): Promise<LandedCredential | Refusal> {
   if (

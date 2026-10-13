@@ -46,6 +46,7 @@ import {
   sessionHedera,
   sessionSolana,
   sessionStatus,
+  sessionTempo,
   sessionXrpl,
   subscriptionTempo,
 } from "../src/mpp.js";
@@ -620,7 +621,10 @@ describe("mpp", () => {
 });
 
 describe("tempo", () => {
-  reads([["subscriptionTempo.recover", subscriptionTempo.recover, "mpp-charge-evm-hash.json", refused("tempo/unreadable")]]);
+  reads([
+    ["sessionTempo.recover", sessionTempo.recover, "mpp-charge-evm-hash.json", refused("tempo/wrong-reader")],
+    ["subscriptionTempo.recover", subscriptionTempo.recover, "mpp-charge-evm-hash.json", refused("tempo/wrong-reader")],
+  ]);
 });
 
 describe("lightning", () => {

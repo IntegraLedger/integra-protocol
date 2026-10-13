@@ -747,6 +747,12 @@ describe("mpp-subscription-tempo.json", () => {
     const tx = "0x6c1cdc57bf5a4a98961b7897cac3212636eea551540ab3b32038c45f9d3d8d1c" as const;
     expect(await witnessRecover({ network: "eip155:42431", transaction: tx }, reader)).toBe(k.witness);
     expect(await subscriptionTempo.recover({ network: "eip155:42431", transaction: tx }, reader)).toBe(k.witness);
+    // The same receipt from a reader of another network (Ethereum mainnet) is not read: tempo/wrong-reader.
+    const elsewhere = readerFor("eip155:1", U.L2.receipt, block, block);
+    expect(await witnessRecover({ network: "eip155:42431", transaction: tx }, elsewhere)).toEqual({
+      refused: true,
+      code: "tempo/wrong-reader",
+    });
     // The scope the payer signed: one limit token, the one allowed-call target, and one recipient across its rules.
     expect(new Set(k.limits.map((l) => l.token))).toEqual(new Set([U.L2.transferToken]));
     expect(new Set(k.allowedCalls.map((c) => c.target))).toEqual(new Set([U.L2.transferToken]));

@@ -994,6 +994,7 @@ const READ_TO_REPEAT = [
  * names, and `bound` or `reference` on a push credential before `fetchPresented` has read it.
  */
 const CANNOT_READ = [
+  "tempo/wrong-reader",
   "svm/wrong-reader",
   "stellar/wrong-reader",
   "xrpl/wrong-reader",
@@ -1015,10 +1016,10 @@ const CANNOT_READ = [
  *   `svm/unreadable`, `stellar/not-found`, `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`,
  *   `xrpl/unreadable`, `hedera/not-found` and `hedera/unreadable`;
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
- *   changes the call: a reader that is not for the network the challenge or reference names (`svm/wrong-reader`,
- *   `stellar/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound` or `reference` on a push
- *   credential before `fetchPresented` has read it (`tempo/read-first`, `svm/read-first`, `stellar/read-first`,
- *   `xrpl/read-first` and `hedera/read-first`);
+ *   changes the call: a reader that is not for the network the challenge or reference names (`tempo/wrong-reader`,
+ *   `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound` or
+ *   `reference` on a push credential before `fetchPresented` has read it (`tempo/read-first`, `svm/read-first`,
+ *   `stellar/read-first`, `xrpl/read-first` and `hedera/read-first`);
  * - 402 `verification-failed`: every other code this package returns;
  * - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
  *

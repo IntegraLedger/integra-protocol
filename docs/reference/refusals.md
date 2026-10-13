@@ -10,7 +10,7 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 488 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 489 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -27,7 +27,7 @@ and the namespace counts below match its rows.
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`). |
-| [`tempo`](#tempo) | 17 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
+| [`tempo`](#tempo) | 18 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`). |
 | [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
@@ -353,8 +353,9 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/salt-not-bound` | The salt word of the Tempo session opening's `open` call is not H. |
 | `tempo/tx-malformed` | A Tempo transaction does not decode as a type-`0x76` RLP envelope with the expected fields and at most the allowed calls, `memoCalldata` is given an invalid recipient, amount or memo, `expiringNonceHash` is given a sender that is not an address, or a Tempo session opening's `open` call input has the wrong length. |
 | `tempo/tx-too-large` | A Tempo transaction's wire bytes exceed the size bound. |
-| `tempo/unreadable` | The Tempo reader is missing, answers for another network or threw, the receipt or its logs are not well formed, or `keyAccount` is given an invalid H, key id or receipt, or finds a keychain log whose account topic is not a padded address. |
+| `tempo/unreadable` | The Tempo reader threw, the receipt or its logs are not well formed, or `keyAccount` is given an invalid H, key id or receipt, or finds a keychain log whose account topic is not a padded address. |
 | `tempo/witness-not-bound` | The Tempo subscription's key authorization witness is not the hash the echoed challenge's id derives from. |
+| `tempo/wrong-reader` | The Tempo reader is missing or answers for a different network than the challenge or reference names. |
 
 ## svm
 

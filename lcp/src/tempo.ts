@@ -358,13 +358,14 @@ function withinScopes(l: RlpItem, calls: boolean): boolean {
 
 /**
  * Reads the transaction's receipt and returns topic 2 of its one `KeyAuthorizationWitness` log from the account
- * keychain. One call.
+ * keychain. A ref or reader that is not an object, or a reader for another network than the ref names, is
+ * `tempo/wrong-reader`. One call.
  */
 export async function witnessRecover(
   ref: { network: string; transaction: Hex },
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref)) return refusal("tempo/unreadable");
+  if (!isObject(ref)) return refusal("tempo/wrong-reader");
   const receipt = await readReceipt(ref.network, ref.transaction, reader);
   if (isRefusal(receipt)) return receipt;
   const witnesses: Hex[] = [];

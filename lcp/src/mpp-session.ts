@@ -996,11 +996,12 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
  * the TIP-20 channel reserve (TIP-1034, `TIP20_CHANNEL_RESERVE`) emits in the receipt. A v1 escrow's `ChannelOpened`
  * carries no salt, and its open call sits among the Tempo transaction's calls, which the reader does not show: a v1
  * opening, like a receipt with no such log, is `tempo/open-not-found`. Logs giving more than one salt are
- * `tempo/ambiguous`. A ref that is not an object, a reader for another network or a failed read is `tempo/unreadable`,
- * no receipt `tempo/not-found` and a revert `tempo/reverted`, as `readReceipt` answers. One call.
+ * `tempo/ambiguous`. A ref or reader that is not an object, or a reader for another network than the ref names, is
+ * `tempo/wrong-reader`; a failed read is `tempo/unreadable`, no receipt `tempo/not-found` and a revert
+ * `tempo/reverted`, as `readReceipt` answers. One call.
  */
 async function tempoRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref)) return refusal("tempo/unreadable");
+  if (!isObject(ref)) return refusal("tempo/wrong-reader");
   const receipt = await readReceipt(ref.network, ref.transaction, reader);
   if (isRefusal(receipt)) return receipt;
   const salts = new Set<string>();

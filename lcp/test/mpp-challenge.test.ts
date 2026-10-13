@@ -249,8 +249,8 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // 11 reads to repeat, and 9 calls that cannot read the payment: four wrong-reader and five read-first codes.
-    expect(answered500.length).toBe(20);
+    // 11 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five read-first codes.
+    expect(answered500.length).toBe(21);
     for (const code of REFUSAL_CODES) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);
@@ -311,6 +311,22 @@ describe("problem", () => {
     expect(problem("tempo/read-first")).toEqual(expectOf("tempo/read-first"));
     expect(expectOf("tempo/read-first")).toEqual(internal);
     expect(await tempoPush.bound(presented)).toBe(H);
+  });
+
+  // Tempo push: a reader that is missing or for another network than the challenge's chain (Ethereum mainnet,
+  // eip155:1) answers tempo/wrong-reader, 500 and no challenge, as MV10's row gives; a reader for the chain that fails
+  // still answers the read to repeat, tempo/unreadable. The credential is the vector file's B6 buyer row as presented.
+  it("mpp/charge/tempo/push: a reader missing or of another network answers tempo/wrong-reader, 500", async () => {
+    const tempo = load("mpp-charge-tempo-push.json");
+    const presented = tempo.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented as MppCredential;
+    for (const reader of [readerFor("eip155:1", tempo.MV13.receipt), undefined, null]) {
+      const out = await tempoPush.fetchPresented(presented, reader as never);
+      expect([reader?.network, out]).toEqual([reader?.network, { refused: true, code: "tempo/wrong-reader" }]);
+    }
+    expect(problem("tempo/wrong-reader")).toEqual(expectOf("tempo/wrong-reader"));
+    expect(expectOf("tempo/wrong-reader")).toEqual(internal);
+    const failing = await tempoPush.fetchPresented(presented, readerFor("eip155:42431", "reader-error"));
+    expect(failing).toEqual({ refused: true, code: "tempo/unreadable" });
   });
 
   // Solana's, Stellar's, XRPL's and the Hedera charge's push reads, one case per arm: a read that fails, finds no
