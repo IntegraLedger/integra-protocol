@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes the specification leaves to the implementation are marked implementationCode.",
+ "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -53,8 +53,7 @@
    "expect": {
     "refused": true,
     "code": "x402/nonce-malformed"
-   },
-   "implementationCode": false
+   }
   },
   "expectReferenceDigest": "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f"
  },

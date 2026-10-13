@@ -1,5 +1,5 @@
 // Runs the vector files' rows through the entry points. Every expected value is the file's.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { domainSeparator, hashStruct, hashTypedData, recoverTypedDataAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -217,5 +217,40 @@ describe("buyer.json: the rows the core and the binding can check", () => {
     const bound = await exactEip3009.bound(signed);
     expect(hashEquals(bound as string, await hash(A))).toBe(true);
     expect(hashEquals(bound as string, await hash(C))).toBe(false);
+  });
+});
+
+// docs/concepts/vectors.md: refusal codes are this package's own, and a file's agreedRefusals rows hold the codes for
+// checks its specification leaves to the implementation. An about that says some rows are marked with a member names a
+// member a row carries as true, and a row carries no marker its file's about does not explain.
+describe("every vector file's about names only the markers its rows carry", () => {
+  const dir = new URL("../vectors/", import.meta.url);
+  const files = readdirSync(dir).filter((n) => n.endsWith(".json"));
+  const values = (v: unknown, key: string, out: unknown[] = []): unknown[] => {
+    if (Array.isArray(v)) for (const x of v) values(x, key, out);
+    else if (typeof v === "object" && v !== null) {
+      for (const [k, x] of Object.entries(v)) {
+        if (k === key) out.push(x);
+        values(x, key, out);
+      }
+    }
+    return out;
+  };
+
+  it("reads every file", () => {
+    expect(files.length).toBeGreaterThan(60);
+  });
+
+  it("each marker an about names is carried as true by a row, and no row carries an implementationCode the about does not name", () => {
+    const wrong: string[] = [];
+    for (const n of files) {
+      const d = JSON.parse(readFileSync(new URL(n, dir), "utf8")) as { about?: string };
+      const named = [...String(d.about).matchAll(/\bmarked (\w+)/g)].map((m) => m[1]!);
+      for (const marker of named) if (!values(d, marker).includes(true)) wrong.push(`${n}: no row is marked ${marker}`);
+      if (values(d, "implementationCode").length > 0 && !named.includes("implementationCode")) {
+        wrong.push(`${n}: a row carries implementationCode, which the about does not name`);
+      }
+    }
+    expect(wrong).toEqual([]);
   });
 });

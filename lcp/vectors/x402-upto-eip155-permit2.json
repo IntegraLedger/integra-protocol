@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/upto/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes the specification leaves to the implementation are marked implementationCode. The upto facilitator F is Anvil account 2.",
+ "about": "Vectors for x402/upto/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The upto facilitator F is Anvil account 2.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {

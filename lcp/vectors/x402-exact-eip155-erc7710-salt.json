@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes the specification leaves to the implementation are marked implementationCode. The leaf L's caveat is arbitrary: bound never reads caveats.",
+ "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The leaf L's caveat is arbitrary: bound never reads caveats.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -76,8 +76,7 @@
    "expect": {
     "refused": true,
     "code": "x402/permission-context-malformed"
-   },
-   "implementationCode": false
+   }
   }
  },
  "EV9": {
