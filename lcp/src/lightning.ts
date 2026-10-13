@@ -20,7 +20,7 @@ import {
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   chosen,
   filterOf,
@@ -373,6 +373,15 @@ function namedAdvertise(
   return namedShared(doc, h, link, offer, agreementUrl);
 }
 
+/**
+ * The option unchanged: the invoice carries no hash, so the option as issued is what the ATR names. An option that
+ * carries a `refused` member is `x402/option-malformed`.
+ */
+function namedUnplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
+  return option;
+}
+
 /** Pays only an invoice that the ATR's own `x402` slot names. */
 async function namedBuild(
   c: { required: PaymentRequired; accepted: PaymentRequirements; atr: Uint8Array },
@@ -425,7 +434,7 @@ export const exactLnbtcNamed = Object.freeze({
   } satisfies LcpPattern) as LcpPattern,
   claims: true as boolean,
   carrier: null,
-  unplaced: (option: PaymentRequirements): PaymentRequirements => option,
+  unplaced: namedUnplaced,
   tie,
   advertise: namedAdvertise,
   read: readFor(filterOf(namedPairs)) as (doc: PaymentRequired) => X402Read | Refusal,

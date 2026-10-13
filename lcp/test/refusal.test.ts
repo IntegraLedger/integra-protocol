@@ -119,6 +119,24 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     });
   }
 
+  // x402/exact/lnbtc/invoice-named's unplaced hands the option back unchanged as well (its invoice carries no hash, and
+  // the ATR names the option as issued), so it refuses one that carries a refused member with x402/option-malformed,
+  // the code its option checks give; a value that is not an object comes back as it is. The option is the vector
+  // file's O_N.
+  it("x402/exact/lnbtc/invoice-named: unplaced refuses an option carrying a refused member as x402/option-malformed", () => {
+    const named = BINDINGS.find((b) => b.id === "x402/exact/lnbtc/invoice-named");
+    const unplaced = named?.unplaced as (o: unknown) => unknown;
+    const option = JSON.parse(readFileSync(new URL("x402-exact-lnbtc-invoice-named.json", dir), "utf8")).fixed.O_N as object;
+    expect(unplaced(option)).toBe(option);
+    const expected = { refused: true, code: "x402/option-malformed" };
+    for (const v of [withRefused(option), shaped(), refusal("ack/token-malformed")]) {
+      const out = unplaced(v);
+      expect(out).toEqual(expected);
+      expect(isRefusal(out)).toBe(true);
+    }
+    for (const v of ["lnbc", 7, null]) expect(unplaced(v)).toBe(v);
+  });
+
   for (const b of BINDINGS) {
     const fetchPresented = (b as { fetchPresented?: (c: unknown, r: unknown) => Promise<unknown> }).fetchPresented;
     const p = presentedOf.get(b.id);
