@@ -83,7 +83,7 @@ export type PaymentRequired = {
   extensions?: { [id: string]: { info: Json; schema: Json } };
 };
 
-export type Eip3009Authorization = {
+type Eip3009Authorization = {
   from: string;
   to: string;
   value: string;
@@ -92,7 +92,7 @@ export type Eip3009Authorization = {
   nonce: string;
 };
 
-export type Permit2Authorization = {
+type Permit2Authorization = {
   permitted: { token: string; amount: string };
   from: string;
   spender: string;
@@ -102,7 +102,7 @@ export type Permit2Authorization = {
 };
 
 /** The payload of each x402 EVM scheme this package carries; every member is a string. */
-export type X402SchemePayload =
+type X402SchemePayload =
   | { signature: Hex; authorization: Eip3009Authorization }
   | { signature: Hex; permit2Authorization: Permit2Authorization }
   | { delegationManager: string; permissionContext: string; delegator: string }
