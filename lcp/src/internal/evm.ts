@@ -554,7 +554,7 @@ export interface EvmRef {
   transferLog?: TransferLog;
   /** The log filter that finds the transaction when none is named; absent, only a named transaction is read. */
   search?: { address: Hex; topics: readonly (Hex | null)[] };
-  /** The signed pull authorization and where the chain records its use; present on every pull pairing that has one. */
+  /** The signed pull authorization and where the chain records its use, where the pairing's reference records one. */
   authorization?: PullAuthorization;
 }
 
