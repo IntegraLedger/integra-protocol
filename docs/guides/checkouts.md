@@ -183,9 +183,12 @@ true
 ```
 
 A UCP checkout paid in x402 goes through the payment handler `com.integraledger.lcp.x402`. Its `config` in the
-checkout is the x402 `PaymentRequired` that carries H, its credential is the buyer's signed x402 payment, and the
-payment carries H where the option's x402 pairing places it. The checkout's ATR takes that pairing's binding slot, whose
-request is the checkout's completion, so the ATR names the checkout. The LCP profile
+checkout is the x402 `PaymentRequired` that carries H. Its credential is the buyer's signed x402 payment. Without AP2
+mandates, the payment carries H where the option's x402 pairing places it, and the checkout's ATR takes that pairing's
+binding slot, whose request is the checkout's completion, so the ATR names the checkout. Under UCP's AP2 Mandates
+extension the checkout mandate binds H, and the handler's
+[Under AP2 mandates](../../lcp/profiles/ucp-payment-handler-x402.md#under-ap2-mandates) rules apply in place of these;
+[AP2](#ap2) covers the checkout mandate. The LCP profile
 [`ucp/payment-handler/x402`](../../lcp/profiles/ucp-payment-handler-x402.md) is the handler's specification, and
 [`ucp-payment-handler-x402.schema.json`](../../lcp/profiles/ucp-payment-handler-x402.schema.json) its schema. Their
 addresses are `https://lcp.integraledger.com/ucp/x402/2026-10-02` and
