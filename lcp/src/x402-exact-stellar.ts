@@ -38,7 +38,7 @@ import {
 } from "./x402.js";
 
 const ID = "x402/exact/stellar" as const;
-const AMOUNT = /^(0|[1-9][0-9]{0,37})$/;
+const AMOUNT = /^(0|[1-9][0-9]{0,38})$/;
 const I128_LIMIT = 1n << 127n;
 
 /**

@@ -2,7 +2,7 @@
 // computes the payer's HashIDPreimage and signs it. Each case starts from x402-exact-stellar.json's simulated envelope
 // (the unsigned V2 form) and sets the operation's `transfer` and the invocation the payer's entry signs, and, where a
 // case names them, the token contract both call and the `from` both pass, with the entry's address credential for it.
-import { Keypair, Networks, authorizeEntry, xdr } from "@stellar/stellar-sdk";
+import { Keypair, Networks, authorizeEntry, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import type { ScValWire, SorobanAuthorizedInvocationWire, TransactionEnvelopeWire } from "@stellar/stellar-sdk/xdr";
 
 export interface TransferArgs {
@@ -26,7 +26,8 @@ export const account = (ed25519: Uint8Array): ScValWire => ({ type: 18, address:
 /** A muxed account address as an SCVal (CAP-67: the id and the key). */
 export const muxed = (ed25519: Uint8Array, id: bigint): ScValWire => ({ type: 18, address: { type: 2, muxedAccount: { id, ed25519 } } });
 
-const i128 = (v: bigint): ScValWire => ({ type: 10, i128: { hi: 0n, lo: v } });
+/** An amount as the SDK's i128 SCVal, its high 64 bits and its low 64 bits. */
+const i128 = (v: bigint): ScValWire => nativeToScVal(v, { type: "i128" }).toXdrObject();
 
 function decode(simulatedXdr: string): TransactionEnvelopeWire {
   return xdr.TransactionEnvelope.fromXdr(simulatedXdr, "base64").toXdrObject();

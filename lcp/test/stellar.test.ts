@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { Keypair, Networks, StrKey, authorizeEntry, buildAuthorizationEntryPreimage, xdr } from "@stellar/stellar-sdk";
+import { Keypair, Networks, StrKey, authorizeEntry, buildAuthorizationEntryPreimage, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { ScVal, TransactionEnvelope } from "@stellar/stellar-sdk/xdr";
 import { ReaderError } from "../src/evm.js";
 import { pairingOf, type AtrHash } from "../src/index.js";
@@ -586,6 +586,41 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
       expect(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o), amount).toEqual(
         refused("x402/option-malformed"),
       );
+    }
+  });
+
+  // The transfer's amount is an i128 (x402-foundation/x402 8228bd6d specs/schemes/exact/scheme_exact_stellar.md:121),
+  // whose XDR is Int128Parts { int64 hi; uint64 lo; } (stellar-xdr, as @stellar/stellar-sdk 17.1.0 generates it): its
+  // largest value is 2^127 - 1, which has 39 decimal digits, as 10^38 does. The SDK's nativeToScVal encodes 10^38 and
+  // 2^127 - 1 as an i128 and throws RangeError for 2^127 and 10^39; an option asking for either of those is
+  // x402-exact-stellar.json's agreed refusal for an amount that is not an i128 of 0 or more.
+  it("an option's amount is served up to 2^127 - 1, the largest i128, and refused from 2^127: advertise and build", async () => {
+    for (const amount of [10n ** 38n, (1n << 127n) - 1n]) {
+      const o: PaymentRequirements = { ...V.fixed.option, amount: amount.toString() };
+      const doc = exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o);
+      if ("refused" in doc) throw new Error(`${amount}: ${doc.code}`);
+      const accepted = doc.accepts[0]!;
+      expect(accepted).toEqual({ ...V.V3.accepted, amount: amount.toString() });
+      const simulatedXdr = simulated(V.V2.simulatedXdr, moved(amount));
+      const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
+      const u = await exactStellar.build({ required, accepted, simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer }, H);
+      if ("refused" in u) throw new Error(`${amount}: ${u.code}`);
+      const env = xdr.TransactionEnvelope.fromXdr(simulatedXdr, "base64").toXdrObject();
+      if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
+      const entry = xdr.SorobanAuthorizationEntry.fromXdrObject(env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth[0]!);
+      const preimage = buildAuthorizationEntryPreimage(entry, V.V2.expectExpiration, Networks.TESTNET).toXdr("raw");
+      expect(sha256(u.request.preimage), amount.toString()).toBe(sha256(preimage));
+    }
+    for (const amount of [1n << 127n, 10n ** 39n]) {
+      expect(() => nativeToScVal(amount, { type: "i128" })).toThrow(RangeError);
+      const o: PaymentRequirements = { ...V.fixed.option, amount: amount.toString() };
+      expect(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o), amount.toString()).toEqual(
+        refused("x402/option-malformed"),
+      );
+      const accepted: PaymentRequirements = { ...V.V3.accepted, amount: amount.toString() };
+      const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
+      const choice = { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer };
+      expect(await exactStellar.build(choice, H), amount.toString()).toEqual(refused("x402/option-malformed"));
     }
   });
 });
