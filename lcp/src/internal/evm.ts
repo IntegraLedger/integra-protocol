@@ -225,8 +225,9 @@ export type EvmStatus =
  * failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the receipt's block is
  * at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the same reason is pending. A
  * failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an `asset` that is not
- * an address, a `transferLog` that is not one, or a reader answer that is not a receipt or holds a log entry that is
- * not an object is pending `unreadable`, never failed. At most three calls.
+ * an address, a `transferLog` that is not one, a reader answer that is neither `null` nor a receipt, or a receipt
+ * holding a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
+ * pending `unreadable`, never failed. At most three calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
@@ -245,9 +246,7 @@ export async function eip3009Status(
     return { state: "pending", why: "unreadable" };
   }
   if (receipt === null) return { state: "pending", why: "not-found" };
-  if (!isReceipt(receipt) || receipt.logs.some((log) => typeof log !== "object" || log === null)) {
-    return { state: "pending", why: "unreadable" };
-  }
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return { state: "pending", why: "unreadable" };
   const at = receipt.blockNumber;
   if (receipt.status === 0) return failedAt(at, "reverted", reader);
 
@@ -262,7 +261,9 @@ export async function eip3009Status(
 
 /**
  * Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
- * that `asset` emitted in it. One call.
+ * that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
+ * a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
+ * `evm/unreadable`; no receipt (`null`) is `evm/not-found`. One call.
  */
 export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -273,7 +274,7 @@ export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<
     return refusal("evm/unreadable");
   }
   if (receipt === null) return refusal("evm/not-found");
-  if (!isReceipt(receipt)) return refusal("evm/unreadable");
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
   if (receipt.status === 0) return refusal("evm/reverted");
 
   const found = new Set<AtrHash>();

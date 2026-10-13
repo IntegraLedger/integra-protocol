@@ -210,26 +210,63 @@ describe("evm", () => {
       }
     }
   });
-  it("eip3009Status reads a receipt holding a log that is not an object as pending unreadable, as evmStatus does", async () => {
-    // V6's settled receipt, each log given the `data` member a node's receipt carries. The settled answer is V6's own;
-    // the answer for the same receipt with a log entry that is not an object is evmStatus's, and the reader contract's
-    // (docs/concepts/refusals.md, "Readers"): a reader answer outside its form is a failed read, never a failure.
+  // A node's receipt log carries `address`, `topics` and `data` (the Ethereum JSON-RPC API's
+  // eth_getTransactionReceipt), and V6's logs carry all three: `AuthorizationUsed` indexes both its members (EIP-3009),
+  // so its `data` is "0x". Each shape below is not such a log: no object, or a member missing or of another type than
+  // the string address, array of string topics and string data the API gives. The answer for a receipt holding one is
+  // evmStatus's and redeemedLeafRecover's: docs/reference/refusals.md gives `evm/unreadable` for a receipt or log that
+  // is not well formed, and a reader that fails is never a failed payment (docs/concepts/refusals.md, "Readers").
+  const without = (member: string) => (l: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(l).filter(([k]) => k !== member));
+  const NOT_LOGS: readonly [string, (l: Record<string, unknown>) => unknown][] = [
+    ["null", () => null],
+    ["7", () => 7],
+    ["no address", without("address")],
+    ["a number address", (l) => ({ ...l, address: 1 })],
+    ["no topics", without("topics")],
+    ["topics as one string", (l) => ({ ...l, topics: (l.topics as string[]).join("") })],
+    ["a number topic", (l) => ({ ...l, topics: [...(l.topics as unknown[]).slice(0, -1), 1] })],
+    ["no data", without("data")],
+    ["null data", (l) => ({ ...l, data: null })],
+  ];
+  /** `logs` with each shape in place of its first log, in place of the use of `h`, and after its last log. */
+  const misshapen = (logs: Record<string, unknown>[], h: string): [string, unknown[]][] => {
+    const use = logs.findIndex((l) => (l.topics as string[])[2] === h);
+    expect(use).toBeGreaterThan(0);
+    return NOT_LOGS.flatMap(([shape, make]): [string, unknown[]][] => [
+      [`${shape} first`, logs.map((l, i) => (i === 0 ? make(l) : l))],
+      [`${shape} as the use of h`, logs.map((l, i) => (i === use ? make(l) : l))],
+      [`${shape} last`, [...logs, make(logs[0]!)]],
+    ]);
+  };
+  const receiptReader = (v: { reader: Record<string, string> }, receipt: { status: number; blockNumber: string }) =>
+    (logs: unknown[]) => ({
+      network: v.reader.network,
+      receipt: async () => ({ status: receipt.status, blockNumber: BigInt(receipt.blockNumber), logs }),
+      blockNumber: async (tag: "safe" | "finalized") => BigInt(v.reader[tag]!),
+    });
+  it("eip3009Status reads a receipt holding a log that is not an object with a string address, an array of string topics and a string data as pending unreadable, as evmStatus does", async () => {
     const v = load(evm).V6;
     const row = v.status[1];
-    const logs = row.receipt.logs.map((log: object) => ({ data: "0x", ...log }));
-    const reader = (entries: unknown[]) => ({
-      network: v.reader.network,
-      receipt: async () => ({ status: row.receipt.status, blockNumber: BigInt(row.receipt.blockNumber), logs: entries }),
-      blockNumber: async (tag: "safe" | "finalized") => BigInt(v.reader[tag]),
-    });
+    const reader = receiptReader(v, row.receipt);
     const evmRef = { network: v.ref.network, transaction: v.ref.transaction, transferLog: v.ref.transferLog };
     const settled = { ...row.expect, blockNumber: BigInt(row.expect.blockNumber) };
-    expect(await eip3009Status(v.ref, reader(logs) as never)).toEqual(settled);
-    expect(await evmStatus(evmRef as never, reader(logs) as never)).toEqual(settled);
-    for (const entries of [[...logs, null], [null, ...logs], [null], [...logs.slice(0, 2), 7, ...logs.slice(2)]]) {
-      const label = JSON.stringify(entries.map((e) => (e === null || typeof e !== "object" ? e : "log")));
-      expect(await eip3009Status(v.ref, reader(entries) as never), label).toEqual(UNREADABLE);
-      expect(await evmStatus(evmRef as never, reader(entries) as never), label).toEqual(UNREADABLE);
+    expect(await eip3009Status(v.ref, reader(row.receipt.logs) as never)).toEqual(settled);
+    expect(await evmStatus(evmRef as never, reader(row.receipt.logs) as never)).toEqual(settled);
+    for (const [label, logs] of misshapen(row.receipt.logs, v.ref.h)) {
+      expect(await eip3009Status(v.ref, reader(logs) as never), label).toEqual(UNREADABLE);
+      expect(await evmStatus(evmRef as never, reader(logs) as never), label).toEqual(UNREADABLE);
+    }
+  });
+  it("eip3009Recover reads a receipt holding a log that is not an object with a string address, an array of string topics and a string data as evm/unreadable, as redeemedLeafRecover does", async () => {
+    const v = load(evm).V6;
+    const row = v.recover[0];
+    const reader = receiptReader(v, row.receipt);
+    const tx = { network: v.ref.network, asset: v.ref.asset, transaction: v.ref.transaction };
+    expect(await eip3009Recover(tx, reader(row.receipt.logs) as never)).toBe(row.expect);
+    for (const [label, logs] of misshapen(row.receipt.logs, v.ref.h)) {
+      expect(await eip3009Recover(tx, reader(logs) as never), label).toEqual(refused("evm/unreadable"));
+      expect(await redeemedLeafRecover(tx, reader(logs) as never), label).toEqual(refused("evm/unreadable"));
     }
   });
 });
