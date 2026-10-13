@@ -399,12 +399,12 @@ import { exactTvm, lcpComment, OP, … } from "@integraledger/lcp/tvm";
 UCP checkouts and bookings, and four pairings: the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response. The `ap2-mandate` pairings read the hash from the checkout inside the buyer's checkout mandate, presented alone or last in AP2's chain after the open mandate, after AP2's `checkout_hash` check; the `unsigned` pairings have nothing signed to read. Nothing here takes a key, signs, or verifies a signature, a `cnf` delegation or a link between chained mandates.
 
 ```ts no-check
-import { AGREEMENT_LINK_TYPE, ap2Mandate, bookingAp2Mandate, … } from "@integraledger/lcp/ucp";
+import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, … } from "@integraledger/lcp/ucp";
 ```
 
 **Pairings:** `ucp/booking/ap2-mandate`, `ucp/booking/unsigned`, `ucp/checkout/ap2-mandate`, `ucp/checkout/unsigned`.
 
-**Values (9):** `AGREEMENT_LINK_TYPE`, `ap2Mandate`, `bookingAp2Mandate`, `bookingUnsigned`, `issuedDigest`, `legalContextLink`, `LINK_TYPE`, `tie`, `unsigned`.
+**Values (8):** `ap2Mandate`, `bookingAp2Mandate`, `bookingUnsigned`, `issuedDigest`, `legalContextLink`, `LINK_TYPE`, `tie`, `unsigned`.
 
 **Types (7):** `BookingOption`, `Checkout`, `CheckoutOption`, `Link`, `UcpBinding`, `UcpOffer`, `Unsigned`.
 

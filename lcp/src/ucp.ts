@@ -22,7 +22,7 @@ import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/ag
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export const LINK_TYPE = "legal_context";
-export const AGREEMENT_LINK_TYPE = "legal_context_agreement";
+const AGREEMENT_LINK_TYPE = "legal_context_agreement";
 
 export type Link = { type: string; url: string; title?: string };
 export type Checkout = {
