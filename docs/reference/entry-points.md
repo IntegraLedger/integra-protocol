@@ -462,8 +462,6 @@ import { exactStellar, pairingOf } from "@integraledger/lcp/x402-exact-stellar";
 
 **Values (2):** `exactStellar`, `pairingOf`.
 
-**Types (1):** `StellarChoice`.
-
 ## `@integraledger/lcp/x402-exact-xrpl`
 
 The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs with a single key as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by the blob's hash.

@@ -42,7 +42,7 @@ const I128_LIMIT = 1n << 127n;
  * The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
  * payer's account (`G…`), which must be the simulated transfer's `from`.
  */
-export interface StellarChoice {
+interface StellarChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   simulatedXdr: string;
