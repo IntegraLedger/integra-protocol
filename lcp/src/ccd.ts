@@ -14,7 +14,7 @@ import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
 import { advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
   type LcpPattern,
@@ -431,8 +431,12 @@ function jsonSize(v: unknown): number | undefined {
   return typeof text === "string" ? utf8.encode(text).length : undefined;
 }
 
-/** The option unchanged: on this pairing the hash rides in the signed transfer's memo, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: on this pairing the hash rides in the signed transfer's memo, not in the option. An option that
+ * carries a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 

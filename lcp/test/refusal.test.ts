@@ -173,7 +173,13 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // The x402 pairings on other rails whose option carries no hash hand it back unchanged too, so their unplaced refuses
   // one that carries a refused member with x402/option-malformed, the option-malformed code of the namespace the
   // pairing's id begins with; a value that is not an object comes back as it is. Each option is its vector file's O.
-  const noCarrier = ["x402/exact/algorand", "x402/exact/aptos", "x402/exact/cardano", "x402/exact/casper"];
+  const noCarrier = [
+    "x402/exact/algorand",
+    "x402/exact/aptos",
+    "x402/exact/cardano",
+    "x402/exact/casper",
+    "x402/exact/ccd",
+  ];
   for (const id of noCarrier) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
       const b = BINDINGS.find((p) => p.id === id);
