@@ -294,7 +294,7 @@ export interface BatchWithin {
 const EVM_ID = "x402/batch-settlement/eip155" as const;
 const SVM_ID = "x402/batch-settlement/solana" as const;
 const CF_ID = "x402/batch-settlement/cloudflare" as const;
-export type BatchPairingId = typeof EVM_ID | typeof SVM_ID | typeof CF_ID;
+type BatchPairingId = typeof EVM_ID | typeof SVM_ID | typeof CF_ID;
 
 const MIN_DELAY = 900;
 const MAX_DELAY = 2_592_000;
