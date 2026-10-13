@@ -91,7 +91,7 @@ export {
   read,
   tie,
 } from "./mpp-challenge.js";
-export type { MppChallenge, MppChoice, MppCredential, MppIntent, MppMethod, MppPairing } from "./mpp-challenge.js";
+export type { MppChallenge, MppChoice, MppCredential, MppMethod, MppPairing } from "./mpp-challenge.js";
 export { chargeHedera } from "./hedera.js";
 export { LEGAL_CONTEXT_METADATA_KEY, chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 export type { StripeSubscriptionReceipt } from "./mpp-card-stripe.js";
@@ -106,24 +106,13 @@ export {
   usdcRequestHash,
   type GatewayPreimage,
   type GatewaySaltInput,
-  type StacksChargeChoice,
   type UsdcUnsigned,
 } from "./mpp-usdc.js";
 export { chargeNearIntents } from "./mpp-nearintents.js";
-export { chargeSolana, type SolanaChargeChoice, type SolanaChargeUnsigned } from "./mpp-solana.js";
-export { chargeStellar, type StellarChargeChoice, type StellarChargeUnsigned } from "./mpp-stellar.js";
-export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
-export {
-  sessionHedera,
-  sessionSolana,
-  sessionXrpl,
-  type HederaLandedCredential,
-  type HederaSessionUnsigned,
-  type RailSessionChoice,
-  type RailSessionUnsigned,
-  type SolanaSessionUnsigned,
-  type XrplSessionUnsigned,
-} from "./mpp-session-rails.js";
+export { chargeSolana } from "./mpp-solana.js";
+export { chargeStellar } from "./mpp-stellar.js";
+export { chargeXrpl } from "./mpp-xrpl.js";
+export { sessionHedera, sessionSolana, sessionXrpl, type RailSessionUnsigned } from "./mpp-session-rails.js";
 export {
   EVM_CLOSE_SELECTORS,
   evmChannelId,
@@ -140,7 +129,6 @@ export type {
   SessionStatus,
   SessionUnsigned,
   SessionWithin,
-  SessionWithinUnsigned,
   VoucherTypedData,
   WithinSigningRequest,
 } from "./mpp-session.js";

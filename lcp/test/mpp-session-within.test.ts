@@ -22,8 +22,8 @@ import {
   type MppCredential,
   type SessionUnsigned,
   type SessionWithin,
-  type SessionWithinUnsigned,
 } from "../src/mpp.js";
+import type { SessionWithinUnsigned } from "../src/mpp-session.js";
 import { H, challenge, link, load } from "./mpp-fixtures.js";
 
 const E = load("mpp-session-evm.json");
