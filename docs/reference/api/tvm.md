@@ -55,24 +55,6 @@ A transaction as a TON Center v3 endpoint reports it. `inBody` is the inbound me
 
 ***
 
-### TvmChoice
-
-#### Properties
-
-| Property | Type | Description |
-| ------ | ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
-| <a id="property-attachnanotons"></a> `attachNanotons` | `bigint` | The value attached to the outgoing message, above `forwardTonAmount`. |
-| <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet for `asset`, raw (`get_wallet_address` on the master). |
-| <a id="property-now"></a> `now` | `number` | Seconds since the epoch. |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
-| <a id="property-seqno"></a> `seqno` | `number` | - |
-| <a id="property-stateinit"></a> `stateInit?` | `string` \| [`TonCell`](#toncell) | The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. |
-| <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw. |
-| <a id="property-walletid"></a> `walletId` | `number` | `get_subwallet_id`. |
-
-***
-
 ### TvmReader
 
 Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects with `ReaderError`.
@@ -109,7 +91,7 @@ GET /api/v3/transactionsByMessage?body_hash=…&direction=in, with `headUtime`: 
 block through which the index that answered holds every block, read from that same index before the lookup, or null
 when the reader cannot read it from that index. `masterchainInfo`'s `last` can be ahead of an earlier block the
 index has not finished writing, so on its own it does not name such a block. A lookup naming no time never reads
-`expired` or `aborted`.
+`expired`, nor `no-transfer` or `aborted` from the W5 wallet's transactions.
 
 ###### Parameters
 
@@ -151,18 +133,18 @@ GET /api/v3/masterchainInfo: the last indexed block's gen_utime.
 
 ### TvmRef
 
-The read keys recorded at claim.
+The read keys a payment's settlement is read by.
 
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-jettonwallet-1"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the destination of the W5 request's one message. |
+| <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the destination of the W5 request's one message. |
 | <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` | - |
 | <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the body of the message to the payer's wallet. |
 | <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` | The representation hash of the Jetton transfer body the W5 request sends. |
 | <a id="property-validuntil"></a> `validUntil` | `number` | - |
-| <a id="property-wallet-1"></a> `wallet` | `string` | The payer's W5 wallet, raw: the destination of the settlement message. |
+| <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw: the destination of the settlement message. |
 
 ***
 
@@ -180,7 +162,7 @@ The read keys recorded at claim.
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`TvmPayment`](#tvmpayment)
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `TvmPayment`
 
 Takes the 64-byte Ed25519 signature.
 
@@ -192,7 +174,7 @@ Takes the 64-byte Ed25519 signature.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`TvmPayment`](#tvmpayment)
+[`Refusal`](index.md#refusal) \| `TvmPayment`
 
 ## Type Aliases
 
@@ -201,12 +183,6 @@ Takes the 64-byte Ed25519 signature.
 > **TvmNetwork** = `` `tvm:${number}` ``
 
 tvm:<global_id>: tvm:-239 mainnet, tvm:-3 testnet.
-
-***
-
-### TvmPayment
-
-> **TvmPayment** = [`X402Payment`](x402.md#x402payment)\<\{ `asset`: `string`; `settlementBoc`: `string`; \}\>
 
 ***
 
@@ -309,16 +285,18 @@ when both Jetton wallets executed without aborting, at the lower finality of the
 any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
 Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
 emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
-pending `not-found` up to `validUntil`; past it, failed `no-transfer` when one executed and emitted nothing, and
-failed `expired` when the W5 wallet holds no transaction with the request, or `aborted` when every one aborted, only
-when the lookup names an indexed time at or past the head read first: an internal request that aborts leaves its
-seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
-`validUntil`, and an index that lags that head, or names no time, is pending `not-found`. The payer's Jetton wallet's
-transaction aborted is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted
-delivery failed `bounced`, at any head. A transaction on any other account is ignored. A failed or malformed read, a
-malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
-network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
-lowercase. At most four calls.
+pending `not-found` up to 60 seconds past `validUntil`, since a W5 transaction runs at its shard block's time, which
+a masterchain block references only later; past that, failed `expired` when the W5 wallet holds no transaction with
+the request, `no-transfer` when one executed and emitted nothing, and `aborted` when every one aborted, each only
+when the lookup names an indexed time at or past the head read first. The lookup shows the W5 wallet's transactions
+only through the blocks its index holds, and an internal request that aborts leaves its seqno unused (wallet_v5.fc
+commits the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose
+index lags that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted
+is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`,
+at any head. A transaction on any other account is ignored. A failed or malformed read, a malformed reference (a
+`requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another network is pending
+`unreadable`, a malformed reference with nothing read; the request's body hash is looked up in lowercase. At most
+four calls.
 
 #### Parameters
 
