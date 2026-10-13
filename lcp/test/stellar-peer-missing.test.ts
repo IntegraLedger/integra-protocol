@@ -73,6 +73,17 @@ describe("without @stellar/stellar-sdk", () => {
     expect(await chargeStellar.reference(credential)).toEqual(refused);
   });
 
+  // The placed challenge is the vectors' placement: with the peer, unplaced sets its muxed recipient back to the base
+  // account, the issued challenge's recipient. Without the peer no recipient can be read, so no challenge comes back.
+  it("mpp/charge/stellar's unplaced refuses peer-missing for a challenge, after a refused member", { timeout: IMPORT_MS }, async () => {
+    const { chargeStellar } = await import("../src/mpp.js");
+    const refused = { refused: true, code: CODE };
+    expect(chargeStellar.unplaced(M.place.expect)).toEqual(refused);
+    expect(chargeStellar.unplaced(M.challenge)).toEqual(refused);
+    expect(chargeStellar.unplaced({ ...M.place.expect, refused: true })).toEqual({ refused: true, code: "mpp/challenge-malformed" });
+    expect(chargeStellar.unplaced(M.fixed.H)).toBe(M.fixed.H);
+  });
+
   it("the stellar entry point's decoders refuse peer-missing, and muxedFor throws TypeError", { timeout: IMPORT_MS }, async () => {
     const st = await import("../src/stellar.js");
     const refused = { refused: true, code: CODE };
