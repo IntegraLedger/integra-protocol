@@ -271,6 +271,27 @@ describe("x402-exact-stellar.json", () => {
     }
   });
 
+  // As the status test above: stellarLocate's search keys are the ref's, so a key outside the form reference writes
+  // names no search. The reader answers a complete search that lists nothing, which the well-formed ref reads complete.
+  it("V5: stellarLocate with a ref field outside the form reference writes is incomplete, with nothing read", async () => {
+    const expired = V.V5.rows.find(
+      (r: { case: string }) => r.case === "the named transaction is not found; past the expiration ledger, the search is complete and lists nothing",
+    );
+    expect(await stellarLocate(refOf(V.V5.ref), readerFor(expired))).toEqual({ complete: true });
+    const bad: readonly (readonly [string, Record<string, unknown>])[] = [
+      ["authDigest of 31 bytes", { ...V.V5.ref, authDigest: V.V5.ref.authDigest.slice(0, -2) }],
+      ["expiration a string", { ...V.V5.ref, expiration: "1000" }],
+      ["asset x", { ...V.V5.ref, asset: "x" }],
+      ["toBase the muxed form", { ...V.V5.ref, toBase: V.V1.M }],
+      ["toId x", { ...V.V5.ref, toId: "x" }],
+      ["fromLedger a string", { ...V.V5.ref, fromLedger: "900" }],
+    ];
+    for (const [name, r] of bad) {
+      const { reader, calls } = counting(readerFor(expired));
+      expect([name, await stellarLocate(refOf(r), reader), calls]).toEqual([name, { complete: false }, []]);
+    }
+  });
+
   it("V5 rebuilt: V3's signed entry in another transaction is the same instrument", () => {
     const e = xdr.TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
     if (e.type !== 2) throw new Error("not a v1 envelope");

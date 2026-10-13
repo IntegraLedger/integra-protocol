@@ -2,8 +2,9 @@
  * Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8
  * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
- * needs it refuses `stellar/peer-missing`, except the writer `muxedFor`, which throws TypeError. The public names are
- * re-exported by `../stellar.ts`.
+ * needs it refuses `stellar/peer-missing`, except the writer `muxedFor`, which throws TypeError, and the reads:
+ * `stellarStatus` is pending `unreadable` and `stellarLocate` `complete: false`, with nothing read. The public names
+ * are re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import { base64 } from "@scure/base";
@@ -788,8 +789,9 @@ export async function stellarStatus(
  * (`oldestLedger` ≤ `fromLedger`) and had reached the expiration ledger (`latestLedger` ≥ `expiration`), and every
  * candidate was read: a listed candidate whose transaction is not found, or cannot be read, leaves the search
  * incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
- * has no entry to search for, and a ref whose `authDigest` is not a string names none: `complete` is false. A ref or
- * reader that is not an object, or a reader for another network, is `complete` false too, with nothing read.
+ * has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
+ * or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
+ * `asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read.
  */
 export async function stellarLocate(
   ref: StellarRef,
@@ -797,6 +799,7 @@ export async function stellarLocate(
 ): Promise<{ found?: string; complete: boolean }> {
   if (!isObject(ref) || !isObject(reader)) return { complete: false };
   if (reader.network !== ref.network || typeof ref.authDigest !== "string" || ref.expiration === undefined) return { complete: false };
+  if (!refWellFormed(ref)) return { complete: false };
   const l = await locate(ref, ref.expiration, reader, ref.expiration);
   return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
 }
