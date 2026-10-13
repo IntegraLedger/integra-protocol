@@ -54,7 +54,7 @@ The core: assembling an ATR and hashing its exact bytes, comparing hashes, the h
 import { assemble, BINDINGS, canonicalJson, … } from "@integraledger/lcp";
 ```
 
-**Values (19):** `assemble`, `BINDINGS`, `canonicalJson`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `pairingsOfPlaced`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (18):** `assemble`, `BINDINGS`, `canonicalJson`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
 **Types (12):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `Refusal`, `X402Binding`.
 

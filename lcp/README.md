@@ -203,7 +203,6 @@ Each entry point is imported by its subpath. The core:
 | `parseJson(text)` | JSON reading capped at 64 levels of nesting. |
 | `BINDINGS` | Every pairing this package implements. |
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
-| `pairingsOfPlaced(challenge)` | The MPP pairings a placed MPP challenge offers. |
 
 The protocol and rail entry points:
 

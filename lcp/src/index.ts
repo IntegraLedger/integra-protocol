@@ -22,7 +22,6 @@ export type { AtrHash, CoreRefusal, Json } from "./core.js";
 export { isRefusal } from "./refusal.js";
 export type { Refusal } from "./refusal.js";
 export type { LcpPattern } from "./x402.js";
-export { pairingsOfPlaced } from "./mpp.js";
 
 import { paymentRequest } from "./ack.js";
 import { delegated, type Presented as AcpPresented, undelegated } from "./acp.js";
