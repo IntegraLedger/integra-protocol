@@ -22,9 +22,9 @@ On every MPP pairing, H rides in the challenge itself, in two places:
   pairing's payment carries H in nothing public, it also carries `legalContextAgreementUrl`.
 
 MPP binds the credential to the challenge it echoes, so whatever the payer signs over the challenge id, or over a
-value derived from it, commits to H. Some methods also carry H in a request member the payer signs; `CARRIER` names
-that member for each intent and method (for example `externalId` for `solana` charges, and
-`methodDetails.invoiceId` for `xrpl`).
+value derived from it, commits to H. Some methods also carry H in a request member; `CARRIER` names that member for
+each intent and method. Where the payer signs it, as `externalId` on `solana` charges and `methodDetails.invoiceId` on
+`xrpl`, it is in the payment.
 
 `issuedDigest(challenge)` is the digest of what the seller issued: SHA-256 over the RFC 8785 form of the bound
 members, with `request` decoded and its `CARRIER` member left out, and `opaque` without the LCP members. The seller
