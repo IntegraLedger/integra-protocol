@@ -133,10 +133,12 @@ The response config is an x402 version 2 `PaymentRequired`, with two members add
 1. Until the checkout is `ready_for_complete` it has no ATR, and the handler's `config` in its responses is the
    business config.
 2. At `ready_for_complete` the business assembles the ATR for the checkout's terms. Its binding slot is the x402
-   pairing's, `x402: {accepts, request}`. `accepts` holds the options exactly as offered. `request` commits to a
-   `POST` to the checkout's completion path, the path of `resource.url` followed by `/complete`, whose body is the
-   business's statement of the checkout's terms: `bodyDigest` is SHA-256 over those bytes. So the ATR names the
-   checkout. Under AP2 mandates the slot names the checkout's `id` instead: [Under AP2 mandates](#under-ap2-mandates).
+   pairing's, `x402: {accepts, request}`. `accepts` holds the options exactly as offered. `request` names a `POST` to
+   the checkout's completion path, the path of `resource.url` followed by `/complete`, so the ATR names the checkout.
+   Its `bodyDigest` is SHA-256 over the business's statement of the checkout's terms, not over the completion request's
+   body, which carries the payment; a platform checks the ATR's `request.path`, as [Payment protocol](#payment-protocol)
+   step 3 says. Under AP2 mandates the slot names the checkout's `id` instead: [Under AP2
+   mandates](#under-ap2-mandates).
 3. Each option is offered under an x402 pairing of LCP in which the payment carries H, or a value from which H is
    confirmed. A pairing whose payment carries neither (`http-advisory`) is not offered.
 4. The handler's `config` is then the response config for that ATR, and the checkout's `links[]` carries
