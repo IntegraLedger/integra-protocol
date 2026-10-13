@@ -438,16 +438,21 @@ describe("every placement function refuses a seller document carrying a refused 
       .filter((b) => typeof b.advertiseBeforeCarrier === "function")
       .map((b) => [b.id, "advertiseBeforeCarrier", b.advertiseBeforeCarrier as Place, true] as const),
   ];
+  const issuedX402 = (id: string, asIssued: boolean) => {
+    const b = BINDINGS.find((p) => p.id === id)!;
+    const advertised = advertisedDoc.get(id) as { accepts: unknown[]; extensions: { legalContext: { info: Record<string, string> } } };
+    const info = advertised.extensions.legalContext.info;
+    const { legalContext: _, ...extensions } = advertised.extensions;
+    const option = (asIssued ? (b.unplaced as (o: unknown) => unknown)(advertised.accepts[0]) : advertised.accepts[0]) as object;
+    const issued: Record<string, unknown> = { ...advertised, accepts: [option], extensions };
+    if (Object.keys(extensions).length === 0) delete issued["extensions"];
+    const rest = [info["value"], info["legalContextUrl"], info["legalContextAgreementUrl"]] as const;
+    return { advertised, issued, option, rest };
+  };
   for (const [id, member, placeIn, asIssued] of x402Calls) {
     it(`${id}: ${member} refuses a document carrying a refused member as x402/option-malformed`, () => {
-      const b = BINDINGS.find((p) => p.id === id)!;
-      const advertised = advertisedDoc.get(id) as { accepts: unknown[]; extensions: { legalContext: { info: Record<string, string> } } };
-      const info = advertised.extensions.legalContext.info;
-      const { legalContext: _, ...extensions } = advertised.extensions;
-      const option = asIssued ? (b.unplaced as (o: unknown) => unknown)(advertised.accepts[0]) : advertised.accepts[0];
-      const issued: Record<string, unknown> = { ...advertised, accepts: [option], extensions };
-      if (Object.keys(extensions).length === 0) delete issued["extensions"];
-      const args = [info["value"], info["legalContextUrl"], option, info["legalContextAgreementUrl"]] as const;
+      const { advertised, issued, option, rest } = issuedX402(id, asIssued);
+      const args = [rest[0], rest[1], option, rest[2]] as const;
       const placed = placeIn(structuredClone(issued), ...args);
       if (member === "advertise") expect(placed).toEqual(advertised);
       else expect(isRefusal(placed)).toBe(false);
@@ -456,6 +461,55 @@ describe("every placement function refuses a seller document carrying a refused 
         expect(out).toEqual(refused("x402/option-malformed"));
         expect(isRefusal(out)).toBe(true);
       }
+    });
+  }
+
+  // The copy an x402 placement returns keeps every option in accepts, so an option there that carries a refused member
+  // is refused as well, with x402/option-malformed: at the first or the last place, offered or not. The document is the
+  // one above with a second option, the offered one at another amount, which the placement leaves as it is.
+  for (const [id, member, placeIn, asIssued] of x402Calls) {
+    it(`${id}: ${member} refuses a document with an option in accepts carrying a refused member as x402/option-malformed`, () => {
+      const { issued, option, rest } = issuedX402(id, asIssued);
+      const other = { ...option, amount: "7" };
+      const call = (accepts: unknown[], offer: unknown) => placeIn({ ...issued, accepts }, rest[0], rest[1], offer, rest[2]);
+      for (const accepts of [[option, other], [other, option]]) {
+        const placed = call(structuredClone(accepts), structuredClone(option)) as { accepts: unknown[] };
+        expect(isRefusal(placed)).toBe(false);
+        expect(placed.accepts[accepts.indexOf(other)]).toEqual(other);
+      }
+      const offered = withRefused(option);
+      const cases: [unknown[], unknown][] = [
+        [[offered, other], offered],
+        [[other, offered], offered],
+        [[withRefused(other), option], option],
+        [[option, withRefused(other)], option],
+      ];
+      for (const [accepts, offer] of cases) {
+        const out = call(structuredClone(accepts), structuredClone(offer));
+        expect(out).toEqual(refused("x402/option-malformed"));
+        expect(isRefusal(out)).toBe(true);
+      }
+    });
+  }
+
+  // The options are read only within the 32-option bound docs/reference/refusals.md gives for accepts: an accepts of 40
+  // options is refused as x402/option-malformed with no option at index 32 or above read, whatever those options hold.
+  for (const [id, member, placeIn, asIssued] of x402Calls) {
+    it(`${id}: ${member} reads no option of accepts beyond its 32-option bound`, () => {
+      const { issued, option, rest } = issuedX402(id, asIssued);
+      const read = new Set<number>();
+      const accepts = new Proxy(
+        Array.from({ length: 40 }, (_, i) => (i === 39 ? withRefused(option) : structuredClone(option))),
+        {
+          get(t, k, r) {
+            if (typeof k === "string" && /^[0-9]+$/.test(k) && Number(k) >= 32) read.add(Number(k));
+            return Reflect.get(t, k, r);
+          },
+        },
+      );
+      const out = placeIn({ ...issued, accepts }, rest[0], rest[1], option, rest[2]);
+      expect(out).toEqual(refused("x402/option-malformed"));
+      expect([...read]).toEqual([]);
     });
   }
 

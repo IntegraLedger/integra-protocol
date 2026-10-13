@@ -59,8 +59,8 @@ secrets out of the query.
 `{"type":"sha256","value":H,"legalContextUrl":link}`, beside its `schema`, and leaves every other extension and every
 option as they were.
 On pairings that carry H in the option itself, such as `x402/exact/solana` (`extra.memo`), it also places H there.
-A challenge that carries a `refused` member is refused as `x402/option-malformed` before anything is placed
-([Refusals](../concepts/refusals.md#where-a-refusal-comes-from)).
+A challenge, or an option in its `accepts`, that carries a `refused` member is refused as `x402/option-malformed`
+before anything is placed ([Refusals](../concepts/refusals.md#where-a-refusal-comes-from)).
 
 ## 4. Check the payment
 

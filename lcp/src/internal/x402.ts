@@ -45,7 +45,7 @@ export type X402Payment<P> = Omit<PaymentPayload, "payload"> & { payload: P };
 
 /**
  * A pairing's `advertise`: the document with the legal context placed, and the agreement URL when one is given. A
- * document that carries a `refused` member is `x402/option-malformed`.
+ * document, or an option in its `accepts`, that carries a `refused` member is `x402/option-malformed`.
  */
 export type X402Advertise = (
   doc: PaymentRequired,
@@ -66,15 +66,15 @@ export interface X402Read {
 /**
  * The seller's placement over a pairing's filter: a copy of `doc` whose `extensions.legalContext` carries the hash, the link and, when
  * given, the agreement URL after the link. The legal context is one per document, so each pairing placing the same
- * values into it leaves it as it is. Other extensions are kept and `accepts` is untouched. It refuses a `doc` that
- * carries a `refused` member, as `x402/option-malformed`, before any other check; an `offer` outside `doc.accepts` or
- * refused by the filter; a link or an agreement URL that is not an `https` link, as `x402/link-not-https` (LCP §8.1),
- * and an `https` one over 2048 characters, as `x402/legal-context-malformed`; and a legal context already present with
- * other values.
+ * values into it leaves it as it is. Other extensions are kept and `accepts` is untouched. It refuses a `doc`, or an
+ * option in its `accepts`, that carries a `refused` member, as `x402/option-malformed`, before any other check, since
+ * the copy keeps every option; an `offer` outside `doc.accepts` or refused by the filter; a link or an agreement URL
+ * that is not an `https` link, as `x402/link-not-https` (LCP §8.1), and an `https` one over 2048 characters, as
+ * `x402/legal-context-malformed`; and a legal context already present with other values.
  */
 export function advertiseFor(filter: OptionFilter): X402Advertise {
   return (doc, h, link, offer, agreementUrl) => {
-    if (isObject(doc) && carriesRefused(doc)) return refusal("x402/option-malformed");
+    if (carriesRefusedMember(doc)) return refusal("x402/option-malformed");
     if (!isObject(doc) || doc.x402Version !== 2) return refusal("x402/not-v2");
     if (!Array.isArray(doc.accepts) || doc.accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
     if (!isOffered(doc.accepts, offer)) return refusal("x402/option-not-in-document");
@@ -102,6 +102,18 @@ export function advertiseFor(filter: OptionFilter): X402Advertise {
       >,
     };
   };
+}
+
+/**
+ * True when an x402 document, or an option in its `accepts`, carries a `refused` member. The options are read only
+ * when `accepts` holds at most 32 of them; a longer `accepts` is refused by the bound check that follows.
+ */
+export function carriesRefusedMember(doc: unknown): boolean {
+  if (!isObject(doc)) return false;
+  if (carriesRefused(doc)) return true;
+  const accepts = doc["accepts"];
+  if (!Array.isArray(accepts) || accepts.length > MAX_OPTIONS) return false;
+  return accepts.some((o) => isObject(o) && carriesRefused(o));
 }
 
 /**

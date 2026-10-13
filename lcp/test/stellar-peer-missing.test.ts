@@ -65,14 +65,20 @@ describe("without @stellar/stellar-sdk", () => {
   });
 
   // A document carrying a refused member is refused before the peer is needed, so the code is the one it gets with the
-  // peer: x402/option-malformed for the x402 document, and mpp/challenge-malformed for a challenge list holding such a
-  // challenge (docs/reference/refusals.md).
+  // peer: x402/option-malformed for the x402 document or an option in its accepts, and mpp/challenge-malformed for a
+  // challenge list holding such a challenge (docs/reference/refusals.md).
   it("x402/exact/stellar's and mpp/charge/stellar's advertise refuse a refused member before peer-missing", { timeout: IMPORT_MS }, async () => {
     const { exactStellar } = await import("../src/x402-exact-stellar.js");
     const { chargeStellar } = await import("../src/mpp.js");
     const member = { refused: true, code: "claim/store-unavailable" };
     const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.fixed.option], ...member };
     expect(exactStellar.advertise(required, V.fixed.H, V.fixed.link, V.fixed.option)).toEqual({
+      refused: true,
+      code: "x402/option-malformed",
+    });
+    const offered = { ...V.fixed.option, ...member };
+    const withOption = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [offered] };
+    expect(exactStellar.advertise(withOption, V.fixed.H, V.fixed.link, offered)).toEqual({
       refused: true,
       code: "x402/option-malformed",
     });

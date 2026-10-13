@@ -52,13 +52,13 @@ x402 EIP-3009 payment and `casper/payload-malformed` for a Casper payment. `unpl
 challenge you pass or a copy of it without the pairing's carrier, and each placement, which gives back a copy of the
 seller's document with the carrier placed (`advertise` and `advertiseBeforeCarrier` on the x402, MPP, ACP, AP2 and UCP
 pairings, and MPP's and A2A's `place`), refuse a value that carries a `refused` member before they remove or place
-anything: with `x402/option-malformed` on x402, with `mpp/challenge-malformed` on MPP (for a list of challenges, when
-any of them carries one), and elsewhere with the malformed code of what they are given: the pairing's
-`option-malformed` code for an option given to `unplaced` on the ACK, ACP, AP2, card and UCP pairings, and
-`acp/session-malformed`, `ap2/jws-malformed`, `ucp/checkout-malformed` or `a2a/legal-context-malformed` for the session,
-checkout payload, checkout or task a placement is given.
-Every other entry point reads a presented value only for the members its pairing defines, and returns either a value
-it built or its own refusal.
+anything: with `x402/option-malformed` on x402 (for a document, when it or an option in its `accepts` carries one),
+with `mpp/challenge-malformed` on MPP (for a list of challenges, when any of them carries one), and elsewhere with the
+malformed code of what they are given: the pairing's `option-malformed` code for an option given to `unplaced` on the
+ACK, ACP, AP2, card and UCP pairings, and `acp/session-malformed`, `ap2/jws-malformed`, `ucp/checkout-malformed` or
+`a2a/legal-context-malformed` for the session, checkout payload, checkout or task a placement is given. Every other
+entry point reads a presented value only for the members its pairing defines, and returns either a value it built or
+its own refusal.
 
 ## What throws
 
