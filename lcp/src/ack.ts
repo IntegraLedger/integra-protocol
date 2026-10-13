@@ -18,7 +18,7 @@ import {
 } from "./core.js";
 import { isObject, jsonBytes, normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import { decodeJsonSegment, jwsSegments, withinDepth } from "./sd-jwt.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -140,8 +140,12 @@ export function fromReceipt(credentialSubject: unknown): AtrHash | Refusal {
   return h === null ? refusal("ack/receipt-malformed") : h;
 }
 
-/** The option unchanged: the Payment Request's `id` carries the hash, and the option does not. */
-function unplaced(option: AckPaymentOption): AckPaymentOption {
+/**
+ * The option unchanged: the Payment Request's `id` carries the hash, and the option does not. An option that carries a
+ * `refused` member is `ack/option-malformed`.
+ */
+function unplaced(option: AckPaymentOption): AckPaymentOption | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("ack/option-malformed");
   return option;
 }
 

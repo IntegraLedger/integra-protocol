@@ -18,7 +18,7 @@ import {
 } from "./core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
 import { AGREEMENT_URL_SNAKE, agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 export const METADATA_KEY = "legal_context";
@@ -60,7 +60,7 @@ export interface AcpBinding<Id extends string> {
   id: Id;
   pattern: LcpPattern;
   claims: boolean;
-  unplaced(option: HandlerOption): HandlerOption;
+  unplaced(option: HandlerOption): HandlerOption | Refusal;
   tie: typeof tie;
   advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption, agreementUrl?: string): Session | Refusal;
   read(doc: Session): { h: AtrHash; link: string; agreement?: string; offer: { session: Session } } | Refusal;
@@ -216,8 +216,12 @@ async function boundDelegated(presented: unknown): Promise<AtrHash | Refusal> {
   return h;
 }
 
-/** The option unchanged: the session id carries the hash, and the option does not. */
-function unplaced(option: HandlerOption): HandlerOption {
+/**
+ * The option unchanged: the session id carries the hash, and the option does not. An option that carries a `refused`
+ * member is `acp/option-malformed`.
+ */
+function unplaced(option: HandlerOption): HandlerOption | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("acp/option-malformed");
   return option;
 }
 

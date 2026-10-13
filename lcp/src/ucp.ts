@@ -19,7 +19,7 @@ import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import { checkoutBinding, checkoutJwtOf, type Presented } from "./ap2.js";
 import type { LcpPattern } from "./index.js";
 import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/agreement.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 export const LINK_TYPE = "legal_context";
 export const AGREEMENT_LINK_TYPE = "legal_context_agreement";
@@ -103,7 +103,7 @@ export interface UcpBinding<Id extends string, O extends Option> {
   id: Id;
   pattern: LcpPattern;
   claims: boolean;
-  unplaced(option: O): O;
+  unplaced(option: O): O | Refusal;
   tie(options: readonly O[]): ["ucp", { options: readonly O[] }];
   advertise(doc: Checkout, h: AtrHash, link: string, offer: O, agreementUrl?: string): Checkout | Refusal;
   read(doc: Checkout): { h: AtrHash; link: string; agreement?: string; offer: UcpOffer } | Refusal;
@@ -245,7 +245,12 @@ async function boundUnsigned(): Promise<AtrHash | Refusal> {
   return refusal("ucp/not-buyer-signed");
 }
 
-function unplaced<O extends Option>(option: O): O {
+/**
+ * The option unchanged: the checkout's link carries the hash, and the option does not. An option that carries a
+ * `refused` member is `ucp/option-malformed`.
+ */
+function unplaced<O extends Option>(option: O): O | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("ucp/option-malformed");
   return option;
 }
 

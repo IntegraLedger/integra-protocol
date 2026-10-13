@@ -13,7 +13,7 @@
 import { fromLegalContext, hashEquals, isHashWithNonHttpsLink, isHttpsLink, isOtherSchemeLink, toLcpString, type AtrHash } from "./core.js";
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import {
   b64urlDecode,
@@ -82,7 +82,7 @@ export interface CardPairing<Id extends CardPairingId, U> {
   id: Id;
   pattern: LcpPattern;
   claims: boolean;
-  unplaced(option: CardOption): CardOption;
+  unplaced(option: CardOption): CardOption | Refusal;
   tie: typeof tie;
   advertise(doc: Record<string, never>, h: AtrHash, link: string, offer: CardOption, agreementUrl?: string): CardValues | Refusal;
   read(doc: unknown): { h: AtrHash; link: string; agreement?: string } | Refusal;
@@ -161,8 +161,12 @@ function advertise(
   return { legalContext, reference: toLcpString(value) };
 }
 
-/** The option unchanged: no card pairing carries the hash inside the option. */
-function unplaced(option: CardOption): CardOption {
+/**
+ * The option unchanged: no card pairing carries the hash inside the option. An option that carries a `refused` member
+ * is `card/option-malformed`.
+ */
+function unplaced(option: CardOption): CardOption | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("card/option-malformed");
   return option;
 }
 

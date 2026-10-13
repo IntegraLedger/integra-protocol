@@ -20,7 +20,7 @@ import {
 import { deepFreeze, jsonBytes, normalHash, sameJson } from "./fields.js";
 import type { LcpPattern } from "./index.js";
 import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   decodeJsonSegment,
   disclosureDigest,
@@ -286,8 +286,12 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return lc.h;
 }
 
-/** The option unchanged: on this pairing the hash rides in the checkout payload, not in the option. */
-function unplaced(option: CheckoutOption): CheckoutOption {
+/**
+ * The option unchanged: on this pairing the hash rides in the checkout payload, not in the option. An option that
+ * carries a `refused` member is `ap2/option-malformed`.
+ */
+function unplaced(option: CheckoutOption): CheckoutOption | Refusal {
+  if (isJsonObject(option) && carriesRefused(option)) return refusal("ap2/option-malformed");
   return option;
 }
 

@@ -19,7 +19,7 @@ export function isRefusal(v: unknown): v is Refusal {
   return typeof v === "object" && v !== null && made.has(v);
 }
 
-/** True when an object handed in as a payment or credential carries a `refused` member, the member refusals use. */
+/** True when a payment, credential or option handed in carries a `refused` member, the member refusals use. */
 export function carriesRefused(v: Record<string, unknown>): boolean {
   return Object.hasOwn(v, "refused");
 }

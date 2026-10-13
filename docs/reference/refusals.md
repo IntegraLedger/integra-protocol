@@ -194,7 +194,7 @@ ACK Payment Requests and receipts (`@integraledger/lcp/ack`).
 | `ack/link-not-https` | The link or agreement URL given to `advertise`, or found in the body's `legalContext` by `read`, is an absolute URL whose scheme is not `https`. |
 | `ack/no-legal-context` | `read` finds no `legalContext` in the 402 body. |
 | `ack/no-signed-place` | ACK defines no payer signature, so `build` and `bound` of `ack/payment-request` always return this refusal. |
-| `ack/option-malformed` | `advertise` refuses a payment option that is not an object with a non-empty string `id`. |
+| `ack/option-malformed` | `advertise` refuses a payment option that is not an object with a non-empty string `id`, and `unplaced` refuses an option that carries a `refused` member. |
 | `ack/receipt-malformed` | `fromReceipt` refuses a `credentialSubject` that is not a serialisable JSON object or whose embedded `paymentRequestToken` does not carry an `id` in LCP's string form. |
 | `ack/token-malformed` | `read` refuses a 402 body that is not a serialisable JSON object, a `paymentRequestToken` that is not a compact JWS with a JSON object payload, or a token payload whose `paymentOptions` is not an array. |
 | `ack/too-large` | `read` refuses a 402 body over 64 KiB, a token over 16384 characters or more than 16 payment options, and `fromReceipt` refuses a `credentialSubject` over 64 KiB; a body or `credentialSubject` nested more than 64 levels deep is refused the same way. |
@@ -217,7 +217,7 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 | `acp/no-legal-context` | `read` finds no `metadata.legal_context` in the session. |
 | `acp/not-buyer-signed` | `bound` of `acp/checkout/undelegated` always refuses, because nothing the buyer signs names the hash. |
 | `acp/nothing-to-sign` | `build` of `acp/checkout/undelegated` always refuses, because a handler that does not require `delegate_payment` gives the buyer nothing to sign. |
-| `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`. |
+| `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`, and `unplaced` refuses an option that carries a `refused` member. |
 | `acp/session-malformed` | `advertise` or `read` refuses a checkout session that is not a serialisable JSON object, or (in `advertise`) whose `metadata` is present but not an object. |
 | `acp/too-large` | The checkout session, or the session `advertise` would return, exceeds 1 MiB or is nested more than 64 levels deep, an `https` link given to `advertise` or read from `metadata.legal_context` exceeds 2048 characters, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
 
@@ -240,7 +240,7 @@ AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledg
 | `ap2/mandate-malformed` | The Checkout Mandate is not a well-formed SD-JWT presentation (bad segments, disclosures, or a digest referenced twice), or is a chain joined by `~~` with more than two hops or a hop that is not one, its `checkout_hash` is not 43 base64url characters, its `checkout_jwt` is present but not a string, the presentation given to `bound` is not an object, or `checkoutJwtOf` finds no disclosed `checkout_jwt`. |
 | `ap2/no-checkout-mandate` | The resolved SD-JWT (the last hop of a chain) contains no object whose `vct` is `mandate.checkout.1`. |
 | `ap2/no-legal-context` | The checkout payload read by `read`, `build` or `bound` has no `legalContext` member. |
-| `ap2/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout`, a string of 1 to 256 characters. |
+| `ap2/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout`, a string of 1 to 256 characters, and `unplaced` refuses an option that carries a `refused` member. |
 | `ap2/option-not-this-checkout` | `advertise` finds that the option's `checkout` is not the payload's `id`. |
 | `ap2/sd-alg-unsupported` | The `_sd_alg` of an SD-JWT of the Checkout Mandate presentation names a digest algorithm other than `sha-256`. |
 | `ap2/too-large` | A checkout JWT, Checkout Mandate or checkout payload exceeds 1 MiB or nests deeper than 64 levels, an SD-JWT of a mandate carries too many disclosures or nests them too deeply, a checkout `id` is longer than 256 characters, or an `https` link given to `advertise` or read from the checkout payload's `legalContext` is longer than 2048 characters. |
@@ -261,7 +261,7 @@ UCP checkouts and bookings (`@integraledger/lcp/ucp`).
 | `ucp/no-legal-context` | The checkout has no `links` or no link whose `type` is `legal_context`. |
 | `ucp/not-buyer-signed` | `bound` of the unsigned checkout and booking pairings always refuses, because nothing the buyer signs carries the hash. |
 | `ucp/nothing-to-sign` | `build` of the unsigned checkout and booking pairings always refuses, because the buyer signs nothing. |
-| `ucp/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout` or `booking` as the pairing requires, a string of 1 to 256 characters. |
+| `ucp/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout` or `booking` as the pairing requires, a string of 1 to 256 characters, and `unplaced` refuses an option that carries a `refused` member. |
 | `ucp/option-not-this-checkout` | `advertise` finds that the option names a checkout or booking other than the document's `id`. |
 | `ucp/too-large` | The checkout exceeds 1 MiB as JSON or is nested more than 64 levels deep, its `id` exceeds 256 characters, its `links` holds, or after `advertise` would hold, more than 64 entries, or the `legal_context` link's `url`, or the link given to `advertise`, is an `https` URL over 2048 characters. |
 
@@ -275,7 +275,7 @@ Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraled
 | `card/link-not-https` | The link or agreement URL given to `advertise`, or the link or agreement URL found in a `legalContext` by `read`, is an absolute URL whose scheme is not `https`. |
 | `card/no-legal-context` | The JSON the seller showed (for `card/visa-tap` and `card/seller-reference`) or the payload of a `checkout_jwt` (for Verifiable Intent) has no `legalContext` member. |
 | `card/no-signed-place` | `build` and `bound` of `card/seller-reference` always refuse, because nothing the buyer signs carries the hash. |
-| `card/option-malformed` | `advertise` refuses a card option that is not an object with a known `scheme` and a `checkout` of 1 to 128 visible ASCII characters. |
+| `card/option-malformed` | `advertise` refuses a card option that is not an object with a known `scheme` and a `checkout` of 1 to 128 visible ASCII characters, and `unplaced` refuses an option that carries a `refused` member. |
 | `card/tap-field-malformed` | The TAP request's `lcpHash` is not an array of strings, or its one line is not an ATR hash. |
 | `card/tap-field-missing` | The TAP request carries no `lcp-hash` field line. |
 | `card/tap-field-repeated` | The TAP request carries more than one `lcp-hash` field line. |

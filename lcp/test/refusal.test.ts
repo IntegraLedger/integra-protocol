@@ -91,6 +91,34 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     });
   }
 
+  // The checkout pairings' unplaced hands an option back unchanged, so it refuses one that carries a refused member,
+  // with the pairing's option-malformed code (docs/reference/refusals.md), as the readers above do for a payment.
+  const options: Record<string, unknown> = {
+    ack: { id: "opt_1" },
+    acp: { requires_delegate_payment: true },
+    ap2: { checkout: "chk_1" },
+    card: { scheme: "visa-tap", checkout: "chk_1" },
+    ucp: { checkout: "chk_1" },
+  };
+  const checkouts = BINDINGS.filter((b) => options[b.id.split("/")[0]!] !== undefined);
+  it("the ACK, ACP, AP2, card and UCP pairings are twelve", () => {
+    expect(checkouts.length).toBe(12);
+  });
+  for (const b of checkouts) {
+    const ns = b.id.split("/")[0]!;
+    const option = b.id.startsWith("ucp/booking/") ? { booking: "bk_1" } : options[ns];
+    it(`${b.id}: unplaced refuses an option carrying a refused member as ${ns}/option-malformed`, () => {
+      const unplaced = b.unplaced as (o: unknown) => unknown;
+      expect(unplaced(option)).toBe(option);
+      const expected = { refused: true, code: `${ns}/option-malformed` };
+      for (const v of [withRefused(option), shaped(), refusal("ack/token-malformed")]) {
+        const out = unplaced(v);
+        expect(out).toEqual(expected);
+        expect(isRefusal(out)).toBe(true);
+      }
+    });
+  }
+
   for (const b of BINDINGS) {
     const fetchPresented = (b as { fetchPresented?: (c: unknown, r: unknown) => Promise<unknown> }).fetchPresented;
     const p = presentedOf.get(b.id);
