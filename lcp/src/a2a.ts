@@ -20,7 +20,10 @@ export const A2A_EXTENSION_URIS: readonly string[] = Object.freeze([
   "https://lcp.integraledger.com/a2a/legal-context/v1",
 ]);
 
-/** A2A binds nothing: the refusal given wherever an A2A pairing is asked for. */
+/**
+ * A2A signs nothing per transaction, so it has no pairing: a caller asked for an A2A pairing can answer with this
+ * refusal.
+ */
 export const binding: Refusal = Object.freeze(refusal("a2a/no-signed-place"));
 
 /** What the carrier proves. */

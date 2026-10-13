@@ -307,7 +307,7 @@ The A2A extension (`@integraledger/lcp/a2a`).
 | `a2a/legal-context-malformed` | `place` refuses a task or `metadata` that is not an object, an invalid ATR hash, or a link that is not a usable `https` URL of at most 2048 characters; `read` refuses a value under the extension URI that does not decode as a legal context or whose link exceeds 2048 characters. |
 | `a2a/link-not-https` | The link to the seller's copy, given to `place` or found by `read`, is an absolute URL whose scheme is not `https`. |
 | `a2a/no-legal-context` | `read` finds no legal context under any extension URI in the task's `metadata`. |
-| `a2a/no-signed-place` | The exported `binding` value: A2A signs nothing per transaction, so every request for an A2A pairing gets this refusal. |
+| `a2a/no-signed-place` | The exported `binding` value: A2A signs nothing per transaction, so it has no pairing; a caller asked for one can answer with this refusal. |
 | `a2a/too-large` | The legal context value written by `place` or found by `read` under the extension URI is larger than 4096 bytes of JSON, or is nested more than 64 levels deep. |
 
 ## evm
