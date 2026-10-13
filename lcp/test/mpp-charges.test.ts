@@ -21,7 +21,7 @@ import {
 } from "@solana/kit";
 import { decode as decodeXrpl } from "ripple-binary-codec";
 import { Keypair, Networks, TransactionBuilder, xdr as stellarXdr } from "@stellar/stellar-sdk";
-import { canonicalJson, type AtrHash } from "../src/index.js";
+import { canonicalJson, type AtrHash, type Json } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
 import {
   chargeHedera,
@@ -30,6 +30,7 @@ import {
   chargeStellar,
   chargeXrpl,
   issuedDigest,
+  network,
   pairingsOf,
   type MppChallenge,
   type MppCredential,
@@ -633,6 +634,52 @@ describe("mpp-charge-nearintents.json", () => {
   it("unplaced gives the challenge as issued: its request without externalId", async () => {
     expect(chargeNearIntents.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
     expect(await issuedDigest(chargeNearIntents.unplaced(placed))).toBe(await issuedDigest(V.challenge));
+  });
+
+  // pairingsOf reads the two request members the pairing uses: methodDetails.originNetwork, "CAIP-2 identifier of the
+  // origin chain" (draft-nearintents-charge-01, Method Details), which network returns, and externalId, "string |
+  // OPTIONAL" (Shared Fields), where H rides. The other members describe the seller's quote and deposit, which the
+  // package does not judge, so a challenge with one of them malformed still names the pairing on its origin network.
+  type Edit = (request: { [k: string]: Json }) => void;
+  const edited = (edit: Edit): MppChallenge => {
+    const request = structuredClone(V.fixed.request) as { [k: string]: Json };
+    edit(request);
+    return withRequest(V.challenge, request);
+  };
+  const md = (request: { [k: string]: Json }) => request["methodDetails"] as { [k: string]: Json };
+
+  it("pairingsOf refuses an originNetwork that is not CAIP-2, or an externalId that is not a string (agreed row)", () => {
+    const row = V.agreedRefusals.rows.find((r: { case: string }) => r.case.startsWith("pairingsOf with originNetwork"));
+    const rows: [string, Edit][] = [
+      ["originNetwork \"near\"", (r) => (md(r)["originNetwork"] = "near")],
+      ["originNetwork 42161", (r) => (md(r)["originNetwork"] = 42161)],
+      ["originNetwork absent", (r) => delete md(r)["originNetwork"]],
+      ["externalId 5", (r) => (r["externalId"] = 5)],
+    ];
+    for (const [name, edit] of rows) {
+      expect(pairingsOf(edited(edit)), name).toEqual(refused(row.expect));
+      expect(network(edited(edit)), name).toEqual(refused(row.expect));
+    }
+  });
+
+  it("pairingsOf names the pairing whatever the request's other members hold", () => {
+    const rows: [string, Edit][] = [
+      ["amount \"abc\"", (r) => (r["amount"] = "abc")],
+      ["currency absent", (r) => delete r["currency"]],
+      ["recipient of 257 characters", (r) => (r["recipient"] = "x".repeat(257))],
+      ["amountOut \"abc\"", (r) => (md(r)["amountOut"] = "abc")],
+      ["minAmountIn absent", (r) => delete md(r)["minAmountIn"]],
+      ["destinationAsset \"\"", (r) => (md(r)["destinationAsset"] = "")],
+      ["destinationRecipient 5", (r) => (md(r)["destinationRecipient"] = 5)],
+      ["refundTo of 257 characters", (r) => (md(r)["refundTo"] = "x".repeat(257))],
+      ["destinationNetwork \"near\"", (r) => (md(r)["destinationNetwork"] = "near")],
+      ["depositMemo 5", (r) => (md(r)["depositMemo"] = 5)],
+      ["credentialTypes [\"transaction\"]", (r) => (md(r)["credentialTypes"] = ["transaction"])],
+    ];
+    for (const [name, edit] of rows) {
+      expect(pairingsOf(edited(edit)), name).toEqual(["mpp/charge/nearintents"]);
+      expect(network(edited(edit)), name).toBe(V.fixed.request.methodDetails.originNetwork);
+    }
   });
 
   it("bound of a hash credential gives H", async () => {

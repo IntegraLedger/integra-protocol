@@ -211,27 +211,11 @@ export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refu
 }
 
 /**
- * `charge` on `nearintents`: the shared fields and the required `methodDetails` members present as strings, the
- * networks CAIP-2, and `credentialTypes`, when present, exactly `["hash"]`.
+ * `charge` on `nearintents`: `methodDetails.originNetwork` CAIP-2, which `network` returns, and `externalId`, where H
+ * rides, absent or a string. No other request member is read.
  */
 export function nearIntentsChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
-  const types = d["credentialTypes"];
-  if (types !== undefined && !(Array.isArray(types) && types.length === 1 && types[0] === "hash")) {
-    return refusal("mpp/credential-types");
-  }
-  const strings = [r["currency"], r["recipient"], d["destinationAsset"], d["destinationRecipient"], d["refundTo"]];
-  if (
-    !isDecimal(r["amount"]) ||
-    !isDecimal(d["amountOut"]) ||
-    !isDecimal(d["minAmountIn"]) ||
-    !strings.every((s) => typeof s === "string" && s.length > 0 && s.length <= 256) ||
-    typeof d["originNetwork"] !== "string" ||
-    !CAIP2.test(d["originNetwork"]) ||
-    typeof d["destinationNetwork"] !== "string" ||
-    !CAIP2.test(d["destinationNetwork"]) ||
-    !isExternalId(r["externalId"]) ||
-    (d["depositMemo"] !== undefined && d["depositMemo"] !== null && typeof d["depositMemo"] !== "string")
-  ) {
+  if (typeof d["originNetwork"] !== "string" || !CAIP2.test(d["originNetwork"]) || !isExternalId(r["externalId"])) {
     return refusal("mpp/request-malformed");
   }
   return ["mpp/charge/nearintents"];

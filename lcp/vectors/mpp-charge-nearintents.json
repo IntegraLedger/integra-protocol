@@ -98,12 +98,8 @@
   "about": "Refusal codes the specification leaves to the implementation.",
   "rows": [
    {
-    "case": "pairingsOf with a required field missing or not a string, a network not CAIP-2, or an amount not decimal",
+    "case": "pairingsOf with originNetwork not CAIP-2, or externalId not a string",
     "expect": "mpp/request-malformed"
-   },
-   {
-    "case": "pairingsOf with credentialTypes other than exactly [\"hash\"]",
-    "expect": "mpp/credential-types"
    },
    {
     "case": "bound when the echoed externalId is not an LCP string",
