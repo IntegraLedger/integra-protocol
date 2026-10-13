@@ -11,7 +11,8 @@ seller's storage, and a random key for the buyer's wallet.
 
 Three terms carry the whole page:
 
-- The **Agentic Transaction Record (ATR)** is the agreement's record, a JSON document the seller serves.
+- The **Agentic Transaction Record (ATR)** is the agreement's record: the exact bytes the seller serves; `assemble`
+  writes them as one JSON object.
 - The **ATR hash (H)** is SHA-256 over the ATR's exact bytes.
 - **Binding** is how H rides in a pairing's payment: the field its specification defines. Here it is the `nonce` of
   the EIP-3009 authorization the buyer signs.
