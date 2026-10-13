@@ -255,11 +255,12 @@ async function x402Reference(presented: unknown, want: boolean): Promise<LnRef |
 const X1_OPENING =
   "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
   "recorded in <transaction>. ";
-const PAID =
-  "The payer paid that invoice, and its node checked the node signature before paying. The payer signed nothing " +
-  "that carries the hash, and the seller did not verify the invoice signature. The invoice and its preimage, " +
-  "which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that " +
-  "amount, payee or timing match the ATR's content.";
+/** What the record shows of the payment itself: the seller's report, and the invoice and preimage the parties hold. */
+const REPORT =
+  "Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the " +
+  "payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.";
+/** On the pairings whose invoice carries the hash: no signature is verified here, and the payer signs nothing. */
+const UNVERIFIED = "Its signature is not verified here, and the payer signed nothing that carries the hash. " + REPORT;
 
 // ── x402/exact/lnbtc ──
 
@@ -337,9 +338,9 @@ export const exactLnbtc = Object.freeze({
     publicProof: false,
     proves:
       X1_OPENING +
-      "The seller's node signed a BOLT11 invoice whose payment metadata is this ATR's hash, and whose description " +
-      "hash is x402's request hash. " +
-      PAID,
+      "The seller's node's BOLT11 invoice has this ATR's hash as its payment metadata and x402's request hash as its " +
+      "description hash. " +
+      UNVERIFIED,
   } satisfies LcpPattern) as LcpPattern,
   claims: true as boolean,
   carrier: "extra.invoice#m" as const,
@@ -646,9 +647,8 @@ function lnReference(pairing: LnMppPairing) {
 
 const MPP_LN_PROVES =
   X1_OPENING +
-  "The seller's node signed a BOLT11 invoice whose description hash is this ATR's hash, and whose payment hash the " +
-  "ATR commits. " +
-  PAID;
+  "The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. " +
+  UNVERIFIED;
 
 function lnMppBinding<P extends LnMppPairing>(id: P, carrier: string, proves: string = MPP_LN_PROVES) {
   return Object.freeze({

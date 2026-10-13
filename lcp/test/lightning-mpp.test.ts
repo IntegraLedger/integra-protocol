@@ -7,7 +7,7 @@ import { decode as lightDecode } from "light-bolt11-decoder";
 import bolt11 from "bolt11";
 import { canonicalJson, type AtrHash, type Json } from "../src/index.js";
 import { issuedDigest, pairingsOf, type MppChallenge, type MppCredential } from "../src/mpp.js";
-import { chargeLightning, decodeBolt11, sessionLightning, type Bolt11, type LnMppUnsigned } from "../src/lightning.js";
+import { chargeLightning, decodeBolt11, exactLnbtc, sessionLightning, type Bolt11, type LnMppUnsigned } from "../src/lightning.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const C = load("mpp-charge-lightning.json");
@@ -362,6 +362,21 @@ describe("the Lightning MPP pairings read no amount or currency", () => {
       expect(doc[0]!.id).toBe(S.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.challenge.id);
       const u = (await sessionLightning.build({ challenge: doc[0]!, returnInvoice: S.fixed.returnInvoice }, H)) as LnMppUnsigned;
       expect(await sessionLightning.bound(u.complete(S.fixed.preimage))).toBe(S.S1.expectBound);
+    });
+  }
+});
+
+// The pairings read the invoice, never a payment: settlement is the seller's report, the invoice and its preimage are
+// what the parties hold, and no signature is verified here. Each record whose invoice carries the hash says so, and
+// none says that the payer paid, that its node checked a signature, or that the seller did not verify one.
+describe("the records of the Lightning pairings whose invoice carries the hash", () => {
+  for (const b of [exactLnbtc, chargeLightning, sessionLightning]) {
+    it(`${b.id}: proves states that no signature is verified here and that settlement is the seller's report`, () => {
+      expect(b.pattern.proves).toContain(
+        "Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the " +
+          "seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment.",
+      );
+      expect(b.pattern.proves).not.toMatch(/the payer paid|checked the node signature|did not verify/i);
     });
   }
 });

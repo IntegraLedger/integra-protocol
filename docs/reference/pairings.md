@@ -173,7 +173,7 @@ The ATR was assembled, written to the seller's storage and linked in the challen
 
 ### `mpp/charge/lightning`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node signed a BOLT11 invoice whose description hash is this ATR's hash, and whose payment hash the ATR commits. The payer paid that invoice, and its node checked the node signature before paying. The payer signed nothing that carries the hash, and the seller did not verify the invoice signature. The invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
 
 ### `mpp/charge/nearintents`
 
@@ -229,7 +229,7 @@ The payer signed a Hedera EVM transaction that opened an MPP session channel on 
 
 ### `mpp/session/lightning`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node signed a BOLT11 invoice whose description hash is this ATR's hash, and whose payment hash the ATR commits. The payer paid that invoice, and its node checked the node signature before paying. The payer signed nothing that carries the hash, and the seller did not verify the invoice signature. The invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content. Later requests in this session were paid under this ATR from its deposit, by bearer proofs the seller did not meter. The close is the seller's report.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content. Later requests in this session were paid under this ATR from its deposit, by bearer proofs the seller did not meter. The close is the seller's report.
 
 ### `mpp/session/solana`
 
@@ -333,7 +333,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `x402/exact/lnbtc`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node signed a BOLT11 invoice whose payment metadata is this ATR's hash, and whose description hash is x402's request hash. The payer paid that invoice, and its node checked the node signature before paying. The payer signed nothing that carries the hash, and the seller did not verify the invoice signature. The invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice has this ATR's hash as its payment metadata and x402's request hash as its description hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
 
 ### `x402/exact/lnbtc/invoice-named`
 
