@@ -329,7 +329,7 @@ pairing, whose record states what it proves. The extension targets A2A 1.0.
 | Export | What it does |
 |---|---|
 | `A2A_EXTENSION_URIS` | The extension's URI: `https://lcp.integraledger.com/a2a/legal-context/v1`. |
-| `agentExtension({ required? })` | The Agent Card `capabilities.extensions[]` entry that declares it. |
+| `agentExtension({ required? })` | The Agent Card `capabilities.extensions[]` entry that declares it. Leave `required` false: A2A asks agents not to mark data-only extensions as required. |
 | `requested(header)` | Whether a request's `A2A-Extensions` header value, at most 8,192 characters with at most 64 elements, names the extension. |
 | `place(task, h, link, header?)` | A copy of the Task with `{type, value, legalContextUrl}` in its `metadata`, under the extension's URI. Other metadata is kept. |
 | `read(task)` | H and the link from the Task's `metadata`. |
