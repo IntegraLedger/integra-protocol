@@ -296,7 +296,8 @@ when it holds the escrow's open call for the channel, with H as its salt:
 In each, the payer, payee, token and authorized signer give the channel id, and the payer is read from the chain, not
 from the credential's `source`. Calldata past the call's arguments, such as a data suffix a wallet appends, is not
 read. An open call sent to the escrow that opens another channel reads as failed, with the
-reason `open-call-not-found`, on a `hash` opening, whose named transaction is the payment; on a `permit2` opening, which
+reason `open-call-not-found`, on a `hash` opening, whose named transaction is the payment, once the transaction's block
+is at or below the `finalized` mark; above it, where the block can still be replaced, and on a `permit2` opening, which
 can land until its deadline, it reads as pending. Any other transaction, such as a plain token transfer to the
 escrow, reads as pending, with the reason `open-call-not-found`, never as failed. A transaction sent through an ERC-4337
 EntryPoint reads as pending, with the reason `open-call-not-found`: the account's calldata does not show which contract

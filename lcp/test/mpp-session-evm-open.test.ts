@@ -111,6 +111,29 @@ describe("ES9: the hash opening's settlement read", () => {
     expect(await statusOf(merged, R.cases[1].transaction)).toEqual(R.cases[1].expect);
   });
 
+  // The Ethereum JSON-RPC block tags (ethereum/execution-apis, `BlockTag`): `safe` is safe from reorganization only under
+  // honest-majority and synchrony assumptions, and `finalized` cannot be reorganized without manual intervention. A
+  // block above `finalized` can still be replaced, so a failed answer, which names no mark, needs the receipt's block at
+  // or below it; above it the read is pending. The failed rows and their expectation at the finalized mark are ES9's.
+  it("a call that opens another channel is failed only once its block is at or below the finalized mark", async () => {
+    const failed = R.cases.filter((row: { expect: { state: string } }) => row.expect.state === "failed");
+    expect(failed.length).toBeGreaterThan(0);
+    const block = BigInt(R.receipt.blockNumber);
+    const pending = { state: "pending", why: "open-call-not-found" };
+    for (const row of failed) {
+      for (const [finalized, safe, expected] of [
+        [block, block, row.expect],
+        [block - 1n, block, pending],
+        [block - 1n, block - 1n, pending],
+      ] as const) {
+        const marked: EvmReader = { ...reader(row.transaction), blockNumber: async (tag) => (tag === "finalized" ? finalized : safe) };
+        const ref = (await sessionEvm.reference(await opening(H))) as SessionRef;
+        const read = withBigints(await sessionEvm.status({ ...ref, transaction: R.hash as Hex }, marked));
+        expect(read, `${row.case}; finalized ${finalized}, safe ${safe}`).toEqual(expected);
+      }
+    }
+  });
+
   it("an unreadable transaction read is pending", async () => {
     expect(await statusOf(await opening(H), "error")).toEqual({ state: "pending", why: "unreadable" });
     const noSender = { ...R.cases[0].transaction, from: "0x1234" };

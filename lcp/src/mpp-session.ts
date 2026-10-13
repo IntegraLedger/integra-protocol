@@ -422,8 +422,9 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
  * salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction, read by `eth_getTransactionByHash`,
  * must be sent to the escrow and hold its open call for the channel: `open` from the payer, or `openWithPermit2` with
  * the payer as its `from`. An open call sent to the escrow that opens another channel is failed `open-call-not-found`
- * where `ref.settleBy` is absent and pending where it is present; any other transaction, one sent through an ERC-4337
- * EntryPoint included, is pending `open-call-not-found`. Where `ref.closes` is present, the
+ * where `ref.settleBy` is absent and the receipt's block is at or below the `finalized` mark, and pending otherwise;
+ * any other transaction, one sent through an ERC-4337 EntryPoint included, is pending `open-call-not-found`. Where
+ * `ref.closes` is present, the
  * succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
  * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
  * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
@@ -968,7 +969,9 @@ async function closeRead(
  * read: the escrow's function does not read it, and a wallet may append a data suffix there. Its salt is `h`, and `evmChannelId`
  * over the payer, the call's payee, token and authorized signer, `h`, the escrow and the chain is the channel. Such a
  * call that does not open the channel is failed `open-call-not-found` where `settleBy` is absent (the named transaction
- * is the payment), and pending `open-call-not-found` where the opening can land until `settleBy`.
+ * is the payment) and the receipt's block is at or below the `finalized` mark, and pending `open-call-not-found` where
+ * the opening can land until `settleBy` or the block is above that mark: a block above it can still be replaced, and a
+ * failed answer names no mark, so it is given only at the highest the reader names.
  *
  * Any other transaction is pending `open-call-not-found`, never failed. A transaction sent through an ERC-4337
  * EntryPoint is one of them: the account's calldata does not show which contract the account called. Calldata longer
@@ -996,7 +999,8 @@ async function openRead(
   if (to === opens.escrow.toLowerCase() && (selector === OPEN_V1_SELECTOR || selector === OPEN_WITH_PERMIT2_SELECTOR)) {
     const payer = selector === OPEN_V1_SELECTOR ? (input.length >= OPEN_CALL_BYTES ? tx.from : undefined) : addressAt(args, 5);
     if (payer !== undefined && opensChannel(args, payer, opens)) return settled;
-    return ref.settleBy === undefined ? { state: "failed", why: "open-call-not-found" } : { state: "pending", why: "open-call-not-found" };
+    const final = settled.state === "settled" && settled.finality === "finalized";
+    return ref.settleBy === undefined && final ? { state: "failed", why: "open-call-not-found" } : { state: "pending", why: "open-call-not-found" };
   }
   return { state: "pending", why: "open-call-not-found" };
 }
