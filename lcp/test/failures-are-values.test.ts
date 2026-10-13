@@ -569,7 +569,7 @@ describe("mpp", () => {
   reads([
     ["chargeSolana.recover", chargeSolana.recover, "mpp-charge-solana.json", refused("svm/wrong-reader")],
     ["sessionHedera.status", sessionHedera.status, "x402-exact-hedera.json", UNREADABLE],
-    ["sessionHedera.recover", sessionHedera.recover, "x402-exact-hedera.json", refused("hedera/unreadable")],
+    ["sessionHedera.recover", sessionHedera.recover, "x402-exact-hedera.json", refused("hedera/wrong-reader")],
     ["sessionSolana.status", sessionSolana.status, "x402-exact-solana.json", UNREADABLE],
     ["sessionXrpl.status", sessionXrpl.status, "x402-exact-xrpl.json", UNREADABLE],
     ["sessionXrpl.recover", sessionXrpl.recover, "x402-exact-xrpl.json", refused("xrpl/wrong-reader")],

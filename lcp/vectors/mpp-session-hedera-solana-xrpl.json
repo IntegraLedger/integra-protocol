@@ -560,7 +560,7 @@
    },
    {
     "case": "fetchPresented or recover with a reader for another hedera network",
-    "expect": "hedera/unreadable"
+    "expect": "hedera/wrong-reader"
    },
    {
     "case": "an xrpl opening with more than 8 memos",

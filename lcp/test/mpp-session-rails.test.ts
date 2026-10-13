@@ -117,6 +117,22 @@ describe("mpp/session/hedera", () => {
     expect(await sessionHedera.recover(ref, reader)).toBe(H);
   });
 
+  // recover answers a reader as exactHedera.recover does (x402-exact-hedera.json, failures-are-values): one missing or
+  // for another network than the ref's is hedera/wrong-reader, and one for the network whose read fails is
+  // hedera/unreadable.
+  it("recover: a reader missing or of another network is hedera/wrong-reader", async () => {
+    const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
+    const c = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
+    const ref = await sessionHedera.reference(c);
+    if ("refused" in ref) throw new Error(ref.code);
+    for (const reader of [hederaReader({ [V.HS3.txHash]: receipt }, "hedera:mainnet"), undefined, null]) {
+      expect(await sessionHedera.recover(ref, reader as never), String(reader?.network)).toEqual(refused("hedera/wrong-reader"));
+    }
+    const failing = { ...hederaReader({}), receipt: async () => Promise.reject(new ReaderError("transport")) };
+    expect(await sessionHedera.recover(ref, failing)).toEqual(refused("hedera/unreadable"));
+    expect(await sessionHedera.recover(ref, hederaReader({ [V.HS3.txHash]: receipt }))).toBe(H);
+  });
+
   it("HS4: a real testnet opening and close", async () => {
     const r4 = V.HS4;
     expect(r4.salt.startsWith(r4.expectSaltPrefix) && r4.salt.endsWith(r4.expectSaltSuffix)).toBe(true);

@@ -217,9 +217,10 @@ function hederaChain(network: string): 295 | 296 {
 }
 
 /**
- * The opening's receipt, read by `payload.txHash`, with its logs from the escrow added as `landed`. No receipt is
- * `hedera/not-found` and a failed read `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert is
- * `hedera/reverted`: nothing moved.
+ * The opening's receipt, read by `payload.txHash`, with its logs from the escrow added as `landed`. A reader that is
+ * missing or for another network than the challenge's is `hedera/wrong-reader`. No receipt is `hedera/not-found` and a
+ * failed read `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert is `hedera/reverted`: nothing
+ * moved.
  */
 async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
   const e = opening(presented, HEDERA);
@@ -228,7 +229,7 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   if (isRefusal(network)) return network;
   const escrow = hederaEscrow(e.checked);
   if (isRefusal(escrow)) return escrow;
-  if (!isObject(reader) || reader.network !== network) return refusal("hedera/unreadable");
+  if (!isObject(reader) || reader.network !== network) return refusal("hedera/wrong-reader");
   const tx = normalHash(e.payload["txHash"]);
   if (tx === null) return refusal("mpp/credential-malformed");
   let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
@@ -322,9 +323,12 @@ async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: Hede
   return evmStatus(evmRef, reader as EvmReader);
 }
 
-/** Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log naming the channel. */
+/**
+ * Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log naming the channel. A ref or reader that is
+ * not an object, or a reader for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge.
+ */
 async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/unreadable");
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
   let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
   try {
     receipt = await reader.receipt(ref.transaction);

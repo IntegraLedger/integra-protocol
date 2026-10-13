@@ -329,6 +329,24 @@ describe("problem", () => {
     expect(failing).toEqual({ refused: true, code: "tempo/unreadable" });
   });
 
+  // The Hedera session: a reader that is missing or for another network than the challenge's chainId 296
+  // (hedera:testnet) answers hedera/wrong-reader, 500 and no challenge, as MV10's row gives; a reader for that network
+  // that fails answers the read to repeat, hedera/unreadable. The credential is the vector file's buyer row as
+  // presented.
+  it("mpp/session/hedera: a reader missing or of another network answers hedera/wrong-reader, 500", async () => {
+    const hedera = load("mpp-session-hedera-solana-xrpl.json");
+    const presented = hedera.buyer.rows[1].input.presented as MppCredential;
+    const reader = (network: string) => readerFor(network, null) as unknown as HederaEvmReader;
+    for (const r of [reader("hedera:mainnet"), undefined, null]) {
+      const out = await sessionHedera.fetchPresented(presented, r as never);
+      expect([r?.network, out]).toEqual([r?.network, { refused: true, code: "hedera/wrong-reader" }]);
+    }
+    expect(problem("hedera/wrong-reader")).toEqual(expectOf("hedera/wrong-reader"));
+    expect(expectOf("hedera/wrong-reader")).toEqual(internal);
+    const failing = readerFor("hedera:testnet", "reader-error") as unknown as HederaEvmReader;
+    expect(await sessionHedera.fetchPresented(presented, failing)).toEqual({ refused: true, code: "hedera/unreadable" });
+  });
+
   // Solana's, Stellar's, XRPL's and the Hedera charge's push reads, one case per arm: a read that fails, finds no
   // transaction, or finds an XRPL transaction not yet in a validated ledger, a reader of another network, and `bound`
   // on the push credential before fetchPresented has read it answer 500 and no challenge; a landed transaction that

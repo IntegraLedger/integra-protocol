@@ -470,7 +470,7 @@ Hedera (`@integraledger/lcp/hedera`).
 | `hedera/reverted` | The Hedera session opening transaction reverted. |
 | `hedera/tx-malformed` | A Hedera transaction is not base64 of a wire `Transaction` or `TransactionList` whose signed body decodes within the depth bound, a signature pair given to `complete` has the wrong key or signature length, or a push credential's `transactionId` is not `shard.realm.num@seconds.nanos`. |
 | `hedera/tx-too-large` | A Hedera transaction's wire bytes exceed the size bound. |
-| `hedera/unreadable` | The Hedera reader failed or returned a response that is not well formed, or (for a session) answers for a different network. |
+| `hedera/unreadable` | The Hedera reader failed or returned a response that is not well formed. |
 | `hedera/wrong-reader` | The Hedera reader is missing or answers for a different network than the reference or request names. |
 
 ## avm
