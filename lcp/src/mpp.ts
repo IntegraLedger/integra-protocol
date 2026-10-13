@@ -75,7 +75,6 @@ import type { LcpPattern } from "./x402.js";
 
 export {
   CARRIER,
-  USDC_CARRIER,
   attributionMemo,
   challengeBound,
   challengeH,

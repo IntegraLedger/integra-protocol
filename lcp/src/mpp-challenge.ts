@@ -78,8 +78,8 @@ export type MppIntent = "charge" | "session" | "subscription";
 
 /**
  * The request member a pairing writes H into, by intent and method; null where no request member carries it. `usdc`
- * carries H in a request member only on its Solana profile (`USDC_CARRIER`). A Stellar charge's `recipient` carries H's
- * first 8 bytes as its muxed id only: its base account stays a member of what was issued.
+ * carries H in a request member only on its Solana profile. A Stellar charge's `recipient` carries H's first 8 bytes as
+ * its muxed id only: its base account stays a member of what was issued.
  */
 export const CARRIER: { readonly [i in MppIntent]: { readonly [m in MppMethod]?: readonly string[] | null } } =
   deepFreeze({
@@ -108,7 +108,7 @@ export const CARRIER: { readonly [i in MppIntent]: { readonly [m in MppMethod]?:
   });
 
 /** The request member `usdc` writes H into, by `methodDetails.type`; null where no request member carries it. */
-export const USDC_CARRIER: { readonly [profile: string]: readonly string[] | null } = deepFreeze({
+const USDC_CARRIER: { readonly [profile: string]: readonly string[] | null } = deepFreeze({
   evm: null,
   solana: ["externalId"],
   stacks: null,
