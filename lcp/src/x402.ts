@@ -490,7 +490,7 @@ function schemeOf(id: X402PairingId): string {
  * The pairing whose option a payment through `pairing` pays: a payment at the ERC-7710 salt level pays the `erc7710`
  * option (both levels share it); a payment through any other pairing pays an option of its own.
  */
-export function optionPairingOf(pairing: string): string {
+function optionPairingOf(pairing: string): string {
   return pairing === ERC7710_SALT ? ERC7710 : pairing;
 }
 
