@@ -1,9 +1,10 @@
 /**
- * The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization`
- * (the signed nonce is keccak256(id ‖ realm)), EVM `permit2` (the signed witness carries that value), EVM
- * `transaction` and `hash` (nothing signed carries H), and Tempo pull and push (the signed `transferWithMemo` carries
- * MPP's attribution memo, whose nonce is keccak256 of the id). The session and subscription pairings are re-exported
- * from their module.
+ * The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the
+ * signed nonce is keccak256(id ‖ realm)), EVM `permit2` (the signed witness carries that value), EVM `transaction` and
+ * `hash` (nothing signed carries H), and Tempo pull and push (the signed `transferWithMemo` carries the attribution
+ * memo MPP's SDKs write, whose nonce is keccak256 of the id). The card, Stripe, Solana, Stellar, XRP Ledger, Hedera,
+ * NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported
+ * from their modules.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
 import { addressWord, bytesOf, concat, hexOf, sameBytes, uintOf, uintWord, type Hex } from "./evm-abi.js";

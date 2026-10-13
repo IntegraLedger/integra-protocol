@@ -1,7 +1,9 @@
 /**
- * EIP-3009 on eip155 chains: the typed data a payer signs, the identity digest of a transfer, the settlement read from
- * the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use
- * before any transaction is named. Nothing here knows x402.
+ * eip155 rail pieces: EIP-3009 and Permit2 typed data, the identity digest of a transfer, the settlement read from the
+ * token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use
+ * before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address;
+ * the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's
+ * Permit2 proxy addresses.
  */
 import {
   AUTHORIZATION_STATE_SELECTOR,

@@ -1,5 +1,6 @@
 /**
- * The `card` entry point: the ATR hash on a card checkout, on three paths.
+ * The `card` entry point: the ATR hash on a card checkout, on three paths: Visa TAP, Mastercard Verifiable Intent
+ * (Immediate and Autonomous) and the plain card checkout.
  *
  * - Visa TAP: the agent sends the hash in an `lcp-hash` field and lists that field among the covered components of
  *   its `agent-payer-auth` message signature.

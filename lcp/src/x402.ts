@@ -1,7 +1,8 @@
 /**
- * x402 v2 documents and the `x402/exact/eip155/eip3009` pairing: the ATR hash advertised in the challenge's
- * `extensions.legalContext`, signed by the payer as the EIP-3009 nonce, read back from the payment, and read from the
- * settlement.
+ * x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and
+ * ERC-7710 (with its salt level), `upto` over Permit2, and `auth-capture` over EIP-3009 and Permit2. The ATR hash is
+ * advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds
+ * it.
  */
 import { digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
 import {
