@@ -547,8 +547,10 @@ function deploymentOf(extra: Record<string, unknown>): (typeof ESCROW)["v1.1"] |
 }
 
 /**
- * The pairing that serves a presented payment: `pairingOf` of its `accepted`, except that an `erc7710` payment whose
- * delegation manager is MetaMask's reference DelegationManager, on a chain where it is deployed, is the salt level.
+ * The eip155 pairing of this entry point that serves a presented payment: the `exact`, `upto` or `auth-capture` pairing
+ * its `accepted` names, except that an `erc7710` payment whose delegation manager is `DELEGATION_MANAGER`, on a chain
+ * in `DELEGATION_MANAGER_CHAINS`, is the salt level. Undefined for any other option, an option on another rail
+ * included; the root `pairingOf` names the x402 pairing of an option on any rail.
  */
 export function pairingOfPayment(p: PaymentPayload): X402PairingId | undefined {
   if (!isObject(p) || !isObject(p.accepted)) return undefined;
