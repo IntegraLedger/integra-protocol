@@ -50,6 +50,16 @@ describe("mpp/charge/usdc/evm (M3)", () => {
     expect(network(c)).toBe("eip155:84532");
   });
 
+  // The usdc draft lets the EVM profile's `credentialTypes` hold only `authorization` (draft-usdc-charge-00 L298); the
+  // build makes an authorization whatever the list holds, so pairingsOf names the pairing whatever it holds.
+  it("pairingsOf reads no credentialTypes", () => {
+    const request = JSON.parse(EVM.M3.requestJson);
+    for (const credentialTypes of [["authorization", "permit2"], ["permit2"], [], "authorization"]) {
+      const r = { ...request, methodDetails: { ...request.methodDetails, evm: { ...request.methodDetails.evm, credentialTypes } } };
+      expect([credentialTypes, pairingsOf(issued(JSON.stringify(r)))]).toEqual([credentialTypes, ["mpp/charge/usdc/evm"]]);
+    }
+  });
+
   it("usdcRequestHash and usdcNonce are the vector's, and canonicalize with js-sha3 agree", async () => {
     const rh = await usdcRequestHash(c.request);
     expect(rh).toBe(EVM.M3.expectRequestHash);

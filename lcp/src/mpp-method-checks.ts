@@ -105,10 +105,6 @@ export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly M
       if (!isPositiveInt(p["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"])) {
         return refusal("mpp/request-malformed");
       }
-      const types = p["credentialTypes"];
-      if (types !== undefined && (!Array.isArray(types) || types.length === 0 || !types.every((t) => t === "authorization"))) {
-        return refusal("mpp/credential-types");
-      }
       return ["mpp/charge/usdc/evm"];
     }
     case "solana": {
