@@ -221,11 +221,12 @@ export type EvmStatus =
  * token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
  * pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
  * use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
- * receipt's block. A failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the
- * receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
- * cannot be read, the same reason is pending. A failed read, a reader for another network, a `transaction` or `h` that
- * is not a 32-byte hash, an `asset` that is not an address, a `transferLog` that is not one, or a reader answer that is
- * not a receipt or holds a log entry that is not an object is pending `unreadable`, never failed. At most three calls.
+ * receipt's block. A receipt the reader does not hold is pending `not-found`, and a reverted one failed `reverted`. A
+ * failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the receipt's block is
+ * at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the same reason is pending. A
+ * failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an `asset` that is not
+ * an address, a `transferLog` that is not one, or a reader answer that is not a receipt or holds a log entry that is
+ * not an object is pending `unreadable`, never failed. At most three calls.
  */
 export async function eip3009Status(
   ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
