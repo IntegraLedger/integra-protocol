@@ -40,6 +40,7 @@ import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import type { CasperPaymentPayload } from "./internal/casper.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
 import type { ExecutorPaymentPayload, HederaPaymentPayload } from "./internal/hedera.js";
+import { lnbtcPairingOf } from "./internal/lightning.js";
 import type { NearPayment } from "./internal/near.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import type { StarknetPayment } from "./internal/starknet.js";
@@ -49,7 +50,7 @@ import type { TronPayment } from "./internal/tron.js";
 import type { TvmPayment } from "./internal/tvm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import type { XrplPaymentPayload } from "./internal/xrpl.js";
-import { exactLnbtc, exactLnbtcNamed, lnbtcPairingOf, type LnPaymentPayload } from "./lightning.js";
+import { exactLnbtc, exactLnbtcNamed, type LnPaymentPayload } from "./lightning.js";
 import { MPP_BINDINGS, type MppCredential } from "./mpp.js";
 import { exactNear } from "./near.js";
 import { exactPolkadotRemark } from "./polkadot.js";
@@ -232,9 +233,10 @@ export const BINDINGS: readonly Binding[] = Object.freeze([
 const PROBE_CONTEXT = { info: toLegalContext(`0x${"00".repeat(32)}`, "https://pairing.invalid/").legalContext, schema: LEGAL_CONTEXT_SCHEMA };
 
 /**
- * The x402 pairing that serves an option: a Lightning option's by `lnbtcPairingOf`, which names `x402/exact/lnbtc` for
- * an option whose invoice is not yet written; else the first x402 pairing in `BINDINGS` whose `read` offers it, on a
- * document holding that option alone. Undefined when none does.
+ * The x402 pairing that serves an option: for an `exact` option on a Lightning network, `x402/exact/lnbtc` when its
+ * invoice has an `m` field or is not yet written, and `x402/exact/lnbtc/invoice-named` when it has none; else the
+ * first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option alone. Undefined when
+ * none does.
  */
 export function pairingOf(option: PaymentRequirements): PairingOn<"x402"> | undefined {
   const ln = lnbtcPairingOf(option);

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { decode as lightDecode } from "light-bolt11-decoder";
 import bolt11 from "bolt11";
-import { assemble, type AtrHash } from "../src/index.js";
+import { assemble, pairingOf, type AtrHash } from "../src/index.js";
 import { issuedDigest, tie, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import {
   atrNamesInvoice,
@@ -13,7 +13,6 @@ import {
   exactLnbtc,
   exactLnbtcNamed,
   invoiceH,
-  lnbtcPairingOf,
   type Bolt11,
   type LnPaymentPayload,
   type LnUnsigned,
@@ -173,8 +172,8 @@ describe("x402/exact/lnbtc/invoice-named", () => {
   });
 
   it("an echoed option names its pairing by whether its invoice has m", () => {
-    expect(lnbtcPairingOf(V.fixed.O)).toBe("x402/exact/lnbtc");
-    expect(lnbtcPairingOf(ON)).toBe("x402/exact/lnbtc/invoice-named");
+    expect(pairingOf(V.fixed.O)).toBe("x402/exact/lnbtc");
+    expect(pairingOf(ON)).toBe("x402/exact/lnbtc/invoice-named");
   });
 
   it("atrNamesInvoice: the named invoice is read only from the one x402 member that follows atrVersion and id", () => {

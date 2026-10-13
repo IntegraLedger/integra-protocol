@@ -244,7 +244,7 @@ import { atrNamesInvoice, chargeLightning, decodeBolt11, … } from "@integraled
 
 **Pairings:** `mpp/charge/lightning`, `mpp/session/lightning`, `x402/exact/lnbtc`, `x402/exact/lnbtc/invoice-named`.
 
-**Values (8):** `atrNamesInvoice`, `chargeLightning`, `decodeBolt11`, `exactLnbtc`, `exactLnbtcNamed`, `invoiceH`, `lnbtcPairingOf`, `sessionLightning`.
+**Values (7):** `atrNamesInvoice`, `chargeLightning`, `decodeBolt11`, `exactLnbtc`, `exactLnbtcNamed`, `invoiceH`, `sessionLightning`.
 
 **Types (7):** `Bolt11`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
 
