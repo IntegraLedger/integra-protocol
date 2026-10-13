@@ -371,6 +371,12 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
     expect(exactAptos.pattern.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(
       true,
     );
+    // What the challenge shows: the ATR existed before it went out, and it advertised the hash and the link. Where the
+    // seller keeps the ATR is not something this record, or anything the package reads, can show.
+    expect(exactAptos.pattern.proves).toContain(
+      "The ATR was assembled before the challenge went out, and the challenge advertised its hash and link.",
+    );
+    expect(exactAptos.pattern.proves).not.toContain("storage");
     expect(exactAptos.claims).toBe(false);
     expect("recover" in exactAptos).toBe(false);
   });

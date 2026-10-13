@@ -293,7 +293,7 @@ The payer signed an Algorand asset transfer whose note is this ATR's hash in LCP
 
 ### `x402/exact/aptos`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled and written to the seller's storage before the challenge went out, and the challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. The seller tied the hash to this payment when it claimed it for this request, and identified the settlement as the payer's committed transaction by sender, sequence number and a digest of its transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled before the challenge went out, and the challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. The seller tied the hash to this payment when it claimed it for this request, and identified the settlement as the payer's committed transaction by sender, sequence number and a digest of its transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/cardano`
 
