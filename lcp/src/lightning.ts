@@ -28,7 +28,10 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 
-/** CAIP-2 for Lightning: `lnbtc:` and the first 32 hex digits of the Bitcoin network's genesis block hash. */
+/**
+ * x402's `lnbtc` network ids, in CAIP-2 form: `lnbtc:` and the first 32 hex digits of the genesis block hash of
+ * Bitcoin mainnet or testnet3. `lnbtc` is x402's own namespace.
+ */
 export type LnNetwork = "lnbtc:000000000019d6689c085ae165831e93" | "lnbtc:000000000933ea01ad0ee984209779ba";
 
 export interface Bolt11 {
@@ -75,7 +78,10 @@ const POSITIVE = /^[1-9][0-9]{0,77}$/;
 /** The ATR's text: strict UTF-8 with a byte-order mark kept, so an ATR that begins with one is not one JSON object. */
 const atrText = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-/** Decodes a BOLT11 invoice without its length limit, up to 8 KiB. The signature is not verified. */
+/**
+ * Decodes a BOLT11 invoice of up to 8,192 characters, past Bech32's 90-character limit, which BOLT 11 lets an invoice
+ * exceed. The signature is not verified.
+ */
 export async function decodeBolt11(invoice: string): Promise<Bolt11 | Refusal> {
   return decode(invoice);
 }
@@ -96,7 +102,7 @@ export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
  * True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds, among its
  * first 32 entries, an option whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`,
  * `id` and `x402`, in that order, and no member name appears twice, so every JSON reader finds the same `x402` slot.
- * Only that slot is read.
+ * Only that slot is read; inside it, a repeated member name reads as `JSON.parse` reads it, the last one counting.
  */
 export function atrNamesInvoice(atr: Uint8Array, invoice: string): boolean {
   if (!(atr instanceof Uint8Array) || atr.length > MAX_ATR || typeof invoice !== "string") return false;

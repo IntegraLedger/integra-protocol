@@ -21,7 +21,7 @@ A rail field holds H in one of these forms:
 
 | Form | Size | Used where |
 |---|---|---|
-| H's 32 bytes | 32 bytes | EVM nonces and salts, the Casper nonce, Sui's unused `Pure` input, the Stacks memo, the MPP XRPL `InvoiceID`, the Lightning invoice field. |
+| H's 32 bytes | 32 bytes | EVM nonces and salts, the Casper nonce, Sui's unused `Pure` input, the Stacks memo, the MPP XRPL `InvoiceID`, the Lightning invoice's `m` field (`x402/exact/lnbtc`) or description hash `h` (MPP). |
 | H's LCP string, `lcp:sha256:0x…` | 77 bytes | Memos and notes: Solana, Algorand, Hedera, NEAR, Tron, TON, Concordium, the Polkadot remark, Cardano's CIP-20 message, the XRPL session memo. |
 | H's first 8 bytes | 8 bytes | The Stellar muxed id, and the MPP Solana session salt. |
 | H's low 250 bits | one felt | The Starknet nonce. |
@@ -99,8 +99,8 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | Tron | `tron` | `x402/exact/tron/lcp-trc20-memo` | The TRC-20 transfer's memo, `raw_data.data`: H's LCP string. |
 | TON | `tvm` | `x402/exact/tvm` | The Jetton transfer's forward payload: a TEP-74 text comment holding H's LCP string. |
 | Stacks | `stacks` | `mpp/charge/usdc/stacks` | The SIP-010 `transfer`'s memo: H's 32 bytes. |
-| Lightning | `lightning` | `x402/exact/lnbtc` | The BOLT11 invoice's `m` field, which the seller's node signs. |
-| | | `x402/exact/lnbtc/invoice-named` | Nothing in the invoice: the ATR's `x402` slot names the invoice instead. The buyer's `build` reads that slot only from an ATR whose first members are `atrVersion`, `id` and `x402` and whose member names do not repeat. |
+| Lightning | `lightning` | `x402/exact/lnbtc` | The BOLT11 invoice's `m` field, which the seller's node signs. The invoice calls of LND v0.21.4 and Core Lightning v26.06.8 write no `m`, so a seller on either uses `x402/exact/lnbtc/invoice-named`. |
+| | | `x402/exact/lnbtc/invoice-named` | Nothing in the invoice: the ATR's `x402` slot names the invoice instead. The buyer's `build` reads that slot only from an ATR whose first members are `atrVersion`, `id` and `x402` and whose top-level member names do not repeat; inside the slot, a repeated member name reads as `JSON.parse` reads it, the last one counting. |
 | | | `mpp/charge/lightning`, `mpp/session/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 
 Where a profile defines the binding, the [pairings reference](../reference/pairings.md) links it, and the profile
@@ -286,8 +286,14 @@ blockhash from a slot at or before `fromSlot` + 150. From a false answer at or p
 `svmLocate` as `minContextSlot`, as for a durable nonce: a node behind the blockhash read fails the call and the search
 is incomplete. A search given that slot and complete with nothing found shows the message never landed.
 
-Lightning has no settlement read: the invoice and its preimage, which the parties hold, are the proof of payment, and
-no public ledger shows it. Its pairings give `reference` and no `status`.
+Lightning has no settlement read: the invoice and its preimage, which the parties hold, show that the invoice was paid.
+They do not show who paid it, and no public ledger shows the payment. Its pairings give `reference` and no `status`.
+
+On Lightning, `build` checks the binding and the invoice's form: that the invoice carries H where its pairing places
+it (or, on `x402/exact/lnbtc/invoice-named`, carries no `m`), that it answers this request, and that its currency is
+the one the network names. It verifies no signature and does not compare the invoice's amount or payee with the offer.
+The checks x402 requires of a client on the invoice (its signature, a payee equal to `payTo`, an amount present and
+equal to the option's, and its expiry) are the payer's, done by its wallet or node.
 
 ## Recovering H from the chain alone
 
