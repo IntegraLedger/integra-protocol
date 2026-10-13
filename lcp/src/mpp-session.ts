@@ -220,6 +220,11 @@ type ChannelId = typeof SESSION_EVM | typeof SESSION_TEMPO | typeof SUBSCRIPTION
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const APPROVE_SELECTOR = "0x095ea7b3";
 /**
+ * The calls whose rule names a subscription's recipient: `transfer(address,uint256)` and `transferWithMemo(address,
+ * uint256,bytes32)`, the selectors Tempo's subscription draft lets the access key call.
+ */
+const TRANSFER_SELECTORS: readonly Hex[] = ["0xa9059cbb", TRANSFER_WITH_MEMO_SELECTOR];
+/**
  * The EVM session escrow's functions that finalize a channel, each taking the channel id as its first argument:
  * `close(bytes32,uint128,bytes)`, `closeWithAuthorization(bytes32,uint128,uint256,uint256,bytes,bytes)` and
  * `withdraw(bytes32)`.
@@ -1382,17 +1387,20 @@ function subscriptionWitness(
 
 /**
  * The token and the recipient the payer signed in the key authorization: its one limit token, which is also the one
- * target of its allowed calls, and the one recipient across their selector rules, lowercase. A selector rule with no
- * recipients allows any recipient, so the authorization does not name exactly one. Any other scope is
- * `tempo/key-authorization-malformed`.
+ * target of its allowed calls, and the one recipient across its `transfer` and `transferWithMemo` rules, lowercase.
+ * Tempo's subscription draft lets the key make only those calls and forbids `approve` and every other selector, so no
+ * other rule names the recipient: an `approve` rule's spender is not one. A `transfer` or `transferWithMemo` rule with
+ * no recipients allows any recipient, so the authorization does not name exactly one. Any other scope, one with no
+ * `transfer` or `transferWithMemo` rule included, is `tempo/key-authorization-malformed`.
  */
 function signedScope(k: Pick<TempoKeyAuthorization, "limits" | "allowedCalls">): { token: Hex; recipient: Hex } | Refusal {
-  if (k.allowedCalls.some((c) => c.selectorRules.some((r) => r.recipients.length === 0))) {
-    return refusal("tempo/key-authorization-malformed");
-  }
+  const transfers = k.allowedCalls.flatMap((c) =>
+    c.selectorRules.filter((r) => TRANSFER_SELECTORS.some((t) => sameBytes(t, r.selector))),
+  );
+  if (transfers.some((r) => r.recipients.length === 0)) return refusal("tempo/key-authorization-malformed");
   const tokens = new Set(k.limits.map((l) => l.token.toLowerCase()));
   const targets = new Set(k.allowedCalls.map((c) => c.target.toLowerCase()));
-  const recipients = new Set(k.allowedCalls.flatMap((c) => c.selectorRules.flatMap((r) => r.recipients.map((x) => x.toLowerCase()))));
+  const recipients = new Set(transfers.flatMap((r) => r.recipients.map((x) => x.toLowerCase())));
   const [token] = tokens;
   const [recipient] = recipients;
   if (tokens.size !== 1 || targets.size !== 1 || recipients.size !== 1 || !targets.has(token!)) {

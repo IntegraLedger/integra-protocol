@@ -735,6 +735,38 @@ describe("mpp-subscription-tempo.json", () => {
     }
   });
 
+  // Tempo's subscription draft (tempoxyz/mpp-specs 50309c8, draft-tempo-subscription-00.md :276-285 and :470-481): the
+  // key authorization's selector rules are `transfer(address,uint256)` (0xa9059cbb) and optionally
+  // `transferWithMemo(address,uint256,bytes32)` (0x95777d59), each restricted to the challenge's recipient, and it "MUST NOT
+  // authorize `approve` or any other non-transfer selector". So only those two rules name the recipient; ERC-20's
+  // `approve(address,uint256)` (0x095ea7b3) names a spender. The transfer digest is SHA-256 over the recipient's 20 bytes.
+  it("SUB1: the recipient is read from the transfer and transferWithMemo rules only", async () => {
+    const spender = "0x7777777777777777777777777777777777777777" as const;
+    const credentialOf = async (rules: { selector: `0x${string}`; recipients: `0x${string}`[] }[]): Promise<MppCredential> => {
+      const a = { ...authOf(U.SUB1.authorization, H), allowedCalls: [{ target: f.pathUSD, selectorRules: rules }] };
+      const signed = encodeKeyAuthorization(a, await sig65(keccak256(encodeKeyAuthorization(a) as Uint8Array))) as Uint8Array;
+      return { challenge: ch, source: `did:pkh:eip155:42431:${f.payer}`, payload: { type: "keyAuthorization", signature: toHex(signed) } };
+    };
+    const toRecipient = { address: f.pathUSD, topic0: TRANSFER_TOPIC, identity: "to", digest: sha256(toBytes(f.recipient)) };
+    const malformed = { refused: true, code: "tempo/key-authorization-malformed" };
+    const cases: [{ selector: `0x${string}`; recipients: `0x${string}`[] }[], unknown][] = [
+      [[{ selector: "0x095ea7b3", recipients: [spender] }], malformed],
+      [[{ selector: "0x095ea7b3", recipients: [] }], malformed],
+      [[{ selector: "0x95777d59", recipients: [] }], malformed],
+      [[{ selector: "0x95777d59", recipients: [f.recipient] }, { selector: "0x095ea7b3", recipients: [spender] }], toRecipient],
+      [[{ selector: "0x95777d59", recipients: [f.recipient] }, { selector: "0x095ea7b3", recipients: [] }], toRecipient],
+      [[{ selector: "0xa9059cbb", recipients: [f.recipient] }, { selector: "0x95777d59", recipients: [f.recipient] }], toRecipient],
+      [[{ selector: "0xa9059cbb", recipients: [f.recipient] }], toRecipient],
+    ];
+    for (const [rules, expected] of cases) {
+      const c = await credentialOf(rules);
+      expect(await subscriptionTempo.bound(c)).toBe(H);
+      const ref = (await subscriptionTempo.reference(c)) as SessionRef | { refused: true };
+      const read = "refused" in ref ? ref : ref.transferLog;
+      expect(read, JSON.stringify(rules)).toEqual(expected);
+    }
+  });
+
   // Tempo's AccountKeychain precompile interface (IAccountKeychain): KeyAuthorizationWitness(address indexed account,
   // bytes32 indexed witness), KeyAuthorized(address indexed account, address indexed publicKey, ...) and
   // KeyRevoked(address indexed account, address indexed publicKey), each from the keychain precompile.

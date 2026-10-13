@@ -270,10 +270,12 @@ the reason `unreadable`, and nothing is read: no read could check H or the close
 
 The `mpp/subscription/tempo` activation is read by what the payer signed in the key authorization: its `reference`
 names the `Transfer` of the authorization's one limit token, which is also its one allowed-call target, to its one
-recipient, identified by the recipient alone, and `accessKey` carries the same token and recipient for `keySearch`. The
-request's amount, currency and recipient are not read. An authorization that names more than one token or recipient,
-or none, is refused `tempo/key-authorization-malformed`. A selector rule with no recipients allows any recipient, so
-the authorization does not name exactly one, and it is refused the same way.
+recipient across its `transfer` and `transferWithMemo` rules, identified by the recipient alone, and `accessKey`
+carries the same token and recipient for `keySearch`. Tempo's subscription draft lets the key make only those calls and
+forbids `approve`, so no other rule names the recipient: an `approve` rule's spender is not one. The request's amount,
+currency and recipient are not read. An authorization that names more than one token or recipient, or none, is refused
+`tempo/key-authorization-malformed`. A `transfer` or `transferWithMemo` rule with no recipients allows any recipient,
+so the authorization does not name exactly one, and it is refused the same way.
 
 On `x402/batch-settlement/eip155`, the opening's `status` counts the payer's deposit only from the call that deposited
 into this channel. The channel contract collects a deposit and then emits `Deposited` for the channel, so the payer's
