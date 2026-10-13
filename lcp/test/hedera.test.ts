@@ -10,7 +10,6 @@ import {
   exactHederaExecutor,
   executorStatus,
   hederaIdDigest,
-  hederaPairingOf,
   hederaStatus,
   txIdMirror,
   txIdText,
@@ -193,7 +192,7 @@ describe("x402-exact-hedera.json", () => {
       if (row.transactionBase64 !== undefined) {
         expect(await exactHedera.bound(presentedOf(row.transactionBase64))).toEqual({ refused: true, code: row.expect });
       } else {
-        expect(hederaPairingOf(row.option)).toEqual({ refused: true, code: row.expect });
+        expect(pairingOf(row.option)).toBeUndefined();
         const doc = { ...required, accepts: [row.option] };
         expect(exactHedera.advertise(doc, H, V.fixed.link, row.option)).toEqual({ refused: true, code: row.expect });
       }
@@ -241,10 +240,16 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     return b;
   };
 
-  it("pairingOf", () => {
-    for (const row of X.pairingOf) {
-      const got = hederaPairingOf(row.option);
-      expect(typeof got === "string" ? got : got?.code).toBe(row.expect);
+  it("pairingOf names the pairing of each option it serves; advertise refuses the others", () => {
+    for (const row of X.pairingOf as { option: PaymentRequirements; expect: string }[]) {
+      if (row.expect.startsWith("x402/")) {
+        expect(pairingOf(row.option)).toBe(row.expect);
+        continue;
+      }
+      expect(pairingOf(row.option)).toBeUndefined();
+      const pairing = row.option.extra?.["assetTransferMethod"] === "transferExecutor" ? exactHederaExecutor : exactHedera;
+      const doc = { ...required, accepts: [row.option] };
+      expect(pairing.advertise(doc, H, X.fixed.link, row.option)).toEqual({ refused: true, code: row.expect });
     }
   });
 

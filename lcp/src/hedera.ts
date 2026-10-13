@@ -619,20 +619,6 @@ function checkExecutor(o: PaymentRequirements): true | Refusal | undefined {
   return isServable(o) && executorsOf(o) !== undefined ? true : refusal("hedera/option-malformed");
 }
 
-/**
- * The Hedera pairing an option names: `x402/exact/hedera` for `cryptoTransfer` (or no method), the transfer-executor
- * pairing for `transferExecutor`; a Hedera option either cannot serve is `hedera/option-malformed`. Undefined for an
- * option on another rail.
- */
-export function hederaPairingOf(o: PaymentRequirements): typeof EXACT | typeof EXECUTOR | Refusal | undefined {
-  if (!onHedera(o)) return undefined;
-  const exact = checkExact(o);
-  if (exact === true) return EXACT;
-  const executor = checkExecutor(o);
-  if (executor === true) return EXECUTOR;
-  return isRefusal(exact) ? exact : isRefusal(executor) ? executor : refusal("hedera/option-malformed");
-}
-
 // ── x402/exact/hedera ────────────────────────────────────────────────────────────────────────────────────────────────
 
 function advertise(
