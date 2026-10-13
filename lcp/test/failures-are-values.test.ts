@@ -12,7 +12,7 @@ import { avmRecover, avmStatus } from "../src/avm.js";
 import { cardanoRecover, cardanoStatus } from "../src/cardano.js";
 import { casperRecover, casperStatus, cep3009TypedData, exactCasper } from "../src/casper.js";
 import { ccdRecover, ccdStatus, exactCcd } from "../src/ccd.js";
-import { type AtrHash } from "../src/core.js";
+import { canonicalJson, toLcpString, type AtrHash } from "../src/core.js";
 import {
   eip3009Recover,
   eip3009Status,
@@ -734,6 +734,60 @@ describe("mpp", () => {
     for (const [label, bad] of notReceipts(receipt)) {
       expect(await sessionHedera.recover(hs4 as never, answering(bad) as never), label).toEqual(refused("hedera/unreadable"));
     }
+  });
+  // HS3's and HS4's openings (mpp-session-hedera-solana-xrpl.json): fetchPresented adds the receipt's logs as landed,
+  // from which bound reads H and HS4's salt. A status or block number of another type than the 0 or 1 and the bigint a
+  // reader gives for the node's 0x0 or 0x1 and quantity, reverted or not, is a reader answer that is not well formed, as
+  // a log of another shape is: `hedera/unreadable`, before any finalized mark is read.
+  it("sessionHedera.fetchPresented reads a reader answer that is not a receipt, or a receipt holding a log that is not an object with a string address, an array of string topics and a string data, as hedera/unreadable, as the Tempo read does", async () => {
+    const S = load("mpp-session-hedera-solana-xrpl.json");
+    const network = "hedera:testnet";
+    let marks = 0;
+    const answering = (receipt: unknown) => ({
+      network,
+      receipt: async () => receipt,
+      blockNumber: async () => {
+        marks++;
+        return 50_000_000n;
+      },
+    });
+    const opening = (challenge: object, channelId: string, txHash: string) => ({
+      challenge,
+      payload: { action: "open", channelId, txHash, cumulativeAmount: "0", signature: "0x00" },
+    });
+    const opaque = Buffer.from(
+      canonicalJson({ legalContext: toLcpString(S.HS4.salt), legalContextUrl: S.fixed.link }) as string,
+    ).toString("base64url");
+    const hs3 = opening(S.SS1.hedera.placed, S.HS1.expectChannelId, S.HS3.txHash);
+    const hs4 = opening({ ...S.SS1.hedera.placed, id: S.HS4.challengeId, opaque }, S.HS4.channel, S.HS4.openTx);
+    const open = S.HS4.openReceipt;
+    const receipt = { status: open.status, blockNumber: BigInt(open.blockNumber), logs: open.logs };
+    for (const [c, r, h] of [
+      [hs3, { status: 1, blockNumber: 40_000_000n, logs: [S.HS3.log] }, S.HS3.expectBound],
+      [hs4, receipt, S.HS4.salt],
+    ] as const) {
+      const landed = await sessionHedera.fetchPresented(c as never, answering(r) as never);
+      if ("refused" in landed) throw new Error(landed.code);
+      expect(landed.landed.blockNumber).toBe(r.blockNumber);
+      expect(await sessionHedera.bound(landed)).toBe(h);
+    }
+    const read = open.logs.findIndex((l: { topics: string[] }) => l.topics[1] === S.HS4.channel);
+    for (const [label, logs] of misshapen(open.logs, read)) {
+      const answer = await sessionHedera.fetchPresented(hs4 as never, answering({ ...receipt, logs }) as never);
+      expect(answer, label).toEqual(refused("hedera/unreadable"));
+    }
+    const blocks: unknown[] = [null, false, true, "", [], 0, undefined];
+    const notOpenings: [string, unknown][] = [
+      ...notReceipts(receipt),
+      ...[0, 1].flatMap((status) =>
+        blocks.map((b): [string, unknown] => [`status ${status}, block number ${String(b)}`, { ...receipt, status, blockNumber: b }]),
+      ),
+      ...["0x0", 2, null].map((status): [string, unknown] => [`status ${String(status)}`, { ...receipt, status }]),
+    ];
+    for (const [label, bad] of notOpenings) {
+      expect(await sessionHedera.fetchPresented(hs4 as never, answering(bad) as never), label).toEqual(refused("hedera/unreadable"));
+    }
+    expect(marks).toBe(0);
   });
 });
 

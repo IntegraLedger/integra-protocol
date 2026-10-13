@@ -138,10 +138,11 @@ credentials, the timeouts and the retries are yours. Each `status` makes a bound
 
 A reader that throws or times out never makes a payment failed: a rejected read of the transaction makes `status` answer
 pending, with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark counts as that
-mark not reached. On EVM chains and Tempo, and on the MPP Hedera session, a receipt holding a log that is not an object
-with a string `address`, an array of string `topics` and a string `data` makes `status` answer pending `unreadable` as
-well, and `recover` refuses it as `evm/unreadable`, `tempo/unreadable` or `hedera/unreadable`, the code its rail gives a
-failed read.
+mark not reached. On EVM chains and Tempo, and on the MPP Hedera session, a reader answer that is not a receipt (a
+`status` of 0 or 1, a bigint `blockNumber` and a list of logs), or a receipt holding a log that is not an object with a
+string `address`, an array of string `topics` and a string `data`, makes `status` answer pending `unreadable` as well,
+and `recover` and `fetchPresented` refuse it as `evm/unreadable`, `tempo/unreadable` or `hedera/unreadable`, the code
+its rail gives a failed read.
 A reader that declares a network other than the reference's makes `status` answer the same way, with nothing read,
 so no later read through it settles the payment. The package compares only the `network` a reader declares and never
 asks its endpoint which network it serves, so a reader declares its endpoint's own: one that declares the payment's

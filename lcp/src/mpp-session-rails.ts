@@ -220,10 +220,12 @@ function hederaChain(network: string): 295 | 296 {
 
 /**
  * The opening's receipt, read by `payload.txHash`, with its logs from the escrow added as `landed`. A reader that is
- * missing or for another network than the challenge's is `hedera/wrong-reader`. No receipt is `hedera/not-found` and a
- * failed read `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below
- * the reader's `finalized` mark is `hedera/reverted`: nothing moved. A revert above that mark, or where the mark cannot
- * be read, is `hedera/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds.
+ * missing or for another network than the challenge's is `hedera/wrong-reader`. No receipt is `hedera/not-found`, and a
+ * failed read, or a reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a list of
+ * logs) or holds a log that is not an object with a string `address`, an array of string `topics` and a string `data`,
+ * is `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below the
+ * reader's `finalized` mark is `hedera/reverted`: nothing moved. A revert above that mark, or where the mark cannot be
+ * read, is `hedera/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds.
  * The mark is read only for a revert.
  */
 async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
@@ -243,7 +245,7 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
     return refusal("hedera/unreadable");
   }
   if (receipt === null) return refusal("hedera/not-found");
-  if (!isObject(receipt) || !Array.isArray(receipt.logs) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
   if (receipt.status === 0) {
     const read = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
     return read.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
