@@ -248,7 +248,7 @@ type Row = {
   status?: string;
   senderNonce?: string;
   memo?: string;
-  tx?: "reader-error" | { mined: false; status: string } | { notFound: true; height: string };
+  tx?: "reader-error" | { mined: false; status: string; height?: string } | { notFound: true; height: string };
   txAnswer?: unknown;
   confirmedNonce?: { nonce: string | null; height: string } | "reader-error" | "number";
   readerNetwork?: string;
@@ -291,8 +291,8 @@ function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: st
       if (row.txAnswer !== undefined) return answer(row.txAnswer);
       if (row.tx === "reader-error") throw new ReaderError("transport");
       if (row.tx !== undefined && "notFound" in row.tx) return { notFound: true, height: BigInt(row.tx.height) };
-      // The vector's unmined rows name no height.
-      if (row.tx !== undefined) return { ...row.tx, height: null };
+      // An unmined row names its API's height as a decimal string, or no height (null).
+      if (row.tx !== undefined) return { ...row.tx, height: row.tx.height === undefined ? null : BigInt(row.tx.height) };
       return landed(row);
     },
     async blockTenure(height: bigint) {
