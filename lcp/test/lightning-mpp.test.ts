@@ -65,9 +65,10 @@ describe("mpp/charge/lightning", () => {
 
   it("L3: place sets the id from H, and the issued digest is the vector's with and without the invoice", async () => {
     expect(placed().id).toBe(C.L3.expectId);
-    expect(await issuedDigest(chargeLightning.unplaced(offer))).toBe(C.L3.expectIssuedDigest);
+    const issued = chargeLightning.unplaced(offer) as MppChallenge;
+    expect(await issuedDigest(issued)).toBe(C.L3.expectIssuedDigest);
     expect(await issuedDigest(offer)).toBe(C.L3.expectIssuedDigest);
-    expect(decodeRequest(chargeLightning.unplaced(offer).request).methodDetails).not.toHaveProperty("invoice");
+    expect(decodeRequest(issued.request).methodDetails).not.toHaveProperty("invoice");
   });
 
   it("L3: build pays L2, and bound of the credential gives H", async () => {
@@ -137,7 +138,8 @@ describe("mpp/session/lightning", () => {
   };
 
   it("unplaced drops the deposit invoice at the top of request", () => {
-    expect(decodeRequest(sessionLightning.unplaced(offer).request)).toEqual(S.S1.expectUnplacedRequest);
+    const issued = sessionLightning.unplaced(offer) as MppChallenge;
+    expect(decodeRequest(issued.request)).toEqual(S.S1.expectUnplacedRequest);
   });
 
   it("the open action pays the deposit invoice and binds H", async () => {

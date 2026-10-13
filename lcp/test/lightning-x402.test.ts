@@ -85,7 +85,7 @@ describe("x402/exact/lnbtc", () => {
   const O: PaymentRequirements = V.fixed.O;
 
   it("L5: unplaced drops the invoice, and the issued digest is the vector's", async () => {
-    const u = exactLnbtc.unplaced(O);
+    const u = exactLnbtc.unplaced(O) as PaymentRequirements;
     expect(u.extra).not.toHaveProperty("invoice");
     expect(await issuedDigest(u)).toBe(V.L5.expectIssuedDigestOfUnplaced);
     expect(O.extra).toHaveProperty("invoice");

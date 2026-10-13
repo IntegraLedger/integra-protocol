@@ -241,6 +241,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/exact/xrpl",
     "x402/exact/stellar",
     "x402/exact/tvm",
+    "x402/exact/lnbtc",
   ];
   for (const id of carrierX402) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
@@ -309,6 +310,30 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       expect(unplaced(challenge)).toBe(challenge);
       const expected = { refused: true, code: "mpp/challenge-malformed" };
       for (const v of [withRefused(challenge), shaped(), refusal("ack/token-malformed")]) {
+        const out = unplaced(v);
+        expect(out).toEqual(expected);
+        expect(isRefusal(out)).toBe(true);
+      }
+      for (const v of ["charge", 7, null]) expect(unplaced(v)).toBe(v);
+    });
+  }
+
+  // On the MPP pairings whose request carries the hash (in the member the pairing's carrier names), unplaced gives the
+  // challenge with that member removed from request, or on mpp/charge/stellar with recipient back to its base account.
+  // It refuses a challenge that carries a refused member with mpp/challenge-malformed before it removes anything,
+  // whether or not the carrier is in place; a value that is not an object comes back as it is. Each challenge is the
+  // one its pairing's vector file advertises (buyer row B2), with the carrier in place.
+  const carrierMpp = ["mpp/charge/lightning", "mpp/session/lightning"];
+  for (const id of carrierMpp) {
+    it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
+      const challenge = advertisedOf.get(id);
+      expect(challenge).toBeTypeOf("object");
+      const unplaced = BINDINGS.find((b) => b.id === id)?.unplaced as (c: unknown) => unknown;
+      const issued = unplaced(challenge);
+      expect(isRefusal(issued)).toBe(false);
+      expect(issued).not.toEqual(challenge);
+      const expected = { refused: true, code: "mpp/challenge-malformed" };
+      for (const v of [withRefused(challenge), withRefused(issued), shaped(), refusal("ack/token-malformed")]) {
         const out = unplaced(v);
         expect(out).toEqual(expected);
         expect(isRefusal(out)).toBe(true);

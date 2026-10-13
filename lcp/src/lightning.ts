@@ -229,8 +229,12 @@ function optionFields(o: PaymentRequirements): Refusal | null {
   return null;
 }
 
-/** The option without `extra.invoice`, the dynamic field that carries the hash on `x402/exact/lnbtc`. */
-function withoutInvoice(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option without `extra.invoice`, the dynamic field that carries the hash on `x402/exact/lnbtc`. An option that
+ * carries a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function withoutInvoice(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   if (!isObject(option) || !isObject(option.extra) || !Object.hasOwn(option.extra, "invoice")) return option;
   const { invoice: _, ...extra } = option.extra;
   return { ...option, extra };
@@ -522,9 +526,13 @@ function lnChallengeChecks(pairing: LnMppPairing, c: MppChallenge, h: AtrHash, p
   return b;
 }
 
-/** The challenge without its invoice, `request` re-encoded as base64url of its JCS form. */
-function lnUnplaced(pairing: LnMppPairing): (c: MppChallenge) => MppChallenge {
+/**
+ * The challenge without its invoice, `request` re-encoded as base64url of its JCS form. A challenge that carries a
+ * `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function lnUnplaced(pairing: LnMppPairing): (c: MppChallenge) => MppChallenge | Refusal {
   return (c) => {
+    if (isObject(c) && carriesRefused(c)) return refusal("mpp/challenge-malformed");
     const request = isObject(c) && typeof c.request === "string" ? decodeObject(c.request) : undefined;
     if (request === undefined) return c;
     let rest: { [k: string]: Json };
