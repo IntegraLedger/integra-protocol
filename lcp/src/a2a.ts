@@ -7,7 +7,6 @@ import {
   fromLegalContext,
   isHashWithNonHttpsLink,
   isHttpsLink,
-  isOtherSchemeLink,
   toLegalContext,
   type AtrHash,
   type Json,
@@ -78,9 +77,7 @@ export function place(task: A2aTask, h: AtrHash, link: string, a2aExtensions?: s
   if (metadata !== undefined && !isObject(metadata)) return refusal("a2a/legal-context-malformed");
   const nh = normalHash(h);
   if (nh === null) return refusal("a2a/legal-context-malformed");
-  if (!isHttpsLink(link)) {
-    return isOtherSchemeLink(link) ? refusal("a2a/link-not-https") : refusal("a2a/legal-context-malformed");
-  }
+  if (!isHttpsLink(link)) return refusal("a2a/link-not-https");
   if (link.length > MAX_LINK) return refusal("a2a/legal-context-malformed");
   const value = toLegalContext(nh, link).legalContext as Json;
   if ((jsonBytes(value) ?? Number.POSITIVE_INFINITY) > MAX_VALUE_BYTES) return refusal("a2a/too-large");

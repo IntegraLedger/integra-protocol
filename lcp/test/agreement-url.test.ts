@@ -42,6 +42,8 @@ const TOO_LONG = `https://pay.seller.example/${"a".repeat(2049 - "https://pay.se
 const TOO_LONG_HTTP = `http://pay.seller.example/${"a".repeat(2049 - "http://pay.seller.example/".length)}`;
 /** Bad values that are not a URL with another scheme: empty, unparseable, no host, userinfo, overlong. */
 const MALFORMED = ["", "not a url", "https://", "https://exa mple.com/", "https://u@pay.seller.example/", TOO_LONG, TOO_LONG_HTTP];
+/** Every bad value but the https link over 2048 characters: none is an https link (core-vectors.json links rows). */
+const NOT_HTTPS = [HTTP, ...MALFORMED.filter((bad) => bad !== TOO_LONG)];
 /** The same bad values in the link's place. */
 const LINK_MALFORMED = MALFORMED;
 /**
@@ -298,27 +300,39 @@ describe("the agreement URL", () => {
         expect((r as { agreement?: string }).agreement).toBe(A);
       });
 
-      // Only a URL of at most 2048 characters that parses with a scheme other than https is the pairing's link
-      // refusal; every other value is `legal-context-malformed`, at advertise and at read alike. vectors/buyer.json
-      // BA5 declines an http agreement URL "link-not-https".
-      it("advertise: an agreement URL whose scheme is not https is link-not-https; any other bad value is malformed", () => {
-        expect(call(c, HTTP)).toEqual(refused(`${c.prefix}/link-not-https`));
-        for (const bad of MALFORMED) {
-          expect([bad.slice(0, 40), call(c, bad)]).toEqual([bad.slice(0, 40), refused(`${c.prefix}/legal-context-malformed`)]);
+      // At advertise every value that is not an https link is the pairing's link refusal, since the link MUST be
+      // `https://` (LCP §8.1; core-vectors.json links rows, placedAs); an https agreement URL over 2048 characters is
+      // `legal-context-malformed`.
+      it("advertise: an agreement URL that is not an https link is link-not-https; an https one too long is malformed", () => {
+        for (const bad of NOT_HTTPS) {
+          expect([bad.slice(0, 40), call(c, bad)]).toEqual([bad.slice(0, 40), refused(`${c.prefix}/link-not-https`)]);
         }
+        expect(call(c, TOO_LONG)).toEqual(refused(`${c.prefix}/legal-context-malformed`));
       });
 
-      // The link takes the same split as the agreement URL, at advertise and at read alike, except that an https link
-      // over 2,048 characters is the size code on the pairings LINK_SIZE_CODE names.
-      it("advertise: a link whose scheme is not https is link-not-https; any other bad value is malformed", () => {
+      // The link takes the same rule at advertise, except that an https link over 2,048 characters is the size code on
+      // the pairings LINK_SIZE_CODE names.
+      it("advertise: a link that is not an https link is link-not-https; an https one too long is malformed or too-large", () => {
         const advertise = c.binding.advertise as (...a: unknown[]) => unknown;
-        expect(advertise(c.args[0], h, HTTP, c.args[3])).toEqual(refused(`${c.prefix}/link-not-https`));
-        for (const bad of LINK_MALFORMED) {
+        for (const bad of NOT_HTTPS) {
           const got = advertise(c.args[0], h, bad, c.args[3]);
-          expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(linkCode(c.prefix, bad))]);
+          expect([bad.slice(0, 40), got]).toEqual([bad.slice(0, 40), refused(`${c.prefix}/link-not-https`)]);
+        }
+        expect(advertise(c.args[0], h, TOO_LONG, c.args[3])).toEqual(refused(linkCode(c.prefix, TOO_LONG)));
+      });
+
+      // A value that is not a string is not an https link either (LCP §8.1; core-vectors.json links about, placedAs).
+      it("advertise: a link or an agreement URL that is not a string is link-not-https", () => {
+        const advertise = c.binding.advertise as (...a: unknown[]) => unknown;
+        for (const bad of [42, null, {}]) {
+          expect(advertise(c.args[0], h, bad, c.args[3])).toEqual(refused(`${c.prefix}/link-not-https`));
+          expect(call(c, bad)).toEqual(refused(`${c.prefix}/link-not-https`));
         }
       });
 
+      // At read only a URL of at most 2048 characters that parses with a scheme other than https is the pairing's link
+      // refusal; every other value is `legal-context-malformed`. vectors/buyer.json BA5 declines an http agreement URL
+      // "link-not-https".
       it("read: a link whose scheme is not https is link-not-https; any other bad value is malformed", () => {
         expect(readOf(c, c.readable(withLink(c, c.before, HTTP)))).toEqual(refused(`${c.prefix}/link-not-https`));
         for (const bad of LINK_MALFORMED) {

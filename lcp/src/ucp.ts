@@ -142,9 +142,7 @@ function advertiseFor(key: "checkout" | "booking") {
     if (isRefusal(c)) return c;
     if (c.id !== (offer as unknown as Record<string, string>)[key]) return refusal("ucp/option-not-this-checkout");
     if (isSigned(c)) return refusal("ucp/already-signed");
-    if (!isHttpsLink(link)) {
-      return isOtherSchemeLink(link) ? refusal("ucp/link-not-https") : refusal("ucp/legal-context-malformed");
-    }
+    if (!isHttpsLink(link)) return refusal("ucp/link-not-https");
     if (link.length > MAX_LINK) return refusal("ucp/too-large");
     const agreementFaulted = agreementUrlFault(agreementUrl);
     if (agreementFaulted?.fault === "link-not-https") return refusal("ucp/link-not-https");

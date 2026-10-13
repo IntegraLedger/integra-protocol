@@ -547,7 +547,9 @@ const MAX_LINK = 2048;
 
 /**
  * True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`: the one
- * failing link refused as `link-not-https`. Every other failing link is `legal-context-malformed`.
+ * failing link a pairing's `read` refuses as `link-not-https`, where every other failing link is
+ * `legal-context-malformed`. A pairing's `advertise`, and MPP's and A2A's `place`, refuse every link that is not
+ * `https` as `link-not-https`.
  */
 export function isOtherSchemeLink(s: unknown): s is string {
   return typeof s === "string" && s.length <= MAX_LINK && URL.canParse(s) && new URL(s).protocol !== "https:";

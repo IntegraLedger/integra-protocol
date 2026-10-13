@@ -101,8 +101,8 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 | `x402/flow-missing` | The Solana `upto` pairing's `advertise` refuses an option whose `extra.paymentFlow` is not `escrow`. |
 | `x402/flow-not-carried` | An `auth-capture` option's `extra.paymentFlow` is neither `escrow` nor `authorization`, or its `extra.autoCapture` is `true`. |
 | `x402/legal-context-conflict` | `advertise` finds an `extensions.legalContext` already in the document with other values, or the Cloudflare batch pairing's `build` finds that the document's legal context carries a hash other than H. |
-| `x402/legal-context-malformed` | The link or agreement URL given to `advertise` is not a usable `https` URL of at most 2048 characters, H is invalid, or the document's `extensions` is not an object; or `extensions.legalContext.info` does not decode as a legal context, has a link over 2048 characters, or carries an agreement URL that is malformed or given in both spellings with different values. |
-| `x402/link-not-https` | The link or agreement URL given to `advertise`, or found in the document's `extensions.legalContext.info` by `read`, is an absolute URL of at most 2048 characters whose scheme is not `https`. |
+| `x402/legal-context-malformed` | The link or agreement URL given to `advertise` is an `https` link over 2048 characters, H is invalid, or the document's `extensions` is not an object; or `extensions.legalContext.info` does not decode as a legal context, has a link over 2048 characters, or carries an agreement URL that is malformed or given in both spellings with different values. |
+| `x402/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or one found in the document's `extensions.legalContext.info` by `read` is an absolute URL of at most 2048 characters whose scheme is not `https`. |
 | `x402/manager-not-reference` | At the ERC-7710 salt level, the payment's `delegationManager` is not the reference DelegationManager on a chain where it is deployed. |
 | `x402/no-legal-context` | The document or presented payment has no `extensions.legalContext`, or (for the unsigned ERC-7710 level and Aptos `bound`) the echoed `extensions.legalContext.info` does not decode. |
 | `x402/no-payable-option` | `read` finds no option in the document's `accepts` that this pairing serves. |
@@ -150,8 +150,8 @@ MPP challenges and credentials, and the checks every MPP pairing shares (`@integ
 | `mpp/id-not-ours` | A challenge id is not the base64url of an ATR hash in the form this package writes it (with a position 0 to 31, or bare for a Tempo subscription), or the id does not derive from H given to `build`, or a held session opening is bound to a hash other than H. |
 | `mpp/input-malformed` | The buyer's input to `build`, `buildWithin` or `complete` is not what the pairing needs: no chosen challenge object, or an invalid payer address, token domain, spender, client id (a Tempo client id that is not a well-formed string included), deposit, signer, cumulative amount, fee, key or other value the pairing reads; or the account given to `mpp/subscription/tempo`'s `closeRef` is not an address; or `xrplChannelId` or `xrplClaim` is given a malformed address, sequence, channel id or amount, as the XRPL session's `build` gives them the payer and the challenge's `recipient`. |
 | `mpp/legal-context-conflict` | `place` finds LCP members already in the challenge's `opaque` with other values, or `read` finds challenges that carry different hashes, links or agreement URLs. |
-| `mpp/legal-context-malformed` | The link or agreement URL given to `place` is not a usable `https` URL of at most 2048 characters, or `read` finds a challenge whose `legalContextUrl` or `legalContextAgreementUrl` is not one (and, for the link, no challenge reads). |
-| `mpp/link-not-https` | The link or agreement URL given to `place`, or found in a challenge's `opaque` by `read` when no challenge reads, is an absolute URL of at most 2048 characters whose scheme is not `https`. |
+| `mpp/legal-context-malformed` | The link or agreement URL given to `place` is an `https` link over 2048 characters, or `read` finds a challenge whose `legalContextUrl` or `legalContextAgreementUrl` is not a usable `https` URL of at most 2048 characters (and, for the link, no challenge reads). |
+| `mpp/link-not-https` | The link or agreement URL given to `place` is not an `https` link, or one found in a challenge's `opaque` by `read` when no challenge reads is an absolute URL of at most 2048 characters whose scheme is not `https`. |
 | `mpp/metadata-malformed` | A Stripe challenge's `methodDetails.metadata` is not an object within Stripe's bounds (key count including the one `advertise` adds, key length and characters, string values of bounded length). |
 | `mpp/modes-pull-only` | A Tempo charge challenge whose `amount` is not 0 leaves no mode to pay in: its `supportedModes` omits `pull`, and either omits `push` or the challenge sets `feePayer` to `true`. |
 | `mpp/network-unnamed` | `network` refuses a challenge whose method names no network, such as a `usdc` Gateway challenge. |
@@ -190,8 +190,8 @@ ACK Payment Requests and receipts (`@integraledger/lcp/ack`).
 |---|---|
 | `ack/id-not-lcp` | `read` finds that the signed token's `id` is not an ATR hash in LCP's string form (`lcp:sha256:H`). |
 | `ack/legal-context-conflict` | `read` finds that the hash in the body's `legalContext` differs from the hash in the signed token's `id`. |
-| `ack/legal-context-malformed` | `advertise` refuses an invalid ATR hash, a link that is not a usable `https` URL of at most 2048 characters, or an agreement URL that is not a valid `https` link; `read` refuses a body `legalContext` that does not decode, whose link exceeds 2048 characters, or whose agreement URL is malformed or given twice with different values. |
-| `ack/link-not-https` | The link or agreement URL given to `advertise`, or found in the body's `legalContext` by `read`, is an absolute URL whose scheme is not `https`. |
+| `ack/legal-context-malformed` | `advertise` refuses an invalid ATR hash, or a link or agreement URL that is an `https` link over 2048 characters; `read` refuses a body `legalContext` that does not decode, whose link exceeds 2048 characters, or whose agreement URL is malformed or given twice with different values. |
+| `ack/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or one found in the body's `legalContext` by `read` is an absolute URL whose scheme is not `https`. |
 | `ack/no-legal-context` | `read` finds no `legalContext` in the 402 body. |
 | `ack/no-signed-place` | ACK defines no payer signature, so `build` and `bound` of `ack/payment-request` always return this refusal. |
 | `ack/option-malformed` | `advertise` refuses a payment option that is not an object with a non-empty string `id`, and `unplaced` refuses an option that carries a `refused` member. |
@@ -212,8 +212,8 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 | `acp/id-conflict` | `advertise` finds that the session already has an `id` other than H. |
 | `acp/id-not-hash` | `read` finds that the session's `id` is not an ATR hash, or `bound` finds that the allowance's `checkout_session_id` is not one. |
 | `acp/legal-context-conflict` | `advertise` finds a different `metadata.legal_context` already in the session, or `read` finds that the hash in `metadata.legal_context` differs from the session's `id`. |
-| `acp/legal-context-malformed` | `advertise` refuses an invalid ATR hash, a link that is not a usable `https` URL, or a malformed agreement URL; `read` refuses a `metadata.legal_context` that does not decode, or whose agreement URL is malformed or given in both spellings with different values. |
-| `acp/link-not-https` | The link or agreement URL given to `advertise`, or found in `metadata.legal_context` by `read`, is an absolute URL whose scheme is not `https`. |
+| `acp/legal-context-malformed` | `advertise` refuses an invalid ATR hash, or an agreement URL that is an `https` link over 2048 characters; `read` refuses a `metadata.legal_context` that does not decode, or whose agreement URL is malformed or given in both spellings with different values. |
+| `acp/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or one found in `metadata.legal_context` by `read` is an absolute URL whose scheme is not `https`. |
 | `acp/no-legal-context` | `read` finds no `metadata.legal_context` in the session. |
 | `acp/not-buyer-signed` | `bound` of `acp/checkout/undelegated` always refuses, because nothing the buyer signs names the hash. |
 | `acp/nothing-to-sign` | `build` of `acp/checkout/undelegated` always refuses, because a handler that does not require `delegate_payment` gives the buyer nothing to sign. |
@@ -234,8 +234,8 @@ AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledg
 | `ap2/hash-not-in-checkout` | `build` finds that the hash in the offer's checkout JWT is not H. |
 | `ap2/jws-malformed` | A checkout JWT (given to `jwsPayload`, `read`, `build` or `bound`, or as a payload to `advertise`) is not a compact JWS whose payload is one JSON object, or `advertise` is given a payload that is not a serialisable JSON object. |
 | `ap2/legal-context-conflict` | `advertise` finds a different `legalContext` already in the checkout payload. |
-| `ap2/legal-context-malformed` | The link given to `advertise` is not a usable `https` URL, the agreement URL given to it is not a usable `https` URL of at most 2048 characters, or H is invalid, or the checkout payload's `legalContext` does not decode, or has an agreement URL that is malformed or given in both spellings with different values. |
-| `ap2/link-not-https` | The link or agreement URL given to `advertise`, or the link or agreement URL found in the checkout payload's `legalContext` by `read`, `build` or `bound`, is an absolute URL whose scheme is not `https`. |
+| `ap2/legal-context-malformed` | The agreement URL given to `advertise` is an `https` link over 2048 characters, or H is invalid, or the checkout payload's `legalContext` does not decode, or has an agreement URL that is malformed or given in both spellings with different values. |
+| `ap2/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the link or agreement URL found in the checkout payload's `legalContext` by `read`, `build` or `bound` is an absolute URL whose scheme is not `https`. |
 | `ap2/mandate-ambiguous` | The resolved SD-JWT (the last hop of a chain) contains more than one object whose `vct` is `mandate.checkout.1`. |
 | `ap2/mandate-malformed` | The Checkout Mandate is not a well-formed SD-JWT presentation (bad segments, disclosures, a digest referenced twice, or a digest that names no disclosure listed twice in `_sd`), or is a chain joined by `~~` with more than two hops or a hop that is not one, its `checkout_hash` is not 43 base64url characters, its `checkout_jwt` is present but not a string, the presentation given to `bound` is not an object, or `checkoutJwtOf` finds no disclosed `checkout_jwt`. |
 | `ap2/no-checkout-mandate` | The resolved SD-JWT (the last hop of a chain) contains no object whose `vct` is `mandate.checkout.1`. |
@@ -256,8 +256,8 @@ UCP checkouts and bookings (`@integraledger/lcp/ucp`).
 | `ucp/checkout-malformed` | The checkout (or booking) is not a serialisable JSON object with a non-empty string `id`, its `links` is present but not an array, or the offer given to `build` is not an object. |
 | `ucp/hash-not-in-checkout` | The AP2 Mandate pairing's `build` finds that the checkout's `legal_context` link carries a hash other than H. |
 | `ucp/legal-context-conflict` | The checkout has more than one `legal_context` link or more than one `legal_context_agreement` link, or `advertise` finds an existing `legal_context` or `legal_context_agreement` link whose values differ from the ones it would write (including an existing `legal_context` link with no agreement link when an agreement URL is given). |
-| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form, its `url` is not a usable `https` URL, a `legal_context_agreement` link's `url` is not a usable `https` URL of at most 2048 characters, or the link, agreement URL or H given to `advertise` is invalid. |
-| `ucp/link-not-https` | The link or agreement URL given to `advertise`, or the `url` of the checkout's `legal_context` or `legal_context_agreement` link, is an absolute URL whose scheme is not `https`. |
+| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form, its `url` is not a usable `https` URL, a `legal_context_agreement` link's `url` is not a usable `https` URL of at most 2048 characters, or the agreement URL given to `advertise` is an `https` link over 2048 characters or the H given to it is invalid. |
+| `ucp/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the `url` of the checkout's `legal_context` or `legal_context_agreement` link is an absolute URL whose scheme is not `https`. |
 | `ucp/no-legal-context` | The checkout has no `links` or no link whose `type` is `legal_context`. |
 | `ucp/not-buyer-signed` | `bound` of the unsigned checkout and booking pairings always refuses, because nothing the buyer signs carries the hash. |
 | `ucp/nothing-to-sign` | `build` of the unsigned checkout and booking pairings always refuses, because the buyer signs nothing. |
@@ -271,8 +271,8 @@ Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraled
 
 | Code | Meaning |
 |---|---|
-| `card/legal-context-malformed` | The link or agreement URL given to `advertise` is not a usable `https` URL of at most 2048 characters, or H given to `advertise` or to the Visa TAP `build` is invalid, or a `legalContext` read from the shown JSON or a `checkout_jwt` does not decode, has a link over 2048 characters, or has an agreement URL that is malformed or given in both spellings with different values. |
-| `card/link-not-https` | The link or agreement URL given to `advertise`, or the link or agreement URL found in a `legalContext` by `read`, is an absolute URL whose scheme is not `https`. |
+| `card/legal-context-malformed` | The link or agreement URL given to `advertise` is an `https` link over 2048 characters, or H given to `advertise` or to the Visa TAP `build` is invalid, or a `legalContext` read from the shown JSON or a `checkout_jwt` does not decode, has a link over 2048 characters, or has an agreement URL that is malformed or given in both spellings with different values. |
+| `card/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the link or agreement URL found in a `legalContext` by `read` is an absolute URL whose scheme is not `https`. |
 | `card/no-legal-context` | The JSON the seller showed (for `card/visa-tap` and `card/seller-reference`) or the payload of a `checkout_jwt` (for Verifiable Intent) has no `legalContext` member. |
 | `card/no-signed-place` | `build` and `bound` of `card/seller-reference` always refuse, because nothing the buyer signs carries the hash. |
 | `card/option-malformed` | `advertise` refuses a card option that is not an object with a known `scheme` and a `checkout` of 1 to 128 visible ASCII characters, and `unplaced` refuses an option that carries a `refused` member. |
@@ -304,8 +304,8 @@ The A2A extension (`@integraledger/lcp/a2a`).
 | Code | Meaning |
 |---|---|
 | `a2a/legal-context-conflict` | `place` finds a different legal context already under an extension URI in the task's `metadata`, or `read` finds values under two extension URIs that disagree. |
-| `a2a/legal-context-malformed` | `place` refuses a task or `metadata` that is not an object, an invalid ATR hash, or a link that is not a usable `https` URL of at most 2048 characters; `read` refuses a value under the extension URI that does not decode as a legal context or whose link exceeds 2048 characters. |
-| `a2a/link-not-https` | The link to the seller's copy, given to `place` or found by `read`, is an absolute URL whose scheme is not `https`. |
+| `a2a/legal-context-malformed` | `place` refuses a task or `metadata` that is not an object, an invalid ATR hash, or an `https` link over 2048 characters; `read` refuses a value under the extension URI that does not decode as a legal context or whose link exceeds 2048 characters. |
+| `a2a/link-not-https` | The link to the seller's copy given to `place` is not an `https` link, or the one found by `read` is an absolute URL whose scheme is not `https`. |
 | `a2a/no-legal-context` | `read` finds no legal context under any extension URI in the task's `metadata`. |
 | `a2a/no-signed-place` | The exported `binding` value: A2A signs nothing per transaction, so it has no pairing; a caller asked for one can answer with this refusal. |
 | `a2a/too-large` | The legal context value written by `place` or found by `read` under the extension URI is larger than 4096 bytes of JSON, or is nested more than 64 levels deep. |

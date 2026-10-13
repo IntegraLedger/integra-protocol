@@ -9,7 +9,6 @@ import {
   fromLegalContext,
   isHashWithNonHttpsLink,
   isHttpsLink,
-  isOtherSchemeLink,
   toLegalContext,
   type AtrHash,
   type Json,
@@ -65,8 +64,9 @@ export interface X402Read {
  * The seller's placement over a pairing's filter: a copy of `doc` whose `extensions.legalContext` carries the hash, the link and, when
  * given, the agreement URL after the link. The legal context is one per document, so each pairing placing the same
  * values into it leaves it as it is. Other extensions are kept and `accepts` is untouched. It refuses an `offer` outside
- * `doc.accepts` or refused by the filter, a link or an agreement URL as `read` refuses it, and a legal context already
- * present with other values.
+ * `doc.accepts` or refused by the filter; a link or an agreement URL that is not an `https` link, as
+ * `x402/link-not-https` (LCP §8.1), and an `https` one over 2048 characters, as `x402/legal-context-malformed`; and a
+ * legal context already present with other values.
  */
 export function advertiseFor(filter: OptionFilter): X402Advertise {
   return (doc, h, link, offer, agreementUrl) => {
@@ -76,9 +76,8 @@ export function advertiseFor(filter: OptionFilter): X402Advertise {
     const f = isObject(offer) ? filter(offer) : undefined;
     if (f === undefined) return refusal("x402/option-not-this-pairing");
     if (f !== true) return f;
-    if (!isLink(link)) {
-      return isOtherSchemeLink(link) ? refusal("x402/link-not-https") : refusal("x402/legal-context-malformed");
-    }
+    if (!isHttpsLink(link)) return refusal("x402/link-not-https");
+    if (link.length > MAX_LINK) return refusal("x402/legal-context-malformed");
     const agreementFaulted = agreementUrlFault(agreementUrl);
     if (agreementFaulted?.fault === "link-not-https") return refusal("x402/link-not-https");
     if (agreementFaulted !== undefined) return refusal("x402/legal-context-malformed");
@@ -226,8 +225,4 @@ export function sameJson(a: unknown, b: unknown): boolean {
   const x = canonicalJson(a as Json);
   const y = canonicalJson(b as Json);
   return typeof x === "string" && x === y;
-}
-
-function isLink(s: unknown): s is string {
-  return typeof s === "string" && s.length <= MAX_LINK && isHttpsLink(s);
 }

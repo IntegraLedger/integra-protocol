@@ -15,8 +15,8 @@ type Refusal = { refused: true; code: string };
 
 A code is `<namespace>/<reason>`, such as `core/slot-name`, `x402/link-not-https` or `svm/memo-not-lcp`. The namespace
 is the entry point or rail that refused. The same reason means the same thing on every surface: `link-not-https` is
-always a link of another scheme, and `legal-context-malformed` is always a hash, link or agreement URL that does not
-read.
+always a link that is not `https` (any such link given to `advertise` or `place`, and a link of another scheme where a
+pairing reads), and `legal-context-malformed` is always a hash, link or agreement URL that does not read.
 
 The [refusal code reference](../reference/refusals.md) lists every code with its meaning.
 

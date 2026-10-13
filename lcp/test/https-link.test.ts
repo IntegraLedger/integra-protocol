@@ -18,6 +18,7 @@ const rows = load("core-vectors.json").links.rows as {
   link: string;
   accept: boolean;
   refusedAs: "accepted" | "link-not-https" | "legal-context-malformed";
+  placedAs: "accepted" | "link-not-https";
 }[];
 const X = load("x402-exact-eip155-eip3009.json").fixed as {
   H: `0x${string}`;
@@ -59,6 +60,21 @@ describe("an https link over 2048 characters", () => {
   });
 });
 
+describe("a link that is not a string", () => {
+  it("is link-not-https at each placement, as the link or as the agreement URL (core links rows, placedAs)", () => {
+    const doc: PaymentRequired = { x402Version: 2, resource: X.resource, accepts: [X.O] };
+    for (const v of [42, null, {}] as never[]) {
+      expect(exactEip3009.advertise(doc, H, v, X.O)).toEqual(refused("x402/link-not-https"));
+      expect(exactEip3009.advertise(doc, H, X.link, X.O, v)).toEqual(refused("x402/link-not-https"));
+      expect(place([C_E], H, v, C_E)).toEqual(refused("mpp/link-not-https"));
+      expect(visaTap.advertise({}, H, v, C.offer)).toEqual(refused("card/link-not-https"));
+      expect(placeA2a(A2A.A2.task, A2A.fixed.H, v)).toEqual(refused("a2a/link-not-https"));
+    }
+  });
+});
+
+// A placement refuses every link the rule refuses as `<ns>/link-not-https` (`placedAs`), since the link MUST be
+// `https://` (LCP §8.1); a reading refuses as `refusedAs` says.
 describe("every entry point's link check is the core rule", () => {
   for (const r of rows) {
     it(`${r.name}: the structured form, x402, MPP, card, A2A and discovery agree`, () => {
@@ -70,10 +86,10 @@ describe("every entry point's link check is the core rule", () => {
       const doc: PaymentRequired = { x402Version: 2, resource: X.resource, accepts: [X.O] };
       const x = exactEip3009.advertise(doc, H, r.link, X.O);
       if (r.accept) expect("refused" in x).toBe(false);
-      else expect(x).toEqual(refused(`x402/${r.refusedAs}`));
+      else expect(x).toEqual(refused(`x402/${r.placedAs}`));
       const xa = exactEip3009.advertise(doc, H, X.link, X.O, r.link);
-      if (r.refusedAs === "accepted") expect("refused" in xa).toBe(false);
-      else expect(xa).toEqual(refused(`x402/${r.refusedAs}`));
+      if (r.placedAs === "accepted") expect("refused" in xa).toBe(false);
+      else expect(xa).toEqual(refused(`x402/${r.placedAs}`));
       const xr = legalContextOf({ legalContext: { info: { type: "sha256", value: H, legalContextUrl: r.link } } });
       if (r.accept) expect(xr).toEqual({ h: H, link: r.link });
       else expect(xr).toEqual(refused(`x402/${r.refusedAs}`));
@@ -83,15 +99,15 @@ describe("every entry point's link check is the core rule", () => {
 
       const m = place([C_E], H, r.link, C_E);
       if (r.accept) expect(Array.isArray(m)).toBe(true);
-      else expect(m).toEqual(refused(`mpp/${r.refusedAs}`));
+      else expect(m).toEqual(refused(`mpp/${r.placedAs}`));
 
       const k = visaTap.advertise({}, H, r.link, C.offer);
       if (r.accept) expect("refused" in k).toBe(false);
-      else expect(k).toEqual(refused(`card/${r.refusedAs}`));
+      else expect(k).toEqual(refused(`card/${r.placedAs}`));
 
       const a = placeA2a(A2A.A2.task, A2A.fixed.H, r.link);
       if (r.accept) expect("refused" in a).toBe(false);
-      else expect(a).toEqual(refused(`a2a/${r.refusedAs}`));
+      else expect(a).toEqual(refused(`a2a/${r.placedAs}`));
       const placedA2a = JSON.parse(JSON.stringify(A2A.A2.expectPlaced).replaceAll(A2A.fixed.L, JSON.stringify(r.link).slice(1, -1)));
       const ar = readA2a(placedA2a);
       if (r.accept) expect(ar).toEqual({ h: A2A.fixed.H, link: r.link });

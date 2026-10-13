@@ -11,7 +11,6 @@ import {
   hashEquals,
   isHashWithNonHttpsLink,
   isHttpsLink,
-  isOtherSchemeLink,
   toLegalContext,
   type AtrHash,
   type Json,
@@ -100,9 +99,7 @@ function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption,
   }
   const id = normalHash(h);
   if (id === null) return refusal("acp/legal-context-malformed");
-  if (!isHttpsLink(link)) {
-    return isOtherSchemeLink(link) ? refusal("acp/link-not-https") : refusal("acp/legal-context-malformed");
-  }
+  if (!isHttpsLink(link)) return refusal("acp/link-not-https");
   if (link.length > MAX_LINK) return refusal("acp/too-large");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("acp/link-not-https");

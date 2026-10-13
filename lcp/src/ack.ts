@@ -10,7 +10,6 @@ import {
   hashEquals,
   isHashWithNonHttpsLink,
   isHttpsLink,
-  isOtherSchemeLink,
   toLcpString,
   toLegalContext,
   type AtrHash,
@@ -70,9 +69,7 @@ function advertise(
   if (!isObject(offer) || typeof offer["id"] !== "string" || offer["id"] === "") return refusal("ack/option-malformed");
   const nh = normalHash(h);
   if (nh === null) return refusal("ack/legal-context-malformed");
-  if (!isHttpsLink(link)) {
-    return isOtherSchemeLink(link) ? refusal("ack/link-not-https") : refusal("ack/legal-context-malformed");
-  }
+  if (!isHttpsLink(link)) return refusal("ack/link-not-https");
   if (link.length > MAX_LINK) return refusal("ack/legal-context-malformed");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("ack/link-not-https");

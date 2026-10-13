@@ -723,9 +723,8 @@ export function place(
   }
   const hash = normalHash(h);
   if (hash === null) return refusal("mpp/challenge-malformed");
-  if (!isLink(link)) {
-    return isOtherSchemeLink(link) ? refusal("mpp/link-not-https") : refusal("mpp/legal-context-malformed");
-  }
+  if (!isHttpsLink(link)) return refusal("mpp/link-not-https");
+  if (link.length > MAX_LINK) return refusal("mpp/legal-context-malformed");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("mpp/link-not-https");
   if (agreementFaulted !== undefined) return refusal("mpp/legal-context-malformed");

@@ -29,9 +29,14 @@ export function agreementFault(url: unknown): AgreementFault {
   return { fault: isOtherSchemeLink(url) ? "link-not-https" : "legal-context-malformed" };
 }
 
-/** Undefined for no agreement URL or an agreement URL; otherwise the value's `agreementFault`. */
+/**
+ * The fault of a value given to a placement as its agreement URL: undefined for no agreement URL or an agreement URL;
+ * `legal-context-malformed` for an `https` link of more than 2048 characters; and `link-not-https` for every other
+ * value, which is not an `https` link.
+ */
 export function agreementUrlFault(url: unknown): AgreementFault | undefined {
-  return url === undefined || isAgreementUrl(url) ? undefined : agreementFault(url);
+  if (url === undefined || isAgreementUrl(url)) return undefined;
+  return { fault: isHttpsLink(url) ? "legal-context-malformed" : "link-not-https" };
 }
 
 /**

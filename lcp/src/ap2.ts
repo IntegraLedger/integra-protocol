@@ -12,7 +12,6 @@ import {
   hashEquals,
   isHashWithNonHttpsLink,
   isHttpsLink,
-  isOtherSchemeLink,
   toLegalContext,
   type AtrHash,
   type Json,
@@ -198,9 +197,7 @@ function advertise(
   if (typeof id !== "string" || id.length === 0) return refusal("ap2/checkout-id-missing");
   if (id.length > MAX_ID) return refusal("ap2/too-large");
   if (id !== offer.checkout) return refusal("ap2/option-not-this-checkout");
-  if (!isHttpsLink(link)) {
-    return isOtherSchemeLink(link) ? refusal("ap2/link-not-https") : refusal("ap2/legal-context-malformed");
-  }
+  if (!isHttpsLink(link)) return refusal("ap2/link-not-https");
   if (link.length > MAX_LINK) return refusal("ap2/too-large");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("ap2/link-not-https");

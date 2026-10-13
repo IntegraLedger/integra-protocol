@@ -10,7 +10,7 @@
  *
  * Pure: no I/O, no state. WebCrypto supplies SHA-256 and ES256. No function throws.
  */
-import { fromLegalContext, hashEquals, isHashWithNonHttpsLink, isHttpsLink, isOtherSchemeLink, toLcpString, type AtrHash } from "./core.js";
+import { fromLegalContext, hashEquals, isHashWithNonHttpsLink, isHttpsLink, toLcpString, type AtrHash } from "./core.js";
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -132,9 +132,7 @@ function advertise(
   agreementUrl?: string,
 ): CardValues | Refusal {
   if (!isOption(offer)) return refusal("card/option-malformed");
-  if (!isHttpsLink(link)) {
-    return isOtherSchemeLink(link) ? refusal("card/link-not-https") : refusal("card/legal-context-malformed");
-  }
+  if (!isHttpsLink(link)) return refusal("card/link-not-https");
   if (link.length > MAX_LINK) return refusal("card/legal-context-malformed");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("card/link-not-https");
