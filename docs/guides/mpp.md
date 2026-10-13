@@ -119,8 +119,10 @@ is `mpp/challenge-malformed` in `pairingsOf`, `place` and `build`, and in every 
 The build that takes such a client id refuses it (`mpp/input-malformed` on Tempo, `hedera/option-malformed` on
 Hedera).
 
-Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs. Its
-`bound(credential)` reads H from the echoed challenge and checks that what was signed carries it; `reference` and
+Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs; on card and
+Stripe, where nothing the buyer signs can carry H, it refuses `mpp/no-signed-place`. Its `bound(credential)` reads H
+from the echoed challenge and, where the payer signs a value that carries it, checks that value; where nothing signed
+carries H, the card, Stripe and EVM `transaction` and `hash` pairings refuse `mpp/no-signed-place`. `reference` and
 `status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
 only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
 refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, `xrpl/not-success` on the XRP Ledger,
