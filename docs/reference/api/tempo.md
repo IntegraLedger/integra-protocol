@@ -169,6 +169,14 @@ open(address,address,address,uint96,bytes32,address)
 
 ***
 
+### RECEIVE\_POLICY\_GUARD
+
+> `const` **RECEIVE\_POLICY\_GUARD**: `"0xb10c000000000000000000000000000000000000"`
+
+Where a Tempo receive policy sends a blocked transfer.
+
+***
+
 ### TIP20\_CHANNEL\_RESERVE
 
 > `const` **TIP20\_CHANNEL\_RESERVE**: `"0x4d50500000000000000000000000000000000000"`
@@ -357,9 +365,3 @@ keychain. A ref or reader that is not an object, or a reader for another network
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-## References
-
-### RECEIVE\_POLICY\_GUARD
-
-Re-exports [RECEIVE_POLICY_GUARD](evm.md#receive_policy_guard)

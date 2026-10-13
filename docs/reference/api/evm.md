@@ -441,15 +441,14 @@ token, `validBefore` and the transfer digest.
 
 #### Type Declaration
 
-| Name | Type | Description |
-| ------ | ------ | ------ |
-| `asset` | [`Hex`](#hex) | - |
-| `authorization` | [`PullAuthorization`](#pullauthorization) | - |
-| `idDigest` | [`Hex`](#hex) | - |
-| `maxTimeoutSeconds` | `number` | The option's `maxTimeoutSeconds`: the authorization was signed no earlier than `validBefore` less this. |
-| `network` | [`Eip155`](#eip155) | - |
-| `transferLog` | [`TransferLog`](#transferlog) | - |
-| `validBefore` | `string` | - |
+| Name | Type |
+| ------ | ------ |
+| `asset` | [`Hex`](#hex) |
+| `authorization` | [`PullAuthorization`](#pullauthorization) |
+| `idDigest` | [`Hex`](#hex) |
+| `network` | [`Eip155`](#eip155) |
+| `transferLog` | [`TransferLog`](#transferlog) |
+| `validBefore` | `string` |
 
 ***
 
@@ -468,23 +467,6 @@ token, `validBefore` and the transfer digest.
 ### Hex
 
 > **Hex** = `` `0x${string}` ``
-
-***
-
-### ReceiveTypedData
-
-> **ReceiveTypedData** = `Omit`\<[`Eip3009TypedData`](#eip3009typeddata), `"primaryType"` \| `"types"`\> & `object`
-
-EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthorization`, for a payee contract.
-
-#### Type Declaration
-
-| Name | Type |
-| ------ | ------ |
-| `primaryType` | `"ReceiveWithAuthorization"` |
-| `types` | `object` |
-| `types.EIP712Domain` | [`Field`](#field)[] |
-| `types.ReceiveWithAuthorization` | [`Field`](#field)[] |
 
 ***
 
@@ -563,14 +545,6 @@ keccak256("nonceBitmap(address,uint256)")[0..4]
 ### PERMIT2
 
 > `const` **PERMIT2**: `"0x000000000022D473030F116dDEE9F6B43aC78BA3"`
-
-***
-
-### RECEIVE\_POLICY\_GUARD
-
-> `const` **RECEIVE\_POLICY\_GUARD**: `"0xb10c000000000000000000000000000000000000"`
-
-Where a Tempo receive policy sends a blocked transfer.
 
 ***
 
@@ -672,25 +646,6 @@ keccak256(abi.encode(SALT_BINDING_TYPEHASH, receiverAuthorizer, policy, h)).
 #### Returns
 
 [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-***
-
-### carriesBinding()
-
-> **carriesBinding**(`log`, `b`): `boolean`
-
-A log from `address` whose topic `index`, or data word `dataWord`, equals `value` by bytes, under `topic0`.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `log` | [`EvmLog`](#evmlog) |
-| `b` | `NonNullable`\<\{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) \| `undefined`\> |
-
-#### Returns
-
-`boolean`
 
 ***
 
@@ -827,42 +782,6 @@ present and not of the form a reference writes, is pending `unreadable`, with no
 
 ***
 
-### isLog()
-
-> **isLog**(`l`): `l is EvmLog`
-
-True for a log with a string address, string topics and string data.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `l` | `unknown` |
-
-#### Returns
-
-`l is EvmLog`
-
-***
-
-### isReceipt()
-
-> **isReceipt**(`r`): `r is EvmReceipt`
-
-True for a receipt with a 0 or 1 status, a bigint block number and a list of logs.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `r` | `unknown` |
-
-#### Returns
-
-`r is EvmReceipt`
-
-***
-
 ### paymentHash()
 
 > **paymentHash**(`chainId`, `escrow`, `p`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
@@ -913,76 +832,6 @@ witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` w
 
 ***
 
-### receiveTypedData()
-
-> **receiveTypedData**(`a`): [`Refusal`](index.md#refusal) \| [`ReceiveTypedData`](#receivetypeddata)
-
-The EIP-712 typed data for `ReceiveWithAuthorization`, built as `eip3009TypedData` builds its transfer form.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `a` | \{ `asset`: `` `0x${string}` ``; `from`: `` `0x${string}` ``; `name`: `string`; `network`: `` `eip155:${string}` ``; `nonce`: `` `0x${string}` ``; `to`: `` `0x${string}` ``; `validAfter`: `bigint`; `validBefore`: `bigint`; `value`: `string`; `version`: `string`; \} |
-| `a.asset` | `` `0x${string}` `` |
-| `a.from` | `` `0x${string}` `` |
-| `a.name` | `string` |
-| `a.network` | `` `eip155:${string}` `` |
-| `a.nonce` | `` `0x${string}` `` |
-| `a.to` | `` `0x${string}` `` |
-| `a.validAfter` | `bigint` |
-| `a.validBefore` | `bigint` |
-| `a.value` | `string` |
-| `a.version` | `string` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| [`ReceiveTypedData`](#receivetypeddata)
-
-***
-
-### redeemedLeafRecover()
-
-> **redeemedLeafRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-Recovers H from a settlement transaction through MetaMask's DelegationManager: among its `RedeemedDelegation` logs,
-the leaves are those whose data word 1 (the delegate) is the redeemer in topic 2 or the wildcard delegate; exactly
-one distinct leaf salt (data word 5) is H. One call.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `ref` | \{ `network`: `` `eip155:${string}` ``; `transaction`: `` `0x${string}` ``; \} |
-| `ref.network` | `` `eip155:${string}` `` |
-| `ref.transaction` | `` `0x${string}` `` |
-| `reader` | [`EvmReader`](#evmreader) |
-
-#### Returns
-
-`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-***
-
-### settledAt()
-
-> **settledAt**(`at`, `reader`): `Promise`\<[`EvmStatus`](#evmstatus) & `object`\>
-
-Settled at the highest finality mark whose block is at or above `at`; a failed mark read counts as not reached.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `at` | `bigint` |
-| `reader` | [`EvmReader`](#evmreader) |
-
-#### Returns
-
-`Promise`\<[`EvmStatus`](#evmstatus) & `object`\>
-
-***
-
 ### transferDigest()
 
 > **transferDigest**(`v`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
@@ -1002,24 +851,3 @@ big-endian uint256. `authorizationIdDigest(from, to, value)` equals `transferDig
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-***
-
-### transferParts()
-
-> **transferParts**(`log`, `address`, `topic0`): \{ `from`: `` `0x${string}` ``; `to`: `` `0x${string}` ``; `value`: `bigint`; \} \| `undefined`
-
-`from` and `to` from topics 1 and 2 (their low 20 bytes) and `value` from data word 0, for a log from `address`
-under `topic0`. An ERC-20 `Transfer` has exactly three topics; an event that also indexes a memo has four.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `log` | [`EvmLog`](#evmlog) |
-| `address` | `` `0x${string}` `` |
-| `topic0` | `` `0x${string}` `` |
-
-#### Returns
-
-\{ `from`: `` `0x${string}` ``; `to`: `` `0x${string}` ``; `value`: `bigint`; \} \| `undefined`

@@ -316,6 +316,23 @@ Every MPP pairing `pairingsOf` can name.
 
 ***
 
+### ReceiveTypedData
+
+> **ReceiveTypedData** = `Omit`\<[`Eip3009TypedData`](evm.md#eip3009typeddata), `"primaryType"` \| `"types"`\> & `object`
+
+EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthorization`, for a payee contract.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `primaryType` | `"ReceiveWithAuthorization"` |
+| `types` | `object` |
+| `types.EIP712Domain` | [`Field`](evm.md#field)[] |
+| `types.ReceiveWithAuthorization` | [`Field`](evm.md#field)[] |
+
+***
+
 ### SessionStatus
 
 > **SessionStatus** = [`EvmBreadthStatus`](evm.md#evmbreadthstatus) \| \{ `state`: `"pending"`; `why`: `"not-a-close"` \| `"open-call-not-found"`; \} \| \{ `state`: `"failed"`; `why`: `"open-call-not-found"`; \}
@@ -330,7 +347,7 @@ Every MPP pairing `pairingsOf` can name.
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-funding"></a> `funding` | \{ `kind`: `"eip712"`; `typedData`: [`ReceiveTypedData`](evm.md#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `broadcast`: `true`; `calls`: `object`[]; `chainId`: `number`; `kind`: `"evm-calls"`; \} \| \{ `broadcast`: `false`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \} |
+| <a id="property-funding"></a> `funding` | \{ `kind`: `"eip712"`; `typedData`: [`ReceiveTypedData`](#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `broadcast`: `true`; `calls`: `object`[]; `chainId`: `number`; `kind`: `"evm-calls"`; \} \| \{ `broadcast`: `false`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \} |
 
 #### Methods
 
@@ -1065,9 +1082,3 @@ RFC 8785 form of their own parse, else `mpp/request-not-jcs`; they are hashed as
 ### chargeHedera
 
 Re-exports [chargeHedera](hedera.md#chargehedera)
-
-***
-
-### ReceiveTypedData
-
-Re-exports [ReceiveTypedData](evm.md#receivetypeddata)
