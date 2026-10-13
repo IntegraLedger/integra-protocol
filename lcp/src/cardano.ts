@@ -304,8 +304,9 @@ const pattern: LcpPattern = deepFreeze({
   proves:
     "The payer signed a Cardano transaction whose body commits, through its auxiliary_data_hash, to a CIP-20 " +
     "message (label 674) carrying this ATR's hash. The ledger included the transaction as valid, at the stated " +
-    "depth; the rail allows a rollback of fewer than k blocks. The hash is in the transaction's metadata on chain. " +
-    "This does not show that amount, payee, asset or timing match the ATR's content.",
+    "depth; a Cardano transaction with fewer than k blocks after it (2160 on mainnet) can be rolled back. The hash " +
+    "is in the transaction's metadata on chain. This does not show that amount, payee, asset or timing match the " +
+    "ATR's content.",
 });
 
 export const exactCardano = Object.freeze({

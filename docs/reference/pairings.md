@@ -173,7 +173,7 @@ The ATR was assembled and delivered before approval, and its hash is in the MPP 
 
 ### `mpp/charge/lightning`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
 
 ### `mpp/charge/nearintents`
 
@@ -229,7 +229,7 @@ The payer signed a Hedera EVM transaction that opened an MPP session channel on 
 
 ### `mpp/session/lightning`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
 
 ### `mpp/session/solana`
 
@@ -297,7 +297,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `x402/exact/cardano`
 
-The payer signed a Cardano transaction whose body commits, through its auxiliary_data_hash, to a CIP-20 message (label 674) carrying this ATR's hash. The ledger included the transaction as valid, at the stated depth; the rail allows a rollback of fewer than k blocks. The hash is in the transaction's metadata on chain. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer signed a Cardano transaction whose body commits, through its auxiliary_data_hash, to a CIP-20 message (label 674) carrying this ATR's hash. The ledger included the transaction as valid, at the stated depth; a Cardano transaction with fewer than k blocks after it (2160 on mainnet) can be rolled back. The hash is in the transaction's metadata on chain. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/casper`
 
@@ -333,11 +333,11 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `x402/exact/lnbtc`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice has this ATR's hash as its payment metadata and x402's request hash as its description hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice has this ATR's hash as its payment metadata and x402's request hash as its description hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
 
 ### `x402/exact/lnbtc/invoice-named`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's signed BOLT11 invoice, whose description hash is x402's request hash. The invoice does not carry this ATR's hash, and the payer signed nothing that does. Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's signed BOLT11 invoice, whose description hash is x402's request hash. The invoice does not carry this ATR's hash, and the payer signed nothing that does. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
 
 ### `x402/exact/near`
 
@@ -353,7 +353,7 @@ The payer signed a Solana transaction whose one Memo instruction carries this AT
 
 ### `x402/exact/starknet`
 
-The payer signed a SNIP-12 outside execution whose nonce is the low 250 bits of this ATR's hash. The payer's account contract verified that signature when it executed the transfer call, and the nonce is in the settlement transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the chain alone does not reveal all of it, and no event indexes it. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer signed, as SNIP-12 typed data, a SNIP-9 outside execution whose nonce is the low 250 bits of this ATR's hash. The payer's account contract verified that signature when it executed the transfer call, and the nonce is in the settlement transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the chain alone does not reveal all of it, and no event indexes it. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/stellar`
 
@@ -369,7 +369,7 @@ The payer signed a Tron transaction whose memo is this ATR's hash in LCP string 
 
 ### `x402/exact/tvm`
 
-The payer's W5 wallet signed a request whose one Jetton transfer carries this ATR's hash in its forward payload, as a TEP-74 text comment in LCP string form. The payer's Jetton wallet executed that transfer, and the payee's Jetton wallet accepted it. The comment is on chain in the transfer's message bodies. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer's W5 wallet signed a request whose one Jetton transfer carries this ATR's hash in its forward payload, as a TEP-74 text comment in LCP string form. The payer's Jetton wallet executed that transfer, and the Jetton wallet its `internal_transfer` reached accepted it. The comment is on chain in the transfer's message bodies. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/xrpl`
 

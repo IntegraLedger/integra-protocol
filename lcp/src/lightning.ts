@@ -274,8 +274,9 @@ const X1_OPENING =
   "recorded in <transaction>. ";
 /** What the record shows of the payment itself: the seller's report, and the invoice and preimage the parties hold. */
 const REPORT =
-  "Settlement is the seller's report; the invoice and its preimage, which the parties hold, are the proof of the " +
-  "payment. No public ledger shows it. This does not show that amount, payee or timing match the ATR's content.";
+  "Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice " +
+  "was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, " +
+  "payee or timing match the ATR's content.";
 /** On the pairings whose invoice carries the hash: no signature is verified here, and the payer signs nothing. */
 const UNVERIFIED = "Its signature is not verified here, and the payer signed nothing that carries the hash. " + REPORT;
 

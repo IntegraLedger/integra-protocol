@@ -616,11 +616,11 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
   publicProof: true,
   proves:
-    "The payer signed a SNIP-12 outside execution whose nonce is the low 250 bits of this ATR's hash. The payer's " +
-    "account contract verified that signature when it executed the transfer call, and the nonce is in the settlement " +
-    "transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the chain alone does not reveal " +
-    "all of it, and no event indexes it. This does not show that amount, payee, asset or timing match the ATR's " +
-    "content.",
+    "The payer signed, as SNIP-12 typed data, a SNIP-9 outside execution whose nonce is the low 250 bits of this " +
+    "ATR's hash. The payer's account contract verified that signature when it executed the transfer call, and the " +
+    "nonce is in the settlement transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the " +
+    "chain alone does not reveal all of it, and no event indexes it. This does not show that amount, payee, asset or " +
+    "timing match the ATR's content.",
 });
 
 export const exactStarknet = Object.freeze({

@@ -384,7 +384,8 @@ describe("the records of the Lightning pairings whose invoice carries the hash",
     it(`${b.id}: proves states that no signature is verified here and that settlement is the seller's report`, () => {
       expect(b.pattern.proves).toContain(
         "Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the " +
-          "seller's report; the invoice and its preimage, which the parties hold, are the proof of the payment.",
+          "seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; " +
+          "they do not show who paid it, and no public ledger shows the payment.",
       );
       expect(b.pattern.proves).not.toMatch(/the payer paid|checked the node signature|did not verify/i);
     });
