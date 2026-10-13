@@ -243,10 +243,9 @@ and the XRP Ledger): the buyer pays it with a voucher only for a channel it open
 
 ## What the record says
 
-Each channel pairing's `pattern.proves` states what the opening shows. On the EVM and Tempo MPP sessions and the Stripe
-subscription it then says that the later payments in the session or subscription were made under the same ATR; on the
-Hedera, Solana, XRP Ledger and Lightning MPP sessions, the Tempo subscription and the x402 batch-settlement channels it
-does not. Some also say
+Each channel pairing's `pattern.proves` states what the opening shows. On the EVM and Tempo MPP sessions it then says
+that the later payments in the session were made under the same ATR; on the Hedera, Solana, XRP Ledger and Lightning MPP
+sessions, the MPP subscriptions and the x402 batch-settlement channels it does not. Some also say
 what the vouchers sign: on the EVM,
 Tempo and Hedera sessions and the EVM batch-settlement channel, each voucher signs a commitment to H; on the XRP
 Ledger session, each voucher signs the channel id and an amount, not H. The

@@ -39,10 +39,7 @@ const PROVES =
   "buyer signed was checked. Settlement is the seller's report. This record does not show that the buyer's " +
   "approval carried the hash.";
 
-const SUBSCRIPTION_PROVES =
-  PROVES +
-  " Later billing periods were paid under this ATR by renewal invoices the seller did not read. The close is the " +
-  "seller's report.";
+const SUBSCRIPTION_PROVES = PROVES + " The close is the seller's report.";
 
 function patternOf(proves: string): LcpPattern {
   return deepFreeze({
