@@ -1013,12 +1013,13 @@ The binding slot: the distinct challenges among `options`, each with exactly MPP
 
 `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
 topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose recipient is not
-`RECEIVE_POLICY_GUARD`. `ref.transferLog` must identify a `Transfer` from `ref.asset` by its sender alone (identity
-`from`), as the pairing's `reference` records it, else pending `unreadable`. Without such a log, a `Transfer` from
-that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`: another
-account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and these, is
-given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
-cannot be read, the same reason is pending. At most three calls.
+`RECEIVE_POLICY_GUARD`. `ref.asset` and `ref.transferLog.address` must be addresses naming the same token, and
+`ref.transferLog` must identify a `Transfer` from it by its sender alone (identity `from`), as the pairing's
+`reference` records it; any other ref is pending `unreadable`, with nothing read. Without such a log, a `Transfer`
+from that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`:
+another account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and
+these, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
+mark cannot be read, the same reason is pending. At most three calls.
 
 #### Parameters
 
