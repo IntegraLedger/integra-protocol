@@ -63,7 +63,7 @@ Each pairing's `pattern` record states what a payment through it shows, and neve
 | `forwardIndexable` | A search by H finds the settlement. |
 | `profile` | The LCP profile that defines the binding, where one does. The profiles ship in the package's [`profiles/`](../../lcp/profiles/). |
 | `canonical` | A flag the record declares. Nothing in this package reads it. |
-| `proves` | One paragraph stating what the payment shows and what it does not. |
+| `proves` | One paragraph stating what the payment shows and what it does not. Where `publicProof` is false, it opens with the agreement payment the buyer gate requires before the full payment, and the record fills in that payment's `<network>` and `<transaction>`. |
 
 Where the buyer's approval does not sign H, the record says so, and says what the payment does show. For example,
 `x402/exact/eip155/erc7710`, whose `buyerSigns` is `false`, states (the record fills in `<network>` and
