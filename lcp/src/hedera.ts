@@ -1059,7 +1059,7 @@ const ATTRIBUTION = /^0x[0-9a-fA-F]{64}$/;
 const MAX_VALID_DURATION = 180;
 
 /** An MPP Hedera charge request as decoded from the challenge's `request`. */
-export type MppHederaRequest = { [k: string]: Json };
+type MppHederaRequest = { [k: string]: Json };
 
 /** The request's legs: the payer's debit of `amount`, the recipient's remainder, and each split, in `currency`. */
 function chargeLegs(
