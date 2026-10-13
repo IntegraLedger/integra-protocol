@@ -164,6 +164,22 @@ export function chosen(required: unknown, accepted: unknown, filter: OptionFilte
   return f ?? refusal("x402/option-not-this-pairing");
 }
 
+/** A presented payment's `accepted`, served by the filter, its `payload` object and its `extensions`. */
+export function presentedWith(
+  presented: unknown,
+  filter: OptionFilter,
+): { accepted: PaymentRequirements; payload: Record<string, unknown>; extensions: unknown } | Refusal {
+  if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
+  const accepted = presented["accepted"];
+  if (!isObject(accepted)) return refusal("x402/payload-malformed");
+  const f = filter(accepted as PaymentRequirements);
+  if (f === undefined) return refusal("x402/option-not-this-pairing");
+  if (f !== true) return f;
+  const payload = presented["payload"];
+  if (!isObject(payload)) return refusal("x402/payload-malformed");
+  return { accepted: accepted as PaymentRequirements, payload, extensions: presented["extensions"] };
+}
+
 /** True when `offer` is one of `accepts`, by identity or by equal RFC 8785 form. */
 export function isOffered(accepts: readonly PaymentRequirements[], offer: PaymentRequirements): boolean {
   return accepts.some((a) => a === offer || sameJson(a, offer));

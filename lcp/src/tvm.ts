@@ -10,7 +10,7 @@ import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { TvmPayment } from "./internal/tvm.js";
-import { advertiseFor, chosen, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, presentedWith, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -26,7 +26,6 @@ export interface TonCell {
 import {
   offeredAt,
   paymentWith,
-  presentedWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

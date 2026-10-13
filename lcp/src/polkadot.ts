@@ -10,11 +10,10 @@ import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from 
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
-import { advertiseFor, chosen, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   paymentWith,
-  presentedWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

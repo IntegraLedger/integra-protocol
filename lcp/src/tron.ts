@@ -8,12 +8,11 @@ import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash } from "./co
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
 import type { TronPayment } from "./internal/tron.js";
-import { advertiseFor, chosen, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, presentedWith, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow, hexDigits } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   paymentWith,
-  presentedWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

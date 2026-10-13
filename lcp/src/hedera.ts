@@ -18,7 +18,7 @@ import {
   type ExecutorPayload,
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
-import { advertiseFor, chosen, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
@@ -33,7 +33,6 @@ import {
 } from "./mpp-challenge.js";
 import {
   paymentWith,
-  presentedWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

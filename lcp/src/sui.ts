@@ -10,12 +10,11 @@ import type { bcs as SuiBcs } from "@mysten/sui/bcs";
 import { fromRawBytes, toRawBytes, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { SuiPaymentPayload } from "./internal/sui.js";
-import { advertiseFor, chosen, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, presentedWith, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, sameBytes, toBase64, U64_LIMIT } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   paymentWith,
-  presentedWith,
   tie,
   type LcpPattern,
   type PaymentRequired,

@@ -8,13 +8,12 @@ import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./c
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import type { StarknetPayment } from "./internal/starknet.js";
-import { advertiseFor, chosen, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, presentedWith, readFor, type OptionFilter, type X402Read } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   LEGAL_CONTEXT,
   paymentWith,
-  presentedWith,
   tie,
   type LcpPattern,
   type PaymentRequired,
