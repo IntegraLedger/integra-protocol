@@ -27,12 +27,14 @@ A mined transaction as the Stacks Blockchain API reports it from the canonical c
 
 ### StacksMempool
 
-An unmined transaction: `pending`, or one of the `dropped_…` states.
+An unmined transaction: `pending`, or one of the `dropped_…` states, with the `height` its API had reached when it
+answered (see `StacksReader`).
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
+| <a id="property-height"></a> `height` | `bigint` \| `null` |
 | <a id="property-mined-1"></a> `mined` | `false` |
 | <a id="property-status-1"></a> `status` | `string` |
 
@@ -43,8 +45,8 @@ An unmined transaction: `pending`, or one of the `dropped_…` states.
 Bounded reads of one network's Stacks Blockchain API. Any failure rejects with ReaderError. `height` is the block
 height of that API's indexed chain tip (`GET /extended` → `chain_tip.block_height`), read from the node that gave the
 answer it goes with: after the `confirmedNonce` call, so the nonce read is at or below it, and before a lookup that
-answers `notFound`, so the lookup is at or above it. It is null when the reader cannot read it from that node, and an
-answer naming no height never reads an unknown transaction as failed.
+answers `notFound` or an unmined transaction, so the lookup is at or above it. It is null when the reader cannot read
+it from that node, and an answer naming no height never reads an unknown or dropped transaction as failed.
 
 #### Properties
 
@@ -116,8 +118,9 @@ The transaction by its `0x`-prefixed id, with its function arguments; `notFound`
 
 ### StacksRef
 
-The read keys of a Stacks payment: its network, the token contract, the origin and its nonce as a decimal string,
-and the transaction id (absent for a sponsored transaction, whose id is fixed only by the sponsor's signature).
+The read keys of a Stacks payment: its network, the contract the transaction calls, the origin and its nonce as a
+decimal string, and the transaction id (absent for a sponsored transaction, whose id is fixed only by the sponsor's
+signature).
 
 #### Properties
 
@@ -143,51 +146,7 @@ CAIP-2: `stacks:1` (mainnet), `stacks:2147483648` (testnet).
 
 > **StacksStatus** = \{ `blockHeight`: `bigint`; `finality`: `"block"` \| `"bitcoin"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"mempool"` \| `"dropped"` \| `"unreadable"`; \} \| \{ `blockHeight`: `bigint`; `finality`: `"block"` \| `"bitcoin"`; `state`: `"failed"`; `why`: `"abort-by-response"` \| `"abort-by-post-condition"` \| `"skipped"` \| `"not-this-instrument"`; \} \| \{ `finality`: `"block"`; `state`: `"failed"`; `why`: `"nonce-used"`; \}
 
-## Variables
-
-### MEMO\_PREFIX
-
-> `const` **MEMO\_PREFIX**: `"0x0a0200000020"` = `"0x0a0200000020"`
-
-The Clarity serialization of `(some <32-byte buffer>)` before its bytes: `0x0a`, `0x02`, then the length 32.
-
 ## Functions
-
-### memoArgument()
-
-> **memoArgument**(`h`): `` `0x${string}` `` \| `undefined`
-
-The memo argument's serialization for `h`: `(some h)` as a 32-byte buffer, lowercase.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `h` | `` `0x${string}` `` |
-
-#### Returns
-
-`` `0x${string}` `` \| `undefined`
-
-***
-
-### memoHash()
-
-> **memoHash**(`arg`): `` `0x${string}` `` \| `null`
-
-H from a memo argument that is `(some <32-byte buffer>)`, or null.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `arg` | `unknown` |
-
-#### Returns
-
-`` `0x${string}` `` \| `null`
-
-***
 
 ### stacksRecover()
 
@@ -225,11 +184,11 @@ as its fourth argument, else failed `not-this-instrument`; then the API's `statu
 answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
 two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
 failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
-was read at the API's tip, so `block`. An unknown transaction counts so only when the lookup names a height at or
-above the one the nonce read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is
-pending `not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32
-address in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`,
-with nothing read.
+was read at the API's tip, so `block`. It counts so only when the lookup names a height at or above the one the nonce
+read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is pending `dropped` or
+`not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32 address
+in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`, with
+nothing read.
 
 #### Parameters
 
