@@ -4,5 +4,5 @@
 2. The client fetches L, computes SHA-256 over the bytes received, and compares the result with H as 32 decoded bytes. On a mismatch it does not sign.
 3. On a match, the client signs the delegate action x402's NEAR scheme defines, with `ft_transfer` args `{"receiver_id":…,"amount":…,"memo":"lcp:sha256:"+H}` ([LCP §8.1](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md#81-naming-conventions)), and echoes `extensions` unchanged.
 4. The server refuses a payment whose `memo` does not decode to an H that it issued for that request and has not seen claimed.
-5. H is on chain in the delegated `ft_transfer` arguments, and in the token's `ft_transfer` event where the token follows NEP-141's events. It is read by transaction, together with the relayer that the facilitator publishes under `signers["near:*"]`.
+5. H is on chain in the delegated `ft_transfer` arguments, and in the token's `ft_transfer` event where the token follows NEP-141's events. It is read by transaction, looked up under the relayer accounts, the first four; x402's NEAR scheme leaves relayer selection to the facilitator, which may list them under `/supported` `signers["near:*"]`.
 6. x402's NEAR scheme leaves `memo` to the client. A client that does not implement this profile writes none, and rule 4 refuses its payment.

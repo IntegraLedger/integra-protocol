@@ -29,4 +29,4 @@
    - replay primitive: the transaction id, exclusive to this payment;
    - validity window: bounded by `expiration`, at most 24 hours by the node;
    - duplicate submission: a node rejects a duplicate, and settlements are still deduplicated as rule 5 requires.
-8. H is on chain as `raw_data.data`, inside the bytes whose SHA-256 is the transaction id the payer signed. It is read by transaction id from a Solidity node. No index searches memos.
+8. H is on chain as `raw_data.data`, inside the bytes whose SHA-256 is the transaction id the payer signed. Settlement is read by transaction id, through a FullNode's `/walletsolidity` API for solidified data, then its `/wallet` API at the head; H is read back by the same id through its `/walletsolidity` API. No index searches memos.

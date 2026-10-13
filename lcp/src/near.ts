@@ -66,7 +66,10 @@ export interface NearOutcome {
  */
 export interface NearReader {
   readonly network: NearNetwork;
-  /** The facilitator's `/supported` `signers["near:*"]`. */
+  /**
+   * The relayer accounts the transaction is looked up under, the first four. x402's NEAR scheme leaves relayer
+   * selection to the facilitator, which may list them under `/supported` `signers["near:*"]`.
+   */
   readonly relayers: readonly string[];
   /** `EXPERIMENTAL_tx_status` with `wait_until` "NONE"; null: unknown. */
   txStatus(txHash: string, sender: string): Promise<NearOutcome | null>;
@@ -258,9 +261,9 @@ function edOrSecp(d: Decoded): boolean {
 // ── Settlement.
 
 /**
- * Finds the relayed transaction under each published relayer (at most four), then requires its delegate to be the
- * instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success is
- * settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
+ * Finds the relayed transaction under each relayer the reader lists (at most four), then requires its delegate to be
+ * the instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success
+ * is settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
  * `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
  * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
  * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
