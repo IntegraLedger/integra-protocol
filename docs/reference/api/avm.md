@@ -68,8 +68,8 @@ Bounded, read-only calls against one network's Indexer. Every failure rejects.
 
 ### AvmRef
 
-The read keys recorded at claim, computed from the signed bytes. `lastValid` is a decimal string, so the issuer stores the
-reference as JSON.
+The read keys `reference` returns, computed from the signed bytes. `lastValid` is a decimal string, so the reference
+is JSON-serialisable.
 
 #### Properties
 
@@ -97,7 +97,7 @@ The bytes the payer signs, and how the signature completes the payment.
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`AvmPaymentPayload`](#avmpaymentpayload)
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `AvmPaymentPayload`
 
 A 64-byte Ed25519 signature.
 
@@ -109,7 +109,7 @@ A 64-byte Ed25519 signature.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| [`AvmPaymentPayload`](#avmpaymentpayload)
+[`Refusal`](index.md#refusal) \| `AvmPaymentPayload`
 
 ## Type Aliases
 
@@ -118,12 +118,6 @@ A 64-byte Ed25519 signature.
 > **AlgorandNetwork** = `` `algorand:${string}` ``
 
 CAIP-2: the first 32 characters of the URL-safe base64 genesis hash.
-
-***
-
-### AvmPaymentPayload
-
-> **AvmPaymentPayload** = [`X402Payment`](x402.md#x402payment)\<[`AvmPresented`](#avmpresented)\>
 
 ***
 
@@ -168,29 +162,12 @@ transfer whose note is an LCP string. Gives the hash, the transaction id and the
 
 ***
 
-### avmPairingOf()
-
-> **avmPairingOf**(`o`): `"x402/exact/algorand"` \| `undefined`
-
-The pairing's id for an option it can pay, or undefined.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `o` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`"x402/exact/algorand"` \| `undefined`
-
-***
-
 ### avmRecover()
 
 > **avmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-The hash from the landed payment's note, for anyone holding the transaction id. One call.
+The hash from the landed payment's note, for anyone holding the transaction id. A ref whose `txid` is not the 52
+base32 characters of a 32-byte hash is `avm/unreadable`, with nothing read. One call.
 
 #### Parameters
 
@@ -212,7 +189,9 @@ The hash from the landed payment's note, for anyone holding the transaction id. 
 > **avmStatus**(`ref`, `reader`): `Promise`\<[`AvmStatus`](#avmstatus)\>
 
 Reads the payment by its id. Found is settled and final; absent after the last valid round is expired; otherwise
-pending. A failed read, or a reader for another network, is pending.
+pending. A failed read, or a reader for another network, is pending. A ref whose `txid` is not the 52 base32
+characters of a 32-byte hash, as `reference` writes it, or whose `lastValid` is not a decimal below 2^64, is pending
+`unreadable`, with nothing read.
 
 #### Parameters
 
@@ -224,24 +203,3 @@ pending. A failed read, or a reader for another network, is pending.
 #### Returns
 
 `Promise`\<[`AvmStatus`](#avmstatus)\>
-
-***
-
-### msgpackWithinCaps()
-
-> **msgpackWithinCaps**(`b`): `boolean`
-
-True when `b` is exactly one msgpack value (the msgpack specification's formats) whose arrays and maps nest at most
-`MSGPACK_MAX_DEPTH` deep, and whose every declared length (a string's, binary's or extension's bytes, an array's
-elements, a map's keys and values) is no more than the bytes that remain, so no count is trusted past the input.
-The value is scanned, never built.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `b` | `Uint8Array` |
-
-#### Returns
-
-`boolean`

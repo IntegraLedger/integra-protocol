@@ -284,7 +284,7 @@ none.
 
 ### EvmRef
 
-What the issuer records at claim for an EVM payment: read keys only.
+The read keys for a later settlement read of an EVM payment, and nothing else.
 
 #### Extended by
 
