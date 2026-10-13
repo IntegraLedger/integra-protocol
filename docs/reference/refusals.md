@@ -411,7 +411,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/payer-mismatch` | A Stellar `build` finds that the simulated transfer's `from` is not the choice's `payer`. Nothing reaches the signer. |
 | `stellar/peer-missing` | The optional peer dependency `@stellar/stellar-sdk` cannot be loaded. |
 | `stellar/read-first` | An MPP Stellar `hash` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
-| `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR, nests ScVals or invocations deeper than `SCVAL_MAX_DEPTH`, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
+| `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR, its operation or the payer's authorization entry nests ScVals or invocations deeper than `SCVAL_MAX_DEPTH`, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
 | `stellar/tx-failed` | The transaction an MPP Stellar `hash` credential names is recorded `FAILED` on the ledger, so it moved nothing. |
 | `stellar/tx-too-large` | A Stellar transaction envelope's base64 text exceeds the size bound. |
 | `stellar/unreadable` | The Stellar reader threw, returned a response that is not an object, or reported a status other than `SUCCESS`, `FAILED` or `NOT_FOUND`. |

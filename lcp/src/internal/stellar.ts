@@ -41,7 +41,10 @@ export const PASSPHRASE: Readonly<Record<StellarNetwork, string>> = Object.freez
 export const MAX_XDR = 8192;
 /**
  * The deepest nesting of ScVal vectors and maps (a contract instance's storage counting as a map) within one ScVal,
- * the outermost container being level 1, and of authorized invocations within one authorization entry.
+ * the outermost container being level 1, and of authorized invocations within one authorization entry, the root
+ * invocation being level 1. It bounds what is read of an envelope, the operation and the payer's authorization entry,
+ * and an event's topics and data. It does not apply to other authorization entries, so another entry's nesting does
+ * not make the envelope unreadable.
  */
 export const SCVAL_MAX_DEPTH = 64;
 const MAX_LOCATE_PAGES = 10;
@@ -344,7 +347,10 @@ function strictBase64(s: string): Uint8Array | null {
   }
 }
 
-/** The envelope's one `invokeHostFunction` operation calling `transfer(from, to, amount)`, decoded within the caps. */
+/**
+ * The envelope's one `invokeHostFunction` operation calling `transfer(from, to, amount)`, its host function within the
+ * ScVal cap.
+ */
 type Operation = {
   wire: TransactionEnvelopeWire;
   v1: TransactionV1EnvelopeWire;
@@ -355,8 +361,11 @@ type Operation = {
 };
 
 /**
- * The envelope's one `transfer` operation: strict base64 of a v1 envelope (or a fee bump's inner v1) within the caps,
- * holding exactly one `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract.
+ * The envelope's one `transfer` operation: strict base64 of a v1 envelope (or a fee bump's inner v1) holding exactly
+ * one `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract. The operation's host
+ * function nests within `SCVAL_MAX_DEPTH` (`stellar/tx-malformed` past it); its authorization entries are left to the
+ * caller: `parse` walks the one entry it reads, and the entry `readSourceTransfer` reads is the operation's call, byte
+ * for byte, with no sub-invocations.
  */
 function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal {
   const bytes = strictBase64(xdrB64);
@@ -367,7 +376,6 @@ function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal
   } catch {
     return refusal("stellar/tx-malformed");
   }
-  if (!scValsWithinCaps(wire)) return refusal("stellar/tx-malformed");
   const v1 = v1Of(wire);
   if (v1 === null) return refusal("stellar/tx-malformed");
   try {
@@ -376,6 +384,7 @@ function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal
     const body = ops[0]!.body;
     if (body.type !== 24) return refusal("stellar/not-one-transfer");
     const op = body.invokeHostFunctionOp;
+    if (!scValsWithinCaps(op.hostFunction)) return refusal("stellar/tx-malformed");
     if (op.hostFunction.type !== 0) return refusal("stellar/not-one-transfer");
     const call = op.hostFunction.invokeContract;
     const operation = transferOf(S, call);
@@ -409,6 +418,9 @@ function isAddressEntryOf(S: typeof StellarBase, e: SorobanAuthorizationEntryWir
  * the entries in order, skips one whose address or root invocation does not match, and authenticates the first that
  * matches, so other entries of `from` may ride unused. With no such entry, `from` must have exactly one entry, as
  * without `landed`.
+ *
+ * The entry read nests within `SCVAL_MAX_DEPTH` (`stellar/tx-malformed` past it), as the operation does. No other entry
+ * is walked, so an unused entry nested deeper does not make the transaction unreadable.
  */
 function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, landed: boolean): Parsed | Refusal {
   const o = operationOf(S, xdrB64);
@@ -419,6 +431,7 @@ function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, l
     const used = landed ? entries.find(({ e }) => o.carries(e)) : undefined;
     if (used === undefined && entries.length !== 1) return refusal("stellar/no-address-auth");
     const { e: entry, a: cred } = used ?? entries[0]!;
+    if (!scValsWithinCaps(entry)) return refusal("stellar/tx-malformed");
     const root = entry.rootInvocation;
     if (root.function.type !== 0 || root.subInvocations.length !== 0) return refusal("stellar/not-one-transfer");
     const signed = transferOf(S, root.function.contractFn);
@@ -518,7 +531,9 @@ export function readSourceTransfer(xdrB64: string, network: StellarNetwork): Sou
  * with address credentials (`sorobanCredentialsAddress` or `sorobanCredentialsAddressV2`) whose address is `from`.
  * The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's
  * contract, `to` and amount are the signed invocation's. The base64 is read strictly (RFC 4648 §4, zero padding bits),
- * and the XDR must be consumed whole. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
+ * and the XDR must be consumed whole. The operation and that entry nest ScVals and authorized invocations at most
+ * `SCVAL_MAX_DEPTH` levels (`stellar/tx-malformed` past it); the cap does not apply to another entry, so its nesting
+ * does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
  * passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
  * without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
  * credential, once its transaction landed, reads a payer that authorized the transfer as the transaction's source
