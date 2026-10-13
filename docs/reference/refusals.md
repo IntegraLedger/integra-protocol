@@ -10,8 +10,9 @@ and every code is `<namespace>/<reason>` ([Refusals](../concepts/refusals.md)). 
 is not an object refuses with the code it gives a reader for another network, except on `mpp/charge/usdc/stacks`,
 which refuses `stacks/unreadable`. The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 487 codes the package can return, by namespace. CI checks that every code the source names in
-`refusal(…)` or `refuse(…)` is listed here.
+This page lists all 487 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
+and the namespace counts below match its rows.
 
 | Namespace | Codes | Returned by |
 |---|---|---|

@@ -118,7 +118,9 @@ pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.
 # The TypeScript samples in the READMEs and docs/ not marked no-check compile, run and print what the page shows
 node scripts/docs-samples.mjs
 
-# The generated reference pages and the README's pairing list match the package
+# The generated reference pages and the README's pairing list match the package, lcp/src/internal/codes.ts holds the
+# codes docs/reference/refusals.md lists, every refusal(…) call in the source passes its code as a string literal, and
+# that page lists exactly those codes, each once, with a total and namespace counts that match its rows
 node scripts/docs-reference.mjs --check
 ```
 

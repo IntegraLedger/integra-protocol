@@ -4,14 +4,21 @@
 // BINDINGS), docs/reference/entry-points.md (from package.json's exports, each module's doc comment, the runtime
 // exports and the emitted declarations) and docs/reference/vectors.md (from the vector files). It writes
 // lcp/src/internal/codes.ts, the set of codes docs/reference/refusals.md lists, by which `problem` tells the package's
-// own codes from a caller's. It also checks that docs/reference/refusals.md lists every code the source names in
-// refusal(…) and refuse(…).
+// own codes from a caller's. It also checks that page against the source both ways: the page lists every code the
+// source passes to refusal("…") as a string literal, and every code the page lists is passed that way. Any other use
+// of refusal, such as a call with another argument, an alias or an import that renames it, fails the check, since its
+// code cannot be read; a comment is not a use. Each total the page states ("This page lists all N codes") and each cell
+// of its namespace table must count its rows, no code may be listed twice, and the table gives each namespace once.
 //
 // Usage, from the repository root after lcp is built:
 //   node scripts/docs-reference.mjs           write the pages and the code set
-//   node scripts/docs-reference.mjs --check   exit 1 when a committed page or the code set differs from what it writes
+//   node scripts/docs-reference.mjs --check   exit 1 when a committed page or the code set differs from what it writes,
+//                                             when refusals.md and the source disagree either way, when refusal
+//                                             is used other than as a call with one code written as a string
+//                                             literal, or when refusals.md's counts differ from its rows or it lists
+//                                             a code twice
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = join(import.meta.dirname, "..");
@@ -182,29 +189,87 @@ function vectorsPage() {
   return `${s}\n`;
 }
 
-/** The codes `refusal("…")` and `refuse("…")` name in the source, and the codes refusals.md lists. */
+const CODES = join(lcp, "src", "internal", "codes.ts");
+
+/** A code: a lowercase namespace, a slash, and a reason that may hold further slashes and dotted member paths. */
+const CODE = String.raw`[a-z0-9]+\/[A-Za-z0-9./-]+`;
+/**
+ * The argument list of a call that passes one code written as a string literal, in double or single quotes, with an
+ * optional `as const` and an optional trailing comma.
+ */
+const CODE_ARGUMENT = String.raw`\(\s*(?:"(${CODE})"|'(${CODE})')(?:\s+as\s+const)?\s*,?\s*\)`;
+
+/**
+ * A source file with its comments, its import and `export … from` lists and the declaration of `refusal` blanked to
+ * spaces, line breaks kept, so that each `refusal` left in it is a use. A string literal is kept whole, so a `//` or
+ * `/*` inside one starts no comment. An import that renames `refusal` keeps that name, so the check sees it.
+ */
+function codeOf(text) {
+  const blank = (s) => s.replace(/[^\n]/g, " ");
+  return text
+    .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m) => (m[0] === "/" ? blank(m) : m))
+    .replace(/\b(?:import|export)\s+(?:type\s+)?\{[^}]*\}\s*from\s*(?:"[^"\n]*"|'[^'\n]*')/g, (m) =>
+      m.replace(/\brefusal(?=\s+as\b)|[^\n]/g, (s) => (s.length > 1 ? s : " ")),
+    )
+    .replace(/\bexport function refusal\b/, blank);
+}
+
+/**
+ * The codes the source passes to `refusal("…")` as a string literal, the whole argument; the places where the source
+ * uses `refusal` in any other way (another argument, no call, an alias, an import that renames it), whose code no check
+ * can read; the codes refusals.md lists; and the faults in the page's counts: a stated total or namespace cell that
+ * differs from its rows, a code listed more than once, a namespace the table lists more than once, or a table row for a
+ * namespace with no codes. A comment is not a use.
+ */
 function refusalCodes() {
   const inSource = new Set();
+  const unread = [];
+  const literal = new RegExp(String.raw`\brefusal${CODE_ARGUMENT}`, "g");
+  const other = new RegExp(String.raw`\brefusal\b(?!${CODE_ARGUMENT})`, "g");
   const walk = (dir) => {
     for (const f of readdirSync(dir, { withFileTypes: true })) {
       const p = join(dir, f.name);
       if (f.isDirectory()) walk(p);
       else if (f.name.endsWith(".ts")) {
-        const text = readFileSync(p, "utf8");
-        for (const m of text.matchAll(/\b(?:refusal|refuse)\(\s*"([a-z0-9]+\/[a-z0-9-]+)"/g)) inSource.add(m[1]);
+        const text = codeOf(readFileSync(p, "utf8"));
+        for (const m of text.matchAll(literal)) inSource.add(m[1] ?? m[2]);
+        for (const m of text.matchAll(other)) unread.push(`${relative(root, p)}:${text.slice(0, m.index).split("\n").length}`);
       }
     }
   };
   walk(join(lcp, "src"));
   const page = join(reference, "refusals.md");
   const listed = new Set();
+  const counts = [];
   if (existsSync(page)) {
-    for (const m of readFileSync(page, "utf8").matchAll(/^\| `([a-z0-9]+\/[A-Za-z0-9./-]+)` \|/gm)) listed.add(m[1]);
+    const text = readFileSync(page, "utf8");
+    const rows = [...text.matchAll(/^\| `([a-z0-9]+\/[A-Za-z0-9./-]+)` \|/gm)].map((m) => m[1]);
+    for (const c of rows) listed.add(c);
+    const repeated = [...new Set(rows.filter((c, i) => rows.indexOf(c) !== i))].sort();
+    if (repeated.length > 0) counts.push(`it lists ${repeated.join(", ")} more than once`);
+    const totals = new Set([...text.matchAll(/This page lists all (\d+) codes/g)].map((m) => Number(m[1])));
+    if (totals.size === 0) counts.push(`it states no total and has ${rows.length} rows`);
+    for (const n of totals) if (n !== rows.length) counts.push(`it states ${n} codes and has ${rows.length} rows`);
+    const byNamespace = new Map();
+    for (const c of rows) {
+      const ns = c.slice(0, c.indexOf("/"));
+      byNamespace.set(ns, (byNamespace.get(ns) ?? 0) + 1);
+    }
+    const cells = new Map();
+    for (const m of text.matchAll(/^\| \[`([a-z0-9]+)`\]\(#\1\) \| (\d+) \|/gm)) {
+      cells.set(m[1], [...(cells.get(m[1]) ?? []), Number(m[2])]);
+    }
+    for (const ns of new Set([...byNamespace.keys(), ...cells.keys()])) {
+      const has = byNamespace.get(ns) ?? 0;
+      const given = cells.get(ns) ?? [];
+      if (given.length > 1) counts.push(`its table lists ${ns} more than once`);
+      if (has === 0) counts.push(`its table has a row for ${ns} and it lists no ${ns} code`);
+      else if (given.length === 0) counts.push(`its table gives ${ns} no row and it has ${has} ${ns} rows`);
+      else for (const n of new Set(given)) if (n !== has) counts.push(`its table gives ${ns} ${n} and it has ${has} ${ns} rows`);
+    }
   }
-  return { inSource, listed };
+  return { inSource, unread, listed, counts };
 }
-
-const CODES = join(lcp, "src", "internal", "codes.ts");
 
 /** lcp/src/internal/codes.ts: the codes refusals.md lists, sorted, one to a line. */
 function codesModule(listed) {
@@ -274,7 +339,7 @@ for (const [name, text] of process.argv.includes("--readme-only") ? [] : pages) 
     console.log(`wrote docs/reference/${name}`);
   }
 }
-const { inSource, listed } = refusalCodes();
+const { inSource, unread, listed, counts } = refusalCodes();
 if (!process.argv.includes("--readme-only")) {
   const codes = codesModule(listed);
   if (check) {
@@ -290,11 +355,30 @@ if (!process.argv.includes("--readme-only")) {
     console.log(`wrote lcp/src/internal/codes.ts (${listed.size} codes)`);
   }
 }
+if (unread.length > 0) {
+  stale++;
+  console.error(`refusal is used other than as a call with one code written as a string literal at ${unread.join(", ")}`);
+} else {
+  console.log("every use of refusal in the source is a call that passes its code as a string literal");
+}
 const missing = [...inSource].filter((c) => !listed.has(c)).sort();
 if (missing.length > 0) {
   stale++;
   console.error(`docs/reference/refusals.md does not list: ${missing.join(", ")}`);
 } else {
-  console.log(`docs/reference/refusals.md lists all ${inSource.size} codes the source names in refusal(…) and refuse(…)`);
+  console.log(`docs/reference/refusals.md lists all ${inSource.size} codes the source passes to refusal("…")`);
+}
+const unpassed = [...listed].filter((c) => !inSource.has(c)).sort();
+if (unpassed.length > 0) {
+  stale++;
+  console.error(`docs/reference/refusals.md lists codes the source does not pass to refusal("…"): ${unpassed.join(", ")}`);
+} else {
+  console.log(`the source passes each of the ${listed.size} codes docs/reference/refusals.md lists to refusal("…")`);
+}
+if (counts.length > 0) {
+  stale++;
+  console.error(`docs/reference/refusals.md's counts differ from its rows: ${counts.join("; ")}`);
+} else {
+  console.log(`docs/reference/refusals.md's total and namespace table count its ${listed.size} rows`);
 }
 process.exit(stale === 0 ? 0 : 1);
