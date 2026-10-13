@@ -59,7 +59,7 @@ import {
 import { isLog, isReceipt, receiveTypedData, transferParts, type ReceiveTypedData } from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readReceipt } from "./receipt.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   ACCESS_KEY_SPEND_TOPIC,
   ACCOUNT_KEYCHAIN,
@@ -379,7 +379,12 @@ function advertise(
   return place(doc, h, link, offer, agreementUrl);
 }
 
-function unplaced(option: MppChallenge): Json {
+/**
+ * The challenge as given: no member of `request` carries H on these pairings. A challenge that carries a `refused`
+ * member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): Json | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return option as unknown as Json;
 }
 
