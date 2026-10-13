@@ -434,12 +434,22 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
  * positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
  * `accessKey` that is not an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
  * present, an address, or a `revokes` that is not an object whose `account` and `keyId` are addresses, is pending
- * `unreadable`, with no call made; so is what `evmStatus` reads as `unreadable`. At most four calls.
+ * `unreadable`, with no call made; so is a ref that names none of the keys the three pairings' `reference`, `closeRef`
+ * and `keySearch` write for the opening or the close (`opens`, `opened`, `closes`, `revokes`, an `accessKey` with
+ * `account`, or a binding log under `AuthorizationUsed`, `ChannelClosed` or `KeyAuthorizationWitness`), and what
+ * `evmStatus` reads as `unreadable`. At most four calls.
+ *
+ * This function accepts a key of any of the three pairings. Each pairing's own `status` reads a ref only when it names
+ * one of the keys that pairing writes and none of the other two pairings' keys: on `mpp/session/evm` `opens`, `closes`
+ * or a binding log under `AuthorizationUsed`; on `mpp/session/tempo` `opened` or a binding log under `ChannelClosed`;
+ * on `mpp/subscription/tempo` `revokes`, an `accessKey` with `account` or a binding log under
+ * `KeyAuthorizationWitness`. Any other ref is pending `unreadable` there, with no call made.
  */
 export async function sessionStatus(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionStatus> {
   if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
     return { state: "pending", why: "unreadable" };
   }
+  if (!names(ref, ALL_READ_KEYS)) return { state: "pending", why: "unreadable" };
   if (ref.revokes !== undefined && !readableRevokes(ref.revokes)) return { state: "pending", why: "unreadable" };
   if (ref.opens !== undefined && !readableOpens(ref.opens)) return { state: "pending", why: "unreadable" };
   if (ref.opened !== undefined && !readableOpened(ref.opened)) return { state: "pending", why: "unreadable" };
@@ -494,6 +504,52 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     return typeof id === "string" && sameBytes(id, o.channel);
   });
   return opened ? s : { state: "failed", why: "binding-log-not-found" };
+}
+
+/** A key that ties a status read to the opening or the close, as a writer of these pairings gives it. */
+type ReadKey = (ref: SessionRef) => boolean;
+
+/** A `bindingLog` that is an object whose `topic0` is one of `events`. */
+function bindingUnder(...events: Hex[]): ReadKey {
+  return (ref) => {
+    const b: unknown = ref.bindingLog;
+    return isObject(b) && events.some((e) => sameBytes(e, b["topic0"]));
+  };
+}
+
+/**
+ * The keys each pairing's `reference`, `closeRef` and `keySearch` write for the opening or the close.
+ * `mpp/session/evm`: `opens` (a `hash` or `permit2` opening), the binding log under `AuthorizationUsed` (an EIP-3009
+ * opening) and `closes`. `mpp/session/tempo`: `opened` and the binding log under `ChannelClosed`, v1 or v2 (the close).
+ * `mpp/subscription/tempo`: the binding log under `KeyAuthorizationWitness` (the activation), an `accessKey` with
+ * `account` (`keySearch`) and `revokes` (the close). Without one, no read checks H or the close.
+ */
+const READ_KEYS: Readonly<Record<typeof SESSION_EVM | typeof SESSION_TEMPO | typeof SUBSCRIPTION, readonly ReadKey[]>> = {
+  [SESSION_EVM]: [(ref) => ref.opens !== undefined, bindingUnder(AUTHORIZATION_USED_TOPIC), (ref) => ref.closes !== undefined],
+  [SESSION_TEMPO]: [(ref) => ref.opened !== undefined, bindingUnder(CHANNEL_CLOSED_V1_TOPIC, CHANNEL_CLOSED_V2_TOPIC)],
+  [SUBSCRIPTION]: [
+    bindingUnder(KEY_AUTHORIZATION_WITNESS_TOPIC),
+    (ref) => isObject(ref.accessKey) && ref.accessKey["account"] !== undefined,
+    (ref) => ref.revokes !== undefined,
+  ],
+};
+const ALL_READ_KEYS: readonly ReadKey[] = Object.values(READ_KEYS).flat();
+
+/** Whether the ref names one of `keys`. */
+function names(ref: SessionRef, keys: readonly ReadKey[]): boolean {
+  return keys.some((k) => k(ref));
+}
+
+/**
+ * `status` of one pairing: `sessionStatus` on a ref that names one of the keys the pairing writes (`READ_KEYS`) and
+ * none of the other two pairings' keys, since `sessionStatus` reads by whichever key the ref names; any other ref is
+ * pending `unreadable`, with no call made.
+ */
+function pairingStatus(pairing: keyof typeof READ_KEYS): typeof sessionStatus {
+  const own = READ_KEYS[pairing];
+  const others = Object.entries(READ_KEYS).flatMap(([p, keys]) => (p === pairing ? [] : keys));
+  return async (ref, reader) =>
+    isObject(ref) && names(ref, own) && !names(ref, others) ? sessionStatus(ref, reader) : { state: "pending", why: "unreadable" };
 }
 
 /**
@@ -1497,7 +1553,7 @@ export const sessionEvm = Object.freeze({
   buildWithin: evmBuildWithin,
   bound: evmBound,
   reference: evmReference,
-  status: sessionStatus,
+  status: pairingStatus(SESSION_EVM),
   recover: evmRecover,
   landedTx: evmLandedTx,
   closeRef: evmCloseRef,
@@ -1523,7 +1579,7 @@ export const sessionTempo = Object.freeze({
   buildWithin: tempoBuildWithin,
   bound: tempoBound,
   reference: tempoReference,
-  status: sessionStatus,
+  status: pairingStatus(SESSION_TEMPO),
   recover: tempoRecover,
   closeRef: tempoCloseRef,
   channel: Object.freeze({ kind: tempoKind, ref: refFrom, boundWithin: tempoBoundWithin, until: noEnd }),
@@ -1556,7 +1612,7 @@ export const subscriptionTempo = Object.freeze({
   build: subscriptionBuild,
   bound: subscriptionBound,
   reference: subscriptionReference,
-  status: sessionStatus,
+  status: pairingStatus(SUBSCRIPTION),
   closeRef: subscriptionCloseRef,
   channel: Object.freeze({ kind: subscriptionKind, ref: subscriptionRef, boundWithin: notBoundWithin, until: subscriptionUntil }),
   recover: witnessRecover,

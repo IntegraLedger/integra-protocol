@@ -261,7 +261,12 @@ that is not a call closing that channel reads as pending, with the reason `not-a
 the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
 channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
 activation's receipt as `accessKey.account`; without it, `closeRef` refuses `mpp/input-malformed`. Another account's
-revocation of the same key is not this close.
+revocation of the same key is not this close. On `mpp/session/evm`, `mpp/session/tempo` and `mpp/subscription/tempo`, a
+reference that names none of the keys its own pairing's `reference`, `closeRef` and `keySearch` write for the opening
+or the close (`opens`, `closes` or a binding log under `AuthorizationUsed` on the EVM session; `opened` or a binding
+log under `ChannelClosed` on the Tempo session; `revokes`, an `accessKey` with `account` or a binding log under
+`KeyAuthorizationWitness` on the subscription), or that names a key another of the three writes, reads as pending, with
+the reason `unreadable`, and nothing is read: no read could check H or the close.
 
 The `mpp/subscription/tempo` activation is read by what the payer signed in the key authorization: its `reference`
 names the `Transfer` of the authorization's one limit token, which is also its one allowed-call target, to its one

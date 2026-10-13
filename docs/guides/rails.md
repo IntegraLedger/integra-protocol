@@ -147,7 +147,9 @@ malformed. On the EVM rails, a reference whose transaction is not a 32-byte hash
 is not of the form its pairing writes, is pending `unreadable` too, with nothing read; `x402/exact/eip155/eip3009`
 reads H and the token from the reference's `h` and `asset` rather than its binding log, and an `h` that is not a
 32-byte hash or an `asset` that is not an address reads the same; and so is an MPP EVM or Tempo session or Tempo
-subscription reference whose `opens`, `opened`, `closes`, `accessKey` or `revokes` is not. Hex digits in a hash or a
+subscription reference whose `opens`, `opened`, `closes`, `accessKey` or `revokes` is not, or that names none of the
+keys its own pairing writes for the opening or the close, or names a key another of the three writes (see
+[Channels, sessions and subscriptions](./sessions.md)). Hex digits in a hash or a
 hex address read the same in either case; a NEAR account id and a Stacks address read only as their pairing writes
 them.
 Failed means the rail itself says so: a reverted, aborted or expired transaction, or one that does not carry this
