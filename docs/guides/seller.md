@@ -43,6 +43,16 @@ and SHA-256 over the body exactly as received. The party slots carry whatever th
 Write the ATR's bytes to your own storage before the challenge goes out, and serve them unchanged at an `https` link.
 If the write fails, send no challenge: a buyer that cannot fetch the record declines.
 
+### Serving the link
+
+The buyer gates decline the link unless it answers `200` with no redirect, in the identity coding (no
+`Content-Encoding`, or `identity`), with at most 1 MiB, within 10 seconds
+([`vectors/buyer.json`](../../lcp/vectors/buyer.json) rows `B11` to `B14` and `BE1`). Make the link unguessable: H is
+in the challenge, and on most pairings in the payment, so build the link from a random token, not from H. Let it
+expire after a short period, minutes (`LCP §12.4`), once the buyer has had time to fetch the bytes (`LCP §6.1`). The
+binding slot records the request's path and query, and the link serves those bytes to whoever fetches it, so keep
+secrets out of the query.
+
 ## 3. Advertise H
 
 `advertise(doc, h, link, offer)` returns a copy of the challenge with `extensions.legalContext.info` set to
@@ -127,7 +137,7 @@ const atr = await assemble(newAtrId(), tie(challenge.accepts, request), [["terms
 if (isRefusal(atr)) throw new Error(atr.code);
 
 // 2. Store the bytes and link them.
-const link = `https://atr.seller.example/${atr.atrHash}`;
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
 const storage = new Map([[link, atr.bytes]]);
 
 // 3. Advertise H.
@@ -194,8 +204,8 @@ recovered from the chain alone: true
 
 ## What the seller keeps
 
-Keep H, the link and the reference for each payment. The bytes live in your storage at the link; the buyer keeps its
-own copy.
+Keep H, the link and the reference for each payment, and the ATR's bytes in your storage after the link expires; the
+buyer keeps its own copy.
 
 ## What this package does not do
 
