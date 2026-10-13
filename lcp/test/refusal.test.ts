@@ -323,7 +323,13 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // It refuses a challenge that carries a refused member with mpp/challenge-malformed before it removes anything,
   // whether or not the carrier is in place; a value that is not an object comes back as it is. Each challenge is the
   // one its pairing's vector file advertises (buyer row B2), with the carrier in place.
-  const carrierMpp = ["mpp/charge/lightning", "mpp/session/lightning", "mpp/charge/solana", "mpp/charge/usdc/solana"];
+  const carrierMpp = [
+    "mpp/charge/lightning",
+    "mpp/session/lightning",
+    "mpp/charge/solana",
+    "mpp/charge/usdc/solana",
+    "mpp/charge/xrpl",
+  ];
   for (const id of carrierMpp) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
       const challenge = advertisedOf.get(id);

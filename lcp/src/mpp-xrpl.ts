@@ -232,8 +232,12 @@ function advertise(
   );
 }
 
-/** The challenge as issued: its request without `methodDetails.invoiceId`, where H rides. */
-function unplaced(option: MppChallenge): MppChallenge {
+/**
+ * The challenge as issued: its request without `methodDetails.invoiceId`, where H rides. A challenge that carries a
+ * `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return withoutCarrier(option);
 }
 

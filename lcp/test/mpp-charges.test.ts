@@ -557,8 +557,9 @@ describe("mpp-charge-xrpl.json", () => {
   });
 
   it("unplaced gives the challenge as issued: its request without methodDetails.invoiceId", async () => {
-    expect(chargeXrpl.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
-    expect(await issuedDigest(chargeXrpl.unplaced(placed))).toBe(await issuedDigest(V.challenge));
+    const issued = chargeXrpl.unplaced(placed) as MppChallenge;
+    expect(issued).toEqual({ ...placed, request: V.challenge.request });
+    expect(await issuedDigest(issued)).toBe(await issuedDigest(V.challenge));
   });
 
   it("V3: bound and reference of the vector's MPP blob; V4: the x402 blob is refused", async () => {
