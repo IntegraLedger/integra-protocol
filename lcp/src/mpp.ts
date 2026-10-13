@@ -113,7 +113,6 @@ export { chargeStellar } from "./mpp-stellar.js";
 export { chargeXrpl } from "./mpp-xrpl.js";
 export { sessionHedera, sessionSolana, sessionXrpl, type RailSessionUnsigned } from "./mpp-session-rails.js";
 export {
-  EVM_CLOSE_SELECTORS,
   evmChannelId,
   keySearch,
   sessionEvm,

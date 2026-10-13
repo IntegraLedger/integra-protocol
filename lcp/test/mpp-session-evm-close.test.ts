@@ -10,7 +10,8 @@ import { readFileSync } from "node:fs";
 import { encodeFunctionData, parseAbi, toFunctionSelector, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { ReaderError, type EvmReader, type EvmTransaction } from "../src/evm.js";
-import { EVM_CLOSE_SELECTORS, sessionEvm, sessionStatus, type SessionRef } from "../src/mpp.js";
+import { sessionEvm, sessionStatus, type SessionRef } from "../src/mpp.js";
+import { EVM_CLOSE_SELECTORS } from "../src/mpp-session.js";
 import { challenge } from "./mpp-fixtures.js";
 
 const E = JSON.parse(readFileSync(new URL("../vectors/mpp-session-evm.json", import.meta.url), "utf8"));
