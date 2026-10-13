@@ -1285,5 +1285,4 @@ export {
   type HederaCloseRef,
   type HederaEvmReader,
   type HederaSessionRef,
-  type HederaVoucherTypedData,
 } from "./internal/hedera-session.js";

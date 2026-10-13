@@ -232,7 +232,7 @@ import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, chargeHedera, … } from "@
 
 **Values (14):** `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `hederaChannelId`, `hederaIdDigest`, `hederaStatus`, `hederaVoucher`, `txIdMirror`, `txIdText`.
 
-**Types (14):** `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `HederaVoucherTypedData`, `MirrorEntry`.
+**Types (13):** `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `MirrorEntry`.
 
 ## `@integraledger/lcp/lightning`
 
