@@ -1,7 +1,8 @@
-// Runs x402-exact-solana.json through the svm and x402/exact/solana entry points. Every expected value is the file's.
+// Runs x402-exact-solana.json through the svm and x402/exact/solana entry points. Every expected value is the file's,
+// except where a block names another source.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
   decompileTransactionMessage,
@@ -57,7 +58,7 @@ function readerFor(
       return l;
     },
     signatures: async () => [],
-    blockhashValid: async () => true,
+    blockhashValid: async () => ({ valid: true, slot: 0n }),
     firstAvailableBlock: async () => 0n,
     account: async () => {
       throw new Error("this reference names no nonce account");
@@ -285,7 +286,7 @@ describe("x402-exact-solana.json", () => {
         transaction: async (sig) =>
           c.candidateWire === "plant" && sig.startsWith("cand-") ? landed(plantWire) : { notFound: true as const, slot: null },
         signatures: async () => list,
-        blockhashValid: async () => false,
+        blockhashValid: async () => ({ valid: false, slot: 0n }),
         firstAvailableBlock: holds,
         account: async () => {
           throw new Error("this reference names no nonce account");
@@ -492,7 +493,7 @@ describe("x402-exact-solana.json durableNonce", () => {
           return { notFound: true, slot: answer.slot === null ? null : BigInt(answer.slot) };
         },
         signatures: async () => [],
-        blockhashValid: async () => false,
+        blockhashValid: async () => ({ valid: false, slot: 0n }),
         firstAvailableBlock: async () => BigInt(row.firstAvailableBlock),
         account: async () => {
           accountReads++;
@@ -526,7 +527,7 @@ describe("x402-exact-solana.json durableNonce", () => {
         if (page.minContextSlot !== undefined && at < page.minContextSlot) throw new ReaderError("transport");
         return list;
       },
-      blockhashValid: async () => false,
+      blockhashValid: async () => ({ valid: false, slot: at }),
       firstAvailableBlock: async () => 0n,
       account: async () => ({ slot: movedAt, value: accountOf("moved") }),
     });
@@ -598,5 +599,76 @@ describe("x402-exact-solana.json durableNonce", () => {
   it("status on a reference without a nonce never reads a nonce account", async () => {
     const reader = readerFor(null, landed(new Uint8Array()));
     expect(await svmStatus(V.V4.ref, reader)).toEqual({ state: "pending", why: "not-found" });
+  });
+});
+
+// isBlockhashValid answers an RpcResponse: its context is the "Slot and API version the node used to answer this
+// request", and its value "Whether the blockhash is still valid at the evaluated slot"; the method's example result is
+// { context: { slot: 2483 }, value: false } (solana.com/docs/rpc/http/isblockhashvalid). Agave v3.1.8 answers it with
+// new_response(&bank, is_valid), whose context slot is bank.slot() (rpc/src/rpc.rs is_blockhash_valid, new_response),
+// and a bank finds a blockhash only among the hashes it holds (accounts-db/src/blockhash_queue.rs
+// get_hash_info_if_valid, self.hashes.get(hash)), so a node behind the blockhash's block also answers false.
+describe("SvmReader.blockhashValid", () => {
+  type Answer = { context: { slot: number }; value: boolean };
+  type Sig = { signature: string; slot: bigint; memo: string | null };
+  const example: Answer = { context: { slot: 2483 }, value: false };
+  const ref: SvmRef = { ...V.V4.ref, fromSlot: "2333" };
+  delete (ref as { transaction?: string }).transaction;
+  const wire = b64(V.V4.landedWireBase64);
+  const carrier: string = V.V5.memoRendering.carrier;
+  const older: Sig = { signature: "older", slot: 2332n, memo: null };
+
+  /** The blockhash read from a node answering `read`, and the signatures from a node at slot `listAt` listing `list`. */
+  const nodes = (read: Answer, listAt: bigint, list: Sig[], pages: unknown[] = []): SvmReader => ({
+    ...readerFor("finalized", landed(wire)),
+    blockhashValid: async (blockhash) => {
+      expect(blockhash).toBe(ref.blockhash);
+      return { valid: read.value, slot: BigInt(read.context.slot) };
+    },
+    signatures: async (_address, page) => {
+      pages.push(page);
+      if (page.minContextSlot !== undefined && listAt < page.minContextSlot) throw new ReaderError("transport");
+      return list;
+    },
+  });
+
+  /** The guide's sequence: a false answer at a slot at least 150 past fromSlot, then svmLocate given that slot. */
+  const neverLanded = async (reader: SvmReader): Promise<boolean> => {
+    const read = await reader.blockhashValid(ref.blockhash);
+    if (read.valid || read.slot < BigInt(ref.fromSlot) + 150n) return false;
+    const search = await svmLocate(ref, reader, H, undefined, read.slot);
+    return search.complete && search.found === undefined;
+  };
+
+  it("answers the response's value and its context slot", async () => {
+    expectTypeOf<Awaited<ReturnType<SvmReader["blockhashValid"]>>>().toEqualTypeOf<{ valid: boolean; slot: bigint }>();
+    expect(await nodes(example, 2483n, []).blockhashValid(ref.blockhash)).toEqual({ valid: false, slot: 2483n });
+  });
+
+  it("a false answer, then a search given its slot that is complete with nothing found, shows the message never landed", async () => {
+    const pages: unknown[] = [];
+    expect(await neverLanded(nodes(example, 2483n, [older], pages))).toBe(true);
+    expect(pages).toEqual([{ limit: 1000, minContextSlot: 2483n }]);
+  });
+
+  it("a signatures node behind the blockhash read fails the call, though with no slot its empty list reads complete", async () => {
+    const lagging = nodes(example, 2482n, [older]);
+    expect(await svmLocate(ref, lagging, H)).toEqual({ complete: true });
+    expect(await svmLocate(ref, lagging, H, undefined, 2483n)).toEqual({ complete: false });
+    expect(await neverLanded(lagging)).toBe(false);
+  });
+
+  it("a search given the slot that finds the payment shows it landed", async () => {
+    const reader = nodes(example, 2484n, [{ signature: V.V4.txid, slot: 2400n, memo: carrier }, older]);
+    expect(await svmLocate(ref, reader, H, undefined, 2483n)).toEqual({ found: V.V4.txid, complete: true });
+    expect(await neverLanded(reader)).toBe(false);
+  });
+
+  it("a valid blockhash, or a false answer below fromSlot + 150, starts no search", async () => {
+    for (const read of [{ ...example, value: true }, { ...example, context: { slot: 2482 } }]) {
+      const pages: unknown[] = [];
+      expect(await neverLanded(nodes(read, 2483n, [older], pages)), JSON.stringify(read)).toBe(false);
+      expect(pages, JSON.stringify(read)).toEqual([]);
+    }
   });
 });

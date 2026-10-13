@@ -406,7 +406,7 @@ describe("problem", () => {
     network,
     transaction,
     signatures: async () => [],
-    blockhashValid: async () => true,
+    blockhashValid: async () => ({ valid: true, slot: 0n }),
     firstAvailableBlock: async () => 0n,
     account: failing,
   });

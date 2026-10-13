@@ -110,8 +110,17 @@ export interface SvmReader {
     address: string,
     page: { before?: string; limit: 1000; minContextSlot?: bigint },
   ): Promise<readonly { signature: string; slot: bigint; memo: string | null }[]>;
-  /** `isBlockhashValid` at commitment `confirmed`. */
-  blockhashValid(blockhash: string): Promise<boolean>;
+  /**
+   * `isBlockhashValid` at commitment `confirmed`: `valid` is the response's `value` ("Whether the blockhash is still
+   * valid at the evaluated slot"), and `slot` its context slot, the slot the node evaluated it at. No function in this
+   * package calls it; it serves the caller's own verdict that a message with a blockhash reference never landed. A node
+   * also answers false for a blockhash whose block it has not reached, so a false answer at a slot below `fromSlot` +
+   * 150, the bound `svmNonceMoved` sets for its read, shows nothing; the bound holds for a blockhash from a slot at or
+   * before `fromSlot` + 150. From a false answer at or past that bound, the caller passes `slot` to `svmLocate` as
+   * `minContextSlot`, so a node behind this read fails the search's call and the search is `complete` false; a search
+   * given that slot and `complete` with nothing found shows the message never landed.
+   */
+  blockhashValid(blockhash: string): Promise<{ valid: boolean; slot: bigint }>;
   /** `getFirstAvailableBlock`: the lowest slot whose block the node still holds. */
   firstAvailableBlock(): Promise<bigint>;
   /**
@@ -834,8 +843,9 @@ async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | nul
  * false, with nothing read.
  *
  * `minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
- * context slot `svmNonceMoved` gives: every page names it, so a node that has not reached that slot fails the call and
- * the search is `complete` false. A `minContextSlot` that is not a u64 bigint is `complete` false, with nothing read.
+ * context slot `svmNonceMoved` gives, or the `blockhashValid` read's `slot`: every page names it, so a node that has not
+ * reached that slot fails the call and the search is `complete` false. A `minContextSlot` that is not a u64 bigint is
+ * `complete` false, with nothing read.
  */
 export async function svmLocate(
   ref: SvmRef,

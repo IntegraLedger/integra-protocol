@@ -228,7 +228,7 @@ however late, because an internal message carries no expiry.
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
 | EVM chains, Tempo | `EvmReader` | `eth_getTransactionReceipt`, `eth_getBlockByNumber` for the `safe` and `finalized` marks, `eth_getTransactionByHash`, `eth_call` at a block number | the finality mark reached: `latest`, `safe` or `finalized` |
-| Solana | `SvmReader` | `getTransaction` at a commitment, with the node's slot at that commitment (`getSlot`) read before it when it finds nothing, `getSignaturesForAddress`, with `minContextSlot` when the search names one, `isBlockhashValid`, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account | the commitment: `confirmed` or `finalized` |
+| Solana | `SvmReader` | `getTransaction` at a commitment, with the node's slot at that commitment (`getSlot`) read before it when it finds nothing, `getSignaturesForAddress`, with `minContextSlot` when the search names one, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account; and `isBlockhashValid` with its context slot, which the package does not call: you read it for your own verdict on a blockhash reference (below) | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events with `getEvents`' `latestLedger`, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
 | Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
@@ -264,6 +264,14 @@ leaves it pending. With no transaction named, pass that slot to `svmLocate` as `
 `getSignaturesForAddress` page carries it as the RPC's `minContextSlot`, "the minimum slot that the request can be
 evaluated at", so a node behind the nonce read fails the call and the search is incomplete. A search given that slot
 and complete with nothing found shows the message never landed.
+
+No `status` reads a recent blockhash's expiry. For your own verdict that a message with a blockhash reference never
+landed, the reader's `blockhashValid(blockhash)` answers `{ valid, slot }`: `isBlockhashValid`'s value at `confirmed`,
+and the context slot the node evaluated it at. A node also answers false for a blockhash whose block it has not reached,
+so a false answer at a slot below `fromSlot` + 150, the bound `svmNonceMoved` sets, shows nothing; the bound holds for a
+blockhash from a slot at or before `fromSlot` + 150. From a false answer at or past that bound, pass its `slot` to
+`svmLocate` as `minContextSlot`, as for a durable nonce: a node behind the blockhash read fails the call and the search
+is incomplete. A search given that slot and complete with nothing found shows the message never landed.
 
 Lightning has no settlement read: the invoice and its preimage, which the parties hold, are the proof of payment, and
 no public ledger shows it. Its pairings give `reference` and no `status`.

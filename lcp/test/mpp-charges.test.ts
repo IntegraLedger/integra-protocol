@@ -209,7 +209,7 @@ describe("mpp-charge-solana.json", () => {
       network: V.push.network,
       transaction: async (sig) => (sig === V.push.txid ? landed : { notFound: true as const, slot: null }),
       signatures: async () => [],
-      blockhashValid: async () => true,
+      blockhashValid: async () => ({ valid: true, slot: 0n }),
       firstAvailableBlock: async () => 0n,
       account: async () => {
         throw new Error("this reference names no nonce account");
@@ -246,7 +246,7 @@ describe("mpp-charge-solana.json", () => {
       network: V.push.network,
       transaction: async (sig) => (sig === V.push.txid ? landed : { notFound: true as const, slot: null }),
       signatures: async () => [],
-      blockhashValid: async () => true,
+      blockhashValid: async () => ({ valid: true, slot: 0n }),
       firstAvailableBlock: async () => 0n,
       account: async () => {
         throw new Error("a push credential's read makes no account read");

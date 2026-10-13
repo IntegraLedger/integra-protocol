@@ -279,7 +279,7 @@ describe("mpp/session/solana", () => {
             ]
           : [];
       },
-      blockhashValid: async () => true,
+      blockhashValid: async () => ({ valid: true, slot: 0n }),
       firstAvailableBlock: async () => first,
       account: async () => {
         throw new Error("this reference names no nonce account");
@@ -314,7 +314,7 @@ describe("mpp/session/solana", () => {
           : { wire: Uint8Array.from(Buffer.from(wires[sig]!, "base64")), err: null, loaded: { writable: [], readonly: [] }, inner: [deposit] },
       signatures: async (address) =>
         address === V.SV2.channel ? signatures.map((signature, i) => ({ signature, slot: 130n - BigInt(i), memo: null })) : [],
-      blockhashValid: async () => true,
+      blockhashValid: async () => ({ valid: true, slot: 0n }),
       firstAvailableBlock: async () => first,
       account: async () => {
         throw new Error("this reference names no nonce account");
@@ -377,7 +377,7 @@ describe("mpp/session/solana", () => {
       network: close.network,
       transaction: async () => landedSvm(w),
       signatures: async () => [],
-      blockhashValid: async () => true,
+      blockhashValid: async () => ({ valid: true, slot: 0n }),
       firstAvailableBlock: async () => 0n,
       account: async () => {
         throw new Error("this reference names no nonce account");
