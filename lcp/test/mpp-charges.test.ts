@@ -679,8 +679,9 @@ describe("mpp-charge-nearintents.json", () => {
   });
 
   it("unplaced gives the challenge as issued: its request without externalId", async () => {
-    expect(chargeNearIntents.unplaced(placed)).toEqual({ ...placed, request: V.challenge.request });
-    expect(await issuedDigest(chargeNearIntents.unplaced(placed))).toBe(await issuedDigest(V.challenge));
+    const issued = chargeNearIntents.unplaced(placed) as MppChallenge;
+    expect(issued).toEqual({ ...placed, request: V.challenge.request });
+    expect(await issuedDigest(issued)).toBe(await issuedDigest(V.challenge));
   });
 
   // pairingsOf reads the two request members the pairing uses: methodDetails.originNetwork, "CAIP-2 identifier of the

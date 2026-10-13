@@ -4,7 +4,7 @@
  * transaction came first. Settlement is the seller's report.
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash } from "./core.js";
-import { normalHash } from "./fields.js";
+import { isObject, normalHash } from "./fields.js";
 import {
   deepFreeze,
   echoedFor,
@@ -16,7 +16,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { isExternalId } from "./mpp-rail-checks.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 const ID = "mpp/charge/nearintents" as const;
@@ -57,8 +57,12 @@ function advertise(
   );
 }
 
-/** The challenge as issued: its request without `externalId`, where H rides. */
-function unplaced(option: MppChallenge): MppChallenge {
+/**
+ * The challenge as issued: its request without `externalId`, where H rides. A challenge that carries a `refused` member
+ * is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
   return withoutCarrier(option);
 }
 

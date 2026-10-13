@@ -329,6 +329,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/charge/solana",
     "mpp/charge/usdc/solana",
     "mpp/charge/xrpl",
+    "mpp/charge/nearintents",
   ];
   for (const id of carrierMpp) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
