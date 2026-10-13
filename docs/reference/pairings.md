@@ -305,7 +305,7 @@ The payer signed a CEP-3009 transfer authorization whose nonce is this ATR's has
 
 ### `x402/exact/ccd`
 
-The payer signed a Concordium transaction whose one transfer carries this ATR's hash, in LCP string form, as its memo. The chain accepted the transaction only with the sender's valid signature, and the memo is on chain in the finalized transfer event. This does not show that amount, payee, token or timing match the ATR's content.
+The payer signed a Concordium transaction one of whose transfers carries this ATR's hash, in LCP string form, as its memo. The chain accepted the transaction only with the sender's valid signature, and the memo is on chain in the finalized transfer event. This does not show that amount, payee, token or timing match the ATR's content.
 
 ### `x402/exact/eip155/eip3009`
 
