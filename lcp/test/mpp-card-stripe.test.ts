@@ -63,10 +63,11 @@ describe("mpp/charge/card (M1)", () => {
 
   it("the issued digest of unplaced, and of the echo carrying externalId, are the vector's", async () => {
     const p = placed(chargeCard, c);
-    expect(await issuedDigest(chargeCard.unplaced(c))).toBe(CARD.M1.expectDigest);
+    expect(await issuedDigest(chargeCard.unplaced(c) as MppChallenge)).toBe(CARD.M1.expectDigest);
     expect(await issuedDigest(p)).toBe(CARD.M1.expectDigest);
-    expect(await issuedDigest(chargeCard.unplaced(p))).toBe(CARD.M1.expectDigest);
-    expect(requestOf(chargeCard.unplaced(p)).externalId).toBeUndefined();
+    const u = chargeCard.unplaced(p) as MppChallenge;
+    expect(await issuedDigest(u)).toBe(CARD.M1.expectDigest);
+    expect(requestOf(u).externalId).toBeUndefined();
   });
 
   it("build and bound refuse: nothing the buyer signs has a place for H", async () => {
@@ -111,7 +112,7 @@ describe("mpp/charge/stripe (M2)", () => {
     expect(requestOf(p).methodDetails.metadata).toEqual({ [STRIPE.fixed.metadataKey]: F.L });
     expect(await issuedDigest(c)).toBe(STRIPE.M2.expectDigest);
     expect(await issuedDigest(p)).toBe(STRIPE.M2.expectDigest);
-    const u = chargeStripe.unplaced(p);
+    const u = chargeStripe.unplaced(p) as MppChallenge;
     expect(requestOf(u).methodDetails.metadata).toBeUndefined();
     expect(await issuedDigest(u)).toBe(STRIPE.M2.expectDigest);
   });
@@ -148,7 +149,7 @@ describe("mpp/subscription/stripe", () => {
     const p = placed(subscriptionStripe, c);
     expect(requestOf(p).methodDetails.metadata).toEqual(SUB.S1.expectMetadata);
     expect(await issuedDigest(p)).toBe(await issuedDigest(c));
-    expect(requestOf(subscriptionStripe.unplaced(p)).methodDetails.metadata).toEqual({ plan: "gold" });
+    expect(requestOf(subscriptionStripe.unplaced(p) as MppChallenge).methodDetails.metadata).toEqual({ plan: "gold" });
   });
 
   it("build and bound refuse", async () => {

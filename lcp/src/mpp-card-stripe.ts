@@ -22,7 +22,7 @@ import {
   type MppPairing,
 } from "./mpp-challenge.js";
 import { stripeMetadataValid } from "./mpp-method-checks.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
 /** The Stripe metadata key the seller places H under: at most 40 characters, no square brackets. */
@@ -93,6 +93,16 @@ function advertiseAs(pairing: ConfirmOnly) {
   };
 }
 
+/**
+ * The challenge as issued: its request without the carrier, the card request's `externalId` or the Stripe
+ * `methodDetails.metadata.legal_context`, with a `metadata` object that removal empties removed too. A challenge that
+ * carries a `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: MppChallenge): MppChallenge | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
+  return withoutCarrier(option);
+}
+
 /** Nothing the buyer signs has a place for H. */
 async function build(_choice: MppChoice, _h: AtrHash): Promise<Refusal> {
   return refusal("mpp/no-signed-place");
@@ -115,7 +125,7 @@ function pairingOf<Id extends ConfirmOnly>(id: Id, carrier: string, p: LcpPatter
     pattern: p,
     claims: false as boolean,
     carrier,
-    unplaced: withoutCarrier,
+    unplaced,
     tie,
     advertise: advertiseAs(id),
     read,

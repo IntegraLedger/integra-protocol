@@ -331,6 +331,9 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/charge/xrpl",
     "mpp/charge/nearintents",
     "mpp/charge/stellar",
+    "mpp/charge/card",
+    "mpp/charge/stripe",
+    "mpp/subscription/stripe",
   ];
   for (const id of carrierMpp) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
@@ -349,6 +352,31 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       for (const v of ["charge", 7, null]) expect(unplaced(v)).toBe(v);
     });
   }
+
+  // The pairings of the two carrier blocks above are exactly those whose unplaced gives the advertised option or
+  // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
+  it("the x402 and MPP pairings whose unplaced removes a carrier are these seventeen", () => {
+    const pairings = BINDINGS.filter((b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/"));
+    const removing = pairings.filter((b) => {
+      const advertised = b.id.startsWith("mpp/") ? advertisedOf.get(b.id) : placedOf.get(b.id);
+      expect(advertised, b.id).toBeTypeOf("object");
+      return (b.unplaced as (o: unknown) => unknown)(advertised) !== advertised;
+    });
+    expect(removing.map((b) => b.id).sort()).toEqual([...carrierX402, ...carrierMpp].sort());
+    expect(carrierX402.length + carrierMpp.length).toBe(17);
+  });
+
+  // So no pairing hands back a value that carries a refused member: every unplaced refuses one, with
+  // mpp/challenge-malformed on MPP and, elsewhere, the option-malformed code of the namespace its id begins with.
+  it("every pairing's unplaced refuses a value shaped as a refusal", () => {
+    for (const b of BINDINGS) {
+      const ns = b.id.split("/")[0]!;
+      const code = ns === "mpp" ? "mpp/challenge-malformed" : `${ns}/option-malformed`;
+      const out = (b.unplaced as (o: unknown) => unknown)(shaped());
+      expect(out, b.id).toEqual({ refused: true, code });
+      expect(isRefusal(out), b.id).toBe(true);
+    }
+  });
 
   for (const b of BINDINGS) {
     const fetchPresented = (b as { fetchPresented?: (c: unknown, r: unknown) => Promise<unknown> }).fetchPresented;
