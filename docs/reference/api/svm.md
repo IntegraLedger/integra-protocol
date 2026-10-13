@@ -151,16 +151,19 @@ owner and data, or null when no account exists at that address.
 > **signatures**(`address`, `page`): `Promise`\<readonly `object`[]\>
 
 `getSignaturesForAddress`, newest first. `memo` is the RPC's rendering of the transaction's memos (`[len] text`,
-joined by `; `), or null when it has none.
+joined by `; `), or null when it has none. When the page names `minContextSlot`, the reader passes it to the RPC as
+`minContextSlot`, "the minimum slot that the request can be evaluated at", so a node that has not reached that slot
+fails the call, and the reader rejects with `ReaderError`.
 
 ###### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `address` | `string` |
-| `page` | \{ `before?`: `string`; `limit`: `1000`; \} |
+| `page` | \{ `before?`: `string`; `limit`: `1000`; `minContextSlot?`: `bigint`; \} |
 | `page.before?` | `string` |
 | `page.limit` | `1000` |
+| `page.minContextSlot?` | `bigint` |
 
 ###### Returns
 
@@ -672,7 +675,7 @@ SHA-256 over the message bytes every signer signed. Rejects with a TypeError whe
 
 ### svmLocate()
 
-> **svmLocate**(`ref`, `reader`, `h`, `status?`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
+> **svmLocate**(`ref`, `reader`, `h`, `status?`, `minContextSlot?`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
 
 Finds the instrument when no transaction was named: pages the fee payer's signatures, newest first, down to
 `fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form,
@@ -684,6 +687,10 @@ is given), at most 50 per pass.
 leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is `complete`
 false, with nothing read.
 
+`minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
+context slot `svmNonceMoved` gives: every page names it, so a node that has not reached that slot fails the call and
+the search is `complete` false. A `minContextSlot` that is not a u64 bigint is `complete` false, with nothing read.
+
 #### Parameters
 
 | Parameter | Type | Default value |
@@ -692,6 +699,7 @@ false, with nothing read.
 | `reader` | [`SvmReader`](#svmreader) | `undefined` |
 | `h` | `` `0x${string}` `` | `undefined` |
 | `status` | (`ref`, `reader`) => `Promise`\<\{ `state`: `string`; `why?`: `string`; \}\> | `svmStatus` |
+| `minContextSlot?` | `bigint` | `undefined` |
 
 #### Returns
 
@@ -701,19 +709,20 @@ false, with nothing read.
 
 ### svmNonceMoved()
 
-> **svmNonceMoved**(`ref`, `reader`): `Promise`\<`boolean`\>
+> **svmNonceMoved**(`ref`, `reader`): `Promise`\<`bigint` \| `null`\>
 
-True when the durable nonce `ref.nonce` records is spent or gone: a `finalized` read of the nonce account, at a
-context slot at least 150 slots past `fromSlot`, finds no account, an account the System program does not own, an
-account that is not an initialized nonce account, or an initialized current-version nonce account holding another
-value. A legacy-version nonce account, a read too early, a failed or malformed read, a reference without `nonce`, a
-ref or reader that is not an object and a reader for another network are false. One call.
+The context slot of the nonce account read when that read shows the durable nonce `ref.nonce` records is spent or
+gone, else null. The read is at `finalized`, and shows it at a context slot at least 150 slots past `fromSlot` when
+it finds no account, an account the System program does not own, an account that is not an initialized nonce
+account, or an initialized current-version nonce account holding another value. A legacy-version nonce account, a
+read too early, a failed or malformed read, a reference without `nonce`, a ref or reader that is not an object and a
+reader for another network are null. One call.
 
 The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
 lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
 finds nothing shows the message never landed only from a node at or past that read's context slot, as `svmStatus`
-reads it. With no transaction named, a `svmLocate` that starts after this reads true, and is complete with nothing
-found, shows the message never landed when the node that lists the signatures holds every block through that slot.
+reads it. With no transaction named, a `svmLocate` given this slot as `minContextSlot`, and complete with nothing
+found, shows the message never landed.
 
 #### Parameters
 
@@ -724,7 +733,7 @@ found, shows the message never landed when the node that lists the signatures ho
 
 #### Returns
 
-`Promise`\<`boolean`\>
+`Promise`\<`bigint` \| `null`\>
 
 ***
 
@@ -756,11 +765,11 @@ Zero-party recovery: the ATR hash in the landed transaction's one memo. One or t
 Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
 without error, and must carry a token or SOL transfer. A failed read, an answer of neither documented shape, or a
 reader for another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`,
-with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` holds and the node's first
-available block is at or before `fromSlot`, is read once more at `finalized`; still not found by a lookup naming a
-slot at or past the context slot of the nonce account read, it is failed `nonce-moved`: the message can never land.
-A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
-durable-nonce reference.
+with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's
+first available block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot
+at or past the context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can
+never land. A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or
+five for a durable-nonce reference.
 
 #### Parameters
 

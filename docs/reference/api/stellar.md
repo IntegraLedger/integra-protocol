@@ -181,16 +181,10 @@ bytes, the digest of the signed authorization entry, and settlement read through
 > `const` **SCVAL\_MAX\_DEPTH**: `64` = `64`
 
 The deepest nesting of ScVal vectors and maps (a contract instance's storage counting as a map) within one ScVal,
-the outermost container being level 1, and of authorized invocations within one authorization entry.
-
-***
-
-### SCVAL\_MAX\_ELEMENTS
-
-> `const` **SCVAL\_MAX\_ELEMENTS**: `number`
-
-The most ScVal vector elements and map entries in one envelope. Each takes at least its 4-byte discriminant, so no
-envelope within `MAX_XDR` base64 characters holds more.
+the outermost container being level 1, and of authorized invocations within one authorization entry, the root
+invocation being level 1. It bounds what is read of an envelope, the operation and the payer's authorization entry,
+and an event's topics and data. It does not apply to other authorization entries, so another entry's nesting does
+not make the envelope unreadable.
 
 ## Functions
 
@@ -203,7 +197,9 @@ Decodes a base64 `TransactionEnvelope` (v1, or a fee bump's inner v1) of at most
 with address credentials (`sorobanCredentialsAddress` or `sorobanCredentialsAddressV2`) whose address is `from`.
 The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's
 contract, `to` and amount are the signed invocation's. The base64 is read strictly (RFC 4648 §4, zero padding bits),
-and the XDR must be consumed whole. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
+and the XDR must be consumed whole. The operation and that entry nest ScVals and authorized invocations at most
+`SCVAL_MAX_DEPTH` levels (`stellar/tx-malformed` past it); the cap does not apply to another entry, so its nesting
+does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
 passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
 without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
 credential, once its transaction landed, reads a payer that authorized the transfer as the transaction's source

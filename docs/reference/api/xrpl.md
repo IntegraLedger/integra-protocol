@@ -191,15 +191,6 @@ CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295.
 The deepest nesting of STObject and STArray fields inside a transaction: an object or array field one level below
 its container, and an array's member object one level below the array.
 
-***
-
-### XRPL\_MAX\_FIELDS
-
-> `const` **XRPL\_MAX\_FIELDS**: `number`
-
-The most fields, counting array members, that one blob may hold. Every field takes at least its one-byte header, so
-no blob within `MAX_BLOB_HEX` holds more.
-
 ## Functions
 
 ### decodeBlob()
@@ -208,10 +199,9 @@ no blob within `MAX_BLOB_HEX` holds more.
 
 Decodes a signed blob of at most 4 KiB of hex, and computes its transaction hash as the ledger does: SHA-512Half
 over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its fields refuses a
-blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep or holds more than `XRPL_MAX_FIELDS`
-fields and array members. The blob must be the canonical serialization of what it decodes to: the codec's encoding
-of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and every array member is
-an object.
+blob that nests STObject and STArray fields more than `XRPL_MAX_DEPTH` deep. The blob must be the canonical
+serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes, so nothing
+follows a top-level end marker and every array member is an object.
 
 #### Parameters
 
