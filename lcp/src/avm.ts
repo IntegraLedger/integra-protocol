@@ -7,7 +7,7 @@
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import { msgpackWithinCaps } from "./internal/avm.js";
+import { msgpackWithinCaps, type AvmPaymentPayload } from "./internal/avm.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   advertiseFor,
@@ -20,7 +20,6 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
   type X402Read,
-  type X402Payment,
 } from "./x402.js";
 
 const sdk: typeof Algosdk | null = await import("algosdk").then(
@@ -45,7 +44,6 @@ export interface AvmPresented {
   paymentIndex: number;
   paymentGroup: readonly string[];
 }
-export type AvmPaymentPayload = X402Payment<AvmPresented>;
 
 /** Bounded, read-only calls against one network's Indexer. Every failure rejects. */
 export interface AvmReader {

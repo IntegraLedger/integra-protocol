@@ -1,7 +1,12 @@
 /**
- * The msgpack scan `../avm.ts` runs on a payment entry before decoding it, with `MSGPACK_MAX_DEPTH` as the depth. No
- * entry point exports it.
+ * The x402 payment an Algorand payer presents, and the msgpack scan run on a payment entry before it is decoded.
+ * `../avm.ts` returns the payment from `complete` and runs the scan in `avmCarrier`, with `MSGPACK_MAX_DEPTH` as the
+ * depth; the root names the payment among the payments `Presented` covers. No entry point exports either name.
  */
+import type { AvmPresented } from "../avm.js";
+import type { X402Payment } from "../x402.js";
+
+export type AvmPaymentPayload = X402Payment<AvmPresented>;
 
 /**
  * True when `b` is exactly one msgpack value (the msgpack specification's formats) whose arrays and maps nest at most

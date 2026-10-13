@@ -138,7 +138,7 @@ import { avmCarrier, avmRecover, avmStatus, … } from "@integraledger/lcp/avm";
 
 **Values (5):** `avmCarrier`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
 
-**Types (8):** `AlgorandNetwork`, `AvmParams`, `AvmPaymentPayload`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`.
+**Types (7):** `AlgorandNetwork`, `AvmParams`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`.
 
 ## `@integraledger/lcp/card`
 
