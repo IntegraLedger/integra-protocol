@@ -635,7 +635,7 @@ export function lnbtcPairingOf(option: unknown): typeof LNBTC | typeof NAMED | u
 
 // ── mpp/charge/lightning and mpp/session/lightning ──
 
-export type LnMppPairing = typeof LN_CHARGE | typeof LN_SESSION;
+type LnMppPairing = typeof LN_CHARGE | typeof LN_SESSION;
 const LN_CHARGE = "mpp/charge/lightning" as const;
 const LN_SESSION = "mpp/session/lightning" as const;
 const MPP_NETWORKS: { readonly [n: string]: Bolt11["currency"] } = { mainnet: "bc", signet: "tbs", regtest: "bcrt" };

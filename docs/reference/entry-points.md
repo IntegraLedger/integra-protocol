@@ -246,7 +246,7 @@ import { atrNamesInvoice, chargeLightning, decodeBolt11, … } from "@integraled
 
 **Values (8):** `atrNamesInvoice`, `chargeLightning`, `decodeBolt11`, `exactLnbtc`, `exactLnbtcNamed`, `invoiceH`, `lnbtcPairingOf`, `sessionLightning`.
 
-**Types (8):** `Bolt11`, `LnMppChoice`, `LnMppPairing`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
+**Types (7):** `Bolt11`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
 
 ## `@integraledger/lcp/mpp`
 
