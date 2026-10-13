@@ -10,9 +10,7 @@ import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 type Obj = { [k: string]: Json };
 
-const DECIMAL = /^[0-9]{1,78}$/;
 const POSITIVE = /^[1-9][0-9]{0,77}$/;
-const CAIP2 = /^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$/;
 const STACKS_CHAIN = /^(?:0|[1-9][0-9]{0,9})$/;
 const STACKS_NAME = /^[a-zA-Z]([a-zA-Z0-9]|[-_])*$/;
 const C32_PRINCIPAL = /^S[0-9A-HJKMNP-TV-Z]{38,40}$/;
@@ -28,10 +26,6 @@ export const USDC_PROFILES: { readonly [type: string]: MppPairing } = Object.fre
 
 function isObj(v: unknown): v is Obj {
   return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-function isDecimal(v: unknown): v is string {
-  return typeof v === "string" && DECIMAL.test(v) && BigInt(v) < 1n << 256n;
 }
 
 function isPositiveInt(v: unknown): v is number {
@@ -90,8 +84,8 @@ export function usdcProfile(d: Obj): { type: string; details: Obj } | Refusal {
 /**
  * `charge` on `usdc`: the active profile, `amount` a positive integer string, `recipient` a string, and what each
  * profile's build reads: EVM `chainId` and addresses; the Solana charge's checks on the Solana details, whose `network`
- * is required, and on `externalId`, its carrier; Stacks `chainId` and the token contract; Gateway's CAIP-2 networks and
- * fee cap. No other profile reads `externalId`.
+ * is required, and on `externalId`, its carrier; Stacks `chainId` and the token contract. The Gateway build reads
+ * `recipient` and the request's hash, and none of the Gateway details. No other profile reads `externalId`.
  */
 export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly MppPairing[] | Refusal {
   const profile = usdcProfile(d);
@@ -126,20 +120,8 @@ export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly M
       }
       return ["mpp/charge/usdc/stacks"];
     }
-    default: {
-      const sources = p["acceptedSources"];
-      if (!Array.isArray(sources) || sources.length === 0 || sources.length > 32) return refusal("mpp/request-malformed");
-      if (!sources.every((s) => typeof s === "string" && CAIP2.test(s))) return refusal("mpp/request-malformed");
-      if (typeof p["destinationNetwork"] !== "string" || !CAIP2.test(p["destinationNetwork"])) {
-        return refusal("mpp/request-malformed");
-      }
-      if (!isDecimal(p["maxFee"])) return refusal("mpp/request-malformed");
-      const types = p["credentialTypes"];
-      if (types !== undefined && (!Array.isArray(types) || types.length === 0 || !types.every((t) => t === "transfer"))) {
-        return refusal("mpp/credential-types");
-      }
+    default:
       return ["mpp/charge/usdc/gateway"];
-    }
   }
 }
 

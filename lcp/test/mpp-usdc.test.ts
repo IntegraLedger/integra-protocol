@@ -230,6 +230,24 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
   const G = GW.fixed;
   const c = issued(GW.M5.requestJson);
 
+  // The usdc draft's Gateway details (`acceptedSources`, `destinationNetwork`, `maxFee`, `credentialTypes`,
+  // draft-usdc-charge-00 L410-414) are what the server checks the payer's transfer against (L770-801); the build hashes
+  // the request whole and reads none of them, so pairingsOf names the pairing whatever they hold.
+  it("pairingsOf reads none of the Gateway details", () => {
+    const request = JSON.parse(GW.M5.requestJson);
+    const edits: Record<string, unknown>[] = [
+      { acceptedSources: [] },
+      { acceptedSources: Array.from({ length: 33 }, (_, i) => `eip155:${i + 1}`) },
+      { destinationNetwork: "base" },
+      { maxFee: "0.5" },
+      { credentialTypes: ["transfer", "authorization"] },
+    ];
+    for (const e of edits) {
+      const r = { ...request, methodDetails: { ...request.methodDetails, gateway: { ...request.methodDetails.gateway, ...e } } };
+      expect([e, pairingsOf(issued(JSON.stringify(r)))]).toEqual([e, ["mpp/charge/usdc/gateway"]]);
+    }
+  });
+
   it("usdcRequestHash and usdcGatewaySalt are the vector's, and canonicalize with js-sha3 agree", async () => {
     expect(pairingsOf(c)).toEqual(["mpp/charge/usdc/gateway"]);
     const rh = await usdcRequestHash(c.request);
