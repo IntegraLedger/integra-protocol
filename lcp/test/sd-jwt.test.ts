@@ -52,6 +52,16 @@ describe("sd-jwt.json", () => {
     }
   });
 
+  // RFC 9901 §7.1 step 4: a digest met more than once is rejected. A decoy listed twice, in one _sd or in two, is the
+  // reader's malformed; listed once it is ignored, and C7's L2a lists one once in _sd and once as {"...": digest}.
+  it("C8: a digest that names no disclosure is ignored once, and a second _sd listing is malformed", async () => {
+    for (const row of V.C8.rows) {
+      const r = await readSdJwt(row.presentation, REFUSALS);
+      if (row.expect !== undefined) expect(r, row.case).toEqual({ refused: true, code: row.expect });
+      else expect((await read(row.presentation)).resolved, row.case).toEqual(row.expectResolved);
+    }
+  });
+
   // RFC 9901 §4.2.3: a disclosure's digest is the base64url SHA-256 of its ASCII text (Node's crypto computes it here).
   // The resolved payload is JSON the package reads, so it nests at most 64 levels (vectors/core-vectors.json
   // `jsonDepth`), the payload counting 1 and each disclosed value sitting where its reference sits; one level more, or
