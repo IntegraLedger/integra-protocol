@@ -54,25 +54,14 @@ export function stripeMetadataValid(m: unknown, extra = 0): true | Refusal {
   return true;
 }
 
-/** The charge intent's shared members: `amount` a decimal string, `currency` a string, `externalId` absent or a string. */
-function chargeShape(r: Obj): true | Refusal {
-  if (!isDecimal(r["amount"]) || typeof r["currency"] !== "string" || r["currency"] === "") {
-    return refusal("mpp/request-malformed");
-  }
-  if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
-  return true;
-}
-
-/** `charge` on `card`: the charge intent's members. */
+/** `charge` on `card`: `externalId`, the member that carries H, absent or a string. */
 export function cardChargePairings(r: Obj): readonly MppPairing[] | Refusal {
-  const ok = chargeShape(r);
-  return ok === true ? ["mpp/charge/card"] : ok;
+  if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
+  return ["mpp/charge/card"];
 }
 
-/** `charge` on `stripe`: the charge intent's members, and `methodDetails.metadata` within Stripe's bounds. */
-export function stripeChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
-  const ok = chargeShape(r);
-  if (ok !== true) return ok;
+/** `charge` on `stripe`: `methodDetails.metadata`, which holds the member that carries H, within Stripe's bounds. */
+export function stripeChargePairings(_r: Obj, d: Obj): readonly MppPairing[] | Refusal {
   const m = stripeMetadataValid(d["metadata"]);
   return m === true ? ["mpp/charge/stripe"] : m;
 }

@@ -39,6 +39,19 @@ describe("mpp/charge/card (M1)", () => {
     expect(pairingsOf(c)).toEqual(["mpp/charge/card"]);
   });
 
+  // The card draft's `amount` and `currency` (draft-card-charge-00 L232-233) are the seller's and its processor's: no
+  // build here writes them and no read here holds them, so pairingsOf names the pairing whatever they hold. Its
+  // `externalId` is a string (L236) and carries H, so one that is not a string is refused.
+  it("pairingsOf checks the carrier's form, and neither amount nor currency", () => {
+    for (const r of [{ amount: "12.50" }, { amount: "" }, { currency: "" }, { currency: undefined }]) {
+      expect([r, pairingsOf(issued("card", "charge", { ...CARD.M1.request, ...r }))]).toEqual([r, ["mpp/charge/card"]]);
+    }
+    expect(pairingsOf(issued("card", "charge", { ...CARD.M1.request, externalId: 7 }))).toEqual({
+      refused: true,
+      code: "mpp/request-malformed",
+    });
+  });
+
   it("advertise sets the id, the opaque reference and externalId = L", () => {
     const p = placed(chargeCard, c);
     expect(p.id).toBe(F.MV1);
@@ -82,6 +95,16 @@ describe("mpp/charge/card (M1)", () => {
 
 describe("mpp/charge/stripe (M2)", () => {
   const c = issued("stripe", "charge", STRIPE.M2.request);
+
+  // The Stripe draft's `amount`, `currency` and `externalId` (draft-stripe-charge-00 L170-173) are the seller's: the
+  // seller verifies amount and currency (L408-409), and H rides in `methodDetails.metadata`, the member pairingsOf
+  // checks against Stripe's bounds.
+  it("pairingsOf checks the metadata, and neither amount, currency nor externalId", () => {
+    expect(pairingsOf(c)).toEqual(["mpp/charge/stripe"]);
+    for (const r of [{ amount: "abc" }, { currency: "" }, { externalId: 7 }]) {
+      expect([r, pairingsOf(issued("stripe", "charge", { ...STRIPE.M2.request, ...r }))]).toEqual([r, ["mpp/charge/stripe"]]);
+    }
+  });
 
   it("advertise sets methodDetails.metadata.legal_context = L, and the digest is the vector's", async () => {
     const p = placed(chargeStripe, c);
