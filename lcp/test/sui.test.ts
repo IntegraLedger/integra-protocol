@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, TransactionDataBuilder } from "@mysten/sui/transactions";
+import { fromBase58, toBase58, toBase64 } from "@mysten/sui/utils";
 import { ReaderError } from "../src/evm.js";
 import { pairingOf } from "../src/index.js";
 import { decodeSuiTx, exactSui, suiCarrier, type SuiReader, type SuiRef } from "../src/sui.js";
@@ -325,6 +326,40 @@ describe("V4 · status and recover", () => {
       const ref = { ...refOf(V.V4.ref), untilEpoch } as never;
       expect(await exactSui.status(ref, r, POSITION)).toEqual({ state: "pending", why: "unreadable" });
       expect(r.calls).toBe(0);
+    }
+  });
+  // A Sui transaction digest is base58 of its 32-byte Blake2b-256 (the vector's V1 digest, read from the chain, and V2's,
+  // from Python's hashlib); docs/guides/rails.md, "Reading settlement": a reference holding a field status reads the
+  // payment by, or compares it with, in another form is pending unreadable, with nothing read. Each row's reader would
+  // otherwise answer the row's expect.
+  const digest: string = V.V4.ref.digest;
+  const bytes = fromBase58(digest);
+  const badDigests: unknown[] = [undefined, null, 1, {}, [], "", "x", `0${digest.slice(1)}`, `l${digest.slice(1)}`];
+  badDigests.push(toBase58(bytes.subarray(1)), `1${digest}`, toBase58(Uint8Array.from([...bytes, 7])));
+  badDigests.push(`0x${Buffer.from(bytes).toString("hex")}`, toBase64(bytes), digest.toLowerCase(), `${digest}1`.repeat(40));
+  it("status: a ref whose digest is not base58 of 32 bytes, or whose h is not 0x and 64 hex digits, is unreadable", async () => {
+    const badHashes: unknown[] = [undefined, null, 1, {}, [], "", "0x12", H.slice(0, 64), `${H}00`, H.slice(2), `0X${H.slice(2)}`];
+    badHashes.push(`0xg${H.slice(3)}`);
+    const rows = [...V.V4.status, V.plant];
+    for (const [key, forms] of [["digest", badDigests], ["h", badHashes]] as const) {
+      for (const row of rows) {
+        for (const v of forms) {
+          const r = reader(V.V4.ref.network, row.readerError ? "error" : row.answer, row.epoch, row.firstCheckpoint ?? null);
+          const ref = { ...refOf(V.V4.ref), [key]: v } as never;
+          const got = await exactSui.status(ref, r, POSITION);
+          expect([row.case, key, v, got, r.calls]).toEqual([row.case, key, v, { state: "pending", why: "unreadable" }, 0]);
+        }
+      }
+    }
+  });
+  it("recover: a ref whose digest is not base58 of 32 bytes is sui/unreadable, with nothing read", async () => {
+    const answers: Answer[] = [{ tx: "V2", status: "SUCCESS", checkpoint: "7" }, { tx: "V2", status: "FAILURE", checkpoint: "7" }, null];
+    for (const answer of answers) {
+      for (const v of badDigests) {
+        const r = reader(V.V4.ref.network, answer);
+        const got = await exactSui.recover({ network: V.V4.ref.network, digest: v } as never, r);
+        expect([answer, v, got, r.calls]).toEqual([answer, v, { refused: true, code: "sui/unreadable" }, 0]);
+      }
     }
   });
   for (const row of V.V4.recover) {

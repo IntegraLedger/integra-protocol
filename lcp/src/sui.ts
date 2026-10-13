@@ -26,11 +26,10 @@ import {
   type X402Read,
 } from "./x402.js";
 
-const peer: { bcs: typeof SuiBcs; toBase58: (b: Uint8Array) => string } | undefined = await Promise.all([
-  import("@mysten/sui/bcs"),
-  import("@mysten/sui/utils"),
-]).then(
-  ([b, u]) => ({ bcs: b.bcs, toBase58: u.toBase58 }),
+const peer:
+  | { bcs: typeof SuiBcs; toBase58: (b: Uint8Array) => string; isTransactionDigest: (d: string) => boolean }
+  | undefined = await Promise.all([import("@mysten/sui/bcs"), import("@mysten/sui/utils")]).then(
+  ([b, u]) => ({ bcs: b.bcs, toBase58: u.toBase58, isTransactionDigest: u.isValidTransactionDigest }),
   () => undefined,
 );
 
@@ -192,15 +191,17 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
  * latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
  * pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. One
  * with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
- * bytes carrying this hash, and its effects' status decides. A `position` that is not a non-negative bigint is pending
- * `unreadable`. One call.
+ * bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, or whose
+ * `h` is not `0x` and 64 hex digits, and a `position` that is not a non-negative bigint, are pending `unreadable`, with
+ * nothing read. One call.
  */
 export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint): Promise<SuiStatus> {
   if (peer === undefined || !isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
     return { state: "pending", why: "unreadable" };
   }
   const untilEpoch = ref.untilEpoch === null ? null : decimalBelow(ref.untilEpoch, U64_LIMIT);
-  if (untilEpoch === undefined) return { state: "pending", why: "unreadable" };
+  const h = normalHash(ref.h);
+  if (untilEpoch === undefined || h === null || !isDigest(ref.digest)) return { state: "pending", why: "unreadable" };
   if (typeof position !== "bigint" || position < 0n) return { state: "pending", why: "unreadable" };
   const answer = await readOnce(reader, ref.digest);
   if (answer === null) return { state: "pending", why: "unreadable" };
@@ -214,19 +215,22 @@ export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader,
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
   if (isRefusal(decoded)) return { state: "failed", why: "not-this-instrument" };
   const carried = suiCarrier(decoded);
-  const h = normalHash(ref.h);
-  if (isRefusal(carried) || h === null || carried !== h) return { state: "failed", why: "not-this-instrument" };
+  if (isRefusal(carried) || carried !== h) return { state: "failed", why: "not-this-instrument" };
   if (tx.status === "FAILURE") return { state: "failed", why: "aborted" };
   return { state: "settled", checkpoint: tx.checkpoint };
 }
 
-/** Reads the hash back from the executed transaction alone, by its digest. One call. */
+/**
+ * Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
+ * bytes is `sui/unreadable`, with nothing read. One call.
+ */
 export async function suiRecover(
   ref: { network: SuiNetwork; digest: string },
   reader: SuiReader,
 ): Promise<AtrHash | Refusal> {
   if (peer === undefined) return refusal("sui/peer-missing");
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("sui/wrong-reader");
+  if (!isDigest(ref.digest)) return refusal("sui/unreadable");
   const answer = await readOnce(reader, ref.digest);
   if (answer === null) return refusal("sui/unreadable");
   const { tx } = answer;
@@ -447,6 +451,14 @@ function typeParameters(s: string): string[] {
   }
   out.push(s.slice(start).trim());
   return out;
+}
+
+/**
+ * True for a transaction digest as `suiDigest` writes one: base58 of 32 bytes, at most 44 characters. False without the
+ * peer.
+ */
+function isDigest(d: unknown): d is string {
+  return peer !== undefined && typeof d === "string" && d.length <= 44 && peer.isTransactionDigest(d);
 }
 
 /** The digest, or undefined without the peer. */
