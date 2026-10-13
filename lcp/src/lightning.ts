@@ -702,7 +702,7 @@ async function sessionRef(presented: unknown): Promise<{ network: string; channe
   return { network: SESSION_CHANNEL_NETWORK, channel: id.toLowerCase() };
 }
 
-/** A bearer proof is the deposit preimage, and a topUp pays a new invoice: neither carries the hash. */
+/** A bearer proof carries no hash; a topUp is within the session and is found by `ref`. */
 async function sessionBoundWithin(_presented: unknown): Promise<AtrHash | Refusal> {
   return refusal("mpp/not-bound-within");
 }
