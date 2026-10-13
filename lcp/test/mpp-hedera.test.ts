@@ -128,6 +128,18 @@ describe("mpp-charge-hedera.json", () => {
     }
   });
 
+  // The Mirror Node returns duplicate transactions and child records as separate entries under the same transaction id
+  // (Mirror Node REST API, GET /api/v1/transactions/{id}); neither is the user transaction, so with no other entry the
+  // transaction has not landed yet, and the read is repeated.
+  it("fetchPresented: a transaction with no counted user entry yet is hedera/not-found", async () => {
+    const push = credential({ type: "hash", transactionId: V.push.transactionId });
+    const [landed] = V.fetchPresented.entries;
+    for (const entries of [[{ ...landed, result: "DUPLICATE_TRANSACTION" }], [{ ...landed, nonce: 1 }], []]) {
+      const r = reader(V.fetchPresented.reader, entries);
+      expect(await chargeHedera.fetchPresented(push, r as never)).toEqual({ refused: true, code: "hedera/not-found" });
+    }
+  });
+
   it("fetchPresented's network: the request's chainId, else the given default", async () => {
     for (const row of V.fetchPresented.defaults) {
       const methodDetails = row.chainId === undefined ? {} : { chainId: row.chainId };

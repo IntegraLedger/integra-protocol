@@ -118,7 +118,7 @@
     "expect": "hedera/unreadable"
    },
    {
-    "case": "no SUCCESS entry",
+    "case": "the user entry reached consensus without SUCCESS: the transfer failed",
     "entries": [
      {
       "result": "INSUFFICIENT_PAYER_BALANCE",
@@ -128,7 +128,7 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": "hedera/not-found"
+    "expect": "hedera/not-success"
    }
   ],
   "defaults": [

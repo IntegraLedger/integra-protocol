@@ -123,8 +123,9 @@ Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and r
 `bound(credential)` reads H from the echoed challenge and checks that what was signed carries it; `reference` and
 `status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
 only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
-refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, and `xrpl/not-success` on the XRP
-Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that). A read
+refuses one that failed: `svm/err` on Solana, `stellar/tx-failed` on Stellar, `xrpl/not-success` on the XRP Ledger,
+which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that), and
+`hedera/not-success` on Hedera. A read
 that fails, or cannot yet read the landed payment, is a read to repeat, not a refusal of the payment: the seller asks
 again later.
 

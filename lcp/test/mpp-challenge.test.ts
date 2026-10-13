@@ -334,7 +334,8 @@ describe("problem", () => {
   // on the push credential before fetchPresented has read it answer 500 and no challenge; a landed transaction that
   // failed answers 402 verification-failed. Each credential is its vector file's B6 buyer row's challenge as presented,
   // with that file's push payload. The failed transactions are the files' agreedRefusals rows (Solana's meta.err, XRPL's
-  // tecPATH_DRY), the Hedera reads its fetchPresented rows, and the other network the rail's mainnet; the codes are
+  // tecPATH_DRY) and Hedera's fetchPresented row for a user entry without SUCCESS; the other Hedera reads are its
+  // fetchPresented rows, and the other network the rail's mainnet; the codes are
   // those rows', `<rail>/wrong-reader` for another network, and the files' "not yet fetched" refusals rows (Hedera's
   // push.expectWithout) for `bound` before fetchPresented.
   const SO = load("mpp-charge-solana.json");
@@ -385,6 +386,7 @@ describe("problem", () => {
   const xrplLanded = (validated: boolean, result: string) => async () => ({ validated, result, ledgerIndex: 990, transactionType: "Payment" });
 
   const hederaPush = pushed(HE, { type: "hash", transactionId: HE.push.transactionId });
+  const HEDERA_FAILED = "the user entry reached consensus without SUCCESS: the transfer failed";
   const hederaRow = (rowCase: string) => HE.fetchPresented.rows.find((r: { case: string }) => r.case === rowCase);
   const hedera = (rowCase: string): HederaReader => {
     const row = hederaRow(rowCase);
@@ -488,6 +490,12 @@ describe("problem", () => {
       () => chargeHedera.fetchPresented(hederaPush, hedera("a reader of another network")),
       hederaRow("a reader of another network").expect,
       internal,
+    ],
+    [
+      "mpp/charge/hedera: the user entry reached consensus without SUCCESS",
+      () => chargeHedera.fetchPresented(hederaPush, hedera(HEDERA_FAILED)),
+      hederaRow(HEDERA_FAILED).expect,
+      verificationFailed,
     ],
     [
       "mpp/charge/hedera: bound on the push credential before fetchPresented",

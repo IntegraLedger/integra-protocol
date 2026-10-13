@@ -191,6 +191,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "hedera/no-legal-context",
   "hedera/no-memo",
   "hedera/not-found",
+  "hedera/not-success",
   "hedera/option-malformed",
   "hedera/read-first",
   "hedera/reverted",

@@ -1102,8 +1102,10 @@ type HederaLandedCharge = MppCredential & { landed: { network: HederaNetwork; me
 /**
  * The credential with `landed` written from the reader: the charge's network (the request's `chainId`, or
  * `defaultNetwork` when the request names none), and for a push credential (`type="hash"`) the memo of the
- * landed SUCCESS entry. The reader must be of that network. A read that fails, or finds nothing, is a refusal the
- * seller retries.
+ * landed SUCCESS entry. The reader must be of that network. A read that fails, or finds no transaction or no counted
+ * user entry yet, is a refusal the seller retries (`hedera/unreadable`, `hedera/not-found`). Counted user entries with
+ * no SUCCESS among them are `hedera/not-success`: the transaction reached consensus and failed, so its transfers were
+ * not made, and a later read gives the same answer.
  */
 async function fetchCharge(
   input: unknown,
@@ -1124,8 +1126,12 @@ async function fetchCharge(
   const entries = await entriesOf(network, txIdMirror(id), reader);
   if (entries === "unreadable") return refusal("hedera/unreadable");
   if (entries === "not-found") return refusal("hedera/not-found");
-  const success = counted(entries).find((e) => e.result === SUCCESS);
-  if (success === undefined) return refusal("hedera/not-found");
+  const own = counted(entries);
+  const success = own.find((e) => e.result === SUCCESS);
+  if (success === undefined) {
+    if (own.length === 0) return refusal("hedera/not-found");
+    return refusal("hedera/not-success");
+  }
   const memo = memoOf(success);
   if (memo === null) return refusal("hedera/unreadable");
   let text: string;
