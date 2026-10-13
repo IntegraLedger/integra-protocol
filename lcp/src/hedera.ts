@@ -19,7 +19,7 @@ import {
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
-import { isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
   challengeBound,
@@ -724,8 +724,12 @@ async function reference(presented: unknown): Promise<HederaRef | Refusal> {
   };
 }
 
-/** The option unchanged: the hash rides in the signed body, not in the option. */
-function unplaced(option: PaymentRequirements): PaymentRequirements {
+/**
+ * The option unchanged: neither Hedera x402 pairing carries the hash inside the option. An option that carries a
+ * `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
+ */
+function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
   return option;
 }
 
