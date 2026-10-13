@@ -1,4 +1,4 @@
-**LCP profile `ap2/checkout-mandate`: the ATR hash in the merchant's `checkout_jwt`.**
+**LCP profile `ap2/checkout-mandate`: the ATR hash in the merchant's `checkout_jwt`.** This profile targets AP2 v0.2 (Checkout Mandates, `mandate.checkout.1`).
 
 1. The payload of the merchant-signed `checkout_jwt` carries `"legalContext":{"type":"sha256","value":H,"legalContextUrl":L}` and a string `id` naming the checkout. H is the SHA-256 of the ATR's exact bytes, as `0x` lowercase hex, and L is an `https` URL that serves those bytes.
 2. The shopping agent fetches L, hashes the bytes received, and compares the result with H as 32 decoded bytes. On a mismatch it does not present the checkout for approval.

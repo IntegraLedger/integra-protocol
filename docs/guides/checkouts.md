@@ -34,8 +34,8 @@ the link, and its `read` returns it as `agreement`.
 ## ACP
 
 In the [Agentic Commerce Protocol](https://www.agenticcommerce.dev), the seller creates a checkout session and the
-buyer's agent completes it with a payment handler. This package makes H the session's `id`, and puts the link beside
-it in the session's `metadata.legal_context`, in snake case:
+buyer's agent completes it with a payment handler. These pairings target ACP 2026-04-17. This package makes H the
+session's `id`, and puts the link beside it in the session's `metadata.legal_context`, in snake case:
 
 ```json no-check
 {
@@ -197,7 +197,8 @@ addresses are `https://lcp.integraledger.com/ucp/x402/2026-10-02` and
 ## AP2
 
 In [AP2](https://ap2-protocol.org), the merchant signs a `checkout_jwt` and the buyer's closed Checkout Mandate
-commits to it through `checkout_hash`, the SHA-256 of that JWT. This package puts H in the JWT's payload:
+commits to it through `checkout_hash`, the SHA-256 of that JWT. The pairing targets AP2 v0.2 (Checkout Mandates,
+`mandate.checkout.1`). This package puts H in the JWT's payload:
 
 - **Seller.** `advertise(payload, h, link, { checkout: id })` appends a `legalContext` member,
   `{"type":"sha256","value":H,"legalContextUrl":link}`, to the checkout payload whose `id` is the option's. The
@@ -252,8 +253,9 @@ mandate.checkout.1 43
 ## ACK
 
 In the payment flow of the [Agent Commerce Kit (ACK)](https://www.agentcommercekit.com), the seller answers with a
-`402` whose body carries a signed Payment Request token, and a receipt issued after settlement embeds that token. This package makes H the
-Payment Request's `id`, in LCP string form, and puts the link beside the request in the `402` body:
+`402` whose body carries a signed Payment Request token, and a receipt issued after settlement embeds that token. The
+pairing targets ACK protocol version 2025-05-04. This package makes H the Payment Request's `id`, in LCP string form,
+and puts the link beside the request in the `402` body:
 
 - **Seller.** `advertise({}, h, link, option)` returns the values the seller's stack places: `paymentRequestId`,
   `lcp:sha256:0x…`, for the token it signs, and `legalContext`, `{type, value, legalContextUrl}`, for the body beside
@@ -282,9 +284,10 @@ shows before payment, and `reference`, H's LCP string, for the seller to place i
   `agent-payer-auth` signature in the request lists `"lcp-hash"` without parameters, so whichever payer signature the
   seller's TAP recognition verifies covers H. It verifies no signature, key, window or nonce. The LCP profile
   [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) states the rules.
-- **[Mastercard Verifiable Intent](https://github.com/agent-intent/verifiable-intent).** H rides in the merchant's
-  `checkout_jwt` as its `legalContext`, and a mandate signs that JWT's SHA-256 as `checkout_hash`. `build` returns the
-  checkout mandate to sign and the payment mandate's `transactionId`, both that digest.
+- **[Mastercard Verifiable Intent](https://github.com/agent-intent/verifiable-intent).** The pairings target Verifiable
+  Intent 0.1 (draft). H rides in the merchant's `checkout_jwt` as its `legalContext`, and a mandate signs that JWT's
+  SHA-256 as `checkout_hash`. `build` returns the checkout mandate to sign and the payment mandate's `transactionId`,
+  both that digest.
   `card/mastercard-vi/immediate` reads H from the checkout mandate the user's L2 mandate references, and checks the
   `checkout_hash` and any disclosed `transaction_id`; it verifies no signature. `card/mastercard-vi/autonomous` reads
   H from the agent's L3b checkout mandate, and verifies the ES256 signatures of L2 and L3b and their `sd_hash` links,
