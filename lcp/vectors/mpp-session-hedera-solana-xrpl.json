@@ -362,6 +362,7 @@
   "expectBad": "mpp/session-action"
  },
  "SV1": {
+  "case": "build's request.salt, the salt of SV2's open: H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes in the open instruction's data are exactly H's first 8 bytes (docs/reference/api/svm.md, sessionSalt; docs/reference/pairings.md, mpp/session/solana). The draft leaves the salt to the client, a u64 written little-endian after the instruction discriminator (draft-solana-session-00 L447 and L455-459 at tempoxyz/mpp-specs 08e7dd87). expectSalt and expectSaltHex are computed with @solana/kit 8.4.0's getU64Decoder of H's first 8 bytes, Python 3.12.3's int.from_bytes(H[:8], \"little\") agreeing by hand; plants.solana.expectSaltH2 is the same of H2.",
   "expectSalt": "16919744041952114874",
   "expectSaltHex": "0xeacf018fbf1678ba"
  },
@@ -381,6 +382,7 @@
   }
  },
  "SV3": {
+  "case": "expectVoucher is solanaVoucher(SV2's channel, 100), and the ed25519-raw message buildWithin writes for a voucher of 100 on SV2's opening: the 50 bytes the draft's voucher signs, 0x56 0x01, the channel's 32 address bytes, cumulativeAmount as a u64 little-endian and expiresAt 0 as an i64 little-endian (draft-solana-session-00 L1419-1429 at tempoxyz/mpp-specs 08e7dd87), computed with @solana/kit 8.4.0's getAddressEncoder, getU64Encoder and getI64Encoder, Python 3.12.3 agreeing by hand.",
   "expectVoucher": "5601d455f91e0b567c32f668dbafb640d399c380146212206ac89f720d5767bf40be64000000000000000000000000000000",
   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
   "expectProofText": "{\"channelId\":\"FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH\",\"domain\":\"mpp-session-auth-v1\",\"payer\":\"AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9\",\"sessionChallengeId\":\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\"}",

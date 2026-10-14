@@ -1,12 +1,19 @@
 // In-channel payments (`buildWithin`) for the five MPP session pairings: a voucher, or a close's final voucher, on the
 // channel the held opening opened. Each expected digest or byte string is a vector file's value, or is recomputed here
 // from the voucher's type definition in MPP's session drafts with an independent tool: viem 2.57.4 for EIP-712,
-// @noble/curves 2.4.0 for Ed25519, @solana/kit 8.4.0 for the Solana opening's accounts, and ripple-binary-codec
-// 2.11.0 for the XRPL claim.
+// @noble/curves 2.4.0 for Ed25519, @solana/kit 8.4.0 for the Solana opening's accounts and the Solana voucher's
+// bytes, and ripple-binary-codec 2.11.0 for the XRPL claim.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58 } from "@scure/base";
-import { getCompiledTransactionMessageDecoder, getTransactionDecoder } from "@solana/kit";
+import {
+  address,
+  getAddressEncoder,
+  getCompiledTransactionMessageDecoder,
+  getI64Encoder,
+  getTransactionDecoder,
+  getU64Encoder,
+} from "@solana/kit";
 import { encodeForSigningClaim } from "ripple-binary-codec";
 import { describe, expect, it } from "vitest";
 import {
@@ -227,7 +234,11 @@ describe("mpp/session/solana: buildWithin", () => {
     return msg.staticAccounts[ix.accountIndices![4]!]!;
   })();
 
-  it("one ed25519-raw request over SV3's 50 bytes, for the opening's signer, and the draft's voucher payload", async () => {
+  // SV3's 50 bytes are the draft's voucher (draft-solana-session-00 L1419-1429) as @solana/kit's codecs write them:
+  // 0x56 0x01, the channel's address bytes, the amount as a u64 and expiresAt 0 as an i64, little-endian.
+  it("one ed25519-raw request over SV3's 50 bytes, as @solana/kit's codecs write the draft's voucher, for the opening's signer, and the draft's voucher payload", async () => {
+    const parts = [Uint8Array.of(0x56, 0x01), getAddressEncoder().encode(address(R.SV2.channel)), getU64Encoder().encode(100n), getI64Encoder().encode(0n)];
+    expect(Buffer.from(parts.flatMap((p) => Array.from(p))).toString("hex")).toBe(R.SV3.expectVoucher);
     const u = unsigned(await sessionSolana.buildWithin(w(100n), H));
     expect(u.requests.length).toBe(1);
     const r = u.requests[0]!;

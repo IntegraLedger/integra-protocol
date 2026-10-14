@@ -12,7 +12,11 @@ import {
   blockhash,
   compileTransactionMessage,
   createTransactionMessage,
+  getAddressEncoder,
   getCompiledTransactionMessageEncoder,
+  getI64Encoder,
+  getU64Decoder,
+  getU64Encoder,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -289,7 +293,11 @@ describe("mpp/session/solana", () => {
   const wire = Uint8Array.from(Buffer.from(V.SV2.wireBase64, "base64"));
   const open = (transaction: string, channelId = V.SV2.channel) => cred(C_S, { action: "open", channelId, transaction });
 
-  it("SV1: the salt", () => {
+  // SV1's salt is @solana/kit 8.4.0's u64 little-endian decoding of H's first 8 bytes, the open's u64 salt
+  // (draft-solana-session-00 L447 and L455-459); sessionSalt, and build's request.salt below, are held to it.
+  it("SV1: the salt, as @solana/kit decodes H's first 8 bytes as a little-endian u64", () => {
+    const salt = getU64Decoder().decode(Buffer.from(H.slice(2, 18), "hex"));
+    expect([salt.toString(), `0x${salt.toString(16)}`]).toEqual([V.SV1.expectSalt, V.SV1.expectSaltHex]);
     expect(sessionSalt(H).toString()).toBe(V.SV1.expectSalt);
     expect(`0x${sessionSalt(H).toString(16)}`).toBe(V.SV1.expectSaltHex);
   });
@@ -400,7 +408,11 @@ describe("mpp/session/solana", () => {
     expect(await svmLocate(ref, readerOf(["other", "opening"], 101n), H, status)).toEqual({ complete: false });
   });
 
-  it("SV3: the voucher bytes, the session proof, and boundWithin of use and voucher", async () => {
+  // SV3's voucher is the draft's 50 bytes (draft-solana-session-00 L1419-1429) as @solana/kit 8.4.0's codecs write
+  // them; solanaVoucher is held to them byte for byte, as buildWithin's message is in mpp-session-within.test.ts.
+  it("SV3: the voucher bytes, as @solana/kit's codecs write the draft's voucher, the session proof, and boundWithin of use and voucher", async () => {
+    const parts = [Uint8Array.of(0x56, 0x01), getAddressEncoder().encode(address(V.SV2.channel)), getU64Encoder().encode(100n), getI64Encoder().encode(0n)];
+    expect(hex(Uint8Array.from(parts.flatMap((p) => Array.from(p))))).toBe(V.SV3.expectVoucher);
     expect(hex(solanaVoucher(V.SV2.channel, 100n) as Uint8Array)).toBe(V.SV3.expectVoucher);
     const proof = sessionProof({ channelId: V.SV2.channel, payer: V.SV3.payer, challengeId: V.fixed.MV1 });
     expect(new TextDecoder().decode(proof)).toBe(V.SV3.expectProofText);
@@ -483,6 +495,7 @@ describe("mpp/session/solana", () => {
     const w = Uint8Array.from(Buffer.from(V.plants.solana.wireBase64, "base64"));
     const d = sha256(w);
     expect(d.startsWith(V.plants.solana.expectWireSha256Prefix) && d.endsWith(V.plants.solana.expectWireSha256Suffix)).toBe(true);
+    expect(getU64Decoder().decode(Buffer.from(V.fixed.H2.slice(2, 18), "hex")).toString()).toBe(V.plants.solana.expectSaltH2);
     expect(sessionSalt(V.fixed.H2).toString()).toBe(V.plants.solana.expectSaltH2);
     expect(await sessionSolana.bound(open(V.plants.solana.wireBase64, V.plants.solana.channel))).toEqual(refused(V.plants.solana.expect));
     const use = cred(C_S, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.plants.solana.useWrongChallengeId, payer: V.SV3.payer, signature: "x" } });
