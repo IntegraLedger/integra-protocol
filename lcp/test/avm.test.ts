@@ -400,6 +400,26 @@ describe("x402-exact-algorand.json", () => {
     expect([r.h, r.link, r.offer.options]).toEqual([H, V.fixed.link, [O]]);
   });
 
+  // build writes the suggested parameters' genesis id as each transaction's gen, a msgpack string. RFC 3629 §3
+  // excludes U+D800 to U+DFFF from UTF-8, so a genesis id holding a lone surrogate, short or long, is refused; one
+  // holding other characters outside ASCII, a surrogate pair among them, is written as given, and bound reads H.
+  it("a genesis id holding a lone surrogate is refused, and other text is written as given", async () => {
+    const build = (genesisId: string) =>
+      exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: { ...params, genesisId } }, H);
+    for (const genesisId of ["testnet-v1.\ud800", "\udc00testnet-v1.0", `testnet-v1.0${"x".repeat(60)}\ud83d`]) {
+      expect(await build(genesisId), JSON.stringify(genesisId)).toEqual({ refused: true, code: "avm/option-malformed" });
+    }
+    for (const genesisId of [V.fixed.params.genesisId, "testnet-v1.0\u00e9", "testnet-v1.0\ud83d\ude00"]) {
+      const u = await build(genesisId);
+      if ("refused" in u) throw new Error(u.code);
+      const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
+      if ("refused" in payment) throw new Error(payment.code);
+      const entry = Buffer.from(payment.payload.paymentGroup[1]!, "base64");
+      expect(decodeSignedTransaction(entry).txn.genesisID).toBe(genesisId);
+      expect(await exactAvm.bound(payment)).toBe(H);
+    }
+  });
+
   it("a genesis hash of another network is refused", async () => {
     const other = { ...params, genesisHash: "wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=" };
     expect(await exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: other }, H)).toEqual({

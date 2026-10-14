@@ -206,7 +206,9 @@ function urlSafe(s: string): string {
 
 /**
  * The asset transfer the payer signs, with the hash's LCP string as its note; with the option's fee payer, grouped
- * after that fee payer's zero payment, which carries both fees. Without algosdk, `avm/peer-missing`.
+ * after that fee payer's zero payment, which carries both fees. The suggested parameters' genesis id is written as each
+ * transaction's `gen`, a msgpack string, so one holding a lone surrogate, which UTF-8 cannot encode, is
+ * `avm/option-malformed`: `build` writes no string `bound` refuses. Without algosdk, `avm/peer-missing`.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
@@ -226,6 +228,7 @@ async function build(
     typeof pr.minFee !== "bigint" ||
     typeof pr.feePerByte !== "bigint" ||
     typeof pr.genesisId !== "string" ||
+    !pr.genesisId.isWellFormed() ||
     pr.firstValid < 0n ||
     pr.minFee < 0n ||
     pr.feePerByte < 0n
