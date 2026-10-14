@@ -7,7 +7,7 @@
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import { msgpackWithinCaps, type AvmPaymentPayload } from "./internal/avm.js";
+import { readEntry, type AvmPaymentPayload } from "./internal/avm.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -90,8 +90,9 @@ const MAX_TXN_LIFE = 1000n;
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const ENCODER = new TextEncoder();
 /**
- * The deepest nesting of msgpack arrays and maps in a signed transaction, the outermost container being level 1. An
- * Algorand signed transaction nests three (the signed transaction, its transaction, and a map or array inside that).
+ * The deepest nesting of msgpack arrays and maps `avmCarrier` reads in a payment entry, the outermost container being
+ * level 1. algod's signed transaction nests at most 10 (a state proof's reveal, down to a byte string written as an
+ * array of numbers), so the cap refuses no entry algod decodes.
  */
 export const MSGPACK_MAX_DEPTH = 32;
 
@@ -147,15 +148,17 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 /**
- * The payment transaction of an x402 Algorand payload: `paymentGroup[paymentIndex]`, decoded as a signed asset
- * transfer whose note is an LCP string. Gives the hash, the transaction id and the last valid round. The entry is
- * decoded only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep whose every string, each map key
- * included, is well-formed UTF-8 (RFC 3629) and, when longer than 200 bytes, does not begin with the byte-order mark
- * EF BB BF; any other entry is `avm/txn-malformed`. The msgpack specification leaves a string's invalid bytes to each
- * decoder, and algosdk's reads them as other text without refusing them, keeps short map keys in a cache shared across
- * calls, and drops a leading mark from a string longer than 200 bytes; the check comes first, so each answer is a
- * function of the entry's bytes alone, and the transaction it reads is the one those bytes spell. Without algosdk,
- * `avm/peer-missing`.
+ * The payment transaction of an x402 Algorand payload: `paymentGroup[paymentIndex]`, read as a signed asset transfer
+ * whose note is an LCP string. Gives the hash, the transaction id and the last valid round. On the x402 path the entry
+ * has two readers: the facilitator decodes it, and algod decodes the bytes the facilitator submits, which are the
+ * entry's own. The entry is read only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep, algod's
+ * decoder takes it as a signed transaction of a type algod knows with no member of another type set, the
+ * facilitator's decoder takes it as an asset transfer, and both read the same signed transaction: their canonical
+ * encodings are equal. Any other entry is `avm/txn-malformed`, and one algod reads as another type is `avm/not-axfer`.
+ * So a repeated key, keys out of order, a member written at its default, an integer or length in a longer format than
+ * it needs, a nil member, or a binary and a string in each other's place reads as algod reads it, and the transaction
+ * id is the one algod computes, from the transaction's canonical encoding. Each answer is a function of the entry's
+ * bytes alone. Without algosdk, `avm/peer-missing`.
  */
 export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
   if (sdk === null) return refusal("avm/peer-missing");
@@ -167,24 +170,20 @@ export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastVal
   const entry = group[i];
   if (typeof entry !== "string" || entry.length > MAX_ENTRY) return refusal("avm/txn-malformed");
   const bytes = fromBase64(entry);
-  if (bytes === null || !msgpackWithinCaps(bytes, MSGPACK_MAX_DEPTH)) return refusal("avm/txn-malformed");
-  let txn: Algosdk.Transaction;
-  try {
-    txn = sdk.decodeSignedTransaction(bytes).txn;
-  } catch {
-    return refusal("avm/txn-malformed");
-  }
-  if (txn.type !== sdk.TransactionType.axfer) return refusal("avm/not-axfer");
-  if (txn.note.length > MAX_NOTE) return refusal("avm/txn-malformed");
+  if (bytes === null) return refusal("avm/txn-malformed");
+  const read = readEntry(bytes, MSGPACK_MAX_DEPTH);
+  if (read === "malformed") return refusal("avm/txn-malformed");
+  if (read === "not-axfer") return refusal("avm/not-axfer");
+  if (read.note.length > MAX_NOTE) return refusal("avm/txn-malformed");
   let note: string;
   try {
-    note = UTF8.decode(txn.note);
+    note = UTF8.decode(read.note);
   } catch {
     return refusal("avm/note-not-lcp");
   }
   const h = fromLcpString(note);
   if (h === null) return refusal("avm/note-not-lcp");
-  return { h, txid: txn.txID(), lastValid: txn.lastValid };
+  return { h, txid: read.txid, lastValid: read.lastValid };
 }
 
 function advertise(
@@ -210,8 +209,7 @@ function urlSafe(s: string): string {
  * The asset transfer the payer signs, with the hash's LCP string as its note; with the option's fee payer, grouped
  * after that fee payer's zero payment, which carries both fees. The suggested parameters' genesis id is written as each
  * transaction's `gen`, a msgpack string, so one holding a lone surrogate, which UTF-8 cannot encode, is
- * `avm/option-malformed`, and so is one whose UTF-8 is longer than 200 bytes and begins with the byte-order mark,
- * which algosdk's decoder drops: each entry is held to the scan `avmCarrier` runs, so `build` writes no string `bound`
+ * `avm/option-malformed`. The payment entry is read as `avmCarrier` reads it, so `build` writes no payment `bound`
  * refuses. Without algosdk, `avm/peer-missing`.
  */
 async function build(
@@ -289,10 +287,10 @@ async function build(
   } catch {
     return refusal("avm/option-malformed");
   }
-  if (group.some((txn) => !msgpackWithinCaps(sdk.encodeMsgpack(new sdk.SignedTransaction({ txn })), MSGPACK_MAX_DEPTH))) {
+  const payment = group[paymentIndex]!;
+  if (typeof readEntry(sdk.encodeMsgpack(new sdk.SignedTransaction({ txn: payment })), MSGPACK_MAX_DEPTH) !== "object") {
     return refusal("avm/option-malformed");
   }
-  const payment = group[paymentIndex]!;
   return {
     request: { kind: "algorand-txn", bytes: payment.bytesToSign() },
     complete(signature: Uint8Array): AvmPaymentPayload | Refusal {

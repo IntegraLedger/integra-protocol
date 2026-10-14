@@ -52,9 +52,6 @@ const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (type
 
 /** How V3.refusals ends the case of each row that writes a string that is not UTF-8. */
 const NOT_UTF8 = "a string that is not well-formed UTF-8 (RFC 3629 §4)";
-/** How V3.refusals ends the case of the row whose gen begins with the byte-order mark. */
-const MARKED =
-  "a string longer than 200 bytes that begins with the byte-order mark EF BB BF, which algosdk 3.8.0's decoder reads without the mark";
 const bytesOf = (h: string) => Buffer.from(h.replaceAll(" ", ""), "hex");
 /**
  * V2's payment entry, the msgpack map {sig, txn}, edited by hand (msgpack specification's formats): one span of its
@@ -77,8 +74,9 @@ const msgpackStr = (text: string) => {
 /** "gen": "testnet-v1.0" in V2's payment transaction. */
 const GEN = "a367656e ac 746573746e65742d76312e30";
 /**
- * Four places for a msgpack string in V2's payment entry: a last member's key and a last member's value in the entry, a
- * last member's key in the transaction, and an element of an array in the transaction.
+ * Four places for a msgpack string in V2's payment entry, each in a member algod does not know: a last member's key and
+ * a last member's value in the entry, a last member's key in the transaction, and an element of an array in the
+ * transaction.
  */
 const ENTRY_PLACES: Record<string, (s: string) => Buffer> = {
   "the entry's key": (s) => withMember(`${s} 05`),
@@ -197,12 +195,10 @@ describe("x402-exact-algorand.json", () => {
     expect(wellFormedUtf8(bytesOf("746573746e65742d76312e30"))).toBe(true);
   });
 
-  // algosdk 3.8.0 decodes msgpack with algorand-msgpack 1.1.0, which keeps each map key of up to 16 bytes in a cache
-  // keyed by the key's bytes for the life of the process, and reads a lead byte at a string's end together with the
-  // bytes after the string. Each pair below is V2's payment entry with one last member keyed by "si" or "msi" and a
-  // two-byte lead (C1) that the key's end cuts short, its value 5 in one entry and "abcdefg" in the other. The pairs are
-  // presented in opposite orders, then each pair again in the other order: every answer is avm/txn-malformed, the
-  // answer for a key RFC 3629 §4's syntax refuses, whatever the process decoded before.
+  // The reader keeps nothing from one entry to the next. Each pair below is V2's payment entry with one last member
+  // keyed by "si" or "msi" and a two-byte lead (C1) that the key's end cuts short, its value 5 in one entry and
+  // "abcdefg" in the other: a member algod does not know. The pairs are presented in opposite orders, then each pair
+  // again in the other order, and every answer is avm/txn-malformed.
   it("an entry's answer does not depend on what the process decoded before it", async () => {
     const payment = await completed();
     const refused = { refused: true, code: "avm/txn-malformed" };
@@ -218,11 +214,15 @@ describe("x402-exact-algorand.json", () => {
     expect(answers).toEqual(Array.from({ length: 8 }, () => [refused, refused]));
   });
 
-  // One string of each form RFC 3629 §4's syntax refuses (an overlong t, the surrogate U+D800, U+110000 above
-  // U+10FFFF, a two-byte lead the string's end cuts short, a lone continuation byte, and a str 8 of 201 bytes holding
-  // C1), each after an x, in the four ENTRY_PLACES. Beside them, strings of the boundary code points the syntax takes,
-  // in the same places, give the file's H.
-  it("bound and reference refuse a string that is not UTF-8 wherever it sits in the entry", async () => {
+  // A string's bytes are judged only where the member is a string. The x402 facilitator reads every msgpack string as
+  // bytes, and a string member's bytes (gen) as UTF-8 text, a sequence that is not UTF-8 becoming U+FFFD; algod reads
+  // them as bytes. One string of each form RFC 3629 §4's syntax refuses (an overlong t, the surrogate U+D800, U+110000
+  // above U+10FFFF, a two-byte lead the string's end cuts short, a lone continuation byte, and a str 8 of 201 bytes
+  // holding C1), each after an x, is refused as gen, where the two readers read different text, and in each of the
+  // four ENTRY_PLACES, a member algod does not know. Strings of the boundary code points the syntax takes, the
+  // byte-order mark among them, read as gen with the file's H. The same ill-formed bytes written as a str in place of
+  // the lease, a 32-byte member, are read as bytes by both and give H.
+  it("a string's bytes are judged where the member is a string, and read as bytes where it is not", async () => {
     const payment = await completed();
     const presentedWith = (entry: Buffer) => ({
       ...payment,
@@ -232,57 +232,22 @@ describe("x402-exact-algorand.json", () => {
     const wellFormed = ["78 c280", "78 dfbf", "78 e0a080", "78 ed9fbf", "78 ee8080", "78 efbbbf", "78 f0908080", "78 f48fbfbf"];
     for (const text of illFormed) expect(wellFormedUtf8(bytesOf(text)), text).toBe(false);
     for (const text of wellFormed) expect(wellFormedUtf8(bytesOf(text)), text).toBe(true);
-    for (const [place, at] of Object.entries(ENTRY_PLACES)) {
+    const places: Record<string, (s: string) => Buffer> = { ...ENTRY_PLACES, gen: (str) => replaced(GEN, `a367656e ${str}`) };
+    for (const [place, at] of Object.entries(places)) {
       for (const text of illFormed) {
         const presented = presentedWith(at(msgpackStr(text)));
         const label = `${place}: ${text.slice(0, 16)}`;
         expect(await exactAvm.bound(presented), label).toEqual({ refused: true, code: "avm/txn-malformed" });
         expect(await exactAvm.reference(presented), label).toEqual({ refused: true, code: "avm/txn-malformed" });
       }
-      for (const text of wellFormed) {
-        expect(await exactAvm.bound(presentedWith(at(msgpackStr(text)))), `${place}: ${text}`).toBe(V.V3.expectBound);
-      }
     }
-  });
-
-  // algosdk 3.8.0 decodes msgpack with algorand-msgpack 1.1.0, which reads a string of more than 200 bytes with a
-  // TextDecoder that is not fatal and drops a leading byte-order mark (its src/utils/utf8.ts:160-177), and a shorter one
-  // with its own reader, which keeps the mark. The row whose case ends in MARKED is V2's payment entry with gen written
-  // as the mark and 198 x, 201 bytes, which algosdk reads as 198 x, and is avm/txn-malformed. The same string in each of
-  // the four ENTRY_PLACES is refused, and the mark with 197 x, 200 bytes, which algosdk reads with its mark, gives H.
-  it("V3: a string longer than 200 bytes that begins with a byte-order mark is refused wherever it sits in the entry", async () => {
-    const [row] = rowsOf(
-      V.V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[]; expect: string }[],
-      "x402-exact-algorand.json V3.refusals",
-      {
-        exact: 1,
-        keep: ["the row whose gen begins with the byte-order mark", (r) => r.case.endsWith(MARKED)],
-        leave: [
-          "every other row, whose note, index, group, member or encoding is refused; the test above runs every row through avmCarrier and bound",
-          (r) => !r.case.endsWith(MARKED),
-        ],
-      },
-    );
-    const marked = (xs: number) => `efbbbf ${"78".repeat(xs)}`;
-    const entry = replaced(GEN, `a367656e d9 c9 ${marked(198)}`);
-    expect([row!.paymentIndex, row!.paymentGroup, row!.expect]).toEqual([
-      1,
-      [V.V2.expectPaymentGroup[0], entry.toString("base64")],
-      "avm/txn-malformed",
-    ]);
-    expect(wellFormedUtf8(bytesOf(marked(198)))).toBe(true);
-    expect(decodeSignedTransaction(entry).txn.genesisID).toBe("x".repeat(198));
-    expect(decodeSignedTransaction(replaced(GEN, `a367656e d9 c8 ${marked(197)}`)).txn.genesisID).toBe(`\ufeff${"x".repeat(197)}`);
-    const payment = await completed();
-    const presentedWith = (e: Buffer) => ({
-      ...payment,
-      payload: { paymentIndex: 1, paymentGroup: [V.V2.expectPaymentGroup[0], e.toString("base64")] },
-    });
-    for (const [place, at] of Object.entries(ENTRY_PLACES)) {
-      const presented = presentedWith(at(msgpackStr(marked(198))));
-      expect(await exactAvm.bound(presented), place).toEqual({ refused: true, code: "avm/txn-malformed" });
-      expect(await exactAvm.reference(presented), place).toEqual({ refused: true, code: "avm/txn-malformed" });
-      expect(await exactAvm.bound(presentedWith(at(msgpackStr(marked(197))))), place).toBe(V.V3.expectBound);
+    for (const text of wellFormed) {
+      expect(await exactAvm.bound(presentedWith(replaced(GEN, `a367656e ${msgpackStr(text)}`))), `gen: ${text}`).toBe(V.V3.expectBound);
+    }
+    for (const text of illFormed.slice(0, 5)) {
+      const lease = Buffer.concat([bytesOf(text), Buffer.alloc(32 - bytesOf(text).length, 0x78)]);
+      const entry = withTxnMember(`a26c78 ${msgpackStr(lease.toString("hex"))}`);
+      expect(await exactAvm.bound(presentedWith(entry)), `lx: ${text}`).toBe(V.V3.expectBound);
     }
   });
 
@@ -448,26 +413,32 @@ describe("x402-exact-algorand.json", () => {
   });
 
   // build writes the suggested parameters' genesis id as each transaction's gen, a msgpack string. RFC 3629 §3
-  // excludes U+D800 to U+DFFF from UTF-8, so a genesis id holding a lone surrogate, short or long, is refused. One whose
-  // UTF-8 is the byte-order mark and 198 x, 201 bytes, is refused: algorand-msgpack 1.1.0, algosdk 3.8.0's decoder,
-  // reads a string of more than 200 bytes with a TextDecoder that drops a leading mark (its src/utils/utf8.ts:160-177).
-  // One holding other characters outside ASCII, a surrogate pair among them, the mark and 197 x (200 bytes), or x, the
-  // mark and 197 x (201 bytes), is written as given, and bound reads H.
-  it("a genesis id holding a lone surrogate, or of more than 200 bytes that begins with the mark, is refused, and other text is written as given", async () => {
+  // excludes U+D800 to U+DFFF from UTF-8, so a genesis id holding a lone surrogate, short or long, is refused. One
+  // holding other characters outside ASCII, a surrogate pair among them, the byte-order mark and 197 or 198 x, or x,
+  // the mark and 197 x, is written as given, its UTF-8 in the entry, and bound reads H.
+  it("a genesis id holding a lone surrogate is refused, and other text is written as given", async () => {
     const build = (genesisId: string) =>
       exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: { ...params, genesisId } }, H);
-    const refused = ["testnet-v1.\ud800", "\udc00testnet-v1.0", `testnet-v1.0${"x".repeat(60)}\ud83d`, `\ufeff${"x".repeat(198)}`];
+    const refused = ["testnet-v1.\ud800", "\udc00testnet-v1.0", `testnet-v1.0${"x".repeat(60)}\ud83d`];
     for (const genesisId of refused) {
       expect(await build(genesisId), JSON.stringify(genesisId)).toEqual({ refused: true, code: "avm/option-malformed" });
     }
-    const written = [V.fixed.params.genesisId, "testnet-v1.0\u00e9", "testnet-v1.0\ud83d\ude00", `\ufeff${"x".repeat(197)}`, `x\ufeff${"x".repeat(197)}`];
+    const written = [
+      V.fixed.params.genesisId,
+      "testnet-v1.0\u00e9",
+      "testnet-v1.0\ud83d\ude00",
+      `\ufeff${"x".repeat(197)}`,
+      `\ufeff${"x".repeat(198)}`,
+      `x\ufeff${"x".repeat(197)}`,
+    ];
     for (const genesisId of written) {
       const u = await build(genesisId);
       if ("refused" in u) throw new Error(u.code);
       const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
       if ("refused" in payment) throw new Error(payment.code);
       const entry = Buffer.from(payment.payload.paymentGroup[1]!, "base64");
-      expect(decodeSignedTransaction(entry).txn.genesisID).toBe(genesisId);
+      const gen = Buffer.from(msgpackStr(Buffer.from(genesisId, "utf8").toString("hex")), "hex");
+      expect(entry.includes(Buffer.concat([Buffer.from("a367656e", "hex"), gen])), JSON.stringify(genesisId)).toBe(true);
       expect(await exactAvm.bound(payment)).toBe(H);
     }
   });
