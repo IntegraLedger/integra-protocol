@@ -29,8 +29,10 @@
   "expectAccountKeychain": "0xaaaaaaaa00000000000000000000000000000000"
  },
  "TS1": {
+  "case": "The v2 opening's call to the TIP-20 channel reserve: open(address,address,address,uint96,bytes32,address), constants.OPEN_V2, of fixed.recipient as payee, the zero address as operator (the challenge names none), fixed.pathUSD as token, fixed.deposit, fixed.H as salt and the zero address as authorizedSigner, in the order of viem 2.57.4's tempo Abis.tip20ChannelReserve open (payee, operator, token, deposit, salt, authorizedSigner) and of L1's live open call. expectCalldata is computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of OPEN_V2 followed by encode of its argument types",
   "expectLength": 196,
-  "expectSelector": "0xedc53b00"
+  "expectSelector": "0xedc53b00",
+  "expectCalldata": "0xedc53b00000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
  },
  "TS2": {
   "wire": "0x76 ‖ rlp([42431, 1, 2, 200000, [[escrow, 0, TS1]], [], 2^256−1, 0, 1790000060, \"\", pathUSD, \"\", [], signature]), the signature r ‖ s ‖ v with v 27 or 28",
@@ -73,7 +75,9 @@
   }
  },
  "TS5": {
+  "case": "The v1 opening, on the TempoStreamChannel escrow fixed.escrowV1, and its channel id, voucher and close reference. expectOpenCalldata is the opening's call to the escrow: open(address,address,uint128,bytes32,address), constants.OPEN_V1 (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L429-435, open(payee, token, deposit, salt, authorizedSigner)), of fixed.recipient, fixed.pathUSD, fixed.deposit, fixed.H and the zero address, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of OPEN_V1 followed by encode of its argument types",
   "expectChannelId": "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84",
+  "expectOpenCalldata": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000020c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000",
   "expectVoucher": {
    "prefix": "0x6032c3bd",
    "suffix": "8fafde"

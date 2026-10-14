@@ -21,7 +21,7 @@ import {
   type Hex as ViemHex,
 } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
-import { Transaction as TempoTransaction } from "viem/tempo";
+import { Abis as TempoAbis, Transaction as TempoTransaction } from "viem/tempo";
 import { TRANSFER_TOPIC, transferDigest, type EvmLog, type EvmReader } from "../src/evm.js";
 import { KEY_AUTHORIZED_TOPIC } from "../src/internal/tempo.js";
 import {
@@ -374,11 +374,27 @@ describe("mpp-session-tempo.json", () => {
     expect(isAddress(ACCOUNT_KEYCHAIN)).toBe(true);
   });
 
-  it("TS1-TS4: the v2 open, its wire, nonce hash, channel id, vouchers and bound", async () => {
+  // TS1.expectCalldata is eth-abi 6.0.0's open(address,address,address,uint96,bytes32,address) in the order of viem
+  // 2.57.4's tempo Abis.tip20ChannelReserve, whose encodeFunctionData re-derives it here; build's whole funding is held
+  // to it.
+  it("TS1-TS4: the v2 open, byte for byte as eth-abi and viem's channel reserve ABI encode it, its wire, nonce hash, channel id, vouchers and bound", async () => {
+    expect(
+      encodeFunctionData({
+        abi: TempoAbis.tip20ChannelReserve,
+        functionName: "open",
+        args: [f.recipient.toLowerCase(), ZERO, f.pathUSD, deposit, H, ZERO],
+      }),
+    ).toBe(T.TS1.expectCalldata);
     const ch = placed(V2);
     const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+    expect(u.funding).toEqual({
+      kind: "tempo-call",
+      chainId: 42431,
+      call: { to: f.escrowV2, data: T.TS1.expectCalldata },
+      validBefore: 1790000060,
+      broadcast: false,
+    });
     if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
-    expect(u.funding).toMatchObject({ chainId: 42431, call: { to: f.escrowV2 }, validBefore: 1790000060, broadcast: false });
     const data = u.funding.call.data;
     expect(toBytes(data).length).toBe(T.TS1.expectLength);
     expect(data.slice(0, 10)).toBe(T.TS1.expectSelector);
@@ -446,11 +462,25 @@ describe("mpp-session-tempo.json", () => {
     expect(expiringNonceHash(toBytes(signed), f.payer)).not.toBe(expected);
   });
 
-  it("TS5: v1's channel id and voucher", async () => {
+  // TS5.expectOpenCalldata is eth-abi 6.0.0's open(address payee, address token, uint128 deposit, bytes32 salt, address
+  // authorizedSigner), the v1 escrow's (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, L429-435); viem 2.57.4's
+  // encodeFunctionData re-derives it here, and build's whole funding is held to it.
+  it("TS5: v1's open, byte for byte as eth-abi and viem encode it, channel id and voucher", async () => {
+    const v1Open = parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]);
+    expect(encodeFunctionData({ abi: v1Open, functionName: "open", args: [f.recipient.toLowerCase(), f.pathUSD, deposit, H, ZERO] })).toBe(
+      T.TS5.expectOpenCalldata,
+    );
     expect(evmChannelId({ payer: f.payer, payee: f.recipient, token: f.pathUSD, salt: H, authorizedSigner: ZERO, escrow: f.escrowV1, chainId: 42431 }))
       .toBe(T.TS5.expectChannelId);
     const ch = placed(V1);
     const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+    expect(u.funding).toEqual({
+      kind: "tempo-call",
+      chainId: 42431,
+      call: { to: f.escrowV1, data: T.TS5.expectOpenCalldata },
+      validBefore: 1790000060,
+      broadcast: false,
+    });
     if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
     expect(u.funding.call.data.slice(0, 10)).toBe(OPEN_V1_SELECTOR);
     expect(toBytes(u.funding.call.data).length).toBe(164);
