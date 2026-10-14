@@ -801,8 +801,10 @@ async function xrplStatusOf(
  * Zero-party: the one LCP memo of the opening, read by its signed blob, when a validated ledger holds the transaction
  * with `tesSUCCESS` as a `PaymentChannelCreate`, as `status` settles it. Not found is `xrpl/not-found`; not yet
  * validated is `xrpl/not-validated`; another result is `xrpl/not-success`; another type is `xrpl/not-channel-create`.
- * A ref whose `transaction` is not 64 hex digits is `xrpl/wrong-reader`, with nothing read; the transaction and its
- * blob are looked up in upper case, as `status` looks the transaction up. Two calls.
+ * The blob must be that transaction's: a blob that does not decode, whose hash is not the transaction's, or whose
+ * `TransactionType` is not the one the validated answer gives is `xrpl/unreadable`, an answer out of the reader's
+ * documented form; a codec that cannot be loaded is `xrpl/peer-missing`. A ref whose `transaction` is not 64 hex digits is `xrpl/wrong-reader`, with nothing read; the
+ * transaction and its blob are looked up in upper case, as `status` looks the transaction up. Two calls.
  */
 async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, reader: XrplReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("xrpl/wrong-reader");
@@ -827,8 +829,8 @@ async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, r
   }
   if (blob === null) return refusal("xrpl/not-found");
   const decoded = await decodeBlob(blob);
-  if (isRefusal(decoded)) return decoded;
-  if (decoded.tx.TransactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
+  if (isRefusal(decoded)) return decoded.code === "xrpl/peer-missing" ? decoded : refusal("xrpl/unreadable");
+  if (decoded.hash !== transaction || decoded.tx.TransactionType !== landed.transactionType) return refusal("xrpl/unreadable");
   return xrplLcpMemo(decoded.tx);
 }
 

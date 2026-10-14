@@ -455,7 +455,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/not-validated` | **Read to repeat.** The XRPL transaction the reference, or an MPP XRPL `hash` credential, names is not yet in a validated ledger. |
 | `xrpl/peer-missing` | The optional peer dependency `ripple-binary-codec` cannot be loaded to decode a blob. |
 | `xrpl/read-first` | An MPP XRPL `hash` credential carries no blob yet; the seller reads it by hash before `bound`. |
-| `xrpl/unreadable` | **Read to repeat.** The XRPL reader threw or returned a response that is not well formed. |
+| `xrpl/unreadable` | **Read to repeat.** The XRPL reader threw or returned a response that is not well formed, or, to the MPP XRPL session's `recover`, returned a signed blob that is not the validated transaction's: one that does not decode, whose hash is not the transaction's, or whose `TransactionType` is not the one the validated answer gives. |
 | `xrpl/wrong-reader` | The XRPL reader answers for a different network than the reference or challenge names, or the reference given to `recover` names a `transaction` that is not 64 hex digits. |
 
 ## hedera

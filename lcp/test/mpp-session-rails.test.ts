@@ -595,6 +595,32 @@ describe("mpp/session/xrpl", () => {
     }
   });
 
+  // A transaction's identifying hash is SHA-512Half of the prefix 54584E00 ("TXN\0") and its signed binary (xrpl.org,
+  // "Transaction Common Fields": hash; "Basic Data Types": Hashes), computed here with node:crypto; the `tx` method with
+  // `binary: true` answers the signed blob of the transaction it names (xrpl.org, "tx"). A blob that does not decode,
+  // that hashes to another transaction, or whose TransactionType is not the validated answer's, is not that
+  // transaction's blob: an answer out of the reader's documented form, a read to repeat.
+  it("XS4: recover refuses a blob that is not the validated transaction's as xrpl/unreadable", async () => {
+    const C = JSON.parse(readFileSync(new URL("../vectors/mpp-charge-xrpl.json", import.meta.url), "utf8"));
+    const txHash = (blob: string) =>
+      createHash("sha512").update(Buffer.from(`54584E00${blob}`, "hex")).digest().subarray(0, 32).toString("hex").toUpperCase();
+    expect(txHash(V.XS2.blob)).toBe(V.XS2.expectHash);
+    const opened = V.XS4.rows[0].landed;
+    const ref = { network: "xrpl:1" as const, transaction: V.XS2.expectHash as string };
+    const unreadable = refused("xrpl/unreadable");
+    // XS2's blob one byte short does not decode.
+    expect(await sessionXrpl.recover(ref, reader(opened, V.XS2.blob.slice(0, -2)))).toEqual(unreadable);
+    // XS2's opening with a CancelAfter added is a PaymentChannelCreate carrying the same memo, under another hash.
+    const withCancel = encodeXrpl({ ...(decodeXrpl(V.XS2.blob) as object), CancelAfter: V.XS2.cancelAfter });
+    expect(txHash(withCancel)).not.toBe(V.XS2.expectHash);
+    expect(await sessionXrpl.recover(ref, reader(opened, withCancel))).toEqual(unreadable);
+    // The charge file's V3 blob is a Payment under its own hash, which the validated answer names a PaymentChannelCreate.
+    expect(txHash(C.V3.blob)).toBe(C.V3.expectReference.transaction);
+    expect(await sessionXrpl.recover({ ...ref, transaction: C.V3.expectReference.transaction }, reader(opened, C.V3.blob))).toEqual(
+      unreadable,
+    );
+  });
+
   it("build gives XS2's decoded fields other than the signature; the first claim is XS3's", async () => {
     const u = await sessionXrpl.build(
       {
