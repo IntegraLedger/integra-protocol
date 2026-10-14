@@ -83,6 +83,7 @@ import {
   withoutExtra,
   type X402Read,
 } from "./internal/x402.js";
+import { decimalBelow } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -551,12 +552,15 @@ async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned
   };
 }
 
-/** The opening's deposit authorization: exactly one of the EIP-3009 and Permit2 forms. */
+/**
+ * The opening's deposit: its amount, a decimal below 2^128, as the channel contract's `deposit` takes a `uint128`, and
+ * its authorization, exactly one of the EIP-3009 and Permit2 forms.
+ */
 function depositOf(payload: Record<string, unknown>) {
   const deposit = payload["deposit"];
-  if (!isObject(deposit) || typeof deposit["amount"] !== "string" || !DECIMAL.test(deposit["amount"])) {
-    return refusal("x402/payload-malformed");
-  }
+  if (!isObject(deposit)) return refusal("x402/payload-malformed");
+  const amount = decimalBelow(deposit["amount"], U128_LIMIT);
+  if (amount === undefined) return refusal("x402/payload-malformed");
   const auth = deposit["authorization"];
   if (!isObject(auth)) return refusal("x402/deposit-authorization");
   const e = auth["erc3009Authorization"];
@@ -565,13 +569,17 @@ function depositOf(payload: Record<string, unknown>) {
   if (e !== undefined) {
     if (!isObject(e) || typeof e["validBefore"] !== "string" || !DECIMAL.test(e["validBefore"])) return refusal("x402/payload-malformed");
     if (!isHash32(e["salt"])) return refusal("x402/payload-malformed");
-    return { amount: BigInt(deposit["amount"]), method: "eip3009" as const, settleBy: BigInt(e["validBefore"]), authSalt: e["salt"] as Hex };
+    return { amount, method: "eip3009" as const, settleBy: BigInt(e["validBefore"]), authSalt: e["salt"] as Hex };
   }
   if (!isObject(p) || typeof p["deadline"] !== "string" || !DECIMAL.test(p["deadline"])) return refusal("x402/payload-malformed");
-  return { amount: BigInt(deposit["amount"]), method: "permit2" as const, settleBy: BigInt(p["deadline"]) };
+  return { amount, method: "permit2" as const, settleBy: BigInt(p["deadline"]) };
 }
 
-/** The opening's `salt`, once its config hashes to the voucher's channel id. No signature is verified here. */
+/**
+ * The opening's `salt`, once its config hashes to the voucher's channel id. No signature is verified here. A deposit
+ * amount that is not a decimal below 2^128, the `uint128` the channel contract's `deposit` takes, is
+ * `x402/payload-malformed`, as `reference` answers it.
+ */
 async function evmBound(presented: unknown): Promise<AtrHash | Refusal> {
   const x = payloadOf(presented, EVM_ID);
   if (isRefusal(x)) return x;

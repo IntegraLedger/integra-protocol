@@ -822,10 +822,10 @@
   "expectPairing": "x402/batch-settlement/cloudflare"
  },
  "agreedRefusals": {
-  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h.",
+  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h. A row with pairing and calls runs each of those functions of that pairing on EB2 and EB3's opening, with deposit.amount replaced by depositAmount: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies.",
   "rows": [
    {
-    "case": "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal",
+    "case": "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal, or is 2^128 or more",
     "expect": "x402/payload-malformed"
    },
    {
@@ -945,6 +945,16 @@
     "pairing": "x402/batch-settlement/solana",
     "call": "build",
     "h": null,
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "EVM bound or reference of EB2 and EB3's opening, with its ERC-3009 or a Permit2 deposit authorization, whose deposit amount is 2^128, one above the largest uint128, the type of the amount the channel contract's deposit takes (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L202)",
+    "pairing": "x402/batch-settlement/eip155",
+    "calls": [
+     "bound",
+     "reference"
+    ],
+    "depositAmount": "340282366920938463463374607431768211456",
     "expect": "x402/payload-malformed"
    }
   ]
