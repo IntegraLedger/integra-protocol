@@ -51,6 +51,7 @@ import {
   channelPda,
   channelVoucherMessage,
   decodeSvmTx,
+  isCurveKey,
   isKey,
   isSolanaNetwork,
   landedTransaction,
@@ -823,9 +824,12 @@ const U64_LIMIT = 1n << 64n;
 const U32_LIMIT = 2 ** 32;
 
 /**
- * A Solana channel configuration: its keys, a decimal `u64` salt, an `openSlot` that is a safe integer of at least 0,
- * and a `withdrawDelay` that is a positive integer below 2^32, as the payment-channels program's `grace_period` is a
- * `u32` its `open` refuses as 0.
+ * A Solana channel configuration as the payment-channels program's `open` takes it (solana-foundation/payment-channels
+ * 0c07d5751c8972abf6a219570a3f39a72f46f879, the revision x402 751590a2 pins, `instructions/open.rs`): its keys, with a
+ * `payerAuthorizer` that is a point on the Ed25519 curve, since `open` refuses an authorized signer off it; a decimal
+ * `u64` salt; an `openSlot` that is a safe integer of at least 0; and a `withdrawDelay` that is a positive integer below
+ * 2^32, since `grace_period` is a `u32` that `open` refuses as 0. It does not compare the payer with the option's
+ * `extra.feePayer`, which `open` also requires to differ: that comparison is the facilitator's.
  */
 function isSvmConfig(c: unknown): c is SvmChannelConfig {
   if (!isObject(c)) return false;
@@ -833,7 +837,7 @@ function isSvmConfig(c: unknown): c is SvmChannelConfig {
   const delay = c["withdrawDelay"];
   return (
     isKey(c["payer"]) &&
-    isKey(c["payerAuthorizer"]) &&
+    isCurveKey(c["payerAuthorizer"]) &&
     isKey(c["receiver"]) &&
     (c["receiverAuthorizer"] === undefined || isKey(c["receiverAuthorizer"])) &&
     isKey(c["token"]) &&
@@ -875,8 +879,8 @@ function svmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
 
 /**
  * The channel PDA from a payment's config, which must equal its voucher's id and its channel instruction's account. A
- * config that is not one (`isSvmConfig`), such as one whose `withdrawDelay` is not a positive integer below 2^32, is
- * `x402/payload-malformed`.
+ * config that is not one (`isSvmConfig`), such as one whose `payerAuthorizer` is not a point on the Ed25519 curve or
+ * whose `withdrawDelay` is not a positive integer below 2^32, is `x402/payload-malformed`.
  */
 async function svmRef(p: unknown): Promise<{ network: string; channel: string } | Refusal> {
   const x = payloadOf(p, SVM_ID);
@@ -980,6 +984,8 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
 /**
  * The opening: the `open` transaction, then the first voucher, each for the payer or its authorizer to sign. The
  * transaction ends with two v3 Memo instructions: `extra.memo`, then x402's binding memo for `extra.receiverAuthorizer`.
+ * A `payerAuthorizer` that is not a point on the Ed25519 curve, which the program's `open` refuses as the authorized
+ * signer, is `svm/input-malformed`.
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
@@ -994,6 +1000,7 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   if (c.tokenProgram !== extra["tokenProgram"] || typeof c.deposit !== "bigint" || c.deposit <= 0n || c.deposit >= U64_LIMIT) {
     return refusal("svm/input-malformed");
   }
+  if (!isCurveKey(c.payerAuthorizer)) return refusal("svm/input-malformed");
   const feePayer = extra["feePayer"] as string;
   const channel = channelPda({
     payer: c.payer,

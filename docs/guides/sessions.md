@@ -308,9 +308,12 @@ between the contract's previous `Deposited` and the channel's own. A gift into t
 into another channel, or the payer's short deposit into it beside a deposit elsewhere, reads as failed, with the reason
 `transfer-not-found`.
 
-On `x402/batch-settlement/solana`, `bound`, `reference`, `channel.ref` and `buildWithin` read the channel configuration's
-`withdrawDelay` as the payment-channels program's `grace_period`, a `u32` that its `open` refuses as 0: a delay that is
-not a positive integer below 2^32 is refused `x402/payload-malformed`.
+On `x402/batch-settlement/solana`, `bound`, `reference`, `channel.ref` and `buildWithin` read the channel
+configuration's `withdrawDelay` as the payment-channels program's `grace_period`, a `u32` that its `open` refuses as 0:
+a delay that is not a positive integer below 2^32 is refused `x402/payload-malformed`. They read its `payerAuthorizer`
+as the program's authorized signer, which `open` refuses off the Ed25519 curve: a key whose bytes are not a point on it,
+such as a program-derived address, is refused `x402/payload-malformed`, and `build` refuses one with
+`svm/input-malformed`.
 
 An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim; one of type
 `permit2` is sent by the seller's server, which names its transaction to `status`. Both references carry `opens`: the

@@ -1051,6 +1051,25 @@
      }
     ],
     "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "Solana bound, reference, channel.ref or buildWithin with a channelConfig whose payerAuthorizer is a base58 key whose 32 bytes are not a point on the Ed25519 curve by ES10's rule: ES10's y = 2 bytes, and ES1's channel PDA, which the payment-channels program's open refuses as the authorized signer (InvalidAuthorizedSigner) (solana-foundation/payment-channels 0c07d5751c8972abf6a219570a3f39a72f46f879, the revision x402-foundation/x402 751590a2 pins in typescript/packages/mechanisms/svm/idl/payment-channels.source.json; program/payment_channels/src/instructions/open.rs L271-273; scheme_batch_settlement_svm.md L326 at x402 751590a2)",
+    "pairing": "x402/batch-settlement/solana",
+    "calls": [
+     "bound",
+     "reference",
+     "channel.ref",
+     "buildWithin"
+    ],
+    "configMembers": [
+     {
+      "payerAuthorizer": "8opHzTAnfzRpPEx21XtnrVTX28YQuCpAjcn1PczScKh"
+     },
+     {
+      "payerAuthorizer": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8"
+     }
+    ],
+    "expect": "x402/payload-malformed"
    }
   ]
  },

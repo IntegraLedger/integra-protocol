@@ -994,6 +994,15 @@ function isPoint(b: Uint8Array): boolean {
   }
 }
 
+/**
+ * True when `s` is a base58 public key whose 32 bytes are a point on the Ed25519 curve, by the rule `findPda` applies to
+ * a candidate: a key that can sign, which a program-derived address is not.
+ */
+export function isCurveKey(s: unknown): s is string {
+  const b = keyBytes(s);
+  return b !== null && isPoint(b);
+}
+
 /** The channel PDA: seeds "channel", payer, payee, mint, signer, u64le(salt), u64le(openSlot). */
 export function channelPda(a: {
   payer: string;

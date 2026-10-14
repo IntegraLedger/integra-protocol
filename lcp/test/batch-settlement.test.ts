@@ -609,7 +609,11 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
 
   it("each row carries its input in exactly one member", () => {
     for (const r of rows) expect(inputOf(r), r.case).toHaveLength(1);
-    expect(rows.filter((r) => "configMembers" in r).map((r) => r.pairing)).toEqual(["x402/batch-settlement/eip155", "x402/batch-settlement/solana"]);
+    expect(rows.filter((r) => "configMembers" in r).map((r) => r.pairing)).toEqual([
+      "x402/batch-settlement/eip155",
+      "x402/batch-settlement/solana",
+      "x402/batch-settlement/solana",
+    ]);
   });
 
   /** EB2 and EB3's opening, with its ERC-3009 and with a Permit2 deposit authorization. */
@@ -788,15 +792,23 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     }
   });
 
-  // The payment-channels program's open refuses a grace_period of 0 (GracePeriodMustBeNonZero) and takes it as a u32
+  // The payment-channels program's open refuses a grace_period of 0 (GracePeriodMustBeNonZero) and takes it as a u32,
+  // and refuses an authorized signer that is not on the Ed25519 curve (InvalidAuthorizedSigner)
   // (solana-foundation/payment-channels 0c07d5751c8972abf6a219570a3f39a72f46f879, the revision x402 751590a2 pins,
-  // program/payment_channels/src/instructions/open.rs L85, L116 and L267-269), and channelConfig.withdrawDelay is that
-  // grace_period (scheme_batch_settlement_svm.md L331 at x402 751590a2), so 1 and 2^32 - 1 are read. The delay is no
-  // seed of the channel PDA, so each configuration's channel is ES1's.
-  it("the Solana bound, reference, channel.ref and buildWithin refuse a withdrawDelay of 0 or 2^32, and read 1 and 2^32 - 1", async () => {
-    const configs = carrying("configMembers", 1, "x402/batch-settlement/solana");
+  // program/payment_channels/src/instructions/open.rs L85, L116, L267-269 and L271-273). channelConfig.withdrawDelay is
+  // that grace_period and channelConfig.payerAuthorizer that signer (scheme_batch_settlement_svm.md L326 and L331 at x402
+  // 751590a2). So the delays 1 and 2^32 - 1 are read, and ES10's y = 2 bytes, which ES10 gives as no point, and ES1's
+  // channel PDA are refused as the payer authorizer. The delay is no seed of the channel PDA, so each delay's channel is
+  // ES1's.
+  it("the Solana bound, reference, channel.ref and buildWithin refuse a withdrawDelay of 0 or 2^32 and a payerAuthorizer off the curve, and read the delays 1 and 2^32 - 1", async () => {
+    const configs = carrying("configMembers", 2, "x402/batch-settlement/solana");
+    const calls = ["bound", "reference", "channel.ref", "buildWithin"];
+    const y2 = (V.ES10.rows as { case: string; bytesHex: string; point: boolean }[]).find((r) => r.case === "y = 2")!;
+    expect(y2.point).toBe(false);
+    const offCurve = base58.encode(fromHex(y2.bytesHex));
     expect(configs.map((r) => [r.calls, r.configMembers])).toEqual([
-      [["bound", "reference", "channel.ref", "buildWithin"], [{ withdrawDelay: 0 }, { withdrawDelay: 2 ** 32 }]],
+      [calls, [{ withdrawDelay: 0 }, { withdrawDelay: 2 ** 32 }]],
+      [calls, [{ payerAuthorizer: offCurve }, { payerAuthorizer: V.ES1.channelPda }]],
     ]);
     const accepted = V.ES4.accepted as PaymentRequirements;
     const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
@@ -1068,6 +1080,9 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
         await batchSvm.build({ ...c, salt: 2n ** 64n }, H),
         await batchSvm.build({ ...c, openSlot: 2n ** 53n }, H),
         await batchSvm.build({ ...c, computeUnitLimit: 2 ** 32 }, H),
+        // ES1's channel PDA, which is not a point on the Ed25519 curve, as the payer authorizer, which the
+        // payment-channels program's open refuses (open.rs L271-273 at payment-channels 0c07d575).
+        await batchSvm.build({ ...c, payerAuthorizer: V.ES1.channelPda }, H),
         await batchSvm.buildWithin({ ...within, maxClaimableAmount: -1n }, H),
       ];
     },
