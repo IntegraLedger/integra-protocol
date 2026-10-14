@@ -19,7 +19,7 @@ Three terms carry the whole page:
 
 ## Requirements
 
-- Node.js `>=26.10.0`. Node runs the TypeScript files on this page directly, by stripping their types.
+- Node.js `>=26.11.1`. Node runs the TypeScript files on this page directly, by stripping their types.
 - An ESM project. With TypeScript, set `"module"` and `"moduleResolution"` to `"nodenext"` (or `"moduleResolution"`
   to `"bundler"`), so the package's subpath exports resolve.
 

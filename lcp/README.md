@@ -5,7 +5,7 @@ agreement payment, on the x402, MPP, checkout and card pairings this package imp
 
 [![npm](https://img.shields.io/npm/v/@integraledger/lcp)](https://www.npmjs.com/package/@integraledger/lcp)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/IntegraLedger/integra-protocol/blob/main/lcp/LICENSE)
-![Node >=26.10.0](https://img.shields.io/badge/node-%3E%3D26.10.0-brightgreen)
+![Node >=26.11.1](https://img.shields.io/badge/node-%3E%3D26.11.1-brightgreen)
 
 `@integraledger/lcp` is the reference implementation of the **Legal Context Protocol (LCP)**: the pattern in which the
 hash of the agreement's record is bound into the payment, so that where the payment the buyer approves carries the hash,
@@ -296,7 +296,7 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
 
 ## Requirements
 
-- Node.js `>=26.10.0`.
+- Node.js `>=26.11.1`.
 - ESM. TypeScript users need `"moduleResolution": "nodenext"` (or `"bundler"`) to resolve the subpath exports.
 - Cloudflare Workers, with or without the `nodejs_compat` flag, except the NEAR and TON entry points, which need it:
   they use Node's `Buffer`, and `near-api-js` loads Node's `util`. Workers turns the flag on by default from
