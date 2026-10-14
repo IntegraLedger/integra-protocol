@@ -190,7 +190,8 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
 
   // stacks-core reads a transaction's Clarity values (each function argument, and each non-fungible post-condition's
   // asset value) with `UNSANITIZED_DEPTH_CHECK` = 16 and refuses a value nested deeper, the outermost value counting 1
-  // (stacks-network/stacks-core 10474cd, clarity-types/src/types/serialization.rs and stacks-codec/src/transaction.rs).
+  // (stacks-network/stacks-core 4.0.5, clarity-types/src/types/serialization.rs:71 and :629-640, and
+  // stacks-codec/src/transaction.rs:2118 and :2487).
   // The deep values are written by hand as Clarity's serialization writes them (`some` is the byte 0x0a before its
   // value; a `uint` is 0x01 and 16 bytes), so that building them reads no stack; the transactions are left unsigned,
   // which bound does not read.
@@ -242,6 +243,99 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
       for (const text of [deepArgument(levels), deepAsset(levels)]) {
         expect(await chargeUsdcStacks.bound(credential(wire(text)))).toEqual(malformed);
         expect(await chargeUsdcStacks.reference(credential(wire(text)))).toEqual(malformed);
+      }
+    }
+  });
+
+  // stacks-core 4.0.5 (stacks-network/stacks-core d736ba0) reads a token transfer's recipient as a principal, the byte
+  // 0x05 or 0x06 and its fields (stacks-codec/src/transaction.rs:2923-2924, clarity-types/src/types/serialization.rs
+  // :289-311); a pay-to-alt coinbase's as a Clarity value that must be a principal (transaction.rs:2967-2978); and a
+  // Nakamoto coinbase's as a Clarity value that must be an optional (transaction.rs:2980-2998), reading `(some …)` of
+  // anything but a principal as no recipient, which it writes back as `none` (transaction.rs:2886-2892). Each Clarity
+  // value is read with `UNSANITIZED_DEPTH_CHECK` = 16, the outermost value counting 1 (serialization.rs:629-640), so a
+  // Nakamoto recipient's `(some …)` is its level 1. Each transaction is M4's with its payload replaced. The coinbase
+  // bytes and the VRF proof are those of stacks-core's own Nakamoto coinbase test (transaction.rs:3767-3778), a proof
+  // stacks-core parses (stacks-common/src/types/chainstate.rs:470-478). The containers are written as Clarity's
+  // serialization writes them: `some` 0x0a, `ok` 0x07, `err` 0x08, a list of one 0x0b and its length, a tuple of one
+  // 0x0c, its length and the member name `a`.
+  describe("recipients and Clarity depth as stacks-core 4.0.5 reads them", () => {
+    const m4 = V.M4.wireHex.slice(2);
+    const m4Payload = S.serializePayloadBytes(S.deserializeTransaction(Buffer.from(m4, "hex")).payload);
+    const payloadAt = m4.length - 2 * m4Payload.length;
+    // The contract call's payload type (1 byte), contract address (21), name (1 + 5), function name (1 + 8) and
+    // argument count (4) come before its first argument, M4's amount.
+    const amountAt = payloadAt + 2 * 41;
+    const amount = S.serializeCV(S.uintCV(BigInt(F.amount)));
+    const standard = S.serializeCV(S.principalCV(F.sender));
+    const contract = S.serializeCV(S.principalCV(F.contract));
+    const uint = S.serializeCV(S.uintCV(1n));
+    const coinbase = "12".repeat(32);
+    const vrf =
+      "9275df67a68c8745c0ff97b48201ee6db447f7c93b23ae24cdc2400f52fdb08a1a6ac7ec71bf9c9c76e96ee4675ebff60625af2871850104" +
+      "7bfd87b810c2d2139b73c23bd69de66360953a642c2a330a";
+    const wrap = { some: "0a", ok: "07", err: "08", list: "0b00000001", tuple: "0c000000010161" } as const;
+    const kinds = Object.keys(wrap) as (keyof typeof wrap)[];
+    /** A value `levels` deep on the wire: `levels - 1` containers of `kind`, the outermost counting 1, around `leaf`. */
+    const nest = (kind: keyof typeof wrap, levels: number, leaf: string) => wrap[kind].repeat(levels - 1) + leaf;
+    const prefix = m4.slice(0, payloadAt);
+    const transfer = (r: string) => `${prefix}00${r}${(1_000_000).toString(16).padStart(16, "0")}${"00".repeat(34)}`;
+    const payToAlt = (r: string) => `${prefix}05${coinbase}${r}`;
+    const nakamoto = (r: string) => `${prefix}08${coinbase}${r}${vrf}`;
+    const argument = (v: string) => m4.slice(0, amountAt) + v + m4.slice(amountAt + amount.length);
+    const bound = (text: string) => chargeUsdcStacks.bound(credential(Buffer.from(text, "hex")));
+    const malformed = { refused: true, code: "mpp/stacks-tx-malformed" };
+    const notH = { refused: true, code: "mpp/stacks-memo-not-h" };
+
+    it("the payloads are built as the peer writes them", () => {
+      expect(m4.slice(amountAt, amountAt + amount.length)).toBe(amount);
+      expect(vrf.length).toBe(160);
+      for (const text of [transfer(standard), payToAlt(contract), nakamoto("09"), nakamoto(`0a${standard}`)]) {
+        expect(hex(S.serializeTransactionBytes(S.deserializeTransaction(Buffer.from(text, "hex")))).slice(2)).toBe(text);
+      }
+    });
+
+    it("a principal recipient is read, and the transaction calls no transfer", async () => {
+      for (const text of [
+        transfer(standard),
+        transfer(contract),
+        payToAlt(standard),
+        payToAlt(contract),
+        nakamoto("09"),
+        nakamoto(`0a${standard}`),
+        nakamoto(`0a${contract}`),
+      ]) {
+        expect(await bound(text)).toEqual(notH);
+      }
+    });
+
+    for (const [site, text] of [
+      ["a token transfer's recipient that is a uint", transfer(uint)],
+      ["a token transfer's recipient that is none", transfer("09")],
+      ["a token transfer's recipient that is (some <principal>)", transfer(`0a${standard}`)],
+      ["a pay-to-alt coinbase's recipient that is a uint", payToAlt(uint)],
+      ["a pay-to-alt coinbase's recipient that is (some <principal>)", payToAlt(`0a${standard}`)],
+      ["a Nakamoto coinbase's recipient that is (some <uint>)", nakamoto(`0a${uint}`)],
+      ["a Nakamoto coinbase's recipient that is (some (some <principal>))", nakamoto(`0a0a${standard}`)],
+    ] as const) {
+      it(`bound refuses ${site}`, async () => {
+        expect(await bound(text)).toEqual(malformed);
+      });
+    }
+
+    for (const kind of kinds) {
+      for (const levels of [16, 17]) {
+        it(`bound refuses a token transfer's recipient nesting a principal ${levels} levels deep in ${kind} containers`, async () => {
+          expect(await bound(transfer(nest(kind, levels, standard)))).toEqual(malformed);
+        });
+        it(`bound refuses a pay-to-alt coinbase's recipient nesting a principal ${levels} levels deep in ${kind} containers`, async () => {
+          expect(await bound(payToAlt(nest(kind, levels, standard)))).toEqual(malformed);
+        });
+        it(`bound refuses a Nakamoto coinbase's (some …) nesting a principal ${levels} levels deep in ${kind} containers`, async () => {
+          expect(await bound(nakamoto(`0a${nest(kind, levels - 1, standard)}`))).toEqual(malformed);
+        });
+        it(`bound ${levels === 16 ? "reads" : "refuses"} a function argument ${levels} levels deep in ${kind} containers`, async () => {
+          expect(await bound(argument(nest(kind, levels, amount)))).toEqual(levels === 16 ? V.M4.expectBound : malformed);
+        });
       }
     }
   });
@@ -560,14 +654,18 @@ function withBigints(v: unknown): unknown {
 }
 
 // The agreedRefusals rows: M4's signed transaction with its payload replaced. The decode and re-serialisation are
-// @stacks/transactions 7.6.0's, the decoder P2 names; the rows give its outcome for payload types 7 and 8.
+// @stacks/transactions 7.6.0's, the package's Stacks decoder: rows 0 and 1 give its outcome for payload types 7 and 8.
+// Rows 2 to 13 give what stacks-core 4.0.5 reads in a token transfer's recipient (type 0), a pay-to-alt coinbase's (5),
+// a Nakamoto coinbase's (8) and a contract call's argument (2), the sources the recipient tests above name.
 describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
   const rows = rowsOf(V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", { exact: 2 });
   it("each wire is M4's up to its payload", () => {
     const m4 = S.deserializeTransaction(Buffer.from(V.M4.wireHex.slice(2), "hex"));
     const prefix = V.M4.wireHex.slice(0, V.M4.wireHex.length - 2 * S.serializePayloadBytes(m4.payload).length);
     for (const r of rows) expect(r.wireHex.startsWith(prefix), r.case).toBe(true);
-    expect(rows.map((r) => r.wireHex.slice(prefix.length, prefix.length + 2))).toEqual(["07", "08"]);
+    expect(rows.map((r) => r.wireHex.slice(prefix.length, prefix.length + 2))).toEqual(
+      ["07", "08", "00", "00", "00", "05", "05", "05", "08", "08", "08", "08", "08", "02"],
+    );
   });
   for (const r of rows) {
     it(`${r.case}: ${r.expect}`, async () => {

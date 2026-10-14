@@ -431,21 +431,28 @@ function stacksPeer(): Promise<StacksPeer | undefined> {
 type Decoded = ReturnType<StacksPeer["deserializeTransaction"]>;
 
 /**
- * The deepest a Clarity value in a transaction nests, the outermost value counting 1: stacks-core reads a
- * transaction's Clarity values with `UNSANITIZED_DEPTH_CHECK`, 16, and refuses a deeper one.
+ * The deepest a Clarity value in a transaction nests, the outermost value counting 1: stacks-core reads each function
+ * argument and each non-fungible post-condition's asset value with `UNSANITIZED_DEPTH_CHECK`, 16, and refuses a
+ * deeper one.
  */
 const MAX_CLARITY_DEPTH = 16;
 
 /**
- * True when every Clarity value the decoded transaction carries nests at most `MAX_CLARITY_DEPTH` levels: its
- * payload's function arguments or recipient, and each non-fungible post-condition's asset value. The walk keeps its own
- * list and stops at the first value past the bound.
+ * True when the decoded transaction's Clarity values are ones a Stacks node reads and writes back as the same bytes.
+ * A token transfer's or a coinbase's recipient is a principal, standard or contract: stacks-core refuses any other
+ * value there, except in a Nakamoto coinbase, where it reads `(some …)` of another value as no recipient and writes it
+ * back as `none`. Each function argument and each non-fungible post-condition's asset value nests at most
+ * `MAX_CLARITY_DEPTH` levels. The walk keeps its own list and stops at the first value past the bound.
  */
-function clarityWithinDepth(tx: Decoded, peer: StacksPeer): boolean {
+function clarityAsNodeReads(tx: Decoded, peer: StacksPeer): boolean {
   const payload = tx.payload as { functionArgs?: unknown; recipient?: unknown };
+  // The peer holds a Nakamoto coinbase's recipient as the value inside its `(some …)`, and no recipient for `none`.
+  if (payload.recipient !== undefined) {
+    const t = isObject(payload.recipient) ? payload.recipient["type"] : undefined;
+    if (t !== peer.ClarityType.PrincipalStandard && t !== peer.ClarityType.PrincipalContract) return false;
+  }
   const todo: [unknown, number][] = [];
   if (Array.isArray(payload.functionArgs)) for (const v of payload.functionArgs) todo.push([v, 1]);
-  if (payload.recipient !== undefined) todo.push([payload.recipient, 1]);
   for (const pc of tx.postConditions.values) {
     if (pc.conditionType === peer.PostConditionType.NonFungible) todo.push([pc.assetName, 1]);
   }
@@ -472,9 +479,9 @@ function clarityWithinDepth(tx: Decoded, peer: StacksPeer): boolean {
 }
 
 /**
- * H from the echoed challenge, once its transaction decodes, carries no Clarity value nested deeper than a Stacks node
- * reads, re-serialises to the same bytes and calls `transfer` with `(some H)` as its fourth argument. Nothing but that
- * argument is read.
+ * H from the echoed challenge, once its transaction decodes, holds a principal as any recipient and no Clarity value
+ * nested deeper than a Stacks node reads, re-serialises to the same bytes and calls `transfer` with `(some H)` as its
+ * fourth argument. Nothing but that argument is read.
  */
 async function stacksBinding(
   input: unknown,
@@ -498,7 +505,7 @@ async function stacksBinding(
   let tx: Decoded;
   try {
     tx = peer.deserializeTransaction(wire);
-    if (!clarityWithinDepth(tx, peer)) return refusal("mpp/stacks-tx-malformed");
+    if (!clarityAsNodeReads(tx, peer)) return refusal("mpp/stacks-tx-malformed");
     if (!equalBytes(peer.serializeTransactionBytes(tx), wire)) return refusal("mpp/stacks-tx-malformed");
   } catch {
     return refusal("mpp/stacks-tx-malformed");
