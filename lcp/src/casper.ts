@@ -205,7 +205,8 @@ export async function casperStatus(
 
 /**
  * The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`. A
- * ref whose `transaction` is not 64 hex digits is `casper/wrong-reader`, with nothing read.
+ * ref whose `transaction` is not 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
+ * `casper/wrong-reader`, with nothing read.
  */
 export async function casperRecover(
   ref: { network: CasperNetwork; asset: PackageHash; transaction: string },
@@ -213,6 +214,8 @@ export async function casperRecover(
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("casper/wrong-reader");
   if (typeof ref.transaction !== "string" || !PACKAGE.test(ref.transaction)) return refusal("casper/wrong-reader");
+  const asset: unknown = ref.asset;
+  if (typeof asset !== "string" || !PACKAGE.test(asset)) return refusal("casper/wrong-reader");
   let call: CasperCall | null;
   try {
     call = await reader.transaction(ref.transaction);

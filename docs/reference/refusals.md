@@ -556,7 +556,7 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/reverted` | The Casper transaction executed with an error. |
 | `casper/signature-malformed` | The public key or signature given to the Casper `complete` is not tagged hex of the allowed length. |
 | `casper/unreadable` | **Read to repeat.** The Casper reader threw or returned a call that is not well formed. |
-| `casper/wrong-reader` | The Casper reader answers for a different network than the reference names, or the reference given to `recover` names a `transaction` that is not 64 hex digits. |
+| `casper/wrong-reader` | The Casper reader answers for a different network than the reference names, or the reference given to `recover` names a `transaction` that is not 64 hex digits or an `asset` that is not a package hash of 64 hex digits. |
 
 ## ccd
 

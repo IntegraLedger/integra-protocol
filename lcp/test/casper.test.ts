@@ -179,6 +179,23 @@ describe("x402/exact/casper", () => {
         expect(plain(await exactCasper.status({ ...ref, ...change }, readerFor(landed.call)))).toEqual(landed.expectStatus);
       }
     });
+    // A contract package hash is 32 bytes (casper-types' PackageHash), which the option and the reference write as 64
+    // hex digits. recover reads the authorization call on that package, so a ref naming no package hash is a ref the
+    // rail cannot read: casper/wrong-reader, with nothing read, as for a transaction that is not 64 hex digits
+    // (docs/reference/refusals.md). A hash in either case is the same 32 bytes.
+    it("recover refuses a ref whose asset is not a package hash as casper/wrong-reader, with nothing read", async () => {
+      const ref = { network: V.C4.ref.network, asset: V.C4.ref.asset, transaction: V.C4.transaction };
+      const landed = V.C4.rows[0];
+      for (const asset of [undefined, null, 7, `0x${ref.asset}`, ref.asset.slice(2), `hash-${ref.asset}`]) {
+        const { reader, calls } = counting(readerFor(landed.call));
+        expect([asset, await exactCasper.recover({ ...ref, asset } as never, reader)]).toEqual([
+          asset,
+          { refused: true, code: "casper/wrong-reader" },
+        ]);
+        expect([asset, calls]).toEqual([asset, []]);
+      }
+      expect(await exactCasper.recover({ ...ref, asset: ref.asset.toUpperCase() }, readerFor(landed.call))).toEqual(landed.expectRecover);
+    });
   });
 
   it("plant: an authorization call on another package is never the settlement", async () => {
