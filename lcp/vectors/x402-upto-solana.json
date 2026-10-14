@@ -324,7 +324,7 @@
   }
  ],
  "agreedRefusals": {
-  "about": "Refusal codes the specification leaves to the implementation.",
+  "about": "Refusal codes the specification leaves to the implementation. A row with choice is build(choice, H). A row with h is build of EU3's choice, the advertised option with fixed's payer, nonce, openSlot, now, tokenProgram and blockhash as recentBlockhash, with that h.",
   "rows": [
    {
     "case": "bound when the transaction's one payment-channels instruction is not an open, or there is none",
@@ -342,6 +342,31 @@
     "case": "build with an openSlot above 2^53-1, the top of the integer range RFC 8259 §6 makes interoperable for the payload's JSON number",
     "openSlot": "9007199254740993",
     "expect": "svm/input-malformed"
+   },
+   {
+    "case": "build with a null choice",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a choice that is a string",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with EU3's choice and h abc",
+    "h": "abc",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "build with EU3's choice and h 0X followed by H's 64 hex digits",
+    "h": "0Xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "build with EU3's choice and a null h",
+    "h": null,
+    "expect": "x402/payload-malformed"
    }
   ]
  },

@@ -338,7 +338,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes the Solana specification leaves to the implementation. The TypeScript and Python implementations both apply every row but the four whose case starts with recover, which the TypeScript implementation alone applies: the Python one has no recover.",
+  "about": "Refusal codes the Solana specification leaves to the implementation. The TypeScript and Python implementations both apply every row but the four whose case starts with recover, which the TypeScript implementation alone applies: the Python one has no recover. A row with choice is build(choice, H). A row with h is build of V1's choice, the advertised option with fixed's payer, decimals, tokenProgram and blockhash as recentBlockhash, with that h.",
   "rows": [
    {
     "case": "svmCarrier (and so bound and recover) on a transaction with no top-level Memo instruction, or with two or more",
@@ -379,6 +379,31 @@
    {
     "case": "a payment whose option fails the pairing's filter",
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "build with a null choice",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a choice that is a string",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with V1's choice and h abc",
+    "h": "abc",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "build with V1's choice and h 0X followed by H's 64 hex digits",
+    "h": "0Xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "build with V1's choice and a null h",
+    "h": null,
+    "expect": "x402/payload-malformed"
    }
   ]
  },

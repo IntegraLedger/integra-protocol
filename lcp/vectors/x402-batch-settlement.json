@@ -443,6 +443,51 @@
   },
   "expectWord0": "evm/channel-id-mismatch"
  },
+ "EB9": {
+  "case": "batchEvm.buildWithin over the EB1 channel (fixed.evm.config) with EB2's maxClaimableAmount, its one request completed with EB2's signature: refund absent is a voucher, refund given (an object, or null) is a refund, with amount only when refund.amount is a decimal amount; refund.amount present and not an amount is refused.",
+  "rows": [
+   {
+    "case": "refund absent",
+    "expect": {
+     "type": "voucher"
+    }
+   },
+   {
+    "case": "refund {}",
+    "refund": {},
+    "expect": {
+     "type": "refund"
+    }
+   },
+   {
+    "case": "refund null",
+    "refund": null,
+    "expect": {
+     "type": "refund"
+    }
+   },
+   {
+    "case": "refund {amount: 400}",
+    "refund": {
+     "amount": "400"
+    },
+    "expect": {
+     "type": "refund",
+     "amount": "400"
+    }
+   },
+   {
+    "case": "refund {amount: null}",
+    "refund": {
+     "amount": null
+    },
+    "expect": {
+     "refused": true,
+     "code": "x402/option-malformed"
+    }
+   }
+  ]
+ },
  "ES1": {
   "channelPda": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8",
   "bump": 255,
@@ -713,6 +758,36 @@
    }
   ]
  },
+ "ES10": {
+  "case": "The point rule a PDA candidate meets: 32 bytes are a point when ed25519.Point.fromBytes(bytes, true) of @noble/curves 2.4.0 accepts them, decompression only: y is the little-endian integer with bit 255 cleared, taken modulo p = 2^255 - 19, and x^2 = (y^2 - 1) / (d y^2 + 1) must have a square root, so x = 0 with the sign bit set decodes. Each row's point value is Python 3's integer arithmetic (Euler's criterion), and noble agrees.",
+  "rows": [
+   {
+    "case": "y = 1 with the sign bit set",
+    "bytesHex": "0100000000000000000000000000000000000000000000000000000000000080",
+    "point": true
+   },
+   {
+    "case": "y = p - 1 with the sign bit set",
+    "bytesHex": "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "point": true
+   },
+   {
+    "case": "y = p + 1, which is 1 modulo p, with the sign bit set",
+    "bytesHex": "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "point": true
+   },
+   {
+    "case": "y = 1",
+    "bytesHex": "0100000000000000000000000000000000000000000000000000000000000000",
+    "point": true
+   },
+   {
+    "case": "y = 2",
+    "bytesHex": "0200000000000000000000000000000000000000000000000000000000000000",
+    "point": false
+   }
+  ]
+ },
  "EC1": {
   "payload": {
    "x402Version": 2,
@@ -747,7 +822,7 @@
   "expectPairing": "x402/batch-settlement/cloudflare"
  },
  "agreedRefusals": {
-  "about": "Refusal codes the batch-settlement specification leaves to the implementation.",
+  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h.",
   "rows": [
    {
     "case": "bound, reference or ref with a channelConfig member missing or malformed, or a deposit amount that is not decimal",
@@ -780,6 +855,97 @@
    {
     "case": "EVM build with an authSalt that is not a string of 0x and 64 hex digits, such as a one-element array of one",
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with a null choice",
+    "pairing": "x402/batch-settlement/eip155",
+    "call": "build",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a choice that is a string",
+    "pairing": "x402/batch-settlement/eip155",
+    "call": "build",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "buildWithin with a null choice",
+    "pairing": "x402/batch-settlement/eip155",
+    "call": "buildWithin",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "buildWithin with a choice that is a string",
+    "pairing": "x402/batch-settlement/eip155",
+    "call": "buildWithin",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a null choice",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "build",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a choice that is a string",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "build",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "buildWithin with a null choice",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "buildWithin",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "buildWithin with a choice that is a string",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "buildWithin",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a null choice",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "call": "build",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a choice that is a string",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "call": "build",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with ES2's choice and h abc",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "build",
+    "h": "abc",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "build with ES2's choice and h 0X followed by H's 64 hex digits",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "build",
+    "h": "0Xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "build with ES2's choice and a null h",
+    "pairing": "x402/batch-settlement/solana",
+    "call": "build",
+    "h": null,
+    "expect": "x402/payload-malformed"
    }
   ]
  },

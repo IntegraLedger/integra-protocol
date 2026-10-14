@@ -99,6 +99,28 @@ describe("x402-exact-solana.json", () => {
     }
   });
 
+  it("agreedRefusals: build refuses a choice that is not an object, and V1's choice with an h that is not a hash", async () => {
+    type Row = { case: string; choice?: unknown; h?: unknown; expect: string };
+    const rows = (V.agreedRefusals.rows as Row[]).filter((r) => "choice" in r || "h" in r);
+    expect(rows.map((r) => ("choice" in r ? ["choice", r.choice] : ["h", r.h]))).toEqual([
+      ["choice", null], ["choice", "x"], ["h", "abc"], ["h", `0X${H.slice(2)}`], ["h", null],
+    ]);
+    const doc = advertised();
+    const choice = {
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: V.fixed.payer,
+      decimals: V.fixed.decimals,
+      tokenProgram: V.fixed.tokenProgram,
+      recentBlockhash: V.fixed.blockhash,
+    };
+    expect("refused" in (await exactSvm.build(choice, H))).toBe(false);
+    for (const r of rows) {
+      const out = "choice" in r ? await exactSvm.build(r.choice as never, H) : await exactSvm.build(choice, r.h as AtrHash);
+      expect(out, r.case).toEqual({ refused: true, code: r.expect });
+    }
+  });
+
   it("defaultComputeBudget: build without a compute unit limit or price writes the default prefix", async () => {
     const doc = advertised();
     const u = await exactSvm.build(

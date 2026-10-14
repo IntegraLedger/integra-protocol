@@ -532,3 +532,96 @@ describe("the x402-batch-settlement entry point", () => {
     expect("pairingOf" in batchSettlement).toBe(false);
   });
 });
+
+describe("x402-batch-settlement.json: the agreedRefusals rows that carry their input", () => {
+  type Row = { case: string; pairing?: string; call?: "build" | "buildWithin"; choice?: unknown; h?: unknown; expect: string };
+  const rows = (V.agreedRefusals.rows as Row[]).filter((r) => r.pairing !== undefined);
+  const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
+
+  it("each pairing's build, and the EVM and SVM buildWithin, refuse a null choice and a string choice", async () => {
+    const choices = rows.filter((r) => "choice" in r);
+    expect(choices.map((r) => `${r.pairing} ${r.call} ${String(r.choice)}`)).toEqual([
+      "x402/batch-settlement/eip155 build null",
+      "x402/batch-settlement/eip155 build x",
+      "x402/batch-settlement/eip155 buildWithin null",
+      "x402/batch-settlement/eip155 buildWithin x",
+      "x402/batch-settlement/solana build null",
+      "x402/batch-settlement/solana build x",
+      "x402/batch-settlement/solana buildWithin null",
+      "x402/batch-settlement/solana buildWithin x",
+      "x402/batch-settlement/cloudflare build null",
+      "x402/batch-settlement/cloudflare build x",
+    ]);
+    for (const r of choices) {
+      const b = pairings[r.pairing as keyof typeof pairings] as unknown as Record<string, (c: unknown, h: AtrHash) => Promise<unknown>>;
+      expect(await b[r.call!]!(r.choice, H), r.case).toEqual(refused(r.expect));
+    }
+  });
+
+  it("the Solana build refuses ES2's choice with an h that is not a hash", async () => {
+    const hs = rows.filter((r) => "h" in r);
+    expect(hs.map((r) => r.h)).toEqual(["abc", `0X${H.slice(2)}`, null]);
+    const o: PaymentRequirements = S.option;
+    const doc = unwrap(batchSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o));
+    const choice = {
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: S.payer,
+      payerAuthorizer: S.payer,
+      deposit: BigInt(S.deposit),
+      salt: 42n,
+      openSlot: BigInt(S.openSlot),
+      tokenProgram: S.tokenProgram,
+      recentBlockhash: S.blockhash,
+    };
+    expect("refused" in (await batchSvm.build(choice, H))).toBe(false);
+    for (const r of hs) expect(await batchSvm.build(choice, r.h as AtrHash), r.case).toEqual(refused(r.expect));
+  });
+});
+
+// The rule a PDA candidate meets (findPda's isPoint): ed25519.Point.fromBytes(bytes, true), decompression only. The
+// rows' point values are Python's integer arithmetic; noble, the decoder findPda calls, agrees on each.
+describe("x402-batch-settlement.json ES10: the Ed25519 point rule", () => {
+  for (const r of V.ES10.rows as { case: string; bytesHex: string; point: boolean }[]) {
+    it(`${r.case}: ${r.point ? "a point" : "not a point"}`, () => {
+      let point: boolean;
+      try {
+        ed25519.Point.fromBytes(fromHex(r.bytesHex), true);
+        point = true;
+      } catch {
+        point = false;
+      }
+      expect(point).toBe(r.point);
+    });
+  }
+});
+
+describe("x402-batch-settlement.json EB9: the EVM within's refund", () => {
+  for (const r of V.EB9.rows as { case: string; refund?: { amount?: string | null } | null; expect: Record<string, unknown> }[]) {
+    it(r.case, async () => {
+      const doc = evmDoc();
+      const refund = r.refund === undefined || r.refund === null ? r.refund : {
+        ...r.refund,
+        ...(typeof r.refund.amount === "string" ? { amount: BigInt(r.refund.amount) } : {}),
+      };
+      const u = await batchEvm.buildWithin(
+        {
+          required: doc,
+          accepted: doc.accepts[0]!,
+          channelConfig: E.config,
+          maxClaimableAmount: BigInt(V.EB2.maxClaimableAmount),
+          ...(r.refund !== undefined ? { refund: refund as never } : {}),
+        },
+        H,
+      );
+      if ("refused" in u) {
+        expect(u, r.case).toEqual(r.expect);
+        return;
+      }
+      const p = unwrap(u.complete([V.EB2.signature]));
+      const payload = p.payload as { type: string; amount?: string; voucher: { signature: string } };
+      expect(payload.voucher.signature).toBe(V.EB2.signature);
+      expect({ type: payload.type, ...(payload.amount !== undefined ? { amount: payload.amount } : {}) }).toEqual(r.expect);
+    });
+  }
+});

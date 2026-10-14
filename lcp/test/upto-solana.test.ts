@@ -152,6 +152,31 @@ describe("x402-upto-solana.json", () => {
     }
   });
 
+  it("agreedRefusals: build refuses a choice that is not an object, and EU3's choice with an h that is not a hash", async () => {
+    type Row = { case: string; choice?: unknown; h?: unknown; expect: string };
+    const rows = (V.agreedRefusals.rows as Row[]).filter((r) => "choice" in r || "h" in r);
+    expect(rows.map((r) => ("choice" in r ? ["choice", r.choice] : ["h", r.h]))).toEqual([
+      ["choice", null], ["choice", "x"], ["h", "abc"], ["h", `0X${H.slice(2)}`], ["h", null],
+    ]);
+    const doc = uptoSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
+    if ("refused" in doc) throw new Error(doc.code);
+    const choice = {
+      required: doc,
+      accepted: doc.accepts[0]!,
+      payer: V.fixed.payer,
+      nonce: BigInt(V.fixed.nonce),
+      openSlot: BigInt(V.fixed.openSlot),
+      now: V.fixed.now,
+      tokenProgram: V.fixed.tokenProgram,
+      recentBlockhash: V.fixed.blockhash,
+    };
+    expect("refused" in (await uptoSvm.build(choice, H))).toBe(false);
+    for (const r of rows) {
+      const out = "choice" in r ? await uptoSvm.build(r.choice as never, H) : await uptoSvm.build(choice, r.h as AtrHash);
+      expect(out, r.case).toEqual(refused(r.expect));
+    }
+  });
+
   // The payload carries openSlot as a JSON number, and RFC 8259 §6 makes integers in [-(2^53)+1, 2^53-1] interoperable:
   // readers agree exactly on their values. The file's agreedRefusals row gives the slot above that range (2^53 + 1)
   // and its code.
