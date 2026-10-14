@@ -41,6 +41,23 @@ describe("the cap is one constant, 64", () => {
   });
 });
 
+// vectors/core-vectors.json `jsonNumbers`: a number is read as JSON.parse reads it, with no bound on its digits, and a
+// value read is written back as JSON.stringify writes it.
+describe("core-vectors.json jsonNumbers: an integer past the double range", () => {
+  const N = load("core-vectors.json").jsonNumbers as { rows: { name: string; case: string; text: string; stringified: string }[] };
+  it("the rows hold 4301 and 400 digits", () => {
+    expect(N.rows.map((r) => r.text.length - '{"n":}'.length)).toEqual([4301, 400]);
+  });
+  for (const r of N.rows) {
+    it(`${r.name}: ${r.case} is read, and written as ${r.stringified}`, () => {
+      expect(jsonWithinDepth(r.text)).toBe(true);
+      const v = parseJson(r.text) as { n: number };
+      expect(v.n).toBe(Number.POSITIVE_INFINITY);
+      expect(JSON.stringify(v)).toBe(r.stringified);
+    });
+  }
+});
+
 describe("each entry point that reads JSON text reads 64 levels and refuses 65", () => {
   it("discovery: a document member nested to 64 levels is read; 65 is discovery/not-json-object", () => {
     const doc = (n: number) => new TextEncoder().encode(`{"terms":"https://seller.example/t.md","x-deep":${nest(n - 1, "")}}`);

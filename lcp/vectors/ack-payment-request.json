@@ -202,7 +202,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes the specification leaves to the implementation, as this package applies them. call names the function; args are its arguments.",
+  "about": "Refusal codes the specification leaves to the implementation, as this package applies them. call names the function; args are its arguments. A body is measured as JSON.stringify writes it, at most 64 levels of arrays and objects, the body being level 1: an integer past the double range, which JSON.parse reads as Infinity, is written null.",
   "rows": [
    {
     "case": "advertise with a hash that is not 0x and 64 hex digits",
@@ -698,6 +698,376 @@
     "expect": {
      "refused": true,
      "code": "ack/receipt-malformed"
+    }
+   },
+   {
+    "case": "read of K2's body with a member holding 63 nested arrays: 64 levels",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "x": [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   [
+                                                                    []
+                                                                   ]
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     }
+    ],
+    "expect": {
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+     "offer": {
+      "options": [
+       {
+        "id": "opt-usdc-base",
+        "currency": "USDC",
+        "network": "eip155:8453",
+        "amount": "10000",
+        "decimals": 6,
+        "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "case": "read of K2's body with a member holding 64 nested arrays: 65 levels",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "x": [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   [
+                                                                    [
+                                                                     []
+                                                                    ]
+                                                                   ]
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     }
+    ],
+    "expect": {
+     "refused": true,
+     "code": "ack/too-large"
+    }
+   },
+   {
+    "case": "read of K2's body holding a 400-digit integer",
+    "call": "paymentRequest.read",
+    "args": [
+     {
+      "paymentRequest": {
+       "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "paymentOptions": [
+        {
+         "id": "opt-usdc-base",
+         "currency": "USDC",
+         "network": "eip155:8453",
+         "amount": "10000",
+         "decimals": 6,
+         "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+        }
+       ]
+      },
+      "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "n": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+     }
+    ],
+    "expect": {
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+     "offer": {
+      "options": [
+       {
+        "id": "opt-usdc-base",
+        "currency": "USDC",
+        "network": "eip155:8453",
+        "amount": "10000",
+        "decimals": 6,
+        "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+       }
+      ]
+     }
     }
    }
   ]

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the ucp/checkout/{ap2-mandate,unsigned} and ucp/booking/{ap2-mandate,unsigned} pairings (the ucp entry point of @integraledger/lcp). SHA-256 values were computed with GNU coreutils sha256sum and basenc and agree with OpenSSL. The tests build J, D and M from the fixed strings, J from V2's checkout written compactly in member order; 'built' holds the same strings as written by Python 3's base64, hashlib and json. V5 uses ap2-checkout-mandate.json's V6 token. The 'implementation' rows fix refusals that UCP does not name; their inputs were built with Python 3.",
+ "about": "Vectors for the ucp/checkout/{ap2-mandate,unsigned} and ucp/booking/{ap2-mandate,unsigned} pairings (the ucp entry point of @integraledger/lcp). SHA-256 values were computed with GNU coreutils sha256sum and basenc and agree with OpenSSL. The tests build J, D and M from the fixed strings, J from V2's checkout written compactly in member order; 'built' holds the same strings as written by Python 3's base64, hashlib and json. V5 uses ap2-checkout-mandate.json's V6 token. The 'implementation' rows fix refusals that UCP does not name; their inputs were built with Python 3. A checkout is measured as JSON.stringify writes it, at most 64 levels of arrays and objects, the checkout being level 1: an integer past the double range, which JSON.parse reads as Infinity, is written null.",
  "fixed": {
   "A": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e60\",\"ucp\":{\"options\":[{\"checkout\":\"chk_1\"}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
   "H": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
@@ -1236,6 +1236,370 @@
    "expect": {
     "refused": true,
     "code": "ucp/ap2-not-active"
+   }
+  },
+  {
+   "name": "read-64-levels",
+   "case": "V2's checkout with a member holding 63 nested arrays: 64 levels",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ],
+     "x": [
+      [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   []
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     ]
+    }
+   },
+   "expect": {
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
+   }
+  },
+  {
+   "name": "read-65-levels",
+   "case": "V2's checkout with a member holding 64 nested arrays: 65 levels",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ],
+     "x": [
+      [
+       [
+        [
+         [
+          [
+           [
+            [
+             [
+              [
+               [
+                [
+                 [
+                  [
+                   [
+                    [
+                     [
+                      [
+                       [
+                        [
+                         [
+                          [
+                           [
+                            [
+                             [
+                              [
+                               [
+                                [
+                                 [
+                                  [
+                                   [
+                                    [
+                                     [
+                                      [
+                                       [
+                                        [
+                                         [
+                                          [
+                                           [
+                                            [
+                                             [
+                                              [
+                                               [
+                                                [
+                                                 [
+                                                  [
+                                                   [
+                                                    [
+                                                     [
+                                                      [
+                                                       [
+                                                        [
+                                                         [
+                                                          [
+                                                           [
+                                                            [
+                                                             [
+                                                              [
+                                                               [
+                                                                [
+                                                                 [
+                                                                  [
+                                                                   [
+                                                                    []
+                                                                   ]
+                                                                  ]
+                                                                 ]
+                                                                ]
+                                                               ]
+                                                              ]
+                                                             ]
+                                                            ]
+                                                           ]
+                                                          ]
+                                                         ]
+                                                        ]
+                                                       ]
+                                                      ]
+                                                     ]
+                                                    ]
+                                                   ]
+                                                  ]
+                                                 ]
+                                                ]
+                                               ]
+                                              ]
+                                             ]
+                                            ]
+                                           ]
+                                          ]
+                                         ]
+                                        ]
+                                       ]
+                                      ]
+                                     ]
+                                    ]
+                                   ]
+                                  ]
+                                 ]
+                                ]
+                               ]
+                              ]
+                             ]
+                            ]
+                           ]
+                          ]
+                         ]
+                        ]
+                       ]
+                      ]
+                     ]
+                    ]
+                   ]
+                  ]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ucp/too-large"
+   }
+  },
+  {
+   "name": "read-400-digit-integer",
+   "case": "V2's checkout holding a 400-digit integer",
+   "pairing": "ucp/checkout/unsigned",
+   "fn": "read",
+   "input": {
+    "doc": {
+     "ucp": {
+      "version": "2026-08-25"
+     },
+     "id": "chk_1",
+     "status": "ready_for_complete",
+     "currency": "USD",
+     "totals": [
+      {
+       "type": "total",
+       "amount": 19900
+      }
+     ],
+     "links": [
+      {
+       "type": "terms_of_service",
+       "url": "https://seller.example/tos"
+      },
+      {
+       "type": "legal_context",
+       "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
+       "title": "lcp:sha256:0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e"
+      }
+     ],
+     "n": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+    }
+   },
+   "expect": {
+    "h": "0x60d53ee2a4b53146066d0995029c1fb33d9a69d6930c12ec59a33cc11784b17e",
+    "link": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683"
    }
   }
  ],
