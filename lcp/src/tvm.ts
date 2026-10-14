@@ -461,6 +461,7 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
 /**
  * Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A
  * transaction with no inbound message body, or whose body is not a Jetton `transfer`, is `tvm/not-jetton-transfer`. A
+ * body that is not a bag of cells with one root is an answer out of the reader's documented form, `tvm/unreadable`. A
  * ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. One call.
  */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
@@ -477,7 +478,7 @@ export async function tvmRecover(ref: { network: TvmNetwork; transaction: string
   if (!isTonTx(tx)) return refusal("tvm/unreadable");
   if (tx.inBody === null) return refusal("tvm/not-jetton-transfer");
   const body = rootOf(Buffer.from(tx.inBody).toString("base64"));
-  if (isRefusal(body)) return body;
+  if (isRefusal(body)) return body.code === "tvm/boc-malformed" ? refusal("tvm/unreadable") : body;
   const transfer = jettonTransfer(body);
   if (isRefusal(transfer)) return transfer;
   const h = transfer.payload === null ? null : commentHash(transfer.payload);

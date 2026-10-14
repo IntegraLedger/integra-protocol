@@ -437,6 +437,32 @@ describe("x402-exact-tvm.json", () => {
     expect(await exactTvm.recover(ref, reader(null))).toEqual({ refused: true, code: "tvm/not-jetton-transfer" });
   });
 
+  // TonTx's inBody is the inbound message body as a bag of cells, which TON's serialization opens with the magic
+  // b5ee9c72 and a root (TL-B serialized_boc). Bytes that are not one are an answer out of the reader's documented form,
+  // which recover refuses tvm/unreadable, a read to repeat, as it refuses a transaction that is not well formed.
+  it("V4: recover refuses an inbound body that is not a bag of cells tvm/unreadable", async () => {
+    const landed = V.V4.recover[0];
+    const reader = (inBody: Uint8Array): TvmReader => ({
+      ...readerFor(landed),
+      byHash: async (h) => ({ hash: h, account: V.fixed.jettonWallet, aborted: false, finality: 2, outMsgs: [], inBody }),
+    });
+    const ref = { network: REF.network, transaction: landed.transaction };
+    const boc = Buffer.from(landed.inBodyHex, "hex");
+    expect(boc.subarray(0, 4).toString("hex")).toBe("b5ee9c72");
+    const notBoc = [
+      new Uint8Array(0),
+      Uint8Array.of(1, 2, 3),
+      Uint8Array.from(boc.subarray(0, boc.length - 1)),
+      Uint8Array.from([0, ...boc.subarray(1)]),
+    ];
+    for (const inBody of rowsOf(notBoc, "inbound bodies that are not a bag of cells", { exact: 4 })) {
+      expect([inBody.length, await exactTvm.recover(ref, reader(inBody))]).toEqual([
+        inBody.length,
+        { refused: true, code: "tvm/unreadable" },
+      ]);
+    }
+  });
+
   // A request body hash that is not 0x and 64 hex digits cannot find the signed request, so the read is pending, never
   // expired (docs/guides/rails.md, "Reading settlement"); the hash is the same 32 bytes in either case. This reader
   // answers no transaction for a body hash other than the one reference wrote.

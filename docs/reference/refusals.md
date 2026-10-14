@@ -712,7 +712,7 @@ TON (`@integraledger/lcp/tvm`).
 | `tvm/option-malformed` | A TON option's `extra` is not an object, or its asset, `payTo`, response destination or forward TON amount is invalid, or it does not set `areFeesSponsored` to `true`, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid. |
 | `tvm/payload-not-lcp` | The Jetton transfer carries no forward payload, or its forward payload is not a comment carrying an ATR hash in LCP string form. |
 | `tvm/peer-missing` | The optional peer dependency `@ton/core` cannot be loaded. |
-| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed. |
+| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed, or whose inbound message body is not a bag of cells with one root. |
 | `tvm/value-too-low` | The TON attached to the Jetton transfer is not more than the option's forward TON amount. |
 | `tvm/wrong-reader` | The TON reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |
 
