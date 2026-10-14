@@ -4,7 +4,7 @@
  */
 import type { Json } from "./core.js";
 import { isAddress } from "./fields.js";
-import type { MppChallenge, MppPairing } from "./mpp-challenge.js";
+import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
 import { solanaChargePairings, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
@@ -17,7 +17,7 @@ const C32_PRINCIPAL = /^S[0-9A-HJKMNP-TV-Z]{38,40}$/;
 /** Stripe metadata: at most 50 keys, key names at most 40 characters without square brackets, values at most 500. */
 export const STRIPE_METADATA = Object.freeze({ keys: 50, keyLength: 40, valueLength: 500 });
 /** The profiles `usdc`'s `methodDetails.type` names, and the pairing each one is. */
-export const USDC_PROFILES: { readonly [type: string]: MppPairing } = Object.freeze({
+export const USDC_PROFILES: { readonly [type: string]: MppPairingId } = Object.freeze({
   evm: "mpp/charge/usdc/evm",
   solana: "mpp/charge/usdc/solana",
   stacks: "mpp/charge/usdc/stacks",
@@ -49,19 +49,19 @@ export function stripeMetadataValid(m: unknown, extra = 0): true | Refusal {
 }
 
 /** `charge` on `card`: `externalId`, the member that carries H, absent or a string. */
-export function cardChargePairings(r: Obj): readonly MppPairing[] | Refusal {
+export function cardChargePairings(r: Obj): readonly MppPairingId[] | Refusal {
   if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
   return ["mpp/charge/card"];
 }
 
 /** `charge` on `stripe`: `methodDetails.metadata`, which holds the member that carries H, within Stripe's bounds. */
-export function stripeChargePairings(_r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function stripeChargePairings(_r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const m = stripeMetadataValid(d["metadata"]);
   return m === true ? ["mpp/charge/stripe"] : m;
 }
 
 /** `subscription` on `stripe`: `methodDetails.metadata` within Stripe's bounds. */
-export function stripeSubscriptionPairings(_r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function stripeSubscriptionPairings(_r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const m = stripeMetadataValid(d["metadata"]);
   return m === true ? ["mpp/subscription/stripe"] : m;
 }
@@ -87,7 +87,7 @@ export function usdcProfile(d: Obj): { type: string; details: Obj } | Refusal {
  * is required, and on `externalId`, its carrier; Stacks `chainId` and the token contract. The Gateway build reads
  * `recipient` and the request's hash, and none of the Gateway details. No other profile reads `externalId`.
  */
-export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly MppPairing[] | Refusal {
+export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly MppPairingId[] | Refusal {
   const profile = usdcProfile(d);
   if (isRefusal(profile)) return profile;
   const p = profile.details;

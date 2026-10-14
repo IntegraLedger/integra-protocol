@@ -467,7 +467,7 @@ export const exactLnbtcNamed = Object.freeze({
 
 // ── mpp/charge/lightning and mpp/session/lightning ──
 
-type LnMppPairing = typeof LN_CHARGE | typeof LN_SESSION;
+type LnMppPairingId = typeof LN_CHARGE | typeof LN_SESSION;
 const LN_CHARGE = "mpp/charge/lightning" as const;
 const LN_SESSION = "mpp/session/lightning" as const;
 const MPP_NETWORKS: { readonly [n: string]: Bolt11["currency"] } = { mainnet: "bc", signet: "tbs", regtest: "bcrt" };
@@ -491,7 +491,7 @@ export interface LnMppUnsigned {
 }
 
 /** Where a pairing's invoice and payment hash sit in the decoded request. */
-function lnFields(pairing: LnMppPairing, request: { [k: string]: Json }): { invoice: unknown; paymentHash: unknown } {
+function lnFields(pairing: LnMppPairingId, request: { [k: string]: Json }): { invoice: unknown; paymentHash: unknown } {
   if (pairing === LN_SESSION) return { invoice: request["depositInvoice"], paymentHash: request["paymentHash"] };
   const d = request["methodDetails"];
   return isObject(d) ? { invoice: d["invoice"], paymentHash: d["paymentHash"] } : { invoice: undefined, paymentHash: undefined };
@@ -514,7 +514,7 @@ function networkRefused(details: { [k: string]: Json }, b: Bolt11): Refusal | nu
  * names one (a network MPP Lightning defines), and `expires`, when the challenge carries one, is no later than the
  * invoice's own expiry.
  */
-function lnChallengeChecks(pairing: LnMppPairing, c: MppChallenge, h: AtrHash, placed: boolean): Bolt11 | Refusal {
+function lnChallengeChecks(pairing: LnMppPairingId, c: MppChallenge, h: AtrHash, placed: boolean): Bolt11 | Refusal {
   const checked = checkChallenge(c, placed);
   if (isRefusal(checked)) return checked;
   if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
@@ -537,7 +537,7 @@ function lnChallengeChecks(pairing: LnMppPairing, c: MppChallenge, h: AtrHash, p
  * The challenge without its invoice, `request` re-encoded as base64url of its JCS form. A challenge that carries a
  * `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
  */
-function lnUnplaced(pairing: LnMppPairing): (c: MppChallenge) => MppChallenge | Refusal {
+function lnUnplaced(pairing: LnMppPairingId): (c: MppChallenge) => MppChallenge | Refusal {
   return (c) => {
     if (isObject(c) && carriesRefused(c)) return refusal("mpp/challenge-malformed");
     const request = isObject(c) && typeof c.request === "string" ? decodeObject(c.request) : undefined;
@@ -557,7 +557,7 @@ function lnUnplaced(pairing: LnMppPairing): (c: MppChallenge) => MppChallenge | 
   };
 }
 
-function lnAdvertise(pairing: LnMppPairing) {
+function lnAdvertise(pairing: LnMppPairingId) {
   return (
     doc: readonly MppChallenge[],
     h: AtrHash,
@@ -575,7 +575,7 @@ function lnAdvertise(pairing: LnMppPairing) {
  * The checks `advertise` makes that do not read the invoice: the challenge is one of this pairing, carries its payment
  * hash, has no request `description`, and names, when it names one, a network MPP Lightning defines.
  */
-function lnOfferChecks(pairing: LnMppPairing, c: MppChallenge): Refusal | null {
+function lnOfferChecks(pairing: LnMppPairingId, c: MppChallenge): Refusal | null {
   const checked = checkChallenge(c, false);
   if (isRefusal(checked)) return checked;
   if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
@@ -588,7 +588,7 @@ function lnOfferChecks(pairing: LnMppPairing, c: MppChallenge): Refusal | null {
 }
 
 /** `advertise` for the challenge the seller sends before its node writes the invoice; the invoice is not read. */
-function lnAdvertiseBeforeCarrier(pairing: LnMppPairing) {
+function lnAdvertiseBeforeCarrier(pairing: LnMppPairingId) {
   return (
     doc: readonly MppChallenge[],
     h: AtrHash,
@@ -601,7 +601,7 @@ function lnAdvertiseBeforeCarrier(pairing: LnMppPairing) {
   };
 }
 
-function lnBuild(pairing: LnMppPairing) {
+function lnBuild(pairing: LnMppPairingId) {
   return async (choice: LnMppChoice, h: AtrHash): Promise<LnMppUnsigned | Refusal> => {
     if (!isObject(choice) || !isObject(choice.challenge) || typeof choice.challenge.id !== "string") {
       return refusal("mpp/credential-malformed");
@@ -636,7 +636,7 @@ function amountless(v: unknown): boolean {
  * `mpp/request-malformed`, as `advertise` gives it. On the session, only the open action is the session's payment. No
  * signature is verified here.
  */
-async function lnPaid(pairing: LnMppPairing, input: unknown): Promise<{ h: AtrHash; b: Bolt11 } | Refusal> {
+async function lnPaid(pairing: LnMppPairingId, input: unknown): Promise<{ h: AtrHash; b: Bolt11 } | Refusal> {
   const echoed = echoedFor(input, pairing);
   if (isRefusal(echoed)) return echoed;
   const { invoice, paymentHash } = lnFields(pairing, echoed.checked.request);
@@ -651,7 +651,7 @@ async function lnPaid(pairing: LnMppPairing, input: unknown): Promise<{ h: AtrHa
   return { h: echoed.h, b };
 }
 
-function lnBound(pairing: LnMppPairing) {
+function lnBound(pairing: LnMppPairingId) {
   return async (presented: unknown): Promise<AtrHash | Refusal> => {
     const p = await lnPaid(pairing, presented);
     return isRefusal(p) ? p : p.h;
@@ -662,7 +662,7 @@ function lnBound(pairing: LnMppPairing) {
  * The read keys: the network of the invoice's currency, which is the network the challenge names when it names one;
  * the invoice's payment hash; and its timestamp plus expiry.
  */
-function lnReference(pairing: LnMppPairing) {
+function lnReference(pairing: LnMppPairingId) {
   return async (presented: unknown): Promise<LnRef | Refusal> => {
     const p = await lnPaid(pairing, presented);
     if (isRefusal(p)) return p;
@@ -676,7 +676,7 @@ const MPP_LN_PROVES =
   "The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. " +
   UNVERIFIED;
 
-function lnMppBinding<P extends LnMppPairing>(id: P, carrier: string, proves: string = MPP_LN_PROVES) {
+function lnMppBinding<P extends LnMppPairingId>(id: P, carrier: string, proves: string = MPP_LN_PROVES) {
   return Object.freeze({
     id,
     pattern: deepFreeze({

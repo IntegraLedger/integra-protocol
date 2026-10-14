@@ -9,7 +9,7 @@ import type { HederaNetwork } from "./hedera.js";
 import { hederaChargeRequest } from "./internal/hedera.js";
 import { keyBytes, type SolanaNetwork } from "./internal/svm.js";
 import type { XrplNetwork } from "./internal/xrpl.js";
-import type { MppChallenge, MppPairing } from "./mpp-challenge.js";
+import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
 import { refusal, type Refusal } from "./refusal.js";
 
 type Obj = { [k: string]: Json };
@@ -134,7 +134,7 @@ function isUint32(v: unknown): boolean {
 // ── charge ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** `charge` on `hedera`: the Hedera charge request's checks. */
-export function hederaChargePairings(_r: Obj, _d: Obj, c: MppChallenge): readonly MppPairing[] | Refusal {
+export function hederaChargePairings(_r: Obj, _d: Obj, c: MppChallenge): readonly MppPairingId[] | Refusal {
   const ok = hederaChargeRequest(c);
   return ok === true ? ["mpp/charge/hedera"] : ok;
 }
@@ -143,7 +143,7 @@ export function hederaChargePairings(_r: Obj, _d: Obj, c: MppChallenge): readonl
  * `charge` on `solana`: `amount` a positive u64, `currency` `"sol"` or a mint, `recipient` a key, `externalId` absent
  * or a string of at most 566 bytes, and `methodDetails.network` one of MPP's three names (absent: mainnet).
  */
-export function solanaChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function solanaChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const network = solanaNetworkOf(d, false);
   if (network !== null && typeof network === "object") return network;
   if (!isU64Positive(r["amount"]) || !(r["currency"] === "sol" || isKey(r["currency"])) || !isKey(r["recipient"])) {
@@ -169,7 +169,7 @@ export function isStellarRecipient(v: unknown): v is string {
  * `charge` on `stellar`: `methodDetails.network` `stellar:pubnet` or `stellar:testnet`, `currency` a contract, and
  * `recipient` an account, or its muxed form once placed.
  */
-export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const n = d["network"];
   if (n !== "stellar:pubnet" && n !== "stellar:testnet") return refusal("stellar/option-malformed");
   const to = r["recipient"];
@@ -190,7 +190,7 @@ export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairing[] | R
  * currency or an MPT, `amount` a positive decimal (whole drops for XRP), and the optional `invoiceId` 64 hex digits and
  * tags uint32.
  */
-export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const network = xrplNetworkOf(d);
   if (typeof network !== "string") return network;
   const amount = r["amount"];
@@ -215,7 +215,7 @@ export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refu
  * `charge` on `nearintents`: `methodDetails.originNetwork` CAIP-2, which `network` returns, and `externalId`, where H
  * rides, absent or a string. No other request member is read.
  */
-export function nearIntentsChargePairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function nearIntentsChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   if (typeof d["originNetwork"] !== "string" || !CAIP2.test(d["originNetwork"]) || !isExternalId(r["externalId"])) {
     return refusal("mpp/request-malformed");
   }
@@ -228,7 +228,7 @@ export function nearIntentsChargePairings(r: Obj, d: Obj): readonly MppPairing[]
  * `session` on `hedera`: no `channelId`; `currency`, `recipient` and `escrowContract` addresses; `chainId` absent,
  * 295 or 296.
  */
-export function hederaSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function hederaSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   if (d["channelId"] !== undefined) return refusal("mpp/channel-named");
   const network = hederaSessionNetworkOf(d);
   if (typeof network !== "string") return network;
@@ -243,7 +243,7 @@ export function hederaSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | R
  * `currency` and `recipient` keys; `recentBlockhash` and `recentSlot` present; `voucherSigner` absent, `"client"`, or
  * `"operator"` with `operator` a key.
  */
-export function solanaSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function solanaSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   if (d["channelId"] !== undefined) return refusal("mpp/channel-named");
   const network = solanaNetworkOf(d, true);
   if (network !== null && typeof network === "object") return network;
@@ -266,7 +266,7 @@ export function solanaSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | R
  * `session` on `xrpl`: `channelId` absent or `""`; `network` named; `currency` absent or `"XRP"`; a classic recipient;
  * `amount` a u64 in drops, written in decimal with no sign, point or leading zero.
  */
-export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairing[] | Refusal {
+export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const channel = r["channelId"] ?? d["channelId"];
   if (channel !== undefined && channel !== "") return refusal("mpp/channel-named");
   const network = xrplNetworkOf(d);

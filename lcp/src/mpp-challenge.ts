@@ -116,8 +116,8 @@ const USDC_CARRIER: { readonly [profile: string]: readonly string[] | null } = d
   gateway: null,
 });
 
-/** Every MPP pairing `pairingsOf` can name. */
-export type MppPairing =
+/** The id of each MPP pairing `pairingsOf` can name. */
+export type MppPairingId =
   | "mpp/charge/evm/permit2"
   | "mpp/charge/evm/authorization"
   | "mpp/charge/evm/transaction"
@@ -172,7 +172,7 @@ const LCP_KEYS = ["legalContext", "legalContextUrl", "legalContextAgreementUrl"]
 const PARAMS = ["id", "realm", "method", "intent", "request", "expires", "digest", "description", "header", "opaque"];
 const BOUND = ["realm", "method", "intent", "request", "expires", "digest", "header", "opaque"] as const;
 const REQUIRED = ["id", "realm", "method", "intent", "request"];
-const EVM_CREDENTIAL_TYPES: { readonly [t: string]: MppPairing } = {
+const EVM_CREDENTIAL_TYPES: { readonly [t: string]: MppPairingId } = {
   permit2: "mpp/charge/evm/permit2",
   authorization: "mpp/charge/evm/authorization",
   transaction: "mpp/charge/evm/transaction",
@@ -416,7 +416,7 @@ export interface Checked {
   details: { [k: string]: Json };
   /** unix seconds of `expires`; undefined when the challenge carries none, and then `pairings` holds none that needs it. */
   expires: number | undefined;
-  pairings: readonly MppPairing[];
+  pairings: readonly MppPairingId[];
 }
 
 /**
@@ -425,7 +425,7 @@ export interface Checked {
  * ledger, the session opening's deadline), or, on NEAR Intents and the XRP Ledger charge, the method's draft requires
  * it. Without `expires` a challenge offers none of them.
  */
-const NEEDS_EXPIRES: ReadonlySet<MppPairing> = new Set<MppPairing>([
+const NEEDS_EXPIRES: ReadonlySet<MppPairingId> = new Set<MppPairingId>([
   "mpp/charge/evm/authorization",
   "mpp/charge/evm/permit2",
   "mpp/charge/tempo/memo",
@@ -453,7 +453,7 @@ export function expiresOf(checked: Checked): number | Refusal {
  * whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
  * it, are left out, and a challenge left with no pairing is `mpp/expires-required`.
  */
-export function pairingsOf(c: MppChallenge): readonly MppPairing[] | Refusal {
+export function pairingsOf(c: MppChallenge): readonly MppPairingId[] | Refusal {
   const checked = checkChallenge(c, false);
   return isRefusal(checked) ? checked : checked.pairings;
 }
@@ -462,7 +462,7 @@ export function pairingsOf(c: MppChallenge): readonly MppPairing[] | Refusal {
  * The pairings a placed challenge offers: `pairingsOf` over the challenge with its `opaque` removed, so the LCP members
  * `place` wrote are not read as an occupied carrier. None when the challenge does not read.
  */
-export function pairingsOfPlaced(c: MppChallenge): readonly MppPairing[] {
+export function pairingsOfPlaced(c: MppChallenge): readonly MppPairingId[] {
   if (!isObject(c)) return [];
   const { opaque: _placed, ...issued } = c;
   const p = pairingsOf(issued as MppChallenge);
@@ -500,7 +500,7 @@ export type PairingCheck = (
   request: { [k: string]: Json },
   details: { [k: string]: Json },
   challenge: MppChallenge,
-) => readonly MppPairing[] | Refusal;
+) => readonly MppPairingId[] | Refusal;
 
 /**
  * `charge` on `evm`: `chainId` a positive safe integer, `currency` and `recipient` addresses, `amount` a decimal, and
@@ -508,11 +508,11 @@ export type PairingCheck = (
  * (absent: `transaction` and `hash`). `splits`, when present, holds 1 to 10 entries, each an address `recipient` and a
  * decimal `amount`, zero included, and leaves only `permit2`.
  */
-function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c: MppChallenge): readonly MppPairing[] | Refusal {
+function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c: MppChallenge): readonly MppPairingId[] | Refusal {
   if (!isPositiveInt(d["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
   }
-  let listed: MppPairing[];
+  let listed: MppPairingId[];
   const types = d["credentialTypes"];
   if (types === undefined) listed = ["mpp/charge/evm/transaction", "mpp/charge/evm/hash"];
   else {
@@ -542,7 +542,7 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c
   return listed;
 }
 
-function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {
+function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
   }
@@ -560,13 +560,13 @@ function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json })
     push = modes.includes("push");
   }
   if (d["feePayer"] === true) push = false;
-  const out: MppPairing[] = [];
+  const out: MppPairingId[] = [];
   if (pull) out.push("mpp/charge/tempo/memo");
   if (push) out.push("mpp/charge/tempo/push");
   return out.length === 0 ? refusal("mpp/modes-pull-only") : out;
 }
 
-function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {
+function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   if (d["channelId"] !== undefined || d["sessionSnapshot"] !== undefined) return refusal("mpp/channel-named");
   if (!isAddress(d["escrowContract"])) return refusal("mpp/escrow-malformed");
   if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
@@ -585,7 +585,7 @@ function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }):
   return ["mpp/session/evm"];
 }
 
-function tempoSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {
+function tempoSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   if (d["channelId"] !== undefined || d["sessionSnapshot"] !== undefined) return refusal("mpp/channel-named");
   const v = d["sessionProtocol"];
   if (v !== undefined && v !== "v1" && v !== "v2") return refusal("mpp/session-protocol");
@@ -599,7 +599,7 @@ function tempoSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
   return ["mpp/session/tempo"];
 }
 
-function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairing[] | Refusal {
+function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   const key = d["accessKey"];
   if (!isObject(key) || !isAddress(key["accessKeyAddress"])) return refusal("mpp/access-key-malformed");
   if (key["keyType"] !== "p256" && key["keyType"] !== "secp256k1" && key["keyType"] !== "webAuthn") {
@@ -988,7 +988,7 @@ export interface Echoed {
  */
 export function echoedFor(
   c: unknown,
-  pairing: MppPairing,
+  pairing: MppPairingId,
 ): { h: AtrHash; checked: Echoed; payload: { [k: string]: Json } } | Refusal {
   const b = challengeBound(c);
   if (isRefusal(b)) return b;
@@ -1025,7 +1025,7 @@ export function requestAddress(e: Echoed, key: string): Hex | Refusal {
 }
 
 /** The buyer's chosen challenge for `pairing`, checked as placed, whose id derives from `h`. */
-export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairing): Checked | Refusal {
+export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairingId): Checked | Refusal {
   if (!isChallengeShape(challenge) || typeof challenge.id !== "string") return refusal("mpp/input-malformed");
   const checked = checkChallenge(challenge, true);
   if (isRefusal(checked)) return checked;

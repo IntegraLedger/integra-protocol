@@ -260,7 +260,7 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 **Values (50):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeHedera`, `chargeNearIntents`, `chargeSolana`, `chargeStellar`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHedera`, `sessionResume`, `sessionSolana`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionStripe`, `subscriptionTempo`, `tempoMemo`, `tempoPush`, `tie`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
-**Types (20):** `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairing`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `StripeSubscriptionReceipt`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`.
+**Types (20):** `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `StripeSubscriptionReceipt`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`.
 
 ## `@integraledger/lcp/near`
 

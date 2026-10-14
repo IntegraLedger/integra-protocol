@@ -19,7 +19,7 @@ import {
   withoutCarrier,
   type MppChallenge,
   type MppChoice,
-  type MppPairing,
+  type MppPairingId,
 } from "./mpp-challenge.js";
 import { stripeMetadataValid } from "./mpp-method-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -113,7 +113,7 @@ function boundAs(pairing: ConfirmOnly) {
   return async (input: unknown): Promise<AtrHash | Refusal> => {
     const credential = credentialOf(input);
     if (isRefusal(credential)) return credential;
-    const e = echoedFor(credential, pairing as MppPairing);
+    const e = echoedFor(credential, pairing as MppPairingId);
     if (isRefusal(e)) return e;
     return refusal("mpp/no-signed-place");
   };

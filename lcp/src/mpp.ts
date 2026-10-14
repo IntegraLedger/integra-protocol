@@ -91,7 +91,7 @@ export {
   read,
   tie,
 } from "./mpp-challenge.js";
-export type { MppChallenge, MppChoice, MppCredential, MppMethod, MppPairing } from "./mpp-challenge.js";
+export type { MppChallenge, MppChoice, MppCredential, MppMethod, MppPairingId } from "./mpp-challenge.js";
 export { chargeHedera } from "./hedera.js";
 export { LEGAL_CONTEXT_METADATA_KEY, chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 export type { StripeSubscriptionReceipt } from "./mpp-card-stripe.js";
