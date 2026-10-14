@@ -382,7 +382,7 @@
   }
  },
  "SV3": {
-  "case": "expectVoucher is solanaVoucher(SV2's channel, 100), and the ed25519-raw message buildWithin writes for a voucher of 100 on SV2's opening: the 50 bytes the draft's voucher signs, 0x56 0x01, the channel's 32 address bytes, cumulativeAmount as a u64 little-endian and expiresAt 0 as an i64 little-endian (draft-solana-session-00 L1419-1429 at tempoxyz/mpp-specs 08e7dd87), computed with @solana/kit 8.4.0's getAddressEncoder, getU64Encoder and getI64Encoder, Python 3.12.3 agreeing by hand.",
+  "case": "expectVoucher is solanaVoucher(SV2's channel, 100), and the ed25519-raw message buildWithin writes for a voucher of 100 on SV2's opening: the 50 bytes the draft's voucher signs, 0x56 0x01, the channel's 32 address bytes, cumulativeAmount as a u64 little-endian and expiresAt 0 as an i64 little-endian (draft-solana-session-00 L1419-1429 at tempoxyz/mpp-specs 08e7dd87), computed with @solana/kit 8.4.0's getAddressEncoder, getU64Encoder and getI64Encoder, Python 3.12.3 agreeing by hand. expectProofText is sessionProof of SV2's channel, payer and fixed.MV1, the UTF-8 the payer signs in operator mode: the draft's JCS object {channelId, domain \"mpp-session-auth-v1\", payer, sessionChallengeId} (draft-solana-session-00 L1131-1142, RFC 8785), computed with canonicalize 5.1.0.",
   "expectVoucher": "5601d455f91e0b567c32f668dbafb640d399c380146212206ac89f720d5767bf40be64000000000000000000000000000000",
   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
   "expectProofText": "{\"channelId\":\"FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH\",\"domain\":\"mpp-session-auth-v1\",\"payer\":\"AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9\",\"sessionChallengeId\":\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\"}",

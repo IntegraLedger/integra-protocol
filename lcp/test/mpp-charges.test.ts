@@ -565,7 +565,17 @@ describe("mpp-charge-stellar.json", () => {
     const now = Date.parse(V.fixed.expires) / 1000 - 60;
     const payer: string = XST.fixed.payer;
     const agreeing = await chargeStellar.build({ challenge: placed, simulatedXdr: XST.V2.simulatedXdr, currentLedger: 988, now, payer }, H);
-    expect("refused" in agreeing).toBe(false);
+    if ("refused" in agreeing) throw new Error(agreeing.code);
+    // build compiles x402-exact-stellar.json V2's authorization preimage (expiration 988 + 60 / 5 = 1000), and complete
+    // writes V3's envelope, that file's V2.expectEnvelope: stellar-sdk 13.0.0's values.
+    expect(agreeing.request.preimage.length).toBe(XST.V2.expectPreimageLength);
+    const preimageDigest = createHash("sha256").update(agreeing.request.preimage).digest();
+    expect(preimageDigest.toString("hex")).toBe(XST.V2.expectPreimageSha256);
+    expect(V.V3.envelope).toBe(XST.V2.expectEnvelope);
+    expect(agreeing.complete(ed25519.sign(preimageDigest, fromHex(XST.fixed.payerSeed)))).toStrictEqual({
+      challenge: placed,
+      payload: { type: "transaction", transaction: V.V3.envelope },
+    });
     for (const row of rowsOf(XST.V4build.rows, "x402-exact-stellar.json V4build.rows")) {
       const u = await chargeStellar.build({ challenge: placed, simulatedXdr: row.simulatedXdr, currentLedger: 988, now, payer }, H);
       expect(u, row.case).toEqual(refused(row.expect));

@@ -22,6 +22,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import canonicalize from "canonicalize";
 import { coreTypes, decode as decodeXrpl, encode as encodeXrpl, encodeForSigning } from "ripple-binary-codec";
 import { encodeAbiParameters, encodeFunctionData, hashTypedData, keccak256, parseAbi, parseAbiParameters, type Hex as ViemHex } from "viem";
 import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/index.js";
@@ -415,6 +416,10 @@ describe("mpp/session/solana", () => {
     const parts = [Uint8Array.of(0x56, 0x01), getAddressEncoder().encode(address(V.SV2.channel)), getU64Encoder().encode(100n), getI64Encoder().encode(0n)];
     expect(hex(Uint8Array.from(parts.flatMap((p) => Array.from(p))))).toBe(V.SV3.expectVoucher);
     expect(hex(solanaVoucher(V.SV2.channel, 100n) as Uint8Array)).toBe(V.SV3.expectVoucher);
+    // expectProofText is the draft's JCS object (draft-solana-session-00 L1131-1142, RFC 8785) as canonicalize 5.1.0 writes it.
+    expect(canonicalize({ channelId: V.SV2.channel, domain: "mpp-session-auth-v1", payer: V.SV3.payer, sessionChallengeId: V.fixed.MV1 })).toBe(
+      V.SV3.expectProofText,
+    );
     const proof = sessionProof({ channelId: V.SV2.channel, payer: V.SV3.payer, challengeId: V.fixed.MV1 });
     expect(new TextDecoder().decode(proof)).toBe(V.SV3.expectProofText);
     const d = sha256(proof);

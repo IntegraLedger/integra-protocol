@@ -1,6 +1,7 @@
 // The USDC charges: M3 (usdc/evm, with the usdc draft's example A.1 and the plant), M5 (usdc/gateway), and the
 // usdc/solana charge on the Solana charge's vectors. Expected values are the vector files'; canonicalize and js-sha3
 // recompute the derivations independently of the package.
+import { createHash } from "node:crypto";
 import canonicalize from "canonicalize";
 import sha3 from "js-sha3";
 import { describe, expect, it } from "vitest";
@@ -210,6 +211,19 @@ describe("mpp/charge/usdc/solana", () => {
     const jcs = issued(canonicalize(S.request)!);
     const p = placedWith(chargeUsdcSolana, jcs);
     expect(chargeUsdcSolana.unplaced(p)).toEqual({ ...p, request: jcs.request });
+  });
+
+  // build is the Solana charge's on the same request: it compiles mpp-charge-solana.json's build message, whose
+  // buildMessageSha256 is @solana/kit 8.4.0's compilation of that file's V2 wire message (that file's build.case).
+  it("build compiles the Solana charge's message, byte for byte its buildMessageSha256", async () => {
+    const CS = load("mpp-charge-solana.json");
+    const p = placedWith(chargeUsdcSolana, c);
+    const u = await chargeUsdcSolana.build(
+      { challenge: p, payer: CS.fixed.payer, computeUnitLimit: CS.build.computeUnitLimit, computeUnitPrice: BigInt(CS.build.computeUnitPrice) },
+      S.H,
+    );
+    if ("refused" in u) throw new Error(u.code);
+    expect(createHash("sha256").update(u.request.message).digest("hex")).toBe(CS.build.buildMessageSha256);
   });
 
   it("bound and reference of the Solana charge's V2 wire are that file's", async () => {

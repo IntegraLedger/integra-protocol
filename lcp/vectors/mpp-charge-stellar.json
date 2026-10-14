@@ -60,7 +60,7 @@
   "expect": "stellar/carrier-occupied"
  },
  "V3": {
-  "case": "V3's envelope in a type=transaction credential on the placed challenge",
+  "case": "V3's envelope in a type=transaction credential on the placed challenge. build on the placed challenge with x402-exact-stellar.json V2's simulatedXdr, currentLedger 988 and now 60 seconds before fixed.expires compiles that file's V2 authorization preimage (expectPreimageLength, expectPreimageSha256), and complete of the payer's Ed25519 signature over its SHA-256 writes envelope, which is that file's V2.expectEnvelope; those values are computed with stellar-sdk 13.0.0 on Python 3.12.3",
   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
