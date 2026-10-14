@@ -24,7 +24,7 @@
   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
  },
  "EV1": {
-  "case": "build(choice, H): Permit2 PermitWitnessTransferFrom, spender the exact proxy, nonce H as uint256, deadline now + maxTimeoutSeconds, witness {to: payTo, validAfter: 0}",
+  "case": "build(choice, H): Permit2 PermitWitnessTransferFrom, spender the exact proxy, nonce H as uint256, deadline now + maxTimeoutSeconds, witness {to: payTo, validAfter: 0}. expectDigest is the EIP-712 digest of that typed data, computed with eth-account 0.14.0 encode_typed_data over types written from Permit2's witness hashing (Uniswap/permit2 cc56ad0f, src/libraries/PermitHash.sol L19, L31-32 and L85-94, the spender msg.sender; the domain {name \"Permit2\", chainId, verifyingContract} of src/EIP712.sol L15-17) and the x402 exact Permit2 proxy's witness, Witness(address to,uint256 validAfter) (x402-foundation/x402 751590a2, specs/schemes/exact/scheme_exact_evm.md L378-383), with chain id 84532 and Permit2 at 0x000000000022D473030F116dDEE9F6B43aC78BA3; it equals keccak256(0x1901, the domain separator, hashWithWitness's struct hash) computed with eth-abi 6.0.0. expectSignature is eth-account's signature of that digest with payerKey.",
   "expectDigest": "0x772f51bb814f65c350f4126ca8bb098dfdd536627d886e32e8e8ce9f352fa7bb",
   "expectSpender": "0x402085c248EeA27D92E8b30b2C58ed07f9E20001",
   "expectNonceDecimal": "84342368487090800366523834928142263660104883695016514377462985829716817089965",

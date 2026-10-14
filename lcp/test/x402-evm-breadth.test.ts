@@ -213,7 +213,34 @@ const MULTICALL3 = parseAbi([
 describe("x402-exact-eip155-permit2.json", () => {
   const f: Fixed = P2.fixed;
   it("pairingOf names the pairing", () => expect(pairingOf(f.option)).toBe("x402/exact/eip155/permit2"));
-  it("EV1: the typed data, its digest and the Anvil key's signature", async () => {
+  // EV1's digest is eth-account's, over types written from Permit2's PermitHash.sol and EIP712.sol (Uniswap/permit2
+  // cc56ad0f) and the x402 exact proxy's Witness (x402 751590a2, scheme_exact_evm.md L378-383). viem re-derives it from
+  // the same types written here, and build's typed data is held to it.
+  it("EV1: the typed data, its digest as Permit2's witness types give it, and the Anvil key's signature", async () => {
+    const written = {
+      domain: { name: "Permit2", chainId: 84532, verifyingContract: "0x000000000022D473030F116dDEE9F6B43aC78BA3" },
+      types: {
+        TokenPermissions: [{ name: "token", type: "address" }, { name: "amount", type: "uint256" }],
+        Witness: [{ name: "to", type: "address" }, { name: "validAfter", type: "uint256" }],
+        PermitWitnessTransferFrom: [
+          { name: "permitted", type: "TokenPermissions" },
+          { name: "spender", type: "address" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+          { name: "witness", type: "Witness" },
+        ],
+      },
+      primaryType: "PermitWitnessTransferFrom",
+      message: {
+        permitted: { token: f.option.asset, amount: BigInt(f.option.amount) },
+        spender: P2.EV1.expectSpender,
+        nonce: BigInt(H),
+        deadline: BigInt(f.now + f.option.maxTimeoutSeconds),
+        witness: { to: f.option.payTo, validAfter: 0n },
+      },
+    } as TypedDataDefinition;
+    expect(hashTypedData(written)).toBe(P2.EV1.expectDigest);
+    expect(await privateKeyToAccount(f.payerKey).signTypedData(written)).toBe(P2.EV1.expectSignature);
     const u = await unsigned(exactPermit2, f);
     if (u.request.kind !== "eip712") throw new Error("kind");
     const td = u.request.typedData as any;
