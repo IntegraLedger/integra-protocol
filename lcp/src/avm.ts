@@ -209,7 +209,9 @@ function urlSafe(s: string): string {
  * The asset transfer the payer signs, with the hash's LCP string as its note; with the option's fee payer, grouped
  * after that fee payer's zero payment, which carries both fees. The suggested parameters' genesis id is written as each
  * transaction's `gen`, a msgpack string, so one holding a lone surrogate, which UTF-8 cannot encode, is
- * `avm/option-malformed`: `build` writes no string `bound` refuses. Without algosdk, `avm/peer-missing`.
+ * `avm/option-malformed`, and so is one whose UTF-8 is longer than 200 bytes and begins with the byte-order mark,
+ * which algosdk's decoder drops: each entry is held to the scan `avmCarrier` runs, so `build` writes no string `bound`
+ * refuses. Without algosdk, `avm/peer-missing`.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
@@ -284,6 +286,9 @@ async function build(
       paymentIndex = 1;
     }
   } catch {
+    return refusal("avm/option-malformed");
+  }
+  if (group.some((txn) => !msgpackWithinCaps(sdk.encodeMsgpack(new sdk.SignedTransaction({ txn })), MSGPACK_MAX_DEPTH))) {
     return refusal("avm/option-malformed");
   }
   const payment = group[paymentIndex]!;

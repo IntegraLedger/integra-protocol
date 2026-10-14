@@ -448,15 +448,20 @@ describe("x402-exact-algorand.json", () => {
   });
 
   // build writes the suggested parameters' genesis id as each transaction's gen, a msgpack string. RFC 3629 §3
-  // excludes U+D800 to U+DFFF from UTF-8, so a genesis id holding a lone surrogate, short or long, is refused; one
-  // holding other characters outside ASCII, a surrogate pair among them, is written as given, and bound reads H.
-  it("a genesis id holding a lone surrogate is refused, and other text is written as given", async () => {
+  // excludes U+D800 to U+DFFF from UTF-8, so a genesis id holding a lone surrogate, short or long, is refused. One whose
+  // UTF-8 is the byte-order mark and 198 x, 201 bytes, is refused: algorand-msgpack 1.1.0, algosdk 3.8.0's decoder,
+  // reads a string of more than 200 bytes with a TextDecoder that drops a leading mark (its src/utils/utf8.ts:160-177).
+  // One holding other characters outside ASCII, a surrogate pair among them, the mark and 197 x (200 bytes), or x, the
+  // mark and 197 x (201 bytes), is written as given, and bound reads H.
+  it("a genesis id holding a lone surrogate, or of more than 200 bytes that begins with the mark, is refused, and other text is written as given", async () => {
     const build = (genesisId: string) =>
       exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: { ...params, genesisId } }, H);
-    for (const genesisId of ["testnet-v1.\ud800", "\udc00testnet-v1.0", `testnet-v1.0${"x".repeat(60)}\ud83d`]) {
+    const refused = ["testnet-v1.\ud800", "\udc00testnet-v1.0", `testnet-v1.0${"x".repeat(60)}\ud83d`, `\ufeff${"x".repeat(198)}`];
+    for (const genesisId of refused) {
       expect(await build(genesisId), JSON.stringify(genesisId)).toEqual({ refused: true, code: "avm/option-malformed" });
     }
-    for (const genesisId of [V.fixed.params.genesisId, "testnet-v1.0\u00e9", "testnet-v1.0\ud83d\ude00"]) {
+    const written = [V.fixed.params.genesisId, "testnet-v1.0\u00e9", "testnet-v1.0\ud83d\ude00", `\ufeff${"x".repeat(197)}`, `x\ufeff${"x".repeat(197)}`];
+    for (const genesisId of written) {
       const u = await build(genesisId);
       if ("refused" in u) throw new Error(u.code);
       const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
