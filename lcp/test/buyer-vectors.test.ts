@@ -5,6 +5,8 @@
 import { readFileSync } from "node:fs";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { hashTypedData, type TypedDataDefinition } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { hash, hashEquals, isHttpsLink, isOtherSchemeLink, pairingOf, parseJson, toLcpString, type AtrHash } from "../src/index.js";
 import { chargeStellar, pairingsOf, sessionResume, sessionTempo, type MppChallenge } from "../src/mpp.js";
 import { decodeStringMap } from "../src/mpp-challenge.js";
@@ -60,6 +62,45 @@ describe("buyer.json: the agreement option the gate asks approval for", () => {
     const r = row("BA10");
     expect(r.input.advanceMs).toBe((OPTION.maxTimeoutSeconds + 180) * 1000);
     expect(r.expect.paidRequests).toBe(r.input.advanceMs / 1000 / Number(r.input.agreement[1].retryAfter));
+  });
+
+  // BA1's agreement digest and signature are viem's and eth-account's (fixed.agreement.about); BA9 and BA11 sign as BA1.
+  // viem re-derives them from each row's agreementMessage with the types written here, and build's typed data for the
+  // agreement option of the 402 each row names is held to them.
+  it("BA1, BA9 and BA11: build's agreement message, its EIP-712 digest and the payer's signature are the rows'", async () => {
+    const payer = B.fixed.account.split(":")[2];
+    const signer = privateKeyToAccount(B.fixed.payerKey);
+    const types = {
+      TransferWithAuthorization: ["address from", "address to", "uint256 value", "uint256 validAfter", "uint256 validBefore", "bytes32 nonce"].map(
+        (f) => ({ type: f.split(" ")[0]!, name: f.split(" ")[1]! }),
+      ),
+    };
+    for (const name of ["BA1", "BA9", "BA11"]) {
+      const r = row(name);
+      const first = r.input.agreement[0];
+      const doc: PaymentRequired =
+        first.paymentRequired !== undefined ? AG[first.paymentRequired] : JSON.parse(AG[first.paymentRequiredText]);
+      const option = doc.accepts.find((a) => a.network.startsWith("eip155:"))!;
+      const h = (doc.extensions!.legalContext!.info as { value: AtrHash }).value;
+      const m = r.expect.agreementMessage;
+      const digest: string = r.expect.agreementDigest ?? row("BA1").expect.agreementDigest;
+      const extra = option.extra as { name: string; version: string };
+      const domain = { name: extra.name, version: extra.version, chainId: 84532, verifyingContract: option.asset as `0x${string}` };
+      const written = {
+        domain,
+        types,
+        primaryType: "TransferWithAuthorization",
+        message: { ...m, value: BigInt(m.value), validAfter: BigInt(m.validAfter), validBefore: BigInt(m.validBefore) },
+      } as TypedDataDefinition;
+      expect(hashTypedData(written), name).toBe(digest);
+      expect(await signer.signTypedData(written), name).toBe(r.expect.agreementSignature);
+      const u = await exactEip3009.build({ required: doc, accepted: option, from: payer, now: B.fixed.now }, h);
+      if ("refused" in u) throw new Error(u.code);
+      const message = Object.fromEntries(Object.entries(u.typedData.message).map(([k, v]) => [k, String(v)]));
+      expect(message, name).toStrictEqual(m);
+      expect(hashTypedData(u.typedData as unknown as TypedDataDefinition), name).toBe(digest);
+      expect(await signer.signTypedData(u.typedData as unknown as TypedDataDefinition), name).toBe(r.expect.agreementSignature);
+    }
   });
 });
 
