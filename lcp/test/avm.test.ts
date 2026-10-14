@@ -443,6 +443,34 @@ describe("x402-exact-algorand.json", () => {
     }
   });
 
+  // The build rows: the file's option, payer and parameters with the row's genesis id, and genesis hash where it
+  // names one. A refused row gives its code. Row 1's group id and payment txid are the file's, derived by hand from the
+  // canonical form; bytesToSign is "TX" and the payment's encoding, so its SHA-512/256 is the payment's id, and bound
+  // reads the payment build writes. Rows 2 and 3 pin the order: the genesis id is checked before the genesis hash.
+  it("build: the rows' genesis ids and genesis hashes", async () => {
+    for (const row of rowsOf(V.build.rows, "x402-exact-algorand.json build.rows", { exact: 4 })) {
+      const p = { ...params, genesisId: row.genesisId, genesisHash: row.genesisHash ?? params.genesisHash };
+      const u = await exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: p }, H);
+      if (row.expect !== undefined) {
+        expect(u, row.case).toEqual({ refused: true, code: row.expect });
+        continue;
+      }
+      if ("refused" in u) throw new Error(`${row.case}: ${u.code}`);
+      expect(txidOf(u.request.bytes), row.case).toBe(row.expectPaymentTxid);
+      const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
+      if ("refused" in payment) throw new Error(payment.code);
+      const entry = decodeSignedTransaction(Buffer.from(payment.payload.paymentGroup[1]!, "base64"));
+      expect(Buffer.from(entry.txn.group!).toString("base64"), row.case).toBe(row.expectGroupId);
+      expect(await exactAvm.bound(payment), row.case).toBe(row.expectBound);
+      expect(await exactAvm.reference(payment), row.case).toEqual({
+        network: O.network,
+        txid: row.expectPaymentTxid,
+        lastValid: V.V3.expectReference.lastValid,
+      });
+    }
+    expect([V.build.rows[0].genesisId.isWellFormed(), V.build.rows[2].genesisId.isWellFormed()]).toEqual([false, false]);
+  });
+
   it("a genesis hash of another network is refused", async () => {
     const other = { ...params, genesisHash: "wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=" };
     expect(await exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: other }, H)).toEqual({

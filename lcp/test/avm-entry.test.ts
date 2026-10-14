@@ -365,24 +365,26 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
   });
 });
 
-// The transaction id is SHA-512/256 of "TX" and the canonical encoding (go-algorand Transaction.ID); for build's own
-// payment those bytes are algosdk's bytesToSign.
+// x402-exact-algorand.json build row 1: a genesis id of the byte-order mark and 198 x. Both readers read a string
+// member's bytes as written: algod as bytes, the facilitator as UTF-8 text through Node's Buffer, which keeps a leading
+// mark. build writes that gen, and bound, reference and recover read the payment under the row's hand-derived id.
 describe("a genesis id that begins with the byte-order mark", () => {
-  // Both readers read a string member's bytes as written: algod as bytes, the facilitator as UTF-8 text through
-  // Node's Buffer, which keeps a leading mark. build writes the mark and 198 x as gen, and bound reads that payment
-  // under algosdk's id for it.
-  it("is written by build and read by bound and reference with the mark", async () => {
-    const genesisId = `﻿${"x".repeat(198)}`;
-    const u = await exactAvm.build({ required, accepted: O, payer: V.fixed.payer, params: { ...params, genesisId } }, H);
+  it("is written by build and read by bound, reference and recover with the mark", async () => {
+    const row = rowsOf(V.build.rows as { case: string; genesisId: string; expectPaymentTxid?: string }[], "x402-exact-algorand.json build.rows", {
+      exact: 1,
+      keep: ["row 1, the genesis id that begins with the mark", (r) => r.genesisId.startsWith("\ufeff")],
+      leave: ["the rows whose genesis id holds a lone surrogate or is the file's own; avm.test.ts runs every row", (r) => !r.genesisId.startsWith("\ufeff")],
+    })[0]!;
+    const u = await exactAvm.build({ required, accepted: O, payer: V.fixed.payer, params: { ...params, genesisId: row.genesisId } }, H);
     if ("refused" in u) throw new Error(u.code);
-    const txid = base32.encode(sha512_256(u.request.bytes)).replace(/=+$/, "");
+    const txid = row.expectPaymentTxid!;
+    expect(base32.encode(sha512_256(u.request.bytes)).replace(/=+$/, "")).toBe(txid);
     const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
     if ("refused" in payment) throw new Error(payment.code);
     const entry = Buffer.from(payment.payload.paymentGroup[1]!, "base64");
     expect(entry.includes(Buffer.from([0xd9, 201, 0xef, 0xbb, 0xbf]))).toBe(true);
     expect(await exactAvm.bound(payment)).toBe(H);
-    const ref = await exactAvm.reference(payment);
-    expect(ref).toEqual({ network: O.network, txid, lastValid: V.V3.expectReference.lastValid });
+    expect(await exactAvm.reference(payment)).toEqual({ network: O.network, txid, lastValid: V.V3.expectReference.lastValid });
     expect(await exactAvm.recover({ network: O.network, txid }, readerHolding(txid))).toBe(H);
   });
 });
