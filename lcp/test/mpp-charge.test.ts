@@ -33,6 +33,7 @@ import {
   evmTransaction,
   pairingsOf,
   place,
+  problem,
   tempoMemo,
   tempoPush,
   type LandedCredential,
@@ -721,6 +722,33 @@ describe("mpp-charge-tempo-push.json", () => {
     expect(tempoPush.claims).toBe(PU.pattern.claims);
     expect(proves).toContain("signed and broadcast");
     expect(proves).toContain("read after the money had moved");
+  });
+
+  // TransferWithMemo(address indexed from, address indexed to, uint256 amount, bytes32 indexed memo) (tempo.ts's
+  // topic): under the Solidity ABI's event encoding each indexed address is one 32-byte topic and the amount one
+  // 32-byte data word. A landed log without them is the reader's malformed answer, not the buyer's: tempo/unreadable,
+  // which problem() answers 500 internal-payment-error, a read to repeat, at fetchPresented and at reference.
+  it("a landed TransferWithMemo log not of the event's form is tempo/unreadable, a read to repeat", async () => {
+    const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const cred = u.complete(PU.MV13.T_P) as MppCredential;
+    const memo = receipt.logs[1] as EvmLog;
+    const short = `0x${"01".repeat(20)}`;
+    const unreadable = { refused: true, code: "tempo/unreadable" };
+    for (const [name, log] of [
+      ["no amount word", { ...memo, data: "0x" }],
+      ["a 20-byte sender topic", { ...memo, topics: [memo.topics[0], short, memo.topics[2], memo.topics[3]] }],
+      ["a 20-byte recipient topic", { ...memo, topics: [memo.topics[0], memo.topics[1], short, memo.topics[3]] }],
+    ] as const) {
+      const logs = [receipt.logs[0], log];
+      expect([name, await tempoPush.fetchPresented(cred, readerFor("eip155:42431", { ...receipt, logs }))]).toEqual([
+        name,
+        unreadable,
+      ]);
+      const landed = { ...cred, landed: { transaction: PU.MV13.T_P, blockNumber: 100n, logs } };
+      expect([name, await tempoPush.reference(landed)]).toEqual([name, unreadable]);
+    }
+    expect(problem("tempo/unreadable")).toEqual({ status: 500, type: "https://paymentauth.org/problems/internal-payment-error" });
   });
 
   it("plant: a memo log emitted by another TIP-20 is not this payment's carrier", async () => {

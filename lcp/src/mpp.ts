@@ -780,8 +780,10 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
  * the receipt's logs from `currency`. No receipt is `tempo/not-found` and a failed read `tempo/unreadable`: reads to
  * repeat, not a refusal of the payment. A revert whose block is at or below the reader's `finalized` mark is
  * `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is `tempo/not-final`, a
- * read to repeat: the block can be replaced by one in which the transaction succeeds. A reader that is missing or for
- * another network than the challenge names is `tempo/wrong-reader`.
+ * read to repeat: the block can be replaced by one in which the transaction succeeds. A `TransferWithMemo` log from
+ * `currency` that is not of the event's form, a 32-byte sender and recipient topic and an amount word, is
+ * `tempo/unreadable` too: the reader's answer is not well formed. A reader that is missing or for another network than
+ * the challenge names is `tempo/wrong-reader`.
  */
 async function pushFetchPresented(presented: MppCredential, reader: EvmReader): Promise<LandedCredential | Refusal> {
   if (
@@ -804,6 +806,10 @@ async function pushFetchPresented(presented: MppCredential, reader: EvmReader): 
   const receipt = await readReceiptAtMark(`eip155:${chainId}`, hash, reader);
   if (isRefusal(receipt)) return receipt;
   const logs = receipt.logs.filter((l) => sameBytes(l.address, currency));
+  const memoLogs = logs.filter((l) => sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC));
+  if (memoLogs.some((l) => transferParts(l, currency, TRANSFER_WITH_MEMO_TOPIC) === undefined)) {
+    return refusal("tempo/unreadable");
+  }
   return { ...presented, landed: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
 }
 
@@ -842,13 +848,17 @@ async function pushBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(m) ? m : m.h;
 }
 
+/**
+ * The read keys of the landed `TransferWithMemo` log. The landed logs are the seller's read, not the buyer's
+ * credential, so a matched log that is not of the event's form is `tempo/unreadable`, a read to repeat.
+ */
 async function pushReference(input: unknown): Promise<EvmRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const m = landedMemoLog(presented);
   if (isRefusal(m)) return m;
   const parts = transferParts(m.log, m.currency, TRANSFER_WITH_MEMO_TOPIC);
-  if (parts === undefined) return refusal("mpp/credential-malformed");
+  if (parts === undefined) return refusal("tempo/unreadable");
   return memoRef(m.checked, normalHash(m.log.topics[3])!, parts.to, parts.value);
 }
 
