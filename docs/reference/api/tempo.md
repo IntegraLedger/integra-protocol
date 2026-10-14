@@ -137,14 +137,6 @@ KeyAuthorizationWitness(address,bytes32)
 
 ***
 
-### KEY\_AUTHORIZED\_TOPIC
-
-> `const` **KEY\_AUTHORIZED\_TOPIC**: `"0x7c46af0758d3eca5e8195833bff1e5153f6249fc0f2968a878fd28544315a03c"`
-
-KeyAuthorized(address,address,uint8,uint64): the account and the key id are topics 1 and 2.
-
-***
-
 ### KEY\_REVOKED\_TOPIC
 
 > `const` **KEY\_REVOKED\_TOPIC**: `"0x14ce4f0c8c12936436b733974fb13d10fc13e8c41c06dc8e19d82001c93d7989"`
@@ -278,29 +270,6 @@ keccak256(`0x76` ‖ rlp(every envelope field before the sender's signature) ‖
 | ------ | ------ |
 | `signedTx` | `Uint8Array` |
 | `sender` | `` `0x${string}` `` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-***
-
-### keyAccount()
-
-> **keyAccount**(`receipt`, `h`, `keyId`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-The account for which a receipt's key authorization carried witness `h` and registered `keyId`: topic 1 of the
-account keychain's `KeyAuthorizationWitness` logs whose topic 2 is `h`, when the keychain's `KeyAuthorized` log in
-the same receipt names that account and `keyId`. The receipt's status is not read: the authorization is applied
-before the transaction's calls run.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `receipt` | [`EvmReceipt`](evm.md#evmreceipt) |
-| `h` | `` `0x${string}` `` |
-| `keyId` | `` `0x${string}` `` |
 
 #### Returns
 

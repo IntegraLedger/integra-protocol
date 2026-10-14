@@ -265,22 +265,3 @@ The EIP-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 au
 #### Returns
 
 [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-***
-
-### pairingOf()
-
-> **pairingOf**(`option`): `BatchPairingId` \| `undefined`
-
-The batch-settlement pairing an option names, or undefined. A Solana option names `extra.receiverAuthorizer` and
-client voucher signing (`extra.voucherSigner` absent or `"client"`).
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `option` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-
-#### Returns
-
-`BatchPairingId` \| `undefined`

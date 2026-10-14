@@ -736,9 +736,9 @@ string.
 > **keySearch**(`ref`, `receipt`, `h`): [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)
 
 The read keys of a transfer made under the subscription's access key, from a receipt of the key's registration: the
-account whose key authorization carried `h` and registered the key (`keyAccount`), then `accessKey` with that
-account, the token's `Transfer` to the recipient's digest, and the keychain's `AccessKeySpend` filter for the account,
-the key and the token. Refused when `ref` carries no access key, or the receipt did not register it under `h`.
+account whose key authorization carried `h` and registered the key, then `accessKey` with that account, the token's
+`Transfer` to the recipient's digest, and the keychain's `AccessKeySpend` filter for the account, the key and the
+token. Refused when `ref` carries no access key, or the receipt did not register it under `h`.
 
 #### Parameters
 
