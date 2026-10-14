@@ -296,17 +296,17 @@ On `x402/batch-settlement/eip155`, `bound` and `reference` read the opening's de
 `x402/payload-malformed`. The reference's transfer digest holds that amount. They read the deposit authorization's
 `validBefore` or `deadline` as the deposit collectors decode it, a `uint256`: one that is not a decimal below 2^256 is
 refused `x402/payload-malformed`, and the reference's `settleBy` is that value in decimal. The channel configuration
-that `bound`, `reference`, `channel.ref` and `buildWithin` read is held to the rules that `deposit` applies: a
-configuration whose payer, receiver, receiver authorizer or token is the zero address, or whose withdrawal delay is
-outside 900 to 2,592,000 seconds, is refused `x402/payload-malformed`, and `build` refuses a payer, or an option's
-`payTo` or asset, that is the zero address with `x402/option-malformed`. A zero payer authorizer is read: the payer then
-signs the vouchers. `channel.kind` reads a refund's `amount`, when it is present, as the channel contract's `refund`
-takes it, a `uint128` that is not 0: one that is not a positive decimal below 2^128 is refused `x402/payload-malformed`.
-The opening's `status` counts the payer's deposit only from the call that deposited into this channel. The channel
-contract collects a deposit and then emits `Deposited` for the channel, so the payer's transfer must be among the logs
-between the contract's previous `Deposited` and the channel's own. A gift into the channel beside the payer's deposit
-into another channel, or the payer's short deposit into it beside a deposit elsewhere, reads as failed, with the reason
-`transfer-not-found`.
+that `bound`, `reference`, `channel.ref`, `channel.boundWithin` and `buildWithin` read is held to the rules that
+`deposit` applies: a configuration whose payer, receiver, receiver authorizer or token is the zero address, or whose
+withdrawal delay is outside 900 to 2,592,000 seconds, is refused `x402/payload-malformed`, and `build` refuses a payer,
+or an option's `payTo` or asset, that is the zero address with `x402/option-malformed`. A zero payer authorizer is read:
+the payer then signs the vouchers. `channel.kind` reads a refund's `amount`, when it is present, as the channel
+contract's `refund` takes it, a `uint128` that is not 0: one that is not a positive decimal below 2^128 is refused
+`x402/payload-malformed`. The opening's `status` counts the payer's deposit only from the call that deposited into this
+channel. The channel contract collects a deposit and then emits `Deposited` for the channel, so the payer's transfer
+must be among the logs between the contract's previous `Deposited` and the channel's own. A gift into the channel beside
+the payer's deposit into another channel, or the payer's short deposit into it beside a deposit elsewhere, reads as
+failed, with the reason `transfer-not-found`.
 
 On `x402/batch-settlement/solana`, `bound`, `reference`, `channel.ref` and `buildWithin` read the channel
 configuration's `withdrawDelay` as the payment-channels program's `grace_period`, a `u32` that its `open` refuses as 0:

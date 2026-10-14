@@ -577,7 +577,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     case: string;
     pairing?: string;
     call?: "build" | "buildWithin";
-    calls?: ("bound" | "reference" | "channel.ref" | "channel.kind" | "buildWithin")[];
+    calls?: ("bound" | "reference" | "channel.ref" | "channel.boundWithin" | "channel.kind" | "buildWithin")[];
     choice?: unknown;
     h?: unknown;
     depositAmount?: string;
@@ -750,12 +750,12 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   // (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L85-86 and L206-212). It takes a zero
   // payerAuthorizer: the payer then signs the vouchers (L530-538; scheme_batch_settlement_evm.md L21 at the same commit).
   // Each configuration's voucher carries its channel id, viem's typed-data hash of it, so only its form decides.
-  it("the EVM bound, reference, channel.ref and buildWithin refuse a channelConfig the channel contract's deposit refuses, and read its edges", async () => {
+  it("the EVM bound, reference, channel.ref, channel.boundWithin and buildWithin refuse a channelConfig the channel contract's deposit refuses, and read its edges", async () => {
     const configs = carrying("configMembers", 1, "x402/batch-settlement/eip155");
     const ZERO = "0x0000000000000000000000000000000000000000";
     expect(configs.map((r) => [r.calls, r.configMembers])).toEqual([
       [
-        ["bound", "reference", "channel.ref", "buildWithin"],
+        ["bound", "reference", "channel.ref", "channel.boundWithin", "buildWithin"],
         [{ payer: ZERO }, { receiver: ZERO }, { receiverAuthorizer: ZERO }, { token: ZERO }, { withdrawDelay: 899 }, { withdrawDelay: 2592001 }],
       ],
     ]);
@@ -769,6 +769,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
           bound: () => batchEvm.bound(payment2),
           reference: () => batchEvm.reference(payment2),
           "channel.ref": () => batchEvm.channel.ref(payment2),
+          "channel.boundWithin": () => batchEvm.channel.boundWithin(payment2),
           buildWithin: () =>
             batchEvm.buildWithin({ required: doc, accepted: doc.accepts[0]!, channelConfig: config, maxClaimableAmount: BigInt(V.EB2.maxClaimableAmount) }, H),
         };
@@ -787,6 +788,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         expect(await runs["bound"]!(), label).toBe(H);
         expect((unwrap(await runs["reference"]!()) as { bindingLog: { value: string } }).bindingLog.value, label).toBe(id);
         expect(await runs["channel.ref"]!(), label).toEqual({ network: "eip155:84532", channel: id });
+        expect(await runs["channel.boundWithin"]!(), label).toBe(H);
         expect("refused" in (unwrap(await runs["buildWithin"]!()) as object), label).toBe(false);
       }
     }

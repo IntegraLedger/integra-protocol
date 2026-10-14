@@ -968,12 +968,13 @@
     "expect": "x402/payload-malformed"
    },
    {
-    "case": "EVM bound, reference, channel.ref or buildWithin with a channelConfig the channel contract's deposit refuses: a payer, receiver, receiverAuthorizer or token that is the zero address (InvalidChannel), or a withdrawDelay below 900 or above 2592000 (WithdrawDelayOutOfRange) (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L85-86 and L206-212)",
+    "case": "EVM bound, reference, channel.ref, channel.boundWithin or buildWithin with a channelConfig the channel contract's deposit refuses: a payer, receiver, receiverAuthorizer or token that is the zero address (InvalidChannel), or a withdrawDelay below 900 or above 2592000 (WithdrawDelayOutOfRange) (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L85-86 and L206-212)",
     "pairing": "x402/batch-settlement/eip155",
     "calls": [
      "bound",
      "reference",
      "channel.ref",
+     "channel.boundWithin",
      "buildWithin"
     ],
     "configMembers": [
