@@ -5,8 +5,9 @@ import { normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /**
- * Reads one receipt. A reader that is missing or for another network is `tempo/wrong-reader`, a failed read is
- * `tempo/unreadable`, and no receipt is `tempo/not-found`. A reverted transaction is `tempo/reverted` only where the
+ * Reads one receipt. A reader that is missing or for another network, or a `transaction` that is not a 32-byte hash,
+ * is `tempo/wrong-reader`, with nothing read; a failed read is `tempo/unreadable`, and no receipt is `tempo/not-found`.
+ * A reverted transaction is `tempo/reverted` only where the
  * receipt's block is at or below the reader's `finalized` mark. Above that mark, or where it cannot be read, a reverted
  * transaction is `tempo/not-final`, a read to repeat: a block above the mark can be replaced by one in which the same
  * transaction succeeds. The mark is read only for a reverted transaction. At most two calls.
@@ -28,7 +29,7 @@ export async function readReceiptAtMark(network: string, transaction: Hex, reade
 async function landedReceipt(network: string, transaction: Hex, reader: EvmReader): Promise<EvmReceipt | Refusal> {
   if (typeof reader !== "object" || reader === null || reader.network !== network) return refusal("tempo/wrong-reader");
   const tx = normalHash(transaction);
-  if (tx === null) return refusal("tempo/not-found");
+  if (tx === null) return refusal("tempo/wrong-reader");
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(tx);

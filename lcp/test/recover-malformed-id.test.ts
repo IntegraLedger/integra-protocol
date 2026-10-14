@@ -11,6 +11,7 @@
 // timepoint; a NEAR or TON id the package reads as a non-empty string.
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
+import { readReceiptAtMark } from "../src/receipt.js";
 import { rowsOf } from "./rows.js";
 
 type Recover = (ref: unknown, reader: unknown) => Promise<unknown>;
@@ -87,4 +88,20 @@ describe("recover, given a ref whose transaction id is not in its rail's form", 
       }
     });
   }
+});
+
+// The Tempo receipt read under `fetchPresented` on the push charge and the Tempo recovers answers a transaction that is
+// not a 32-byte hash as those recovers answer a ref naming one: `tempo/wrong-reader`, with nothing read
+// (docs/reference/refusals.md, `tempo/wrong-reader`), never `tempo/not-found`, a read to repeat.
+describe("the Tempo receipt read, given a transaction that is not a 32-byte hash", () => {
+  it("is tempo/wrong-reader, with nothing read", async () => {
+    for (const value of rowsOf(NOT_HASH, "the malformed transaction ids")) {
+      const { reader, calls } = recording("eip155:42431");
+      expect([value, await readReceiptAtMark("eip155:42431", value as never, reader as never)]).toEqual([
+        value,
+        { refused: true, code: "tempo/wrong-reader" },
+      ]);
+      expect([value, calls]).toEqual([value, []]);
+    }
+  });
 });

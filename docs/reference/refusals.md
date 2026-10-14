@@ -357,7 +357,7 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/no-access-key` | `keySearch` is given a reference with no well-formed access key (key id, token and recipient digest). |
 | `tempo/no-witness` | The Tempo subscription's key authorization carries no witness, or a receipt holds no `KeyAuthorizationWitness` log (for `witnessRecover`, in a block at or below the reader's `finalized` mark, or naming H for `keySearch`). |
 | `tempo/not-final` | **Read to repeat.** The transaction an MPP Tempo push `hash` credential names, or that a Tempo `recover` reads, reverted, or the receipt a Tempo `recover` reads holds no single `ChannelOpened` salt or `KeyAuthorizationWitness` log, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
-| `tempo/not-found` | **Read to repeat.** The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
+| `tempo/not-found` | **Read to repeat.** The reader found no receipt for the transaction. |
 | `tempo/open-ambiguous` | The signed Tempo session opening has more than one `open` call to the challenge's escrow contract. |
 | `tempo/open-not-found` | The signed Tempo session opening has no `open` call to the challenge's escrow contract, or the receipt the `mpp/session/tempo` `recover` reads, in a block at or below the reader's `finalized` mark, holds no `ChannelOpened` of the TIP-20 channel reserve, whose data carries the salt (a v1 escrow's `ChannelOpened` carries none). |
 | `tempo/read-first` | An MPP Tempo push `hash` credential carries no landed logs yet; the seller reads it with `fetchPresented` before `bound` or `reference`. |
