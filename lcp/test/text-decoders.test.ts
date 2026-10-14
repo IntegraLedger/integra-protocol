@@ -3,11 +3,15 @@
 // EF BB BF as the text after the mark; RFC 8259 section 8.1 forbids the mark before networked JSON text.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { rowsOf } from "./rows.js";
 
 const srcDir = new URL("../src/", import.meta.url);
-const decoders = readdirSync(srcDir, { recursive: true, encoding: "utf8" })
-  .filter((f) => f.endsWith(".ts"))
-  .flatMap((f) => [...readFileSync(new URL(f, srcDir), "utf8").matchAll(/new TextDecoder\(([^)]*)\)/g)].map((m) => [f, m[1]!]));
+const decoders = rowsOf(
+  readdirSync(srcDir, { recursive: true, encoding: "utf8" })
+    .filter((f) => f.endsWith(".ts"))
+    .flatMap((f) => [...readFileSync(new URL(f, srcDir), "utf8").matchAll(/new TextDecoder\(([^)]*)\)/g)].map((m) => [f, m[1]!])),
+  "src/, each new TextDecoder(…) in its .ts files",
+);
 
 describe("the text decoders in src", () => {
   it("src holds TextDecoders", () => {

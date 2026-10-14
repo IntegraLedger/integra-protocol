@@ -449,6 +449,35 @@ describe("buyer.json: the rows the core and the binding can check", () => {
     const outcome = { agreementFetches: exactEip3009.pattern.publicProof ? 0 : 1, paymentSignature: isB6 ? "B6" : signed.payload.signature };
     expect(outcome).toEqual({ agreementFetches: r.expect.agreementFetches, paymentSignature: r.expect.paymentSignature });
   });
+
+  // docs/concepts/vectors.md: the suite runs the parts of a buyer row this package implements, and the buyer packages run
+  // every row whole. The rows below are the gate's in every step, so no test here runs them.
+  const GATE_ONLY: Record<string, string> = {
+    B8: "the payment-identifier extension, which this package neither reads nor writes",
+    B11: "the gate's fetch of the link and the answers it declines",
+    B13: "the gate's bound on the bytes it reads from the link",
+    B14: "the gate's deadline on the fetch",
+    B15: "the signer's refusal to sign",
+    B16: "the match of the buyer's accounts to the options' networks",
+    B17: "the gate's check that it implements the pairing the binding names",
+    B18: "the payment-identifier extension, which this package neither reads nor writes",
+    BE2: "the content codings of the agreement exchange",
+  };
+  // The rows this file and buyer-vectors.test.ts run, by name, in the file's order.
+  const RUN = [
+    "B1", "B2", "B2b", "B3", "B4", "B5", "B6", "B7", "B9", "B10", "B12",
+    "BA1", "BA2", "BA3", "BA4", "BA5", "BA6", "BA7", "BA8", "BA9", "BA10", "BA11", "BA12", "BA13", "BA14",
+    "BE1", "BS1", "BS2", "BX1", "BW1", "BW2", "B19", "B20", "BA15", "BA16", "BA17", "BA18", "BW3", "BW4", "B21", "B22", "BA19",
+  ];
+  it("every row is one a test here runs a part of, or one whose every step is the gate's", () => {
+    const run = rowsOf(B.rows as { name: string }[], "buyer.json rows", {
+      exact: RUN.length,
+      keep: ["the rows a test here runs a part of", (r) => RUN.includes(r.name)],
+      leave: ["the rows whose every step is the gate's, which the buyer packages run whole", (r) => r.name in GATE_ONLY],
+    });
+    expect(run.map((r) => r.name)).toEqual(RUN);
+    expect((B.rows as { name: string }[]).filter((r) => r.name in GATE_ONLY).map((r) => r.name)).toEqual(Object.keys(GATE_ONLY));
+  });
 });
 
 // docs/concepts/vectors.md: refusal codes are this package's own, and a file's agreedRefusals rows hold the codes for

@@ -317,7 +317,6 @@ describe("x402-exact-near.json", () => {
       leave: ["the peer-missing row, which ton-near-peer-missing.test.ts runs with the NEAR SDK and borsh absent", (r) => r.expect.endsWith("/peer-missing")],
     })) {
       const want = { refused: true, code: row.expect };
-      if (row.expect.endsWith("/peer-missing")) continue;
       if (row.option !== undefined) {
         const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [row.option] };
         expect([row.case, exactNear.advertise(doc, H, V.fixed.link, row.option)]).toEqual([row.case, want]);

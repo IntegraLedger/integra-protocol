@@ -876,7 +876,7 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
       (r, i) => r.transaction === undefined && r.expect !== "stellar/peer-missing" && i !== 3,
     ],
     leave: [
-      "the peer-missing row, which stellar-peer-missing.test.ts runs; row 3, which the V5 two-entry test runs by its index; and the rows with a transaction string, which the 8192-bound test above runs",
+      "the peer-missing row, which stellar-peer-missing.test.ts runs; row 3, which the V5 two-entry test runs by its index and the build test below runs at build; and the rows with a transaction string, which the 8192-bound test above runs",
       (r, i) => r.expect === "stellar/peer-missing" || i === 3 || typeof r.transaction === "string",
     ],
   });
@@ -892,4 +892,45 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
       for (const r of results) expect(r).toEqual(refused(row.expect));
     });
   }
+
+  // Row 3 at build: V2's simulated envelope with two address entries for the payer, with none, and with its one entry
+  // carrying sorobanCredentialsSourceAccount.
+  it("row 3: build refuses an envelope without exactly one address entry for the payer", async () => {
+    const withAuth = (change: (auth: unknown[]) => unknown[]) =>
+      edited(V.V2.simulatedXdr, (e) => {
+        const body = v1Of(e).tx.operations[0]!.body;
+        if (body.type !== 24) throw new Error("not an invocation");
+        body.invokeHostFunctionOp.auth = change(body.invokeHostFunctionOp.auth) as typeof body.invokeHostFunctionOp.auth;
+      });
+    const results = [
+      await build({ simulatedXdr: withAuth((auth) => [auth[0], auth[0]]) }),
+      await build({ simulatedXdr: withAuth(() => []) }),
+      await build({ simulatedXdr: withAuth((auth) => [{ ...(auth[0] as object), credentials: { type: 0 } }]) }),
+    ];
+    for (const r of results) expect(r).toEqual(refused(V.agreedRefusals.rows[3].expect));
+  });
+
+  // The order the case texts state: a check "checked after" another answers second, so one input that fails both
+  // answers the code of the check made first.
+  it("each check a case states is made after another answers second when one input fails both", async () => {
+    const code = (start: string) => rowsOf(rows, "x402-exact-stellar.json agreedRefusals.rows", {
+      exact: 1,
+      keep: [`the row whose case starts "${start}"`, (r) => r.case.startsWith(start)],
+      leave: ["every other row", (r) => !r.case.startsWith(start)],
+    })[0]!.expect;
+    const carrier = code("build when the option's payTo is not muxed");
+    const oneTransfer = code("an operation that is not one transfer");
+    const asset = code("build when the operation and the signed invocation agree but call a token contract");
+    const amount = code("build when the agreed transfer's amount");
+    const subInvocation = simulated(V.V2.simulatedXdr, { ...agree, subInvocation: true });
+    const other = V.V4build.otherAsset as string;
+    const more = (A + 1n).toString();
+    expect([
+      await build({ accepted: { ...accepted, payTo: V.fixed.seller }, simulatedXdr: subInvocation }),
+      await build({ accepted: { ...accepted, payTo: V.fixed.seller, asset: other } }),
+      await build({ accepted: { ...accepted, asset: other }, simulatedXdr: subInvocation }),
+      await build({ accepted: { ...accepted, asset: other, amount: more } }),
+      await build({ accepted: { ...accepted, amount: more }, payer: V.V4build.otherPayer }),
+    ]).toEqual([carrier, carrier, oneTransfer, asset, amount].map(refused));
+  });
 });

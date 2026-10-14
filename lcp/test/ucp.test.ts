@@ -57,6 +57,21 @@ describe("ucp.json", () => {
     expect(A).not.toContain(F.H.slice(2));
   });
 
+  // The rows that name C0 hold it: V2's checkout, the implementation rows "C0 without links", and the plant's J2, C0
+  // with amount 39800 and A2's legal context link.
+  it("C0 is the checkout the rows that name it hold", () => {
+    const C0 = V.fixed.C0;
+    expect(V.V2.advertise.doc).toEqual(C0);
+    const { links: _links, ...withoutLinks } = C0;
+    const naming = V.implementation.filter((r: { case: string }) => /\bC0\b/.test(r.case));
+    expect(naming.map((r: { name: string }) => r.name)).toEqual(["advertise-empty-links", "read-no-links"]);
+    for (const r of naming) expect(r.input.doc, r.name).toEqual(withoutLinks);
+    const J2 = JSON.parse(Buffer.from(V.plant.checkoutJwt.split(".")[1], "base64url").toString("utf8"));
+    const legal = J2.links.at(-1);
+    expect(legal).toMatchObject({ type: "legal_context", title: `lcp:sha256:${V.plant.H2}` });
+    expect(J2).toEqual({ ...C0, totals: [{ type: "total", amount: 39800 }], links: [...C0.links, legal] });
+  });
+
   it("V2: advertise and read", () => {
     const a = V.V2.advertise;
     for (const p of [ap2Mandate, unsigned]) {

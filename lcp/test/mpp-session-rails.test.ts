@@ -796,7 +796,6 @@ describe("the three session pairings' records", () => {
 // file's opening challenges, HS3's opening, XS1's and XS2's XRPL values and SV2's channel.
 describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", () => {
   type Row = { case: string; expect: string };
-  const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: 11 });
   /** The method's opening challenge, as issued, with its decoded request changed by `change`. */
   const requestOf = (m: "hedera" | "solana" | "xrpl", change: (r: Record<string, any>) => void): MppChallenge => {
     const r = JSON.parse(Buffer.from(V.SS1[m].challenge.request, "base64url").toString("utf8"));
@@ -911,6 +910,8 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       ];
     },
   };
+
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });
 
   it("names a case for every row, and no other", () => {
     expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());

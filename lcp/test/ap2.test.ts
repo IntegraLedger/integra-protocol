@@ -53,6 +53,17 @@ describe("ap2-checkout-mandate.json", () => {
     expect(A).not.toContain(F.H.slice(2));
   });
 
+  // The rows that name P0 hold it: V2's payload, and the implementation row "P0 signed as is", whose JWT payload is P0.
+  it("P0 is the payload the rows that name it hold", () => {
+    const P0 = V.fixed.P0;
+    expect(V.V2.advertise.payload).toEqual(P0);
+    const naming = V.implementation.filter((r: { case: string }) => /\bP0\b/.test(r.case));
+    expect(naming.map((r: { name: string }) => r.name)).toEqual(["read-no-legal-context"]);
+    for (const r of naming) {
+      expect(JSON.parse(Buffer.from(r.input.doc.split(".")[1], "base64url").toString("utf8")), r.name).toEqual(P0);
+    }
+  });
+
   it("V2: advertise and read", () => {
     const a = V.V2.advertise;
     const payload = checkoutMandate.advertise(a.payload, a.h, a.link, a.offer);

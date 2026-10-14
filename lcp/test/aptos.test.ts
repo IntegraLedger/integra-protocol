@@ -189,20 +189,32 @@ describe("V2 · reference from the wire", () => {
     expect(decodeAptosTx(referenceWire(raw(script)))).toEqual({ refused: true, code: V.V2.script.expect });
     expect(await exactAptos.reference(payment(signedWire(raw(script))))).toEqual({ refused: true, code: V.V2.script.expect });
   });
-  it("a module, function or struct name with a leading U+FEFF is not a Move identifier", async () => {
-    // Move identifiers are ASCII (aptos-core, move-core-types identifier.rs, `is_valid`), so the bytes EF BB BF before
-    // a name make it no identifier. The code is the vector's row.
+  it("a module, function or struct name with a leading U+FEFF, a leading digit or over 255 characters is not a Move identifier", async () => {
+    // Move identifiers are ASCII letters, digits and underscores that do not start with a digit (aptos-core,
+    // move-core-types identifier.rs, `is_valid`), so the bytes EF BB BF before a name make it no identifier. The bound
+    // of 255 characters and the code are the vector's row.
     const named = (r: { case: string }) => r.case.startsWith("a module, function or struct name");
     const row = V.agreedRefusals.rows.find(named);
     const bom = "\uFEFF";
     const struct = (m: string, n: string) =>
       new TypeTagStruct(new StructTag(AccountAddress.ONE, new Identifier(m), new Identifier(n), []));
-    const payloads = [
-      transferPayload(`${bom}primary_fungible_store`),
-      transferPayload("primary_fungible_store", `${bom}transfer`),
-      transferPayload("primary_fungible_store", "transfer", struct(`${bom}fungible_asset`, "Metadata")),
-      transferPayload("primary_fungible_store", "transfer", struct("fungible_asset", `${bom}Metadata`)),
+    /** Fixture F's transfer with each of its four names, in turn, written as `name` writes it. */
+    const each = (name: (n: string) => string) => [
+      transferPayload(name("primary_fungible_store")),
+      transferPayload("primary_fungible_store", name("transfer")),
+      transferPayload("primary_fungible_store", "transfer", struct(name("fungible_asset"), "Metadata")),
+      transferPayload("primary_fungible_store", "transfer", struct("fungible_asset", name("Metadata"))),
     ];
+    // A name of 255 characters is an identifier, so the decoder reads past it: a module or function other than the
+    // transfer's is then not an x402 transfer, and a longer struct name decodes.
+    const longest = (n: string) => n + "_".repeat(255 - n.length);
+    for (const payload of each(longest)) {
+      for (const wire of [referenceWire(raw(payload)), signedWire(raw(payload))]) {
+        expect(decodeAptosTx(wire)).not.toEqual({ refused: true, code: row.expect });
+      }
+    }
+    const payloads = [(n: string) => `${bom}${n}`, (n: string) => `1${n}`, (n: string) => `${longest(n)}_`].flatMap(each);
+    expect(payloads).toHaveLength(12);
     for (const payload of payloads) {
       for (const wire of [referenceWire(raw(payload)), signedWire(raw(payload))]) {
         expect(decodeAptosTx(wire)).toEqual({ refused: true, code: row.expect });
@@ -407,7 +419,7 @@ describe("x402-exact-aptos.json agreedRefusals: a transaction beyond the BMP ove
     exact: 1,
     keep: ["the row whose transaction is an object with $repeat", (r) => typeof r.transaction === "object"],
     leave: [
-      "the row whose transaction is text, run by the describe block below, and the rows that give no transaction, run by base64.test.ts, the U+FEFF identifier test above and the runner at the end of this file",
+      "the row whose transaction is text, run by the describe block below, and the rows that give no transaction, run by base64.test.ts, the Move identifier test above and the runner at the end of this file",
       (r) => typeof r.transaction === "string" || r.transaction === undefined,
     ],
   }) as (RefusalRow & { transaction: { $repeat: [string, number] } })[];
@@ -431,7 +443,7 @@ describe("x402-exact-aptos.json agreedRefusals: a transaction given as text", ()
     exact: 1,
     keep: ["the row whose transaction is text", (r) => typeof r.transaction === "string"],
     leave: [
-      "the row whose transaction is an object with $repeat, run by the describe block above, and the rows that give no transaction, run by base64.test.ts, the U+FEFF identifier test above and the runner at the end of this file",
+      "the row whose transaction is an object with $repeat, run by the describe block above, and the rows that give no transaction, run by base64.test.ts, the Move identifier test above and the runner at the end of this file",
       (r) => typeof r.transaction === "object" || r.transaction === undefined,
     ],
   }) as (RefusalRow & { transaction: string })[];
@@ -449,8 +461,7 @@ describe("x402-exact-aptos.json agreedRefusals: a transaction given as text", ()
 // Each agreedRefusals row that gives no transaction, run from the vector's own data: fixture F's RawTransaction with
 // one part changed, the option O and its document, and V4's status row whose bySequence lookup is the real answer.
 // The rows that give a transaction run in the two describe blocks above, the row for text that is not padded standard
-// base64 in base64.test.ts, and the row for a name that is not a Move identifier in "a module, function or struct name
-// with a leading U+FEFF is not a Move identifier" above.
+// base64 in base64.test.ts, and the row for a name that is not a Move identifier in the Move identifier test above.
 describe("x402-exact-aptos.json agreedRefusals: every row that gives no transaction runs", () => {
   const elsewhere = (r: RefusalRow) =>
     r.case.startsWith("a transaction that is not padded standard base64") ||
@@ -458,7 +469,7 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
   const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-aptos.json agreedRefusals.rows", {
     keep: ["the rows that give no transaction, run below", (r) => r.transaction === undefined && !elsewhere(r)],
     leave: [
-      "the rows that give a transaction, run by the two describe blocks above; the row for text that is not padded standard base64, run by base64.test.ts; and the row for a name that is not a Move identifier, run by the U+FEFF identifier test above",
+      "the rows that give a transaction, run by the two describe blocks above; the row for text that is not padded standard base64, run by base64.test.ts; and the row for a name that is not a Move identifier, run by the Move identifier test above",
       (r) =>
         typeof r.transaction === "string" ||
         (typeof r.transaction === "object" && "$repeat" in r.transaction) ||
