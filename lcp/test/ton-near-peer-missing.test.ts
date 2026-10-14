@@ -40,7 +40,7 @@ describe("without the TON and NEAR peers", () => {
     const O = TVM.fixed.O;
     const doc = { x402Version: 2 as const, resource: TVM.fixed.resource, accepts: [O] };
     expect(lcpComment(TVM.fixed.H)).toEqual(refused);
-    expect(tvmCarrier("te6ccgEBAQEAAgAAAA==")).toEqual(refused);
+    expect(tvmCarrier("te6ccgEBAQEAAgAAAA==", "tvm:-239")).toEqual(refused);
     expect(root.pairingOf(O)).toBeUndefined();
     expect(exactTvm.advertise(doc, TVM.fixed.H, TVM.fixed.link, O)).toEqual(refused);
     const payment = { x402Version: 2, accepted: O, payload: { settlementBoc: "te6ccgEBAQEAAgAAAA==", asset: O.asset } };

@@ -8,7 +8,7 @@ import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { rowsOf } from "./rows.js";
 import { pairingOf } from "../src/index.js";
-import { exactTvm, lcpComment, tvmCarrier, type TonTx, type TvmReader, type TvmRef } from "../src/tvm.js";
+import { exactTvm, lcpComment, tvmCarrier, type TonTx, type TvmNetwork, type TvmReader, type TvmRef } from "../src/tvm.js";
 import type { AtrHash } from "../src/core.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 
@@ -441,7 +441,7 @@ describe("x402-exact-tvm.json", () => {
     const ref = await exactTvm.reference(p);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    const c = tvmCarrier(p.payload.settlementBoc);
+    const c = tvmCarrier(p.payload.settlementBoc, REF.network);
     if ("refused" in c) throw new Error(c.code);
     expect(c.h).toBe(H);
     for (const row of rowsOf(V.V3.refusals, "x402-exact-tvm.json V3.refusals")) {
@@ -627,7 +627,7 @@ describe("x402-exact-tvm.json", () => {
     for (const [name, form] of rowsOf(forms, "the forms TON's deserialization refuses", { exact: 15 })) {
       const boc = form(settlement, transferAt);
       expect([name, await exactTvm.bound(payment(boc))]).toEqual([name, malformed]);
-      expect([name, tvmCarrier(boc)]).toEqual([name, malformed]);
+      expect([name, tvmCarrier(boc, REF.network)]).toEqual([name, malformed]);
       expect([name, await recovered(form(body, []))]).toEqual([name, unreadable]);
     }
   });
@@ -640,7 +640,7 @@ describe("x402-exact-tvm.json", () => {
     const boc = bagOf(writtenOf(settlement), { beforeCrc: [0] });
     expect(await exactTvm.bound(payment(boc))).toBe(H);
     expect(await exactTvm.reference(payment(boc))).toEqual(V.V3.expectReference);
-    const c = tvmCarrier(boc);
+    const c = tvmCarrier(boc, REF.network);
     if ("refused" in c) throw new Error(c.code);
     expect([c.h, c.requestBodyHash]).toEqual([H, V.V3.expectReference.requestBodyHash]);
     const body = bagOf(writtenOf(cellAt(settlement, [0, 0, 1, 0])), { beforeCrc: [0] });
@@ -811,7 +811,7 @@ describe("x402-exact-tvm.json", () => {
     ];
     for (const [name, c, want] of rowsOf(refused, "the message forms TON's action phase refuses to send", { exact: 20 })) {
       expect([name, await bound(c)]).toEqual([name, want]);
-      expect([name, tvmCarrier(c.toBoc({ idx: false, crc32: true }).toString("base64"))]).toEqual([name, want]);
+      expect([name, tvmCarrier(c.toBoc({ idx: false, crc32: true }).toString("base64"), REF.network)]).toEqual([name, want]);
     }
   });
 
@@ -985,7 +985,7 @@ describe("x402-exact-tvm.json", () => {
         expect([mode, "refused" in ref ? ref : ref.jettonWallet]).toEqual([mode, V.fixed.jettonWallet]);
       } else {
         refused++;
-        expect([mode, await exactTvm.bound(p), await exactTvm.reference(p), tvmCarrier(boc)]).toEqual([mode, notTransfer, notTransfer, notTransfer]);
+        expect([mode, await exactTvm.bound(p), await exactTvm.reference(p), tvmCarrier(boc, REF.network)]).toEqual([mode, notTransfer, notTransfer, notTransfer]);
       }
     }
     expect([sent, refused]).toEqual([48, 208]);
@@ -995,7 +995,7 @@ describe("x402-exact-tvm.json", () => {
   // the configuration of the option's network. Any other tvm: network is tvm/network-malformed wherever the option
   // filter runs, and read finds no option it serves (x402/no-payable-option); a testnet option reads V2's settlement as
   // a mainnet one does.
-  it("the option's network is one of the two the pairing serves", async () => {
+  it("the option's network, and the network tvmCarrier reads at, is one of the two the pairing serves", async () => {
     const malformed = { refused: true, code: "tvm/network-malformed" };
     const boc = (await signed()).payload.settlementBoc;
     const advertised = exactTvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
@@ -1010,7 +1010,9 @@ describe("x402-exact-tvm.json", () => {
       expect([network, read]).toEqual([network, { refused: true, code: "x402/no-payable-option" }]);
       expect([network, await exactTvm.build({ ...choice(), required: doc, accepted: option }, H)]).toEqual([network, malformed]);
       expect([network, await exactTvm.bound(payment(boc, option)), await exactTvm.reference(payment(boc, option))]).toEqual([network, malformed, malformed]);
+      expect([network, tvmCarrier(boc, network as TvmNetwork)]).toEqual([network, malformed]);
     }
+    expect(tvmCarrier(boc, "eip155:1" as TvmNetwork)).toEqual(malformed);
     const testnet = { ...placed, network: "tvm:-3" };
     expect(pairingOf(testnet)).toBe("x402/exact/tvm");
     const u = await exactTvm.build({ ...choice(), required: { ...required, accepts: [testnet] }, accepted: testnet }, H);
@@ -1018,6 +1020,14 @@ describe("x402-exact-tvm.json", () => {
     expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2.expectRequestHash);
     expect(await exactTvm.bound(payment(boc, testnet))).toBe(H);
     expect(await exactTvm.reference(payment(boc, testnet))).toEqual({ ...V.V3.expectReference, network: "tvm:-3" });
+    const carried = (network: TvmNetwork) => {
+      const c = tvmCarrier(boc, network);
+      if ("refused" in c) throw new Error(c.code);
+      const { payload, ...keys } = c;
+      return { ...keys, payload: hashHex(payload) };
+    };
+    expect(carried("tvm:-3")).toEqual(carried("tvm:-239"));
+    expect(carried("tvm:-3")).toMatchObject({ h: H, requestBodyHash: V.V3.expectReference.requestBodyHash });
   });
 
   it("V2b: a state init whose code is a library cell, as a cell or a base64 BoC, binds as V2's payment", async () => {

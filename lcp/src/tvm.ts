@@ -649,17 +649,17 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
  * refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
  * for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
- * it, at mainnet's configuration (global version 15, workchains -1 and 0, no extra currencies), as `bound` and
- * `reference` read a mainnet option's payment: a source of `addr_none` or an `addr_std` with no anycast (the outgoing
- * message's the W5 wallet's own), a destination TON sends to, `extra_flags` of at most 3, its state init validated as
- * TON validates it, a referenced body with nothing after it, and at most two nested Merkle proofs or updates; the W5
- * action's send mode is one TON sends with. The settlement message TON would not send is `tvm/boc-malformed`, and the
- * outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The settlement message's source names
- * the account that relays it, which the BoC cannot show: one naming another account is read, and TON sends it when
- * that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names
- * its `addr_std`.
+ * it, at the configuration lcp holds for `network`, as `bound` and `reference` read the payment of an option on that
+ * network: a source of `addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a
+ * destination TON sends to, `extra_flags` of at most 3, its state init validated as TON validates it, a referenced
+ * body with nothing after it, and at most two nested Merkle proofs or updates; the W5 action's send mode is one TON
+ * sends with. The network is `tvm:-239` (mainnet) or `tvm:-3` (testnet), and any other is `tvm/network-malformed`. The
+ * settlement message TON would not send is `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or
+ * skips, `tvm/not-jetton-transfer`. The settlement message's source names the account that relays it, which the BoC
+ * cannot show: one naming another account is read, and TON sends it when that account relays it. `wallet` and
+ * `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names its `addr_std`.
  */
-export function tvmCarrier(settlementBoc: string): {
+export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
   h: AtrHash;
   transferBodyHash: Hex;
   jettonWallet: string;
@@ -668,7 +668,9 @@ export function tvmCarrier(settlementBoc: string): {
   validUntil: number;
   payload: TonCell;
 } | Refusal {
-  return carrierIn(settlementBoc, MAINNET);
+  const config = CONFIGURATIONS.get(network);
+  if (config === undefined) return refusal("tvm/network-malformed");
+  return carrierIn(settlementBoc, config);
 }
 
 /** `tvmCarrier` at the network's configuration, with the payload as the peer's cell. */
