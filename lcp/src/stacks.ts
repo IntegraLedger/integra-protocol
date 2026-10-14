@@ -146,14 +146,7 @@ export async function stacksStatus(
   }
   if (isLanded(tx)) {
     const landed = tx;
-    const mark = async (): Promise<"block" | "bitcoin"> => {
-      try {
-        const [block, tip]: unknown[] = [await reader.blockTenure(landed.blockHeight), await reader.tipTenure()];
-        return typeof block === "bigint" && typeof tip === "bigint" && tip >= block + 2n ? "bitcoin" : "block";
-      } catch {
-        return "block";
-      }
-    };
+    const mark = () => tenureMark(reader, landed.blockHeight);
     const call = tx.call;
     const ours =
       tx.sender.address === ref.origin &&
@@ -187,6 +180,19 @@ export async function stacksStatus(
     return { state: "failed", why: "nonce-used", finality: "block" };
   }
   return { state: "pending", why: notFound === undefined ? "dropped" : "not-found" };
+}
+
+/**
+ * The finality of a mined transaction's block: `bitcoin` once the tip's tenure height is at least the block's plus two,
+ * else `block`. A failed or malformed tenure read counts as `block`. One or two calls.
+ */
+async function tenureMark(reader: StacksReader, blockHeight: bigint): Promise<"block" | "bitcoin"> {
+  try {
+    const [block, tip]: unknown[] = [await reader.blockTenure(blockHeight), await reader.tipTenure()];
+    return typeof block === "bigint" && typeof tip === "bigint" && tip >= block + 2n ? "bitcoin" : "block";
+  } catch {
+    return "block";
+  }
 }
 
 /**
@@ -228,11 +234,14 @@ function isMempool(v: unknown): v is StacksMempool {
 }
 
 /**
- * Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
- * A ref or reader that is not an object, a reader for another network, or a ref whose `transaction` is not a 32-byte
- * hash is `stacks/wrong-reader`, with nothing read; a failed read or an answer of no documented shape
- * `stacks/unreadable`; an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`,
- * and no `(some <32 bytes>)` memo of that call `stacks/no-memo`.
+ * Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call,
+ * or at most three for a failed one. A ref or reader that is not an object, a reader for another network, or a ref
+ * whose `transaction` is not a 32-byte hash is `stacks/wrong-reader`, with nothing read; a failed read, an answer of no
+ * documented shape, or a mined transaction whose status is none of `success`, `abort_by_response`,
+ * `abort_by_post_condition` and `problematic_skipped`, `stacks/unreadable`; an unknown or unmined transaction
+ * `stacks/not-found`. A failed status is `stacks/not-success` once the tip's tenure height is at least the block's plus
+ * two, as `stacksStatus` reads `bitcoin` finality; below that, or where a tenure read fails, it is `stacks/not-final`,
+ * since that block can be replaced. No `(some <32 bytes>)` memo of the call is `stacks/no-memo`.
  */
 export async function stacksRecover(
   ref: { network: StacksNetwork; contract: string; transaction: Hex },
@@ -252,7 +261,10 @@ export async function stacksRecover(
   }
   if (!isLanded(tx) && !isMempool(tx) && notFoundPoint(tx, "height") === undefined) return refusal("stacks/unreadable");
   if (!isLanded(tx)) return refusal("stacks/not-found");
-  if (tx.status !== "success") return refusal("stacks/not-success");
+  if (tx.status !== "success") {
+    if (!Object.hasOwn(FAILED, tx.status)) return refusal("stacks/unreadable");
+    return (await tenureMark(reader, tx.blockHeight)) === "bitcoin" ? refusal("stacks/not-success") : refusal("stacks/not-final");
+  }
   const call = tx.call;
   if (call === null || call.contractId !== ref.contract || call.functionName !== "transfer") return refusal("stacks/no-memo");
   const h = memoHash(call.args[3]);

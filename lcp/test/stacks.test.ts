@@ -754,12 +754,44 @@ describe("usdc/stacks status and recover (M4b)", () => {
     if (reader.calls > 0) expect(reader.order[0]).toBe("confirmedNonce");
   });
 
+  // A failed transaction's block is read for its tenure and the tip's, as status reads a failed answer's finality: one
+  // call for the transaction, and two for a failed one's tenures.
   it.each(rowsOf(V.M4b.recover as Row[], "mpp-charge-usdc-stacks.json M4b.recover"))("recover: $case", async (row) => {
     const reader = readerFor(row);
     expect(await stacksRecover({ network: ref.network, contract: ref.contract, transaction: ref.transaction }, reader)).toEqual(
       row.expect,
     );
-    expect(reader.calls).toBe(1);
+    expect(reader.calls).toBe(row.status === undefined ? 1 : 3);
+  });
+
+  // A Stacks block is final once the tip's tenure height is at least its own plus two (status's `bitcoin` finality, the
+  // vector's M4b.rows "L with abort_by_response, tip tenure 256358"); a block above that can be replaced. A refusal names
+  // no finality, so recover gives a failed transaction's verdict only at that mark, and a read to repeat below it, as
+  // status gives the same failure with finality `block` (M4b.rows "L with abort_by_response").
+  it("recover refuses a failed transaction stacks/not-success only where status reads bitcoin finality", async () => {
+    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    const rows = rowsOf(V.M4b.rows as Row[], "mpp-charge-usdc-stacks.json M4b.rows", {
+      keep: ["the failed rows", (row) => row.status !== undefined],
+      leave: ["the rows of a successful or unmined transaction", (row) => row.status === undefined],
+      exact: 3,
+    });
+    for (const row of rows) {
+      const code = (row.expect as { finality: string }).finality === "bitcoin" ? "stacks/not-success" : "stacks/not-final";
+      expect([row.case, await stacksRecover(r, readerFor(row))]).toEqual([row.case, { refused: true, code }]);
+    }
+  });
+
+  // A mined transaction's status is one of success, abort_by_response, abort_by_post_condition and problematic_skipped
+  // (StacksReader's documented answer, `StacksLanded`); another value is an answer out of that form, which status reads
+  // as pending unreadable (docs/reference/refusals.md, `stacks/unreadable`), with no tenure read.
+  it("recover refuses a mined status of none of the documented values as stacks/unreadable", async () => {
+    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    for (const status of ["pending", "abort_by_timeout", "Success", ""]) {
+      const reader = readerFor({ status, tip: "256358" });
+      expect([status, await stacksRecover(r, reader)]).toEqual([status, { refused: true, code: "stacks/unreadable" }]);
+      expect(reader.calls).toBe(1);
+      expect(await stacksStatus(ref, readerFor({ status, tip: "256358" }))).toEqual({ state: "pending", why: "unreadable" });
+    }
   });
 
   // A nonce the origin's account has confirmed at or above the transaction's means the transaction can never be

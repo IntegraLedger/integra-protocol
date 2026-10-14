@@ -298,7 +298,7 @@ describe("problem", () => {
   });
 
   it("answers each read to repeat 500 internal-payment-error, on every rail", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 43 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 44 })) {
       expect([code, problem(code)]).toEqual([code, internal]);
     }
   });

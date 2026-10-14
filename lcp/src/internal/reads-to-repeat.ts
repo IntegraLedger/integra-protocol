@@ -44,13 +44,14 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   // The transaction is not final yet: not executed, not finalized, not in a validated ledger, reverted or read without
   // what the read looks for in a block above the reader's `finalized` mark, which can be replaced by one in which it
   // succeeds or holds other logs, failed with an error at Solana's `confirmed` and not found at `finalized`, not
-  // dispatched as the payment in a Polkadot block above the finalized height, or read from a pre-confirmed Starknet
-  // block, which can change.
+  // dispatched as the payment in a Polkadot block above the finalized height, failed in a Stacks block fewer than two
+  // tenures below the tip, which can be replaced, or read from a pre-confirmed Starknet block, which can change.
   "casper/not-executed",
   "ccd/not-finalized",
   "evm/not-final",
   "hedera/not-final",
   "polkadot/not-final",
+  "stacks/not-final",
   "starknet/not-final",
   "svm/not-final",
   "tempo/not-final",

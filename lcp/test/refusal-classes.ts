@@ -29,6 +29,7 @@ export const READS_TO_REPEAT: readonly string[] = [
   "polkadot/not-final",
   "polkadot/not-found",
   "polkadot/unreadable",
+  "stacks/not-final",
   "stacks/not-found",
   "stacks/unreadable",
   "starknet/not-final",

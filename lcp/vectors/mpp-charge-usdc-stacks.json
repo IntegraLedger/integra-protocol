@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. A credential's transaction is read as a Stacks node (stacks-core 4.0.5) decodes it; agreedRefusals gives the refusals that reading answers. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). The confirmed nonce read answers the nonce with the height of the API's chain tip read after it (GET /extended's chain_tip.block_height), so the nonce read is at or below that height, and a transaction read that finds nothing answers notFound, and one that finds it unmined answers its status, each with the height read before it, so an empty or dropped lookup shows the transaction unmined only up to its own height: nonce-used needs it at or above the nonce read's. An unmined row that names no height reads as null, which is never nonce-used. Rows with txAnswer give the transaction read's answer as is: values of none of its documented shapes, which status reads as pending unreadable and recover refuses stacks/unreadable.",
+ "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. A credential's transaction is read as a Stacks node (stacks-core 4.0.5) decodes it; agreedRefusals gives the refusals that reading answers. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). The confirmed nonce read answers the nonce with the height of the API's chain tip read after it (GET /extended's chain_tip.block_height), so the nonce read is at or below that height, and a transaction read that finds nothing answers notFound, and one that finds it unmined answers its status, each with the height read before it, so an empty or dropped lookup shows the transaction unmined only up to its own height: nonce-used needs it at or above the nonce read's. An unmined row that names no height reads as null, which is never nonce-used. Rows with txAnswer give the transaction read's answer as is: values of none of its documented shapes, which status reads as pending unreadable and recover refuses stacks/unreadable. recover reads a failed transaction's tenure and the tip's as status does: it refuses stacks/not-success where status gives the failure bitcoin finality, the tip's tenure at least 256358, two above block 9021832's, and stacks/not-final below that or where a tenure read rejects.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",
@@ -413,11 +413,30 @@
     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
-    "case": "L with abort_by_response",
+    "case": "L with abort_by_response, tip tenure 256358",
     "status": "abort_by_response",
+    "tip": "256358",
     "expect": {
      "refused": true,
      "code": "stacks/not-success"
+    }
+   },
+   {
+    "case": "L with abort_by_response, tip tenure 256357",
+    "status": "abort_by_response",
+    "tip": "256357",
+    "expect": {
+     "refused": true,
+     "code": "stacks/not-final"
+    }
+   },
+   {
+    "case": "L with abort_by_response, tip tenure read rejects",
+    "status": "abort_by_response",
+    "tip": "reader-error",
+    "expect": {
+     "refused": true,
+     "code": "stacks/not-final"
     }
    },
    {

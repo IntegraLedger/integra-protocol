@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 495 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 496 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -51,7 +51,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 15 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 19 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`). |
-| [`stacks`](#stacks) | 5 | Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`). |
+| [`stacks`](#stacks) | 6 | Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`). |
 
 ## core
 
@@ -749,8 +749,9 @@ Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/l
 | Code | Meaning |
 |---|---|
 | `stacks/no-memo` | The Stacks transaction is not a call to the reference's contract `transfer`, or its fourth argument is not `(some <32 bytes>)`. |
+| `stacks/not-final` | **Read to repeat.** The mined Stacks transaction a recovery reads failed in a block whose tenure is fewer than two below the tip's, or whose tenure cannot be read: a read to repeat, since that block can be replaced. |
 | `stacks/not-found` | **Read to repeat.** The Stacks reader answers that the API does not know the transaction (its not-found answer) or that the transaction is unmined. |
-| `stacks/not-success` | The mined Stacks transaction's status is not `success`. |
-| `stacks/unreadable` | **Read to repeat.** The Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer). |
+| `stacks/not-success` | The mined Stacks transaction a recovery reads failed (`abort_by_response`, `abort_by_post_condition` or `problematic_skipped`) in a block whose tenure is at least two below the tip's. |
+| `stacks/unreadable` | **Read to repeat.** The Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer), or a mined transaction whose status is none of `success`, `abort_by_response`, `abort_by_post_condition` and `problematic_skipped`. |
 | `stacks/wrong-reader` | The Stacks reader answers for a different network than the reference names, or the reference or reader given to `recover` is not an object, or the reference names a `transaction` that is not a 32-byte hash. |
 

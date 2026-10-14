@@ -29,7 +29,8 @@ export function isRefusal(v: unknown): v is Refusal {
  * is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final` and
  * `hedera/not-final` (a revert, or a receipt without what the read looks for, in a block above the reader's `finalized`
  * mark, which can be replaced by one in which the transaction succeeds or holds other logs), `polkadot/not-final` (an
- * extrinsic not dispatched as the payment, in a block above the finalized height), `starknet/not-final` (a revert, or no
+ * extrinsic not dispatched as the payment, in a block above the finalized height), `stacks/not-final` (a failure in a
+ * Stacks block fewer than two tenures below the tip, which can be replaced), `starknet/not-final` (a revert, or no
  * single matching transfer, in a pre-confirmed block, which can change), `svm/not-final` (an error at Solana's
  * `confirmed`, with the transaction not found at `finalized`) and `tempo/not-final` (as `evm/not-final`, on Tempo). The
  * refusal code reference marks each of them.

@@ -201,7 +201,7 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these ru
 |---|---|---|
 | `mpp/credential-malformed`, `mpp/request-malformed`, `mpp/opaque-malformed` | 402 | `malformed-credential` |
 | `mpp/id-not-ours` | 402 | `invalid-challenge` |
-| A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`, `hedera/not-final`, `polkadot/not-final`, `starknet/not-final`, `svm/not-final` and `tempo/not-final` | 500 | `internal-payment-error` |
+| A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`, `hedera/not-final`, `polkadot/not-final`, `stacks/not-final`, `starknet/not-final`, `svm/not-final` and `tempo/not-final` | 500 | `internal-payment-error` |
 | A call that cannot read the payment: `tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `tempo/read-first`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
 | Every other code this package returns | 402 | `verification-failed` |
 | A code this package does not return | 500 | `internal-payment-error` |
