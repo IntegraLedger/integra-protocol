@@ -497,7 +497,7 @@
   "wrongCurveTest": "BqJ4hYS6j5yYAyziKMLt3NeTztuoxEvCNm2bURXxK9ri"
  },
  "ES2": {
-  "case": "ES2's opening. messageLength, messageSha256 and the wire (wireBase64, wireLength, wireSha256Prefix) are of the message as solders 0.26.0 compiles it, the account keys of each class in byte order. build compiles the same instructions with its account keys in @solana/kit's order, the order of the steward SDK, which compiles its open transaction with @solana/kit (x402-foundation/x402 751590a2, typescript/packages/mechanisms/svm/src/payment-channels/open.ts L501-516); buildMessageSha256 is the SHA-256 of that message, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES2's message decompiled, and node:crypto's SHA-256.",
+  "case": "ES2's opening. messageLength, messageSha256 and the wire (wireBase64, wireLength, wireSha256Prefix) are of the message as solders 0.26.0 compiles it, the account keys of each class in byte order. build compiles the same instructions with its account keys in @solana/kit's order, the order of the steward SDK, which compiles its open transaction with @solana/kit (x402-foundation/x402 751590a2, typescript/packages/mechanisms/svm/src/payment-channels/open.ts L501-516); buildMessageSha256 is the SHA-256 of that message, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES2's message decompiled, and node:crypto's SHA-256. lcp compiles with the same @solana/kit, so the value is independent of lcp in its input, solders' message, and not in its compiler.",
   "openInstructionData": "012a00000000000000a086010000000000100e0000403f531400000000010000001cc66ed43751115a42b5905132c4f668328611e5e8deb7d862585d2a3551d0011027",
   "messageLength": 755,
   "messageSha256": "9a6d535a8dbea8b86d26f59b68586fb355379ca4156b5b1ed406acc559b913f6",
@@ -621,7 +621,7 @@
    "expectKind": "close"
   },
   "withMemo": {
-   "case": "the retry, with ES4's option (extra.memo = L) and recentBlockhash: the solana-message request, then the voucher; decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0, the account keys of each class in byte order; the payload is {type: refund, channelConfig, voucher, transaction}. build compiles the message with its account keys in @solana/kit's order, the compiler of the steward SDK's request_close (x402-foundation/x402 751590a2, typescript/packages/mechanisms/svm/src/payment-channels/close.ts L66-92); buildMessageSha256 is the SHA-256 of that message, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES4.closeWireBase64's message decompiled, and node:crypto's SHA-256.",
+   "case": "the retry, with ES4's option (extra.memo = L) and recentBlockhash: the solana-message request, then the voucher; decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0, the account keys of each class in byte order; the payload is {type: refund, channelConfig, voucher, transaction}. build compiles the message with its account keys in @solana/kit's order, the compiler of the steward SDK's request_close (x402-foundation/x402 751590a2, typescript/packages/mechanisms/svm/src/payment-channels/close.ts L66-92); buildMessageSha256 is the SHA-256 of that message, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES4.closeWireBase64's message decompiled, and node:crypto's SHA-256. lcp compiles with the same @solana/kit, so the value is independent of lcp in its input, solders' message, and not in its compiler.",
    "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de",
    "payloadMembers": [
     "channelConfig",
@@ -632,7 +632,7 @@
    "expectKind": "close"
   },
   "withoutMemo": {
-   "case": "the retry, with ES4's option without extra.memo. buildMessageSha256 is the SHA-256 of the message build compiles, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES4.closeWireBase64's message decompiled without its Memo v3 instruction, and node:crypto's SHA-256; instructions are that message decompiled.",
+   "case": "the retry, with ES4's option without extra.memo. buildMessageSha256 is the SHA-256 of the message build compiles, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES4.closeWireBase64's message decompiled without its Memo v3 instruction, and node:crypto's SHA-256; instructions are that message decompiled. lcp compiles with the same @solana/kit, so the value is independent of lcp in its input, solders' message, and not in its compiler.",
    "buildMessageSha256": "5d2149f7423a7a0826c64e2a93ce7de230f2a9b73d8272f1a6547fcee83675b7",
    "instructions": [
     {

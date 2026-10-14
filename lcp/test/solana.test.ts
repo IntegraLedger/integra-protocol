@@ -134,7 +134,7 @@ describe("x402-exact-solana.json", () => {
     }
   });
 
-  it("defaultComputeBudget: build without a compute unit limit or price writes the default prefix", async () => {
+  it("defaultComputeBudget: build without a compute unit limit or price writes the default prefix, the message byte for byte as @solana/kit compiles it", async () => {
     const doc = advertised();
     const u = await exactSvm.build(
       {
@@ -156,6 +156,21 @@ describe("x402-exact-solana.json", () => {
       data: hex(ix.data ?? new Uint8Array()),
     }));
     expect(got).toEqual(V.defaultComputeBudget.instructions);
+    // The whole message is held byte for byte to buildMessageSha256: @solana/kit's compilation of V2's wire message with
+    // the default prefix's data in place of its own.
+    const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+    const wire = b64(V.V2.wireBase64);
+    const v2 = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(wire.subarray(1 + 64 * wire[0]!)));
+    const prefix = V.defaultComputeBudget.instructions as { data: string }[];
+    type V2Ix = (typeof v2.instructions)[number];
+    const withDefault = {
+      ...v2,
+      instructions: (v2.instructions as readonly V2Ix[]).map((ix, i) => (i < 2 ? { ...ix, data: fromHex(prefix[i]!.data) } : ix)),
+    } as typeof v2;
+    expect(sha256(Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(withDefault))))).toBe(
+      V.defaultComputeBudget.buildMessageSha256,
+    );
+    expect(sha256(u.request.message)).toBe(V.defaultComputeBudget.buildMessageSha256);
   });
 
   // V1's messageSha256 and payer's signature are of solders' compilation, the message in V2's wire, the account keys of

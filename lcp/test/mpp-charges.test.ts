@@ -1,5 +1,6 @@
 // Runs the MPP charge vector files for Hedera's placement, Solana, Stellar, XRPL and NEAR Intents through the mpp entry
 // point. Every expected value is a vector file's.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
@@ -94,6 +95,16 @@ describe("mpp/charge/hedera through pairingsOf and place", () => {
 
 describe("mpp-charge-solana.json", () => {
   const V = SO;
+  const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+  /** V2's wire message decompiled (solders' compilation), with `data` in place of its first instructions' data, compiled by
+   * @solana/kit: the message build writes, in @solana/kit's order. */
+  const kitMessage = (data: readonly string[] = []) => {
+    const wire = Buffer.from(V.V2.wireBase64 as string, "base64");
+    const m = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(wire.subarray(1 + 64 * wire[0]!)));
+    type Ix = (typeof m.instructions)[number];
+    const instructions = (m.instructions as readonly Ix[]).map((ix, i) => (i < data.length ? { ...ix, data: fromHex(data[i]!) } : ix));
+    return sha256(Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage({ ...m, instructions } as typeof m))));
+  };
   const H: AtrHash = V.fixed.H;
   const placed = placedOf(V);
 
@@ -121,7 +132,7 @@ describe("mpp-charge-solana.json", () => {
     expect(roundTrip(ref)).toEqual(ref);
   });
 
-  it("defaultComputeBudget: build without a compute unit limit or price writes the default prefix", async () => {
+  it("defaultComputeBudget: build without a compute unit limit or price writes the default prefix, the message byte for byte as @solana/kit compiles it", async () => {
     const u = await chargeSolana.build({ challenge: placed, payer: V.fixed.payer }, H);
     if ("refused" in u) throw new Error(u.code);
     const m = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(u.request.message));
@@ -132,9 +143,12 @@ describe("mpp-charge-solana.json", () => {
       data: hex(ix.data ?? new Uint8Array()),
     }));
     expect(got).toEqual(V.defaultComputeBudget.instructions);
+    const prefix = (V.defaultComputeBudget.instructions as { data: string }[]).map((ix) => ix.data);
+    expect(kitMessage(prefix)).toBe(V.defaultComputeBudget.buildMessageSha256);
+    expect(sha256(u.request.message)).toBe(V.defaultComputeBudget.buildMessageSha256);
   });
 
-  it("build gives V1's message; the payer's signature completes a credential that is bound", async () => {
+  it("build gives V1's message, byte for byte as @solana/kit compiles it; the payer's signature completes a credential that is bound", async () => {
     const u = await chargeSolana.build(
       {
         challenge: placed,
@@ -158,6 +172,8 @@ describe("mpp-charge-solana.json", () => {
     }));
     expect(m.feePayer.address).toBe(XS.V1.feePayer);
     expect(got).toEqual(XS.V1.instructions);
+    expect(kitMessage()).toBe(V.build.buildMessageSha256);
+    expect(sha256(u.request.message)).toBe(V.build.buildMessageSha256);
     const sig = ed25519.sign(u.request.message, fromHex(XS.fixed.payerSeed));
     const cr = u.complete(sig);
     if ("refused" in cr) throw new Error(cr.code);
