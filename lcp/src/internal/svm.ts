@@ -213,6 +213,10 @@ export function keyBytes(s: unknown): Uint8Array | null {
   }
 }
 
+/**
+ * True when `s` is a Solana public key: a base58 string of 32 to 44 characters that decodes to exactly 32 bytes. An
+ * account address, a program id and a recent blockhash all take this form.
+ */
 export function isKey(s: unknown): s is string {
   return keyBytes(s) !== null;
 }

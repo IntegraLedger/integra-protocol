@@ -19,6 +19,7 @@ import {
   MEMO_V3,
   buildSvmMessage,
   decodeSvmTx,
+  isKey,
   svmCarrier,
   svmLocate,
   svmNonceMoved,
@@ -872,4 +873,52 @@ describe("x402-exact-solana.json agreedRefusals: the rows that carry only case a
       for (const r of results) expect(r).toEqual(refused(row.expect));
     });
   }
+});
+
+// isKey is the 32-byte base58 key rule every Solana read applies to an address, a program id and a blockhash. The
+// expected lengths come from a base58 decoder written here from the alphabet, not from the package's.
+describe("isKey", () => {
+  const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  const decodedLength = (s: string): number | null => {
+    let n = 0n;
+    for (const c of s) {
+      const d = ALPHABET.indexOf(c);
+      if (d < 0) return null;
+      n = n * 58n + BigInt(d);
+    }
+    let zeros = 0;
+    while (zeros < s.length && s[zeros] === "1") zeros++;
+    let bytes = 0;
+    for (let m = n; m > 0n; m >>= 8n) bytes++;
+    return zeros + bytes;
+  };
+
+  it("is true exactly for base58 strings of 32 to 44 characters that decode to 32 bytes", () => {
+    const strings = [
+      "1".repeat(32),
+      "1".repeat(31),
+      "1".repeat(33),
+      "2".repeat(43),
+      "2".repeat(44),
+      "z".repeat(44),
+      "11111111111111111111111111111111",
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1",
+      "0PjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v ",
+      "",
+    ];
+    let keys = 0;
+    for (const s of strings) {
+      const want = s.length >= 32 && s.length <= 44 && decodedLength(s) === 32;
+      if (want) keys++;
+      expect(isKey(s), JSON.stringify(s)).toBe(want);
+    }
+    expect(keys).toBe(7);
+    for (const v of [undefined, null, 32, new Uint8Array(32), ["1".repeat(32)], { key: "1".repeat(32) }]) {
+      expect(isKey(v)).toBe(false);
+    }
+  });
 });

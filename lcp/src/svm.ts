@@ -20,6 +20,7 @@ export {
   channelVoucherMessage,
   decodeSvmTx,
   findPda,
+  isKey,
   openInstructionData,
   svmChannelStatus,
   svmCarrier,

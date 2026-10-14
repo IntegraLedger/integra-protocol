@@ -507,6 +507,25 @@ SHA-256(seeds ‖ bump ‖ program ‖ "ProgramDerivedAddress") that does not de
 
 ***
 
+### isKey()
+
+> **isKey**(`s`): `s is string`
+
+True when `s` is a Solana public key: a base58 string of 32 to 44 characters that decodes to exactly 32 bytes. An
+account address, a program id and a recent blockhash all take this form.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `s` | `unknown` |
+
+#### Returns
+
+`s is string`
+
+***
+
 ### openInstructionData()
 
 > **openInstructionData**(`a`): `Uint8Array`
