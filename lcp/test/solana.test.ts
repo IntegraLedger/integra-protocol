@@ -799,9 +799,15 @@ describe("x402-exact-solana.json agreedRefusals: the rows that carry only case a
     "recover when the transaction is found at neither finalized nor confirmed": async () => [
       await svmRecover(named, readerFor(null, landed(wireV4))),
     ],
-    "recover when the landed transaction's err is not null": async () => {
+    "recover when the landed transaction's err is not null at finalized": async () => {
       const failed = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
       return [await svmRecover(named, readerFor("finalized", landed(wireV4, failed.err)))];
+    },
+    // Solana's commitment levels: a block at `confirmed` has a supermajority's votes but is not finalized, and a block
+    // that is not finalized can be replaced, so an error read there alone is a read to repeat.
+    "recover when the landed transaction's err is not null at confirmed and the transaction is not found at finalized": async () => {
+      const failed = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
+      return [await svmRecover(named, readerFor("confirmed", landed(wireV4, failed.err)))];
     },
     // A transaction answer whose wire is the base64 text, not its bytes, is not a landed transaction's shape.
     "recover when the reader fails or returns a malformed transaction": async () => [

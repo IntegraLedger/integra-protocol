@@ -35,6 +35,7 @@ export const READS_TO_REPEAT: readonly string[] = [
   "stellar/unreadable",
   "sui/not-found",
   "sui/unreadable",
+  "svm/not-final",
   "svm/not-found",
   "svm/unreadable",
   "tempo/not-final",

@@ -148,13 +148,15 @@ carries H, the card, Stripe and EVM `transaction` and `hash` pairings refuse `mp
 only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
 refuses one that failed: `tempo/reverted` on Tempo, which it gives only once the receipt's block is at or below the
 reader's `finalized` mark (`tempo/not-final` above that mark, or where it cannot be read), `svm/err` on Solana,
-`stellar/tx-failed` on Stellar, `xrpl/not-success` on the XRP Ledger,
-which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before that), and
+which it gives only once a read at `finalized` holds the transaction with its error (`svm/not-final` when the error is
+at `confirmed` and that read does not hold the transaction yet), `stellar/tx-failed` on Stellar, `xrpl/not-success`
+on the XRP Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before
+that), and
 `hedera/not-success` on Hedera. The Hedera session's `fetchPresented` refuses a reverted opening by the same mark:
 `hedera/reverted` at or below it, `hedera/not-final` above it or where it cannot be read
 ([Reading settlement](./sessions.md#reading-settlement)). A read
-that fails, cannot yet read the landed payment, or reads a revert above the `finalized` mark is a read to repeat, not
-a refusal of the payment: the seller asks again later. `readToRepeat(code)`, from the package root, is true for each
+that fails, cannot yet read the landed payment, or reads a revert or error that is not final yet is a read to repeat,
+not a refusal of the payment: the seller asks again later. `readToRepeat(code)`, from the package root, is true for each
 such code ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)).
 
 `bound`, `reference` and `fetchPresented` start from the echoed challenge's H, and require its intent and method to be
@@ -196,13 +198,13 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these ru
 |---|---|---|
 | `mpp/credential-malformed`, `mpp/request-malformed`, `mpp/opaque-malformed` | 402 | `malformed-credential` |
 | `mpp/id-not-ours` | 402 | `invalid-challenge` |
-| A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `tempo/not-final`, `hedera/not-final`, `xrpl/not-validated`, `ccd/not-finalized` and `casper/not-executed` | 500 | `internal-payment-error` |
+| A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `tempo/not-final`, `hedera/not-final`, `svm/not-final`, `xrpl/not-validated`, `ccd/not-finalized` and `casper/not-executed` | 500 | `internal-payment-error` |
 | A call that cannot read the payment: `tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `tempo/read-first`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
 | Every other code this package returns | 402 | `verification-failed` |
 | A code this package does not return | 500 | `internal-payment-error` |
 
 A read to repeat is a code `readToRepeat` answers true for, such as what a `fetchPresented` or `recover` returns when
-its read fails, cannot yet read the landed payment, or reads a revert above the reader's `finalized` mark: the seller
+its read fails, cannot yet read the landed payment, or reads a revert or error that is not final yet: the seller
 asks again later ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)). A call that cannot read the payment is the
 seller's own call: a reader that is not
 for the network the challenge or reference names, or a ref `recover` cannot read: one that is not an object, one

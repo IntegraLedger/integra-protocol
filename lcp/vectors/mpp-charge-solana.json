@@ -183,7 +183,7 @@
     "expect": "svm/unreadable or svm/not-found"
    },
    {
-    "case": "fetchPresented when the landed transaction carries an error (getTransaction's meta.err, here {\"InstructionError\":[2,{\"Custom\":1}]})",
+    "case": "fetchPresented or recover when the landed transaction carries an error at finalized (getTransaction's meta.err, here {\"InstructionError\":[2,{\"Custom\":1}]})",
     "err": {
      "InstructionError": [
       2,
@@ -193,6 +193,10 @@
      ]
     },
     "expect": "svm/err"
+   },
+   {
+    "case": "fetchPresented or recover when the transaction carries an error at confirmed and is not found at finalized",
+    "expect": "svm/not-final"
    },
    {
     "case": "build with splits or confidential in the request, a malformed payer, or no decimals and tokenProgram for a mint",

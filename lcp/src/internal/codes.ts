@@ -369,6 +369,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "svm/no-carrier",
   "svm/no-channel-instruction",
   "svm/nonce-account-not-static",
+  "svm/not-final",
   "svm/not-found",
   "svm/open-not-found",
   "svm/pda-not-found",

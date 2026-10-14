@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 490 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 491 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -35,7 +35,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
 | [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
-| [`svm`](#svm) | 27 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
+| [`svm`](#svm) | 28 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
@@ -381,7 +381,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/channel-id-mismatch` | In the SVM batch pairing, the voucher's `channelId` or the channel instruction's channel account is not the channel PDA derived from the payment's config. |
 | `svm/channel-instruction` | The Solana transaction has more than one payment-channels instruction, or its one instruction has an unknown discriminator or the wrong accounts. |
 | `svm/channel-mismatch` | The MPP Solana session opening's `channelId` is not the channel account its `open` instruction opens. |
-| `svm/err` | The landed Solana transaction failed with an error: the one a recovery reads, or the one an MPP Solana `signature` credential names. |
+| `svm/err` | The landed Solana transaction failed with an error, read at `finalized`: the one a recovery reads, or the one an MPP Solana `signature` credential names. |
 | `svm/input-malformed` | The buyer's input to a Solana `build`, `complete` or message helper is not valid: a payer, key or blockhash that is not a base58 key (on the x402 `batch-settlement` pairing, also a payer authorizer that is not a point on the Ed25519 curve), a token program that is not Token or Token-2022 (on the x402 `upto` and `batch-settlement` pairings, not the option's own), an out-of-range amount, slot or compute budget, a memo to write that is not a well-formed string, a signature that is not 64 bytes or not for a required signer, a number of signatures other than the request asked for, or MPP `splits` or `confidential` transfers, which are not built; or an MPP Solana session challenge, wherever it is checked (`place` and `pairingsOf` included), has a malformed channel program, currency, recipient, recent blockhash or slot, or voucher signer. |
 | `svm/memo-count` | The Solana transaction has no top-level Memo instruction or more than one (x402 `exact` and `upto`), or more than one Memo instruction carrying an LCP string (MPP). An x402 `batch-settlement` opening has other than exactly one binding memo and exactly one other Memo instruction; a binding memo is a Memo instruction whose data starts with x402's receiver-authorizer prefix `x402:batch-settlement:svm:rcvauth:v1:`. |
 | `svm/memo-not-lcp` | The Solana transaction's one Memo instruction, or an x402 `batch-settlement` opening's Memo instruction beside its binding memo, does not carry an ATR hash in LCP string form. |
@@ -391,6 +391,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/no-carrier` | The Solana transaction presented for an MPP charge has no Memo instruction carrying an ATR hash in LCP string form. |
 | `svm/no-channel-instruction` | The Solana transaction has no top-level payment-channels instruction. |
 | `svm/nonce-account-not-static` | The Solana message's first instruction is `AdvanceNonceAccount` and names its nonce account through an address lookup table: a durable message names its nonce account as a static key (SIMD-0242), and the message alone cannot show the nonce account a reference records. |
+| `svm/not-final` | **Read to repeat.** The Solana transaction landed with an error at `confirmed` and is not found at `finalized`: a read to repeat, since a block that is not finalized can be replaced. |
 | `svm/not-found` | **Read to repeat.** The Solana reader answers that the node holds no transaction for the signature (its not-found answer). |
 | `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid. |
 | `svm/pda-not-found` | `findPda` is given an invalid program key or too many or too long seeds, or no bump yields an off-curve address. |

@@ -236,7 +236,7 @@ describe("mpp-charge-solana.json", () => {
     expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toBe(V.recover.expect);
   });
 
-  it("push: fetchPresented refuses a landed transaction that carries an error", async () => {
+  it("push: fetchPresented and recover refuse a landed transaction that carries an error at finalized", async () => {
     const row = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "svm/err");
     const landed: SvmLanded = {
       wire: Uint8Array.from(Buffer.from(V.push.landedWireBase64, "base64")),
@@ -256,6 +256,7 @@ describe("mpp-charge-solana.json", () => {
     };
     const cr = credential(placed, { type: "signature", signature: V.push.txid });
     expect(await chargeSolana.fetchPresented(cr, reader)).toEqual(refused(row.expect));
+    expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toEqual(refused(row.expect));
   });
 });
 
@@ -846,6 +847,18 @@ describe("mpp-charge-solana.json agreedRefusals: every row runs", () => {
       })),
       await chargeSolana.fetchPresented(push, readerOf(async (_, at) => (at === "confirmed" ? { notFound: true, slot: null } : landed))),
     ],
+    // Solana's commitment levels: a block at `confirmed` has a supermajority's votes but is not finalized, and a block
+    // that is not finalized can be replaced. The reader holds the transaction, with the error row's err, at confirmed
+    // only: fetchPresented reads confirmed, then finalized once it reads the error; recover reads finalized, then
+    // confirmed.
+    "fetchPresented or recover when the transaction carries an error at confirmed and is not found at finalized": async () => {
+      const err = (V.agreedRefusals.rows as (AgreedRow & { err?: Json })[]).find((r) => r.err !== undefined)!.err;
+      const reader = readerOf(async (_, at) => (at === "finalized" ? { notFound: true, slot: null } : { ...landed, err }));
+      return [
+        await chargeSolana.fetchPresented(push, reader),
+        await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader),
+      ];
+    },
     "build with splits or confidential in the request, a malformed payer, or no decimals and tokenProgram for a mint": async () => [
       await build(editedRequest(placed, (r, d) => (d["splits"] = [{ amount: "1", recipient: r["recipient"]! }]))),
       await build(editedRequest(placed, (_, d) => (d["confidential"] = true))),

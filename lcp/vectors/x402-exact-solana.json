@@ -355,7 +355,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes the Solana specification leaves to the implementation. The TypeScript and Python implementations both apply every row but the four whose case starts with recover, which the TypeScript implementation alone applies: the Python one has no recover. A row with choice is build(choice, H). A row with h is build of V1's choice, the advertised option with fixed's payer, decimals, tokenProgram and blockhash as recentBlockhash, with that h.",
+  "about": "Refusal codes the Solana specification leaves to the implementation. The TypeScript and Python implementations both apply every row but the five whose case starts with recover, which the TypeScript implementation alone applies: the Python one has no recover. A row with choice is build(choice, H). A row with h is build of V1's choice, the advertised option with fixed's payer, decimals, tokenProgram and blockhash as recentBlockhash, with that h.",
   "rows": [
    {
     "case": "svmCarrier (and so bound and recover) on a transaction with no top-level Memo instruction, or with two or more",
@@ -370,8 +370,12 @@
     "expect": "svm/not-found"
    },
    {
-    "case": "recover when the landed transaction's err is not null",
+    "case": "recover when the landed transaction's err is not null at finalized",
     "expect": "svm/err"
+   },
+   {
+    "case": "recover when the landed transaction's err is not null at confirmed and the transaction is not found at finalized",
+    "expect": "svm/not-final"
    },
    {
     "case": "recover when the reader fails or returns a malformed transaction",

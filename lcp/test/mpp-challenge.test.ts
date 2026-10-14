@@ -298,7 +298,7 @@ describe("problem", () => {
   });
 
   it("answers each read to repeat 500 internal-payment-error, on every rail", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 39 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 40 })) {
       expect([code, problem(code)]).toEqual([code, internal]);
     }
   });
@@ -467,6 +467,16 @@ describe("problem", () => {
       () => chargeSolana.fetchPresented(solanaPush, solana(async () => solanaLanded(agreed(SO, "svm/err").err))),
       "svm/err",
       verificationFailed,
+    ],
+    [
+      "mpp/charge/solana: an error at confirmed, with nothing at finalized yet",
+      () =>
+        chargeSolana.fetchPresented(
+          solanaPush,
+          solana(async (_, at) => (at === "finalized" ? { notFound: true as const, slot: null } : solanaLanded(agreed(SO, "svm/err").err))),
+        ),
+      "svm/not-final",
+      internal,
     ],
     [
       "mpp/charge/solana: a reader of another network",

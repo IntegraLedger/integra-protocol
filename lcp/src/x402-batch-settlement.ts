@@ -927,7 +927,10 @@ function openingCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
   return memoCarrier(others[0]!);
 }
 
-/** Zero-party recovery: the ATR hash in the landed opening's seller memo, beside its binding memo. One or two calls. */
+/**
+ * Zero-party recovery: the ATR hash in the landed opening's seller memo, beside its binding memo. An opening that landed
+ * with an error is `svm/err` or `svm/not-final`, as `svmRecover` reads it. One or two calls.
+ */
 async function svmBatchRecover(
   ref: { network: SolanaNetwork; transaction: string },
   reader: SvmReader,

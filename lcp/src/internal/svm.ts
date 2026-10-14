@@ -930,8 +930,10 @@ export async function svmLocate(
 }
 
 /**
- * Zero-party recovery: the ATR hash in the landed transaction's one memo. A ref whose `transaction` is not a signature,
- * base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
+ * Zero-party recovery: the ATR hash in the landed transaction's one memo. A transaction that landed with an error is
+ * `svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at `confirmed` holds it, since
+ * a block that is not finalized can be replaced. A ref whose `transaction` is not a signature, base58 of 64 bytes, is
+ * `svm/wrong-reader`, with nothing read. One or two calls.
  */
 export async function svmRecover(
   ref: { network: SolanaNetwork; transaction: string },
@@ -943,7 +945,10 @@ export async function svmRecover(
   return isRefusal(c) ? c : c.h;
 }
 
-/** The named transaction, landed without error and decoded. One or two calls. */
+/**
+ * The named transaction, landed without error and decoded, read at `finalized`, then `confirmed`. An error the read at
+ * `finalized` holds is `svm/err`; one only the read at `confirmed` holds is `svm/not-final`. One or two calls.
+ */
 export async function landedTransaction(
   ref: { network: SolanaNetwork; transaction: string },
   reader: SvmReader,
@@ -953,7 +958,9 @@ export async function landedTransaction(
   const read = await landedAt(reader, ref.transaction);
   if (read === undefined) return refusal("svm/unreadable");
   if ("notFound" in read) return refusal("svm/not-found");
-  if (read.landed.err !== null && read.landed.err !== undefined) return refusal("svm/err");
+  if (read.landed.err !== null && read.landed.err !== undefined) {
+    return read.commitment === "finalized" ? refusal("svm/err") : refusal("svm/not-final");
+  }
   return decodeSvmTx(read.landed.wire);
 }
 

@@ -528,6 +528,22 @@ describe("x402-batch-settlement.json: SVM", () => {
     const r = svmReaderFor("finalized", landed(b64(nc.landedWireBase64)), "nc");
     expect(await batchSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r)).toEqual(nc.expect);
   });
+
+  // Solana's commitment levels: a block at `confirmed` has a supermajority's votes but is not finalized, and a block
+  // that is not finalized can be replaced. An opening that landed with an error is svm/err once the read at `finalized`
+  // holds it, and svm/not-final, a read to repeat, when only the read at `confirmed` does (docs/reference/refusals.md).
+  it("ES5: recover of an opening that landed with an error is svm/err at finalized, and svm/not-final at confirmed only", async () => {
+    const wire = b64(V.ES5.landedWireBase64);
+    const ref = { network: V.ES5.ref.network, transaction: V.ES5.txid };
+    const failed = (V.ES5.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
+    const atFinalized = svmReaderFor("finalized", landed(wire, failed.err), V.ES5.txid);
+    expect(await batchSvm.recover(ref, atFinalized)).toEqual(refused("svm/err"));
+    const atConfirmed: SvmReader = {
+      ...atFinalized,
+      transaction: async (sig, commitment) => (commitment === "finalized" ? { notFound: true, slot: null } : atFinalized.transaction(sig, commitment)),
+    };
+    expect(await batchSvm.recover(ref, atConfirmed)).toEqual(refused("svm/not-final"));
+  });
 });
 
 // A decimal string is read by its value: the EVM deposit amount, validBefore and the Solana channel salt each go into
