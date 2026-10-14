@@ -12,6 +12,7 @@
     "cardano",
     "casper",
     "ccd",
+    "core",
     "discovery",
     "evm",
     "hedera",

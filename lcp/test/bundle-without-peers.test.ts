@@ -7,7 +7,9 @@
 // Node process loads each bundle with every peer absent and gives the names Node's own loader gives for the built file.
 // The `usdc` Stacks pairing, which needs no peer, answers its vectors (mpp-charge-usdc-stacks.json: M4 and every
 // agreedRefusals row, each in the vector's B6 credential) from the root and the `./mpp` bundles and built files, in a
-// Node process run in the consumer's project, where `@stacks/transactions` does not resolve.
+// Node process run in the consumer's project, where `@stacks/transactions` does not resolve. The `./core` bundle holds
+// the core's own modules and no other: no pairing, rail, dependency or peer. A Worker that imports `isRefusal` from both
+// the root and `./core` bundles one copy of it, so a refusal made through either path is a refusal to both.
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -49,6 +51,15 @@ const bundleOf = (i: number) => join(dir, "out", `${i}.mjs`);
 let errors: string[] = [];
 /** Per entry point: the export names of its bundle and of its built file, or what loading them threw. */
 let loaded: Record<string, { bundle: string[]; built: string[] } | { threw: string }> = {};
+/** Per entry point: the modules its bundle holds, each named by its path after the last `node_modules/`. */
+let modules: Record<string, string[]> = {};
+
+/** The modules of a bundle, from esbuild's metafile: each input path after its last `node_modules/`, sorted. */
+const modulesOf = (inputs: Record<string, unknown>) =>
+  Object.keys(inputs)
+    .filter((path) => path.includes("node_modules/"))
+    .map((path) => path.slice(path.lastIndexOf("node_modules/") + "node_modules/".length))
+    .sort();
 
 // Node's own loader: argv[1] is a JSON list of [entry point, bundle, built file]; prints each one's names, sorted.
 const LOAD = `
@@ -111,14 +122,53 @@ beforeAll(async () => {
     writeFileSync(file, `export * from ${JSON.stringify(PKG.name + key.slice(1))};\n`);
     return file;
   });
-  errors = await build({ ...WORKER, entryPoints, outdir: join(dir, "out"), outExtension: { ".js": ".mjs" } }).then(
-    (r) => r.errors.map((m) => m.text),
+  // Paths in the metafile are relative to `dir`: bundle i is `out/i.mjs`.
+  const options = { ...WORKER, entryPoints, outdir: join(dir, "out"), outExtension: { ".js": ".mjs" }, metafile: true, absWorkingDir: dir };
+  errors = await build(options).then(
+    (r) => {
+      modules = Object.fromEntries(KEYS.map((key, i) => [key, modulesOf(r.metafile?.outputs[`out/${i}.mjs`]?.inputs ?? {})]));
+      return r.errors.map((m) => m.text);
+    },
     (e: { errors: Message[] }) => e.errors.map((m) => `${m.text} (${m.location?.file ?? "no file"})`),
   );
   if (errors.length > 0) return;
   const jobs = KEYS.map((key, i) => [key, bundleOf(i), join(installed, PKG.exports[key]!.default)]);
   loaded = JSON.parse(
     execFileSync(process.execPath, ["--input-type=module", "-e", LOAD, JSON.stringify(jobs)], { encoding: "utf8" }),
+  );
+}, 0);
+
+// A Worker that imports from the root and from `./core`: its bundle, run by Node, gives whether the two paths' functions
+// are one, the codes of a refusal made through each path, and each path's isRefusal of both refusals and of a value
+// shaped like one. The codes are the ones docs/reference/refusals.md lists for the core.
+const BOTH_WORKER = `
+import * as root from ${JSON.stringify(PKG.name)};
+import * as core from ${JSON.stringify(`${PKG.name}/core`)};
+const viaCore = core.canonicalJson(Number.NaN);
+const viaRoot = await root.assemble("6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40", ["bind", {}], [["id", new TextEncoder().encode("{}")]]);
+const shaped = { refused: true, code: "core/content-not-json" };
+export const answers = {
+  isRefusal: root.isRefusal === core.isRefusal,
+  canonicalJson: root.canonicalJson === core.canonicalJson,
+  codes: [viaCore.code, viaRoot.code],
+  core: [core.isRefusal(viaCore), core.isRefusal(viaRoot), core.isRefusal(shaped)],
+  root: [root.isRefusal(viaCore), root.isRefusal(viaRoot), root.isRefusal(shaped)],
+};
+`;
+/** What the bundle of BOTH_WORKER answers, or what building or loading it threw. */
+let both: unknown;
+
+// No time bound (0): the build returns or throws, and the loading process exits by itself.
+beforeAll(async () => {
+  const entry = join(dir, "both.mjs");
+  const out = join(dir, "both-out.mjs");
+  writeFileSync(entry, BOTH_WORKER);
+  both = await build({ ...WORKER, entryPoints: [entry], outfile: out }).then(
+    () => {
+      const load = `import { pathToFileURL } from "node:url"; const m = await import(pathToFileURL(process.argv[1]).href); process.stdout.write(JSON.stringify(m.answers));`;
+      return JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", load, out], { encoding: "utf8" }));
+    },
+    (e: { errors: Message[] }) => ({ threw: e.errors.map((m) => m.text) }),
   );
 }, 0);
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -173,5 +223,25 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     const { bundle, built } = got as { bundle: string[]; built: string[] };
     expect(built.length).toBeGreaterThan(0);
     expect(bundle).toEqual(built);
+  });
+
+  it("the ./core bundle holds the core's own modules and no other, and loads nothing at run time", () => {
+    expect(errors).toEqual([]);
+    expect(modules["./core"]).toEqual([
+      `${PKG.name}/dist/core.js`,
+      `${PKG.name}/dist/internal/core.js`,
+      `${PKG.name}/dist/refusal.js`,
+    ]);
+    expect(readFileSync(bundleOf(KEYS.indexOf("./core")), "utf8")).not.toMatch(/\bimport\s*\(/);
+  });
+
+  it("a Worker importing from the root and from ./core holds one isRefusal, which knows a refusal from either path", () => {
+    expect(both).toEqual({
+      isRefusal: true,
+      canonicalJson: true,
+      codes: ["core/content-not-json", "core/slot-reserved"],
+      core: [true, true, false],
+      root: [true, true, false],
+    });
   });
 });

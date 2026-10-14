@@ -8,7 +8,7 @@ import { fromReceipt, paymentRequest } from "../src/ack.js";
 import { delegated } from "../src/acp.js";
 import { checkoutMandate } from "../src/ap2.js";
 import { viImmediate } from "../src/card.js";
-import { jsonWithinDepth, MAX_JSON_DEPTH, parseJson } from "../src/core.js";
+import { jsonWithinDepth, MAX_JSON_DEPTH, parseJson } from "../src/internal/core.js";
 import { parse as parseDiscovery } from "../src/discovery.js";
 import { atrNamesInvoice } from "../src/lightning.js";
 import { usdcRequestHash } from "../src/mpp-usdc.js";

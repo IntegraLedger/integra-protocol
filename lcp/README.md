@@ -201,10 +201,15 @@ Each entry point is imported by its subpath. The core:
 | `toLegalContext(h, url, spelling?)`, `fromLegalContext(o)` | H and the link as `{ legalContext: { type, value, legalContextUrl } }` (`LCP §8.1`), and back. |
 | `toRawBytes(h)`, `fromRawBytes(b)` | H as 32 raw bytes, and back. |
 | `isHttpsLink(s)` | The one rule every link to an ATR meets. |
+| `isOtherSchemeLink(s)` | True for a link of at most 2048 characters that parses as an absolute URL whose scheme is not `https`. |
 | `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. |
 | `parseJson(text)` | JSON reading capped at 64 levels of nesting. |
 | `BINDINGS` | Every pairing this package implements. |
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
+
+A Worker that needs only the core imports `@integraledger/lcp/core`. It exports every function in the table but
+`pairingOf`, each the root's own function, and the types `AtrHash`, `CoreRefusal`, `Json` and `Refusal`. It imports no
+pairing, no rail and no optional peer, so the Worker's bundle holds the core alone.
 
 The protocol and rail entry points:
 

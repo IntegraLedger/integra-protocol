@@ -1,5 +1,5 @@
 /** Shape checks for JSON objects, EVM and hash values, shared by the entry points. */
-import { canonicalJson, fromRawBytes, MAX_JSON_DEPTH, toRawBytes, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, fromRawBytes, MAX_JSON_DEPTH, toRawBytes, type AtrHash, type Json } from "./internal/core.js";
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;

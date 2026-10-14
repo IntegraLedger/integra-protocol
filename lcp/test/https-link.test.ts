@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { place as placeA2a, read as readA2a } from "../src/a2a.js";
 import { visaTap } from "../src/card.js";
-import { fromLegalContext, isHashWithNonHttpsLink, isHttpsLink, toLegalContext } from "../src/core.js";
+import { fromLegalContext, isHashWithNonHttpsLink, isHttpsLink, toLegalContext } from "../src/internal/core.js";
 import { parse as parseDiscovery } from "../src/discovery.js";
 import { place, read as readMpp } from "../src/mpp.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";

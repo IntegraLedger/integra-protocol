@@ -8,7 +8,7 @@
  * §3.5): one whose last character carries a bit past its last byte is malformed. The Key Binding JWT is not read.
  * Refusal codes are the caller's.
  */
-import { MAX_JSON_DEPTH, type Json } from "./core.js";
+import { MAX_JSON_DEPTH, type Json } from "./internal/core.js";
 import { b64uDecode, b64uEncode, isB64u } from "./internal/base64url.js";
 import { type Refusal } from "./refusal.js";
 

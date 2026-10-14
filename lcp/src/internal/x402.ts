@@ -12,7 +12,7 @@ import {
   toLegalContext,
   type AtrHash,
   type Json,
-} from "../core.js";
+} from "./core.js";
 import { deepFreeze, isObject, normalHash } from "../fields.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Offer } from "../x402.js";

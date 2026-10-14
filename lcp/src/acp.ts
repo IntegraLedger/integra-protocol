@@ -14,7 +14,7 @@ import {
   toLegalContext,
   type AtrHash,
   type Json,
-} from "./core.js";
+} from "./internal/core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
 import { AGREEMENT_URL_SNAKE, agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";

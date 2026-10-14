@@ -22,6 +22,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/cardano`](#integraledgerlcpcardano) | Cardano, and the `x402/exact/cardano` pairing: the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so settlement is read by an id fixed before any money moves. |
 | [`@integraledger/lcp/casper`](#integraledgerlcpcasper) | CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments. |
 | [`@integraledger/lcp/ccd`](#integraledgerlcpccd) | Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event. |
+| [`@integraledger/lcp/core`](#integraledgerlcpcore) | The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, the RFC 8785 form of a JSON value and its digest, JSON reading capped at 64 levels, and `isRefusal`. It imports no pairing, no rail and no optional peer, so a bundle of it holds these functions and nothing else. The package root exports the same functions: each is one function, reached by either path. |
 | [`@integraledger/lcp/discovery`](#integraledgerlcpdiscovery) | The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one, members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes, and JSON nested at most 64 levels. Neither throws or does I/O. |
 | [`@integraledger/lcp/evm`](#integraledgerlcpevm) | eip155 rail pieces: EIP-3009 and Permit2 typed data, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address; the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's Permit2 proxy addresses. |
 | [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); and MPP's `mpp/charge/hedera`, whose signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash. |
@@ -195,6 +196,18 @@ import { accountBytes, ccdIdDigest, ccdMemo, … } from "@integraledger/lcp/ccd"
 **Values (8):** `accountBytes`, `ccdIdDigest`, `ccdMemo`, `ccdRecover`, `ccdStatus`, `exactCcd`, `memoCarrier`, `pltMemo`.
 
 **Types (7):** `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
+
+## `@integraledger/lcp/core`
+
+The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, the RFC 8785 form of a JSON value and its digest, JSON reading capped at 64 levels, and `isRefusal`. It imports no pairing, no rail and no optional peer, so a bundle of it holds these functions and nothing else. The package root exports the same functions: each is one function, reached by either path.
+
+```ts no-check
+import { assemble, canonicalJson, digestJson, … } from "@integraledger/lcp/core";
+```
+
+**Values (16):** `assemble`, `canonicalJson`, `digestJson`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `parseJson`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+
+**Types (4):** `AtrHash`, `CoreRefusal`, `Json`, `Refusal`.
 
 ## `@integraledger/lcp/discovery`
 

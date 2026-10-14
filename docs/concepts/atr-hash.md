@@ -83,6 +83,27 @@ scheme, at most 2048 characters long, as `<surface>/link-not-https`, and any oth
 `<surface>/legal-context-malformed`, or `<surface>/too-large` on ACP, AP2 and UCP. `isHttpsLink`, `toLegalContext` and
 `fromLegalContext` set no length.
 
+## The core alone
+
+A Worker that needs only the core imports `@integraledger/lcp/core`. It exports the core functions the package root
+exports, each the root's own function: `assemble`, `newAtrId`, `hash`, `hashEquals`, the forms of H and their readers,
+`isHttpsLink`, `isOtherSchemeLink`, `canonicalJson`, `digestJson`, `parseJson` and `isRefusal`. It imports no pairing,
+no rail and no optional peer, so the Worker's bundle holds the core alone.
+
+```ts
+import { hash, hashEquals, toLcpString } from "@integraledger/lcp/core";
+
+// SHA-256("abc"), the FIPS 180-2 example.
+const h = await hash(new TextEncoder().encode("abc"));
+console.log(toLcpString(h));
+console.log(hashEquals(h, "0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"));
+```
+
+```text
+lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+true
+```
+
 ## Next
 
 - [Binding](./binding.md): where H rides in each payment.

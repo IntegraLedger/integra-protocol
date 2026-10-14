@@ -10,7 +10,7 @@ import {
   toLegalContext,
   type AtrHash,
   type Json,
-} from "./core.js";
+} from "./internal/core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 

@@ -17,7 +17,7 @@ import {
   toRawBytes,
   type Json,
 } from "../src/index.js";
-import { isHashWithNonHttpsLink } from "../src/core.js";
+import { isHashWithNonHttpsLink } from "../src/internal/core.js";
 
 type Vector = {
   name: string;

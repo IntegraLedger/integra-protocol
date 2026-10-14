@@ -68,8 +68,9 @@ once it is on `main`.
 
 ## The rules the code follows
 
-- **One owner per rule.** Assembly, hashing and hash comparison live in the core (`lcp/src/core.ts`). Each pairing's
-  binding lives in that pairing's module. Reuse them; never write a second version.
+- **One owner per rule.** Assembly, hashing and hash comparison live in the core (`lcp/src/internal/core.ts`), which the
+  package root and `@integraledger/lcp/core` export. Each pairing's binding lives in that pairing's module. Reuse them;
+  never write a second version.
 - **Hash the bytes delivered.** Never parse, re-serialise or canonicalise an ATR before hashing it.
 - **Failures are values.** Return a refusal rather than throwing on a caller's input, with its `<namespace>/<reason>`
   code written out as a string literal in `refusal("…")`. Keep

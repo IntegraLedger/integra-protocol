@@ -78,6 +78,10 @@
       "types": "./dist/ccd.d.ts",
       "default": "./dist/ccd.js"
     },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
     "./discovery": {
       "types": "./dist/discovery.d.ts",
       "default": "./dist/discovery.js"
