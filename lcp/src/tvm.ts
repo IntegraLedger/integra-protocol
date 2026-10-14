@@ -126,10 +126,10 @@ interface TvmChoice {
   now: number;
   /**
    * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must be exactly
-   * one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, none in any cell of its
-   * libraries dictionary, and at most 1,024 cells read, each dictionary cell once for each path that reaches it, and
-   * at most two Merkle proofs or updates nested in it (else `x402/option-malformed`). The settlement message carries it as its `init` exactly as given, so its hash stays the
-   * address the wallet derives from it.
+   * one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, at most 1,024 cells
+   * read, and at most two Merkle proofs or updates nested in it. It must hold no libraries dictionary, since from global
+   * version 15 TON deploys no wallet from a state init that holds one. Else `x402/option-malformed`. The settlement
+   * message carries it as its `init` exactly as given, so its hash stays the address the wallet derives from it.
    */
   stateInit?: TonCell | string;
 }
@@ -155,25 +155,47 @@ const CELL_MAX_DEPTH = 1024;
 const STATE_INIT_MAX_READS = 1024;
 /** The Merkle proofs and updates a sent message may nest: ton-blockchain/ton `Transaction::max_allowed_merkle_depth`. */
 const MAX_MERKLE_DEPTH = 2;
-// The network configuration TON's message rules rest on, held here and nowhere else: the mainnet configuration
-// `@ton/sandbox` 0.45.0 ships (`defaultConfig`, configuration seqno 92871331), read offline. The read holds it for
-// every network it reads.
+/** The network configuration TON's message rules rest on, for one network. */
+interface TonConfiguration {
+  /**
+   * ConfigParam 8, `capabilities#c4 version:uint32`: the global version. From 4, TON's action phase takes a send mode's
+   * +16 as bounce-on-fail (`bounce_on_fail_enabled`); from 10, it refuses an anycast address (`disable_anycast`) and
+   * holds a message's extra currencies to `maxMsgExtraCurrencies` (`extra_currency_v2`); from 12, a message's
+   * `extra_flags` may set its two low bits only; from 15, no account is deployed from a state init that holds
+   * libraries (`unpack_msg_state`).
+   */
+  readonly globalVersion: number;
+  /**
+   * The workchains a message may name: the masterchain (-1), and ConfigParam 12's workchains that are basic and accept
+   * messages. Each takes 256-bit addresses only.
+   */
+  readonly workchains: ReadonlySet<number>;
+  /** ConfigParam 43, `max_msg_extra_currencies`: how many extra currencies a sent message may hold. */
+  readonly maxMsgExtraCurrencies: number;
+}
 /**
- * ConfigParam 8, `capabilities#c4 version:uint32`: the global version. From 10, TON's action phase refuses an anycast
- * address (`disable_anycast`) and holds a message's extra currencies to `MAX_MSG_EXTRA_CURRENCIES`
- * (`extra_currency_v2`); from 12, a message's `extra_flags` may set its two low bits only.
+ * Mainnet's configuration (`tvm:-239`): the one `@ton/sandbox` 0.45.0 ships (`defaultConfig`, configuration seqno
+ * 92871331, ConfigParam 19 global id -239), read offline. ConfigParam 12 holds one workchain, 0.
  */
-const GLOBAL_VERSION: number = 15;
+const MAINNET: TonConfiguration = Object.freeze({ globalVersion: 15, workchains: new Set([-1, 0]), maxMsgExtraCurrencies: 0 });
 /**
- * The workchains a message may name: the masterchain (-1), and ConfigParam 12's one workchain, 0, which is basic and
- * accepts messages. Each takes 256-bit addresses only.
+ * Testnet's configuration (`tvm:-3`). Testnet's own values are not read: these are mainnet's, from `MAINNET`'s source,
+ * since no offline source pinned by seqno holds testnet's ConfigParams 8, 12 and 43.
  */
-const WORKCHAINS: ReadonlySet<number> = new Set([-1, 0]);
-/** ConfigParam 43, `max_msg_extra_currencies`: how many extra currencies a sent message may hold. */
-const MAX_MSG_EXTRA_CURRENCIES = 0;
+const TESTNET: TonConfiguration = Object.freeze({ globalVersion: 15, workchains: new Set([-1, 0]), maxMsgExtraCurrencies: 0 });
+/** The two networks the pairing serves, by their `TvmNetwork`, each with the configuration its messages are read at. */
+const CONFIGURATIONS: ReadonlyMap<string, TonConfiguration> = new Map([
+  ["tvm:-239", MAINNET],
+  ["tvm:-3", TESTNET],
+]);
+/**
+ * The send modes TON's action phase sends a message with (`try_action_send_msg`): +16 is bounce-on-fail and is set
+ * aside from global version 4, and the rest must be +1, +2, +32, +64 and +128 alone (`0xe3`), never +64 with +128. Any
+ * other mode is refused, or skipped under +2 from global version 13: the message is not sent either way.
+ */
+const SEND_MODES = 0xe3;
 const COINS_LIMIT = 1n << 120n;
 const UINT32_LIMIT = 2 ** 32;
-const NETWORK = /^tvm:(-?(?:0|[1-9][0-9]{0,15}))$/;
 const RAW_ADDRESS = /^-?[0-9]{1,10}:[0-9a-fA-F]{64}$/;
 const SIGNATURE_BITS = 512;
 const SEND_MODE = 3;
@@ -498,16 +520,19 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
 }
 
 /**
- * A message as TON's action phase sends it (ton-blockchain/ton `crypto/block/transaction.cpp`: the action list's
- * `t_OutListNode.validate_ref`, then `try_action_send_msg`), or null where TON refuses to send it. The cell is TL-B's
- * `MessageRelaxed Any` with `int_msg_info$0`, read to its end, every field by this reader and none by a library's:
+ * A message as TON's action phase sends it at the network's configuration (ton-blockchain/ton
+ * `crypto/block/transaction.cpp`: the action list's `t_OutListNode.validate_ref`, then `try_action_send_msg`), or null
+ * where TON refuses to send it. The cell is TL-B's `MessageRelaxed Any` with `int_msg_info$0`, read to its end, every
+ * field by this reader and none by a library's:
  * - `src` is `addr_none` or the sender's own address (`check_replace_src_addr`): `from` when the sender is known, else
- *   an `addr_std` with no anycast on a workchain in `WORKCHAINS`;
+ *   an `addr_std` with no anycast on a workchain the configuration holds. The settlement message's sender is the
+ *   account that relays it, which the bytes do not name: a source naming another account is read, and TON sends it
+ *   when that account relays it;
  * - `dest` is an address TON sends to (`check_rewrite_dest_addr`): an `addr_std` with no anycast, or an `addr_var` of
- *   256 bits with no anycast, which TON sends as that `addr_std`, on a workchain in `WORKCHAINS`. The answer's `dest`
- *   is that `addr_std`, raw;
- * - the extra currencies are a valid `HashmapE 32 (VarUInteger 32)` of at most `MAX_MSG_EXTRA_CURRENCIES` entries,
- *   and `extra_flags` sets no bit above its two low ones (from global version 12);
+ *   256 bits with no anycast, which TON sends as that `addr_std`, on a workchain the configuration holds. The answer's
+ *   `dest` is that `addr_std`, raw;
+ * - the extra currencies are a valid `HashmapE 32 (VarUInteger 32)` of at most the configuration's
+ *   `maxMsgExtraCurrencies` entries, and `extra_flags` sets no bit above its two low ones (from global version 12);
  * - the init, when present, is a `^StateInit`, or a `StateInit` inline, taken as the cell its fields make, either of
  *   them one `isStateInit` holds;
  * - the body is the remainder, or a reference with nothing after it;
@@ -515,20 +540,20 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
  *   cell on each path, a `^StateInit` and a referenced body;
  * - at most `MAX_MERKLE_DEPTH` Merkle proofs and updates nest under the init and the body.
  */
-function messageOf(c: Cell, from: string | null): { dest: string; body: Cell } | null {
+function messageOf(c: Cell, from: string | null, config: TonConfiguration): { dest: string; body: Cell } | null {
   const T = peer!;
   if (c.isExotic) return null;
   try {
     const s = c.beginParse();
     if (s.loadBit()) return null;
     s.skip(3);
-    const src = msgAddress(s);
+    const src = msgAddress(s, config);
     if (src.tag !== 0 && (src.tag !== 2 || src.raw === null || (from !== null && src.raw !== from))) return null;
-    const dest = msgAddress(s);
+    const dest = msgAddress(s, config);
     if (dest.tag < 2 || dest.raw === null) return null;
     s.loadCoins();
     const extra = s.loadMaybeRef();
-    if (GLOBAL_VERSION >= 12 && s.loadVarUintBig(4) > 3n) return null;
+    if (config.globalVersion >= 12 && s.loadVarUintBig(4) > 3n) return null;
     s.loadCoins();
     s.skip(64 + 32);
     let init: Cell | null = null;
@@ -561,7 +586,7 @@ function messageOf(c: Cell, from: string | null): { dest: string; body: Cell } |
         count++;
         return true;
       };
-      if (!hashmap(extra, 32, currency) || count > MAX_MSG_EXTRA_CURRENCIES) return null;
+      if (!hashmap(extra, 32, currency) || count > config.maxMsgExtraCurrencies) return null;
     }
     if (merkleDepth([...(init === null ? [] : [init]), ...(bodyRef ? [body] : body.refs)]) > MAX_MERKLE_DEPTH) return null;
     return { dest: dest.raw, body };
@@ -573,10 +598,10 @@ function messageOf(c: Cell, from: string | null): { dest: string; body: Cell } |
 /**
  * A TL-B `MsgAddress` read from the slice (block.tlb: `addr_none$00`, `addr_extern$01`, `addr_std$10` and
  * `addr_var$11`, an anycast's `depth:(#<= 30) { depth >= 1 }`), with `raw` the `workchain:hex` it names when it has no
- * anycast, 256 bits and a workchain in `WORKCHAINS`, else null. TON refuses an anycast address from global version 10;
- * a read past the slice's end throws.
+ * anycast, 256 bits and a workchain the configuration holds, else null. TON refuses an anycast address from global
+ * version 10; a read past the slice's end throws.
  */
-function msgAddress(s: Slice): { tag: number; raw: string | null } {
+function msgAddress(s: Slice, config: TonConfiguration): { tag: number; raw: string | null } {
   const tag = s.loadUint(2);
   if (tag === 0) return { tag, raw: null };
   if (tag === 1) {
@@ -596,7 +621,7 @@ function msgAddress(s: Slice): { tag: number; raw: string | null } {
     return { tag, raw: null };
   }
   const hash = s.loadBuffer(32).toString("hex");
-  return { tag, raw: anycast || !WORKCHAINS.has(workchain) ? null : `${workchain}:${hash}` };
+  return { tag, raw: anycast || !config.workchains.has(workchain) ? null : `${workchain}:${hash}` };
 }
 
 /**
@@ -624,12 +649,15 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
  * refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
  * for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
- * it, at mainnet's configuration (global version 15, workchains -1 and 0, no extra currencies): a source of
- * `addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a destination TON sends
- * to, `extra_flags` of at most 3, its state init validated as TON validates it, a referenced body with nothing after
- * it, and at most two nested Merkle proofs or updates. The settlement message TON would not send is
- * `tvm/boc-malformed`, and the outgoing one `tvm/not-jetton-transfer`. `wallet` and `jettonWallet` are the addresses
- * TON sends to: an `addr_var` of 256 bits names its `addr_std`.
+ * it, at mainnet's configuration (global version 15, workchains -1 and 0, no extra currencies), as `bound` and
+ * `reference` read a mainnet option's payment: a source of `addr_none` or an `addr_std` with no anycast (the outgoing
+ * message's the W5 wallet's own), a destination TON sends to, `extra_flags` of at most 3, its state init validated as
+ * TON validates it, a referenced body with nothing after it, and at most two nested Merkle proofs or updates; the W5
+ * action's send mode is one TON sends with. The settlement message TON would not send is `tvm/boc-malformed`, and the
+ * outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The settlement message's source names
+ * the account that relays it, which the BoC cannot show: one naming another account is read, and TON sends it when
+ * that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names
+ * its `addr_std`.
  */
 export function tvmCarrier(settlementBoc: string): {
   h: AtrHash;
@@ -640,11 +668,11 @@ export function tvmCarrier(settlementBoc: string): {
   validUntil: number;
   payload: TonCell;
 } | Refusal {
-  return carrierIn(settlementBoc);
+  return carrierIn(settlementBoc, MAINNET);
 }
 
-/** `tvmCarrier`, with the payload as the peer's cell. */
-function carrierIn(settlementBoc: string): {
+/** `tvmCarrier` at the network's configuration, with the payload as the peer's cell. */
+function carrierIn(settlementBoc: string, config: TonConfiguration): {
   h: AtrHash;
   transferBodyHash: Hex;
   jettonWallet: string;
@@ -655,7 +683,7 @@ function carrierIn(settlementBoc: string): {
 } | Refusal {
   const root = rootOf(settlementBoc);
   if (isRefusal(root)) return root;
-  const message = messageOf(root, null);
+  const message = messageOf(root, null, config);
   if (message === null) return refusal("tvm/boc-malformed");
 
   let validUntil: number;
@@ -676,7 +704,8 @@ function carrierIn(settlementBoc: string): {
 
   const send = sendMessage(actions);
   if (isRefusal(send)) return send;
-  const out = messageOf(send, message.dest);
+  if (!sendsWith(send.mode, config)) return refusal("tvm/not-jetton-transfer");
+  const out = messageOf(send.message, message.dest, config);
   if (out === null) return refusal("tvm/not-jetton-transfer");
   const transfer = jettonTransfer(out.body);
   if (isRefusal(transfer)) return transfer;
@@ -694,15 +723,24 @@ function carrierIn(settlementBoc: string): {
   };
 }
 
-/** The outgoing message of an action list holding exactly one `action_send_msg` behind an empty `prev`. */
-function sendMessage(actions: Cell): Cell | Refusal {
+/**
+ * The send mode and outgoing message of an action list holding exactly one `action_send_msg` behind an empty `prev`
+ * (`action_send_msg#0ec3c86d mode:(## 8) out_msg:^(MessageRelaxed Any)`).
+ */
+function sendMessage(actions: Cell): { mode: number; message: Cell } | Refusal {
   if (actions.isExotic) return refusal("tvm/boc-malformed");
   if (actions.bits.length !== 40 || actions.refs.length !== 2) return refusal("tvm/actions");
   const prev = actions.refs[0]!;
   if (prev.bits.length !== 0 || prev.refs.length !== 0) return refusal("tvm/actions");
   const s = actions.beginParse();
   if (s.loadUint(32) !== OP.sendMsg) return refusal("tvm/actions");
-  return actions.refs[1]!;
+  return { mode: s.loadUint(8), message: actions.refs[1]! };
+}
+
+/** True when TON's action phase sends a message with this mode at the configuration (`SEND_MODES`). */
+function sendsWith(mode: number, config: TonConfiguration): boolean {
+  const m = config.globalVersion >= 4 ? mode & ~16 : mode;
+  return (m & ~SEND_MODES) === 0 && (m & 0xc0) !== 0xc0;
 }
 
 // ── Settlement.
@@ -888,7 +926,9 @@ function rawAddress(s: unknown): Address | null {
 
 /**
  * The option's scheme, network, asset, `payTo` and `extra`: what `bound` and `reference` require of the option a
- * presented payment echoes. They read no amount and no timeout, so neither is checked here.
+ * presented payment echoes. The network is one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3`
+ * (testnet), whose configuration the messages are read at; any other `tvm:` network is `tvm/network-malformed`. They
+ * read no amount and no timeout, so neither is checked here.
  */
 const presentable: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact") return refusal("x402/option-not-this-pairing");
@@ -898,8 +938,7 @@ const presentable: OptionFilter = (o) => {
   if (extra?.["assetTransferMethod"] !== undefined) return refusal("x402/option-not-this-pairing");
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization") return refusal("x402/option-not-this-pairing");
-  const m = NETWORK.exec(o.network);
-  if (m === null || !Number.isSafeInteger(Number(m[1]))) return refusal("tvm/network-malformed");
+  if (!CONFIGURATIONS.has(o.network)) return refusal("tvm/network-malformed");
   if (peer === undefined) return refusal("tvm/peer-missing");
   if (rawAddress(o.asset) === null || rawAddress(o.payTo) === null) return refusal("tvm/option-malformed");
   if (extra?.["areFeesSponsored"] !== true) return refusal("tvm/option-malformed");
@@ -981,7 +1020,10 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   const walletAddress = rawAddress(wallet);
   const jettonAddress = rawAddress(jettonWallet);
   if (walletAddress === null || jettonAddress === null) return refusal("x402/option-malformed");
-  if (!WORKCHAINS.has(walletAddress.workChain) || !WORKCHAINS.has(jettonAddress.workChain)) return refusal("x402/option-malformed");
+  const config = CONFIGURATIONS.get(accepted.network)!;
+  if (!config.workchains.has(walletAddress.workChain) || !config.workchains.has(jettonAddress.workChain)) {
+    return refusal("x402/option-malformed");
+  }
   if (!isUint32(walletId) || !isUint32(seqno) || !Number.isSafeInteger(now) || now < 0) {
     return refusal("x402/option-malformed");
   }
@@ -1039,7 +1081,10 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
     .storeBit(0)
     .endCell();
   // The checks read the state init's form only: `complete` carries the cell itself.
-  if (initCell !== undefined && (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH)) {
+  if (
+    initCell !== undefined &&
+    (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH || (config.globalVersion >= 15 && holdsLibraries(initCell)))
+  ) {
     return refusal("x402/option-malformed");
   }
   return {
@@ -1107,6 +1152,20 @@ function isStateInit(root: Cell): boolean {
 }
 
 /**
+ * True when a state init `isStateInit` holds has a libraries dictionary: its `library:(HashmapE 256 SimpleLib)` is
+ * `hme_root`. From global version 15, TON deploys no account from such a state init (ton-blockchain/ton
+ * `crypto/block/transaction.cpp`, `unpack_msg_state`, "libraries are not null").
+ */
+function holdsLibraries(root: Cell): boolean {
+  const s = root.beginParse();
+  if (s.loadBit()) s.skip(5);
+  if (s.loadBit()) s.skip(2);
+  s.loadMaybeRef();
+  s.loadMaybeRef();
+  return s.loadBit();
+}
+
+/**
  * TL-B validation as TON runs it (ton-blockchain/ton `crypto/tl/tlblib.cpp`, `TLB::validate_ref_internal`): each cell
  * ordinary and read to its end, with no bit or reference left over, and at most `reads` cells read in all. `hashmap`
  * reads a TL-B `Hashmap n X` edge (`hm_edge`): a label of at most n bits (`labelLength`), then at key length 0 the
@@ -1159,13 +1218,13 @@ function labelLength(s: Slice, n: number): number | null {
   return l;
 }
 
-/** The signed request's carrier, checked against the option's forward payload. */
+/** The signed request's carrier, read at the option's network's configuration and checked against its forward payload. */
 function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclude<ReturnType<typeof carrierIn>, Refusal> } | Refusal {
   const p = presentedWith(presented, presentable);
   if (isRefusal(p)) return p;
   const boc = p.payload["settlementBoc"];
   if (typeof boc !== "string") return refusal("x402/payload-malformed");
-  const c = carrierIn(boc);
+  const c = carrierIn(boc, CONFIGURATIONS.get(p.accepted.network)!);
   if (isRefusal(c)) return c;
   if (!carries(p.accepted, c.payload)) return refusal("tvm/carrier-mismatch");
   return { accepted: p.accepted, c };
@@ -1174,6 +1233,7 @@ function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclud
 /**
  * The hash in the forward payload of the transfer the payer's W5 wallet signed, which must be the option's. The
  * signature is not verified here; the facilitator verifies it, and the W5 contract checks it before any action runs.
+ * A state init holding a libraries dictionary is read, since whether TON deploys the wallet from it is chain state.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const r = carried(presented);

@@ -131,12 +131,14 @@ export const RAILS: readonly Rail[] = [
         { extra: 5, network: "tvm:9999999999999999" },
         "tvm/option-malformed",
       ],
-      ["the network id is a safe integer", { network: "tvm:9999999999999999" }, "tvm/network-malformed"],
+      ["the network is tvm:-239 or tvm:-3", { network: "tvm:9999999999999999" }, "tvm/network-malformed"],
+      ["the network is tvm:-239 or tvm:-3, not another global id", { network: "tvm:-1" }, "tvm/network-malformed"],
       ["asset is a raw address", { asset: "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs" }, "tvm/option-malformed"],
       ["extra.responseDestination is a raw address", { "extra.responseDestination": "0:zz" }, "tvm/option-malformed"],
     ],
     served: [
       ["a raw responseDestination", { "extra.responseDestination": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed" }],
+      ["the testnet network", { network: "tvm:-3" }],
     ],
   },
   {

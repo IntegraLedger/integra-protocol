@@ -2,7 +2,7 @@
 // pytoniq-core 0.2.0 and PyNaCl 1.6.2, except where a test names another source.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { beginCell, type Builder, Cell, crc32c, Dictionary, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
+import { Address, beginCell, type Builder, Cell, crc32c, Dictionary, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -290,39 +290,48 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
-  // An undeployed wallet's address is the representation hash of its state init cell (x402's Python SDK 2.25.0,
-  // address_from_state_init), and x402's TON scheme lets the settlement message carry that state init. This row's
-  // libraries dictionary writes its one label as hml_short where hml_long is shorter: @ton/core's loadStateInit and
-  // storeStateInit write it back as hml_long, another cell with the file's expectCanonicalStateInitHash, while build
-  // carries the given cell. Every expected value is the file's (pytoniq-core 0.2.0 and PyNaCl 1.6.2).
-  it("V2b: a state init whose libraries label is not its shortest form rides as given", async () => {
+  // From global version 15, TON deploys no account from a state init whose libraries dictionary is not empty
+  // (ton-blockchain/ton crypto/block/transaction.cpp, unpack_msg_state, "libraries are not null"; doc/GlobalVersions.md,
+  // version 15), so build refuses such a state init, as a base64 BoC and as a cell. A wallet already deployed ignores its
+  // message's state init, so whether TON deploys the wallet is chain state, and bound reads a settlement message
+  // carrying one: V2b's, with this row's state init as its init and the row's wallet, the init's hash, as its
+  // destination. The row is the file's (pytoniq-core 0.2.0).
+  it("V2b: build refuses a state init that holds libraries, and bound reads a settlement message carrying one", async () => {
     const R = V.V2b.nonCanonicalLibraries;
     const given = Cell.fromBase64(R.stateInit);
-    expect(hashHex(given)).toBe(R.expectStateInitHash);
-    const restored = beginCell().store(storeStateInit(loadStateInit(given.beginParse()))).endCell();
-    expect(hashHex(restored)).toBe(R.expectCanonicalStateInitHash);
-    expect(R.expectCanonicalStateInitHash).not.toBe(R.expectStateInitHash);
+    expect(`0:${hashHex(given)}`).toBe(R.wallet);
     for (const stateInit of [R.stateInit, given]) {
-      const u = await exactTvm.build({ ...choice(), wallet: R.wallet, seqno: V.V2b.seqno, stateInit }, H);
-      if ("refused" in u) throw new Error(u.code);
-      expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2b.expectRequestHash);
-      const sig = ed25519.sign(u.request.hash, seed);
-      expect(Buffer.from(sig).toString("hex")).toBe(V.V2b.expectSignature);
-      const p = u.complete(sig);
-      if ("refused" in p) throw new Error(p.code);
-      const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
-      expect(hashHex(root)).toBe(R.expectSettlementRootHash);
-      expect(hashHex(root.refs[0]!)).toBe(R.expectStateInitHash);
-      expect(await exactTvm.bound(p)).toBe(H);
+      expect(await exactTvm.build({ ...choice(), wallet: R.wallet, seqno: V.V2b.seqno, stateInit }, H)).toEqual({ refused: true, code: R.expect });
     }
+    const u = await exactTvm.build({ ...choice(), wallet: V.V2b.wallet, seqno: V.V2b.seqno, stateInit: V.V2b.stateInit }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete(ed25519.sign(u.request.hash, seed));
+    if ("refused" in p) throw new Error(p.code);
+    // V2b's message with its destination and its init's cell replaced: its four flag bits, its source, the row's
+    // wallet, then the rest of its info and its init and body bits as they are.
+    const v2b = Cell.fromBase64(p.payload.settlementBoc);
+    const s = v2b.beginParse();
+    const flags = s.loadBits(4);
+    const src = s.loadMaybeAddress();
+    s.loadAddress();
+    const rest = s.loadBits(s.remainingBits);
+    const carryingInit = (init: Cell, wallet: string) =>
+      beginCell().storeBits(flags).storeAddress(src).storeAddress(Address.parseRaw(wallet)).storeBits(rest).storeRef(init).storeRef(v2b.refs[1]!).endCell();
+    expect(carryingInit(v2b.refs[0]!, V.V2b.wallet).equals(v2b)).toBe(true);
+    const carrying = carryingInit(given, R.wallet);
+    const b64 = carrying.toBoc({ idx: false, crc32: true }).toString("base64");
+    expect(await exactTvm.bound(payment(b64))).toBe(H);
+    const ref = await exactTvm.reference(payment(b64));
+    if ("refused" in ref) throw new Error(ref.code);
+    expect([ref.wallet, ref.requestBodyHash]).toEqual([R.wallet, `0x${V.V2b.expectRequestBodyHash}`]);
   });
 
   // TL-B's MessageRelaxed: `init:(Maybe (Either StateInit ^StateInit))`, then the body. Read past the message's info,
   // the init is present as a reference, and that cell's hash is the address the wallet derives from its state init
-  // (the file's `wallet` for each, computed with pytoniq-core 0.2.0 as x402's Python SDK 2.25.0 derives it), which is
-  // the message's destination.
+  // (the file's `wallet`, computed with pytoniq-core 0.2.0 as x402's Python SDK 2.25.0 derives it), which is the
+  // message's destination.
   it("V2b: the settlement message's init hashes to the address its state init derives", async () => {
-    for (const row of [V.V2b, V.V2b.nonCanonicalLibraries]) {
+    for (const row of [V.V2b]) {
       const u = await exactTvm.build({ ...choice(), wallet: row.wallet, seqno: V.V2b.seqno, stateInit: row.stateInit }, H);
       if ("refused" in u) throw new Error(u.code);
       const p = u.complete(ed25519.sign(u.request.hash, seed));
@@ -340,9 +349,11 @@ describe("x402-exact-tvm.json", () => {
   // crypto/block/transaction.cpp, unpack_input_msg), and TLB::validate_ref_internal (crypto/tl/tlblib.cpp) accepts a
   // cell only when it is ordinary and read to its end (`cs.empty_ext()`), for the state init and for each cell of its
   // `library:(HashmapE 256 SimpleLib)` (crypto/block/block.tlb). Each state init below is V2b's, or V2b's code and data
-  // with a libraries dictionary written cell by cell; its well-formed twin builds and rides as given, and each change
-  // is x402/option-malformed, as a cell and as a base64 BoC.
-  it("V2b: build takes only a state init TON reads as exactly one StateInitWithLibs", async () => {
+  // with a libraries dictionary written cell by cell. V2b's builds and rides as given. Each change is
+  // x402/option-malformed, as a cell and as a base64 BoC, and so is each well-formed libraries dictionary, since from
+  // global version 15 TON deploys no account from a state init that holds one (crypto/block/transaction.cpp,
+  // unpack_msg_state).
+  it("V2b: build takes only a state init TON deploys a wallet from: one StateInitWithLibs without libraries", async () => {
     const { code, data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
     const v2b = Cell.fromBase64(V.V2b.stateInit);
     const key = code!.hash();
@@ -357,8 +368,10 @@ describe("x402-exact-tvm.json", () => {
     const init = (dict: Cell | null, edit: (b: Builder) => Builder = (b) => b) =>
       edit(beginCell().storeBit(0).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeMaybeRef(dict)).endCell();
     const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
-    const good = [v2b, init(leaf(256)), init(fork())];
+    const good = [v2b];
     const bad: [string, Cell][] = [
+      ["a well-formed libraries leaf", init(leaf(256))],
+      ["a well-formed libraries fork", init(fork())],
       ["a bit after the fields", init(null, (b) => b.storeBit(1))],
       ["a reference after the fields", init(null, (b) => b.storeRef(beginCell().endCell()))],
       ["fixed_prefix_length cut short", beginCell().storeBit(1).storeUint(0, 3).endCell()],
@@ -387,11 +400,12 @@ describe("x402-exact-tvm.json", () => {
   // (ton-blockchain/ton crypto/tl/tlblib.hpp, default_validate_max_cells; crypto/tl/tlblib.cpp, validate_ref_internal,
   // which counts every cell it reads, the state init's first): a dictionary cell counts each time a path reaches it.
   // A libraries dictionary whose forks each reference one child cell twice holds 2^f entries in f + 1 cells, and TON
-  // reads 2^(f+1) - 1 of them: at 9 levels the state init's 1,024 reads are within the bound, at 10 and at 30 (the
-  // deepest the BoC's 32-level bound admits) they are not. The dictionary @ton/core writes for the keys 0 to 511 has
-  // 1,023 cells on its paths, and the one for 0 to 512 has 1,025. Each verdict is TON's own, from its transaction
-  // emulator (ton 8e6f091) relaying each state init in this pairing's settlement message.
-  it("V2b: a state init whose validation reads more than TON's 1,024 cells is refused", async () => {
+  // reads 2^(f+1) - 1 of them; the dictionary @ton/core writes for the keys 0 to 511 has 1,023 cells on its paths, and
+  // the one for 0 to 512 has 1,025. From global version 15, TON deploys no account from a state init that holds
+  // libraries (crypto/block/transaction.cpp, unpack_msg_state), so build refuses each of these, within the 1,024 reads
+  // (9 levels, 512 entries) and past them (10 and 30 levels, 513 entries). A settlement message carrying the 9-level
+  // dictionary binds, and one carrying the 10-level dictionary is refused (the test of a message's state init below).
+  it("V2b: build refuses a state init that holds libraries, within TON's 1,024 reads and past them", async () => {
     const { code, data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
     const init = (dict: Cell) => beginCell().storeBit(0).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeMaybeRef(dict).endCell();
     const width = (n: number) => Math.ceil(Math.log2(n + 1));
@@ -409,22 +423,15 @@ describe("x402-exact-tvm.json", () => {
       return init(beginCell().storeDictDirect(d).endCell());
     };
     const malformed = { refused: true, code: "x402/option-malformed" };
-    for (const [name, given, builds] of [
-      ["9 levels of shared forks", shared(9), true],
-      ["10 levels of shared forks", shared(10), false],
-      ["30 levels of shared forks", shared(30), false],
-      ["512 plain entries", plain(512), true],
-      ["513 plain entries", plain(513), false],
-    ] as const) {
-      const built = await exactTvm.build({ ...choice(), stateInit: given }, H);
-      if (!builds) {
-        expect([name, built]).toEqual([name, malformed]);
-        continue;
-      }
-      if ("refused" in built) throw new Error(`${name}: ${built.code}`);
-      const p = built.complete(ed25519.sign(built.request.hash, seed));
-      if ("refused" in p) throw new Error(p.code);
-      expect([name, Cell.fromBase64(p.payload.settlementBoc).refs[0]!.equals(given)]).toEqual([name, true]);
+    const cases = [
+      ["9 levels of shared forks", shared(9)],
+      ["10 levels of shared forks", shared(10)],
+      ["30 levels of shared forks", shared(30)],
+      ["512 plain entries", plain(512)],
+      ["513 plain entries", plain(513)],
+    ] as const;
+    for (const [name, given] of cases) {
+      expect([name, await exactTvm.build({ ...choice(), stateInit: given }, H)]).toEqual([name, malformed]);
     }
   });
 
@@ -945,6 +952,72 @@ describe("x402-exact-tvm.json", () => {
       expect([name, await exactTvm.bound(p), await exactTvm.reference(p)]).toEqual([name, { refused: true, code }, { refused: true, code }]);
     }
     expect(await exactTvm.build({ ...choice(), stateInit: init(30) }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
+  });
+
+  // TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail,
+  // never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp at ed629c4, try_action_send_msg): any other
+  // mode fails the action phase (result 34), or skips the message under +2 from global version 13. SENDS is the 48 modes
+  // with which TON's emulator (ton 8e6f091, whose mode checks equal ed629c4's, at mainnet's configuration as
+  // @ton/sandbox 0.45.0 ships it) sends the Jetton transfer from a funded W5 wallet that deploys from the settlement's
+  // state init, each mode written into the action as raw bits; it sends nothing with each of the other 208. Each case
+  // here is V2's settlement with only the action's mode changed: a mode TON sends with binds H, and any other is
+  // tvm/not-jetton-transfer at bound, reference and tvmCarrier.
+  it("the W5 action's send mode is read as TON's action phase takes it", async () => {
+    const SENDS = new Set([
+      0, 1, 2, 3, 16, 17, 18, 19, 32, 33, 34, 35, 48, 49, 50, 51, 64, 65, 66, 67, 80, 81, 82, 83, 96, 97, 98, 99, 112, 113, 114,
+      115, 128, 129, 130, 131, 144, 145, 146, 147, 160, 161, 162, 163, 176, 177, 178, 179,
+    ]);
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const actions = cellAt(settlement, [0, 0]);
+    // action_send_msg#0ec3c86d mode:(## 8) out_msg:^(MessageRelaxed Any), behind an empty prev (block.tlb).
+    const withMode = (mode: number) =>
+      replaced(settlement, [0, 0], beginCell().storeRef(actions.refs[0]!).storeUint(0x0ec3c86d, 32).storeUint(mode, 8).storeRef(actions.refs[1]!).endCell());
+    const notTransfer = { refused: true, code: "tvm/not-jetton-transfer" };
+    let sent = 0;
+    let refused = 0;
+    for (let mode = 0; mode < 256; mode++) {
+      const boc = withMode(mode).toBoc({ idx: false, crc32: true }).toString("base64");
+      const p = payment(boc);
+      if (SENDS.has(mode)) {
+        sent++;
+        expect([mode, await exactTvm.bound(p)]).toEqual([mode, H]);
+        const ref = await exactTvm.reference(p);
+        expect([mode, "refused" in ref ? ref : ref.jettonWallet]).toEqual([mode, V.fixed.jettonWallet]);
+      } else {
+        refused++;
+        expect([mode, await exactTvm.bound(p), await exactTvm.reference(p), tvmCarrier(boc)]).toEqual([mode, notTransfer, notTransfer, notTransfer]);
+      }
+    }
+    expect([sent, refused]).toEqual([48, 208]);
+  });
+
+  // x402's scheme_exact_ton.md names two networks, tvm:-239 (mainnet) and tvm:-3 (testnet), and the messages are read at
+  // the configuration of the option's network. Any other tvm: network is tvm/network-malformed wherever the option
+  // filter runs, and read finds no option it serves (x402/no-payable-option); a testnet option reads V2's settlement as
+  // a mainnet one does.
+  it("the option's network is one of the two the pairing serves", async () => {
+    const malformed = { refused: true, code: "tvm/network-malformed" };
+    const boc = (await signed()).payload.settlementBoc;
+    const advertised = exactTvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
+    if ("refused" in advertised) throw new Error(advertised.code);
+    for (const network of ["tvm:-1", "tvm:0", "tvm:698", "tvm:-2390"]) {
+      const option = { ...placed, network };
+      const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [option] };
+      expect([network, pairingOf(option)]).toEqual([network, undefined]);
+      const offer = { ...O, network };
+      expect([network, exactTvm.advertise({ ...doc, accepts: [offer] }, H, V.fixed.link, offer)]).toEqual([network, malformed]);
+      const read = exactTvm.read({ ...advertised, accepts: advertised.accepts.map((a) => ({ ...a, network })) });
+      expect([network, read]).toEqual([network, { refused: true, code: "x402/no-payable-option" }]);
+      expect([network, await exactTvm.build({ ...choice(), required: doc, accepted: option }, H)]).toEqual([network, malformed]);
+      expect([network, await exactTvm.bound(payment(boc, option)), await exactTvm.reference(payment(boc, option))]).toEqual([network, malformed, malformed]);
+    }
+    const testnet = { ...placed, network: "tvm:-3" };
+    expect(pairingOf(testnet)).toBe("x402/exact/tvm");
+    const u = await exactTvm.build({ ...choice(), required: { ...required, accepts: [testnet] }, accepted: testnet }, H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2.expectRequestHash);
+    expect(await exactTvm.bound(payment(boc, testnet))).toBe(H);
+    expect(await exactTvm.reference(payment(boc, testnet))).toEqual({ ...V.V3.expectReference, network: "tvm:-3" });
   });
 
   it("V2b: a state init whose code is a library cell, as a cell or a base64 BoC, binds as V2's payment", async () => {
