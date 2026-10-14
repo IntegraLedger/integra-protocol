@@ -735,8 +735,10 @@ describe("x402-exact-tvm.json", () => {
   // message written bit by bit. A form TON refuses to send is tvm/boc-malformed on the settlement message and
   // tvm/not-jetton-transfer on the outgoing one; a form TON sends binds H, and reference names the address TON sends to.
   // TON's emulator (ton 8e6f091, whose address and message rules equal ed629c4's) gives the same verdict on each case's
-  // own bytes, the probe's raw-bit messages.
-  it("a message is read as TON's action phase sends it: its addresses, extra currencies, extra_flags and body", async () => {
+  // own bytes, the probe's raw-bit messages. The action phase validates the value's Grams, and from global version 12
+  // extra_flags, as a VarUInteger 16 in its shortest form (crypto/block/block-parse.cpp, VarUInteger::validate_skip): a
+  // length whose first byte is zero is refused, while fwd_fee is not read from global version 8.
+  it("a message is read as TON's action phase sends it: its addresses, value, extra currencies, extra_flags and body", async () => {
     const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
     const request = settlement.refs[0]!;
     const transfer = cellAt(settlement, [0, 0, 1, 0]);
@@ -755,9 +757,13 @@ describe("x402-exact-tvm.json", () => {
       const bits = BigInt(`0x${hashOf(raw).toString("hex")}`);
       return len <= 256 ? b.storeUint(bits >> BigInt(256 - len), len) : b.storeUint(bits, 256).storeUint(0, len - 256);
     };
-    const message = (k: { src?: Writes; dest: Writes; value?: bigint; bounce?: boolean; extra?: Cell; flags?: number; init?: Cell; inline?: boolean; body: Cell; tail?: boolean }) => {
+    // A VarUInteger 16 (block.tlb's Grams and extra_flags) written with its value in `bytes` bytes, the leading ones zero.
+    const wide = (value: bigint, bytes: number): Writes => (b) => b.storeUint(bytes, 4).storeUint(value, bytes * 8);
+    const grams = (v: bigint | number | Writes): Writes => (typeof v === "function" ? v : (b) => b.storeCoins(v));
+    const message = (k: { src?: Writes; dest: Writes; value?: bigint | Writes; bounce?: boolean; extra?: Cell; flags?: number | Writes; fwd?: Writes; init?: Cell; inline?: boolean; body: Cell; tail?: boolean }) => {
       const b = beginCell().storeBit(0).storeBit(1).storeBit(k.bounce ?? false).storeBit(0);
-      k.dest((k.src ?? none)(b)).storeCoins(k.value ?? 0n).storeMaybeRef(k.extra ?? null).storeCoins(k.flags ?? 0).storeCoins(0).storeUint(0, 64).storeUint(0, 32);
+      grams(k.value ?? 0n)(k.dest((k.src ?? none)(b))).storeMaybeRef(k.extra ?? null);
+      grams(k.fwd ?? 0)(grams(k.flags ?? 0)(b)).storeUint(0, 64).storeUint(0, 32);
       if (k.init === undefined) b.storeBit(0);
       else if (k.inline === true) b.storeBit(1).storeBit(0).storeSlice(k.init.beginParse());
       else b.storeBit(1).storeBit(1).storeRef(k.init);
@@ -777,6 +783,8 @@ describe("x402-exact-tvm.json", () => {
       ["the settlement's dest, an addr_var of 256 bits on workchain 0", root({ dest: addrVar(wallet) }), { wallet, jettonWallet: jetton }],
       ["the settlement's dest on the masterchain", root({ dest: std(at(-1, wallet)) }), { wallet: at(-1, wallet), jettonWallet: jetton }],
       ["the settlement's extra_flags of 3", root({ flags: 3 }), { wallet, jettonWallet: jetton }],
+      ["the settlement's fwd_fee of 0 in one byte (TON reads no fwd_fee from global version 8)", root({ fwd: wide(0n, 1) }), { wallet, jettonWallet: jetton }],
+      ["the outgoing fwd_fee of 0 in one byte", out({ fwd: wide(0n, 1) }), { wallet, jettonWallet: jetton }],
       ["the outgoing src, the W5 wallet's own addr_std", out({ src: std(wallet) }), { wallet, jettonWallet: jetton }],
       ["the outgoing dest, an addr_var of 256 bits on workchain 0", out({ dest: addrVar(jetton) }), { wallet, jettonWallet: jetton }],
     ];
@@ -799,6 +807,9 @@ describe("x402-exact-tvm.json", () => {
       ["the settlement's dest, an addr_std with anycast (36)", root({ dest: std(wallet, true) }), malformed],
       ["the settlement's extra currencies, one entry (44)", root({ extra: currency }), malformed],
       ["the settlement's extra_flags of 4 (45)", root({ flags: 4 }), malformed],
+      ["the settlement's value of 0 in one byte (34)", root({ value: wide(0n, 1) }), malformed],
+      ["the settlement's extra_flags of 0 in one byte (45)", root({ flags: wide(0n, 1) }), malformed],
+      ["the settlement's extra_flags of 3 in two bytes (45)", root({ flags: wide(3n, 2) }), malformed],
       ["the settlement's body reference, then one bit (TL-B)", root({ tail: true }), malformed],
       ["the outgoing src, another account's addr_std (35)", out({ src: std(other) }), notTransfer],
       ["the outgoing src, the W5 wallet's address as an addr_var (35)", out({ src: addrVar(wallet) }), notTransfer],
@@ -807,9 +818,11 @@ describe("x402-exact-tvm.json", () => {
       ["the outgoing dest, an addr_var of 264 bits (36)", out({ dest: addrVar(jetton, 264) }), notTransfer],
       ["the outgoing extra currencies, one entry (44)", out({ extra: currency }), notTransfer],
       ["the outgoing extra_flags of 4 (45)", out({ flags: 4 }), notTransfer],
+      ["the outgoing value with a leading zero byte (34)", out({ value: wide(BigInt(V.fixed.attachNanotons), 8) }), notTransfer],
+      ["the outgoing extra_flags of 0 in one byte (45, skipped under mode 3)", out({ flags: wide(0n, 1) }), notTransfer],
       ["the outgoing body reference, then one bit (TL-B)", out({ tail: true }), notTransfer],
     ];
-    for (const [name, c, want] of rowsOf(refused, "the message forms TON's action phase refuses to send", { exact: 20 })) {
+    for (const [name, c, want] of rowsOf(refused, "the message forms TON's action phase refuses to send", { exact: 25 })) {
       expect([name, await bound(c)]).toEqual([name, want]);
       expect([name, tvmCarrier(c.toBoc({ idx: false, crc32: true }).toString("base64"), REF.network)]).toEqual([name, want]);
     }

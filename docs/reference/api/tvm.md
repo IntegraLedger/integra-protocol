@@ -245,13 +245,14 @@ refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are th
 for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
 it, at the configuration lcp holds for `network`, as `bound` and `reference` read the payment of an option on that
 network: a source of `addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a
-destination TON sends to, `extra_flags` of at most 3, its state init validated as TON validates it, a referenced
-body with nothing after it, and at most two nested Merkle proofs or updates; the W5 action's send mode is one TON
-sends with. The network is `tvm:-239` (mainnet) or `tvm:-3` (testnet), and any other is `tvm/network-malformed`. The
-settlement message TON would not send is `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or
-skips, `tvm/not-jetton-transfer`. The settlement message's source names the account that relays it, which the BoC
-cannot show: one naming another account is read, and TON sends it when that account relays it. `wallet` and
-`jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names its `addr_std`.
+destination TON sends to, a value and an `extra_flags` of at most 3 each in its shortest form, its state init
+validated as TON validates it, a referenced body with nothing after it, and at most two nested Merkle proofs or
+updates; the W5 action's send mode is one TON sends with. The network is `tvm:-239` (mainnet) or `tvm:-3` (testnet),
+and any other is `tvm/network-malformed`. The settlement message TON would not send is `tvm/boc-malformed`, and the
+outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The settlement message's source names
+the account that relays it, which the BoC cannot show: one naming another account is read, and TON sends it when that
+account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names its
+`addr_std`.
 
 #### Parameters
 

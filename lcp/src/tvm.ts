@@ -531,8 +531,10 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
  * - `dest` is an address TON sends to (`check_rewrite_dest_addr`): an `addr_std` with no anycast, or an `addr_var` of
  *   256 bits with no anycast, which TON sends as that `addr_std`, on a workchain the configuration holds. The answer's
  *   `dest` is that `addr_std`, raw;
- * - the extra currencies are a valid `HashmapE 32 (VarUInteger 32)` of at most the configuration's
- *   `maxMsgExtraCurrencies` entries, and `extra_flags` sets no bit above its two low ones (from global version 12);
+ * - the value's Grams is a `VarUInteger 16` in its shortest form (`VarUInteger::validate_skip`: no length whose first
+ *   byte is zero), the extra currencies are a valid `HashmapE 32 (VarUIntegerPos 32)` of at most the configuration's
+ *   `maxMsgExtraCurrencies` entries, and from global version 12 `extra_flags` is a `VarUInteger 16` in its shortest
+ *   form that sets no bit above its two low ones;
  * - the init, when present, is a `^StateInit`, or a `StateInit` inline, taken as the cell its fields make, either of
  *   them one `isStateInit` holds;
  * - the body is the remainder, or a reference with nothing after it;
@@ -551,9 +553,10 @@ function messageOf(c: Cell, from: string | null, config: TonConfiguration): { de
     if (src.tag !== 0 && (src.tag !== 2 || src.raw === null || (from !== null && src.raw !== from))) return null;
     const dest = msgAddress(s, config);
     if (dest.tag < 2 || dest.raw === null) return null;
-    s.loadCoins();
+    if (varUInteger(s, 4) === null) return null;
     const extra = s.loadMaybeRef();
-    if (config.globalVersion >= 12 && s.loadVarUintBig(4) > 3n) return null;
+    const flags = varUInteger(s, 4);
+    if (config.globalVersion >= 12 && (flags === null || flags > 3n)) return null;
     s.loadCoins();
     s.skip(64 + 32);
     let init: Cell | null = null;
@@ -582,9 +585,9 @@ function messageOf(c: Cell, from: string | null, config: TonConfiguration): { de
       let count = 0;
       const { hashmap } = validation(STATE_INIT_MAX_READS - 2 - (initRef ? 1 : 0) - (bodyRef ? 1 : 0));
       const currency = (v: Slice): boolean => {
-        v.skip(v.loadUint(5) * 8);
+        const amount = varUInteger(v, 5);
         count++;
-        return true;
+        return amount !== null && amount > 0n;
       };
       if (!hashmap(extra, 32, currency) || count > config.maxMsgExtraCurrencies) return null;
     }
@@ -625,6 +628,18 @@ function msgAddress(s: Slice, config: TonConfiguration): { tag: number; raw: str
 }
 
 /**
+ * A TL-B `VarUInteger n` read from the slice, with a length of `lengthBits` bits, as TON validates one
+ * (ton-blockchain/ton `crypto/block/block-parse.cpp`, `VarUInteger::validate_skip`): null when its length is not zero
+ * and its first byte is, which is not the value's shortest form. A read past the slice's end throws.
+ */
+function varUInteger(s: Slice, lengthBits: number): bigint | null {
+  const length = s.loadUint(lengthBits);
+  if (length === 0) return 0n;
+  const value = s.loadUintBig(length * 8);
+  return value >> BigInt(length * 8 - 8) === 0n ? null : value;
+}
+
+/**
  * The most Merkle proofs and updates on any path down from these cells, each distinct cell read once
  * (ton-blockchain/ton `crypto/vm/boc.cpp`, `CellStorageStat::add_used_storage`).
  */
@@ -651,13 +666,14 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
  * it, at the configuration lcp holds for `network`, as `bound` and `reference` read the payment of an option on that
  * network: a source of `addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a
- * destination TON sends to, `extra_flags` of at most 3, its state init validated as TON validates it, a referenced
- * body with nothing after it, and at most two nested Merkle proofs or updates; the W5 action's send mode is one TON
- * sends with. The network is `tvm:-239` (mainnet) or `tvm:-3` (testnet), and any other is `tvm/network-malformed`. The
- * settlement message TON would not send is `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or
- * skips, `tvm/not-jetton-transfer`. The settlement message's source names the account that relays it, which the BoC
- * cannot show: one naming another account is read, and TON sends it when that account relays it. `wallet` and
- * `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names its `addr_std`.
+ * destination TON sends to, a value and an `extra_flags` of at most 3 each in its shortest form, its state init
+ * validated as TON validates it, a referenced body with nothing after it, and at most two nested Merkle proofs or
+ * updates; the W5 action's send mode is one TON sends with. The network is `tvm:-239` (mainnet) or `tvm:-3` (testnet),
+ * and any other is `tvm/network-malformed`. The settlement message TON would not send is `tvm/boc-malformed`, and the
+ * outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The settlement message's source names
+ * the account that relays it, which the BoC cannot show: one naming another account is read, and TON sends it when that
+ * account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names its
+ * `addr_std`.
  */
 export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
   h: AtrHash;
