@@ -120,7 +120,11 @@ interface TvmChoice {
   attachNanotons: bigint;
   /** Seconds since the epoch. */
   now: number;
-  /** The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. */
+  /**
+   * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must parse as a
+   * `StateInit` (else `x402/option-malformed`), and the settlement message carries it as its `init` exactly as given,
+   * so its hash stays the address the wallet derives from it.
+   */
   stateInit?: TonCell | string;
 }
 
@@ -653,10 +657,10 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
     .storeRef(actions)
     .storeBit(0)
     .endCell();
-  let init: MessageRelaxed["init"];
   if (initCell !== undefined) {
+    // The parse checks the state init's form only: `complete` carries the cell itself, never what the parse read.
     try {
-      init = peer.loadStateInit(initCell.beginParse());
+      peer.loadStateInit(initCell.beginParse());
     } catch {
       return refusal("x402/option-malformed");
     }
@@ -668,8 +672,12 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
         return refusal("x402/signature-malformed");
       }
       const signed = peer.beginCell().storeSlice(request.beginParse()).storeBuffer(Buffer.from(signature)).endCell();
-      const message: MessageRelaxed = {
-        info: {
+      // TL-B's MessageRelaxed: the info, then `init:(Maybe (Either StateInit ^StateInit))` as a reference to the given
+      // state init cell, then the body as a reference. `@ton/core`'s `storeMessageRelaxed` takes a parsed `StateInit`
+      // and stores it again, which can write its libraries dictionary in another form, a cell whose hash is not the
+      // wallet's address; the message is written here around the cell as given.
+      const message = peer.beginCell().store(
+        peer.storeCommonMessageInfoRelaxed({
           type: "internal",
           ihrDisabled: true,
           bounce: false,
@@ -680,11 +688,11 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
           forwardFee: 0n,
           createdLt: 0n,
           createdAt: 0,
-        },
-        ...(init !== undefined ? { init } : {}),
-        body: signed,
-      };
-      const root = peer.beginCell().store(peer.storeMessageRelaxed(message, { forceRef: true })).endCell();
+        }),
+      );
+      if (initCell === undefined) message.storeBit(0);
+      else message.storeBit(1).storeBit(1).storeRef(initCell);
+      const root = message.storeBit(1).storeRef(signed).endCell();
       return paymentWith(required, accepted, { settlementBoc: bocOf(root), asset: accepted.asset });
     },
   };

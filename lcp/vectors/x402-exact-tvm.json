@@ -834,7 +834,15 @@
     "expect": "tvm/boc-malformed"
    }
   ],
-  "expectRequestBodyHash": "cd43a7ab468a41f98db3beb579d3432c2bf292bec07d80254aed2c815cfff4f2"
+  "expectRequestBodyHash": "cd43a7ab468a41f98db3beb579d3432c2bf292bec07d80254aed2c815cfff4f2",
+  "nonCanonicalLibraries": {
+   "case": "V2b's choice with a state init whose libraries dictionary has a label that is not its shortest form: V2b's code and data, and one private library (the code cell, keyed by its representation hash) whose root edge label is hml_short, 514 bits, where hml_long, 267 bits, is the shortest. The wallet is the state init cell's representation hash, as x402's Python SDK 2.25.0 derives it (address_from_state_init). Parsing this state init and storing it again writes the label as hml_long, which is another cell (expectCanonicalStateInitHash), so build carries the cell as given: the request hash and signature are V2b's, and the settlement message's init is this cell. Computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2 by a script that reproduces V2's and V2b's settlement roots exactly first.",
+   "stateInit": "te6cckEBBAEAewADATwDAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAYF//////////////////////////////////////////4nCQb9FxucQ/N6NTBZpz+8AuBWgYjsMBhq+EbK79CbjEAMACN6tvu/TCWJo",
+   "expectStateInitHash": "83bb9e74219b46bb27b584229219c3d4016bad2e27f47b2a83bb42b4feb6af04",
+   "expectCanonicalStateInitHash": "cc6049d9131a671f927d563fef2e85e7839ecc11ab1c3283da1c4a360eefd8a6",
+   "wallet": "0:83bb9e74219b46bb27b584229219c3d4016bad2e27f47b2a83bb42b4feb6af04",
+   "expectSettlementRootHash": "af125202217bd424b0075ceb25e048937c1a9f3bd1edb4778878cc1f38f67666"
+  }
  },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",

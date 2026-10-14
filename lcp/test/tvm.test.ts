@@ -2,7 +2,7 @@
 // pytoniq-core 0.2.0 and PyNaCl 1.6.2.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { beginCell, Cell, loadStateInit, storeStateInit } from "@ton/core";
+import { beginCell, Cell, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -149,6 +149,52 @@ describe("x402-exact-tvm.json", () => {
         row.case,
         { refused: true, code: row.expect },
       ]);
+    }
+  });
+
+  // An undeployed wallet's address is the representation hash of its state init cell (x402's Python SDK 2.25.0,
+  // address_from_state_init), and x402's TON scheme lets the settlement message carry that state init. This row's
+  // libraries dictionary writes its one label as hml_short where hml_long is shorter: @ton/core's loadStateInit and
+  // storeStateInit write it back as hml_long, another cell with the file's expectCanonicalStateInitHash, while build
+  // carries the given cell. Every expected value is the file's (pytoniq-core 0.2.0 and PyNaCl 1.6.2).
+  it("V2b: a state init whose libraries label is not its shortest form rides as given", async () => {
+    const R = V.V2b.nonCanonicalLibraries;
+    const given = Cell.fromBase64(R.stateInit);
+    expect(hashHex(given)).toBe(R.expectStateInitHash);
+    const restored = beginCell().store(storeStateInit(loadStateInit(given.beginParse()))).endCell();
+    expect(hashHex(restored)).toBe(R.expectCanonicalStateInitHash);
+    expect(R.expectCanonicalStateInitHash).not.toBe(R.expectStateInitHash);
+    for (const stateInit of [R.stateInit, given]) {
+      const u = await exactTvm.build({ ...choice(), wallet: R.wallet, seqno: V.V2b.seqno, stateInit }, H);
+      if ("refused" in u) throw new Error(u.code);
+      expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2b.expectRequestHash);
+      const sig = ed25519.sign(u.request.hash, seed);
+      expect(Buffer.from(sig).toString("hex")).toBe(V.V2b.expectSignature);
+      const p = u.complete(sig);
+      if ("refused" in p) throw new Error(p.code);
+      const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
+      expect(hashHex(root)).toBe(R.expectSettlementRootHash);
+      expect(hashHex(root.refs[0]!)).toBe(R.expectStateInitHash);
+      expect(await exactTvm.bound(p)).toBe(H);
+    }
+  });
+
+  // TL-B's MessageRelaxed: `init:(Maybe (Either StateInit ^StateInit))`, then the body. Read past the message's info,
+  // the init is present as a reference, and that cell's hash is the address the wallet derives from its state init
+  // (the file's `wallet` for each, computed with pytoniq-core 0.2.0 as x402's Python SDK 2.25.0 derives it), which is
+  // the message's destination.
+  it("V2b: the settlement message's init hashes to the address its state init derives", async () => {
+    for (const row of [V.V2b, V.V2b.nonCanonicalLibraries]) {
+      const u = await exactTvm.build({ ...choice(), wallet: row.wallet, seqno: V.V2b.seqno, stateInit: row.stateInit }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const p = u.complete(ed25519.sign(u.request.hash, seed));
+      if ("refused" in p) throw new Error(p.code);
+      const s = Cell.fromBase64(p.payload.settlementBoc).beginParse();
+      const info = loadCommonMessageInfoRelaxed(s);
+      expect([s.loadBit(), s.loadBit()]).toEqual([true, true]);
+      const init = s.loadRef();
+      expect(`0:${hashHex(init)}`).toBe(row.wallet);
+      expect(info.type === "internal" && info.dest.toRawString()).toBe(row.wallet);
     }
   });
 
