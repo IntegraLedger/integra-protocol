@@ -228,6 +228,83 @@ describe("evm", () => {
       expect(permit2TypedData(a as never), String(bad)).toEqual(refused("evm/field-malformed"));
     }
   });
+  describe("permit2TypedData: a witness that is not an object of a type name, fields and a value is evm/field-malformed", () => {
+    // The well-formed witness is x402-exact-eip155-permit2.json's: the Witness struct of EV1's witnessTypeString, with
+    // the value {to: payTo, validAfter: "0"} its case names, over EV1's spender, nonce and deadline.
+    const p2 = load("x402-exact-eip155-permit2.json");
+    const struct = /\)Witness\(([^)]*)\)$/.exec(p2.EV1.witnessTypeString)![1]!;
+    const fields = struct.split(",").map((member: string) => {
+      const [type, name] = member.split(" ");
+      return { name: name!, type: type! };
+    });
+    const value = { to: p2.fixed.option.payTo, validAfter: "0" };
+    const witness = { type: "Witness", fields, value };
+    const a = {
+      chainId: 84532,
+      permitted: { token: p2.fixed.option.asset, amount: BigInt(p2.fixed.option.amount) },
+      spender: p2.EV1.expectSpender,
+      nonce: BigInt(p2.EV1.expectNonceDecimal),
+      deadline: BigInt(p2.EV1.expectDeadline),
+    };
+    it("the vector file's witness gives PermitWitnessTransferFrom with its Witness struct and value", () => {
+      expect(fields).toEqual([
+        { name: "to", type: "address" },
+        { name: "validAfter", type: "uint256" },
+      ]);
+      const typed = permit2TypedData({ ...a, witness });
+      expect(typed).toMatchObject({ primaryType: "PermitWitnessTransferFrom", types: { Witness: fields }, message: { witness: value } });
+    });
+    it("the fields of a witness are read by index: a map method of their own is never called", () => {
+      const withMap = Object.assign([...fields], {
+        map: () => {
+          throw new RangeError("map");
+        },
+      });
+      expect(permit2TypedData({ ...a, witness: { ...witness, fields: withMap } })).toMatchObject({ types: { Witness: fields } });
+    });
+    it("each member of a witness is read once: a getter's later answer never reaches the struct", () => {
+      let reads = 0;
+      const field = {
+        get name() {
+          return reads++ === 0 ? fields[0]!.name : 7;
+        },
+        type: fields[0]!.type,
+      };
+      expect(permit2TypedData({ ...a, witness: { ...witness, fields: [field] } } as never)).toMatchObject({
+        types: { Witness: [fields[0]] },
+      });
+      expect(reads).toBe(1);
+    });
+    const hole: unknown[] = [fields[0]];
+    hole.length = 2;
+    const cases: [string, unknown][] = [
+      ...NOT_OBJECTS.filter((w) => w !== undefined).map((w): [string, unknown] => [`a witness of ${String(w)}`, w]),
+      ["a witness that is an array", [witness]],
+      ["a type that is an array", { ...witness, type: ["Witness"] }],
+      ["a type that is an object with toString", { ...witness, type: { toString: () => "Witness" } }],
+      ["a type that is a String object", { ...witness, type: new String("Witness") }],
+      ["a type that is a number", { ...witness, type: 1 }],
+      ["no fields", { type: "Witness", value }],
+      ["fields of null", { ...witness, fields: null }],
+      ["fields that are a string", { ...witness, fields: "to" }],
+      ["fields that are an object with a map method", { ...witness, fields: { map: () => [] } }],
+      ["a field of null", { ...witness, fields: [null] }],
+      ["a field that is a number", { ...witness, fields: [1] }],
+      ["a field that is an array", { ...witness, fields: [["address", "to"]] }],
+      ["fields with a hole", { ...witness, fields: hole }],
+      ["a field whose name is not a string", { ...witness, fields: [{ name: 1, type: "address" }] }],
+      ["a field with no type", { ...witness, fields: [{ name: "to" }] }],
+      ["no value", { type: "Witness", fields }],
+      ["a value of null", { ...witness, value: null }],
+      ["a value that is a string", { ...witness, value: "0x1234" }],
+      ["a value that is an array", { ...witness, value: [value] }],
+    ];
+    for (const [name, bad] of cases) {
+      it(name, () => {
+        expect(permit2TypedData({ ...a, witness: bad } as never)).toEqual(refused("evm/field-malformed"));
+      });
+    }
+  });
   it("the EVM statuses read a malformed transaction, h, asset, binding log or transfer log as pending unreadable, with nothing read", async () => {
     const ref = load(evm).V6.ref;
     for (const [name, read, members] of [

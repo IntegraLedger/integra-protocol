@@ -986,9 +986,32 @@ export interface Permit2TypedData {
 const WITNESS_TYPE_NAME = /^[A-Z][A-Za-z0-9]{0,63}$/;
 
 /**
+ * A witness read once, member by member: its `type` when that is a string, a copy of its `fields` when they are an
+ * array of objects with a string `name` and `type` (every index read, a hole included), and its `value` when that is
+ * an object; undefined for any other witness.
+ */
+function witnessOf(w: unknown): { type: string; fields: Field[]; value: { [k: string]: Json } } | undefined {
+  if (!isObject(w)) return undefined;
+  const { type, fields, value } = w;
+  if (typeof type !== "string" || !isObject(value) || !Array.isArray(fields)) return undefined;
+  const read: Field[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const f: unknown = fields[i];
+    if (!isObject(f)) return undefined;
+    const { name, type: fieldType } = f;
+    if (typeof name !== "string" || typeof fieldType !== "string") return undefined;
+    read.push({ name, type: fieldType });
+  }
+  return { type, fields: read, value: value as { [k: string]: Json } };
+}
+
+/**
  * Permit2's typed data under its domain (`name` "Permit2", no version). No witness gives `PermitTransferFrom`; a
  * witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` when `permitted` is an array. An empty
- * `permitted` array, one of more than 32 entries, and an array with no witness are refused `evm/field-malformed`.
+ * `permitted` array, one of more than 32 entries, and an array with no witness are refused `evm/field-malformed`. So is
+ * a witness that is not an object; whose `type` is not an upper-case letter followed by up to 63 letters and digits, or
+ * is `TokenPermissions` or starts with `Permit`; whose `fields` is not an array of objects with a string `name` and
+ * `type`; or whose `value` is not an object.
  */
 export function permit2TypedData(a: {
   chainId: number;
@@ -1039,7 +1062,8 @@ export function permit2TypedData(a: {
       message: { permitted, spender: a.spender, nonce: a.nonce, deadline: a.deadline },
     };
   }
-  const w = a.witness;
+  const w = witnessOf(a.witness);
+  if (w === undefined) return refusal("evm/field-malformed");
   if (!WITNESS_TYPE_NAME.test(w.type) || w.type === "TokenPermissions" || w.type.startsWith("Permit")) {
     return refusal("evm/field-malformed");
   }
@@ -1056,7 +1080,7 @@ export function permit2TypedData(a: {
         { name: "deadline", type: "uint256" },
         { name: "witness", type: w.type },
       ],
-      [w.type]: w.fields.map((f) => ({ name: f.name, type: f.type })),
+      [w.type]: w.fields,
     },
     primaryType,
     message: { permitted, spender: a.spender, nonce: a.nonce, deadline: a.deadline, witness: { ...w.value } },
