@@ -1,17 +1,20 @@
 // Runs x402-upto-solana.json through the x402-upto-solana entry point. Every expected value is the file's. A durable
 // opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with x402-exact-solana.json's
 // nonce; its digest is node:crypto's SHA-256 of kit's message.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
+  compileTransactionMessage,
   decompileTransactionMessage,
   getCompiledTransactionMessageDecoder,
+  getCompiledTransactionMessageEncoder,
   isSignerRole,
   isWritableRole,
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
-import { hash, pairingOf, type AtrHash, type Refusal } from "../src/index.js";
+import { pairingOf, type AtrHash, type Refusal } from "../src/index.js";
 import { TOKEN_2022, channelPda, openInstructionData, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
@@ -88,7 +91,29 @@ describe("x402-upto-solana.json", () => {
     expect(data.length).toBe(V.EU2.length);
   });
 
-  it("EU3: the opening build compiles, decompiled, and the payer's signature over it", async () => {
+  // EU3's message, wire and payer's signature are of solders' compilation, the account keys of each class in byte order.
+  // build's message is held byte for byte to buildMessageSha256: @solana/kit's compilation of the same message, the
+  // steward SDK's order (typescript/packages/mechanisms/svm/src/upto/client/scheme.ts L74 and
+  // typescript/packages/mechanisms/svm/src/payment-channels/open.ts L501-516 at x402 751590a2).
+  it("EU3: the opening build compiles, byte for byte as @solana/kit compiles it, decompiled, and the payer's signature over it", async () => {
+    const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+    const wire = b64(V.EU3.wireBase64);
+    const wireMessage = wire.subarray(1 + 64 * wire[0]!);
+    const wireSignature = wire.subarray(1 + 64, 1 + 128);
+    expect([wire.length, sha256(wire).slice(0, 8), wireMessage.length, sha256(wireMessage)]).toEqual([
+      V.EU3.wireLength,
+      V.EU3.wireSha256Prefix,
+      V.EU3.messageLength,
+      V.EU3.messageSha256,
+    ]);
+    expect(hex(ed25519.sign(wireMessage, fromHex(V.fixed.payerSeed)))).toBe(hex(wireSignature));
+    expect([hex(wireSignature).slice(0, 8), hex(wireSignature).slice(-6)]).toEqual([
+      V.EU3.payerSignaturePrefix,
+      V.EU3.payerSignatureSuffix,
+    ]);
+    const kitMessage = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(wireMessage));
+    const byKit = Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitMessage)));
+    expect(sha256(byKit)).toBe(V.EU3.buildMessageSha256);
     const doc = uptoSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
     expect(doc.accepts[0]).toEqual(V.EU4.accepted);
@@ -110,6 +135,7 @@ describe("x402-upto-solana.json", () => {
     if ("refused" in u) throw new Error(u.code);
     const message = u.request.message;
     expect(message.length).toBe(V.EU3.messageLength);
+    expect(sha256(message)).toBe(V.EU3.buildMessageSha256);
     const m = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(message));
     expect(m.feePayer.address).toBe(V.EU3.feePayer);
     expect((m.lifetimeConstraint as { blockhash: string }).blockhash).toBe(V.EU3.blockhash);
@@ -129,10 +155,6 @@ describe("x402-upto-solana.json", () => {
     if ("refused" in p) throw new Error(p.code);
     expect(await uptoSvm.bound(p)).toBe(H);
     expect(p.payload.channelId).toBe(V.EU1.channelPda);
-    console.log(
-      `EU3: build's message SHA-256 ${(await hash(message)).slice(2)}; the vector's ${V.EU3.messageSha256}; ` +
-        `signature ${hex(sig).slice(0, 8)}…${hex(sig).slice(-6)}; the vector's ${V.EU3.payerSignaturePrefix}…${V.EU3.payerSignatureSuffix}`,
-    );
   });
 
   it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {

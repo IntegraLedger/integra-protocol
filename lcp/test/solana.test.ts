@@ -14,7 +14,7 @@ import {
   isWritableRole,
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
-import { hash, pairingOf, type AtrHash, type Refusal } from "../src/index.js";
+import { pairingOf, type AtrHash, type Refusal } from "../src/index.js";
 import {
   MEMO_V3,
   buildSvmMessage,
@@ -158,7 +158,28 @@ describe("x402-exact-solana.json", () => {
     expect(got).toEqual(V.defaultComputeBudget.instructions);
   });
 
-  it("V1: the message build compiles, decompiled, and the payer's signature over it", async () => {
+  // V1's messageSha256 and payer's signature are of solders' compilation, the message in V2's wire, the account keys of
+  // each class in byte order. build's message is held byte for byte to buildMessageSha256: @solana/kit's compilation of
+  // the same message, the steward SDK's order (typescript/packages/mechanisms/svm/src/exact/client/scheme.ts L136-150 at
+  // x402 751590a2).
+  it("V1: the message build compiles, byte for byte as @solana/kit compiles it, decompiled, and the payer's signature over it", async () => {
+    const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+    const wire = b64(V.V2.wireBase64);
+    const wireMessage = wire.subarray(1 + 64 * wire[0]!);
+    const wireSignature = wire.subarray(1 + 64, 1 + 128);
+    expect([wireMessage.length, wireMessage[0], sha256(wireMessage)]).toEqual([
+      V.V1.messageLength,
+      V.V1.messageFirstByte,
+      V.V1.messageSha256,
+    ]);
+    expect(hex(ed25519.sign(wireMessage, fromHex(V.fixed.payerSeed)))).toBe(hex(wireSignature));
+    expect([hex(wireSignature).slice(0, 8), hex(wireSignature).slice(-6)]).toEqual([
+      V.V1.payerSignaturePrefix,
+      V.V1.payerSignatureSuffix,
+    ]);
+    const kitMessage = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(wireMessage));
+    const byKit = Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitMessage)));
+    expect(sha256(byKit)).toBe(V.V1.buildMessageSha256);
     const doc = advertised();
     const u = await exactSvm.build(
       {
@@ -178,6 +199,7 @@ describe("x402-exact-solana.json", () => {
     const message = u.request.message;
     expect(message.length).toBe(V.V1.messageLength);
     expect(message[0]).toBe(V.V1.messageFirstByte);
+    expect(sha256(message)).toBe(V.V1.buildMessageSha256);
     const compiled = getCompiledTransactionMessageDecoder().decode(message);
     const m = decompileTransactionMessage(compiled);
     expect(m.feePayer.address).toBe(V.V1.feePayer);
@@ -198,10 +220,6 @@ describe("x402-exact-solana.json", () => {
     const payment = u.complete(sig);
     if ("refused" in payment) throw new Error(payment.code);
     expect(await exactSvm.bound(payment)).toBe(H);
-    console.log(
-      `V1: build's message SHA-256 ${(await hash(message)).slice(2)}; the vector's ${V.V1.messageSha256}; ` +
-        `signature ${hex(sig).slice(0, 8)}…${hex(sig).slice(-6)}; the vector's ${V.V1.payerSignaturePrefix}…${V.V1.payerSignatureSuffix}`,
-    );
   });
 
   it("V1: L is 77 bytes and its hex is the vector's", () => {
