@@ -1,5 +1,5 @@
 // Runs vectors/x402-exact-lnbtc.json and vectors/x402-exact-lnbtc-invoice-named.json through the lightning entry
-// point. Every expected value is the files' (L1, L4, L5, L6 and plant 2, each naming its source there);
+// point. Every expected value is the files' (L1, L4, L5, L6, L7 and plant 2, each naming its source there);
 // the invoices are also read by light-bolt11-decoder and bolt11 as a cross-check.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -78,6 +78,20 @@ describe("BOLT11", () => {
     const donation = (await decodeBolt11(invoice)) as Bolt11;
     expect(invoiceH(donation, "h")).toEqual({ refused: true, code: "ln/no-description-hash" });
     expect(invoiceH(donation, "m")).toEqual({ refused: true, code: "ln/no-metadata" });
+  });
+});
+
+describe("BOLT11: an amount past any fixed-width integer", () => {
+  // L7's amount is read as an integer of any length (BOLT 11: the amount is a positive decimal integer, then the
+  // multiplier); the decoded amount is the file's, its digits times 100 millisatoshi for n.
+  it("L7: L4 with a 4,301-digit amount decodes, with that amount and L4's other fields", async () => {
+    const hrp = V.L7.invoice.slice(0, V.L7.invoice.lastIndexOf("1"));
+    expect(hrp.length).toBe("lnbc".length + 4301 + 1);
+    const b = (await decodeBolt11(V.L7.invoice)) as Bolt11;
+    expect("refused" in b).toBe(false);
+    expect(b.amountMsat?.toString()).toBe(V.L7.expectAmountMsat);
+    const l4 = (await decodeBolt11(V.L4.invoice)) as Bolt11;
+    expect({ ...b, amountMsat: null }).toEqual({ ...l4, amountMsat: null });
   });
 });
 
