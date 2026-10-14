@@ -537,7 +537,8 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
  *   form that sets no bit above its two low ones;
  * - the init, when present, is a `^StateInit`, or a `StateInit` inline, taken as the cell its fields make, either of
  *   them one `isStateInit` holds;
- * - the body is the remainder, or a reference with nothing after it;
+ * - the body is the remainder, or a reference to an ordinary cell with nothing after it (TL-B validation reads the
+ *   referenced cell, `TLB::validate_ref_internal`);
  * - the action list's validation reads at most 1,024 cells: its node, the message, each extra-currency dictionary
  *   cell on each path, a `^StateInit` and a referenced body;
  * - at most `MAX_MERKLE_DEPTH` Merkle proofs and updates nest under the init and the body.
@@ -580,7 +581,7 @@ function messageOf(c: Cell, from: string | null, config: TonConfiguration): { de
     }
     const bodyRef = s.loadBit();
     const body = bodyRef ? s.loadRef() : s.asCell();
-    if (bodyRef && (s.remainingBits !== 0 || s.remainingRefs !== 0)) return null;
+    if (bodyRef && (body.isExotic || s.remainingBits !== 0 || s.remainingRefs !== 0)) return null;
     if (extra !== null) {
       let count = 0;
       const { hashmap } = validation(STATE_INIT_MAX_READS - 2 - (initRef ? 1 : 0) - (bodyRef ? 1 : 0));
@@ -667,13 +668,13 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * it, at the configuration lcp holds for `network`, as `bound` and `reference` read the payment of an option on that
  * network: a source of `addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a
  * destination TON sends to, a value and an `extra_flags` of at most 3 each in its shortest form, its state init
- * validated as TON validates it, a referenced body with nothing after it, and at most two nested Merkle proofs or
- * updates; the W5 action's send mode is one TON sends with. The network is `tvm:-239` (mainnet) or `tvm:-3` (testnet),
- * and any other is `tvm/network-malformed`. The settlement message TON would not send is `tvm/boc-malformed`, and the
- * outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The settlement message's source names
- * the account that relays it, which the BoC cannot show: one naming another account is read, and TON sends it when that
- * account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an `addr_var` of 256 bits names its
- * `addr_std`.
+ * validated as TON validates it, a referenced body that is an ordinary cell with nothing after it, and at most two
+ * nested Merkle proofs or updates; the W5 action's send mode is one TON sends with. The network is `tvm:-239` (mainnet)
+ * or `tvm:-3` (testnet), and any other is `tvm/network-malformed`. The settlement message TON would not send is
+ * `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The
+ * settlement message's source names the account that relays it, which the BoC cannot show: one naming another account
+ * is read, and TON sends it when that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an
+ * `addr_var` of 256 bits names its `addr_std`.
  */
 export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
   h: AtrHash;

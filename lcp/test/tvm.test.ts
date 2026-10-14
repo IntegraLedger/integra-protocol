@@ -508,9 +508,9 @@ describe("x402-exact-tvm.json", () => {
 
   // The entry point's interface: "No function throws". An exotic cell (TVM's library cell: type 2, then a 256-bit
   // hash) is not an ordinary cell, so each cell the read parses refuses one with the code of the check that reads it:
-  // the settlement message and an exotic action list `tvm/boc-malformed`, the signed request `tvm/not-w5-signed`, the
-  // action list's `prev`, which must be empty, `tvm/actions`, the outgoing message and its Jetton transfer body
-  // `tvm/not-jetton-transfer`, and the comment `tvm/payload-not-lcp`.
+  // the settlement message, its body reference (TON's action phase reads a referenced body as an ordinary cell) and an
+  // exotic action list `tvm/boc-malformed`, the action list's `prev`, which must be empty, `tvm/actions`, the outgoing
+  // message and its Jetton transfer body `tvm/not-jetton-transfer`, and the comment `tvm/payload-not-lcp`.
   it("V3: an exotic cell the read parses is refused by the check that reads it, never a throw", async () => {
     const p = await signed();
     const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
@@ -525,7 +525,7 @@ describe("x402-exact-tvm.json", () => {
     const comment = transfer.refs.findIndex((r) => r.bits.length === 32 + 8 * 77);
     for (const [path, code] of [
       [[], "tvm/boc-malformed"],
-      [[0], "tvm/not-w5-signed"],
+      [[0], "tvm/boc-malformed"],
       [[0, 0], "tvm/boc-malformed"],
       [[0, 0, 0], "tvm/actions"],
       [[0, 0, 1], "tvm/not-jetton-transfer"],
@@ -773,6 +773,8 @@ describe("x402-exact-tvm.json", () => {
     const root = (k: Partial<Parameters<typeof message>[0]>) => message({ dest: std(wallet), body: request, ...k });
     const out = (k: Partial<Parameters<typeof message>[0]>) =>
       replaced(settlement, [0, 0, 1], message({ dest: std(jetton), value: BigInt(V.fixed.attachNanotons), bounce: true, body: transfer, ...k }));
+    // A library cell (exotic type 2 and a 256-bit hash): TL-B validation reads a referenced body as an ordinary cell.
+    const library = beginCell().storeUint(2, 8).storeBuffer(h32(1)).endCell({ exotic: true });
     // A HashmapE 32 (VarUInteger 32) root of one leaf: key 1, value 5.
     const currency = beginCell().storeUint(0b10, 2).storeUint(32, 6).storeUint(1, 32).storeUint(1, 5).storeUint(5, 8).endCell();
     const at = (wc: number, raw: string) => `${wc}:${raw.slice(raw.indexOf(":") + 1)}`;
@@ -811,6 +813,7 @@ describe("x402-exact-tvm.json", () => {
       ["the settlement's extra_flags of 0 in one byte (45)", root({ flags: wide(0n, 1) }), malformed],
       ["the settlement's extra_flags of 3 in two bytes (45)", root({ flags: wide(3n, 2) }), malformed],
       ["the settlement's body reference, then one bit (TL-B)", root({ tail: true }), malformed],
+      ["the settlement's body reference, a library cell (TL-B, 34)", root({ body: library }), malformed],
       ["the outgoing src, another account's addr_std (35)", out({ src: std(other) }), notTransfer],
       ["the outgoing src, the W5 wallet's address as an addr_var (35)", out({ src: addrVar(wallet) }), notTransfer],
       ["the outgoing dest, an addr_std with anycast (36)", out({ dest: std(jetton, true) }), notTransfer],
@@ -821,8 +824,9 @@ describe("x402-exact-tvm.json", () => {
       ["the outgoing value with a leading zero byte (34)", out({ value: wide(BigInt(V.fixed.attachNanotons), 8) }), notTransfer],
       ["the outgoing extra_flags of 0 in one byte (45, skipped under mode 3)", out({ flags: wide(0n, 1) }), notTransfer],
       ["the outgoing body reference, then one bit (TL-B)", out({ tail: true }), notTransfer],
+      ["the outgoing body reference, a library cell (TL-B, 34)", out({ body: library }), notTransfer],
     ];
-    for (const [name, c, want] of rowsOf(refused, "the message forms TON's action phase refuses to send", { exact: 25 })) {
+    for (const [name, c, want] of rowsOf(refused, "the message forms TON's action phase refuses to send", { exact: 27 })) {
       expect([name, await bound(c)]).toEqual([name, want]);
       expect([name, tvmCarrier(c.toBoc({ idx: false, crc32: true }).toString("base64"), REF.network)]).toEqual([name, want]);
     }
