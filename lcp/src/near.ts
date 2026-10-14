@@ -340,8 +340,10 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
 /**
  * Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A transaction
  * that carries no delegate action, or whose delegate calls another method, is `near/not-ft-transfer`, as `nearStatus`
- * answers it failed `not-this-instrument`; one that no relayer the reader lists knows is `near/not-found`. A ref that
- * names no `transaction` string is `near/wrong-reader`, with nothing read.
+ * answers it failed `not-this-instrument`; one that no relayer the reader lists knows is `near/not-found`. A failed
+ * read, an outcome that is not well formed, or a delegate whose arguments are not base64 in its canonical form (RFC 4648
+ * §3.5), an answer out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref
+ * that names no `transaction` string is `near/wrong-reader`, with nothing read.
  */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
@@ -352,7 +354,7 @@ export async function nearRecover(ref: { network: NearNetwork; transaction: stri
   if (outcome === null) return refusal("near/not-found");
   if (outcome.delegate === null || outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = fromBase64(outcome.delegate.argsBase64);
-  if (args === null) return refusal("near/args-malformed");
+  if (args === null) return refusal("near/unreadable");
   return memoOf(args);
 }
 

@@ -590,7 +590,7 @@ NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/
 | Code | Meaning |
 |---|---|
 | `near/actions` | The NEAR delegate action does not hold exactly one action. |
-| `near/args-malformed` | The `ft_transfer` arguments are over the size bound, not UTF-8 JSON, or not an object, or the arguments a recovery reads are not base64. |
+| `near/args-malformed` | The `ft_transfer` arguments are over the size bound, not UTF-8 JSON, or not an object. |
 | `near/carrier-occupied` | `advertise` for the NEAR Intents charge finds the challenge's `externalId` already holding a value other than H's LCP string. |
 | `near/memo-missing` | The `ft_transfer` arguments carry no string `memo`. |
 | `near/memo-not-lcp` | The `ft_transfer` `memo` is not an ATR hash in LCP string form, or the NEAR Intents challenge's `externalId` is absent or a string that is not one. |
@@ -603,7 +603,7 @@ NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/
 | `near/peer-missing` | The optional peer dependencies `near-api-js` and `borsh` cannot be loaded. |
 | `near/sda-malformed` | The NEAR signed delegate action is not non-empty base64 of a canonical Borsh `SignedDelegate`, a string in it is not UTF-8, its signature or a key in it is neither Ed25519 nor secp256k1, or its public key cannot be read. |
 | `near/sda-too-large` | The NEAR signed delegate action's base64 text exceeds the size bound. |
-| `near/unreadable` | **Read to repeat.** The NEAR reader threw or returned an outcome that is not well formed. |
+| `near/unreadable` | **Read to repeat.** The NEAR reader threw or returned an outcome that is not well formed, or one whose delegate's arguments are not base64 in its canonical form. |
 | `near/wrong-reader` | The NEAR reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |
 
 ## polkadot

@@ -252,7 +252,7 @@ describe("what a node answers, with a pad bit set", () => {
     expect(await recover(memo(landed, raised))).toEqual(refused("hedera/unreadable"));
   });
 
-  it("NEAR function-call arguments: status is pending unreadable and recover near/args-malformed, as for others", async () => {
+  it("NEAR function-call arguments: status is pending unreadable and recover near/unreadable, as for others", async () => {
     const V = load("x402-exact-near.json");
     type Outcome = { delegate: { argsBase64: string; nonce: string } };
     const reader = (o: Outcome): NearReader => ({
@@ -274,8 +274,8 @@ describe("what a node answers, with a pad bit set", () => {
     const landed = V.V3.recover[0];
     const recover = (o: Outcome) => exactNear.recover(V.V3.ref, reader(o));
     expect(await recover(landed.outcome)).toBe(landed.expect);
-    expect(await recover(args(landed.outcome, () => NOT_BASE64))).toEqual(refused("near/args-malformed"));
-    expect(await recover(args(landed.outcome, raised))).toEqual(refused("near/args-malformed"));
+    expect(await recover(args(landed.outcome, () => NOT_BASE64))).toEqual(refused("near/unreadable"));
+    expect(await recover(args(landed.outcome, raised))).toEqual(refused("near/unreadable"));
   });
 
   it("Stellar event topics are stellar/event-malformed, as any other that does not decode", () => {
