@@ -667,7 +667,7 @@ Tron (`@integraledger/lcp/tron`).
 
 | Code | Meaning |
 |---|---|
-| `tron/address-malformed` | A TRON address is not 34 base58 characters decoding to 25 bytes that begin with `0x41`, or, for `tronAddress` and the payer, asset and `payTo` that `build` reads through it, its base58check checksum is wrong; `advertise`, `read`, `bound` and `reference` check the shape only. |
+| `tron/address-malformed` | A TRON address is not a base58check address: 34 base58 characters decoding to 25 bytes that begin with `0x41` and end with the first four bytes of SHA-256 twice over the other 21. |
 | `tron/contracts` | The TRON raw data does not hold exactly one contract. |
 | `tron/fee-limit` | The fee limit given to the TRON `build` is not a bigint from 1 to the maximum. |
 | `tron/memo-not-lcp` | The TRON transaction's memo is not an ATR hash in LCP string form. |

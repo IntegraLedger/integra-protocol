@@ -3,7 +3,8 @@
  * and the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its
  * memo, `raw_data.data`, in LCP string form. Settlement is read by transaction id through a bounded reader.
  */
-import { base58 } from "@scure/base";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { createBase58check } from "@scure/base";
 import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, notFoundPoint } from "./fields.js";
@@ -337,25 +338,24 @@ function decodeRaw(rawBytes: Uint8Array): TronRaw | Refusal {
 
 /** Decodes a base58check address to its 21 bytes, which begin 0x41. The checksum is SHA-256 twice. */
 export async function tronAddress(address: string): Promise<Uint8Array | Refusal> {
-  const b = base58Shape(address);
-  if (b === null) return refusal("tron/address-malformed");
-  const payload = b.subarray(0, 21);
-  const once = await hash(payload);
-  const twice = bytesOfHexDigits((await hash(bytesOfHexDigits(once.slice(2))!)).slice(2))!;
-  for (let i = 0; i < 4; i++) if (twice[i] !== b[21 + i]) return refusal("tron/address-malformed");
-  return Uint8Array.from(payload);
+  return addressBytes(address) ?? refusal("tron/address-malformed");
 }
 
-/** The 25 decoded bytes of a base58 string of 34 characters whose first byte is 0x41, or null. */
-function base58Shape(address: unknown): Uint8Array | null {
+const BASE58CHECK = createBase58check(sha256);
+
+/**
+ * The 21 bytes of a base58check string of 34 characters whose first byte is 0x41 and whose last four bytes are the
+ * first four of SHA-256 twice over the 21, or null.
+ */
+function addressBytes(address: unknown): Uint8Array | null {
   if (typeof address !== "string" || address.length !== BASE58_ADDRESS_CHARS) return null;
   let b: Uint8Array;
   try {
-    b = base58.decode(address);
+    b = BASE58CHECK.decode(address);
   } catch {
     return null;
   }
-  return b.length === 25 && b[0] === 0x41 ? b : null;
+  return b.length === 21 && b[0] === 0x41 ? Uint8Array.from(b) : null;
 }
 
 // ── The carrier.
@@ -500,7 +500,7 @@ const check: OptionFilter = (o) => {
   if (flow !== undefined && flow !== "authorization" && flow !== "upfront") return refusal("x402/option-not-this-pairing");
   const m = NETWORK.exec(o.network);
   if (m === null || !Number.isSafeInteger(Number(m[1]))) return refusal("tron/network-malformed");
-  if (base58Shape(o.asset) === null || base58Shape(o.payTo) === null) return refusal("tron/address-malformed");
+  if (addressBytes(o.asset) === null || addressBytes(o.payTo) === null) return refusal("tron/address-malformed");
   if (decimalBelow(o.amount, UINT256_LIMIT) === undefined) return refusal("tron/option-malformed");
   const t = o.maxTimeoutSeconds;
   if (!Number.isSafeInteger(t) || t < 1 || t > MAX_TIMEOUT_SECONDS) return refusal("tron/option-malformed");
