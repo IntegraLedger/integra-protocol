@@ -138,8 +138,9 @@ CAIP-2: the first 32 characters of the URL-safe base64 genesis hash.
 
 > `const` **MSGPACK\_MAX\_DEPTH**: `32` = `32`
 
-The deepest nesting of msgpack arrays and maps in a signed transaction, the outermost container being level 1. An
-Algorand signed transaction nests three (the signed transaction, its transaction, and a map or array inside that).
+The deepest nesting of msgpack arrays and maps `avmCarrier` reads in a payment entry, the outermost container being
+level 1. algod's signed transaction nests at most 10 (a state proof's reveal, down to a byte string written as an
+array of numbers), so the cap refuses no entry algod decodes.
 
 ## Functions
 
@@ -147,14 +148,20 @@ Algorand signed transaction nests three (the signed transaction, its transaction
 
 > **avmCarrier**(`p`): [`Refusal`](index.md#refusal) \| \{ `h`: `` `0x${string}` ``; `lastValid`: `bigint`; `txid`: `string`; \}
 
-The payment transaction of an x402 Algorand payload: `paymentGroup[paymentIndex]`, decoded as a signed asset
-transfer whose note is an LCP string. Gives the hash, the transaction id and the last valid round. The entry is
-decoded only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep whose every string, each map key
-included, is well-formed UTF-8 (RFC 3629) and, when longer than 200 bytes, does not begin with the byte-order mark
-EF BB BF; any other entry is `avm/txn-malformed`. The msgpack specification leaves a string's invalid bytes to each
-decoder, and algosdk's reads them as other text without refusing them, keeps short map keys in a cache shared across
-calls, and drops a leading mark from a string longer than 200 bytes; the check comes first, so each answer is a
-function of the entry's bytes alone, and the transaction it reads is the one those bytes spell. Without algosdk,
+The payment transaction of an x402 Algorand payload: `paymentGroup[paymentIndex]`, read as a signed asset transfer
+whose note is an LCP string. Gives the hash, the transaction id and the last valid round. On the x402 path the entry
+has two readers: the facilitator decodes it, and algod decodes the bytes the facilitator submits, which are the
+entry's own. The entry is read only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep, algod's
+decoder takes it as a signed transaction of a type algod knows with no member of another type set, the
+facilitator's decoder takes it as an asset transfer, and both read the same signed transaction: their canonical
+encodings are equal, and the facilitator can compute its id (it has a genesis hash). Any other entry is
+`avm/txn-malformed`, and one algod reads as another type is `avm/not-axfer`. So a repeated scalar key, keys out of
+order, a member written at its default, an integer or length in a longer format than it needs, a nil member, or a
+binary and a string in each other's place reads as algod reads it, and the transaction id is the one algod computes,
+from the transaction's canonical encoding; a repeated struct, which algod merges, or a fixed-length byte member of
+another length is read differently by the two and refused. A byte member written as a msgpack string is read as its
+bytes, whatever they are; a string member (`type`, `gen`) is refused when its bytes are not UTF-8, which the
+facilitator reads as other text. Each answer is a function of the entry's bytes alone. Without algosdk,
 `avm/peer-missing`.
 
 #### Parameters

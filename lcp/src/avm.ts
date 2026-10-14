@@ -154,11 +154,15 @@ function toBase64(bytes: Uint8Array): string {
  * entry's own. The entry is read only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep, algod's
  * decoder takes it as a signed transaction of a type algod knows with no member of another type set, the
  * facilitator's decoder takes it as an asset transfer, and both read the same signed transaction: their canonical
- * encodings are equal. Any other entry is `avm/txn-malformed`, and one algod reads as another type is `avm/not-axfer`.
- * So a repeated key, keys out of order, a member written at its default, an integer or length in a longer format than
- * it needs, a nil member, or a binary and a string in each other's place reads as algod reads it, and the transaction
- * id is the one algod computes, from the transaction's canonical encoding. Each answer is a function of the entry's
- * bytes alone. Without algosdk, `avm/peer-missing`.
+ * encodings are equal, and the facilitator can compute its id (it has a genesis hash). Any other entry is
+ * `avm/txn-malformed`, and one algod reads as another type is `avm/not-axfer`. So a repeated scalar key, keys out of
+ * order, a member written at its default, an integer or length in a longer format than it needs, a nil member, or a
+ * binary and a string in each other's place reads as algod reads it, and the transaction id is the one algod computes,
+ * from the transaction's canonical encoding; a repeated struct, which algod merges, or a fixed-length byte member of
+ * another length is read differently by the two and refused. A byte member written as a msgpack string is read as its
+ * bytes, whatever they are; a string member (`type`, `gen`) is refused when its bytes are not UTF-8, which the
+ * facilitator reads as other text. Each answer is a function of the entry's bytes alone. Without algosdk,
+ * `avm/peer-missing`.
  */
 export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
   if (sdk === null) return refusal("avm/peer-missing");
