@@ -15,6 +15,12 @@ This page lists all 490 codes the package can return, by namespace. CI checks th
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
+A meaning that begins **Read to repeat.** is that of a code `readToRepeat` answers true for: the answer rests on a read
+of the rail that may answer differently later, with nothing the caller must change, so the caller asks again later
+([Reads to repeat](../concepts/refusals.md#reads-to-repeat)). No other code is a read to repeat: `wrong-reader` and
+`read-first` codes are calls the caller changes. `node scripts/docs-reference.mjs` writes the marks from the set
+`readToRepeat` answers from, and CI checks that they match it.
+
 | Namespace | Codes | Returned by |
 |---|---|---|
 | [`core`](#core) | 6 | The core: `assemble` and the JSON checks under it. |
@@ -330,9 +336,9 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, 
 | `evm/no-open-call` | The `mpp/session/evm` `recover` finds that the transaction's own call is not an escrow open call (`open`, `openWithAuthorization` or `openWithPermit2`, with a recipient and the leading argument words), or that the receipt holds no `Transfer` of the call's token from its payer into the called contract. An opening sent through an ERC-4337 EntryPoint is refused so. |
 | `evm/no-permit2-settle` | The Permit2 pairings' `recover` finds no call of the scheme's x402 proxy (`settle` or `settleWithPermit`, with an address in the permit's token word and in the owner word) at any offset of the transaction's input with a `Transfer` in the receipt that the call's token emits from the call's owner. A transaction whose input carries the call but whose receipt holds no such `Transfer` is refused so, whether the owner's nonce was spent elsewhere in the block or cancelled by the owner. |
 | `evm/nonce-not-used` | The Permit2 pairings' `recover` finds that Permit2 did not mark the proxy call's nonce used for its owner in the receipt's block: the bit is unset at that block, or already set at the block before. |
-| `evm/not-found` | The reader found no receipt for the transaction the reference names, or, where an EVM `recover` reads the transaction itself, no transaction. |
+| `evm/not-found` | **Read to repeat.** The reader found no receipt for the transaction the reference names, or, where an EVM `recover` reads the transaction itself, no transaction. |
 | `evm/reverted` | The transaction the reference names reverted. |
-| `evm/unreadable` | The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction or when `authorizationUsed` made its `eth_call` (an answer that is not one 32-byte word, or for `eip3009` a word other than 0 or 1); or the `mpp/session/evm` `recover` read calldata longer than 131,072 bytes. |
+| `evm/unreadable` | **Read to repeat.** The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction or when `authorizationUsed` made its `eth_call` (an answer that is not one 32-byte word, or for `eip3009` a word other than 0 or 1); or the `mpp/session/evm` `recover` read calldata longer than 131,072 bytes. |
 | `evm/wrong-reader` | The reader passed to an EVM `recover` or to `authorizationUsed` is missing or declares a different network than the reference names, or the ref given to an EVM `recover` is not an object or names a `transaction` that is not a 32-byte hash. An EVM `status` gives such a reader pending `unreadable` instead, with nothing read. |
 
 ## tempo
@@ -349,8 +355,8 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/memo-not-bound` | The signed or landed Tempo transfer carries no `transferWithMemo` to the challenge's currency whose memo is the challenge's attribution memo. |
 | `tempo/no-access-key` | `keySearch` is given a reference with no well-formed access key (key id, token and recipient digest). |
 | `tempo/no-witness` | The Tempo subscription's key authorization carries no witness, or a receipt holds no `KeyAuthorizationWitness` log (for `witnessRecover`, or naming H for `keySearch`). |
-| `tempo/not-final` | The transaction an MPP Tempo push `hash` credential names reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
-| `tempo/not-found` | The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
+| `tempo/not-final` | **Read to repeat.** The transaction an MPP Tempo push `hash` credential names reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
+| `tempo/not-found` | **Read to repeat.** The reader found no receipt for the transaction, or the transaction hash is not a 32-byte hash. |
 | `tempo/open-ambiguous` | The signed Tempo session opening has more than one `open` call to the challenge's escrow contract. |
 | `tempo/open-not-found` | The signed Tempo session opening has no `open` call to the challenge's escrow contract, or the receipt the `mpp/session/tempo` `recover` reads holds no `ChannelOpened` of the TIP-20 channel reserve, whose data carries the salt (a v1 escrow's `ChannelOpened` carries none). |
 | `tempo/read-first` | An MPP Tempo push `hash` credential carries no landed logs yet; the seller reads it with `fetchPresented` before `bound` or `reference`. |
@@ -358,7 +364,7 @@ Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp
 | `tempo/salt-not-bound` | The salt word of the Tempo session opening's `open` call is not H. |
 | `tempo/tx-malformed` | A Tempo transaction does not decode as a type-`0x76` RLP envelope with the expected fields and at most the allowed calls, `memoCalldata` is given an invalid recipient, amount or memo, `expiringNonceHash` is given a sender that is not an address, or a Tempo session opening's `open` call input has the wrong length. |
 | `tempo/tx-too-large` | A Tempo transaction's wire bytes exceed the size bound. |
-| `tempo/unreadable` | The Tempo reader threw, the receipt or its logs are not well formed (on `mpp/charge/tempo/push`, a `TransferWithMemo` log from the currency without a 32-byte sender and recipient topic and an amount word, as `fetchPresented` reads it or as `reference` reads the landed log it matched), or `keySearch` is given an invalid H or receipt, or finds a `KeyAuthorizationWitness` log naming H whose account topic is not a padded address. |
+| `tempo/unreadable` | **Read to repeat.** The Tempo reader threw, the receipt or its logs are not well formed (on `mpp/charge/tempo/push`, a `TransferWithMemo` log from the currency without a 32-byte sender and recipient topic and an amount word, as `fetchPresented` reads it or as `reference` reads the landed log it matched), or `keySearch` is given an invalid H or receipt, or finds a `KeyAuthorizationWitness` log naming H whose account topic is not a padded address. |
 | `tempo/witness-not-bound` | The Tempo subscription's key authorization witness is not the hash the echoed challenge's id derives from. |
 | `tempo/wrong-reader` | The Tempo reader is missing or answers for a different network than the challenge or reference names, or the ref given to a Tempo `recover` is not an object or names a `transaction` that is not a 32-byte hash. |
 
@@ -385,7 +391,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/no-carrier` | The Solana transaction presented for an MPP charge has no Memo instruction carrying an ATR hash in LCP string form. |
 | `svm/no-channel-instruction` | The Solana transaction has no top-level payment-channels instruction. |
 | `svm/nonce-account-not-static` | The Solana message's first instruction is `AdvanceNonceAccount` and names its nonce account through an address lookup table: a durable message names its nonce account as a static key (SIMD-0242), and the message alone cannot show the nonce account a reference records. |
-| `svm/not-found` | The Solana reader answers that the node holds no transaction for the signature (its not-found answer). |
+| `svm/not-found` | **Read to repeat.** The Solana reader answers that the node holds no transaction for the signature (its not-found answer). |
 | `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid. |
 | `svm/pda-not-found` | `findPda` is given an invalid program key or too many or too long seeds, or no bump yields an off-curve address. |
 | `svm/peer-missing` | The optional peer dependency `@solana/kit` cannot be loaded to build a Solana message. |
@@ -393,7 +399,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/read-first` | An MPP Solana `signature` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
 | `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed), or an MPP `bundle` credential's `transactions` is not an array within the bound, or `svmCarrier` or `channelInstruction` is given a transaction that is not a decoded one. |
 | `svm/tx-too-large` | A Solana transaction, or its base64 text, exceeds the wire size bound. |
-| `svm/unreadable` | The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer), or returned a landed transaction that is not well formed. |
+| `svm/unreadable` | **Read to repeat.** The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer), or returned a landed transaction that is not well formed. |
 | `svm/wrong-reader` | The Solana reader answers for a different network than the reference or challenge names, or the reference given to a Solana `recover` names a `transaction` that is not a signature, base58 of 64 bytes. |
 
 ## stellar
@@ -410,7 +416,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/network-malformed` | A Stellar network is not `stellar:pubnet` or `stellar:testnet`. |
 | `stellar/no-address-auth` | The payer's authorization entry cannot be identified. Before a transaction lands (`decodeStellarTx`, `build`, x402 `bound` and `reference`, MPP `bound` and `reference` of a `transaction` credential): the operation does not carry exactly one address-credential authorization entry for the transfer's `from`. On a landed transaction (MPP `bound` and `reference` of a `hash` credential), which is read by `from`'s first address-credential entry whose `rootInvocation` is the operation's `transfer`: `from` has no such entry and not exactly one address-credential entry. An entry with source-account credentials is not an address entry: only an MPP `hash` credential under a request whose `feePayer` is false or absent reads a payer with no address entry, when the payer is the source account of the transaction and of its operation and a source-account entry is the operation's `transfer`. Or the payer is not an Ed25519 account. |
 | `stellar/no-carrier` | The signed Stellar transfer's recipient is not a muxed address, so it carries no muxed id. |
-| `stellar/not-found` | The Stellar reader found no transaction envelope for the hash. |
+| `stellar/not-found` | **Read to repeat.** The Stellar reader found no transaction envelope for the hash. |
 | `stellar/not-one-transfer` | The Stellar envelope does not hold exactly one `invokeHostFunction` operation calling a SEP-41 `transfer(from, to, amount)`, the payer's signed root invocation is not one such transfer with no sub-invocations, or the operation does not invoke exactly what the payer signed. |
 | `stellar/option-malformed` | An MPP Stellar challenge's `network`, `amount`, `currency`, `recipient` or `feePayer` is not of the required form, a recipient cannot take a muxed id, or `transferEventTopics` is given an address that is neither an account nor a contract. |
 | `stellar/payer-mismatch` | A Stellar `build` finds that the simulated transfer's `from` is not the choice's `payer`. Nothing reaches the signer. |
@@ -419,7 +425,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/tx-malformed` | A Stellar transaction envelope is not strict base64 of a v1 envelope XDR, its operation or the payer's authorization entry nests ScVals or invocations deeper than `SCVAL_MAX_DEPTH`, the signing inputs (current ledger, time, expiration, signature, envelope type) are invalid, or a credential or buyer choice carries no transaction where one is required. |
 | `stellar/tx-failed` | The transaction an MPP Stellar `hash` credential names is recorded `FAILED` on the ledger, so it moved nothing. |
 | `stellar/tx-too-large` | A Stellar transaction envelope's base64 text exceeds the size bound. |
-| `stellar/unreadable` | The Stellar reader threw, returned a response that is not an object, or returned an envelope under a status other than `SUCCESS`, `FAILED` or `NOT_FOUND`; such a status with no envelope is `stellar/not-found`. |
+| `stellar/unreadable` | **Read to repeat.** The Stellar reader threw, returned a response that is not an object, or returned an envelope under a status other than `SUCCESS`, `FAILED` or `NOT_FOUND`; such a status with no envelope is `stellar/not-found`. |
 | `stellar/wrong-reader` | The Stellar reader answers for a different network than the challenge names. |
 
 ## xrpl
@@ -442,13 +448,13 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/no-invoice-id` | The XRPL `Payment` carries no `InvoiceID`, or the validated transaction a recovery reads has no 256-bit `InvoiceID`. |
 | `xrpl/no-memo` | The XRPL session opening carries no memo whose `MemoData` is an ATR hash in LCP string form. |
 | `xrpl/not-channel-create` | The XRPL session opening or the transaction a recovery reads is not a `PaymentChannelCreate`, or the opening `channel.ref` or `buildWithin` reads lacks the source, destination or sequence its channel id is derived from. |
-| `xrpl/not-found` | The XRPL reader found no transaction for the reference. |
+| `xrpl/not-found` | **Read to repeat.** The XRPL reader found no transaction for the reference. |
 | `xrpl/not-payment` | The XRPL signed blob presented for a charge is not a `Payment`. |
 | `xrpl/not-success` | The validated XRPL transaction a recovery reads has a result other than `tesSUCCESS`, or is not the `Payment` a charge's recovery reads; or the one an MPP XRPL `hash` credential names has a result other than `tesSUCCESS`. |
-| `xrpl/not-validated` | The XRPL transaction the reference, or an MPP XRPL `hash` credential, names is not yet in a validated ledger. |
+| `xrpl/not-validated` | **Read to repeat.** The XRPL transaction the reference, or an MPP XRPL `hash` credential, names is not yet in a validated ledger. |
 | `xrpl/peer-missing` | The optional peer dependency `ripple-binary-codec` cannot be loaded to decode a blob. |
 | `xrpl/read-first` | An MPP XRPL `hash` credential carries no blob yet; the seller reads it by hash before `bound`. |
-| `xrpl/unreadable` | The XRPL reader threw or returned a response that is not well formed. |
+| `xrpl/unreadable` | **Read to repeat.** The XRPL reader threw or returned a response that is not well formed. |
 | `xrpl/wrong-reader` | The XRPL reader answers for a different network than the reference or challenge names, or the reference given to `recover` names a `transaction` that is not 64 hex digits. |
 
 ## hedera
@@ -468,15 +474,15 @@ Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges 
 | `hedera/network-malformed` | The network written by `fetchPresented` for an MPP Hedera charge is not a Hedera network. |
 | `hedera/no-legal-context` | The transfer-executor pairing's `bound` finds no decodable `extensions.legalContext.info` echoed in the payment. |
 | `hedera/no-memo` | The signed Hedera body, or the landed transaction a recovery reads, has an empty memo. |
-| `hedera/not-final` | The Hedera session opening transaction reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
-| `hedera/not-found` | The Hedera reader found no transaction, or a recovery found no successful entry for it, or an MPP Hedera `hash` charge credential's transaction has no counted user entry yet, or the reader found no receipt for the session transaction. |
+| `hedera/not-final` | **Read to repeat.** The Hedera session opening transaction reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
+| `hedera/not-found` | **Read to repeat.** The Hedera reader found no transaction, or a recovery found no successful entry for it, or an MPP Hedera `hash` charge credential's transaction has no counted user entry yet, or the reader found no receipt for the session transaction. |
 | `hedera/not-success` | The transaction an MPP Hedera `hash` charge credential names reached consensus with no `SUCCESS` among its counted user entries, so its transfers were not made. |
 | `hedera/option-malformed` | A Hedera option names an unknown transfer method or lacks what its pairing needs (an asset and `payTo`, a `feePayer`, 1 to the allowed number of `executors`, or a decimal amount below 2^63 and a positive timeout, which `x402/exact/hedera`'s `bound` and `reference` do not read), the buyer's choice carries an invalid payer, node, valid start, fee or decimals, or a client id that is not a well-formed string, or a transfer-executor `now` that is not a non-negative safe integer or whose sum with `maxTimeoutSeconds` is not one, or a `maxTimeoutSeconds` whose sum with the time the transfer-executor `reference` runs is not a safe integer, or an MPP Hedera charge request has an invalid amount, currency, recipient or splits (too many, not less than the amount, or repeating an account). |
 | `hedera/read-first` | An MPP Hedera `hash` charge credential or session opening carries no landed data yet; the seller reads it with `fetchPresented` before `bound`. |
 | `hedera/reverted` | The Hedera session opening transaction reverted: in a block at or below the reader's `finalized` mark, as `fetchPresented` reads it, or in any block, as `recover` reads it. |
 | `hedera/tx-malformed` | A Hedera transaction is not base64 of a wire `Transaction` or `TransactionList` whose signed body decodes within the depth bound, a signature pair given to `complete` has the wrong key or signature length, or a push credential's `transactionId` is not `shard.realm.num@seconds.nanos`. |
 | `hedera/tx-too-large` | A Hedera transaction's wire bytes exceed the size bound. |
-| `hedera/unreadable` | The Hedera reader failed or returned a response that is not well formed. |
+| `hedera/unreadable` | **Read to repeat.** The Hedera reader failed or returned a response that is not well formed. |
 | `hedera/wrong-reader` | The Hedera reader is missing or answers for a different network than the reference or request names, or the reference given to the `x402/exact/hedera` `recover` names a `transactionId` that is not a Mirror Node transaction id (`shard.realm.num-seconds-nanos`), or the reference given to the `mpp/session/hedera` `recover` names a `transaction` that is not a 32-byte hash, or a `bindingLog` that is not an object with an address `address` and a 32-byte `value`. |
 
 ## avm
@@ -490,13 +496,13 @@ Algorand (`@integraledger/lcp/avm`).
 | `avm/network-malformed` | An Algorand option's network starts with `algorand:` but does not name a genesis hash in CAIP-2 form. |
 | `avm/network-mismatch` | The suggested parameters' genesis hash given to `build` is not base64 of 32 bytes or is not the network the option names. |
 | `avm/not-axfer` | The Algorand payment transaction is not an asset transfer. |
-| `avm/not-found` | The Algorand reader found no transaction for the id. |
+| `avm/not-found` | **Read to repeat.** The Algorand reader found no transaction for the id. |
 | `avm/note-not-lcp` | The Algorand transaction's note is not UTF-8 carrying an ATR hash in LCP string form. |
 | `avm/option-malformed` | An Algorand option's `extra` is not an object or names a transfer method or flow this pairing does not pay, its asset, `payTo` or fee payer is invalid, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid, or the buyer's payer or suggested parameters given to `build` are invalid. |
 | `avm/peer-missing` | The optional peer dependency `algosdk` cannot be loaded to decode or build an Algorand transaction. |
 | `avm/signature-malformed` | The signature given to the Algorand `complete` is not 64 bytes. |
 | `avm/txn-malformed` | The Algorand payload has no `paymentGroup` array, the payment entry is not base64 msgpack within the caps that decodes as a signed transaction, a string in it (a map key or a value, at any depth) is not well-formed UTF-8 or is longer than 200 bytes and begins with the byte-order mark EF BB BF, or its note exceeds the bound. |
-| `avm/unreadable` | The Algorand reader threw or returned an answer that is not well formed. |
+| `avm/unreadable` | **Read to repeat.** The Algorand reader threw or returned an answer that is not well formed. |
 | `avm/wrong-reader` | The Algorand reader is missing or answers for a different network than the reference names, or the reference given to `recover` names a `txid` that is not the 52 base32 characters of a 32-byte hash. |
 
 ## aptos
@@ -523,12 +529,12 @@ Cardano (`@integraledger/lcp/cardano`).
 | `cardano/aux-missing` | The Cardano transaction's body has no auxiliary data hash (key 7), or it carries no auxiliary data. |
 | `cardano/hash-not-carried` | The Cardano auxiliary data's label 674 `msg` lines carry no line that is exactly the lowercase LCP marker followed by a line of 64 lowercase hex digits. |
 | `cardano/network-malformed` | A Cardano option's network starts with `cardano:` or `cip34:` but is not one this package maps. |
-| `cardano/not-found` | The Cardano reader answers that the indexer does not hold the transaction (its not-found answer). |
+| `cardano/not-found` | **Read to repeat.** The Cardano reader answers that the indexer does not hold the transaction (its not-found answer). |
 | `cardano/not-valid` | The Cardano transaction the reference names is on chain as invalid (its collateral was taken). |
 | `cardano/ttl-missing` | The Cardano transaction sets no TTL, so `reference` has no slot by which it settles. |
 | `cardano/tx-malformed` | A Cardano transaction, as base64 text or as the CBOR bytes a reader returns to `cardanoRecover`, is not one CBOR array `[body, witness set, validity, auxiliary data]` with a map body of unique unsigned keys, a valid TTL and a 32-byte auxiliary data hash. |
 | `cardano/tx-too-large` | `decodeCardanoTx` is given a transaction larger than the size bound. |
-| `cardano/unreadable` | The Cardano reader threw, gave an answer of neither documented shape (a transaction, or a not-found answer), or returned a transaction with no CBOR bytes, more bytes than the size bound, or bytes whose id is not the one the reference names. |
+| `cardano/unreadable` | **Read to repeat.** The Cardano reader threw, gave an answer of neither documented shape (a transaction, or a not-found answer), or returned a transaction with no CBOR bytes, more bytes than the size bound, or bytes whose id is not the one the reference names. |
 | `cardano/wrong-reader` | The Cardano reader answers for a different network than the reference names, or the reference given to `recover` names a `txId` that is not a 32-byte hash. |
 
 ## casper
@@ -542,13 +548,13 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/key-tag-mismatch` | The public key and signature given to the Casper `complete` carry different algorithm tags. |
 | `casper/network-malformed` | A Casper network given to `cep3009TypedData` is not a Casper CAIP-2 name, or its argument is not an object. |
 | `casper/no-authorization-call` | The executed Casper transaction holds no authorization call on the asset carrying a nonce. |
-| `casper/not-executed` | The Casper transaction the reference names has not executed. |
-| `casper/not-found` | The Casper reader found no transaction for the reference. |
+| `casper/not-executed` | **Read to repeat.** The Casper transaction the reference names has not executed. |
+| `casper/not-found` | **Read to repeat.** The Casper reader found no transaction for the reference. |
 | `casper/option-malformed` | A Casper asset is not a contract package hash, the token name or version is not a valid name, `validBefore` is out of range, or the `now` given to `build` is not a non-negative safe integer. |
 | `casper/payload-malformed` | The presented Casper payment carries a `refused` member, or is not x402 version 2 for a Casper option with a string CEP-3009 authorization (hex nonce), a tagged public key and signature; or, for `reference`, its value is not a decimal uint256, its `validBefore` not a decimal below 2^64, or its `from` or `to` not a Casper address; or H given to `cep3009TypedData` or `build` is not a valid ATR hash. |
 | `casper/reverted` | The Casper transaction executed with an error. |
 | `casper/signature-malformed` | The public key or signature given to the Casper `complete` is not tagged hex of the allowed length. |
-| `casper/unreadable` | The Casper reader threw or returned a call that is not well formed. |
+| `casper/unreadable` | **Read to repeat.** The Casper reader threw or returned a call that is not well formed. |
 | `casper/wrong-reader` | The Casper reader answers for a different network than the reference names, or the reference given to `recover` names a `transaction` that is not 64 hex digits. |
 
 ## ccd
@@ -562,8 +568,8 @@ Concordium (`@integraledger/lcp/ccd`).
 | `ccd/memo-not-lcp` | The Concordium memo's text is not an ATR hash in LCP string form with lowercase hex under the preferred encoding, or H given to `build` is not a valid ATR hash. |
 | `ccd/no-carrier` | The finalized Concordium block item does not hold exactly one transfer whose memo carries an ATR hash as `memoCarrier` reads it. |
 | `ccd/no-memo` | The Concordium transaction is a plain `transfer` with no memo, or its PLT transfer operation has no memo. |
-| `ccd/not-finalized` | The Concordium block item is not finalized. |
-| `ccd/not-found` | The Concordium reader found no block item for the reference. |
+| `ccd/not-finalized` | **Read to repeat.** The Concordium block item is not finalized. |
+| `ccd/not-found` | **Read to repeat.** The Concordium reader found no block item for the reference. |
 | `ccd/not-v1` | The Concordium signed transaction's `version` is not 1. |
 | `ccd/operation-count` | The Concordium PLT operations are not exactly one `transfer` operation. |
 | `ccd/operations-malformed` | The Concordium PLT operations are not a CBOR list whose transfer carries a byte-string memo, a tagged 32-byte recipient account and a decimal-fraction amount. |
@@ -572,7 +578,7 @@ Concordium (`@integraledger/lcp/ccd`).
 | `ccd/rejected` | The Concordium block item was rejected. |
 | `ccd/too-large` | The Concordium signed transaction, its memo or its token operations exceed the size bound. |
 | `ccd/transaction-malformed` | The presented Concordium signed transaction is not a JSON value (x402's wire form, `JSON.parse(Transaction.toJSONString(tx))`), or not an object with a header and payload, a valid expiry, a decimal amount below 2^64 and hex memo or operations of the stated length, or an amount given to `ccdIdDigest` is out of range, or the value given to `complete` is not an object that serialises as JSON (the SDK's unserialized transaction, whose header holds bigints, is refused). |
-| `ccd/unreadable` | The Concordium reader threw or returned a block item that is not well formed. |
+| `ccd/unreadable` | **Read to repeat.** The Concordium reader threw or returned a block item that is not well formed. |
 | `ccd/wrong-reader` | The Concordium reader answers for a different network than the reference names, or the reference given to `recover` names a `transaction` that is not 64 hex digits. |
 
 ## near
@@ -588,14 +594,14 @@ NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/
 | `near/memo-not-lcp` | The `ft_transfer` `memo` is not an ATR hash in LCP string form, or the NEAR Intents challenge's `externalId` is absent or a string that is not one. |
 | `near/network-malformed` | A NEAR option's network starts with `near:` but is not `near:mainnet` or `near:testnet`. |
 | `near/no-relayer` | The NEAR reader lists no relayer to ask for the transaction status. |
-| `near/not-found` | None of the first four relayers the NEAR reader lists knows the transaction, or its outcome carries no delegate action. |
+| `near/not-found` | **Read to repeat.** None of the first four relayers the NEAR reader lists knows the transaction, or its outcome carries no delegate action. |
 | `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer`, or the delegate in the transaction a recovery reads calls another method. |
 | `near/not-hash-credential` | The NEAR Intents charge credential's payload `type` is not `hash`. |
 | `near/option-malformed` | A NEAR option's `extra` is not an object, or its `asset`, `payTo`, `amount` or `maxTimeoutSeconds` is not a valid account, u128 amount or integer timeout. |
 | `near/peer-missing` | The optional peer dependencies `near-api-js` and `borsh` cannot be loaded. |
 | `near/sda-malformed` | The NEAR signed delegate action is not non-empty base64 of a canonical Borsh `SignedDelegate`, a string in it is not UTF-8, its signature or a key in it is neither Ed25519 nor secp256k1, or its public key cannot be read. |
 | `near/sda-too-large` | The NEAR signed delegate action's base64 text exceeds the size bound. |
-| `near/unreadable` | The NEAR reader threw or returned an outcome that is not well formed. |
+| `near/unreadable` | **Read to repeat.** The NEAR reader threw or returned an outcome that is not well formed. |
 | `near/wrong-reader` | The NEAR reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |
 
 ## polkadot
@@ -614,13 +620,13 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/network-unsupported` | A Polkadot option's network starts with `polkadot:` but is not one this package supports. |
 | `polkadot/no-remark` | The Polkadot extrinsic did not dispatch successfully with a `Remarked` event for its remark. |
 | `polkadot/no-transfer` | The recovered Polkadot extrinsic's record carries no `Transferred` event of the asset its profile call names. |
-| `polkadot/not-found` | The Polkadot reader found no block (for `polkadotRecover`, also block extrinsics that are not an array), no extrinsic at the index, or no well-formed record of the extrinsic, or, for a recovery, the finalized chain has reached the named block's height and the canonical block there is another block that does not hold the same extrinsic at that index. |
+| `polkadot/not-found` | **Read to repeat.** The Polkadot reader found no block (for `polkadotRecover`, also block extrinsics that are not an array), no extrinsic at the index, or no well-formed record of the extrinsic, or, for a recovery, the finalized chain has reached the named block's height and the canonical block there is another block that does not hold the same extrinsic at that index. |
 | `polkadot/not-signed-v4` | The Polkadot extrinsic is not a signed version 4 extrinsic. |
 | `polkadot/option-malformed` | A Polkadot option does not name the `lcp-assets-remark` transfer method, names another flow, or has an invalid asset id, amount or timeout (1 to 3600 seconds), or the choice given to `build` is not an object. |
 | `polkadot/range` | `polkadotLocate` is given a block range that is not non-negative bigints in order spanning at most 256 blocks. |
 | `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
-| `polkadot/unreadable` | The Polkadot reader threw, returned a finalized height that is not a bigint or a record of the canonical block that is not an extrinsic's, or, to `polkadotLocate`, returned block extrinsics that are not an array. |
+| `polkadot/unreadable` | **Read to repeat.** The Polkadot reader threw, returned a finalized height that is not a bigint or a record of the canonical block that is not an extrinsic's, or, to `polkadotLocate`, returned block extrinsics that are not an array. |
 | `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names, or the reference given to `polkadotLocate` has an `extrinsicHash` that is not `0x` and 64 hex digits, or the reference given to `polkadotRecover` names a `transaction` that is not a `<block hash>-<index>` timepoint. |
 
 ## starknet
@@ -635,12 +641,12 @@ Starknet (`@integraledger/lcp/starknet`).
 | `starknet/network-malformed` | A Starknet network is not one of the Starknet networks this package supports, or the argument to `outsideExecution` is not an object. |
 | `starknet/no-legal-context` | The Starknet payment echoes no decodable `extensions.legalContext.info`. |
 | `starknet/nonce-not-bound` | The Starknet signed `Nonce` is not the low 250 bits of the echoed hash. |
-| `starknet/not-found` | The Starknet reader found no receipt, or no transfer matching the reference in it. |
+| `starknet/not-found` | **Read to repeat.** The Starknet reader found no receipt, or no transfer matching the reference in it. |
 | `starknet/option-malformed` | A Starknet option has no `extra` object, or its amount is not a u256 or its timeout is not positive, or the buyer's choice given to `build` is not an object or has an invalid `now`, or an amount or deadline given to a typed-data helper is out of range. |
 | `starknet/reverted` | The Starknet transaction the reference names reverted. |
 | `starknet/signature-malformed` | The signature given to the Starknet `complete` is not 1 to the allowed number of valid felts. |
 | `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, or exceeds 16 KiB as JSON or nests more than 64 levels; or, for `reference`, its `Calls` is not exactly one call whose `Calldata` is three felts (recipient, amount low and amount high, each half below 2^128), or its `Execute Before` is not a decimal. `reference` does not read the call's `Selector` or `To`. |
-| `starknet/unreadable` | The Starknet reader threw, or returned a receipt or events that are not well formed, or a trace that is missing, not well formed, nested deeper than 16 levels or holding more than 512 invocations; or the reference given to `starknetLandedNonce` has an `asset` that is not a felt. |
+| `starknet/unreadable` | **Read to repeat.** The Starknet reader threw, or returned a receipt or events that are not well formed, or a trace that is missing, not well formed, nested deeper than 16 levels or holding more than 512 invocations; or the reference given to `starknetLandedNonce` has an `asset` that is not a felt. |
 | `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference names. |
 
 ## sui
@@ -653,12 +659,12 @@ Sui (`@integraledger/lcp/sui`).
 | `sui/ambiguous` | The Sui transaction has more than one unused `Pure` input. |
 | `sui/hash-not-carried` | The Sui transaction has no unused `Pure` input, or its one unused `Pure` input is not 32 bytes. |
 | `sui/network-malformed` | A Sui option's network starts with `sui:` but is not `sui:mainnet`, `sui:testnet` or `sui:devnet`. |
-| `sui/not-found` | The Sui reader found no transaction for the digest. |
+| `sui/not-found` | **Read to repeat.** The Sui reader found no transaction for the digest. |
 | `sui/not-programmable` | The Sui `TransactionData` V1's kind is not `ProgrammableTransaction`; a `TransactionData` of another version does not decode, and is `sui/tx-malformed`. |
 | `sui/peer-missing` | The optional peer dependency `@mysten/sui` cannot be loaded. |
 | `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, a programmable transaction with a type (a call's type argument, a vector's element type, a funds withdrawal's type) nested 16 levels deep, Sui's type depth limit, or a `Pure` input that is not valid base64 within the bound, or `suiCarrier` is given a transaction that is not a decoded one. |
 | `sui/tx-too-large` | `decodeSuiTx` is given a transaction larger than the size bound. |
-| `sui/unreadable` | The Sui reader failed, or returned a transaction whose digest is not the reference's or that does not decode. |
+| `sui/unreadable` | **Read to repeat.** The Sui reader failed, or returned a transaction whose digest is not the reference's or that does not decode. |
 | `sui/wrong-reader` | The Sui reader answers for a different network than the reference names, or the reference given to `recover` names a `digest` that is not base58 of 32 bytes. |
 
 ## tron
@@ -672,7 +678,7 @@ Tron (`@integraledger/lcp/tron`).
 | `tron/fee-limit` | The fee limit given to the TRON `build` is not a bigint from 1 to the maximum. |
 | `tron/memo-not-lcp` | The TRON transaction's memo is not an ATR hash in LCP string form. |
 | `tron/network-malformed` | A TRON option's network is not `tron:` followed by a chain number. |
-| `tron/not-found` | The TRON reader found no transaction for the id. |
+| `tron/not-found` | **Read to repeat.** The TRON reader found no transaction for the id. |
 | `tron/not-transfer` | The TRON contract's call data is not a TRC-20 `transfer`. |
 | `tron/not-trigger` | The TRON contract is not a `TriggerSmartContract`. |
 | `tron/option-malformed` | A TRON option's amount is not a uint256 or its `maxTimeoutSeconds` is outside 1 to the allowed maximum. |
@@ -680,7 +686,7 @@ Tron (`@integraledger/lcp/tron`).
 | `tron/signature-malformed` | A TRON transaction carries no signature, too many, or one that is not 65 bytes, or the signature given to `complete` is not 65 bytes with a recovery byte of 0, 1, 27 or 28. |
 | `tron/tx-malformed` | A TRON transaction is not lowercase hex of a protobuf `Transaction` whose raw data decodes with in-range fields, the raw bytes a recovery reads do not hash to the transaction id, or the reference block or time given to `build` is invalid, or `tronCarrier` is given a transaction that is not `decodeTronTx`'s `{ raw, rawBytes }`. |
 | `tron/tx-too-large` | A TRON transaction's hex exceeds the size bound. |
-| `tron/unreadable` | The TRON reader threw or returned a transaction whose raw data is not hex within the bound. |
+| `tron/unreadable` | **Read to repeat.** The TRON reader threw or returned a transaction whose raw data is not hex within the bound. |
 | `tron/wrong-reader` | The TRON reader answers for a different network than the reference names, or the reference given to `recover` names a `txid` that is not a 32-byte hash. |
 
 ## tvm
@@ -695,13 +701,13 @@ TON (`@integraledger/lcp/tvm`).
 | `tvm/carrier-mismatch` | The option's `extra.forwardPayload` is not H's comment when `build` is called, or the presented Jetton transfer's forward payload is not the option's. |
 | `tvm/carrier-occupied` | `advertise` finds the option's `extra.forwardPayload` already holding a payload other than H's comment. |
 | `tvm/network-malformed` | A TON option's network is not `tvm:` followed by the network's global id, a decimal safe integer with no leading zero (`tvm:-239` mainnet, `tvm:-3` testnet). |
-| `tvm/not-found` | The TON reader found no transaction for the reference. |
+| `tvm/not-found` | **Read to repeat.** The TON reader found no transaction for the reference. |
 | `tvm/not-jetton-transfer` | The W5 request's outgoing message is not an internal message whose body is a Jetton `transfer`, or the inbound body of the transaction `tvmRecover` reads is not a Jetton `transfer`. |
 | `tvm/not-w5-signed` | The TON settlement message body is not a W5 `internal_signed` request with a trailing signature and no further references. |
 | `tvm/option-malformed` | A TON option's `extra` is not an object, or its asset, `payTo`, response destination or forward TON amount is invalid, or it does not set `areFeesSponsored` to `true`, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid. |
 | `tvm/payload-not-lcp` | The Jetton transfer carries no forward payload, or its forward payload is not a comment carrying an ATR hash in LCP string form. |
 | `tvm/peer-missing` | The optional peer dependency `@ton/core` cannot be loaded. |
-| `tvm/unreadable` | The TON reader threw or returned a transaction that is not well formed or has no inbound body. |
+| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed or has no inbound body. |
 | `tvm/value-too-low` | The TON attached to the Jetton transfer is not more than the option's forward TON amount. |
 | `tvm/wrong-reader` | The TON reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |
 
@@ -738,8 +744,8 @@ Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/l
 | Code | Meaning |
 |---|---|
 | `stacks/no-memo` | The Stacks transaction is not a call to the reference's contract `transfer`, or its fourth argument is not `(some <32 bytes>)`. |
-| `stacks/not-found` | The Stacks reader answers that the API does not know the transaction (its not-found answer) or that the transaction is unmined. |
+| `stacks/not-found` | **Read to repeat.** The Stacks reader answers that the API does not know the transaction (its not-found answer) or that the transaction is unmined. |
 | `stacks/not-success` | The mined Stacks transaction's status is not `success`. |
-| `stacks/unreadable` | The Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer). |
+| `stacks/unreadable` | **Read to repeat.** The Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer). |
 | `stacks/wrong-reader` | The Stacks reader answers for a different network than the reference names, or the reference or reader given to `recover` is not an object, or the reference names a `transaction` that is not a 32-byte hash. |
 

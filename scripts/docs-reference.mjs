@@ -9,14 +9,18 @@
 // of refusal, such as a call with another argument, an alias or an import that renames it, fails the check, since its
 // code cannot be read; a comment is not a use. Each total the page states ("This page lists all N codes") and each cell
 // of its namespace table must count its rows, no code may be listed twice, and the table gives each namespace once.
+// It marks each code in refusals.md that readToRepeat answers true for, from the set that function answers from
+// (lcp/src/internal/reads-to-repeat.ts): the meaning of each such code, and of no other, begins with "**Read to
+// repeat.**". Every code in that set must be one the page lists.
 //
 // Usage, from the repository root after lcp is built:
 //   node scripts/docs-reference.mjs           write the pages and the code set
 //   node scripts/docs-reference.mjs --check   exit 1 when a committed page or the code set differs from what it writes,
 //                                             when refusals.md and the source disagree either way, when refusal
 //                                             is used other than as a call with one code written as a string
-//                                             literal, or when refusals.md's counts differ from its rows or it lists
-//                                             a code twice
+//                                             literal, when refusals.md's counts differ from its rows or it lists a
+//                                             code twice, or when its read-to-repeat marks differ from readToRepeat
+//                                             or the set readToRepeat answers from holds a code the page does not list
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -191,6 +195,25 @@ function vectorsPage() {
 }
 
 const CODES = join(lcp, "src", "internal", "codes.ts");
+const REFUSALS = join(reference, "refusals.md");
+
+/** A row of refusals.md: its code, and whether its meaning begins with the read-to-repeat mark. */
+const REFUSAL_ROW = /^(\| `([a-z0-9]+\/[A-Za-z0-9./-]+)` \| )(\*\*Read to repeat\.\*\* )?/gm;
+const READ_TO_REPEAT_MARK = "**Read to repeat.** ";
+
+/**
+ * refusals.md with the read-to-repeat mark leading the meaning of each code that readToRepeat answers true for, and of
+ * no other; and the codes whose mark the committed page gets wrong, each with the mark it should have.
+ */
+function readToRepeatMarks(text) {
+  const wrong = [];
+  const marked = text.replace(REFUSAL_ROW, (_, head, c, mark) => {
+    const repeat = index.readToRepeat(c);
+    if (repeat !== (mark !== undefined)) wrong.push(`${c} (${repeat ? "unmarked" : "marked"})`);
+    return repeat ? `${head}${READ_TO_REPEAT_MARK}` : head;
+  });
+  return { marked, wrong };
+}
 
 /** A code: a lowercase namespace, a slash, and a reason that may hold further slashes and dotted member paths. */
 const CODE = String.raw`[a-z0-9]+\/[A-Za-z0-9./-]+`;
@@ -239,7 +262,7 @@ function refusalCodes() {
     }
   };
   walk(join(lcp, "src"));
-  const page = join(reference, "refusals.md");
+  const page = REFUSALS;
   const listed = new Set();
   const counts = [];
   if (existsSync(page)) {
@@ -340,6 +363,21 @@ for (const [name, text] of process.argv.includes("--readme-only") ? [] : pages) 
     console.log(`wrote docs/reference/${name}`);
   }
 }
+if (!process.argv.includes("--readme-only") && existsSync(REFUSALS)) {
+  const { marked, wrong } = readToRepeatMarks(readFileSync(REFUSALS, "utf8"));
+  const count = [...marked.matchAll(REFUSAL_ROW)].filter((m) => m[3] !== undefined).length;
+  if (check) {
+    if (wrong.length > 0) {
+      stale++;
+      console.error(`docs/reference/refusals.md's read-to-repeat marks differ from readToRepeat at ${wrong.join(", ")}: run node scripts/docs-reference.mjs`);
+    } else {
+      console.log(`docs/reference/refusals.md marks the ${count} codes readToRepeat answers true for, and no other`);
+    }
+  } else {
+    writeFileSync(REFUSALS, marked);
+    console.log(`wrote the read-to-repeat marks in docs/reference/refusals.md (${count} codes)`);
+  }
+}
 const { inSource, unread, listed, counts } = refusalCodes();
 if (!process.argv.includes("--readme-only")) {
   const codes = codesModule(listed);
@@ -375,6 +413,14 @@ if (unpassed.length > 0) {
   console.error(`docs/reference/refusals.md lists codes the source does not pass to refusal("…"): ${unpassed.join(", ")}`);
 } else {
   console.log(`the source passes each of the ${listed.size} codes docs/reference/refusals.md lists to refusal("…")`);
+}
+const { READS_TO_REPEAT } = await load("internal/reads-to-repeat");
+const unlistedRepeat = [...READS_TO_REPEAT].filter((c) => !listed.has(c)).sort();
+if (unlistedRepeat.length > 0) {
+  stale++;
+  console.error(`the set readToRepeat answers from holds codes docs/reference/refusals.md does not list: ${unlistedRepeat.join(", ")}`);
+} else {
+  console.log(`docs/reference/refusals.md lists each of the ${READS_TO_REPEAT.size} codes readToRepeat answers true for`);
 }
 if (counts.length > 0) {
   stale++;

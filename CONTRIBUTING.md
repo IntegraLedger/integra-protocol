@@ -50,7 +50,8 @@ node scripts/docs-reference.mjs --check
   and namespace table against its rows, that it lists no code twice, and the page against the source both ways: the page
   lists each code the source passes to `refusal("…")` as a string literal, and each code the page lists is passed that
   way. Any other use of `refusal`, such as a call with another argument or through an alias, fails the check; a comment
-  is not a use. After a change to the registry, the exports, the vectors or the refusal codes, run
+  is not a use. It also checks that the page marks as a read to repeat exactly the codes `readToRepeat` answers true
+  for. After a change to the registry, the exports, the vectors or the refusal codes, run
   `node scripts/docs-reference.mjs` and commit what it writes.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder. After a change
   to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API pages it writes under
@@ -76,7 +77,9 @@ once it is on `main`.
   code written out as a string literal in `refusal("…")`. Keep
   [`docs/reference/refusals.md`](./docs/reference/refusals.md) listing every code the package returns, and run
   `node scripts/docs-reference.mjs` and commit what it writes: `lcp/src/internal/codes.ts`, the set of those codes
-  that MPP's `problem` reads.
+  that MPP's `problem` reads. Class each new code: a read to repeat, whose answer rests on a read that may answer
+  differently later with nothing the caller must change, goes in `lcp/src/internal/reads-to-repeat.ts`, and
+  `lcp/test/refusal-classes.ts` gives every code its class.
 - **Bounded.** Every reader call, decoded value and loop has a limit.
 - **No business or legal logic.** The package checks the binding; it never judges amount, payee, asset, timing or
   payer against the ATR's content.
