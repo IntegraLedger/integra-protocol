@@ -110,6 +110,11 @@ const U40_LIMIT = 1n << 40n;
 const HASH32 = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL = /^[0-9]{1,39}$/;
 
+/** A string of `0x` and 64 hex digits. The type is read first: `RegExp.test` would read `["0x…"]` as its one element. */
+function isHash32(v: unknown): v is Hex {
+  return typeof v === "string" && HASH32.test(v);
+}
+
 export interface ChannelConfig {
   payer: Hex;
   payerAuthorizer: Hex;
@@ -137,8 +142,7 @@ function isChannelConfig(c: unknown): c is ChannelConfig {
     Number.isSafeInteger(delay) &&
     (delay as number) >= 0 &&
     BigInt(delay as number) < U40_LIMIT &&
-    typeof c["salt"] === "string" &&
-    HASH32.test(c["salt"])
+    isHash32(c["salt"])
   );
 }
 
@@ -177,9 +181,12 @@ export function batchChannelId(chainId: number, c: ChannelConfig): Hex | Refusal
   return eip712Digest(chainId, structHash);
 }
 
-/** The EIP-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)). */
+/**
+ * The EIP-3009 deposit's nonce: keccak256(abi.encode(bytes32 channelId, uint256 authSalt)). A `channelId` or
+ * `authSalt` that is not a string of `0x` and 64 hex digits is `evm/field-malformed`.
+ */
 export function erc3009DepositNonce(channelId: Hex, authSalt: Hex): Hex | Refusal {
-  if (!HASH32.test(channelId) || !HASH32.test(authSalt)) return refusal("evm/field-malformed");
+  if (!isHash32(channelId) || !isHash32(authSalt)) return refusal("evm/field-malformed");
   return hexOf(keccak(concat([bytes32Word(channelId), bytes32Word(authSalt)])));
 }
 
@@ -408,7 +415,11 @@ function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
   return refusal("x402/channel-kind-unknown");
 }
 
-/** The opening's two authorizations: the deposit's token authorization, then the voucher. */
+/**
+ * The opening's two authorizations: the deposit's token authorization, then the voucher. A `from` or `payerAuthorizer`
+ * that is not an address string, an `authSalt` that is not a string of `0x` and 64 hex digits, or a `deposit` or `now`
+ * out of range is `x402/option-malformed`.
+ */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filterOf(isId(EVM_ID)));
@@ -416,7 +427,7 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
   const salt = normalHash(h);
-  if (salt === null || !isAddress(c.from) || !isAddress(c.payerAuthorizer) || !HASH32.test(c.authSalt)) {
+  if (salt === null || !isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {
     return refusal("x402/option-malformed");
   }
   if (typeof c.deposit !== "bigint" || c.deposit <= 0n || c.deposit >= U128_LIMIT) return refusal("x402/option-malformed");
@@ -549,7 +560,7 @@ function depositOf(payload: Record<string, unknown>) {
   if ((e === undefined) === (p === undefined)) return refusal("x402/deposit-authorization");
   if (e !== undefined) {
     if (!isObject(e) || typeof e["validBefore"] !== "string" || !DECIMAL.test(e["validBefore"])) return refusal("x402/payload-malformed");
-    if (typeof e["salt"] !== "string" || !HASH32.test(e["salt"])) return refusal("x402/payload-malformed");
+    if (!isHash32(e["salt"])) return refusal("x402/payload-malformed");
     return { amount: BigInt(deposit["amount"]), method: "eip3009" as const, settleBy: BigInt(e["validBefore"]), authSalt: e["salt"] as Hex };
   }
   if (!isObject(p) || typeof p["deadline"] !== "string" || !DECIMAL.test(p["deadline"])) return refusal("x402/payload-malformed");

@@ -725,6 +725,10 @@
    {
     "case": "Cloudflare build when the challenge's legalContext hash is not h",
     "expect": "x402/legal-context-conflict"
+   },
+   {
+    "case": "EVM build with an authSalt that is not a string of 0x and 64 hex digits, such as a one-element array of one",
+    "expect": "x402/option-malformed"
    }
   ]
  },

@@ -134,6 +134,19 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(p["deposit"].authorization.erc3009Authorization.validBefore).toBe(E.validBefore);
   });
 
+  // ECMA-262 RegExp.prototype.test applies ToString to its argument, so ["0x…"] reads as its one element: each guard
+  // reads the type first, and the array is refused as the number 42 is.
+  it("EB3's authSalt, or a channelId or authSalt given to erc3009DepositNonce, as a one-element array is refused", async () => {
+    const doc = evmDoc();
+    const choice = { required: doc, accepted: doc.accepts[0]!, from: E.payer, now: E.now, payerAuthorizer: E.payerAuthorizer, deposit: BigInt(E.deposit) };
+    const row = (V.agreedRefusals.rows as { case: string; expect: string }[]).find((r) => r.case.startsWith("EVM build with an authSalt"))!;
+    for (const authSalt of [[E.authSalt], 42]) {
+      expect(await batchEvm.build({ ...choice, authSalt } as never, H), String(authSalt)).toEqual(refused(row.expect));
+    }
+    expect(erc3009DepositNonce([V.EB1.channelId] as never, E.authSalt)).toEqual(refused("evm/field-malformed"));
+    expect(erc3009DepositNonce(V.EB1.channelId, [E.authSalt] as never)).toEqual(refused("evm/field-malformed"));
+  });
+
   it("EB4: the Permit2 deposit", async () => {
     const { u, payment } = await evmOpening("permit2");
     expect(hashTypedData(forViem(u.requests[0]!.kind === "eip712" ? u.requests[0]!.typedData : undefined))).toBe(V.EB4.digest);
