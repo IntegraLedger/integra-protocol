@@ -374,6 +374,25 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     expect(await exactTronMemo.status(REF, lookup(head))).toEqual({ state: "failed", why: "expired" });
   });
 
+  // decodeTronTx reads at most 8192 hex characters, counted in UTF-16 code units (agreedRefusals rows "over 8192 hex
+  // characters" and "8191 hex characters and U+10000"); a transaction above that is tron/tx-too-large. recover reads the
+  // raw data a reader returns within the same bound, and gives the same code for those rows' text above it: a later read
+  // of the same transaction gives the same bytes.
+  it("recover refuses raw data over 8192 hex characters as tron/tx-too-large", async () => {
+    const tooLarge = { refused: true, code: "tron/tx-too-large" };
+    type Row = { case: string; transaction: string; expect: string };
+    const rows = rowsOf<Row>(V.agreedRefusals.rows, "x402-exact-tron-lcp-trc20-memo.json agreedRefusals.rows", {
+      keep: ["the rows over the size bound", (r) => r.expect === "tron/tx-too-large"],
+      leave: ["every other row", (r) => r.expect !== "tron/tx-too-large"],
+      exact: 2,
+    });
+    for (const row of rows) {
+      expect([row.case, decodeTronTx(row.transaction)]).toEqual([row.case, tooLarge]);
+      const r = readerFor({ rawDataHex: row.transaction });
+      expect([row.case, await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, r)]).toEqual([row.case, tooLarge]);
+    }
+  });
+
   it("a network mismatch is pending for status and wrong-reader for recover", async () => {
     const r = { ...readerFor({}), network: "tron:3448148188" as const };
     expect(await exactTronMemo.status(REF, r)).toEqual({ state: "pending", why: "unreadable" });
