@@ -484,6 +484,21 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(pairingOf({ ...o, extra: { ...extra, voucherSigner: "server", operator: S.receiverAuthorizer } })).toBeUndefined();
   });
 
+  it("ES9: withdrawDelay is compared with a maxTimeoutSeconds that is a number, and never with a converted one", () => {
+    const rows = V.ES9.rows as { maxTimeoutSeconds?: unknown; expectPairing: string | null; expectAdvertise: string | null }[];
+    expect(rows.length).toBe(9);
+    const { maxTimeoutSeconds: _, ...bare } = S.option as PaymentRequirements;
+    for (const row of rows) {
+      const given = "maxTimeoutSeconds" in row;
+      const o = (given ? { ...bare, maxTimeoutSeconds: row.maxTimeoutSeconds } : bare) as PaymentRequirements;
+      const label = given ? JSON.stringify(row.maxTimeoutSeconds) : "absent";
+      expect(o.extra!["withdrawDelay"], label).toBe(3600);
+      expect(pairingOf(o) ?? null, label).toBe(row.expectPairing);
+      const doc = batchSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o);
+      expect("refused" in doc ? (doc as Refusal).code : null, label).toBe(row.expectAdvertise);
+    }
+  });
+
   it("ES5: svmChannelStatus, and a transaction with no channel instruction", async () => {
     const wire = b64(V.ES5.landedWireBase64);
     const ref = { ...V.ES5.ref, fromSlot: "0" } as SvmRef & { transaction: string };

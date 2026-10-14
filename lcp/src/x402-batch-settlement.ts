@@ -326,7 +326,9 @@ function nonZeroAddress(v: unknown): v is Hex {
 /**
  * The batch-settlement pairing an option names, or undefined: the filter each of the three pairings applies to an
  * option, through which the root `pairingOf` names it. A Solana option names `extra.receiverAuthorizer` and client
- * voucher signing (`extra.voucherSigner` absent or `"client"`).
+ * voucher signing (`extra.voucherSigner` absent or `"client"`), and its `extra.withdrawDelay` is at least a
+ * `maxTimeoutSeconds` that is a number. A `maxTimeoutSeconds` of any other type is never converted to compare: the
+ * option is named, and `advertise` and `build` refuse it `x402/option-malformed`.
  */
 function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
   if (!isObject(option) || option.scheme !== "batch-settlement" || !isObject(option.extra)) return undefined;
@@ -350,7 +352,9 @@ function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
     const signer = extra["voucherSigner"];
     if (signer !== undefined && signer !== "client") return undefined;
     if (extra["tokenProgram"] !== TOKEN && extra["tokenProgram"] !== TOKEN_2022) return undefined;
-    if (!isDelay(extra["withdrawDelay"]) || (extra["withdrawDelay"] as number) < option.maxTimeoutSeconds) return undefined;
+    const delay = extra["withdrawDelay"];
+    const timeout: unknown = option.maxTimeoutSeconds;
+    if (!isDelay(delay) || (typeof timeout === "number" && delay < timeout)) return undefined;
     if (flow !== undefined && flow !== "authorization") return undefined;
     const memo = extra["memo"];
     if (memo !== undefined && (typeof memo !== "string" || new TextEncoder().encode(memo).length > MAX_MEMO)) return undefined;

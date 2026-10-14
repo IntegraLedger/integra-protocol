@@ -662,6 +662,57 @@
    }
   ]
  },
+ "ES9": {
+  "case": "pairingOf and advertise of fixed.svm.option, whose extra.withdrawDelay is 3600, with maxTimeoutSeconds replaced by each row's value. x402 751590a2, scheme_batch_settlement_svm.md L235 and L247: maxTimeoutSeconds is a number, and withdrawDelay MUST be >= maxTimeoutSeconds. That comparison is read only when maxTimeoutSeconds is a JSON number, never by converting a string or an array to one; an option whose maxTimeoutSeconds is of another type is named, and advertise refuses it, as build does, because its timeout is not a positive safe integer. A row without maxTimeoutSeconds removes the member. expectAdvertise null: the option is advertised.",
+  "rows": [
+   {
+    "maxTimeoutSeconds": 3600,
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": null
+   },
+   {
+    "maxTimeoutSeconds": 3601,
+    "expectPairing": null,
+    "expectAdvertise": "x402/option-not-this-pairing"
+   },
+   {
+    "maxTimeoutSeconds": "3601",
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   },
+   {
+    "maxTimeoutSeconds": " 4e3 ",
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   },
+   {
+    "maxTimeoutSeconds": [
+     3601
+    ],
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   },
+   {
+    "maxTimeoutSeconds": null,
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   },
+   {
+    "maxTimeoutSeconds": true,
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   },
+   {
+    "maxTimeoutSeconds": "abc",
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   },
+   {
+    "expectPairing": "x402/batch-settlement/solana",
+    "expectAdvertise": "x402/option-malformed"
+   }
+  ]
+ },
  "EC1": {
   "payload": {
    "x402Version": 2,
