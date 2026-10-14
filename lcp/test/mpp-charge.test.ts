@@ -414,11 +414,17 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(evmTransaction.pattern).toEqual(Object.fromEntries(Object.entries(TX.pattern).filter(([k]) => k !== "claims")));
   });
 
-  it("MV12: the hash credential, the network reference, and transferPresent", async () => {
+  // MV12.expectCalldata is eth-abi 6.0.0's transfer(address,uint256) of the request's recipient and amount; viem 2.57.4's
+  // encodeFunctionData re-derives it here, and build's whole request, broadcast by the payer, is held to it.
+  it("MV12: the hash credential's request, byte for byte as eth-abi and viem encode the transfer, the network reference, and transferPresent", async () => {
+    const r = JSON.parse(TX.fixed.R_ENoTypes);
+    const erc20 = parseAbi(["function transfer(address to, uint256 value)"]);
+    expect(encodeFunctionData({ abi: erc20, functionName: "transfer", args: [r.recipient, BigInt(r.amount)] })).toBe(HS.MV12.expectCalldata);
+    expect(HS.MV12.expectCalldata).toBe(TX.MV11.expectCalldata);
     const ch = placedOf(challenge("evm", "charge", TX.fixed.R_ENoTypes));
     const u = await evmHash.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
     if ("refused" in u) throw new Error(u.code);
-    expect(u.request).toMatchObject({ kind: "evm-call", broadcast: true });
+    expect(u.request).toEqual({ kind: "evm-call", chainId: 84532, call: { to: USDC, data: HS.MV12.expectCalldata }, broadcast: true });
     const cred = u.complete(HS.MV12.hash) as MppCredential;
     expect(cred.payload).toEqual({ type: "hash", hash: HS.MV12.hash });
     // The reference names the read keys: the challenge's `currency`, and the payer's Transfer, identified by its sender
