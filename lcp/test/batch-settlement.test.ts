@@ -518,6 +518,39 @@ describe("x402-batch-settlement.json: SVM", () => {
   });
 });
 
+// A decimal string is read by its value: the EVM deposit amount, validBefore and the Solana channel salt each go into
+// the transfer digest, settleBy and the PDA seeds as the number, so a leading zero changes nothing. The expected values
+// are the file's: EB6's H and channel, EB7's transfer digest, ES4's H and channel, and ES1's PDA.
+describe("x402-batch-settlement.json: a decimal with a leading zero", () => {
+  it("an EVM deposit amount 0100000 and validBefore 01790003600 give EB6's H and channel and EB7's digest; a Solana salt 042 gives ES4's H and ES1's PDA", async () => {
+    const { payment } = await evmOpening();
+    const p = payment.payload as Record<string, any>;
+    const auth = p["deposit"].authorization.erc3009Authorization;
+    expect([p["deposit"].amount, auth.validBefore]).toEqual([E.deposit, E.validBefore]);
+    const padded = {
+      ...payment,
+      payload: {
+        ...p,
+        deposit: { amount: `0${E.deposit}`, authorization: { erc3009Authorization: { ...auth, validBefore: `0${E.validBefore}` } } },
+      },
+    };
+    expect(await batchEvm.bound(padded)).toBe(V.EB6.expectBound);
+    expect(await batchEvm.channel.ref(padded)).toEqual(V.EB6.expectRef);
+    const ref = unwrap(await batchEvm.reference(padded));
+    expect([ref.transferLog?.digest, ref.settleBy]).toEqual([V.EB7.transferDigest, E.validBefore]);
+    expect(ref).toEqual(unwrap(await batchEvm.reference(payment)));
+
+    const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
+    const opening = (salt: string) =>
+      svmPayment({ type: "deposit", channelConfig: { ...V.ES4.config, salt }, voucher, deposit: { amount: S.deposit, transaction: V.ES2.wireBase64 } });
+    expect(V.ES4.config.salt).toBe("42");
+    expect(V.ES4.expectRef.channel).toBe(V.ES1.channelPda);
+    expect(await batchSvm.bound(opening("042"))).toBe(V.ES4.expectBound);
+    expect(await batchSvm.channel.ref(opening("042"))).toEqual(V.ES4.expectRef);
+    expect(await batchSvm.reference(opening("042"))).toEqual(await batchSvm.reference(opening("42")));
+  });
+});
+
 describe("x402-batch-settlement.json: Cloudflare", () => {
   it("EC1: bound, and a payload without extensions", async () => {
     expect(JSON.stringify(V.EC1.payload).length).toBe(V.EC1.payloadLength);
