@@ -624,3 +624,19 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
     }
   });
 });
+
+// An envelope's length is counted in UTF-16 code units, as JavaScript's String length counts it: the rows' strings end
+// in U+10000, one code point of two code units.
+describe("x402-exact-stellar.json agreedRefusals: an envelope string beyond the BMP at the 8192 bound", () => {
+  const rows = (V.agreedRefusals.rows as { case: string; transaction?: string; expect: string }[]).filter((r) => r.transaction !== undefined);
+  it("the rows are 8193 and 8192 UTF-16 code units", () => {
+    expect(rows.map((r) => [r.transaction!.length, [...r.transaction!].length])).toEqual([[8193, 8192], [8192, 8191]]);
+  });
+  for (const r of rows) {
+    it(`${r.case}: ${r.expect}`, async () => {
+      expect(decodeStellarTx(r.transaction!, "stellar:testnet")).toEqual(refused(r.expect));
+      const p = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: r.transaction! }, extensions: V.V3.extensions };
+      expect(await exactStellar.bound(p as never)).toEqual(refused(r.expect));
+    });
+  }
+});

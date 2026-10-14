@@ -73,10 +73,11 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
     const voids: ScValWire = { type: 16, vec: Array.from({ length: 1537 }, (): ScValWire => ({ type: 1 })) };
     expect(scValsWithinCaps(xdr.ScVal.fromXdr(xdr.ScVal.fromXdrObject(voids).toXdr()).toXdrObject())).toBe(true);
   });
-  for (const r of V.scval.envelopes as (Row & { xdr: string })[]) {
-    it(`${r.name}: ${r.case} → ${r.accept ? "decoded" : "stellar/tx-malformed"}`, () => {
+  for (const r of V.scval.envelopes as (Row & { xdr: string; expect?: string })[]) {
+    it(`${r.name}: ${r.case} → ${r.accept ? (r.expect ?? "decoded") : "stellar/tx-malformed"}`, () => {
       const d = decodeStellarTx(r.xdr, "stellar:testnet");
-      if (r.accept) expect("refused" in d).toBe(false);
+      if (r.accept && r.expect !== undefined) expect(d).toEqual({ refused: true, code: r.expect });
+      else if (r.accept) expect("refused" in d).toBe(false);
       else expect(d).toEqual({ refused: true, code: "stellar/tx-malformed" });
     });
   }
@@ -133,6 +134,37 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
       if (f.type !== 0) throw new Error("not a contract call");
       f.invokeContract.args.push(vectors(levels, { type: 1 }));
     });
+  const key = (b: number) => ({ type: 0 as const, ed25519: new Uint8Array(32).fill(b) });
+  /** A second entry under address credentials with delegates, each delegate the one nested delegate of the one above. */
+  const delegatesEntry = (levels: number) =>
+    edited((op) => {
+      type Delegate = { address: { type: 0; accountId: ReturnType<typeof key> }; signature: ScValWire; nestedDelegates: Delegate[] };
+      let d: Delegate = { address: { type: 0, accountId: key(4) }, signature: { type: 1 }, nestedDelegates: [] };
+      for (let i = 1; i < levels; i++) d = { address: { type: 0, accountId: key(4) }, signature: { type: 1 }, nestedDelegates: [d] };
+      op.auth.push({
+        credentials: {
+          type: 3,
+          addressWithDelegates: {
+            addressCredentials: { address: { type: 0, accountId: key(4) }, nonce: 0n, signatureExpirationLedger: 0, signature: { type: 1 } },
+            delegates: [d],
+          },
+        },
+        rootInvocation: chain(1),
+      } as never);
+    });
+  /** The operation replaced by a create-claimable-balance whose claimant's predicate is `levels` deep: nots around an unconditional. */
+  const claimPredicate = (levels: number): string => {
+    const env = xdr.TransactionEnvelope.fromXdr(X.V2.expectEnvelope, "base64").toXdrObject();
+    if (env.type !== 2) throw new Error("not V2's envelope");
+    type Predicate = { type: 0 } | { type: 3; notPredicate: Predicate };
+    let p: Predicate = { type: 0 };
+    for (let i = 1; i < levels; i++) p = { type: 3, notPredicate: p };
+    (env.v1.tx.operations[0] as { body: unknown }).body = {
+      type: 14,
+      createClaimableBalanceOp: { asset: { type: 0 }, amount: 1n, claimants: [{ type: 0, v0: { destination: key(5), predicate: p } }] },
+    };
+    return xdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64");
+  };
 
   it("@stellar/stellar-sdk 17.2.1 writes each envelope row from V2's", () => {
     const built = [
@@ -142,6 +174,8 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
       secondEntry(0, 65),
       payerInvocations(65),
       operationArgument(65),
+      delegatesEntry(66),
+      claimPredicate(66),
     ];
     expect(built).toEqual((V.scval.envelopes as { xdr: string }[]).map((r) => r.xdr));
   });
@@ -156,8 +190,8 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
   it("a landed payment whose envelope carries an unused entry nested past the cap settles, and is found", async () => {
     const ref = X.V5.ref as StellarRef & { transaction: string };
     const landed = X.V5.rows[0];
-    const unused = (V.scval.envelopes as (Row & { xdr: string })[]).filter((e) => e.name === "SE3" || e.name === "SE4");
-    expect(unused.length).toBe(2);
+    const unused = (V.scval.envelopes as (Row & { xdr: string })[]).filter((e) => ["SE3", "SE4", "SE7"].includes(e.name));
+    expect(unused.length).toBe(3);
     for (const r of unused) {
       const reader: StellarReader = {
         network: "stellar:testnet",
