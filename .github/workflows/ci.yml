@@ -265,3 +265,6 @@ jobs:
         run: node scripts/check-lcp-documents.mjs --out website/out
       - name: Every link on the site has a name, and every fragment link finds its target
         run: node scripts/check-pages.mjs --out website/out
+      - name: The code highlighting gives one result however long tokenizing takes, in the themes' colours
+        working-directory: website
+        run: node scripts/check-highlighting.mjs
