@@ -236,6 +236,12 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
  * invoice has an `m` field or is not yet written, and `x402/exact/lnbtc/invoice-named` when it has none; else the
  * first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option alone. Undefined when
  * none does.
+ *
+ * No two x402 pairings' `read` offers one option, except the two ERC-7710 levels, which share the `erc7710` option: this
+ * names `x402/exact/eip155/erc7710`, and `pairingOfPayment` names the level from a payment. No `read` offers the
+ * Lightning offer the seller sends before its node writes the invoice; this names `x402/exact/lnbtc` for it. A Worker
+ * that serves one pairing need not import this function, which loads every pairing: the pairing's own `read`, on a
+ * document holding the option, or its `bound`, on a presented payment, answers for that pairing alone.
  */
 export function pairingOf(option: PaymentRequirements): PairingOn<"x402"> | undefined {
   const ln = lnbtcPairingOf(option);
