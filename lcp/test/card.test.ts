@@ -42,15 +42,18 @@ async function verifyEs256(token: string, jwk: { x: string; y: string }): Promis
   return crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, unb64u(s), new TextEncoder().encode(`${h}.${p}`));
 }
 
-/** ES256 under the recipe's agent key, key(agent) = SHA-256("lcp-test/agent") mod n on P-256, derived here. */
-async function agentSign(signingInput: string): Promise<string> {
+/**
+ * ES256 under one of the recipe's keys, key(name) = SHA-256(name) mod n on P-256, derived here: "lcp-test/agent" is
+ * AGENT's private key and "lcp-test/user" USER's.
+ */
+async function recipeSign(name: string, jwk: { x: string; y: string }, signingInput: string): Promise<string> {
   const n = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
-  const seed = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("lcp-test/agent")));
+  const seed = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(name)));
   const d = BigInt(`0x${Buffer.from(seed).toString("hex")}`) % n;
   const dBytes = Uint8Array.from(Buffer.from(d.toString(16).padStart(64, "0"), "hex"));
   const key = await crypto.subtle.importKey(
     "jwk",
-    { kty: "EC", crv: "P-256", x: V.fixed.AGENT.x, y: V.fixed.AGENT.y, d: b64u(dBytes) },
+    { kty: "EC", crv: "P-256", x: jwk.x, y: jwk.y, d: b64u(dBytes) },
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"],
@@ -58,6 +61,9 @@ async function agentSign(signingInput: string): Promise<string> {
   const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(signingInput));
   return `${signingInput}.${b64u(new Uint8Array(sig))}`;
 }
+
+/** ES256 under the recipe's agent key. */
+const agentSign = (signingInput: string) => recipeSign("lcp-test/agent", V.fixed.AGENT, signingInput);
 
 describe("C1 values and digests", () => {
   it("advertise returns the legal context and the 77-character reference, equal on every pairing and scheme", () => {
@@ -455,6 +461,43 @@ describe("card.json agreedRefusals: every row runs", () => {
     const l3b = `${await agentSign(`${partsOf(presented.l3b)[0]}.${enc(l3Payload)}`)}${rest(presented.l3b)}`;
     return { l1, l2, l3b };
   };
+  /**
+   * The presented chain with L1's `cnf.jwk` set to `user` and the `cnf.jwk` of L2's open checkout mandate to `agent`,
+   * where given, and every sd_hash re-pointed: L2 is signed again under USER and L3b under AGENT, so the chain differs
+   * from C7's only in the keys it names.
+   */
+  const resigned = async (keys: { user?: unknown; agent?: unknown }) => {
+    const l1Payload = payloadOf(presented.l1);
+    if (keys.user !== undefined) l1Payload.cnf.jwk = keys.user;
+    const [l1h, , l1s] = presented.l1.slice(0, -1).split(".");
+    const l1 = `${l1h}.${enc(l1Payload)}.${l1s}~`;
+    const l2Payload = payloadOf(presented.l2);
+    let discs = presented.l2.split("~").slice(1, -1);
+    if (keys.agent !== undefined) {
+      const open = discs.find((d) => JSON.parse(Buffer.from(d, "base64url").toString())[1].vct === "mandate.checkout.open.1")!;
+      const [salt, value] = JSON.parse(Buffer.from(open, "base64url").toString());
+      const swapped = disc(salt, { ...value, cnf: { jwk: keys.agent } });
+      const [from, to] = [await disclosureDigest(open), await disclosureDigest(swapped)];
+      l2Payload._sd = l2Payload._sd.map((s: string) => (s === from ? to : s));
+      l2Payload.delegate_payload = l2Payload.delegate_payload.map((e: { "...": string }) => ({ "...": e["..."] === from ? to : e["..."] }));
+      discs = discs.map((d) => (d === open ? swapped : d));
+    }
+    l2Payload.sd_hash = await disclosureDigest(l1);
+    const l2 = `${await recipeSign("lcp-test/user", V.fixed.USER, `${partsOf(presented.l2)[0]}.${enc(l2Payload)}`)}~${discs.map((d) => `${d}~`).join("")}`;
+    const l3Payload = { ...payloadOf(presented.l3b), sd_hash: await disclosureDigest(l2) };
+    const l3b = `${await agentSign(`${partsOf(presented.l3b)[0]}.${enc(l3Payload)}`)}${rest(presented.l3b)}`;
+    return { l1, l2, l3b };
+  };
+  const USER = V.fixed.USER as { kty: string; crv: string; x: string; y: string };
+  const AGENT = V.fixed.AGENT as { kty: string; crv: string; x: string; y: string; kid: string };
+
+  // RFC 7518 §6.2.1.2-3: x and y are the full 32-byte P-256 coordinates, base64url-encoded; RFC 7515 §2 omits the
+  // padding. The chain re-signed under the keys as given is bound to H, so each row's chain differs in its key alone.
+  it("a chain re-signed under the recipe keys as given is bound to H", async () => {
+    expect(await viAutonomous.bound(await resigned({ user: USER }))).toBe(H);
+    expect(await viAutonomous.bound(await resigned({ agent: AGENT }))).toBe(H);
+  });
+
   const cases: Record<string, () => Promise<unknown[]>> = {
     "advertise with a link over 2048 characters": async () => [
       visaTap.advertise({}, H, `https://atr.seller.example/${"a".repeat(2048)}`, offer),
@@ -565,6 +608,13 @@ describe("card.json agreedRefusals: every row runs", () => {
     ],
     "VI Autonomous bound with an L2 signature that does not verify under L1's cnf.jwk": async () => [
       await viAutonomous.bound(await withUserKey(V.fixed.AGENT)),
+    ],
+    "VI Autonomous bound with an L1 or L2 cnf.jwk whose x or y is not unpadded base64url of 32 bytes": async () => [
+      await viAutonomous.bound(await resigned({ user: { ...USER, x: `${USER.x}=` } })),
+      await viAutonomous.bound(await resigned({ user: { ...USER, y: `${USER.y}=` } })),
+      await viAutonomous.bound(await resigned({ user: { ...USER, x: b64u(Uint8Array.of(0, ...unb64u(USER.x))) } })),
+      await viAutonomous.bound(await resigned({ user: { ...USER, y: b64u(unb64u(USER.y).subarray(1)) } })),
+      await viAutonomous.bound(await resigned({ agent: { ...AGENT, x: `${AGENT.x}=` } })),
     ],
   };
 

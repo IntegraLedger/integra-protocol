@@ -297,6 +297,10 @@
    {
     "case": "VI Autonomous bound with an L2 signature that does not verify under L1's cnf.jwk",
     "expect": "card/vi-signature-invalid"
+   },
+   {
+    "case": "VI Autonomous bound with an L1 or L2 cnf.jwk whose x or y is not unpadded base64url of 32 bytes",
+    "expect": "card/vi-key-malformed"
    }
   ]
  },

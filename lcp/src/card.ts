@@ -384,18 +384,22 @@ function jwkOf(cnf: unknown): Record<string, unknown> | null {
 
 /**
  * ES256 over the ASCII `header.payload` of a compact JWS, with a 64-byte r‖s signature, under an EC P-256 public
- * JWK. A key WebCrypto will not import is `card/vi-key-malformed`; any other failure is `card/vi-signature-invalid`.
+ * JWK. The JWK's `x` and `y` must each be unpadded base64url of exactly 32 bytes, the full size of a P-256 coordinate
+ * (RFC 7518 §6.2.1.2-3), and the key is imported from those bytes as the uncompressed point, so no runtime's JWK
+ * decoder decides which keys pass. Coordinates of another form, or a point WebCrypto will not import, are
+ * `card/vi-key-malformed`; any other failure is `card/vi-signature-invalid`.
  */
 async function verifyEs256(jws: string, jwk: Record<string, unknown>): Promise<true | Refusal> {
+  const x = b64urlDecode(jwk["x"] as string);
+  const y = b64urlDecode(jwk["y"] as string);
+  if (x === null || y === null || x.length !== 32 || y.length !== 32) return refusal("card/vi-key-malformed");
+  const point = new Uint8Array(65);
+  point[0] = 0x04;
+  point.set(x, 1);
+  point.set(y, 33);
   let key: CryptoKey;
   try {
-    key = await crypto.subtle.importKey(
-      "jwk",
-      { kty: "EC", crv: "P-256", x: jwk["x"] as string, y: jwk["y"] as string },
-      { name: "ECDSA", namedCurve: "P-256" },
-      false,
-      ["verify"],
-    );
+    key = await crypto.subtle.importKey("raw", point, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
   } catch {
     return refusal("card/vi-key-malformed");
   }
