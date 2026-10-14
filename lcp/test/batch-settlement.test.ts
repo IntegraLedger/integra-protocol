@@ -211,12 +211,20 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(V.EB7.fullCall.receipt.logs[0].topics[2]).toBe(V.EB3.depositNonce);
   });
 
+  // docs/guides/rails.md, "Reading settlement": a reader answer out of its form is the code the rail gives a failed
+  // read, evm/unreadable, a read to repeat. A ChannelCreated log from the channel contract whose data does not hash to
+  // the id in its topic, or is not seven words, is such an answer; batchChannelCreated, given the same log, names why.
   it("EB8: recover", async () => {
     const tx = ("0x" + "cd".repeat(32)) as Hex;
     const ok = evmReaderFor({ status: 1, blockNumber: "100", logs: [V.EB8.log] });
     expect(await batchEvm.recover({ network: "eip155:84532", transaction: tx }, ok)).toBe(V.EB8.expect);
     const bad = evmReaderFor({ status: 1, blockNumber: "100", logs: [V.EB8.word0Changed] });
     expect(await batchEvm.recover({ network: "eip155:84532", transaction: tx }, bad)).toEqual(refused(V.EB8.expectWord0));
+    expect(batchChannelCreated(V.EB8.word0Changed, 84532)).toEqual(refused("evm/channel-id-mismatch"));
+    const short = { ...V.EB8.log, data: (V.EB8.log.data as string).slice(0, -2) };
+    const shortRead = evmReaderFor({ status: 1, blockNumber: "100", logs: [short] });
+    expect(await batchEvm.recover({ network: "eip155:84532", transaction: tx }, shortRead)).toEqual(refused("evm/unreadable"));
+    expect(batchChannelCreated(short, 84532)).toEqual(refused("evm/field-malformed"));
   });
 });
 
