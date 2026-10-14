@@ -56,8 +56,9 @@ own `{ "requires_delegate_payment": boolean }`, and nothing from the checkout. T
 - **`acp/checkout/delegated`**: the handler requires `delegate_payment`. `build` returns the allowance the agent's
   `delegate_payment` request carries: ACP's six members, with `reason` `"one_time"` and `checkout_session_id` set to
   H. The agent signs its request; `complete(request)` returns the request only when its allowance is exactly the one
-  built, and refuses `acp/allowance-changed` otherwise. `bound` reads `checkout_session_id` back. It verifies no
-  signature.
+  built, and refuses `acp/allowance-changed` otherwise. An allowance with no RFC 8785 form, such as one whose
+  `merchant_id` holds an unpaired surrogate, is `acp/choice-malformed` at `build`, so the agent is never asked to sign
+  a request `complete` would refuse. `bound` reads `checkout_session_id` back. It verifies no signature.
 - **`acp/checkout/undelegated`**: nothing the buyer signs names the session. `build` refuses `acp/nothing-to-sign` and
   `bound` refuses `acp/not-buyer-signed`.
 

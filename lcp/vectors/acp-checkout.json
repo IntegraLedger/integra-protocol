@@ -1039,6 +1039,35 @@
      }
     ],
     "expect": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+   },
+   {
+    "case": "build with a merchant_id holding an unpaired surrogate (U+D800), which leaves the allowance no RFC 8785 form (RFC 8785 section 3.2.2.2)",
+    "call": "delegated.build",
+    "args": [
+     {
+      "session": {
+       "id": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+       "currency": "usd",
+       "metadata": {
+        "order_ref": "A-100",
+        "legal_context": {
+         "type": "sha256",
+         "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
+         "legal_context_url": "https://atr.seller.example/7ff24b70-83ec-430a-ad3e-3ae487a62050"
+        }
+       }
+      },
+      "max_amount": 19900,
+      "currency": "usd",
+      "merchant_id": "acct_\ud800",
+      "expires_at": "2026-09-21T14:23:20Z"
+     },
+     "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "acp/choice-malformed"
+    }
    }
   ]
  },

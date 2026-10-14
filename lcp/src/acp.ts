@@ -154,7 +154,9 @@ function read(doc: Session): { h: AtrHash; link: string; agreement?: string; off
 
 /**
  * The allowance the agent's `delegate_payment` request carries: the buyer's own values, in ACP's order, with
- * `checkout_session_id` = h. `complete` returns the request only when its allowance is the one built.
+ * `checkout_session_id` = h. `complete` returns the request only when its allowance is the one built, compared by
+ * RFC 8785 form, so an allowance with no RFC 8785 form (a `merchant_id` holding an unpaired surrogate) is
+ * `acp/choice-malformed` here and never handed to the signer.
  */
 async function buildDelegated(choice: AcpChoice, h: AtrHash): Promise<Unsigned | Refusal> {
   if (!isObject(choice)) return refusal("acp/choice-malformed");
@@ -189,6 +191,7 @@ async function buildDelegated(choice: AcpChoice, h: AtrHash): Promise<Unsigned |
     expires_at,
   };
   const kept = canonicalJson(built);
+  if (typeof kept !== "string") return refusal("acp/choice-malformed");
   return {
     allowance: { ...built },
     complete(request: Presented): Presented | Refusal {

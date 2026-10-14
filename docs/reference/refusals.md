@@ -207,7 +207,7 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 |---|---|
 | `acp/allowance-changed` | The `complete` function returned by `build` refuses a `delegate_payment` request that is not an object or whose `allowance` differs from the one built. |
 | `acp/allowance-malformed` | `bound` refuses a presented request that is not an object or whose `allowance` is not exactly ACP's six members with `reason` `one_time`. |
-| `acp/choice-malformed` | `build` refuses a choice that is not an object, or whose `max_amount`, `currency`, `merchant_id` or `expires_at` is not a non-negative safe integer, a three-letter lowercase code, a non-empty string and an RFC 3339 date-time respectively. |
+| `acp/choice-malformed` | `build` refuses a choice that is not an object, or whose `max_amount`, `currency`, `merchant_id` or `expires_at` is not a non-negative safe integer, a three-letter lowercase code, a non-empty string and an RFC 3339 date-time respectively, or whose allowance has no RFC 8785 form (a `merchant_id` holding an unpaired surrogate). |
 | `acp/hash-not-session` | `build` refuses when H is not a valid ATR hash or the chosen session's `id` is not H. |
 | `acp/id-conflict` | `advertise` finds that the session already has an `id` other than H. |
 | `acp/id-not-hash` | `read` finds that the session's `id` is not an ATR hash, or `bound` finds that the allowance's `checkout_session_id` is not one. |
