@@ -390,6 +390,8 @@ function bytesFromItems(items: Node[]): Uint8Array {
 }
 const itemsOf = (node: Node): Node[] | null =>
   node.k === "array" ? node.items : node.k === "map" ? node.entries.flat() : null;
+/** The array behind each decoded slice, up to its capacity: the slice's elements, then any an earlier occurrence left. */
+const BACKING = new WeakMap<Value[], Value[]>();
 
 /**
  * Decodes `node` into `cur`, a value of `kind` (go-codec's decodeValue). A struct decodes into the struct it updates, so
@@ -429,11 +431,16 @@ function decodeInto(kind: Kind, node: Node, cur: Value): Value {
     case "slice": {
       const items = itemsOf(node);
       if (items === null) return refuse();
+      // kSlice keeps the slice's array: items that fit its capacity decode into the elements already there, those an
+      // earlier, longer occurrence left past the slice's length included; more items take a new array holding only
+      // the slice's elements.
       const old = cur as Value[] | null;
-      return items.map((item, j) => {
-        if (item.k === "nil") return zeroOf(kind.of);
-        return decodeInto(kind.of, item, old !== null && j < old.length ? old[j]! : zeroOf(kind.of));
-      });
+      const kept = old === null ? [] : items.length <= (BACKING.get(old) ?? old).length ? (BACKING.get(old) ?? old) : old;
+      const out = items.map((item, j) =>
+        item.k === "nil" ? zeroOf(kind.of) : decodeInto(kind.of, item, j < kept.length ? kept[j]! : zeroOf(kind.of)),
+      );
+      BACKING.set(out, kept.length > out.length ? [...out, ...kept.slice(out.length)] : out);
+      return out;
     }
     case "uintmap": {
       if (node.k !== "map") return refuse();

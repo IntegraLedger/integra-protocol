@@ -150,9 +150,45 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
           entry: entryOf(withMember("gh", bin(new Uint8Array(31)))),
           expect: "avm/txn-malformed",
         },
+        {
+          case: "V2's txn, then V2's txn again: algod's merge and the facilitator's second txn are the same transaction",
+          entry: map(keyed([["sig", bin(SIG)], ["txn", map(keyed(TXN))], ["txn", map(keyed(TXN))]])),
+          expect: V2_TXID,
+        },
       ],
       "a repeated key",
     );
+  });
+
+  // go-codec decodes a repeated slice into the array it already holds (kSlice, go-codec v1.1.10 decode.go): items that
+  // fit its capacity decode into the elements there, those an earlier, longer list left past the slice's length
+  // included. algokit reads the last list alone.
+  it("a repeated list of multisignature subsignatures", async () => {
+    const subsig = (pk: number, s?: number) =>
+      map(keyed([["pk", bin(new Uint8Array(32).fill(pk))], ...(s === undefined ? [] : ([["s", bin(new Uint8Array(64).fill(s))]] as Members))]));
+    const msig = (...lists: Uint8Array[][]) =>
+      entryOf(TXN, [["msig", map(keyed([["v", uint(1)], ["thr", uint(1)], ...lists.map((l): [string, Uint8Array] => ["subsig", arr(l)])]))]]);
+    await check(
+      [
+        { case: "subsig [X], then [X]", entry: msig([subsig(9, 9)], [subsig(9, 9)]), expect: V2_TXID },
+        {
+          case: "subsig [A, B, C], then [X], then [X, {}, {}]: algod reads X, B and C, the facilitator X and two empty subsignatures",
+          entry: msig([subsig(1), subsig(2), subsig(3)], [subsig(9, 9)], [subsig(9, 9), map([]), map([])]),
+          expect: "avm/txn-malformed",
+        },
+        {
+          case: "subsig [A], then [X, {}]: a longer list takes a new array, and both read X and an empty subsignature",
+          entry: msig([subsig(1)], [subsig(9, 9), map([])]),
+          expect: V2_TXID,
+        },
+      ],
+      "a repeated subsignature list",
+    );
+    const row = (V.V3.refusals as { case: string; paymentGroup: string[] }[]).find((r) =>
+      r.case.startsWith("V2's group with msig {v: 1, thr: 1, subsig: [A, B, C]"),
+    );
+    const entry = msig([subsig(1), subsig(2), subsig(3)], [subsig(9, 9)], [subsig(9, 9), map([]), map([])]);
+    expect(row?.paymentGroup).toEqual([FEE_PAYER_ENTRY, Buffer.from(entry).toString("base64")]);
   });
 
   it("keys out of sorted order", async () => {
