@@ -155,9 +155,10 @@ CAIP-2: `stacks:1` (mainnet), `stacks:2147483648` (testnet).
 > **stacksRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
-A wrong reader is `stacks/wrong-reader`, a failed read or an answer of no documented shape `stacks/unreadable`,
-an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`, and no
-`(some <32 bytes>)` memo of that call `stacks/no-memo`.
+A ref or reader that is not an object, a reader for another network, or a ref whose `transaction` is not a 32-byte
+hash is `stacks/wrong-reader`, with nothing read; a failed read or an answer of no documented shape
+`stacks/unreadable`; an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`,
+and no `(some <32 bytes>)` memo of that call `stacks/no-memo`.
 
 #### Parameters
 

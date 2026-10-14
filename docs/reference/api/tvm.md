@@ -257,7 +257,8 @@ to a text comment holding an LCP string.
 
 > **tvmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. One call.
+Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A ref that
+names no `transaction` string is `tvm/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

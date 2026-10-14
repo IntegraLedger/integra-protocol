@@ -191,7 +191,8 @@ not a 32-byte hash is `x402/payload-malformed`.
 
 > **cardanoRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Reads the hash back from the included transaction alone, by its id. One call.
+Reads the hash back from the included transaction alone, by its id. A ref whose `txId` is not a 32-byte hash is
+`cardano/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

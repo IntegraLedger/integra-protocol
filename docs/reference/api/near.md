@@ -234,7 +234,8 @@ false.
 > **nearRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A delegate
-that calls another method is `near/not-ft-transfer`.
+that calls another method is `near/not-ft-transfer`. A ref that names no `transaction` string is `near/wrong-reader`,
+with nothing read.
 
 #### Parameters
 

@@ -321,8 +321,8 @@ authorizedSigner, expiringNonceHash, escrow, chainId)).
 > **witnessRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Reads the transaction's receipt and returns topic 2 of its one `KeyAuthorizationWitness` log from the account
-keychain. A ref or reader that is not an object, or a reader for another network than the ref names, is
-`tempo/wrong-reader`. One call.
+keychain. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash, or a reader for
+another network than the ref names, is `tempo/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

@@ -199,7 +199,8 @@ SHA-256 over the 33 + 33 bytes of the two addresses and the value as a 32-byte b
 
 > **casperRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`.
+The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`. A
+ref whose `transaction` is not 64 hex digits is `casper/wrong-reader`, with nothing read.
 
 #### Parameters
 

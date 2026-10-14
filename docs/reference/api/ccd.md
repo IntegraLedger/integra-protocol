@@ -196,7 +196,8 @@ hash.
 The hash from a settlement block item alone, when it is finalized and successful: the memo of its one transfer whose
 memo `memoCarrier` reads (a PLT memo with tag 24 unwrapped), as `status` counts the transfers whose memo carries
 `ref.h`. A transfer without a memo, or whose memo `memoCarrier` refuses, is passed over; no such transfer, or more
-than one, is `ccd/no-carrier`.
+than one, is `ccd/no-carrier`. A ref whose `transaction` is not 64 hex digits is `ccd/wrong-reader`, with nothing
+read.
 
 #### Parameters
 

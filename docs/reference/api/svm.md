@@ -743,7 +743,8 @@ found, shows the message never landed.
 
 > **svmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Zero-party recovery: the ATR hash in the landed transaction's one memo. One or two calls.
+Zero-party recovery: the ATR hash in the landed transaction's one memo. A ref whose `transaction` is not a signature,
+base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
 
 #### Parameters
 

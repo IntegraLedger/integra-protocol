@@ -284,7 +284,8 @@ The hash in the memo of a transaction whose one contract calls `transfer`, and t
 
 > **tronRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. One call.
+Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. A ref
+whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

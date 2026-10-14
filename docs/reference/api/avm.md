@@ -168,7 +168,7 @@ transfer whose note is an LCP string. Gives the hash, the transaction id and the
 > **avmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The hash from the landed payment's note, for anyone holding the transaction id. A ref whose `txid` is not the 52
-base32 characters of a 32-byte hash is `avm/unreadable`, with nothing read. One call.
+base32 characters of a 32-byte hash is `avm/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

@@ -680,7 +680,8 @@ carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8
 Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
 that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
 a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
-`evm/unreadable`; no receipt (`null`) is `evm/not-found`. One call.
+`evm/unreadable`; no receipt (`null`) is `evm/not-found`. A ref whose `transaction` is not a 32-byte hash is
+`evm/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

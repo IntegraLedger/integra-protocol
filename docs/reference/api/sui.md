@@ -188,7 +188,7 @@ object whose `unusedPure` is an array of `Uint8Array`s, is `sui/tx-malformed`.
 > **suiRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
-bytes is `sui/unreadable`, with nothing read. One call.
+bytes is `sui/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 

@@ -266,7 +266,8 @@ call, after the signature, whose remark is the hash's LCP string with lowercase 
 have the same hash; the record read is then chosen as `polkadotStatus` chooses it, and a named block that the
 finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at its height, is
 `polkadot/not-found`. That record must show the extrinsic dispatched with the `Remarked` event for the remark and a
-`Transferred` event of the call's asset. At most four calls.
+`Transferred` event of the call's asset. A ref whose `transaction` is not a `<block hash>-<index>` timepoint is
+`polkadot/wrong-reader`, with nothing read. At most four calls.
 
 #### Parameters
 
