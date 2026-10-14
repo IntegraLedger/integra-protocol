@@ -338,9 +338,10 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
 }
 
 /**
- * Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A delegate
- * that calls another method is `near/not-ft-transfer`. A ref that names no `transaction` string is `near/wrong-reader`,
- * with nothing read.
+ * Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A transaction
+ * that carries no delegate action, or whose delegate calls another method, is `near/not-ft-transfer`, as `nearStatus`
+ * answers it failed `not-this-instrument`; one that no relayer the reader lists knows is `near/not-found`. A ref that
+ * names no `transaction` string is `near/wrong-reader`, with nothing read.
  */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
@@ -348,8 +349,8 @@ export async function nearRecover(ref: { network: NearNetwork; transaction: stri
   if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) return refusal("near/no-relayer");
   const outcome = await findOutcome(ref.transaction, reader);
   if (outcome === "unreadable") return refusal("near/unreadable");
-  if (outcome === null || outcome.delegate === null) return refusal("near/not-found");
-  if (outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
+  if (outcome === null) return refusal("near/not-found");
+  if (outcome.delegate === null || outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = fromBase64(outcome.delegate.argsBase64);
   if (args === null) return refusal("near/args-malformed");
   return memoOf(args);

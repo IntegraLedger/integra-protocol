@@ -230,6 +230,22 @@ describe("x402-exact-near.json", () => {
     }
   });
 
+  // x402's NEAR scheme settles by a relayed meta transaction, whose outer transaction carries the payer's
+  // SignedDelegate (NEP-366). A transaction the relayers know that carries no delegate action is not that payment, and
+  // a later read of it gives the same answer: status reads it as failed (docs/guides/rails.md, "Reading settlement":
+  // failed is a transaction "that does not carry this payment"), and recover refuses it as not an ft_transfer delegate.
+  // A transaction no relayer knows is not found yet.
+  it("V3: recover refuses a known transaction with no delegate action near/not-ft-transfer, and an unknown one near/not-found", async () => {
+    const landed = V.V3.recover[0];
+    const none: Fixture = { ...landed.outcome, delegate: null };
+    expect(await exactNear.status(REF, readerFor({ outcome: none }))).toEqual({ state: "failed", why: "not-this-instrument" });
+    const recover = (outcome: Fixture | null) =>
+      exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor({ outcome }));
+    expect(await recover(none)).toEqual({ refused: true, code: "near/not-ft-transfer" });
+    expect(await recover(null)).toEqual({ refused: true, code: "near/not-found" });
+    expect(await recover(landed.outcome)).toBe(landed.expect);
+  });
+
   // view_access_key at finality "final" answers the key's nonce with the block_height it read it at (nearcore RPC). A
   // delegate action executes only while the block height is at most maxBlockHeight and its nonce is above the key's, so
   // a key read below the final height read first cannot show that the delegate never executed: the read lags.

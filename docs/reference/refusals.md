@@ -596,8 +596,8 @@ NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/
 | `near/memo-not-lcp` | The `ft_transfer` `memo` is not an ATR hash in LCP string form, or the NEAR Intents challenge's `externalId` is absent or a string that is not one. |
 | `near/network-malformed` | A NEAR option's network starts with `near:` but is not `near:mainnet` or `near:testnet`. |
 | `near/no-relayer` | The NEAR reader lists no relayer to ask for the transaction status. |
-| `near/not-found` | **Read to repeat.** None of the first four relayers the NEAR reader lists knows the transaction, or its outcome carries no delegate action. |
-| `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer`, or the delegate in the transaction a recovery reads calls another method. |
+| `near/not-found` | **Read to repeat.** None of the first four relayers the NEAR reader lists knows the transaction. |
+| `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer`, or the transaction a recovery reads carries no delegate action or its delegate calls another method. |
 | `near/not-hash-credential` | The NEAR Intents charge credential's payload `type` is not `hash`. |
 | `near/option-malformed` | A NEAR option's `extra` is not an object, or its `asset`, `payTo`, `amount` or `maxTimeoutSeconds` is not a valid account, u128 amount or integer timeout. |
 | `near/peer-missing` | The optional peer dependencies `near-api-js` and `borsh` cannot be loaded. |
