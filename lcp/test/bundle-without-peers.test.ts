@@ -57,6 +57,8 @@ for (const [key, bundle, built] of JSON.parse(process.argv[1])) {
 process.stdout.write(JSON.stringify(loaded));
 `;
 
+// The hook has no time bound (0): the build returns or throws, and the loading process exits by itself, so how long
+// it takes depends only on the machine.
 beforeAll(async () => {
   // The consumer's install: the package's files, and each dependency linked to its installed copy. No peer.
   mkdirSync(installed, { recursive: true });
@@ -82,7 +84,7 @@ beforeAll(async () => {
   loaded = JSON.parse(
     execFileSync(process.execPath, ["--input-type=module", "-e", LOAD, JSON.stringify(jobs)], { encoding: "utf8" }),
   );
-});
+}, 0);
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("each public entry point bundled for a Worker with no optional peer installed", () => {
