@@ -152,9 +152,10 @@ function toBase64(bytes: Uint8Array): string {
  * decoded only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep whose every string, each map key
  * included, is well-formed UTF-8 (RFC 3629) and, when longer than 200 bytes, does not begin with the byte-order mark
  * EF BB BF; any other entry is `avm/txn-malformed`. The msgpack specification leaves a string's invalid bytes to each
- * decoder, and algosdk's reads them unchecked, keeps short map keys in a cache shared across calls, and drops a leading
- * mark from a string longer than 200 bytes; the check comes first, so each answer is a function of the entry's bytes
- * alone, and the transaction it reads is the one those bytes spell. Without algosdk, `avm/peer-missing`.
+ * decoder, and algosdk's reads them as other text without refusing them, keeps short map keys in a cache shared across
+ * calls, and drops a leading mark from a string longer than 200 bytes; the check comes first, so each answer is a
+ * function of the entry's bytes alone, and the transaction it reads is the one those bytes spell. Without algosdk,
+ * `avm/peer-missing`.
  */
 export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
   if (sdk === null) return refusal("avm/peer-missing");
