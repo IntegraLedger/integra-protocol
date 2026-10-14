@@ -1,9 +1,8 @@
 // algosdk is an optional peer. With it absent, the avm entry point and the package root still import, the pairing
-// serves no option, and each function that decodes or builds an Algorand transaction refuses `avm/peer-missing`, the
-// code the package states for a rail without its peer (`<rail>/peer-missing`, docs/guides/rails.md "Peer
-// dependencies", with the entry point's namespace `avm`), never a malformed-input code. The payment and the choice are
-// the vector file's own: with algosdk loaded, the payment decodes to H and the choice builds the unsigned transfer
-// (avm.test.ts).
+// serves no option, and avmCarrier and build refuse `avm/peer-missing`, the code the package states for a rail
+// without its peer (`<rail>/peer-missing`, docs/guides/rails.md "Peer dependencies", with the entry point's namespace
+// `avm`), never a malformed-input code. The payment and the choice are the vector file's own: with algosdk loaded,
+// the payment reads as H and the choice builds the unsigned transfer (avm.test.ts).
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 

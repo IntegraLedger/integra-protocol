@@ -501,7 +501,7 @@ Algorand (`@integraledger/lcp/avm`).
 | `avm/not-found` | **Read to repeat.** The Algorand reader found no transaction for the id. |
 | `avm/note-not-lcp` | The Algorand transaction's note is not UTF-8 carrying an ATR hash in LCP string form. |
 | `avm/option-malformed` | An Algorand option's `extra` is not an object or names a transfer method or flow this pairing does not pay, its asset, `payTo` or fee payer is invalid, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid, or the buyer's payer or suggested parameters given to `build` are invalid. |
-| `avm/peer-missing` | The optional peer dependency `algosdk` cannot be loaded to decode or build an Algorand transaction. |
+| `avm/peer-missing` | The optional peer dependency `algosdk`, with which the Algorand pairing checks an option's addresses and builds the transaction, cannot be loaded: `avmCarrier` and `build` refuse without it. |
 | `avm/signature-malformed` | The signature given to the Algorand `complete` is not 64 bytes. |
 | `avm/txn-malformed` | The Algorand payload has no `paymentGroup` array, the payment entry is not base64 of one msgpack value within the caps, algod's decoder or the x402 facilitator's refuses it, algod reads a transaction type it does not know or a member of another type set, the two read different signed transactions, the facilitator can compute no transaction id for it, or its note exceeds the bound. |
 | `avm/unreadable` | **Read to repeat.** The Algorand reader threw or returned an answer that is not well formed. |

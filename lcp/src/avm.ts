@@ -158,8 +158,10 @@ function toBase64(bytes: Uint8Array): string {
  * `avm/txn-malformed`, and one algod reads as another type is `avm/not-axfer`. So a repeated scalar key, keys out of
  * order, a member written at its default, an integer or length in a longer format than it needs, a nil member, or a
  * binary and a string in each other's place reads as algod reads it, and the transaction id is the one algod computes,
- * from the transaction's canonical encoding; a repeated struct, which algod merges, or a fixed-length byte member of
- * another length is read differently by the two and refused. A byte member written as a msgpack string is read as its
+ * from the transaction's canonical encoding. Where the two read different transactions the entry is refused: a
+ * repeated struct whose earlier occurrences set a member the last one does not, which algod merges in and the
+ * facilitator does not read, a repeated list whose elements algod decodes into those an earlier list left, and a
+ * fixed-length byte member of another length. A byte member written as a msgpack string is read as its
  * bytes, whatever they are; a string member (`type`, `gen`) is refused when its bytes are not UTF-8, which the
  * facilitator reads as other text. Each answer is a function of the entry's bytes alone. Without algosdk,
  * `avm/peer-missing`.
