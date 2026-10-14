@@ -6,7 +6,7 @@
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import type * as TonCore from "@ton/core";
-import type { Address, Cell, MessageRelaxed, Slice } from "@ton/core";
+import type { Address, Cell, Slice } from "@ton/core";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
@@ -96,11 +96,11 @@ export interface TvmRef {
   network: TvmNetwork;
   /** The representation hash of the Jetton transfer body the W5 request sends. */
   transferBodyHash: Hex;
-  /** The payer's Jetton wallet, raw: the destination of the W5 request's one message. */
+  /** The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. */
   jettonWallet: string;
   /** The representation hash of the signed W5 request: the body of the message to the payer's wallet. */
   requestBodyHash: Hex;
-  /** The payer's W5 wallet, raw: the destination of the settlement message. */
+  /** The payer's W5 wallet, raw: the address TON sends the settlement message to. */
   wallet: string;
   validUntil: number;
 }
@@ -113,12 +113,12 @@ export type TvmStatus =
 interface TvmChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
-  /** The payer's W5 wallet, raw. */
+  /** The payer's W5 wallet, raw, on a workchain TON's configuration holds (-1 or 0; else `x402/option-malformed`). */
   wallet: string;
   /** `get_subwallet_id`. */
   walletId: number;
   seqno: number;
-  /** The payer's Jetton wallet for `asset`, raw (`get_wallet_address` on the master). */
+  /** The payer's Jetton wallet for `asset`, raw (`get_wallet_address` on the master), on a workchain as `wallet` is. */
   jettonWallet: string;
   /** The value attached to the outgoing message, above `forwardTonAmount`. */
   attachNanotons: bigint;
@@ -127,8 +127,8 @@ interface TvmChoice {
   /**
    * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must be exactly
    * one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, none in any cell of its
-   * libraries dictionary, and at most 1,024 cells read, each dictionary cell once for each path that reaches it (else
-   * `x402/option-malformed`). The settlement message carries it as its `init` exactly as given, so its hash stays the
+   * libraries dictionary, and at most 1,024 cells read, each dictionary cell once for each path that reaches it, and
+   * at most two Merkle proofs or updates nested in it (else `x402/option-malformed`). The settlement message carries it as its `init` exactly as given, so its hash stays the
    * address the wallet derives from it.
    */
   stateInit?: TonCell | string;
@@ -153,6 +153,24 @@ const BOC_INDEXED_CRC32C = 0xacc3a728;
 const CELL_MAX_DEPTH = 1024;
 /** The cells TON's validation reads of a message's state init, at most: ton-blockchain/ton `default_validate_max_cells`. */
 const STATE_INIT_MAX_READS = 1024;
+/** The Merkle proofs and updates a sent message may nest: ton-blockchain/ton `Transaction::max_allowed_merkle_depth`. */
+const MAX_MERKLE_DEPTH = 2;
+// The network configuration TON's message rules rest on, held here and nowhere else: the mainnet configuration
+// `@ton/sandbox` 0.45.0 ships (`defaultConfig`, configuration seqno 92871331), read offline. The read holds it for
+// every network it reads.
+/**
+ * ConfigParam 8, `capabilities#c4 version:uint32`: the global version. From 10, TON's action phase refuses an anycast
+ * address (`disable_anycast`) and holds a message's extra currencies to `MAX_MSG_EXTRA_CURRENCIES`
+ * (`extra_currency_v2`); from 12, a message's `extra_flags` may set its two low bits only.
+ */
+const GLOBAL_VERSION: number = 15;
+/**
+ * The workchains a message may name: the masterchain (-1), and ConfigParam 12's one workchain, 0, which is basic and
+ * accepts messages. Each takes 256-bit addresses only.
+ */
+const WORKCHAINS: ReadonlySet<number> = new Set([-1, 0]);
+/** ConfigParam 43, `max_msg_extra_currencies`: how many extra currencies a sent message may hold. */
+const MAX_MSG_EXTRA_CURRENCIES = 0;
 const COINS_LIMIT = 1n << 120n;
 const UINT32_LIMIT = 2 ** 32;
 const NETWORK = /^tvm:(-?(?:0|[1-9][0-9]{0,15}))$/;
@@ -479,13 +497,125 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
   }
 }
 
-function relaxed(c: Cell): MessageRelaxed | null {
-  if (peer === undefined) return null;
+/**
+ * A message as TON's action phase sends it (ton-blockchain/ton `crypto/block/transaction.cpp`: the action list's
+ * `t_OutListNode.validate_ref`, then `try_action_send_msg`), or null where TON refuses to send it. The cell is TL-B's
+ * `MessageRelaxed Any` with `int_msg_info$0`, read to its end, every field by this reader and none by a library's:
+ * - `src` is `addr_none` or the sender's own address (`check_replace_src_addr`): `from` when the sender is known, else
+ *   an `addr_std` with no anycast on a workchain in `WORKCHAINS`;
+ * - `dest` is an address TON sends to (`check_rewrite_dest_addr`): an `addr_std` with no anycast, or an `addr_var` of
+ *   256 bits with no anycast, which TON sends as that `addr_std`, on a workchain in `WORKCHAINS`. The answer's `dest`
+ *   is that `addr_std`, raw;
+ * - the extra currencies are a valid `HashmapE 32 (VarUInteger 32)` of at most `MAX_MSG_EXTRA_CURRENCIES` entries,
+ *   and `extra_flags` sets no bit above its two low ones (from global version 12);
+ * - the init, when present, is a `^StateInit`, or a `StateInit` inline, taken as the cell its fields make, either of
+ *   them one `isStateInit` holds;
+ * - the body is the remainder, or a reference with nothing after it;
+ * - the action list's validation reads at most 1,024 cells: its node, the message, each extra-currency dictionary
+ *   cell on each path, a `^StateInit` and a referenced body;
+ * - at most `MAX_MERKLE_DEPTH` Merkle proofs and updates nest under the init and the body.
+ */
+function messageOf(c: Cell, from: string | null): { dest: string; body: Cell } | null {
+  const T = peer!;
+  if (c.isExotic) return null;
   try {
-    return peer.loadMessageRelaxed(c.beginParse());
+    const s = c.beginParse();
+    if (s.loadBit()) return null;
+    s.skip(3);
+    const src = msgAddress(s);
+    if (src.tag !== 0 && (src.tag !== 2 || src.raw === null || (from !== null && src.raw !== from))) return null;
+    const dest = msgAddress(s);
+    if (dest.tag < 2 || dest.raw === null) return null;
+    s.loadCoins();
+    const extra = s.loadMaybeRef();
+    if (GLOBAL_VERSION >= 12 && s.loadVarUintBig(4) > 3n) return null;
+    s.loadCoins();
+    s.skip(64 + 32);
+    let init: Cell | null = null;
+    let initRef = false;
+    if (s.loadBit()) {
+      initRef = s.loadBit();
+      if (initRef) init = s.loadRef();
+      else {
+        const at = s.clone();
+        if (s.loadBit()) s.skip(5);
+        if (s.loadBit()) s.skip(2);
+        s.loadMaybeRef();
+        s.loadMaybeRef();
+        s.loadMaybeRef();
+        const refs = at.remainingRefs - s.remainingRefs;
+        const b = T.beginCell().storeBits(at.loadBits(at.remainingBits - s.remainingBits));
+        for (let k = 0; k < refs; k++) b.storeRef(at.loadRef());
+        init = b.endCell();
+      }
+      if (!isStateInit(init)) return null;
+    }
+    const bodyRef = s.loadBit();
+    const body = bodyRef ? s.loadRef() : s.asCell();
+    if (bodyRef && (s.remainingBits !== 0 || s.remainingRefs !== 0)) return null;
+    if (extra !== null) {
+      let count = 0;
+      const { hashmap } = validation(STATE_INIT_MAX_READS - 2 - (initRef ? 1 : 0) - (bodyRef ? 1 : 0));
+      const currency = (v: Slice): boolean => {
+        v.skip(v.loadUint(5) * 8);
+        count++;
+        return true;
+      };
+      if (!hashmap(extra, 32, currency) || count > MAX_MSG_EXTRA_CURRENCIES) return null;
+    }
+    if (merkleDepth([...(init === null ? [] : [init]), ...(bodyRef ? [body] : body.refs)]) > MAX_MERKLE_DEPTH) return null;
+    return { dest: dest.raw, body };
   } catch {
     return null;
   }
+}
+
+/**
+ * A TL-B `MsgAddress` read from the slice (block.tlb: `addr_none$00`, `addr_extern$01`, `addr_std$10` and
+ * `addr_var$11`, an anycast's `depth:(#<= 30) { depth >= 1 }`), with `raw` the `workchain:hex` it names when it has no
+ * anycast, 256 bits and a workchain in `WORKCHAINS`, else null. TON refuses an anycast address from global version 10;
+ * a read past the slice's end throws.
+ */
+function msgAddress(s: Slice): { tag: number; raw: string | null } {
+  const tag = s.loadUint(2);
+  if (tag === 0) return { tag, raw: null };
+  if (tag === 1) {
+    s.skip(s.loadUint(9));
+    return { tag, raw: null };
+  }
+  const anycast = s.loadBit();
+  if (anycast) {
+    const depth = s.loadUint(5);
+    if (depth < 1 || depth > 30) throw new RangeError("anycast depth");
+    s.skip(depth);
+  }
+  const length = tag === 2 ? 256 : s.loadUint(9);
+  const workchain = tag === 2 ? s.loadInt(8) : s.loadInt(32);
+  if (length !== 256) {
+    s.skip(length);
+    return { tag, raw: null };
+  }
+  const hash = s.loadBuffer(32).toString("hex");
+  return { tag, raw: anycast || !WORKCHAINS.has(workchain) ? null : `${workchain}:${hash}` };
+}
+
+/**
+ * The most Merkle proofs and updates on any path down from these cells, each distinct cell read once
+ * (ton-blockchain/ton `crypto/vm/boc.cpp`, `CellStorageStat::add_used_storage`).
+ */
+function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): number {
+  const T = peer!;
+  let most = 0;
+  for (const c of cells) {
+    const k = c.hash().toString("hex");
+    let d = memo.get(k);
+    if (d === undefined) {
+      d = merkleDepth(c.refs, memo) + (c.type === T.CellType.MerkleProof || c.type === T.CellType.MerkleUpdate ? 1 : 0);
+      memo.set(k, d);
+    }
+    most = Math.max(most, d);
+  }
+  return most;
 }
 
 /**
@@ -493,7 +623,13 @@ function relaxed(c: Cell): MessageRelaxed | null {
  * exactly one `action_send_msg` behind an empty list, carrying a Jetton transfer whose forward payload is a reference
  * to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
  * refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
- * for any cell TON reads, a pruned branch of any level mask included.
+ * for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
+ * it, at mainnet's configuration (global version 15, workchains -1 and 0, no extra currencies): a source of
+ * `addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a destination TON sends
+ * to, `extra_flags` of at most 3, its state init validated as TON validates it, a referenced body with nothing after
+ * it, and at most two nested Merkle proofs or updates. The settlement message TON would not send is
+ * `tvm/boc-malformed`, and the outgoing one `tvm/not-jetton-transfer`. `wallet` and `jettonWallet` are the addresses
+ * TON sends to: an `addr_var` of 256 bits names its `addr_std`.
  */
 export function tvmCarrier(settlementBoc: string): {
   h: AtrHash;
@@ -519,8 +655,8 @@ function carrierIn(settlementBoc: string): {
 } | Refusal {
   const root = rootOf(settlementBoc);
   if (isRefusal(root)) return root;
-  const message = relaxed(root);
-  if (message === null || message.info.type !== "internal") return refusal("tvm/boc-malformed");
+  const message = messageOf(root, null);
+  if (message === null) return refusal("tvm/boc-malformed");
 
   let validUntil: number;
   let actions: Cell;
@@ -540,8 +676,8 @@ function carrierIn(settlementBoc: string): {
 
   const send = sendMessage(actions);
   if (isRefusal(send)) return send;
-  const out = relaxed(send);
-  if (out === null || out.info.type !== "internal") return refusal("tvm/not-jetton-transfer");
+  const out = messageOf(send, message.dest);
+  if (out === null) return refusal("tvm/not-jetton-transfer");
   const transfer = jettonTransfer(out.body);
   if (isRefusal(transfer)) return transfer;
   if (transfer.payload === null) return refusal("tvm/payload-not-lcp");
@@ -550,9 +686,9 @@ function carrierIn(settlementBoc: string): {
   return {
     h,
     transferBodyHash: `0x${out.body.hash().toString("hex")}`,
-    jettonWallet: out.info.dest.toRawString(),
+    jettonWallet: out.dest,
     requestBodyHash: `0x${message.body.hash().toString("hex")}`,
-    wallet: message.info.dest.toRawString(),
+    wallet: message.dest,
     validUntil,
     payload: transfer.payload,
   };
@@ -845,6 +981,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   const walletAddress = rawAddress(wallet);
   const jettonAddress = rawAddress(jettonWallet);
   if (walletAddress === null || jettonAddress === null) return refusal("x402/option-malformed");
+  if (!WORKCHAINS.has(walletAddress.workChain) || !WORKCHAINS.has(jettonAddress.workChain)) return refusal("x402/option-malformed");
   if (!isUint32(walletId) || !isUint32(seqno) || !Number.isSafeInteger(now) || now < 0) {
     return refusal("x402/option-malformed");
   }
@@ -901,8 +1038,10 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
     .storeRef(actions)
     .storeBit(0)
     .endCell();
-  // The check reads the state init's form only: `complete` carries the cell itself.
-  if (initCell !== undefined && !isStateInit(initCell)) return refusal("x402/option-malformed");
+  // The checks read the state init's form only: `complete` carries the cell itself.
+  if (initCell !== undefined && (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH)) {
+    return refusal("x402/option-malformed");
+  }
   return {
     request: { kind: "ton-w5", hash: Uint8Array.from(request.hash()) },
     complete(signature: Uint8Array): TvmPayment | Refusal {
@@ -947,27 +1086,12 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
  * The code, the data and each library's root are any cells and are not read.
  */
 function isStateInit(root: Cell): boolean {
-  let reads = STATE_INIT_MAX_READS;
-  const exact = (c: Cell, read: (s: Slice) => boolean): boolean => {
-    if (reads <= 0 || c.isExotic) return false;
-    reads--;
-    const s = c.beginParse();
-    return read(s) && s.remainingBits === 0 && s.remainingRefs === 0;
+  const { exact, hashmap } = validation(STATE_INIT_MAX_READS);
+  const simpleLib = (s: Slice): boolean => {
+    s.loadBit();
+    s.loadRef();
+    return true;
   };
-  // hm_edge: a label, then at key length 0 the value, simple_lib public:Bool root:^Cell, else a fork of two edges.
-  const hashmap = (c: Cell, n: number): boolean =>
-    exact(c, (s) => {
-      const l = labelLength(s, n);
-      if (l === null) return false;
-      if (l === n) {
-        s.loadBit();
-        s.loadRef();
-        return true;
-      }
-      const left = s.loadRef();
-      const right = s.loadRef();
-      return hashmap(left, n - l - 1) && hashmap(right, n - l - 1);
-    });
   try {
     return exact(root, (s) => {
       if (s.loadBit()) s.skip(5);
@@ -975,11 +1099,41 @@ function isStateInit(root: Cell): boolean {
       s.loadMaybeRef();
       s.loadMaybeRef();
       const library = s.loadMaybeRef();
-      return library === null || hashmap(library, 256);
+      return library === null || hashmap(library, 256, simpleLib);
     });
   } catch {
     return false;
   }
+}
+
+/**
+ * TL-B validation as TON runs it (ton-blockchain/ton `crypto/tl/tlblib.cpp`, `TLB::validate_ref_internal`): each cell
+ * ordinary and read to its end, with no bit or reference left over, and at most `reads` cells read in all. `hashmap`
+ * reads a TL-B `Hashmap n X` edge (`hm_edge`): a label of at most n bits (`labelLength`), then at key length 0 the
+ * value, which `value` reads, else a fork of two edges, each cell counted each time a path reaches it. A read past a
+ * slice's end throws.
+ */
+function validation(reads: number): {
+  exact: (c: Cell, read: (s: Slice) => boolean) => boolean;
+  hashmap: (c: Cell, n: number, value: (s: Slice) => boolean) => boolean;
+} {
+  let left = reads;
+  const exact = (c: Cell, read: (s: Slice) => boolean): boolean => {
+    if (left <= 0 || c.isExotic) return false;
+    left--;
+    const s = c.beginParse();
+    return read(s) && s.remainingBits === 0 && s.remainingRefs === 0;
+  };
+  const hashmap = (c: Cell, n: number, value: (s: Slice) => boolean): boolean =>
+    exact(c, (s) => {
+      const l = labelLength(s, n);
+      if (l === null) return false;
+      if (l === n) return value(s);
+      const a = s.loadRef();
+      const b = s.loadRef();
+      return hashmap(a, n - l - 1, value) && hashmap(b, n - l - 1, value);
+    });
+  return { exact, hashmap };
 }
 
 /**

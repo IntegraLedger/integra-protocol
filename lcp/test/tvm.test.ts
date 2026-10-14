@@ -673,6 +673,280 @@ describe("x402-exact-tvm.json", () => {
   // A wallet deployed from a code library carries a library cell as its state init's code. The state init rides
   // outside the signed request, and no read parses its code, so the payment is V2's: its request hash is V2's and
   // bound and reference give V3's values (pytoniq-core 0.2.0 and PyNaCl 1.6.2, as the file records).
+  // Each read of a base64 BoC holds it to TON's deserialization: advertise's and the carriers' `extra.forwardPayload`,
+  // and build's state init. Each form below leaves the root the cell that read expects, V1's comment or V2b's state
+  // init, so only the bytes' form is refused: advertise answers tvm/carrier-occupied, bound and reference
+  // tvm/carrier-mismatch, and build tvm/boc-malformed.
+  it("every read of a base64 BoC refuses the forms TON's deserialization refuses", async () => {
+    const comment = Cell.fromBase64(V.V1.expectBoc);
+    const init = Cell.fromBase64(V.V2b.stateInit);
+    const atRoot = (root: Cell, edit: (w: Written) => void, h: Parameters<typeof bagOf>[1] = {}) => {
+      const w = writtenOf(root);
+      edit(w);
+      return bagOf(w, h);
+    };
+    const forms: [string, (root: Cell) => string][] = [
+      ["a descriptor level mask of 1 on a cell of level 0", (r) => atRoot(r, (w) => (w.d1 |= 0x20))],
+      [
+        "a stored representation hash with one bit flipped",
+        (r) =>
+          atRoot(r, (w) => {
+            const hash = Buffer.from(r.hash());
+            hash[0] = hash[0]! ^ 1;
+            w.d1 |= 0x10;
+            w.stored = Buffer.concat([hash, u16(r.depth())]);
+          }),
+      ],
+      ["an index entry one byte past its cell", (r) => atRoot(r, () => {}, { index: true, pastCells: [0] })],
+      ["a cache bit set on a cell named once", (r) => atRoot(r, () => {}, { index: true, cacheBits: true, flipCache: 0 })],
+      ["references of 5 bytes", (r) => atRoot(r, () => {}, { refSize: 5 })],
+      ["offsets of 9 bytes", (r) => atRoot(r, () => {}, { offSize: 9 })],
+      ["255 absent cells", (r) => atRoot(r, () => {}, { absent: 255 })],
+      ["cache bits with no index", (r) => atRoot(r, () => {}, { cacheBits: true })],
+      ["a data size one byte past the cells, with no index", (r) => atRoot(r, () => {}, { pastCells: [0] })],
+    ];
+    const p = await signed();
+    const offered = (boc: string) => ({ ...O, extra: { ...O.extra, forwardPayload: boc } });
+    const accepted = (boc: string) => ({ ...placed, extra: { ...placed.extra, forwardPayload: boc } });
+    const doc = (o: PaymentRequirements): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
+    expect(exactTvm.advertise(doc(offered(bagOf(writtenOf(comment)))), H, V.fixed.link, offered(bagOf(writtenOf(comment))))).not.toHaveProperty("refused");
+    expect(await exactTvm.bound({ ...p, accepted: accepted(bagOf(writtenOf(comment))) })).toBe(H);
+    expect(await exactTvm.build({ ...choice(), stateInit: bagOf(writtenOf(init)) }, H)).not.toHaveProperty("refused");
+    for (const [name, form] of rowsOf(forms, "the forms TON's deserialization refuses at a root the read expects", { exact: 9 })) {
+      const payload = form(comment);
+      expect([name, exactTvm.advertise(doc(offered(payload)), H, V.fixed.link, offered(payload))]).toEqual([name, { refused: true, code: "tvm/carrier-occupied" }]);
+      const mismatch = { refused: true, code: "tvm/carrier-mismatch" };
+      expect([name, await exactTvm.bound({ ...p, accepted: accepted(payload) })]).toEqual([name, mismatch]);
+      expect([name, await exactTvm.reference({ ...p, accepted: accepted(payload) })]).toEqual([name, mismatch]);
+      expect([name, await exactTvm.build({ ...choice(), stateInit: form(init) }, H)]).toEqual([name, { refused: true, code: "tvm/boc-malformed" }]);
+    }
+  });
+
+  // A message is read as TON's action phase sends it (ton-blockchain/ton crypto/block/transaction.cpp at ed629c4,
+  // try_action_send_msg; the configuration is mainnet's, as @ton/sandbox 0.45.0 ships it): the relayer's sends the
+  // settlement message, and the W5 wallet's sends the outgoing one. Each case is V2's settlement with one field of one
+  // message written bit by bit. A form TON refuses to send is tvm/boc-malformed on the settlement message and
+  // tvm/not-jetton-transfer on the outgoing one; a form TON sends binds H, and reference names the address TON sends to.
+  // TON's emulator (ton 8e6f091, whose address and message rules equal ed629c4's) gives the same verdict on each case's
+  // own bytes, the probe's raw-bit messages.
+  it("a message is read as TON's action phase sends it: its addresses, extra currencies, extra_flags and body", async () => {
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const request = settlement.refs[0]!;
+    const transfer = cellAt(settlement, [0, 0, 1, 0]);
+    const wallet: string = V.fixed.wallet;
+    const jetton: string = V.fixed.jettonWallet;
+    const other = `0:${"12".repeat(32)}`;
+    type Writes = (b: Builder) => Builder;
+    const hashOf = (raw: string) => Buffer.from(raw.slice(raw.indexOf(":") + 1), "hex");
+    const wcOf = (raw: string) => Number(raw.slice(0, raw.indexOf(":")));
+    const anycast = (b: Builder, any: boolean) => (any ? b.storeBit(1).storeUint(1, 5).storeBit(0) : b.storeBit(0));
+    const none: Writes = (b) => b.storeUint(0, 2);
+    const extern: Writes = (b) => b.storeUint(1, 2).storeUint(8, 9).storeUint(0xff, 8);
+    const std = (raw: string, any = false): Writes => (b) => anycast(b.storeUint(2, 2), any).storeInt(wcOf(raw), 8).storeBuffer(hashOf(raw));
+    const addrVar = (raw: string, len = 256, any = false): Writes => (b) => {
+      anycast(b.storeUint(3, 2), any).storeUint(len, 9).storeInt(wcOf(raw), 32);
+      const bits = BigInt(`0x${hashOf(raw).toString("hex")}`);
+      return len <= 256 ? b.storeUint(bits >> BigInt(256 - len), len) : b.storeUint(bits, 256).storeUint(0, len - 256);
+    };
+    const message = (k: { src?: Writes; dest: Writes; value?: bigint; bounce?: boolean; extra?: Cell; flags?: number; init?: Cell; inline?: boolean; body: Cell; tail?: boolean }) => {
+      const b = beginCell().storeBit(0).storeBit(1).storeBit(k.bounce ?? false).storeBit(0);
+      k.dest((k.src ?? none)(b)).storeCoins(k.value ?? 0n).storeMaybeRef(k.extra ?? null).storeCoins(k.flags ?? 0).storeCoins(0).storeUint(0, 64).storeUint(0, 32);
+      if (k.init === undefined) b.storeBit(0);
+      else if (k.inline === true) b.storeBit(1).storeBit(0).storeSlice(k.init.beginParse());
+      else b.storeBit(1).storeBit(1).storeRef(k.init);
+      b.storeBit(1).storeRef(k.body);
+      return (k.tail === true ? b.storeBit(1) : b).endCell();
+    };
+    const root = (k: Partial<Parameters<typeof message>[0]>) => message({ dest: std(wallet), body: request, ...k });
+    const out = (k: Partial<Parameters<typeof message>[0]>) =>
+      replaced(settlement, [0, 0, 1], message({ dest: std(jetton), value: BigInt(V.fixed.attachNanotons), bounce: true, body: transfer, ...k }));
+    // A HashmapE 32 (VarUInteger 32) root of one leaf: key 1, value 5.
+    const currency = beginCell().storeUint(0b10, 2).storeUint(32, 6).storeUint(1, 32).storeUint(1, 5).storeUint(5, 8).endCell();
+    const at = (wc: number, raw: string) => `${wc}:${raw.slice(raw.indexOf(":") + 1)}`;
+    const bound = async (c: Cell) => exactTvm.bound(payment(c.toBoc({ idx: false, crc32: true }).toString("base64")));
+    const sends: [string, Cell, { wallet: string; jettonWallet: string }][] = [
+      ["V2's settlement, written here", root({}), { wallet, jettonWallet: jetton }],
+      ["the settlement's src, an addr_std on workchain 0 (TON sends it when that account relays it)", root({ src: std(other) }), { wallet, jettonWallet: jetton }],
+      ["the settlement's dest, an addr_var of 256 bits on workchain 0", root({ dest: addrVar(wallet) }), { wallet, jettonWallet: jetton }],
+      ["the settlement's dest on the masterchain", root({ dest: std(at(-1, wallet)) }), { wallet: at(-1, wallet), jettonWallet: jetton }],
+      ["the settlement's extra_flags of 3", root({ flags: 3 }), { wallet, jettonWallet: jetton }],
+      ["the outgoing src, the W5 wallet's own addr_std", out({ src: std(wallet) }), { wallet, jettonWallet: jetton }],
+      ["the outgoing dest, an addr_var of 256 bits on workchain 0", out({ dest: addrVar(jetton) }), { wallet, jettonWallet: jetton }],
+    ];
+    for (const [name, c, keys] of sends) {
+      expect([name, await bound(c)]).toEqual([name, H]);
+      const ref = await exactTvm.reference(payment(c.toBoc({ idx: false, crc32: true }).toString("base64")));
+      expect([name, ref]).toEqual([name, { ...V.V3.expectReference, ...keys, requestBodyHash: (ref as TvmRef).requestBodyHash }]);
+    }
+    const malformed = { refused: true, code: "tvm/boc-malformed" };
+    const notTransfer = { refused: true, code: "tvm/not-jetton-transfer" };
+    const refused: [string, Cell, unknown][] = [
+      ["the settlement's src, an addr_extern (35)", root({ src: extern }), malformed],
+      ["the settlement's src, an addr_var (35)", root({ src: addrVar(other) }), malformed],
+      ["the settlement's src, an addr_std with anycast (35)", root({ src: std(other, true) }), malformed],
+      ["the settlement's src, an addr_std on workchain 1 (35)", root({ src: std(at(1, other)) }), malformed],
+      ["the settlement's dest, an addr_var of 256 bits with anycast (36)", root({ dest: addrVar(wallet, 256, true) }), malformed],
+      ["the settlement's dest, an addr_var of 255 bits (36)", root({ dest: addrVar(wallet, 255) }), malformed],
+      ["the settlement's dest, an addr_var of 256 bits on workchain 128 (36)", root({ dest: addrVar(at(128, wallet)) }), malformed],
+      ["the settlement's dest, an addr_std on workchain 1 (36)", root({ dest: std(at(1, wallet)) }), malformed],
+      ["the settlement's dest, an addr_std with anycast (36)", root({ dest: std(wallet, true) }), malformed],
+      ["the settlement's extra currencies, one entry (44)", root({ extra: currency }), malformed],
+      ["the settlement's extra_flags of 4 (45)", root({ flags: 4 }), malformed],
+      ["the settlement's body reference, then one bit (TL-B)", root({ tail: true }), malformed],
+      ["the outgoing src, another account's addr_std (35)", out({ src: std(other) }), notTransfer],
+      ["the outgoing src, the W5 wallet's address as an addr_var (35)", out({ src: addrVar(wallet) }), notTransfer],
+      ["the outgoing dest, an addr_std with anycast (36)", out({ dest: std(jetton, true) }), notTransfer],
+      ["the outgoing dest, an addr_std on workchain 1 (36)", out({ dest: std(at(1, jetton)) }), notTransfer],
+      ["the outgoing dest, an addr_var of 264 bits (36)", out({ dest: addrVar(jetton, 264) }), notTransfer],
+      ["the outgoing extra currencies, one entry (44)", out({ extra: currency }), notTransfer],
+      ["the outgoing extra_flags of 4 (45)", out({ flags: 4 }), notTransfer],
+      ["the outgoing body reference, then one bit (TL-B)", out({ tail: true }), notTransfer],
+    ];
+    for (const [name, c, want] of rowsOf(refused, "the message forms TON's action phase refuses to send", { exact: 20 })) {
+      expect([name, await bound(c)]).toEqual([name, want]);
+      expect([name, tvmCarrier(c.toBoc({ idx: false, crc32: true }).toString("base64"))]).toEqual([name, want]);
+    }
+  });
+
+  // TON validates a sent message's state init as one StateInitWithLibs within 1,024 cell reads
+  // (block::tlb::validate_message_relaxed_libs), and a dictionary edge's label is at most its key's bits (TL-B's
+  // `hm_edge {n = (~m) + l}`), for every dictionary the message holds; it refuses a message whose init and body nest
+  // Merkle proofs or updates three deep (max_allowed_merkle_depth, transaction.cpp:2894, result 40). Each placement:
+  // the settlement's init by reference and inline, the outgoing message's init, the extra currencies, and a
+  // custom_payload. The emulator refuses each to send (result 34, or 40 for Merkle depth), and sends the 9-level
+  // dictionary and two Merkle levels.
+  it("a message's state init, dictionaries and Merkle depth are read as TON validates them, on both messages", async () => {
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const v2b = Cell.fromBase64(V.V2b.stateInit);
+    const { code, data } = loadStateInit(v2b.beginParse());
+    const withLibraries = (dict: Cell) => beginCell().storeBit(0).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeMaybeRef(dict).endCell();
+    const width = (n: number) => Math.ceil(Math.log2(n + 1));
+    const shared = (forks: number) => {
+      let node = beginCell().storeUint(0b10, 2).storeBit(0).storeRef(code!).endCell();
+      for (let n = 1; n < forks; n++) node = beginCell().storeUint(0b10, 2).storeUint(0, width(n)).storeRef(node).storeRef(node).endCell();
+      return beginCell().storeUint(0b11, 2).storeBit(0).storeUint(256 - forks, width(256)).storeRef(node).storeRef(node).endCell();
+    };
+    const library = libraryOf([]);
+    // A fork whose hml_long label, of `l` bits, is longer than its key of `n` bits, over two library cells: @ton/core
+    // reads past it, and TON's TL-B refuses it.
+    const longLabel = (n: number, l: number) => {
+      const b = beginCell().storeUint(0b10, 2).storeUint(l, width(n));
+      for (let i = 0; i < l; i++) b.storeBit(0);
+      return b.storeRef(library).storeRef(library).endCell();
+    };
+    // An hml_same leaf of `n` bits holding a SimpleLib, and a fork of label 0 (hml_short) over two edges.
+    const libLeaf = (n: number) => beginCell().storeUint(0b11, 2).storeBit(1).storeUint(n, width(n)).storeBit(1).storeRef(leaf).endCell();
+    const fork = (a: Cell, b: Cell) => beginCell().storeUint(0, 2).storeRef(a).storeRef(b).endCell();
+    const rootWith = (edit: (b: Builder) => Builder) => {
+      const s = settlement.beginParse();
+      // V2's settlement ends with its init's `nothing$0` and its body's `right$1`.
+      const b = beginCell().storeBits(s.loadBits(s.remainingBits - 2));
+      return edit(b).endCell();
+    };
+    const request = settlement.refs[0]!;
+    const initRef = (init: Cell) => rootWith((b) => b.storeBit(1).storeBit(1).storeRef(init).storeBit(1).storeRef(request));
+    const initInline = (init: Cell) => rootWith((b) => b.storeBit(1).storeBit(0).storeSlice(init.beginParse()).storeBit(1).storeRef(request));
+    const outInit = (init: Cell) => {
+      const out = cellAt(settlement, [0, 0, 1]);
+      const s = out.beginParse();
+      const b = beginCell().storeBits(s.loadBits(s.remainingBits - 2));
+      return replaced(settlement, [0, 0, 1], b.storeBit(1).storeBit(1).storeRef(init).storeBit(1).storeRef(out.refs[0]!).endCell());
+    };
+    const extraCurrencies = (dict: Cell) => {
+      const s = settlement.beginParse();
+      const head = s.loadBits(4 + 2 + 267);
+      s.loadCoins();
+      s.loadBit();
+      return beginCell().storeBits(head).storeCoins(0).storeBit(1).storeRef(dict).storeBits(s.loadBits(s.remainingBits)).storeRef(request).endCell();
+    };
+    const outExtra = (dict: Cell) => {
+      const out = cellAt(settlement, [0, 0, 1]);
+      const s = out.beginParse();
+      const head = s.loadBits(4 + 2 + 267);
+      const value = s.loadCoins();
+      s.loadBit();
+      const rebuilt = beginCell().storeBits(head).storeCoins(value).storeBit(1).storeRef(dict).storeBits(s.loadBits(s.remainingBits)).storeRef(out.refs[0]!);
+      return replaced(settlement, [0, 0, 1], rebuilt.endCell());
+    };
+    const proven = (n: number) => provenOf(leaf, n);
+    const malformed = { refused: true, code: "tvm/boc-malformed" };
+    const notTransfer = { refused: true, code: "tvm/not-jetton-transfer" };
+    const read = async (c: Cell) => {
+      const p = payment(c.toBoc({ idx: false, crc32: true }).toString("base64"));
+      return [await exactTvm.bound(p), await exactTvm.reference(p)];
+    };
+    for (const [name, c] of [
+      ["9 levels of shared forks, by reference", initRef(withLibraries(shared(9)))],
+      ["9 levels of shared forks, inline", initInline(withLibraries(shared(9)))],
+      ["two Merkle levels in a custom_payload", paying(settlement, [0, 0, 1, 0], proven(2))],
+    ] as const) {
+      expect([name, (await read(c))[0]]).toEqual([name, H]);
+    }
+    for (const [name, c, want] of rowsOf(
+      [
+        ["10 levels of shared forks, by reference", initRef(withLibraries(shared(10))), malformed],
+        ["10 levels of shared forks, inline", initInline(withLibraries(shared(10))), malformed],
+        ["10 levels of shared forks, the outgoing init", outInit(withLibraries(shared(10))), notTransfer],
+        ["a libraries label of 257 bits at key length 256", initRef(withLibraries(longLabel(256, 257))), malformed],
+        ["a libraries label of 257 bits at key length 256, inline", initInline(withLibraries(longLabel(256, 257))), malformed],
+        ["a libraries label of 255 bits at key length 254", initRef(withLibraries(fork(fork(longLabel(254, 255), libLeaf(254)), libLeaf(255)))), malformed],
+        ["a libraries label of 257 bits, the outgoing init", outInit(withLibraries(longLabel(256, 257))), notTransfer],
+        ["an extra-currency label of 40 bits at key length 32", extraCurrencies(longLabel(32, 40)), malformed],
+        ["an extra-currency label of 40 bits at key length 32, the outgoing message", outExtra(longLabel(32, 40)), notTransfer],
+        ["a libraries label of 255 bits at key length 254, a right grandchild", initRef(withLibraries(fork(libLeaf(255), fork(libLeaf(254), longLabel(254, 255))))), malformed],
+        ["three Merkle levels in a custom_payload", paying(settlement, [0, 0, 1, 0], proven(3)), malformed],
+        ["three Merkle levels in the settlement's init code", initRef(beginCell().storeBit(0).storeBit(0).storeMaybeRef(proven(3)).storeMaybeRef(data).storeBit(0).endCell()), malformed],
+        ["three Merkle levels in the outgoing init code", outInit(beginCell().storeBit(0).storeBit(0).storeMaybeRef(proven(3)).storeBit(0).storeBit(0).endCell()), malformed],
+      ] as const,
+      "the state inits, dictionaries and Merkle depths TON refuses to send",
+      { exact: 13 },
+    )) {
+      expect([name, await read(c)]).toEqual([name, [want, want]]);
+    }
+    for (const [name, levels, builds] of [
+      ["two Merkle levels", 2, true],
+      ["three Merkle levels", 3, false],
+    ] as const) {
+      const given = beginCell().storeBit(0).storeBit(0).storeMaybeRef(proven(levels)).storeMaybeRef(data).storeBit(0).endCell();
+      const built = await exactTvm.build({ ...choice(), stateInit: given }, H);
+      expect([name, "refused" in built ? built : "built"]).toEqual([name, builds ? "built" : { refused: true, code: "x402/option-malformed" }]);
+    }
+  });
+
+  // As deep as the BoC's 32-level bound admits at each placement (30 levels inline, 29 by reference, 26 in the outgoing
+  // message, over a library root of depth 0): TON's validation stops at its 1,024th read, and so does this read, for a
+  // dictionary @ton/core's parseDict would walk on each of its 2^levels paths. No time bound is set here.
+  it("a state init of shared forks as deep as the BoC's bounds admit is refused on both messages", async () => {
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const width = (n: number) => Math.ceil(Math.log2(n + 1));
+    const init = (forks: number) => {
+      let node = beginCell().storeUint(0b10, 2).storeBit(0).storeRef(leaf).endCell();
+      for (let n = 1; n < forks; n++) node = beginCell().storeUint(0b10, 2).storeUint(0, width(n)).storeRef(node).storeRef(node).endCell();
+      const dict = beginCell().storeUint(0b11, 2).storeBit(0).storeUint(256 - forks, width(256)).storeRef(node).storeRef(node).endCell();
+      return beginCell().storeBit(0).storeBit(0).storeBit(0).storeBit(0).storeMaybeRef(dict).endCell();
+    };
+    const s = settlement.beginParse();
+    const head = s.loadBits(s.remainingBits - 2);
+    const request = settlement.refs[0]!;
+    const out = cellAt(settlement, [0, 0, 1]);
+    const o = out.beginParse();
+    const outHead = o.loadBits(o.remainingBits - 2);
+    for (const [name, c, code] of [
+      ["the settlement's init, inline, 30 levels", beginCell().storeBits(head).storeBit(1).storeBit(0).storeSlice(init(30).beginParse()).storeBit(1).storeRef(request).endCell(), "tvm/boc-malformed"],
+      ["the settlement's init, by reference, 29 levels", beginCell().storeBits(head).storeBit(1).storeBit(1).storeRef(init(29)).storeBit(1).storeRef(request).endCell(), "tvm/boc-malformed"],
+      [
+        "the outgoing init, 26 levels",
+        replaced(settlement, [0, 0, 1], beginCell().storeBits(outHead).storeBit(1).storeBit(1).storeRef(init(26)).storeBit(1).storeRef(out.refs[0]!).endCell()),
+        "tvm/not-jetton-transfer",
+      ],
+    ] as const) {
+      expect([name, c.depth()]).toEqual([name, 32]);
+      const p = payment(c.toBoc({ idx: false, crc32: true }).toString("base64"));
+      expect([name, await exactTvm.bound(p), await exactTvm.reference(p)]).toEqual([name, { refused: true, code }, { refused: true, code }]);
+    }
+    expect(await exactTvm.build({ ...choice(), stateInit: init(30) }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
+  });
+
   it("V2b: a state init whose code is a library cell, as a cell or a base64 BoC, binds as V2's payment", async () => {
     const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
     const { data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
@@ -1012,8 +1286,9 @@ describe("x402-exact-tvm.json", () => {
   // TL-B's addr_std (block.tlb): `workchain_id:int8`, so a raw `workchain:hex` address whose workchain is outside
   // [-128, 127] is not one an addr_std can hold. Every raw address the pairing reads is held to it: the option filter's
   // asset, payTo and responseDestination (`tvm/option-malformed`, wherever the filter runs), build's wallet and
-  // jettonWallet (`x402/option-malformed`), and status's reference (pending `unreadable`, with nothing read). -128 and
-  // 127 build.
+  // jettonWallet (`x402/option-malformed`), and status's reference (pending `unreadable`, with nothing read). build's
+  // wallet and jettonWallet are also held to the workchains TON's configuration holds, -1 and 0, which build: -128 and
+  // 127 fit int8 and are refused there, since TON's action phase sends to no workchain its configuration lacks.
   it("a raw address whose workchain is outside int8 is refused at every read, never a throw", async () => {
     const hex = (raw: string) => raw.slice(raw.indexOf(":") + 1);
     const outside = ["128", "-129", "9999999999", "-9999999999"];
@@ -1045,6 +1320,12 @@ describe("x402-exact-tvm.json", () => {
       }
     }
     for (const wc of ["-128", "127"]) {
+      for (const field of ["wallet", "jettonWallet"] as const) {
+        const built = await exactTvm.build({ ...choice(), [field]: `${wc}:${hex(V.fixed[field])}` }, H);
+        expect([wc, field, built]).toEqual([wc, field, { refused: true, code: "x402/option-malformed" }]);
+      }
+    }
+    for (const wc of ["-1", "0"]) {
       const u = await exactTvm.build({ ...choice(), wallet: `${wc}:${hex(V.fixed.wallet)}`, jettonWallet: `${wc}:${hex(V.fixed.jettonWallet)}` }, H);
       if ("refused" in u) throw new Error(u.code);
       const p = u.complete(new Uint8Array(64));
