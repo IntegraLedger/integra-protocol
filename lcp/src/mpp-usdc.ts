@@ -17,11 +17,11 @@ import {
   type EvmRef,
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
+import { b64uDecode } from "./internal/base64url.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { memoArgument } from "./internal/stacks.js";
 import { keyString } from "./internal/svm.js";
 import {
-  b64uDecode,
   chosenFor,
   credentialOf,
   deepFreeze,

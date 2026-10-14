@@ -6,10 +6,10 @@
  */
 import { canonicalJson, fromLegalContext, fromRawBytes, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { b64uEncode } from "./internal/base64url.js";
 import { decode, FIELD, isLnOffer, isLnOption, lnbtcPairs, namedPairs, NETWORKS } from "./internal/lightning.js";
 import { advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import {
-  b64uEncode,
   credentialOf,
   checkChallenge,
   decodeObject,

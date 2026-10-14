@@ -20,6 +20,7 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
+import { b64uDecode, b64uEncode } from "./internal/base64url.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
 import {
@@ -1183,40 +1184,6 @@ export function decodeStringMap(s: string): { [k: string]: string } | undefined 
   if (o === undefined || !Object.values(o).every((v) => typeof v === "string")) return undefined;
   return o as { [k: string]: string };
 }
-
-export function b64uEncode(b: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < b.length; i += 3) {
-    const n = (b[i]! << 16) | ((b[i + 1] ?? 0) << 8) | (b[i + 2] ?? 0);
-    const chars = i + 1 >= b.length ? 2 : i + 2 >= b.length ? 3 : 4;
-    for (let k = 0; k < chars; k++) s += B64U[(n >> (18 - 6 * k)) & 63];
-  }
-  return s;
-}
-
-/** Strict base64url without padding: canonical trailing bits, at most `maxBytes` decoded. */
-export function b64uDecode(s: unknown, maxBytes: number): Uint8Array | undefined {
-  if (typeof s !== "string" || s.length % 4 === 1 || s.length > Math.ceil((maxBytes * 4) / 3)) return undefined;
-  const out = new Uint8Array(Math.floor((s.length * 3) / 4));
-  let acc = 0;
-  let bits = 0;
-  let o = 0;
-  for (let i = 0; i < s.length; i++) {
-    const v = B64U_INDEX[s.charCodeAt(i)];
-    if (v === undefined) return undefined;
-    acc = ((acc << 6) | v) & 0xffffff;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      out[o++] = (acc >> bits) & 0xff;
-    }
-  }
-  if ((acc & ((1 << bits) - 1)) !== 0) return undefined;
-  return out;
-}
-
-const B64U = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-const B64U_INDEX: { [c: number]: number } = Object.fromEntries([...B64U].map((c, i) => [c.charCodeAt(0), i]));
 
 /** A challenge's shape: string `realm`, `method`, `intent` and `request`, and each other known member a string when present. */
 export function isChallengeShape(c: unknown): c is MppChallenge {
