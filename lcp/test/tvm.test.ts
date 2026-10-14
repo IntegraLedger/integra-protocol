@@ -326,6 +326,41 @@ describe("x402-exact-tvm.json", () => {
     expect([ref.wallet, ref.requestBodyHash]).toEqual([R.wallet, `0x${V.V2b.expectRequestBodyHash}`]);
   });
 
+  // From global version 10, TON deploys no account whose state init's fixed_prefix_length is above ConfigParam 43's
+  // max_acc_fixed_prefix_length, 8 in the mainnet configuration @ton/sandbox 0.45.0 ships (ton-blockchain/ton
+  // crypto/block/transaction.cpp at ed629c4, prepare_compute_phase, "too big fixed prefix length"). TON's emulator (ton
+  // 8e6f091) deploys the payer's W5 wallet from V2b's code and data with a fixed prefix length of 8, its address the
+  // init's hash, and sends the Jetton transfer; with 9 it skips the compute phase as a bad state and sends nothing.
+  // build refuses such a state init. A wallet already deployed ignores its message's state init, so bound reads a
+  // settlement message carrying one.
+  it("V2b: build takes a state init whose fixed prefix length is at most the configuration's 8", async () => {
+    const { code, data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
+    const initOf = (prefix: number | null) =>
+      (prefix === null ? beginCell().storeBit(0) : beginCell().storeBit(1).storeUint(prefix, 5)).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeBit(0).endCell();
+    const built = async (prefix: number | null, form: "cell" | "boc") => {
+      const init = initOf(prefix);
+      const stateInit = form === "cell" ? init : init.toBoc({ idx: false, crc32: true }).toString("base64");
+      return exactTvm.build({ ...choice(), wallet: `0:${hashHex(init)}`, seqno: V.V2b.seqno, stateInit }, H);
+    };
+    for (const prefix of [null, 1, 8]) {
+      for (const form of ["cell", "boc"] as const) {
+        const u = await built(prefix, form);
+        expect([prefix, form, "refused" in u ? u : "built"]).toEqual([prefix, form, "built"]);
+      }
+    }
+    for (const prefix of [9, 30, 31]) {
+      for (const form of ["cell", "boc"] as const) {
+        expect([prefix, form, await built(prefix, form)]).toEqual([prefix, form, { refused: true, code: "x402/option-malformed" }]);
+      }
+    }
+    const u = await built(8, "cell");
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete(ed25519.sign(u.request.hash, seed));
+    if ("refused" in p) throw new Error(p.code);
+    const carrying = replaced(Cell.fromBase64(p.payload.settlementBoc), [0], initOf(9)).toBoc({ idx: false, crc32: true }).toString("base64");
+    expect(await exactTvm.bound(payment(carrying))).toBe(H);
+  });
+
   // TL-B's MessageRelaxed: `init:(Maybe (Either StateInit ^StateInit))`, then the body. Read past the message's info,
   // the init is present as a reference, and that cell's hash is the address the wallet derives from its state init
   // (the file's `wallet`, computed with pytoniq-core 0.2.0 as x402's Python SDK 2.25.0 derives it), which is the

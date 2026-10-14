@@ -127,9 +127,11 @@ interface TvmChoice {
   /**
    * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must be exactly
    * one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, at most 1,024 cells
-   * read, and at most two Merkle proofs or updates nested in it. It must hold no libraries dictionary, since from global
-   * version 15 TON deploys no wallet from a state init that holds one. Else `x402/option-malformed`. The settlement
-   * message carries it as its `init` exactly as given, so its hash stays the address the wallet derives from it.
+   * read, and at most two Merkle proofs or updates nested in it. It must be one TON deploys a wallet from at the
+   * configuration of the option's network: no libraries dictionary (global version 15), and a fixed prefix length of
+   * at most ConfigParam 43's `max_acc_fixed_prefix_length`, 8 (global version 10). Else `x402/option-malformed`. The
+   * settlement message carries it as its `init` exactly as given, so its hash stays the address the wallet derives
+   * from it.
    */
   stateInit?: TonCell | string;
 }
@@ -159,8 +161,9 @@ const MAX_MERKLE_DEPTH = 2;
 interface TonConfiguration {
   /**
    * ConfigParam 8, `capabilities#c4 version:uint32`: the global version. From 4, TON's action phase takes a send mode's
-   * +16 as bounce-on-fail (`bounce_on_fail_enabled`); from 10, it refuses an anycast address (`disable_anycast`) and
-   * holds a message's extra currencies to `maxMsgExtraCurrencies` (`extra_currency_v2`); from 12, a message's
+   * +16 as bounce-on-fail (`bounce_on_fail_enabled`); from 10, it refuses an anycast address (`disable_anycast`),
+   * deploys no account whose fixed prefix length is above `maxAccFixedPrefixLength`, and holds a message's extra
+   * currencies to `maxMsgExtraCurrencies` (`extra_currency_v2`); from 12, a message's
    * `extra_flags` may set its two low bits only; from 15, no account is deployed from a state init that holds
    * libraries (`unpack_msg_state`).
    */
@@ -172,17 +175,29 @@ interface TonConfiguration {
   readonly workchains: ReadonlySet<number>;
   /** ConfigParam 43, `max_msg_extra_currencies`: how many extra currencies a sent message may hold. */
   readonly maxMsgExtraCurrencies: number;
+  /** ConfigParam 43, `max_acc_fixed_prefix_length`: the longest fixed prefix of an account TON deploys. */
+  readonly maxAccFixedPrefixLength: number;
 }
 /**
  * Mainnet's configuration (`tvm:-239`): the one `@ton/sandbox` 0.45.0 ships (`defaultConfig`, configuration seqno
  * 92871331, ConfigParam 19 global id -239), read offline. ConfigParam 12 holds one workchain, 0.
  */
-const MAINNET: TonConfiguration = Object.freeze({ globalVersion: 15, workchains: new Set([-1, 0]), maxMsgExtraCurrencies: 0 });
+const MAINNET: TonConfiguration = Object.freeze({
+  globalVersion: 15,
+  workchains: new Set([-1, 0]),
+  maxMsgExtraCurrencies: 0,
+  maxAccFixedPrefixLength: 8,
+});
 /**
  * Testnet's configuration (`tvm:-3`). Testnet's own values are not read: these are mainnet's, from `MAINNET`'s source,
  * since no offline source pinned by seqno holds testnet's ConfigParams 8, 12 and 43.
  */
-const TESTNET: TonConfiguration = Object.freeze({ globalVersion: 15, workchains: new Set([-1, 0]), maxMsgExtraCurrencies: 0 });
+const TESTNET: TonConfiguration = Object.freeze({
+  globalVersion: 15,
+  workchains: new Set([-1, 0]),
+  maxMsgExtraCurrencies: 0,
+  maxAccFixedPrefixLength: 8,
+});
 /** The two networks the pairing serves, by their `TvmNetwork`, each with the configuration its messages are read at. */
 const CONFIGURATIONS: ReadonlyMap<string, TonConfiguration> = new Map([
   ["tvm:-239", MAINNET],
@@ -1102,7 +1117,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   // The checks read the state init's form only: `complete` carries the cell itself.
   if (
     initCell !== undefined &&
-    (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH || (config.globalVersion >= 15 && holdsLibraries(initCell)))
+    (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH || !deploysFrom(initCell, config))
   ) {
     return refusal("x402/option-malformed");
   }
@@ -1171,17 +1186,20 @@ function isStateInit(root: Cell): boolean {
 }
 
 /**
- * True when a state init `isStateInit` holds has a libraries dictionary: its `library:(HashmapE 256 SimpleLib)` is
- * `hme_root`. From global version 15, TON deploys no account from such a state init (ton-blockchain/ton
- * `crypto/block/transaction.cpp`, `unpack_msg_state`, "libraries are not null").
+ * True when TON deploys an account from a state init `isStateInit` holds, at the configuration (ton-blockchain/ton
+ * `crypto/block/transaction.cpp`, `unpack_msg_state` and `prepare_compute_phase`): from global version 15 its
+ * `library:(HashmapE 256 SimpleLib)` is `hme_empty` ("libraries are not null"), and from global version 10 its
+ * `fixed_prefix_length` is absent or at most the configuration's `maxAccFixedPrefixLength` ("too big fixed prefix
+ * length").
  */
-function holdsLibraries(root: Cell): boolean {
+function deploysFrom(root: Cell, config: TonConfiguration): boolean {
   const s = root.beginParse();
-  if (s.loadBit()) s.skip(5);
+  const prefix = s.loadBit() ? s.loadUint(5) : 0;
   if (s.loadBit()) s.skip(2);
   s.loadMaybeRef();
   s.loadMaybeRef();
-  return s.loadBit();
+  const libraries = s.loadBit();
+  return !(config.globalVersion >= 15 && libraries) && !(config.globalVersion >= 10 && prefix > config.maxAccFixedPrefixLength);
 }
 
 /**
@@ -1252,7 +1270,8 @@ function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclud
 /**
  * The hash in the forward payload of the transfer the payer's W5 wallet signed, which must be the option's. The
  * signature is not verified here; the facilitator verifies it, and the W5 contract checks it before any action runs.
- * A state init holding a libraries dictionary is read, since whether TON deploys the wallet from it is chain state.
+ * A state init that holds a libraries dictionary, or a fixed prefix longer than 8 bits, is read, since whether TON
+ * deploys the wallet from it is chain state.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const r = carried(presented);

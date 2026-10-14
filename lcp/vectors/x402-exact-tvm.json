@@ -1181,6 +1181,11 @@
     "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose body reference is a library cell: TON's action phase validates the message as MessageRelaxed Any, which reads a referenced body as an ordinary cell (ton-blockchain/ton crypto/tl/tlblib.cpp, validate_ref_internal; crypto/block/transaction.cpp, t_OutListNode.validate_ref; result 34)",
     "settlementBoc": "te6cckECGAEAAwkAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPAAgEIQgIBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQIBNAQDAFGAAAAAP///iMVEce66BPjK/qltlp5dLrllM4TfjsoJDfm6RADaB7euIAEU/wD0pBP0vPLICwUCASAIBgEC8gcBHiDXCx+CEHNpZ2668uCKfxMCAUgSCQIBIAsKABm+Xw9qJoQICg65D6AsAgEgDwwCAUgODQARsmL7UTQ1woAgABezJftRNBx1yHXCx+ACAW4REAAZrx32omhAEOuQ64WPwAAZrc52omhAIOuQ64X/wALc0CDXScEgkVuPYyDXCx8gghBleHRuvSGCEHNpbnS9sJJfA+CCEGV4dG66jrSAINchAdB01yH6QDD6RPgo+kQwWL2RW+DtRNCBAUHXIfQFgwf0Dm+hMZEw4YBA1yFwf9s84DEg10mBAoC5kTDgcOIUEwHmjvDtou37IYMI1yICgwjXIyCAINch0x/TH9Mf7UTQ0gDTHyDTH9P/1woACvkBQMz5EJoolF8K2zHh8sCH3wKzUAew8tCEUSW68uCFUDa68uCG+CO78tCIIpL4AN4BpH/IygDLHwHPFsntVCCS+A/ecNs82BQD9u2i7fsC9AQhbpJsIY5MAiHXOTBwlCHHALOOLQHXKCB2HkNsINdJwAjy4JMg10rAAvLgkyDXHQbHEsIAUjCw8tCJ10zXOTABpOhsEoQHu/Lgk9dKwADy4JPtVeLSAAHAAJFb4OvXLAgUIJFwlgHXLAgcEuJSELHjDyDXShcWFQAQk1vbMeHXTNAAcjDXLAgkji0h8uCS0gDtRNDSAFETuvLQj1RQMJExnAGBAUDXIdcKAPLgjuLIygBYzxbJ7VST8sCN4gCWAfpAAfpE+Cj6RDBYuvLgke1E0IEBQdcY9AUEnX/IygBABIMH9FPy4IuOFAODB/Rb8uCMItcKACFuAbOw8tCQ4shQA88WEvQAye1UwKoHhg==",
     "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "build with V2b's code and data in a state init whose fixed_prefix_length is 9: from global version 10 TON deploys no account whose fixed prefix length is above ConfigParam 43's max_acc_fixed_prefix_length, 8 in the mainnet configuration @ton/sandbox 0.45.0 ships (ton-blockchain/ton crypto/block/transaction.cpp, prepare_compute_phase); built with @ton/core 0.63.1",
+    "stateInit": "te6cckEBAwEANwACA6WgAQIACN6tvu8AUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gOlOwDA==",
+    "expect": "x402/option-malformed"
    }
   ]
  },
