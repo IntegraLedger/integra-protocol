@@ -858,12 +858,12 @@
     "expect": "x402/option-malformed"
    },
    {
-    "case": "build with V2b's code and data and a libraries dictionary (one private library, the code cell keyed by its hash) whose leaf cell holds one more bit after its SimpleLib: TON reads an inbound message's state init as exactly one StateInitWithLibs, each cell read to its end (ton-blockchain/ton crypto/block/transaction.cpp, unpack_input_msg; crypto/tl/tlblib.cpp, validate_ref_internal); built with pytoniq-core 0.2.0",
+    "case": "build with V2b's code and data and a libraries dictionary (one private library, the code cell keyed by its hash) whose leaf cell holds one more bit after its SimpleLib: a state init that holds libraries, from which TON deploys no account from global version 15 (ton-blockchain/ton crypto/block/transaction.cpp, unpack_msg_state), whatever the dictionary holds; TON's validation of a message's state init also refuses this one, each cell read to its end (unpack_input_msg; crypto/tl/tlblib.cpp, validate_ref_internal); built with pytoniq-core 0.2.0",
     "stateInit": "te6cckEBBAEAXAADATwDAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAUOgBOEg36Ljc4h+b0amCzTn94BcCtAxHYYDDV8I2V36E3GMAwAI3q2+70YiRrU=",
     "expect": "x402/option-malformed"
    },
    {
-    "case": "build with V2b's code and data and a libraries dictionary of 10 levels of forks that each reference one child cell twice: 1,024 entries in 11 cells, whose paths reach 2,047 dictionary cells. TON validates a message's state init reading at most 1,024 cells, the state init's first and each dictionary cell each time a path reaches it (ton-blockchain/ton crypto/tl/tlblib.hpp, default_validate_max_cells; crypto/tl/tlblib.cpp, validate_ref_internal), and its action phase refuses to send a message carrying this one; built with pytoniq-core 0.2.0",
+    "case": "build with V2b's code and data and a libraries dictionary of 10 levels of forks that each reference one child cell twice (1,024 entries in 11 cells, whose paths reach 2,047 dictionary cells): a state init that holds libraries, from which TON deploys no account from global version 15 (ton-blockchain/ton crypto/block/transaction.cpp, unpack_msg_state), whatever the dictionary holds; TON's validation of a message's state init, which reads at most 1,024 cells, the state init's first and each dictionary cell each time a path reaches it, also refuses this one (crypto/tl/tlblib.hpp, default_validate_max_cells; crypto/tl/tlblib.cpp, validate_ref_internal), and its action phase refuses to send a message carrying it; built with pytoniq-core 0.2.0",
     "stateInit": "te6cckEBDgEAbgADATwNAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAgPPaAMDAgGCBAQCAYIFBQIBhAYGAgGEBwcCAYQICAIBhAkJAgGICgoCAYgLCwIBkAwMAQGQDQAI3q2+7zvLX0g=",
     "expect": "x402/option-malformed"
    },
