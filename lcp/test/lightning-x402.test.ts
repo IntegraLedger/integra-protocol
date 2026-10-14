@@ -18,6 +18,7 @@ import {
   type LnPaymentPayload,
   type LnUnsigned,
 } from "../src/lightning.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const V = load("x402-exact-lnbtc.json");
@@ -159,7 +160,7 @@ describe("x402/exact/lnbtc", () => {
   });
 
   describe("refusal codes left to the implementation", () => {
-    for (const row of V.refusals.rows) {
+    for (const row of rowsOf(V.refusals.rows, "x402-exact-lnbtc.json refusals.rows")) {
       it(row.case, async () => {
         const option = set(O, row.optionSet ?? {}) as PaymentRequirements;
         if (row.fn === "advertise") {
@@ -237,14 +238,14 @@ describe("x402/exact/lnbtc/invoice-named", () => {
 
   it("atrNamesInvoice: the named invoice is read only from the one x402 member that follows atrVersion and id", () => {
     const invoices: Record<string, string> = { N: N.L6.invoice, N2: N.plant2.invoice };
-    const rows = N.atrNamesInvoice.rows as { case: string; atrHex: string; members: string[] | null; expect: Record<string, boolean> }[];
+    const rows = rowsOf(N.atrNamesInvoice.rows, "x402-exact-lnbtc-invoice-named.json atrNamesInvoice.rows") as { case: string; atrHex: string; members: string[] | null; expect: Record<string, boolean> }[];
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
       const bytes = Uint8Array.from(Buffer.from(r.atrHex, "hex"));
       const m = r.members;
       const layout = m !== null && m[0] === "atrVersion" && m[1] === "id" && m[2] === "x402" && new Set(m).size === m.length;
-      if (!layout) expect([r.case, Object.values(r.expect).some((v) => v)]).toEqual([r.case, false]);
-      for (const [name, expected] of Object.entries(r.expect)) {
+      if (!layout) expect([r.case, rowsOf(Object.values(r.expect), "each row's expect").some((v) => v)]).toEqual([r.case, false]);
+      for (const [name, expected] of rowsOf(Object.entries(r.expect), "each row's expect, by invoice name")) {
         expect([r.case, name, atrNamesInvoice(bytes, invoices[name]!)]).toEqual([r.case, name, expected]);
       }
     }

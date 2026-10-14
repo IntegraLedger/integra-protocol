@@ -36,6 +36,7 @@ import {
   type PaymentRequirements,
   type Unsigned,
 } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 // SHA-256("abc"), FIPS 180-2.
 const H = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" as const;
@@ -386,7 +387,7 @@ describe("the identity digest and the reference", () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
     const untimed = structuredClone(p);
     delete (untimed.accepted as Partial<PaymentRequirements>).maxTimeoutSeconds;
-    const timeouts = [0, 1.5].map((t) => ({ ...p.accepted, maxTimeoutSeconds: t })).concat(untimed.accepted);
+    const timeouts = rowsOf([0, 1.5].map((t) => ({ ...p.accepted, maxTimeoutSeconds: t })).concat(untimed.accepted), "the accepted options with maxTimeoutSeconds 0, 1.5 and none", { exact: 3 });
     for (const accepted of timeouts) expect(await exactEip3009.reference({ ...p, accepted })).toEqual(keysOfV2);
   });
   it("authorizer gives the authorization's from, lowercase, and refuses what bound refuses", async () => {

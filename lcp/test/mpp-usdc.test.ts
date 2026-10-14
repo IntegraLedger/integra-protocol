@@ -29,6 +29,7 @@ import {
   type MppCredential,
 } from "../src/mpp.js";
 import { b64u, fromB64u, load, withBigints } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const EVM = load("mpp-charge-usdc-evm.json");
 const SOL = load("mpp-charge-usdc-solana.json");
@@ -218,7 +219,7 @@ describe("mpp/charge/usdc/solana", () => {
     expect(await chargeUsdcSolana.reference(cred)).toEqual(SOL.V2.expectReference);
   });
 
-  it.each(SOL.refusals.rows as { case: string; externalId?: string; extra?: object; type?: string; dropNetwork?: boolean; expect: unknown }[])(
+  it.each(rowsOf(SOL.refusals.rows as { case: string; externalId?: string; extra?: object; type?: string; dropNetwork?: boolean; expect: unknown }[], "mpp-charge-usdc-solana.json refusals.rows"))(
     "$case",
     (row) => {
       const md = { ...S.request.methodDetails, ...(row.extra ?? {}), ...(row.type !== undefined ? { type: row.type } : {}) };
@@ -229,7 +230,7 @@ describe("mpp/charge/usdc/solana", () => {
     },
   );
 
-  it.each(SOL.refusals.credentials.rows as { case: string; payload: object; expect: unknown }[])(
+  it.each(rowsOf(SOL.refusals.credentials.rows as { case: string; payload: object; expect: unknown }[], "mpp-charge-usdc-solana.json refusals.credentials.rows"))(
     "pull only: $case",
     async (row) => {
       const cred = { challenge: placedWith(chargeUsdcSolana, c), payload: row.payload };

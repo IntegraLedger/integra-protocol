@@ -86,6 +86,7 @@ import {
   uptoPermit2,
 } from "../src/x402.js";
 import { xrplOpenStatus, xrplStatus } from "../src/xrpl.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const H: AtrHash = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
@@ -194,11 +195,11 @@ const NOT_LOGS: readonly [string, (l: Record<string, unknown>) => unknown][] = [
 /** `logs` with each shape in place of its first log, in place of the log at `read`, and after its last log. */
 function misshapen(logs: Record<string, unknown>[], read: number): [string, unknown[]][] {
   expect(read).toBeGreaterThan(0);
-  return NOT_LOGS.flatMap(([shape, make]): [string, unknown[]][] => [
+  return rowsOf(NOT_LOGS.flatMap(([shape, make]): [string, unknown[]][] => [
     [`${shape} first`, logs.map((l, i) => (i === 0 ? make(l) : l))],
     [`${shape} as the log read`, logs.map((l, i) => (i === read ? make(l) : l))],
     [`${shape} last`, [...logs, make(logs[0]!)]],
-  ]);
+  ]), "NOT_LOGS, each shape first, as the log read and last");
 }
 /** `receipt` with its status, and then its block number, left as the node's hex string. */
 const notReceipts = (receipt: Record<string, unknown>): [string, unknown][] => [
@@ -278,7 +279,10 @@ describe("evm", () => {
     const hole: unknown[] = [fields[0]];
     hole.length = 2;
     const cases: [string, unknown][] = [
-      ...NOT_OBJECTS.filter((w) => w !== undefined).map((w): [string, unknown] => [`a witness of ${String(w)}`, w]),
+      ...rowsOf(NOT_OBJECTS, "NOT_OBJECTS", {
+        keep: ["the values given as a witness that is not an object", (w) => w !== undefined],
+        leave: ["undefined, which leaves the witness out: permit2TypedData gives the PermitTransferFrom of a permit without one", (w) => w === undefined],
+      }).map((w): [string, unknown] => [`a witness of ${String(w)}`, w]),
       ["a witness that is an array", [witness]],
       ["a type that is an array", { ...witness, type: ["Witness"] }],
       ["a type that is an object with toString", { ...witness, type: { toString: () => "Witness" } }],
@@ -314,7 +318,7 @@ describe("evm", () => {
       const quiet = quietReader(ref.network);
       expect(await read(ref, quiet as never), name).toEqual({ state: "pending", why: "not-found" });
       expect(quiet.reads(), name).toBe(1);
-      for (const member of members) {
+      for (const member of rowsOf(members, `${name}: the members it reads`)) {
         const bads = member === "transaction" || member === "h" ? [null, undefined, 1, H.slice(0, 64), `${H}00`] : [null, "0x1234", 1, {}];
         for (const bad of bads) {
           const reader = quietReader(ref.network);
@@ -488,8 +492,8 @@ describe("hedera", () => {
     { ...id, nanos: 1_000_000_000 },
     { ...id, nanos: 0.5 },
   ];
-  throwsTypeError("txIdText", badIds.map((b) => () => txIdText(b as never)));
-  throwsTypeError("txIdMirror", badIds.map((b) => () => txIdMirror(b as never)));
+  throwsTypeError("txIdText", rowsOf(badIds.map((b) => () => txIdText(b as never)), "badIds, each a call of txIdText"));
+  throwsTypeError("txIdMirror", rowsOf(badIds.map((b) => () => txIdMirror(b as never)), "badIds, each a call of txIdMirror"));
 
   const V = load("mpp-session-hedera-solana-xrpl.json");
   const signer = "0x0000000000000000000000000000000000000000" as const;
@@ -555,7 +559,7 @@ describe("starknet", () => {
     expect(chainIdFelt("starknet:SN_SEPOLIA")).toBe("0x534e5f5345504f4c4941");
   });
   const notNetworks = [...NOT_OBJECTS, "starknet:XYZ", "eip155:1", "starknet:sn_main"];
-  throwsTypeError("chainIdFelt", notNetworks.map((n) => () => chainIdFelt(n as never)));
+  throwsTypeError("chainIdFelt", rowsOf(notNetworks.map((n) => () => chainIdFelt(n as never)), "notNetworks, each a call of chainIdFelt"));
 });
 
 describe("stellar", () => {
@@ -789,7 +793,7 @@ describe("mpp", () => {
       closes: { escrow: f.escrow, channel },
       accessKey: { keyId: f.payer, token: f.usdc, to: E.ES7.expectFromTo, account: f.payer },
     };
-    for (const [member, value] of Object.entries(written)) {
+    for (const [member, value] of rowsOf(Object.entries(written), "written: opened, closes and accessKey", { exact: 3 })) {
       const quiet = quietReader(ref.network);
       const control = await sessionStatus({ ...ref, [member]: value } as never, quiet as never);
       expect(control, member).toEqual({ state: "pending", why: "not-found" });
@@ -924,8 +928,10 @@ describe("mpp", () => {
       ...[5, null, b.address, `${b.value}00`].map((value) => ({ ...b, value })),
     ];
     const malformed: [string, unknown][] = [
-      ...bindingLogs
-        .filter((bl) => bl !== undefined)
+      ...rowsOf(bindingLogs, "bindingLogs", {
+        keep: ["the binding logs a ref carries", (bl) => bl !== undefined],
+        leave: ["undefined, a ref with no binding log, which recover reads: it is not a malformed ref", (bl) => bl === undefined],
+      })
         .map((bl): [string, unknown] => [`bindingLog ${JSON.stringify(bl)}`, { ...ref, bindingLog: bl }]),
       ...[null, 1, H.slice(0, 64), `${H}00`].map((t): [string, unknown] => [`transaction ${String(t)}`, { ...ref, transaction: t }]),
       ["no transaction", without("transaction")(ref)],
@@ -976,12 +982,12 @@ describe("sui", () => {
 describe("every pairing", () => {
   it("every function member, given no argument or one to three that are not what it takes, answers with a value", async () => {
     let calls = 0;
-    for (const b of BINDINGS) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, every pairing")) {
       const channel = (b as { channel?: object }).channel ?? {};
-      const members: [string, unknown, object][] = [
+      const members: [string, unknown, object][] = rowsOf([
         ...Object.entries(b).map(([k, f]): [string, unknown, object] => [k, f, b]),
         ...Object.entries(channel).map(([k, f]): [string, unknown, object] => [`channel.${k}`, f, channel]),
-      ];
+      ], `${b.id}: its members and its channel's`);
       for (const [member, f, self] of members) {
         if (typeof f !== "function") continue;
         for (const bad of [...MALFORMED, []]) {
@@ -1003,7 +1009,7 @@ describe("every pairing", () => {
   });
 
   it("every unplaced hands back a value that is not an option unchanged", () => {
-    for (const b of BINDINGS) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, every pairing")) {
       for (const bad of MALFORMED) expect((b.unplaced as (o: unknown) => unknown)(bad), `${b.id} ${String(bad)}`).toBe(bad);
     }
   });
@@ -1016,7 +1022,7 @@ describe("every pairing", () => {
     .filter((r) => r.name === "B6");
   it("every read, given its pairing's own credential or ref and a reader that is not an object, answers with a value", async () => {
     let calls = 0;
-    for (const b of BINDINGS) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, every pairing")) {
       const row = b6.find((r) => r.pairing === b.id);
       if (row === undefined) continue;
       const presented = row.input.presented as { challenge: unknown; payload: object };
@@ -1051,7 +1057,14 @@ describe("every pairing", () => {
 
   // These x402 pairings' builds read the choice's members before the document: their own codes answer first.
   const ownCodes = /(algorand|hedera|near|polkadot|starknet|tron|tvm)/;
-  const x402Builds = BINDINGS.filter((b) => b.id.startsWith("x402/") && !ownCodes.test(b.id));
+  const x402Builds = rowsOf(BINDINGS, "BINDINGS", {
+    min: 16,
+    keep: ["the x402 pairings whose build reads the choice object first", (b) => b.id.startsWith("x402/") && !ownCodes.test(b.id)],
+    leave: [
+      "the pairings outside x402, and the x402 pairings whose builds answer their own codes first",
+      (b) => !b.id.startsWith("x402/") || ownCodes.test(b.id),
+    ],
+  });
   it("every x402 build that reads a choice object refuses one that is not an object as x402/not-v2", async () => {
     expect(x402Builds.length).toBeGreaterThan(15);
     for (const b of x402Builds) {

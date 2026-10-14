@@ -6,6 +6,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 import {
   TRANSFER_TOPIC,
   decodeTronTx,
@@ -141,7 +142,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     const ref = await exactTronMemo.reference(p);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    for (const row of V.V3.refusals) {
+    for (const row of rowsOf(V.V3.refusals, "x402-exact-tron-lcp-trc20-memo.json V3.refusals")) {
       expect([row.case, await exactTronMemo.bound(payment(row.transaction))]).toEqual([
         row.case,
         { refused: true, code: row.expect },
@@ -150,11 +151,11 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
   });
 
   it("V4: status and recover on reader fixtures", async () => {
-    for (const row of V.V4.status) {
+    for (const row of rowsOf(V.V4.status, "x402-exact-tron-lcp-trc20-memo.json V4.status")) {
       const got = await exactTronMemo.status(REF, readerFor(row));
       expect([row.case, plain(got)]).toEqual([row.case, row.expect]);
     }
-    for (const row of V.V4.recover) {
+    for (const row of rowsOf(V.V4.recover, "x402-exact-tron-lcp-trc20-memo.json V4.recover")) {
       const got = await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
@@ -189,7 +190,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
   });
 
   it("refusal codes left to the implementation", async () => {
-    for (const row of V.agreedRefusals.rows) {
+    for (const row of rowsOf(V.agreedRefusals.rows, "x402-exact-tron-lcp-trc20-memo.json agreedRefusals.rows")) {
       if (row.option !== undefined) {
         const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [row.option] };
         expect([row.case, exactTronMemo.advertise(doc, H, V.fixed.link, row.option)]).toEqual([
@@ -205,7 +206,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
       } else if (row.payer !== undefined) {
         expect(await exactTronMemo.build({ ...choice(), payer: row.payer }, H)).toEqual({ refused: true, code: row.expect });
       } else if (row.feeLimit !== undefined) {
-        for (const f of row.feeLimit) {
+        for (const f of rowsOf(row.feeLimit, "the feeLimit row's fee limits")) {
           expect(await exactTronMemo.build({ ...choice(), feeLimit: BigInt(f) }, H)).toEqual({
             refused: true,
             code: row.expect,

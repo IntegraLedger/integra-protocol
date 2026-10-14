@@ -11,6 +11,7 @@
 // timepoint; a NEAR or TON id the package reads as a non-empty string.
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
+import { rowsOf } from "./rows.js";
 
 type Recover = (ref: unknown, reader: unknown) => Promise<unknown>;
 
@@ -79,7 +80,7 @@ describe("recover, given a ref whose transaction id is not in its rail's form", 
   for (const [id, ref, member, ids, code] of ROWS) {
     it(`${id}: ${code}, with nothing read`, async () => {
       const recover = (BINDINGS.find((b) => b.id === id) as unknown as { recover: Recover }).recover;
-      for (const value of ids) {
+      for (const value of rowsOf(ids, `${id}: the malformed ids`)) {
         const { reader, calls } = recording(ref["network"] as string);
         expect([value, await recover({ ...ref, [member]: value }, reader)]).toEqual([value, { refused: true, code }]);
         expect([value, calls]).toEqual([value, []]);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BINDINGS, type Binding } from "../src/index.js";
+import { rowsOf } from "./rows.js";
 
 // Every pairing's `bound` and `reference` take `unknown`: a caller holding any Binding calls them with whatever the
 // buyer presented, without a cast. These lines compile only while that holds.
@@ -29,7 +30,7 @@ describe("what a pairing is presented", () => {
     expect([everyBound, everyReference]).toEqual([true, true]);
   });
 
-  for (const b of BINDINGS) {
+  for (const b of rowsOf(BINDINGS, "BINDINGS, every pairing")) {
     it(`${b.id}: bound and reference refuse what is not a payment, never throwing`, async () => {
       for (const p of JUNK) {
         const h = await b.bound(p);

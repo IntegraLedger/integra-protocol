@@ -18,6 +18,7 @@ import {
   type MirrorEntry,
 } from "../src/hedera.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const V = load("x402-exact-hedera.json");
@@ -95,7 +96,7 @@ describe("x402-exact-hedera.json", () => {
   });
 
   it("V2 presented under an option whose amount or timeout bound does not read: H and V2's reference", async () => {
-    for (const row of V.V2.presentedOptions) {
+    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-hedera.json V2.presentedOptions")) {
       const p = presentedOf(V.V2.expectTransactionBase64, row.accepted);
       expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
       expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
@@ -158,7 +159,7 @@ describe("x402-exact-hedera.json", () => {
   });
 
   it("V5: status for each reader answer, and recover", async () => {
-    for (const row of V.V5.rows) {
+    for (const row of rowsOf(V.V5.rows, "x402-exact-hedera.json V5.rows")) {
       expect(await hederaStatus(V.V5.reference, readerOf(row.entries))).toEqual(row.expect);
     }
     expect(await exactHedera.recover(V.V5.reference, readerOf(V.V5.recover.entries))).toBe(V.V5.recover.expect);
@@ -188,7 +189,7 @@ describe("x402-exact-hedera.json", () => {
   });
 
   it("the refusal rows", async () => {
-    for (const row of V.refusals) {
+    for (const row of rowsOf(V.refusals, "x402-exact-hedera.json refusals")) {
       if (row.transactionBase64 !== undefined) {
         expect(await exactHedera.bound(presentedOf(row.transactionBase64))).toEqual({ refused: true, code: row.expect });
       } else {
@@ -203,9 +204,14 @@ describe("x402-exact-hedera.json", () => {
   // executor pairing, and any other value, null included, is hedera/option-malformed: at advertise (the row above) and
   // at each pairing's build. read skips such an option, as any other that fails the check.
   it("the null assetTransferMethod rows: each pairing's build refuses with the row's code", async () => {
-    const rows = (V.refusals as { case: string; option?: PaymentRequirements; expect: string; expectRead?: string }[]).filter(
-      (r) => r.option !== undefined && r.option.extra?.["assetTransferMethod"] === null,
-    );
+    const rows = rowsOf(V.refusals as { case: string; option?: PaymentRequirements; expect: string; expectRead?: string }[], "x402-exact-hedera.json refusals", {
+      exact: 2,
+      keep: ["the option rows whose assetTransferMethod is null", (r) => r.option !== undefined && r.option.extra?.["assetTransferMethod"] === null],
+      leave: [
+        "the transaction rows and the option rows with another assetTransferMethod, which the refusal rows test runs at bound or advertise",
+        (r) => r.option === undefined || r.option.extra?.["assetTransferMethod"] !== null,
+      ],
+    });
     expect(rows).toHaveLength(2);
     const [exact, executor] = rows as { case: string; option: PaymentRequirements; expect: string }[];
     const exactBuilt = await exactHedera.build(
@@ -274,7 +280,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
   };
 
   it("pairingOf names the pairing of each option it serves; advertise refuses the others", () => {
-    for (const row of X.pairingOf as { option: PaymentRequirements; expect: string }[]) {
+    for (const row of rowsOf(X.pairingOf as { option: PaymentRequirements; expect: string }[], "x402-exact-hedera-transfer-executor.json pairingOf")) {
       if (row.expect.startsWith("x402/")) {
         expect(pairingOf(row.option)).toBe(row.expect);
         continue;
@@ -307,7 +313,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     if ("refused" in payment) throw new Error(payment.code);
     expect(payment.payload).toEqual(X.fixed.payload);
     expect(payment.accepted).toEqual(OX);
-    for (const row of X.complete) {
+    for (const row of rowsOf(X.complete, "x402-exact-hedera-transfer-executor.json complete")) {
       const { expect: code, source: _, ...change } = row;
       expect(b.complete({ ...X.fixed.payload, ...change })).toEqual({ refused: true, code });
     }
@@ -364,7 +370,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     expect(await hederaIdDigest(X.fixed.payload.payer)).toBe(X.reference.expectIdDigest);
   });
 
-  for (const [i, row] of (X.status.rows as { case?: string; reference?: object; entries: MirrorEntry[] | null; expect: unknown }[]).entries()) {
+  for (const [i, row] of rowsOf(X.status.rows as { case?: string; reference?: object; entries: MirrorEntry[] | null; expect: unknown }[], "x402-exact-hedera-transfer-executor.json status.rows").entries()) {
     it(`executorStatus: ${row.case ?? `row ${i}`}`, async () => {
       const ref = { ...X.status.reference, ...(row.reference ?? {}) };
       expect(await executorStatus(ref, readerOf(row.entries))).toEqual(row.expect);

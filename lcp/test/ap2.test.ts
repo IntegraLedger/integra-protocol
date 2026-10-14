@@ -14,6 +14,7 @@ import {
   type Payload,
 } from "../src/ap2.js";
 import { disclosureDigest } from "../src/sd-jwt.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/ap2-checkout-mandate.json", import.meta.url), "utf8"));
 const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
@@ -172,7 +173,7 @@ describe("ap2-checkout-mandate.json", () => {
   });
 
   describe("implementation rows", () => {
-    for (const row of V.implementation) {
+    for (const row of rowsOf(V.implementation, "ap2-checkout-mandate.json implementation")) {
       it(`${row.name}: ${row.case}`, async () => {
         const i = row.input;
         switch (row.fn) {

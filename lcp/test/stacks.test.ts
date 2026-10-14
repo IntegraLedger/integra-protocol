@@ -15,6 +15,7 @@ import {
   type StacksRef,
 } from "../src/stacks.js";
 import { b64u, load } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const V = load("mpp-charge-usdc-stacks.json");
 const F = V.fixed;
@@ -338,14 +339,14 @@ const ref: StacksRef & { transaction: `0x${string}`; h: `0x${string}` } = {
 };
 
 describe("usdc/stacks status and recover (M4b)", () => {
-  it.each(V.M4b.rows as Row[])("$case", async (row) => {
+  it.each(rowsOf(V.M4b.rows as Row[], "mpp-charge-usdc-stacks.json M4b.rows"))("$case", async (row) => {
     const reader = readerFor(row);
     expect(withBigints(await stacksStatus(ref, reader))).toEqual(row.expect);
     expect(reader.calls).toBeLessThanOrEqual(4);
     if (reader.calls > 0) expect(reader.order[0]).toBe("confirmedNonce");
   });
 
-  it.each(V.M4b.recover as Row[])("recover: $case", async (row) => {
+  it.each(rowsOf(V.M4b.recover as Row[], "mpp-charge-usdc-stacks.json M4b.recover"))("recover: $case", async (row) => {
     const reader = readerFor(row);
     expect(await stacksRecover({ network: ref.network, contract: ref.contract, transaction: ref.transaction }, reader)).toEqual(
       row.expect,
@@ -561,7 +562,7 @@ function withBigints(v: unknown): unknown {
 // The agreedRefusals rows: M4's signed transaction with its payload replaced. The decode and re-serialisation are
 // @stacks/transactions 7.6.0's, the decoder P2 names; the rows give its outcome for payload types 7 and 8.
 describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
-  const rows = V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[];
+  const rows = rowsOf(V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", { exact: 2 });
   it("each wire is M4's up to its payload", () => {
     const m4 = S.deserializeTransaction(Buffer.from(V.M4.wireHex.slice(2), "hex"));
     const prefix = V.M4.wireHex.slice(0, V.M4.wireHex.length - 2 * S.serializePayloadBytes(m4.payload).length);

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS, canonicalJson, type Json } from "../src/index.js";
 import { exactEip3009, exactErc7710, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}.json`, import.meta.url), "utf8"));
 const at = (v: unknown, path: string): unknown =>
@@ -54,7 +55,7 @@ describe("MX: a challenge mixing a public-proof pairing and one without", () => 
   });
 
   it("another agreement URL, or none, from the second pairing is a conflict", () => {
-    for (const c of MX.conflicts as { case: string; agreementUrl: string | null; expect: string }[]) {
+    for (const c of rowsOf(MX.conflicts as { case: string; agreementUrl: string | null; expect: string }[], "x402-exact-eip155-eip3009.json MX.conflicts")) {
       expect([c.case, place(offers, agreementUrl, c.agreementUrl)]).toEqual([c.case, refused(c.expect)]);
     }
   });

@@ -10,6 +10,7 @@ import {
   WELL_KNOWN_PATH,
   type LegalContextDocument,
 } from "../src/discovery.js";
+import { rowsOf } from "./rows.js";
 
 interface EmitRow {
   name: string;
@@ -60,7 +61,7 @@ describe("discovery · the constants", () => {
 });
 
 describe("discovery · emit, the vectors", () => {
-  for (const r of V.emit) {
+  for (const r of rowsOf(V.emit, "discovery.json emit")) {
     it(r.name, async () => {
       const out = emit(inputOf(r));
       if (r.refused !== undefined) {
@@ -82,7 +83,7 @@ describe("discovery · emit, the vectors", () => {
 });
 
 describe("discovery · parse, the vectors", () => {
-  for (const r of V.parse) {
+  for (const r of rowsOf(V.parse, "discovery.json parse")) {
     it(r.name, () => {
       const out = parse(bytesOf(r));
       if (r.refused !== undefined) {
@@ -98,7 +99,10 @@ describe("discovery · parse, the vectors", () => {
 });
 
 describe("discovery · what emit writes, parse reads back", () => {
-  for (const r of V.emit.filter((x) => x.refused === undefined)) {
+  for (const r of rowsOf(V.emit, "discovery.json emit", {
+    keep: ["the rows emit writes", (x) => x.refused === undefined],
+    leave: ["the rows emit refuses, which carry refused and which the emit test above runs", (x) => x.refused !== undefined],
+  })) {
     it(r.name, () => {
       const b = emit(inputOf(r)) as Uint8Array;
       const back = parse(b) as { document: LegalContextDocument; ignored: string[] };

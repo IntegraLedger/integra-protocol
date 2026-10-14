@@ -3,6 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS, hash, hashEquals, type AtrHash } from "../src/index.js";
+import { rowsOf } from "./rows.js";
 
 interface Row {
   name: string;
@@ -28,13 +29,24 @@ interface Pairing {
 }
 
 const dir = new URL("../vectors/", import.meta.url);
-const groups: { file: string; group: Group }[] = readdirSync(dir)
-  .filter((n) => n.endsWith(".json"))
-  .sort()
-  .map((file) => ({ file, data: JSON.parse(readFileSync(new URL(file, dir), "utf8")) as { buyer?: Group } }))
-  .filter((f) => f.data.buyer !== undefined)
-  .map((f) => ({ file: f.file, group: f.data.buyer! }));
-const rows = groups.flatMap(({ file, group }) => group.rows.map((row) => ({ file, row })));
+const groups: { file: string; group: Group }[] = rowsOf(
+  rowsOf(readdirSync(dir).filter((n) => n.endsWith(".json")), "vectors/, the .json files", { exact: readdirSync(dir).length })
+    .sort()
+    .map((file) => ({ file, data: JSON.parse(readFileSync(new URL(file, dir), "utf8")) as { buyer?: Group } })),
+  "vectors/, the .json files",
+  {
+    keep: ["the files with buyer rows", (f) => f.data.buyer !== undefined],
+    leave: [
+      "the files with no buyer member: buyer.json, whose rows vectors.test.ts and buyer-vectors.test.ts run, and the files that " +
+        "hold no one pairing's vectors (core, discovery, the MPP challenge, A2A, SD-JWT, the decoder caps)",
+      (f) => f.data.buyer === undefined,
+    ],
+  },
+).map((f) => ({ file: f.file, group: f.data.buyer! }));
+const rows = rowsOf(
+  groups.flatMap(({ file, group }) => group.rows.map((row) => ({ file, row }))),
+  "the buyer rows of every vector file",
+);
 const fromHex = (h: string): Uint8Array => Uint8Array.from(Buffer.from(h, "hex"));
 const pairing = (id: string): Pairing => {
   const b = BINDINGS.find((x) => x.id === id);
@@ -52,7 +64,7 @@ async function check(bytes: Uint8Array, presented: unknown, p: Pairing): Promise
 describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
   it("every pairing has one B2 row, and one B6 row unless its file says why it holds no signed payment", () => {
     for (const { row } of rows) expect(["B2", "B6"]).toContain(row.name);
-    for (const b of BINDINGS) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the pairings")) {
       const own = rows.filter(({ row }) => row.pairing === b.id);
       const b2 = own.filter(({ row }) => row.name === "B2");
       const b6 = own.filter(({ row }) => row.name === "B6");
@@ -88,7 +100,11 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
     ]);
   });
 
-  for (const { file, row } of rows.filter(({ row }) => row.name === "B2")) {
+  for (const { file, row } of rowsOf(rows, "the buyer rows of every vector file", {
+    exact: BINDINGS.length,
+    keep: ["the B2 rows, one per pairing", ({ row }) => row.name === "B2"],
+    leave: ["the B6 rows, which the B6 tests below run", ({ row }) => row.name === "B6"],
+  })) {
     it(`${file} B2 ${row.pairing}: the document advertises H, and the served bytes hash to another value`, async () => {
       const read = pairing(row.pairing).read(structuredClone(row.input.doc));
       if ("refused" in read) throw new Error(read.code);
@@ -105,7 +121,11 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
     });
   }
 
-  for (const { file, row } of rows.filter(({ row }) => row.name === "B6")) {
+  for (const { file, row } of rowsOf(rows, "the buyer rows of every vector file", {
+    exact: BINDINGS.length - groups.flatMap(({ group }) => Object.keys(group.noSignedPayment ?? {})).length,
+    keep: ["the B6 rows, one per pairing that has a signed payment", ({ row }) => row.name === "B6"],
+    leave: ["the B2 rows, which the B2 tests above run", ({ row }) => row.name === "B2"],
+  })) {
     it(`${file} B6 ${row.pairing}: the payment is bound to the ATR's hash and not to the planted ATR's`, async () => {
       const p = pairing(row.pairing);
       const got = [];
@@ -123,7 +143,14 @@ describe("the lnbtc B2 rows carry the buyer's own request", () => {
   const DESCRIPTION =
     '{"bodyHash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","domain":"x402:exact:lnbtc:bolt11:http:1",' +
     '"headers":[],"method":"GET","url":"https://api.example.com/article/A"}';
-  const lnbtc = rows.filter(({ row }) => row.name === "B2" && row.pairing.startsWith("x402/exact/lnbtc"));
+  const lnbtc = rowsOf(rows, "the buyer rows of every vector file", {
+    exact: 2,
+    keep: ["the B2 rows of the two lnbtc pairings", ({ row }) => row.name === "B2" && row.pairing.startsWith("x402/exact/lnbtc")],
+    leave: [
+      "the B2 rows of the other pairings and every B6 row, which the B2 and B6 tests above run",
+      ({ row }) => row.name !== "B2" || !row.pairing.startsWith("x402/exact/lnbtc"),
+    ],
+  });
 
   it("both lnbtc pairings have a B2 row", () => {
     expect(lnbtc.map(({ row }) => row.pairing).sort()).toEqual(["x402/exact/lnbtc", "x402/exact/lnbtc/invoice-named"]);

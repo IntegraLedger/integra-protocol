@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Json } from "../src/core.js";
 import { refusal } from "../src/refusal.js";
 import { disclosureDigest, jwsSegments, readSdJwt, type SdJwtRefusals } from "../src/sd-jwt.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/sd-jwt.json", import.meta.url), "utf8"));
 const REFUSALS: SdJwtRefusals = {
@@ -24,7 +25,7 @@ const vcts = (dp: Json | undefined) =>
 
 describe("sd-jwt.json", () => {
   it("C4: RFC 9901's published disclosure digests", async () => {
-    for (const row of V.C4) expect(await disclosureDigest(row.disclosure)).toBe(row.expectDigest);
+    for (const row of rowsOf(V.C4, "sd-jwt.json C4")) expect(await disclosureDigest(row.disclosure)).toBe(row.expectDigest);
   });
 
   it("C6: L2i resolves both delegate_payload entries", async () => {
@@ -43,7 +44,7 @@ describe("sd-jwt.json", () => {
   });
 
   it("C7: L2a with an undisclosed mandate, L3b and L1", async () => {
-    for (const row of V.C7) {
+    for (const row of rowsOf(V.C7, "sd-jwt.json C7")) {
       const r = await read(row.presentation);
       expect(vcts(r.resolved["delegate_payload"])).toEqual(row.expectDelegatePayloadVcts);
       if (row.expectCheckoutMandate !== undefined) {
@@ -56,7 +57,7 @@ describe("sd-jwt.json", () => {
   // or none, listed twice, in one _sd or in two, is the reader's malformed; listed once it is ignored, and C7's L2a
   // lists each kind once in _sd and once as {"...": digest}.
   it("C8: a digest in _sd that names no three-element disclosure is ignored once, and a second _sd listing is malformed", async () => {
-    for (const row of V.C8.rows) {
+    for (const row of rowsOf(V.C8.rows, "sd-jwt.json C8.rows")) {
       const r = await readSdJwt(row.presentation, REFUSALS);
       if (row.expect !== undefined) expect(r, row.case).toEqual({ refused: true, code: row.expect });
       else expect((await read(row.presentation)).resolved, row.case).toEqual(row.expectResolved);
@@ -93,7 +94,11 @@ describe("sd-jwt.json", () => {
   // same bytes in a form that is not canonical. The reader takes the canonical form only, so each C9 row is malformed,
   // and the header row's control, the same presentation with that header in canonical form, resolves as C8's does.
   it("C9: a segment or disclosure with a pad bit set is malformed", async () => {
-    const rows = V.C9.rows as { case: string; presentation: string; expect: string; control?: string }[];
+    const rows = rowsOf(
+      V.C9.rows as { case: string; presentation: string; expect: string; control?: string }[],
+      "sd-jwt.json C9.rows",
+      { exact: 4 },
+    );
     expect(rows.length).toBe(4);
     for (const row of rows) {
       expect(await readSdJwt(row.presentation, REFUSALS), row.case).toEqual({ refused: true, code: row.expect });

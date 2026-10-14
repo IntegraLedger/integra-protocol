@@ -22,6 +22,7 @@ import {
 } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { decodeBlob, XRPL_MAX_DEPTH } from "../src/xrpl.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/decoder-caps.json", import.meta.url), "utf8"));
 type Row = { name: string; case: string; accept: boolean };
@@ -30,7 +31,7 @@ describe("XRPL binary: STObject and STArray nesting", () => {
   it("the cap is the vectors'", () => {
     expect(XRPL_MAX_DEPTH).toBe(V.xrpl.maxDepth);
   });
-  for (const r of V.xrpl.rows as (Row & { blob: string })[]) {
+  for (const r of rowsOf(V.xrpl.rows as (Row & { blob: string })[], "decoder-caps.json xrpl.rows")) {
     it(`${r.name}: ${r.case} → ${r.accept ? "decoded" : "xrpl/blob-malformed"}`, async () => {
       const d = await decodeBlob(r.blob);
       if (r.accept) expect("refused" in d).toBe(false);
@@ -43,14 +44,14 @@ describe("msgpack: array and map nesting, declared lengths, one value", () => {
   it("the cap is the vectors'", () => {
     expect(MSGPACK_MAX_DEPTH).toBe(V.msgpack.maxDepth);
   });
-  for (const r of V.msgpack.rows as (Row & { hex: string })[]) {
+  for (const r of rowsOf(V.msgpack.rows as (Row & { hex: string })[], "decoder-caps.json msgpack.rows")) {
     it(`${r.name}: ${r.case} → ${r.accept}`, () => {
       expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(r.hex, "hex")), MSGPACK_MAX_DEPTH)).toBe(r.accept);
     });
   }
   it("every signed transaction in the Algorand vectors is within the caps", () => {
     const A = readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8");
-    const entries = [...A.matchAll(/"(g[A-Za-z0-9+/]{40,}={0,2})"/g)].map((m) => m[1]!);
+    const entries = rowsOf([...A.matchAll(/"(g[A-Za-z0-9+/]{40,}={0,2})"/g)].map((m) => m[1]!), "x402-exact-algorand.json signed transactions in base64");
     expect(entries.length).toBeGreaterThan(0);
     for (const e of entries) {
       expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")), MSGPACK_MAX_DEPTH)).toBe(true);
@@ -62,7 +63,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
   it("the cap is the vectors'", () => {
     expect(SCVAL_MAX_DEPTH).toBe(V.scval.maxDepth);
   });
-  for (const r of V.scval.rows as (Row & { xdr: string })[]) {
+  for (const r of rowsOf(V.scval.rows as (Row & { xdr: string })[], "decoder-caps.json scval.rows")) {
     it(`${r.name}: ${r.case} → ${r.accept}`, () => {
       expect(scValsWithinCaps(xdr.ScVal.fromXdr(Buffer.from(r.xdr, "base64")).toXdrObject())).toBe(r.accept);
     });
@@ -73,7 +74,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
     const voids: ScValWire = { type: 16, vec: Array.from({ length: 1537 }, (): ScValWire => ({ type: 1 })) };
     expect(scValsWithinCaps(xdr.ScVal.fromXdr(xdr.ScVal.fromXdrObject(voids).toXdr()).toXdrObject())).toBe(true);
   });
-  for (const r of V.scval.envelopes as (Row & { xdr: string; expect?: string })[]) {
+  for (const r of rowsOf(V.scval.envelopes as (Row & { xdr: string; expect?: string })[], "decoder-caps.json scval.envelopes", { exact: 8 })) {
     it(`${r.name}: ${r.case} → ${r.accept ? (r.expect ?? "decoded") : "stellar/tx-malformed"}`, () => {
       const d = decodeStellarTx(r.xdr, "stellar:testnet");
       if (r.accept && r.expect !== undefined) expect(d).toEqual({ refused: true, code: r.expect });
@@ -190,7 +191,14 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
   it("a landed payment whose envelope carries an unused entry nested past the cap settles, and is found", async () => {
     const ref = X.V5.ref as StellarRef & { transaction: string };
     const landed = X.V5.rows[0];
-    const unused = (V.scval.envelopes as (Row & { xdr: string })[]).filter((e) => ["SE3", "SE4", "SE7"].includes(e.name));
+    const unused = rowsOf(V.scval.envelopes as (Row & { xdr: string })[], "decoder-caps.json scval.envelopes", {
+      exact: 3,
+      keep: ["SE3, SE4 and SE7, whose second authorization entry decodeStellarTx never walks", (e) => ["SE3", "SE4", "SE7"].includes(e.name)],
+      leave: [
+        "SE1, SE2, SE5, SE6 and SE8, which change the payer's entry or the operation that decodeStellarTx reads; the envelope tests above run them",
+        (e) => ["SE1", "SE2", "SE5", "SE6", "SE8"].includes(e.name),
+      ],
+    });
     expect(unused.length).toBe(3);
     for (const r of unused) {
       const reader: StellarReader = {

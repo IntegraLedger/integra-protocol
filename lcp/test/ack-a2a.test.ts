@@ -6,6 +6,7 @@ import { digestJson, type AtrHash } from "../src/index.js";
 import * as ack from "../src/ack.js";
 import * as a2a from "../src/a2a.js";
 import { decodeJsonSegment } from "../src/sd-jwt.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const K = load("ack-payment-request.json");
@@ -79,7 +80,7 @@ describe("ack-payment-request.json", () => {
   });
 
   it("K5: delivery only", async () => {
-    for (const x of K.K5.inputs) {
+    for (const x of rowsOf(K.K5.inputs, "ack-payment-request.json K5.inputs")) {
       expect(await pr.build(x, H)).toEqual(K.K5.expect);
       expect(await pr.bound(x)).toEqual(K.K5.expect);
     }
@@ -95,7 +96,7 @@ describe("ack-payment-request.json", () => {
   });
 
   it("refusal codes left to the implementation", async () => {
-    for (const row of K.agreedRefusals.rows) {
+    for (const row of rowsOf(K.agreedRefusals.rows, "ack-payment-request.json agreedRefusals.rows")) {
       expect(await run(row.call, expand(row.args) as unknown[]), row.case).toEqual(row.expect);
     }
   });
@@ -110,7 +111,7 @@ describe("a2a-legal-context.json", () => {
 
   it("A1: extension and activation", () => {
     expect(a2a.agentExtension()).toEqual(A.A1.expectAgentExtension);
-    for (const row of A.A1.requested) {
+    for (const row of rowsOf(A.A1.requested, "a2a-legal-context.json A1.requested")) {
       expect(a2a.requested(row.value ?? undefined), String(row.value)).toBe(row.expect);
     }
   });
@@ -128,7 +129,7 @@ describe("a2a-legal-context.json", () => {
   });
 
   it("results left to the implementation", async () => {
-    for (const row of A.agreedRefusals.rows) {
+    for (const row of rowsOf(A.agreedRefusals.rows, "a2a-legal-context.json agreedRefusals.rows")) {
       expect(await run(row.call, expand(row.args) as unknown[]), row.case).toEqual(row.expect);
     }
   });

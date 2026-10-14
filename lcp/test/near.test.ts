@@ -9,6 +9,7 @@ import { KeyType, PublicKey, SCHEMA } from "near-api-js";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 import {
   exactNear,
   ftTransferArgs,
@@ -123,7 +124,7 @@ describe("x402-exact-near.json", () => {
     const ref = await exactNear.reference(p);
     expect(ref).toEqual(V.V2.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    for (const row of V.V2.refusals) {
+    for (const row of rowsOf(V.V2.refusals, "x402-exact-near.json V2.refusals")) {
       expect([row.case, await exactNear.bound(payment(row.signedDelegateAction))]).toEqual([
         row.case,
         { refused: true, code: row.expect },
@@ -200,7 +201,7 @@ describe("x402-exact-near.json", () => {
   });
 
   it("V2 presented under an option with timeout 0 gives H; build opens a window of one block", async () => {
-    for (const row of V.V2.presentedOptions) {
+    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-near.json V2.presentedOptions")) {
       const p = { ...payment(V.V2.expectSignedDelegateAction), accepted: row.accepted };
       expect([row.case, await exactNear.bound(p)]).toEqual([row.case, row.expectBound]);
       expect([row.case, await exactNear.reference(p)]).toEqual([row.case, row.expectReference]);
@@ -217,13 +218,13 @@ describe("x402-exact-near.json", () => {
   });
 
   it("V3: status, nearLapsed and recover on reader fixtures", async () => {
-    for (const row of V.V3.status) {
+    for (const row of rowsOf(V.V3.status, "x402-exact-near.json V3.status")) {
       expect([row.case, await exactNear.status(REF, readerFor(row))]).toEqual([row.case, row.expect]);
     }
-    for (const row of V.V3.lapsed) {
+    for (const row of rowsOf(V.V3.lapsed, "x402-exact-near.json V3.lapsed")) {
       expect([row.case, await nearLapsed(REF, readerFor(row))]).toEqual([row.case, row.expect]);
     }
-    for (const row of V.V3.recover) {
+    for (const row of rowsOf(V.V3.recover, "x402-exact-near.json V3.recover")) {
       const got = await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
@@ -311,7 +312,10 @@ describe("x402-exact-near.json", () => {
   });
 
   it("refusal codes left to the implementation", async () => {
-    for (const row of V.agreedRefusals.rows) {
+    for (const row of rowsOf(V.agreedRefusals.rows, "x402-exact-near.json agreedRefusals.rows", {
+      keep: ["the rows this test runs at advertise, build, complete, bound or recover", (r) => !r.expect.endsWith("/peer-missing")],
+      leave: ["the peer-missing row, which ton-near-peer-missing.test.ts runs with the NEAR SDK and borsh absent", (r) => r.expect.endsWith("/peer-missing")],
+    })) {
       const want = { refused: true, code: row.expect };
       if (row.expect.endsWith("/peer-missing")) continue;
       if (row.option !== undefined) {

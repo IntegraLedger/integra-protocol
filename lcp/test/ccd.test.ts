@@ -19,6 +19,7 @@ import {
   type CcdUnsigned,
 } from "../src/ccd.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-ccd.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -119,7 +120,7 @@ describe("x402/exact/ccd", () => {
   });
 
   describe("D3: bound's refusals", () => {
-    for (const row of V.D3.rows) {
+    for (const row of rowsOf(V.D3.rows, "x402-exact-ccd.json D3.rows")) {
       it(row.case, async () => {
         const payment = set(V.D3[row.base].payment, row.set);
         expect(await exactCcd.bound(payment)).toEqual(row.expect);
@@ -135,7 +136,7 @@ describe("x402/exact/ccd", () => {
       const changes = Object.fromEntries((row.bigints ?? []).map((path) => [path, BigInt(pathValue(payment, path) as number)]));
       return set(payment, changes) as Payment;
     };
-    for (const row of V.D3.wireForm.rows as WireRow[]) {
+    for (const row of rowsOf(V.D3.wireForm.rows as WireRow[], "x402-exact-ccd.json D3.wireForm.rows")) {
       it(row.case, async () => {
         const payment = presented(row);
         expect(await exactCcd.bound(payment)).toEqual(row.expect);
@@ -156,7 +157,7 @@ describe("x402/exact/ccd", () => {
 
   describe("D4: a receiver or amount bound does not read gives H from bound and a refusal from reference", () => {
     type Row = { case: string; base: "ccd" | "plt"; set: Record<string, unknown>; expectBound: string; expectReference: unknown };
-    const rows = V.D4.rows as Row[];
+    const rows = rowsOf(V.D4.rows as Row[], "x402-exact-ccd.json D4.rows");
     for (const row of rows) {
       it(row.case, async () => {
         const payment = set(V.D3[row.base].payment, row.set);
@@ -177,7 +178,11 @@ describe("x402/exact/ccd", () => {
       const transfer = (ops: string) =>
         (cborg.decode(bytes(ops), { tags, useMaps: true }) as Map<string, Map<string, { tag: number; v: unknown }>>[])[0]!.get("transfer")!;
       const signed = transfer(V.D3.plt.payment.payload.signedTransaction.payload.operations);
-      const changed = rows.filter((r) => r.base === "plt").map((r) => transfer(value(r) as string));
+      const changed = rowsOf(rows, "x402-exact-ccd.json D4.rows", {
+        exact: 2,
+        keep: ["the PLT rows, whose changed operations this test decodes", (r) => r.base === "plt"],
+        leave: ["the CCD rows, which carry no PLT operations; the bound and reference tests above run every row", (r) => r.base === "ccd"],
+      }).map((r) => transfer(value(r) as string));
       expect(changed.map((t) => [t.get("recipient")!.tag, t.get("amount")!.tag])).toEqual([
         [40306, 4],
         [40307, 5],
@@ -191,7 +196,7 @@ describe("x402/exact/ccd", () => {
   });
 
   describe("D5: status and recover", () => {
-    for (const row of V.D5.rows) {
+    for (const row of rowsOf(V.D5.rows, "x402-exact-ccd.json D5.rows")) {
       it(row.case, async () => {
         const reader = readerFor(row.item);
         expect(await exactCcd.status(V.D5[row.ref], reader)).toEqual(row.expectStatus);
@@ -303,10 +308,13 @@ describe("x402/exact/ccd", () => {
         transfers: [{ kind: "ccd", receiver: bytes(V.fixed.payeeBytes), amount: 1000000n, memo: bytes(memo) }],
       }),
     });
-    const memos: [string, string][] = V.D5.rows
-      .filter((r: { item: unknown }) => typeof r.item === "object" && r.item !== null && "transfers" in r.item)
-      .map((r: { case: string; item: { transfers: { memo: string | null }[] } }) => [r.case, r.item.transfers[0]?.memo])
-      .filter((x: [string, string | null | undefined]) => typeof x[1] === "string");
+    const memos: [string, string][] = rowsOf(V.D5.rows, "x402-exact-ccd.json D5.rows", {
+      keep: ["the rows whose item's first transfer carries a memo", (r) => typeof r.item?.transfers?.[0]?.memo === "string"],
+      leave: [
+        "the rows with no item, a reader error, an item not finalized, or no memo on a first transfer; D5's status and recover tests above run them",
+        (r) => r.item === null || r.item === "reader-error" || r.item.state !== "finalized" || (r.item.transfers[0]?.memo ?? null) === null,
+      ],
+    }).map((r: { case: string; item: { transfers: { memo: string | null }[] } }) => [r.case, r.item.transfers[0]?.memo]) as [string, string][];
     for (const [name, memo] of memos) {
       it(name, async () => {
         const payment = set(V.D3.ccd.payment, { "payload.signedTransaction.payload.memo": blob(memo) });

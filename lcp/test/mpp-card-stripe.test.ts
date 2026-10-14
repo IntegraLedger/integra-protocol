@@ -10,6 +10,7 @@ import {
   type MppChallenge,
 } from "../src/mpp.js";
 import { b64u, fromB64u, load } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const CARD = load("mpp-charge-card.json");
 const STRIPE = load("mpp-charge-stripe.json");
@@ -79,7 +80,7 @@ describe("mpp/charge/card (M1)", () => {
     expect(chargeCard.claims).toBe(false);
   });
 
-  it.each(CARD.refusals.rows as { case: string; externalId: string; expect: unknown }[])("$case", (row) => {
+  it.each(rowsOf(CARD.refusals.rows as { case: string; externalId: string; expect: unknown }[], "mpp-charge-card.json refusals.rows"))("$case", (row) => {
     const occupied = issued("card", "charge", { ...CARD.M1.request, externalId: row.externalId });
     expect(chargeCard.advertise([occupied], F.H, F.link, occupied)).toEqual(row.expect);
   });
@@ -125,7 +126,7 @@ describe("mpp/charge/stripe (M2)", () => {
     expect(await chargeStripe.bound(credential(p))).toEqual(STRIPE.M2.expectBound);
   });
 
-  it.each(STRIPE.refusals.rows as { case: string; metadata?: Record<string, string>; metadataKeys?: number; expect: unknown }[])(
+  it.each(rowsOf(STRIPE.refusals.rows as { case: string; metadata?: Record<string, string>; metadataKeys?: number; expect: unknown }[], "mpp-charge-stripe.json refusals.rows"))(
     "$case",
     (row) => {
       const metadata =

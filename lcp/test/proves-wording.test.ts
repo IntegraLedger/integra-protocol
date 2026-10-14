@@ -3,6 +3,7 @@
 // the payment.
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
+import { rowsOf } from "./rows.js";
 
 const DELIVERED = "The ATR was assembled and delivered before approval";
 const DELIVERED_BEFORE_PAYMENT = "The ATR was assembled and delivered before the payment";
@@ -19,7 +20,10 @@ function provesOf(v: unknown, out: string[] = []): string[] {
 }
 
 describe("proves: what the record shows about the ATR before approval", () => {
-  const all = BINDINGS.map((b) => ({ id: b.id, proves: provesOf((b as { pattern?: unknown }).pattern) }));
+  const all = rowsOf(
+    BINDINGS.map((b) => ({ id: b.id, proves: provesOf((b as { pattern?: unknown }).pattern) })),
+    "BINDINGS, each pairing's proves sentences",
+  );
 
   it("every pairing has a proves sentence", () => {
     expect(all.filter((b) => b.proves.length === 0).map((b) => b.id)).toEqual([]);
@@ -41,10 +45,13 @@ describe("proves: what the record shows about the ATR before approval", () => {
 
   it("each sentence about the ATR before approval says it was assembled and delivered before approval", () => {
     const before = /The ATR was assembled[^.]*before approval/;
-    const about = all.filter((b) => b.proves.some((p) => before.test(p)));
+    const about = rowsOf(all, "BINDINGS, each pairing's proves sentences", {
+      keep: ["the pairings with a sentence about the ATR before approval", (b) => b.proves.some((p) => before.test(p))],
+      leave: ["the pairings whose sentences say nothing of the ATR before approval", (b) => !b.proves.some((p) => before.test(p))],
+    });
     expect(about.length).toBeGreaterThan(0);
     for (const b of about) {
-      for (const p of b.proves.filter((s) => before.test(s))) {
+      for (const p of rowsOf(b.proves.filter((s) => before.test(s)), `${b.id}: its sentences about the ATR before approval`)) {
         expect([b.id, p]).toEqual([b.id, expect.stringContaining(DELIVERED)]);
       }
     }

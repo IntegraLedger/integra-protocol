@@ -21,6 +21,7 @@ import { decodeSuiTx, exactSui } from "../src/sui.js";
 import { exactTvm } from "../src/tvm.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import type { PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const STANDARD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -69,7 +70,7 @@ describe("standard base64 in its canonical form", () => {
       for (const t of texts.filter((x) => x.length === n - 1)) for (const c of chars) texts.push(t + c);
     }
     expect(texts.length).toBe(1 + 8 + 64 + 512 + 4096 + 32768);
-    for (const s of texts) {
+    for (const s of rowsOf(texts, "every text of up to five of the eight characters", { exact: 1 + 8 + 64 + 512 + 4096 + 32768 })) {
       const want = ecma(s);
       expect(scure(s), s).toEqual(want);
       expect(fromBase64(s), s).toEqual(want);

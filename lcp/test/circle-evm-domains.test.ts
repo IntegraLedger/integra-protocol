@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { domainSeparator } from "viem";
 import { eip3009TypedData, type Eip155, type Hex } from "../src/evm.js";
+import { rowsOf } from "./rows.js";
 
 type Row = { chain: string; caip2: Eip155; token: "USDC" | "EURC"; asset: Hex; name: string; version: string; separator: Hex; standard: boolean };
 const { rows } = JSON.parse(readFileSync(new URL("./fixtures/circle-evm-domains.json", import.meta.url), "utf8")) as { rows: Row[] };
@@ -34,7 +35,7 @@ describe("circle-evm-domains.json", () => {
     expect(rows.filter((r) => r.token === "EURC").length).toBe(14);
     expect(rows.filter((r) => r.standard).length).toBe(67);
   });
-  it.each(rows.map((r) => [`${r.chain} ${r.token}`, r] as const))("C-V1 · %s", (_, r) => {
+  it.each(rowsOf(rows, "fixtures/circle-evm-domains.json rows", { exact: 68 }).map((r) => [`${r.chain} ${r.token}`, r] as const))("C-V1 · %s", (_, r) => {
     expect(separatorOf(r) === r.separator).toBe(r.standard);
   });
   it("plant: the symbol is not the domain name, the version is the token's, and Linea Sepolia stays non-standard", () => {

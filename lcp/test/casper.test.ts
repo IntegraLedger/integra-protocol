@@ -14,6 +14,7 @@ import {
 import type { AtrHash } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 import { LEGAL_CONTEXT_SCHEMA, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import { CASPER_DOMAIN_TYPEHASH, exactCasper, type CasperCall, type CasperReader, type CasperUnsigned } from "../src/casper.js";
 
@@ -113,7 +114,7 @@ describe("x402/exact/casper", () => {
 
   describe("C3: settleBy for a validBefore past Number.MAX_SAFE_INTEGER", () => {
     type Row = { case: string; mutate: Record<string, string>; expect: { settleBy?: number } };
-    for (const row of V.C3.rows as Row[]) {
+    for (const row of rowsOf(V.C3.rows as Row[], "x402-exact-casper.json C3.rows", { exact: 4 })) {
       it(row.case, async () => {
         const payment = mutate(V.C2.expectPayload, row.mutate);
         expect(await exactCasper.reference(payment)).toEqual(row.expect);
@@ -124,7 +125,10 @@ describe("x402/exact/casper", () => {
       const rows = V.C3.rows as Row[];
       const before = rows.map((r) => BigInt(r.mutate["payload.authorization.validBefore"]!));
       expect(before).toEqual([2n ** 53n - 1n, 2n ** 53n, 2n ** 64n - 1n, 2n ** 64n]);
-      for (const r of rows.filter((r) => r.expect.settleBy !== undefined)) expect(r.expect.settleBy).toBe(Number.MAX_SAFE_INTEGER);
+      for (const r of rowsOf(rows, "x402-exact-casper.json C3.rows", {
+        keep: ["the rows whose reference records a settleBy", (r) => r.expect.settleBy !== undefined],
+        leave: ["the row past a u64, whose reference is refused; the C3 rows above run it", (r) => "refused" in r.expect],
+      })) expect(r.expect.settleBy).toBe(Number.MAX_SAFE_INTEGER);
     });
 
     it("build signs a validBefore past 2^53-1 for the largest maxTimeoutSeconds the filter admits, and reference records it", async () => {
@@ -137,7 +141,7 @@ describe("x402/exact/casper", () => {
   });
 
   describe("C4: status and recover", () => {
-    for (const row of V.C4.rows) {
+    for (const row of rowsOf(V.C4.rows, "x402-exact-casper.json C4.rows")) {
       it(row.case, async () => {
         const reader = readerFor(row.call);
         expect(plain(await exactCasper.status(V.C4.ref, reader))).toEqual(row.expectStatus);
@@ -182,7 +186,7 @@ describe("x402/exact/casper", () => {
   });
 
   describe("refusal codes left to the implementation", () => {
-    for (const row of V.refusals.rows) {
+    for (const row of rowsOf(V.refusals.rows, "x402-exact-casper.json refusals.rows")) {
       it(row.case, async () => {
         if (row.fn === "bound" || row.fn === "reference") {
           const payment = mutate(V.C2.expectPayload, row.mutate);

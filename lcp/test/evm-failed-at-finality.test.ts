@@ -40,6 +40,7 @@ import { problem, type MppCredential } from "../src/mpp.js";
 import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC } from "../src/internal/hedera-session.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { load } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const BASE = "eip155:84532";
 const TEMPO = "eip155:42431";
@@ -399,7 +400,7 @@ const statusOf = (id: string) =>
 
 describe("an EVM failed answer is given only at or below the finalized mark", () => {
   for (const [id, what, network, ref, failures] of ROWS) {
-    for (const f of failures) {
+    for (const f of rowsOf(failures, `${id}, ${what}: its failed reads`)) {
       it(`${id}, ${what}: ${f.why}`, async () => {
         const status = statusOf(id);
         const full = { network, ...ref };

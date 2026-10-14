@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import { exactTronMemo } from "../src/tron.js";
 import { exactEip3009 } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 describe("BINDINGS", () => {
   it("lists exactly the implemented pairings", () => {
@@ -103,7 +104,8 @@ describe("the record's members", () => {
     ]);
   });
   it("every pairing's record carries only those members", () => {
-    for (const b of BINDINGS) for (const k of Object.keys(b.pattern)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 67 }))
+      for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
   });
 });
 

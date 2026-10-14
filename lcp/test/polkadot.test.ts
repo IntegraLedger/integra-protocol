@@ -17,6 +17,7 @@ import {
   type PolkadotUnsigned,
 } from "../src/polkadot.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-polkadot-lcp-assets-remark.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -141,7 +142,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const ref = await exactPolkadotRemark.reference(payment);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    for (const row of V.V3.refusals) {
+    for (const row of rowsOf(V.V3.refusals, "x402-exact-polkadot-lcp-assets-remark.json V3.refusals")) {
       expect(await exactPolkadotRemark.bound(presentedOf(row.extrinsic, row.call))).toEqual({ refused: true, code: row.expect });
     }
   });
@@ -233,7 +234,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   });
 
   it("V4: status for each fixture", async () => {
-    for (const row of V.V4.status) {
+    for (const row of rowsOf(V.V4.status, "x402-exact-polkadot-lcp-assets-remark.json V4.status")) {
       const ref = {
         ...V.V4.reference,
         ...(row.refHash !== undefined ? { extrinsicHash: row.refHash } : {}),
@@ -276,11 +277,11 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const reader = readerOf({ finalized: "100" });
     const transaction = `${V.V4.block}-${V.V4.index}`;
     expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader)).toBe(V.V4.recover.expect);
-    for (const row of V.V4.locate) {
+    for (const row of rowsOf(V.V4.locate, "x402-exact-polkadot-lcp-assets-remark.json V4.locate")) {
       const got = await polkadotLocate(V.V4.reference, readerOf({ finalized: "100", ...row }), BigInt(row.from), BigInt(row.to));
       expect(got === null || typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
     }
-    for (const row of V.V4.recoverRefusals) {
+    for (const row of rowsOf(V.V4.recoverRefusals, "x402-exact-polkadot-lcp-assets-remark.json V4.recoverRefusals")) {
       const raw = [...V.V4.raw];
       raw[V.V4.index] = row.raw;
       const upper: PolkadotReader = { ...reader, rawExtrinsics: async () => raw };
@@ -294,7 +295,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   it("V4: recover reads the record status reads, and needs the profile call and a transfer of its asset", async () => {
     const transaction = `${V.V4.block}-${V.V4.index}`;
     expect(V.V4.recoverReads.length).toBeGreaterThan(0);
-    for (const row of V.V4.recoverReads) {
+    for (const row of rowsOf(V.V4.recoverReads, "x402-exact-polkadot-lcp-assets-remark.json V4.recoverReads")) {
       const raw = [...V.V4.raw];
       if (row.raw !== undefined) raw[V.V4.index] = row.raw;
       const reader: PolkadotReader = { ...readerOf(row), rawExtrinsics: async () => raw };
@@ -310,7 +311,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
 
   it("the option filter, advertise and read", () => {
     expect(pairingOf(O)).toBe("x402/exact/polkadot/lcp-assets-remark");
-    for (const row of V.options) {
+    for (const row of rowsOf(V.options, "x402-exact-polkadot-lcp-assets-remark.json options")) {
       expect(pairingOf(row.option), row.case).toBeUndefined();
       const doc = { ...required, accepts: [row.option] };
       expect(exactPolkadotRemark.advertise(doc, H, V.fixed.link, row.option), row.case).toEqual({ refused: true, code: row.expect });

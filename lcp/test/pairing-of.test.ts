@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS, pairingOf } from "../src/index.js";
 import type { PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const vectors = (name: string): Record<string, unknown> =>
   JSON.parse(readFileSync(new URL(`../vectors/${name}.json`, import.meta.url), "utf8")) as Record<string, unknown>;
@@ -89,7 +90,7 @@ describe("the root pairingOf, walking BINDINGS", () => {
       for (const [k, x] of Object.entries(v)) walk(x, `${path}.${k}`);
     };
     walk(vectors("x402-batch-settlement"), "x402-batch-settlement");
-    for (const [path, o] of options) {
+    for (const [path, o] of rowsOf(options, "x402-batch-settlement.json, every option it holds")) {
       expect(o.scheme, path).toBe("batch-settlement");
       expect(pairingOf(o), path).toBe(byNamespace[o.network.split(":")[0]!]);
     }

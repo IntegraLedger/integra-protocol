@@ -16,6 +16,7 @@ import {
   type Bolt11,
   type LnMppUnsigned,
 } from "../src/lightning.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const C = load("mpp-charge-lightning.json");
@@ -82,7 +83,7 @@ describe("mpp/charge/lightning", () => {
   });
 
   describe("L3: advertise's refusals", () => {
-    for (const row of C.L3.refusals) {
+    for (const row of rowsOf(C.L3.refusals, "mpp-charge-lightning.json L3.refusals")) {
       it(row.case, () => {
         const bad = challengeOf(C.L3, row.requestSet ?? {}, row.challengeSet ?? {});
         expect(chargeLightning.advertise([bad], H, C.fixed.link, bad)).toEqual(row.expect);
@@ -95,8 +96,17 @@ describe("mpp/charge/lightning", () => {
   // L3's request with another network keeps the placed id and opaque; the reads answer it as advertise does.
   describe("L3: bound and reference check the echoed network as advertise does", () => {
     const rows: [string, Record<string, unknown>, string][] = [
-      ...C.L3.refusals
-        .filter((r: { expect: { code: string }; challengeSet?: unknown }) => r.expect.code === "ln/currency-network" && r.challengeSet === undefined)
+      ...(rowsOf(C.L3.refusals, "mpp-charge-lightning.json L3.refusals", {
+        exact: 1,
+        keep: [
+          "the network row on the request",
+          (r: { expect: { code: string }; challengeSet?: unknown }) => r.expect.code === "ln/currency-network" && r.challengeSet === undefined,
+        ],
+        leave: [
+          "every other row, which L3: advertise's refusals runs above",
+          (r: { expect: { code: string }; challengeSet?: unknown }) => r.expect.code !== "ln/currency-network" || r.challengeSet !== undefined,
+        ],
+      }) as any)
         .map((r: { case: string; requestSet: Record<string, unknown> }) => [r.case, r.requestSet, "ln/currency-network"]),
       ["network bogus", { "methodDetails.network": "bogus" }, "ln/currency-network"],
       ["network 5", { "methodDetails.network": 5 }, "ln/currency-network"],
@@ -150,7 +160,7 @@ describe("mpp/session/lightning", () => {
     expect(await sessionLightning.bound(credential)).toBe(S.S1.expectBound);
   });
 
-  for (const row of S.S1.rows) {
+  for (const row of rowsOf(S.S1.rows, "mpp-session-lightning.json S1.rows")) {
     it(row.case, async () => {
       expect(await sessionLightning.bound({ challenge: placed(), payload: row.payload })).toEqual(row.expect);
     });
@@ -166,7 +176,7 @@ describe("mpp/session/lightning", () => {
   });
 
   describe("build refuses, before naming the deposit invoice to pay, a return invoice the open action cannot carry", () => {
-    for (const row of S.S1.returnInvoiceRows) {
+    for (const row of rowsOf(S.S1.returnInvoiceRows, "mpp-session-lightning.json S1.returnInvoiceRows")) {
       it(row.case, async () => {
         if (typeof row.returnInvoice === "string" && row.returnInvoice.startsWith("lnbc")) {
           expect(bolt11.decode(row.returnInvoice).millisatoshis).not.toBe(null);
@@ -329,7 +339,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
   });
 
   describe("S1's refusals: advertise and build, and bound and reference on a network row", () => {
-    for (const row of S.S1.refusals) {
+    for (const row of rowsOf(S.S1.refusals, "mpp-session-lightning.json S1.refusals")) {
       it(row.case, async () => {
         const offer = challengeOf(S.S1, row.requestSet ?? {}, row.challengeSet ?? {});
         expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual(row.expect);

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { pairingOf } from "../src/index.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 import {
   EVENT_TRANSFER,
   MASK_250,
@@ -130,7 +131,7 @@ describe("x402-exact-starknet.json", () => {
   });
 
   it("S5: status on receipt and trace fixtures, and the landed nonce", async () => {
-    for (const row of V.S5.status) {
+    for (const row of rowsOf(V.S5.status, "x402-exact-starknet.json S5.status")) {
       expect([row.case, plain(await exactStarknet.status(REF, readerFor(row)))]).toEqual([row.case, row.expect]);
     }
     expect(await starknetLandedNonce(REF, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
@@ -252,7 +253,7 @@ describe("x402-exact-starknet.json", () => {
   });
 
   it("refusal codes left to the implementation", async () => {
-    for (const row of V.agreedRefusals.rows) {
+    for (const row of rowsOf(V.agreedRefusals.rows, "x402-exact-starknet.json agreedRefusals.rows")) {
       const want = { refused: true, code: row.expect };
       if (row.option !== undefined) {
         const d: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [row.option] };
@@ -263,7 +264,7 @@ describe("x402-exact-starknet.json", () => {
       } else if (row.signatureLengths !== undefined) {
         const u = await exactStarknet.build({ required: advertised(), accepted: O, from: V.fixed.from, now: V.fixed.now }, H);
         if ("refused" in u) throw new Error(u.code);
-        for (const n of row.signatureLengths) expect(u.complete(Array(n).fill("0x1"))).toEqual(want);
+        for (const n of rowsOf(row.signatureLengths, "the signatureLengths row's lengths")) expect(u.complete(Array(n).fill("0x1"))).toEqual(want);
       } else if (row.revision !== undefined) {
         const p = structuredClone(await pay());
         (p.payload.outsideExecution.typedData.domain as { revision: number }).revision = row.revision;

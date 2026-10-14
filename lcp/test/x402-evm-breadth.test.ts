@@ -54,6 +54,7 @@ import {
   type X402Unsigned,
 } from "../src/x402.js";
 import { pairingOf } from "../src/index.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const P2 = load("x402-exact-eip155-permit2.json");
@@ -753,7 +754,7 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     expect(await exactErc7710Salt.bound(await payment(ES.EV8.emptyContext.context, ES.fixed.delegationManager))).toEqual(
       ES.EV8.emptyContext.expect,
     );
-    for (const c of ES.EV8.malformedContext.cases) {
+    for (const c of rowsOf(ES.EV8.malformedContext.cases, "x402-exact-eip155-erc7710-salt.json EV8.malformedContext.cases")) {
       expect(await exactErc7710Salt.bound(await payment(c, ES.fixed.delegationManager))).toEqual(ES.EV8.malformedContext.expect);
     }
   });
@@ -824,7 +825,7 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     const salt = (name: string) => (name === "H" ? H : name === "H2" ? T.H2 : name);
     const topic = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
     const tx = ("0x" + "44".repeat(32)) as Hex;
-    for (const row of T.rows) {
+    for (const row of rowsOf(T.rows, "x402-exact-eip155-erc7710-salt.json plantsEV9.rows")) {
       const logs = row.logs.map((l: any) => {
         if (l.redeemed !== undefined) {
           const r = l.redeemed;
@@ -1044,7 +1045,7 @@ describe("each breadth file's agreedRefusals rows", () => {
   for (const [name, file, pairing] of files) {
     const rows = file.agreedRefusals.rows as Row[];
     it(`${name}: build refuses a null choice and a string choice`, async () => {
-      const built = rows.filter((r) => "choice" in r);
+      const built = rowsOf(rows.filter((r) => "choice" in r), `${name} agreedRefusals.rows, the rows with a choice`, { exact: 2 });
       expect(built.map((r) => r.choice)).toEqual([null, "x"]);
       for (const r of built) {
         expect(await pairing.build(r.choice as never, file.fixed.H as AtrHash), r.case).toEqual({ refused: true, code: r.expect });
@@ -1053,7 +1054,11 @@ describe("each breadth file's agreedRefusals rows", () => {
   }
 
   it("x402-exact-eip155-permit2.json: permit2TypedData refuses a permitted of null, [null] and 42", () => {
-    const rows = (P2.agreedRefusals.rows as Row[]).filter((r) => "permitted" in r);
+    const rows = rowsOf(P2.agreedRefusals.rows as Row[], "x402-exact-eip155-permit2.json agreedRefusals.rows", {
+      exact: 3,
+      keep: ["the rows with a permitted", (r) => "permitted" in r],
+      leave: ["the rows with a choice, which the build test above runs", (r) => "choice" in r],
+    });
     expect(rows.map((r) => r.permitted)).toEqual([null, [null], 42]);
     const base = {
       chainId: 84532,

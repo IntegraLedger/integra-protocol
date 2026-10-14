@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, type BuildOptions, type Message } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rowsOf } from "./rows.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const PKG = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
@@ -20,8 +21,12 @@ const PKG = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
   dependencies: Record<string, string>;
   peerDependenciesMeta: Record<string, { optional?: boolean }>;
 };
-const PEERS = Object.keys(PKG.peerDependenciesMeta).filter((p) => PKG.peerDependenciesMeta[p]!.optional === true);
-const KEYS = Object.keys(PKG.exports);
+const PEERS = rowsOf(
+  Object.keys(PKG.peerDependenciesMeta).filter((p) => PKG.peerDependenciesMeta[p]!.optional === true),
+  "package.json peerDependenciesMeta, the optional peers",
+  { exact: Object.keys(PKG.peerDependenciesMeta).length },
+);
+const KEYS = rowsOf(Object.keys(PKG.exports), "package.json exports");
 
 /** wrangler's esbuild options for a module Worker: its build conditions, esbuild's default platform, format esm. */
 const WORKER: BuildOptions = {

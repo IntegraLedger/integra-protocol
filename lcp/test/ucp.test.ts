@@ -14,6 +14,7 @@ import {
   unsigned,
   type Checkout,
 } from "../src/ucp.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const V = load("ucp.json");
@@ -183,7 +184,7 @@ describe("ucp.json", () => {
   });
 
   describe("implementation rows", () => {
-    for (const row of V.implementation) {
+    for (const row of rowsOf(V.implementation, "ucp.json implementation")) {
       it(`${row.name}: ${row.case}`, async () => {
         const p = byId[row.pairing]!;
         const i = row.input;

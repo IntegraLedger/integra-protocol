@@ -38,6 +38,7 @@ import type { KeyAuthorizationUnsigned } from "../src/tempo.js";
 import { createHash } from "node:crypto";
 import { pairingsOf } from "../src/mpp.js";
 import { C_E, C_T, H, V, b64u, challenge, link, load, readerFor } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
 const M = load("mpp-charge-tempo-memo.json");
@@ -115,7 +116,7 @@ describe("MPP_BINDINGS", () => {
       chargeUsdcStacks,
       chargeUsdcGateway,
     ]);
-    for (const b of MPP_BINDINGS) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 26 })) {
       expect(Object.isFrozen(b)).toBe(true);
       expect(Object.isFrozen(b.pattern)).toBe(true);
     }
@@ -163,7 +164,7 @@ describe("MPP_BINDINGS", () => {
     refs.push(await subscriptionTempo.reference(sub.complete(await sig65(sub.request.digest)) as MppCredential));
 
     expect(refs.length).toBe(9);
-    for (const r of refs) {
+    for (const r of rowsOf(refs, "the references the nine pairings above build", { exact: 9 })) {
       expect(r).not.toHaveProperty("refused");
       expect(roundTrip(r)).toEqual(r);
     }
@@ -267,7 +268,7 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
       { ...challenge("usdc", "charge", "{}"), request: b64u(JSON.stringify(US.fixed.request)) },
     ];
     const placedBy = new Set<string>();
-    for (const b of MPP_BINDINGS) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 26 })) {
       for (const option of issued) {
         const offered = pairingsOf(option);
         if (!Array.isArray(offered) || !offered.includes(b.id as never)) continue;

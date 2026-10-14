@@ -24,6 +24,7 @@ import {
 import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "../src/ucp.js";
 import { exactErc7710 } from "../src/x402.js";
 import { batchCloudflare } from "../src/x402-batch-settlement.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
@@ -44,7 +45,14 @@ const TOO_LONG_HTTP = `http://pay.seller.example/${"a".repeat(2049 - "http://pay
 /** Bad values that are not a URL with another scheme: empty, unparseable, no host, userinfo, overlong. */
 const MALFORMED = ["", "not a url", "https://", "https://exa mple.com/", "https://u@pay.seller.example/", TOO_LONG, TOO_LONG_HTTP];
 /** Every bad value but the https link over 2048 characters: none is an https link (core-vectors.json links rows). */
-const NOT_HTTPS = [HTTP, ...MALFORMED.filter((bad) => bad !== TOO_LONG)];
+const NOT_HTTPS = [
+  HTTP,
+  ...rowsOf(MALFORMED, "MALFORMED, the bad values", {
+    exact: MALFORMED.length - 1,
+    keep: ["every bad value but the https link over 2048 characters", (bad) => bad !== TOO_LONG],
+    leave: ["the https link over 2048 characters, which each test below checks on its own, with its own code", (bad) => bad === TOO_LONG],
+  }),
+];
 /** The same bad values in the link's place. */
 const LINK_MALFORMED = MALFORMED;
 /**

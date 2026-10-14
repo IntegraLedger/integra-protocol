@@ -15,6 +15,7 @@ import {
   type CardOption,
   type TapPresented,
 } from "../src/card.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/card.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -79,7 +80,7 @@ describe("C1 values and digests", () => {
     const { offer, expect: want, referenceLength } = V.C1.advertise;
     for (const p of PAIRINGS) {
       expect(p.advertise({}, H, L, offer)).toEqual(want);
-      for (const scheme of V.C1.otherSchemes) expect(p.advertise({}, H, L, { ...offer, scheme })).toEqual(want);
+      for (const scheme of rowsOf(V.C1.otherSchemes, "card.json C1.otherSchemes")) expect(p.advertise({}, H, L, { ...offer, scheme })).toEqual(want);
     }
     expect(want.reference.length).toBe(referenceLength);
   });
@@ -89,7 +90,7 @@ describe("C1 values and digests", () => {
   });
 
   it("digestJson of each option is the printed SHA-256", async () => {
-    for (const row of V.C1.digestJson) expect(await digestJson(row.option)).toBe(row.expect);
+    for (const row of rowsOf(V.C1.digestJson, "card.json C1.digestJson")) expect(await digestJson(row.option)).toBe(row.expect);
   });
 
   it("a malformed option is card/option-malformed", () => {
@@ -164,7 +165,7 @@ describe("C3 TAP plant: the lcp-hash listing must be the agent-payer-auth signat
 });
 
 describe("C9 TAP: every agent-payer-auth signature must list lcp-hash", () => {
-  it.each(V.C9.rows as { case: string; signatureInput: string; signature: string; lcpHash: string[]; expect: unknown }[])(
+  it.each(rowsOf(V.C9.rows as { case: string; signatureInput: string; signature: string; lcpHash: string[]; expect: unknown }[], "card.json C9.rows"))(
     "$case",
     async (row) => {
       expect(await visaTap.bound({ signatureInput: row.signatureInput, signature: row.signature, lcpHash: row.lcpHash })).toEqual(
@@ -230,7 +231,7 @@ describe("TAP bound, the remaining refusals", () => {
 
 describe("C4 disclosureDigest", () => {
   it("RFC 9901's published disclosures give its published digests", async () => {
-    for (const row of V.C4) expect(await disclosureDigest(row.disclosure)).toBe(row.expect);
+    for (const row of rowsOf(V.C4, "card.json C4")) expect(await disclosureDigest(row.disclosure)).toBe(row.expect);
   });
 });
 
@@ -392,7 +393,7 @@ describe("C7 VI Autonomous", () => {
 
 describe("C8 plain checkout", () => {
   it("bound and build refuse card/no-signed-place for any input, and buyerSigns is false", async () => {
-    for (const x of V.C8.inputs) {
+    for (const x of rowsOf(V.C8.inputs, "card.json C8.inputs")) {
       expect(await sellerReference.bound(x)).toEqual(refused(V.C8.expect));
       expect(await sellerReference.build(x, H)).toEqual(refused(V.C8.expect));
     }
@@ -664,11 +665,11 @@ describe("card.json agreedRefusals: every row runs", () => {
     expect(Object.keys(cases).sort()).toEqual((V.agreedRefusals.rows as { case: string }[]).map((r) => r.case).sort());
   });
 
-  for (const row of V.agreedRefusals.rows as { case: string; expect: string }[]) {
+  for (const row of rowsOf(V.agreedRefusals.rows as { case: string; expect: string }[], "card.json agreedRefusals.rows", { exact: Object.keys(cases).length })) {
     it(row.case, async () => {
       const results = await cases[row.case]!();
       expect(results.length).toBeGreaterThan(0);
-      for (const r of results) expect(r).toEqual(refused(row.expect));
+      for (const r of rowsOf(results, `the results of the case "${row.case}"`)) expect(r).toEqual(refused(row.expect));
     });
   }
 });

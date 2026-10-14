@@ -12,11 +12,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rowsOf } from "./rows.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const EXPORTS: Record<string, { default: string }> = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).exports;
-const ENTRIES: [string, string][] = Object.entries(EXPORTS).map(([key, target]) => [key, join(ROOT, target.default)]);
+const ENTRIES: [string, string][] = rowsOf(Object.entries(EXPORTS), "package.json exports").map(([key, target]) => [key, join(ROOT, target.default)]);
 
 const dir = mkdtempSync(join(tmpdir(), "lazy-bundle-"));
 /** The bundle of the `i`th entry point. */

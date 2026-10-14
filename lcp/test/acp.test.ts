@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { assemble, canonicalJson, type AtrHash, type Json } from "../src/index.js";
 import { delegated, issuedDigest, tie, undelegated, type Presented, type Session, type Unsigned } from "../src/acp.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/acp-checkout.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -54,7 +55,7 @@ describe("acp-checkout.json", () => {
   });
 
   it("V3: option digests", async () => {
-    for (const row of V.V3.digests) expect(await issuedDigest(row.option)).toBe(row.expect);
+    for (const row of rowsOf(V.V3.digests, "acp-checkout.json V3.digests")) expect(await issuedDigest(row.option)).toBe(row.expect);
   });
 
   it("V4: build, complete and bound", async () => {
@@ -106,7 +107,7 @@ describe("acp-checkout.json", () => {
   });
 
   it("refusal codes left to the implementation", async () => {
-    for (const row of V.agreedRefusals.rows) {
+    for (const row of rowsOf(V.agreedRefusals.rows, "acp-checkout.json agreedRefusals.rows")) {
       const [name, fn] = row.call.split(".") as [keyof typeof pairings, "advertise" | "read" | "build" | "bound"];
       const args = expand(row.args) as unknown[];
       const out = await (pairings[name][fn] as (...a: unknown[]) => unknown)(...args);

@@ -4,10 +4,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import type { LcpPattern } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const named = [
   ...new Set(
-    BINDINGS.map((b) => (b.pattern as LcpPattern).profile).filter((p): p is string => typeof p === "string"),
+    rowsOf(BINDINGS.map((b) => (b.pattern as LcpPattern).profile), "BINDINGS, each pairing's profile", {
+      keep: ["the profiles the pairings name", (p) => typeof p === "string"],
+      leave: ["the pairings that name no profile", (p) => p === undefined],
+    }) as string[],
   ),
 ].sort();
 

@@ -6,6 +6,7 @@ import { beginCell, type Builder, Cell, Dictionary, loadCommonMessageInfoRelaxed
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 import { pairingOf } from "../src/index.js";
 import { exactTvm, lcpComment, tvmCarrier, type TonTx, type TvmReader, type TvmRef } from "../src/tvm.js";
 import type { AtrHash } from "../src/core.js";
@@ -144,7 +145,7 @@ describe("x402-exact-tvm.json", () => {
     const asCell = await exactTvm.build({ ...choice(), wallet: W.wallet, seqno: W.seqno, stateInit: Cell.fromBase64(W.stateInit) }, H);
     if ("refused" in asCell) throw new Error(asCell.code);
     expect(Buffer.from(asCell.request.hash).toString("hex")).toBe(W.expectRequestHash);
-    for (const row of W.refusals) {
+    for (const row of rowsOf(W.refusals, "x402-exact-tvm.json V2b.refusals")) {
       expect([row.case, await exactTvm.build({ ...choice(), stateInit: row.stateInit }, H)]).toEqual([
         row.case,
         { refused: true, code: row.expect },
@@ -299,7 +300,7 @@ describe("x402-exact-tvm.json", () => {
     const c = tvmCarrier(p.payload.settlementBoc);
     if ("refused" in c) throw new Error(c.code);
     expect(c.h).toBe(H);
-    for (const row of V.V3.refusals) {
+    for (const row of rowsOf(V.V3.refusals, "x402-exact-tvm.json V3.refusals")) {
       expect([row.case, await exactTvm.bound(payment(row.settlementBoc, row.accepted))]).toEqual([
         row.case,
         { refused: true, code: row.expect },
@@ -413,10 +414,10 @@ describe("x402-exact-tvm.json", () => {
   });
 
   it("V4: status and recover on reader fixtures", async () => {
-    for (const row of V.V4.status) {
+    for (const row of rowsOf(V.V4.status, "x402-exact-tvm.json V4.status")) {
       expect([row.case, await exactTvm.status(REF, readerFor(row))]).toEqual([row.case, row.expect]);
     }
-    for (const row of V.V4.recover) {
+    for (const row of rowsOf(V.V4.recover, "x402-exact-tvm.json V4.recover")) {
       const got = await exactTvm.recover({ network: REF.network, transaction: row.transaction }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
@@ -654,7 +655,10 @@ describe("x402-exact-tvm.json", () => {
   });
 
   it("refusal codes left to the implementation", async () => {
-    for (const row of V.agreedRefusals.rows) {
+    for (const row of rowsOf(V.agreedRefusals.rows, "x402-exact-tvm.json agreedRefusals.rows", {
+      keep: ["the rows this test runs at advertise, build, complete, bound or recover", (r) => !r.expect.endsWith("/peer-missing")],
+      leave: ["the peer-missing row, which ton-near-peer-missing.test.ts runs with @ton/core absent", (r) => r.expect.endsWith("/peer-missing")],
+    })) {
       const want = { refused: true, code: row.expect };
       if (row.expect.endsWith("/peer-missing")) continue;
       if (row.option !== undefined) {

@@ -2,6 +2,7 @@
 // or of one of its subpaths.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { rowsOf } from "./rows.js";
 
 interface Manifest {
   peerDependencies?: Record<string, string>;
@@ -21,7 +22,7 @@ for (const text of sources) {
   }
 }
 
-const peers = Object.keys(manifest.peerDependencies ?? {});
+const peers = rowsOf(Object.keys(manifest.peerDependencies ?? {}), "package.json peerDependencies");
 
 describe("declared peers", () => {
   it("every peer is optional", () => {

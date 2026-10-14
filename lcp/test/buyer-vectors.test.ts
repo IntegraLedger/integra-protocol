@@ -12,6 +12,7 @@ import { isRefusal } from "../src/refusal.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import { batchSvm } from "../src/x402-batch-settlement.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const B = load("buyer.json");
@@ -35,7 +36,14 @@ describe("buyer.json: the agreement option the gate asks approval for", () => {
 
   it("every approval a row expects is the chosen EVM option's amount, asset, payTo and network", () => {
     const terms = { amount: OPTION.amount, asset: OPTION.asset, payTo: OPTION.payTo, network: OPTION.network };
-    const rows = B.rows.filter((r: { expect?: { approval?: unknown } }) => r.expect?.approval !== undefined);
+    const rows = rowsOf<any>(B.rows, "buyer.json rows", {
+      exact: 9,
+      keep: ["the rows whose expect holds the approval the gate hands the agent", (r: { expect?: { approval?: unknown } }) => r.expect?.approval !== undefined],
+      leave: [
+        "the rows whose expect holds no approval: the gate answers them before it asks for one, or never asks (agreement.about)",
+        (r: { expect?: { approval?: unknown } }) => r.expect?.approval === undefined,
+      ],
+    });
     expect(rows.map((r: { name: string }) => r.name)).toEqual(["BA1", "BA3", "BA4", "BA7", "BA8", "BA9", "BA11", "BA15", "BA17"]);
     for (const r of rows) expect(r.expect.approval, r.name).toEqual(terms);
     for (const r of rows) expect(typeof r.input.approve, r.name).toBe("boolean");
@@ -132,7 +140,7 @@ describe("buyer.json BA14: an unpaid request answered 202 is agreement-pending, 
     expect(r.input.doc).toBe("as BA1");
     expect(r.input.agreement).toEqual([{ status: 202, retryAfter: "2" }]);
     expect(r.input.approve).toBeUndefined();
-    expect(r.input.agreement.some((s: { paymentRequired?: string }) => s.paymentRequired !== undefined)).toBe(false);
+    expect(rowsOf(r.input.agreement, "buyer.json BA14 input.agreement", { exact: 1 }).some((s: { paymentRequired?: string }) => s.paymentRequired !== undefined)).toBe(false);
   });
 
   it("the gate declines agreement-pending after one request, with no signer call and nothing paid", () => {
@@ -156,7 +164,7 @@ describe("buyer.json BE1: the served bodies decode to A under the coding each ca
     "gzip, gzip": (b) => gunzipSync(gunzipSync(b)),
     "identity, gzip": (b) => gunzipSync(b),
   };
-  for (const c of row("BE1").input.cases as { case: string; contentEncoding: string; bodyHex: string }[]) {
+  for (const c of rowsOf(row("BE1").input.cases as { case: string; contentEncoding: string; bodyHex: string }[], "buyer.json BE1 input.cases")) {
     it(`${c.case}: Content-Encoding ${c.contentEncoding}`, () => {
       const body = decode[c.contentEncoding]!(Buffer.from(c.bodyHex, "hex"));
       const expected = c.case.includes("two members") ? Buffer.concat([A, C]) : Buffer.from(A);
@@ -188,7 +196,7 @@ describe("buyer.json BS1 and BS2: the Stellar build refuses before the signer", 
     expect(r.pairing).toBe("x402/exact/stellar");
     const read = exactStellar.read(r.doc);
     if (isRefusal(read)) throw new Error(read.code);
-    for (const c of r.cases as StellarCase[]) {
+    for (const c of rowsOf(r.cases as StellarCase[], "buyer.json BS1 input.cases")) {
       const accepted = read.offer.options[0]!;
       const u = await exactStellar.build({ required: read.offer.required, accepted, ...c.inputs, payer: payerOf(r.account) }, read.h);
       expect([c.case, outcome(u)]).toEqual([c.case, c.expect]);
@@ -201,7 +209,7 @@ describe("buyer.json BS1 and BS2: the Stellar build refuses before the signer", 
     const read = chargeStellar.read(r.doc);
     if (isRefusal(read)) throw new Error(read.code);
     const challenge = read.offer.challenges[0] as MppChallenge & { id: string };
-    for (const c of r.cases as StellarCase[]) {
+    for (const c of rowsOf(r.cases as StellarCase[], "buyer.json BS2 input.cases")) {
       const u = await chargeStellar.build({ challenge, ...c.inputs, now: r.now, payer: payerOf(r.account) }, read.h);
       expect([c.case, outcome(u)]).toEqual([c.case, c.expect]);
     }
@@ -212,7 +220,7 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with
   const B2 = load("mpp-session-hedera-solana-xrpl.json").buyer.rows.find(
     (r: { name: string; pairing: string }) => r.name === "B2" && r.pairing === "mpp/session/xrpl",
   ).input;
-  const cases = row("BX1").input.cases as { case: string; doc: { request: string }[]; expect: { decline?: string; detail?: string; refusal?: string } }[];
+  const cases = rowsOf(row("BX1").input.cases as { case: string; doc: { request: string }[]; expect: { decline?: string; detail?: string; refusal?: string } }[], "buyer.json BX1 input.cases");
 
   it("the row's account and inputs are B2's", () => {
     expect(row("BX1").input.account).toBe(B2.account);
@@ -240,7 +248,7 @@ describe("buyer.json BW1 and BW2: the within challenge's opaque, a map whose eve
   const control = row("BW1").control.input as { opaqueText: string; doc: MppChallenge[] };
   const docs: { name: string; opaqueText: string; doc: MppChallenge[] }[] = [
     { name: "BW1", opaqueText: row("BW1").input.opaqueText, doc: row("BW1").input.doc },
-    ...(row("BW2").input.cases as { case: string; opaqueText: string; doc: MppChallenge[] }[]).map((c) => ({
+    ...rowsOf(row("BW2").input.cases as { case: string; opaqueText: string; doc: MppChallenge[] }[], "buyer.json BW2 input.cases").map((c) => ({
       name: `BW2, ${c.case}`,
       opaqueText: c.opaqueText,
       doc: c.doc,
@@ -285,7 +293,7 @@ describe("buyer.json BW1 and BW2: the within challenge's opaque, a map whose eve
       const opaque = d.doc[0]!.opaque!;
       expect(Buffer.from(opaque, "base64url").toString("utf8")).toBe(d.opaqueText);
       expect(d.opaqueText).toBe(JSON.stringify(jcs(JSON.parse(d.opaqueText))));
-      expect(Object.values(JSON.parse(d.opaqueText)).some((v) => typeof v !== "string")).toBe(true);
+      expect(rowsOf(Object.values(JSON.parse(d.opaqueText)), `buyer.json ${d.name}: the values of opaqueText's map`).some((v) => typeof v !== "string")).toBe(true);
       expect(decodeStringMap(opaque)).toBeUndefined();
       expect(pairingsOf(d.doc[0]!)).toEqual({ refused: true, code: OPAQUE_MALFORMED });
     });
@@ -335,7 +343,7 @@ describe("buyer.json BA15: retry-after in its other forms beside BA3", () => {
     const r = row("BA15");
     const ba3 = row("BA3");
     expect(r.input.advanceMs).toBe(ba3.input.advanceMs);
-    for (const c of r.input.cases as { case: string; agreement: { retryAfter?: string }[]; expect: { paidRequests: number } }[]) {
+    for (const c of rowsOf(r.input.cases as { case: string; agreement: { retryAfter?: string }[]; expect: { paidRequests: number } }[], "buyer.json BA15 input.cases", { exact: 3 })) {
       expect(c.agreement[0], c.case).toEqual(ba3.input.agreement[0]);
       const { retryAfter, ...rest } = c.agreement[1]!;
       const { retryAfter: _, ...ba3Rest } = ba3.input.agreement[1];
@@ -350,7 +358,7 @@ describe("buyer.json B20, BA16 and BW4: inputs given and not an object are decli
   for (const name of ["B20", "BA16", "BW4"]) {
     it(name, () => {
       const r = row(name);
-      for (const c of r.input.cases as { inputs: unknown }[]) {
+      for (const c of rowsOf(r.input.cases as { inputs: unknown }[], `buyer.json ${name} input.cases`)) {
         expect(typeof c.inputs !== "object" || Array.isArray(c.inputs), JSON.stringify(c.inputs)).toBe(true);
       }
       expect(r.expect).toMatchObject({ decline: "no-payable-option", detail: "x402/input-malformed", signCalls: 0 });
@@ -412,7 +420,10 @@ describe("buyer.json BW3: a batch-settlement Solana hold, and the refund values 
     const c = row("BW3").control.input.inputs;
     const built = await batchSvm.buildWithin({ ...base, recentBlockhash: c.recentBlockhash, computeUnitLimit: c.computeUnitLimit, computeUnitPrice: BigInt(c.computeUnitPrice) }, H);
     expect(isRefusal(built)).toBe(false);
-    for (const k of row("BW3").input.cases as { case: string; inputs: Record<string, unknown> }[]) {
+    for (const k of rowsOf(row("BW3").input.cases as { case: string; inputs: Record<string, unknown> }[], "buyer.json BW3 input.cases", {
+      keep: ["the cases of a malformed limit or blockhash, which buildWithin takes as given", (k) => "computeUnitLimit" in k.inputs || "recentBlockhash" in k.inputs],
+      leave: ["the case of a computeUnitPrice string, which the gate turns into the bigint buildWithin takes", (k) => "computeUnitPrice" in k.inputs],
+    })) {
       if ("computeUnitPrice" in k.inputs) continue;
       const out = await batchSvm.buildWithin({ ...base, recentBlockhash: c.recentBlockhash, ...k.inputs } as never, H);
       expect(out, k.case).toEqual({ refused: true, code: "svm/input-malformed" });

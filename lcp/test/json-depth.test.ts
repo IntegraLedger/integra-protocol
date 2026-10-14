@@ -13,6 +13,7 @@ import { parse as parseDiscovery } from "../src/discovery.js";
 import { atrNamesInvoice } from "../src/lightning.js";
 import { usdcRequestHash } from "../src/mpp-usdc.js";
 import { unsigned } from "../src/ucp.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const D = load("core-vectors.json").jsonDepth as { max: number; rows: { name: string; case: string; text: string; accept: boolean }[] };
@@ -29,7 +30,7 @@ describe("the cap is one constant, 64", () => {
     expect(MAX_JSON_DEPTH).toBe(64);
     expect(D.max).toBe(MAX_JSON_DEPTH);
   });
-  for (const r of D.rows) {
+  for (const r of rowsOf(D.rows, "core-vectors.json jsonDepth.rows")) {
     it(`${r.name}: ${r.case} → ${r.accept ? "read" : "refused"}`, () => {
       expect(jsonWithinDepth(r.text)).toBe(r.accept);
       if (r.accept) expect(parseJson(r.text)).toEqual(JSON.parse(r.text));
@@ -48,7 +49,7 @@ describe("core-vectors.json jsonNumbers: an integer past the double range", () =
   it("the rows hold 4301 and 400 digits", () => {
     expect(N.rows.map((r) => r.text.length - '{"n":}'.length)).toEqual([4301, 400]);
   });
-  for (const r of N.rows) {
+  for (const r of rowsOf(N.rows, "core-vectors.json jsonNumbers.rows", { exact: 2 })) {
     it(`${r.name}: ${r.case} is read, and written as ${r.stringified}`, () => {
       expect(jsonWithinDepth(r.text)).toBe(true);
       const v = parseJson(r.text) as { n: number };

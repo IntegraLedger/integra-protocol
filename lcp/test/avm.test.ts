@@ -15,6 +15,7 @@ import {
 import { pairingOf, type AtrHash } from "../src/index.js";
 import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -87,7 +88,7 @@ describe("x402-exact-algorand.json", () => {
     const ref = await exactAvm.reference(payment);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    for (const row of V.V3.refusals) {
+    for (const row of rowsOf(V.V3.refusals, "x402-exact-algorand.json V3.refusals")) {
       expect(avmCarrier({ paymentIndex: row.paymentIndex, paymentGroup: row.paymentGroup })).toEqual({
         refused: true,
         code: row.expect,
@@ -100,8 +101,17 @@ describe("x402-exact-algorand.json", () => {
   // The SignedTxn rows: V2's group with its payment entry's one member replaced, which algosdk 3.8.0, the decoder P2
   // names, refuses; the row above runs each through avmCarrier and bound.
   it("V3: each SignedTxn row is V2's payment entry with one member replaced, and algosdk refuses it", () => {
-    const rows = (V.V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[]; expect: string }[]).filter((r) =>
-      r.case.startsWith("SignedTxn "),
+    const rows = rowsOf(
+      V.V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[]; expect: string }[],
+      "x402-exact-algorand.json V3.refusals",
+      {
+        exact: 7,
+        keep: ["the SignedTxn rows", (r) => r.case.startsWith("SignedTxn ")],
+        leave: [
+          "every other row, whose note, index, group or encoding is refused; the test above runs every row through avmCarrier and bound",
+          (r) => !r.case.startsWith("SignedTxn "),
+        ],
+      },
     );
     expect(rows).toHaveLength(7);
     const keys = (m: Map<unknown, unknown>) => [...m.keys()].map(String).sort();
@@ -130,7 +140,7 @@ describe("x402-exact-algorand.json", () => {
     const doc = exactAvm.advertise(required(O), H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
     expect(V.V3.presentedOptions).toHaveLength(5);
-    for (const row of V.V3.presentedOptions) {
+    for (const row of rowsOf(V.V3.presentedOptions, "x402-exact-algorand.json V3.presentedOptions", { exact: 5 })) {
       const accepted: PaymentRequirements = row.accepted;
       const presented = { ...payment, accepted };
       expect(await exactAvm.bound(presented)).toBe(row.expectBound);
@@ -144,7 +154,7 @@ describe("x402-exact-algorand.json", () => {
       });
     }
     expect(V.options).toHaveLength(3);
-    for (const row of V.options) {
+    for (const row of rowsOf(V.options, "x402-exact-algorand.json options", { exact: 3 })) {
       const presented = { ...payment, accepted: row.option };
       expect(await exactAvm.bound(presented)).toEqual({ refused: true, code: row.expect });
       expect(await exactAvm.reference(presented)).toEqual({ refused: true, code: row.expect });
@@ -153,7 +163,7 @@ describe("x402-exact-algorand.json", () => {
 
   it("V4: status and recover", async () => {
     const ref = V.V4.reference;
-    for (const row of V.V4.rows) {
+    for (const row of rowsOf(V.V4.rows, "x402-exact-algorand.json V4.rows")) {
       expect(withStrings(await avmStatus(ref, readerOf({}, row.answer)))).toEqual(row.expect);
     }
     expect(await exactAvm.recover(ref, readerOf({}, V.V4.recover.answer))).toBe(V.V4.recover.expect);
@@ -269,7 +279,7 @@ describe("x402-exact-algorand.json", () => {
 
   it("the option filter, advertise and read", () => {
     expect(pairingOf(O)).toBe("x402/exact/algorand");
-    for (const row of V.options) {
+    for (const row of rowsOf(V.options, "x402-exact-algorand.json options", { exact: 3 })) {
       expect(pairingOf(row.option)).toBeUndefined();
       expect(exactAvm.advertise(required(row.option), H, V.fixed.link, row.option)).toEqual({ refused: true, code: row.expect });
     }

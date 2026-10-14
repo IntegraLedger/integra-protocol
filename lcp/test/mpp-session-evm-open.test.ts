@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { ReaderError, type EvmLog, type EvmReader, type EvmTransaction } from "../src/evm.js";
 import { place, sessionEvm, type MppChallenge, type MppCredential, type SessionRef } from "../src/mpp.js";
 import { H, challenge, link, load, withBigints } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const E = load("mpp-session-evm.json");
 const f = E.fixed;
@@ -87,7 +88,7 @@ describe("ES9: the hash opening's settlement read", () => {
     expect(ref.transferLog?.digest).toBe(E.ES7.expectFromTo);
   });
 
-  for (const row of R.cases) {
+  for (const row of rowsOf(R.cases, "mpp-session-evm.json ES9.cases")) {
     it(row.case, async () => {
       expect(await statusOf(await opening(H), row.transaction)).toEqual(row.expect);
     });
@@ -116,7 +117,13 @@ describe("ES9: the hash opening's settlement read", () => {
   // block above `finalized` can still be replaced, so a failed answer, which names no mark, needs the receipt's block at
   // or below it; above it the read is pending. The failed rows and their expectation at the finalized mark are ES9's.
   it("a call that opens another channel is failed only once its block is at or below the finalized mark", async () => {
-    const failed = R.cases.filter((row: { expect: { state: string } }) => row.expect.state === "failed");
+    const failed = rowsOf<any>(R.cases, "mpp-session-evm.json ES9.cases", {
+      keep: ["the rows whose expect is failed", (row: { expect: { state: string } }) => row.expect.state === "failed"],
+      leave: [
+        "the rows that settle or stay pending, which the row tests above run",
+        (row: { expect: { state: string } }) => row.expect.state === "settled" || row.expect.state === "pending",
+      ],
+    });
     expect(failed.length).toBeGreaterThan(0);
     const block = BigInt(R.receipt.blockNumber);
     const pending = { state: "pending", why: "open-call-not-found" };
@@ -177,7 +184,7 @@ describe("ES9 entryPoint: the hash opening sent through an ERC-4337 EntryPoint r
     expect(ref.opens).toEqual({ escrow: f.escrow, channel: P.expectChannelId, h: H, chainId: f.chainId });
   });
 
-  for (const row of P.cases) {
+  for (const row of rowsOf(P.cases, "mpp-session-evm.json ES9.entryPoint.cases")) {
     it(row.case, async () => {
       expect(await statusOf(await opening(H, P.account), row.transaction, row.receipt)).toEqual(row.expect);
     });
@@ -223,7 +230,7 @@ describe("ES9 permit2: the Permit2 opening reads the escrow's openWithPermit2", 
     expect((transactionOf(padded).input.length - 2) / 2).toBeGreaterThan(131_072);
   });
 
-  for (const row of P.cases) {
+  for (const row of rowsOf(P.cases, "mpp-session-evm.json ES9.permit2.cases")) {
     it(row.case, async () => {
       expect(await statusOf(await signedOpening("permit2"), transactionOf(row), row.receipt)).toEqual(row.expect);
     });
@@ -251,11 +258,11 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
       refused("evm/not-found"), // no transaction
     ];
     expect(R.cases.length).toBe(expected.length);
-    for (const [i, row] of R.cases.entries()) expect(await recoverOf(row.transaction), row.case).toEqual(expected[i]);
+    for (const [i, row] of rowsOf(R.cases, "mpp-session-evm.json ES9.cases", { exact: expected.length }).entries()) expect(await recoverOf(row.transaction), row.case).toEqual(expected[i]);
   });
 
   it("an opening sent through an ERC-4337 EntryPoint is refused evm/no-open-call, where status leaves it pending", async () => {
-    for (const row of R.entryPoint.cases) {
+    for (const row of rowsOf(R.entryPoint.cases, "mpp-session-evm.json ES9.entryPoint.cases")) {
       expect(await recoverOf(row.transaction, row.receipt), row.case).toEqual(refused("evm/no-open-call"));
       expect(row.expect, row.case).toEqual({ state: "pending", why: "open-call-not-found" });
     }

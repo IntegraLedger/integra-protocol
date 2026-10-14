@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { canonicalJson, toLcpString, type AtrHash } from "../src/index.js";
 import { chargeHedera, hederaStatus, type HederaUnsigned } from "../src/hedera.js";
 import { attributionMemo, checkAttribution, type MppChallenge, type MppCredential } from "../src/mpp.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-charge-hedera.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -124,7 +125,7 @@ describe("mpp-charge-hedera.json", () => {
 
   it("fetchPresented's refusals", async () => {
     const push = credential({ type: "hash", transactionId: V.push.transactionId });
-    for (const row of V.fetchPresented.rows) {
+    for (const row of rowsOf(V.fetchPresented.rows, "mpp-charge-hedera.json fetchPresented.rows")) {
       const r = reader(row.readerNetwork ?? V.fetchPresented.reader, row.entries, row.throws === true);
       expect(await chargeHedera.fetchPresented(push, r as never), row.case).toEqual({ refused: true, code: row.expect });
     }
@@ -143,7 +144,7 @@ describe("mpp-charge-hedera.json", () => {
   });
 
   it("fetchPresented's network: the request's chainId, else the given default", async () => {
-    for (const row of V.fetchPresented.defaults) {
+    for (const row of rowsOf(V.fetchPresented.defaults, "mpp-charge-hedera.json fetchPresented.defaults")) {
       const methodDetails = row.chainId === undefined ? {} : { chainId: row.chainId };
       const pull = { challenge: placed({ ...V.fixed.request, methodDetails }), payload: { type: "transaction", transaction: V.build.expectTransactionBase64 } };
       const got = await chargeHedera.fetchPresented(pull, reader(V.fetchPresented.reader, null) as never, row.defaultNetwork);
@@ -153,7 +154,7 @@ describe("mpp-charge-hedera.json", () => {
   });
 
   it("network", () => {
-    for (const row of V.network) {
+    for (const row of rowsOf(V.network, "mpp-charge-hedera.json network")) {
       const request = row.chainId === undefined ? { ...V.fixed.request, methodDetails: {} } : { ...V.fixed.request, methodDetails: { chainId: row.chainId } };
       const got = chargeHedera.network(request, row.default);
       expect(typeof got === "string" ? got : got.code).toBe(row.expect);
@@ -173,7 +174,7 @@ describe("mpp-charge-hedera.json", () => {
 
   it("the request checks", () => {
     expect(advertised(placed())).toEqual([placed()]);
-    for (const row of V.requests) expect(advertised(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
+    for (const row of rowsOf(V.requests, "mpp-charge-hedera.json requests")) expect(advertised(placed(row.request)), row.case).toEqual({ refused: true, code: row.expect });
   });
 
   // MPP's Hedera charge draft (draft-hedera-charge-00, the request's `amount`): "The value MUST be a positive integer

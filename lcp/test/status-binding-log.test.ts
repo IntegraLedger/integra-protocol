@@ -30,6 +30,7 @@ import {
   TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
 import { BATCH_SETTLEMENT, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
+import { rowsOf } from "./rows.js";
 
 const NET = "eip155:84532" as const;
 const TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as Hex;
@@ -94,7 +95,7 @@ describe("a ref without its pairing's binding log", () => {
     });
   }
   it("covers each of the eight pairings", () => {
-    expect(PAIRINGS.map(([id]) => BINDINGS.some((b) => b.id === id))).toEqual(Array(8).fill(true));
+    expect(PAIRINGS.map(([id]) => rowsOf(BINDINGS, "BINDINGS, every pairing").some((b) => b.id === id))).toEqual(Array(8).fill(true));
   });
 });
 
@@ -215,9 +216,13 @@ describe("a session or subscription ref without the key its writer names", () =>
     "mpp/session/tempo": sessionTempo.status,
     "mpp/subscription/tempo": subscriptionTempo.status,
   };
-  for (const [id, status] of Object.entries(THREE)) {
+  for (const [id, status] of rowsOf(Object.entries(THREE), "THREE, the three session and subscription pairings", { exact: 3 })) {
     it(`${id}: a ref whose one key another of these pairings writes is pending unreadable with nothing read; that pairing reads it`, async () => {
-      const foreign = KEYS.filter(([, writer]) => writer !== id);
+      const foreign = rowsOf(KEYS, "KEYS", {
+        exact: 6,
+        keep: ["the keys another of the three pairings writes", ([, writer]) => writer !== id],
+        leave: [`the keys ${id} writes, which the next test sets beside these`, ([, writer]) => writer === id],
+      });
       expect(foreign.length).toBe(6);
       const got: unknown[] = [];
       const read: unknown[] = [];
@@ -233,8 +238,15 @@ describe("a session or subscription ref without the key its writer names", () =>
       expect(read).toEqual(foreign.map(([key]) => [key, "read", "receipt"]));
     });
     it(`${id}: its own key beside a key another of these pairings writes is pending unreadable, with nothing read`, async () => {
-      const own = KEYS.filter(([, writer]) => writer === id);
-      const foreign = KEYS.filter(([, writer]) => writer !== id);
+      const own = rowsOf(KEYS, "KEYS", {
+        keep: [`the keys ${id} writes`, ([, writer]) => writer === id],
+        leave: ["the keys another of the three pairings writes, set beside each of these below", ([, writer]) => writer !== id],
+      });
+      const foreign = rowsOf(KEYS, "KEYS", {
+        exact: 6,
+        keep: ["the keys another of the three pairings writes", ([, writer]) => writer !== id],
+        leave: [`the keys ${id} writes, the own keys above`, ([, writer]) => writer === id],
+      });
       const labels: string[] = [];
       const got: unknown[] = [];
       for (const [ownKey, , ownMember, ownLogs] of own) {

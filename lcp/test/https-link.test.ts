@@ -10,9 +10,10 @@ import { place, read as readMpp } from "../src/mpp.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import { legalContextOf } from "../src/internal/x402.js";
 import { C_E } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
-const rows = load("core-vectors.json").links.rows as {
+const rows = rowsOf(load("core-vectors.json").links.rows, "core-vectors.json links.rows") as {
   name: string;
   case: string;
   link: string;
