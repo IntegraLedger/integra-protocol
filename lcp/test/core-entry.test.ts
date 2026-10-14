@@ -1,8 +1,9 @@
 // The `./core` entry point holds the core functions the package root exports, and nothing else: the ATR's assembly and
 // its hash, hash comparison, the hash's string, structured and raw forms, the https-link rule, the RFC 8785 form of a
-// JSON value and its digest, JSON reading capped at 64 levels, and `isRefusal`. Each is the root's own function object,
-// one function reached by two paths, so a refusal made through one path is a refusal to the other path's `isRefusal`.
-// The codes are the ones docs/reference/refusals.md lists for the core.
+// JSON value and its digest, JSON reading capped at 64 levels, `isRefusal` and `readToRepeat`. Each is the root's own
+// function object, one function reached by two paths, so a refusal made through one path is a refusal to the other
+// path's `isRefusal`, and both paths' `readToRepeat` answer alike. The codes are the ones docs/reference/refusals.md
+// lists, and its marks say which is a read to repeat.
 import { describe, expect, expectTypeOf, it } from "vitest";
 import * as core from "../src/core.js";
 import * as root from "../src/index.js";
@@ -24,12 +25,13 @@ const CORE = rowsOf(
     "isRefusal",
     "newAtrId",
     "parseJson",
+    "readToRepeat",
     "toLcpString",
     "toLegalContext",
     "toRawBytes",
   ] as const,
   "the core functions the package root exports",
-  { exact: 16 },
+  { exact: 17 },
 );
 
 const ID = "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40";
@@ -61,6 +63,15 @@ describe("the ./core entry point", () => {
       expect(isRefusal(viaCore)).toBe(true);
       expect(isRefusal(viaRoot)).toBe(true);
       expect(isRefusal({ refused: true, code: "core/content-not-json" })).toBe(false);
+    }
+  });
+
+  it("readToRepeat answers alike through either path", () => {
+    // docs/reference/refusals.md marks evm/not-found and tempo/not-final **Read to repeat.**, and not core/too-large.
+    for (const readToRepeat of [core.readToRepeat, root.readToRepeat]) {
+      expect(readToRepeat("evm/not-found")).toBe(true);
+      expect(readToRepeat("tempo/not-final")).toBe(true);
+      expect(readToRepeat("core/too-large")).toBe(false);
     }
   });
 });
