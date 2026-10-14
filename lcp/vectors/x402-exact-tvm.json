@@ -829,6 +829,26 @@
     "case": "build with a wallet or jettonWallet whose raw workchain, -129, is outside addr_std's workchain_id:int8",
     "wallet": "-129:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with V2b's stateInit and one more bit after its fields: TON reads an inbound message's state init as exactly one StateInitWithLibs, each cell read to its end (ton-blockchain/ton crypto/block/transaction.cpp, unpack_input_msg; crypto/tl/tlblib.cpp, validate_ref_internal); built with pytoniq-core 0.2.0",
+    "stateInit": "te6cckEBAwEANgACATYBAgAI3q2+7wBRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riC/dAx0",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with V2b's stateInit and one more reference after its fields: TON reads an inbound message's state init as exactly one StateInitWithLibs, each cell read to its end (ton-blockchain/ton crypto/block/transaction.cpp, unpack_input_msg; crypto/tl/tlblib.cpp, validate_ref_internal); built with pytoniq-core 0.2.0",
+    "stateInit": "te6cckEBBAEAOQADATQBAgMACN6tvu8AUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAADIOD4y",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with V2b's code and data and a libraries dictionary (one private library, the code cell keyed by its hash) whose leaf cell holds one more bit after its SimpleLib: TON reads an inbound message's state init as exactly one StateInitWithLibs, each cell read to its end (ton-blockchain/ton crypto/block/transaction.cpp, unpack_input_msg; crypto/tl/tlblib.cpp, validate_ref_internal); built with pytoniq-core 0.2.0",
+    "stateInit": "te6cckEBBAEAXAADATwDAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAUOgBOEg36Ljc4h+b0amCzTn94BcCtAxHYYDDV8I2V36E3GMAwAI3q2+70YiRrU=",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with V2b's code and data and a libraries dictionary of 10 levels of forks that each reference one child cell twice: 1,024 entries in 11 cells, whose paths reach 2,047 dictionary cells. TON validates a message's state init reading at most 1,024 cells, the state init's first and each dictionary cell each time a path reaches it (ton-blockchain/ton crypto/tl/tlblib.hpp, default_validate_max_cells; crypto/tl/tlblib.cpp, validate_ref_internal), and its action phase refuses to send a message carrying this one; built with pytoniq-core 0.2.0",
+    "stateInit": "te6cckEBDgEAbgADATwNAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAgPPaAMDAgGCBAQCAYIFBQIBhAYGAgGEBwcCAYQICAIBhAkJAgGICgoCAYgLCwIBkAwMAQGQDQAI3q2+7zvLX0g=",
+    "expect": "x402/option-malformed"
    }
   ]
  },
@@ -856,7 +876,7 @@
   ],
   "expectRequestBodyHash": "cd43a7ab468a41f98db3beb579d3432c2bf292bec07d80254aed2c815cfff4f2",
   "nonCanonicalLibraries": {
-   "case": "V2b's choice with a state init whose libraries dictionary has a label that is not its shortest form: V2b's code and data, and one private library (the code cell, keyed by its representation hash) whose root edge label is hml_short, 514 bits, where hml_long, 267 bits, is the shortest. The wallet is the state init cell's representation hash, as x402's Python SDK 2.25.0 derives it (address_from_state_init). Parsing this state init and storing it again writes the label as hml_long, which is another cell (expectCanonicalStateInitHash), so build carries the cell as given: the request hash and signature are V2b's, and the settlement message's init is this cell. Computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2 by a script that reproduces V2's and V2b's settlement roots exactly first.",
+   "case": "V2b's choice with a state init whose libraries dictionary has a label that is not its shortest form: V2b's code and data, and one private library (the code cell, keyed by its representation hash) whose root edge label is hml_short, 514 bits, where hml_long, 267 bits, is the shortest. The wallet is the state init cell's representation hash, as x402's Python SDK 2.25.0 derives it (address_from_state_init). Parsing this state init and storing it again writes the label as hml_long, which is another cell (expectCanonicalStateInitHash), so build carries the cell as given: the request hash and signature are V2b's, and the settlement message's init is this cell. Computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2 by a script that reproduces V2's and V2b's settlement roots exactly first. From global version 15 TON refuses to deploy an account whose libraries dictionary is not null (ton-blockchain/ton doc/GlobalVersions.md), so the row pins that build carries the cell byte for byte, not a wallet such a network deploys.",
    "stateInit": "te6cckEBBAEAewADATwDAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAYF//////////////////////////////////////////4nCQb9FxucQ/N6NTBZpz+8AuBWgYjsMBhq+EbK79CbjEAMACN6tvu/TCWJo",
    "expectStateInitHash": "83bb9e74219b46bb27b584229219c3d4016bad2e27f47b2a83bb42b4feb6af04",
    "expectCanonicalStateInitHash": "cc6049d9131a671f927d563fef2e85e7839ecc11ab1c3283da1c4a360eefd8a6",

@@ -5,7 +5,7 @@
  * it led to, through a bounded reader.
  */
 import type * as TonCore from "@ton/core";
-import type { Address, Cell, MessageRelaxed } from "@ton/core";
+import type { Address, Cell, MessageRelaxed, Slice } from "@ton/core";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
@@ -121,9 +121,11 @@ interface TvmChoice {
   /** Seconds since the epoch. */
   now: number;
   /**
-   * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must parse as a
-   * `StateInit` (else `x402/option-malformed`), and the settlement message carries it as its `init` exactly as given,
-   * so its hash stays the address the wallet derives from it.
+   * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must be exactly
+   * one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, none in any cell of its
+   * libraries dictionary, and at most 1,024 cells read, each dictionary cell once for each path that reaches it (else
+   * `x402/option-malformed`). The settlement message carries it as its `init` exactly as given, so its hash stays the
+   * address the wallet derives from it.
    */
   stateInit?: TonCell | string;
 }
@@ -139,6 +141,8 @@ const ID = "x402/exact/tvm" as const;
 const MAX_BOC_BYTES = 8192;
 const MAX_CELLS = 512;
 const MAX_DEPTH = 32;
+/** The cells TON's validation reads of a message's state init, at most: ton-blockchain/ton `default_validate_max_cells`. */
+const STATE_INIT_MAX_READS = 1024;
 const COINS_LIMIT = 1n << 120n;
 const UINT32_LIMIT = 2 ** 32;
 const NETWORK = /^tvm:(-?(?:0|[1-9][0-9]{0,15}))$/;
@@ -663,14 +667,8 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
     .storeRef(actions)
     .storeBit(0)
     .endCell();
-  if (initCell !== undefined) {
-    // The parse checks the state init's form only: `complete` carries the cell itself, never what the parse read.
-    try {
-      peer.loadStateInit(initCell.beginParse());
-    } catch {
-      return refusal("x402/option-malformed");
-    }
-  }
+  // The check reads the state init's form only: `complete` carries the cell itself.
+  if (initCell !== undefined && !isStateInit(initCell)) return refusal("x402/option-malformed");
   return {
     request: { kind: "ton-w5", hash: Uint8Array.from(request.hash()) },
     complete(signature: Uint8Array): TvmPayment | Refusal {
@@ -702,6 +700,75 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
       return paymentWith(required, accepted, { settlementBoc: bocOf(root), asset: accepted.asset });
     },
   };
+}
+
+/**
+ * True when the cell is exactly one TL-B `StateInitWithLibs`, the type in which TON validates a message's state init,
+ * in the action phase that sends it and in the transaction that receives it (ton-blockchain/ton
+ * `crypto/block/transaction.cpp`, `try_action_send_msg` and `unpack_input_msg`):
+ * `fixed_prefix_length:(Maybe (## 5)) special:(Maybe TickTock) code:(Maybe ^Cell) data:(Maybe ^Cell)
+ * library:(HashmapE 256 SimpleLib)`. As TON's validation does (`crypto/tl/tlblib.cpp`, `TLB::validate_ref_internal`),
+ * each cell this reads must be ordinary and read to its end, with no bit or reference left over, and it reads at most
+ * 1,024 cells (`default_validate_max_cells`): the state init's, then each dictionary cell each time a path reaches it.
+ * The code, the data and each library's root are any cells and are not read.
+ */
+function isStateInit(root: Cell): boolean {
+  let reads = STATE_INIT_MAX_READS;
+  const exact = (c: Cell, read: (s: Slice) => boolean): boolean => {
+    if (reads <= 0 || c.isExotic) return false;
+    reads--;
+    const s = c.beginParse();
+    return read(s) && s.remainingBits === 0 && s.remainingRefs === 0;
+  };
+  // hm_edge: a label, then at key length 0 the value, simple_lib public:Bool root:^Cell, else a fork of two edges.
+  const hashmap = (c: Cell, n: number): boolean =>
+    exact(c, (s) => {
+      const l = labelLength(s, n);
+      if (l === null) return false;
+      if (l === n) {
+        s.loadBit();
+        s.loadRef();
+        return true;
+      }
+      const left = s.loadRef();
+      const right = s.loadRef();
+      return hashmap(left, n - l - 1) && hashmap(right, n - l - 1);
+    });
+  try {
+    return exact(root, (s) => {
+      if (s.loadBit()) s.skip(5);
+      if (s.loadBit()) s.skip(2);
+      s.loadMaybeRef();
+      s.loadMaybeRef();
+      const library = s.loadMaybeRef();
+      return library === null || hashmap(library, 256);
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The length of a TL-B `HmLabel ~l n` read from the slice: `hml_short$0 len:(Unary ~l) s:(l * Bit)`, `hml_long$10
+ * l:(#<= n) s:(l * Bit)` or `hml_same$11 v:Bit l:(#<= n)`. Null when it is longer than `n`; a read past the slice's end
+ * throws.
+ */
+function labelLength(s: Slice, n: number): number | null {
+  const width = Math.ceil(Math.log2(n + 1));
+  let l: number;
+  if (!s.loadBit()) {
+    l = 0;
+    while (s.loadBit()) l++;
+  } else if (!s.loadBit()) {
+    l = width === 0 ? 0 : s.loadUint(width);
+  } else {
+    s.loadBit();
+    l = width === 0 ? 0 : s.loadUint(width);
+    return l > n ? null : l;
+  }
+  if (l > n) return null;
+  s.skip(l);
+  return l;
 }
 
 /** The signed request's carrier, checked against the option's forward payload. */

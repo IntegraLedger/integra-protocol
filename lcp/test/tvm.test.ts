@@ -2,7 +2,7 @@
 // pytoniq-core 0.2.0 and PyNaCl 1.6.2.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { beginCell, Cell, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
+import { beginCell, type Builder, Cell, Dictionary, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -195,6 +195,98 @@ describe("x402-exact-tvm.json", () => {
       const init = s.loadRef();
       expect(`0:${hashHex(init)}`).toBe(row.wallet);
       expect(info.type === "internal" && info.dest.toRawString()).toBe(row.wallet);
+    }
+  });
+
+  // TON reads an inbound message's `^StateInit` with `t_StateInitWithLibs.validate_ref` (ton-blockchain/ton
+  // crypto/block/transaction.cpp, unpack_input_msg), and TLB::validate_ref_internal (crypto/tl/tlblib.cpp) accepts a
+  // cell only when it is ordinary and read to its end (`cs.empty_ext()`), for the state init and for each cell of its
+  // `library:(HashmapE 256 SimpleLib)` (crypto/block/block.tlb). Each state init below is V2b's, or V2b's code and data
+  // with a libraries dictionary written cell by cell; its well-formed twin builds and rides as given, and each change
+  // is x402/option-malformed, as a cell and as a base64 BoC.
+  it("V2b: build takes only a state init TON reads as exactly one StateInitWithLibs", async () => {
+    const { code, data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
+    const v2b = Cell.fromBase64(V.V2b.stateInit);
+    const key = code!.hash();
+    const lib = (b: Builder) => b.storeBit(0).storeRef(code!);
+    const leaf = (n: number, edit: (b: Builder) => Builder = (b) => b) =>
+      edit(lib(beginCell().storeUint(0b10, 2).storeUint(n, 9).storeBuffer(key))).endCell();
+    // A fork at the root: a zero-length label, then two edges whose 255-bit labels end the key past its first bit.
+    const fork = (edit: (b: Builder) => Builder = (b) => b) => {
+      const half = lib(beginCell().storeUint(0b10, 2).storeUint(255, 8).storeUint(key[0]! & 0x7f, 7).storeBuffer(key.subarray(1))).endCell();
+      return edit(beginCell().storeUint(0b10, 2).storeUint(0, 9).storeRef(half).storeRef(half)).endCell();
+    };
+    const init = (dict: Cell | null, edit: (b: Builder) => Builder = (b) => b) =>
+      edit(beginCell().storeBit(0).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeMaybeRef(dict)).endCell();
+    const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
+    const good = [v2b, init(leaf(256)), init(fork())];
+    const bad: [string, Cell][] = [
+      ["a bit after the fields", init(null, (b) => b.storeBit(1))],
+      ["a reference after the fields", init(null, (b) => b.storeRef(beginCell().endCell()))],
+      ["fixed_prefix_length cut short", beginCell().storeBit(1).storeUint(0, 3).endCell()],
+      ["a libraries leaf with a bit after its SimpleLib", init(leaf(256, (b) => b.storeBit(1)))],
+      ["a libraries leaf with a reference after its SimpleLib", init(leaf(256, (b) => b.storeRef(beginCell().endCell())))],
+      ["a libraries fork with a bit after its two edges", init(fork((b) => b.storeBit(1)))],
+      ["a libraries label longer than its key", init(leaf(257))],
+      ["a libraries cell that is exotic", init(library)],
+      ["a state init cell that is exotic", library],
+    ];
+    for (const given of good) {
+      const u = await exactTvm.build({ ...choice(), stateInit: given }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const p = u.complete(ed25519.sign(u.request.hash, seed));
+      if ("refused" in p) throw new Error(p.code);
+      expect(Cell.fromBase64(p.payload.settlementBoc).refs[0]!.equals(given)).toBe(true);
+    }
+    for (const [name, given] of bad) {
+      for (const stateInit of [given, given.toBoc({ idx: false, crc32: true }).toString("base64")]) {
+        expect([name, await exactTvm.build({ ...choice(), stateInit }, H)]).toEqual([name, { refused: true, code: "x402/option-malformed" }]);
+      }
+    }
+  });
+
+  // TON validates a message's state init with `validate_ref` at its default bound of 1,024 cells
+  // (ton-blockchain/ton crypto/tl/tlblib.hpp, default_validate_max_cells; crypto/tl/tlblib.cpp, validate_ref_internal,
+  // which counts every cell it reads, the state init's first): a dictionary cell counts each time a path reaches it.
+  // A libraries dictionary whose forks each reference one child cell twice holds 2^f entries in f + 1 cells, and TON
+  // reads 2^(f+1) - 1 of them: at 9 levels the state init's 1,024 reads are within the bound, at 10 and at 30 (the
+  // deepest the BoC's 32-level bound admits) they are not. The dictionary @ton/core writes for the keys 0 to 511 has
+  // 1,023 cells on its paths, and the one for 0 to 512 has 1,025. Each verdict is TON's own, from its transaction
+  // emulator (ton 8e6f091) relaying each state init in this pairing's settlement message.
+  it("V2b: a state init whose validation reads more than TON's 1,024 cells is refused", async () => {
+    const { code, data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
+    const init = (dict: Cell) => beginCell().storeBit(0).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeMaybeRef(dict).endCell();
+    const width = (n: number) => Math.ceil(Math.log2(n + 1));
+    const shared = (forks: number) => {
+      let node = beginCell().storeUint(0b10, 2).storeBit(0).storeRef(code!).endCell();
+      for (let n = 1; n < forks; n++) node = beginCell().storeUint(0b10, 2).storeUint(0, width(n)).storeRef(node).storeRef(node).endCell();
+      return init(beginCell().storeUint(0b11, 2).storeBit(0).storeUint(256 - forks, width(256)).storeRef(node).storeRef(node).endCell());
+    };
+    const plain = (entries: number) => {
+      const d = Dictionary.empty(Dictionary.Keys.BigUint(256), {
+        serialize: (v: Cell, b: Builder) => b.storeBit(0).storeRef(v),
+        parse: (s) => s.loadRef(),
+      });
+      for (let i = 0; i < entries; i++) d.set(BigInt(i), code!);
+      return init(beginCell().storeDictDirect(d).endCell());
+    };
+    const malformed = { refused: true, code: "x402/option-malformed" };
+    for (const [name, given, builds] of [
+      ["9 levels of shared forks", shared(9), true],
+      ["10 levels of shared forks", shared(10), false],
+      ["30 levels of shared forks", shared(30), false],
+      ["512 plain entries", plain(512), true],
+      ["513 plain entries", plain(513), false],
+    ] as const) {
+      const built = await exactTvm.build({ ...choice(), stateInit: given }, H);
+      if (!builds) {
+        expect([name, built]).toEqual([name, malformed]);
+        continue;
+      }
+      if ("refused" in built) throw new Error(`${name}: ${built.code}`);
+      const p = built.complete(ed25519.sign(built.request.hash, seed));
+      if ("refused" in p) throw new Error(p.code);
+      expect([name, Cell.fromBase64(p.payload.settlementBoc).refs[0]!.equals(given)]).toEqual([name, true]);
     }
   });
 
@@ -554,6 +646,9 @@ describe("x402-exact-tvm.json", () => {
         expect(await exactTvm.build({ ...choice(), walletId: 2 ** 32 }, H)).toEqual(want);
         expect(await exactTvm.build({ ...choice(), seqno: -1 }, H)).toEqual(want);
         expect(await exactTvm.build({ ...choice(), now: 1.5 }, H)).toEqual(want);
+      } else if (row.stateInit !== undefined) {
+        expect([row.case, await exactTvm.build({ ...choice(), stateInit: row.stateInit }, H)]).toEqual([row.case, want]);
+        expect([row.case, await exactTvm.build({ ...choice(), stateInit: Cell.fromBase64(row.stateInit) }, H)]).toEqual([row.case, want]);
       } else if (row.signatureBytes !== undefined) {
         const u = await exactTvm.build(choice(), H);
         if ("refused" in u) throw new Error(u.code);
