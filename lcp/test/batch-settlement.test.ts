@@ -544,12 +544,13 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     case: string;
     pairing?: string;
     call?: "build" | "buildWithin";
-    calls?: ("bound" | "reference" | "channel.ref" | "buildWithin")[];
+    calls?: ("bound" | "reference" | "channel.ref" | "channel.kind" | "buildWithin")[];
     choice?: unknown;
     h?: unknown;
     depositAmount?: string;
     validBeforeOrDeadline?: string;
     configMembers?: Record<string, unknown>[];
+    refundAmounts?: unknown[];
     zeroMembers?: ("from" | "payTo" | "asset")[];
     expect: string;
   };
@@ -562,7 +563,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   });
   const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
   /** The members a row carries its input in. Each row carries exactly one, and one test below runs the rows of each. */
-  const INPUTS = ["choice", "h", "depositAmount", "validBeforeOrDeadline", "configMembers", "zeroMembers"] as const;
+  const INPUTS = ["choice", "h", "depositAmount", "validBeforeOrDeadline", "configMembers", "refundAmounts", "zeroMembers"] as const;
   const inputOf = (r: Row) => INPUTS.filter((k) => k in r);
   const carrying = (input: (typeof INPUTS)[number], exact: number, pairing?: string) => {
     const kept = (r: Row) => inputOf(r)[0] === input && (pairing === undefined || r.pairing === pairing);
@@ -752,6 +753,29 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         expect("refused" in (unwrap(await runs["buildWithin"]!()) as object), label).toBe(false);
       }
     }
+  });
+
+  // The channel contract's refund and refundWithSignature take the amount as a uint128 and revert ZeroRefund on 0
+  // (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L399, L418 and L555), and the facilitator
+  // refuses an amount that is non-numeric or non-positive (scheme_batch_settlement_evm.md L641). A refund that names no
+  // amount is a full refund (L194 there), the close.
+  it("the EVM channel.kind refuses a refund whose amount is 0, 2^128, not decimal or null, and reads 1 and 2^128 - 1 as within", async () => {
+    const amounts = carrying("refundAmounts", 1);
+    expect(amounts.map((r) => [r.pairing, r.calls, r.refundAmounts])).toEqual([
+      ["x402/batch-settlement/eip155", ["channel.kind"], ["0", (2n ** 128n).toString(), "1e3", null]],
+    ]);
+    const { payment } = await evmOpening();
+    const p = payment.payload as Record<string, any>;
+    const refund = (amount?: unknown): Payment =>
+      ({ ...payment, payload: { type: "refund", channelConfig: p["channelConfig"], voucher: p["voucher"], ...(amount === undefined ? {} : { amount }) } }) as Payment;
+    const calls: Record<string, (p: Payment) => unknown> = { "channel.kind": (q) => batchEvm.channel.kind(q) };
+    for (const r of amounts) {
+      for (const amount of r.refundAmounts!) {
+        for (const call of r.calls!) expect(calls[call]!(refund(amount)), `${call} ${String(amount)}`).toEqual(refused(r.expect));
+      }
+    }
+    expect(batchEvm.channel.kind(refund())).toBe("close");
+    for (const amount of ["1", (2n ** 128n - 1n).toString()]) expect(batchEvm.channel.kind(refund(amount)), amount).toBe("within");
   });
 
   it("the EVM build refuses a from, or an option's payTo or asset, that is the zero address, and builds with a zero payerAuthorizer", async () => {

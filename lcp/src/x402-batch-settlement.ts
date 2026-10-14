@@ -431,13 +431,23 @@ async function evmRef(p: unknown): Promise<{ network: string; channel: string } 
   return { network: x.accepted.network, channel: id.toLowerCase() };
 }
 
+/**
+ * A deposit is the opening and a voucher is within. A refund with no `amount` is the close; one with an `amount` is
+ * within, where that amount is a positive decimal below 2^128, as the channel contract's `refund` and
+ * `refundWithSignature` take a `uint128` and refuse 0. Any other amount is `x402/payload-malformed`.
+ */
 function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal {
   const x = payloadOf(p, EVM_ID);
   if (isRefusal(x)) return x;
   const t = x.payload["type"];
   if (t === "deposit") return "open";
   if (t === "voucher") return "within";
-  if (t === "refund") return x.payload["amount"] === undefined ? "close" : "within";
+  if (t === "refund") {
+    const amount = x.payload["amount"];
+    if (amount === undefined) return "close";
+    const a = decimalBelow(amount, U128_LIMIT);
+    return a === undefined || a === 0n ? refusal("x402/payload-malformed") : "within";
+  }
   return refusal("x402/channel-kind-unknown");
 }
 
