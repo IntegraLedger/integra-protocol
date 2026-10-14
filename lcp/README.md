@@ -307,6 +307,9 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
   compatibility date 2026-08-04. A bundle needs none of the optional peer dependencies: the package loads each with
   `import()`, which wrangler's bundler leaves to run time when the peer is not installed, and a rail whose peer is
   absent answers as it does in Node without it.
+- Bundlers: the package declares `"sideEffects": false`, and the root builds `BINDINGS` in a call marked pure, so a
+  bundle holds only the modules its imports use. A Worker that imports the core functions from the root bundles the
+  core and the root's own module, and no pairing.
 
 ## Related packages
 

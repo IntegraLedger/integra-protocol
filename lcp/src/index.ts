@@ -184,8 +184,9 @@ export type Presented = PresentedOn[Surface];
 /** The pairing ids of one surface. */
 type PairingOn<S extends Surface> = Extract<PairingId, `${S}/${string}`>;
 
+// Built in a call marked pure, so a bundle that never reads BINDINGS holds none of the pairings it names.
 /** Every pairing this package implements. */
-export const BINDINGS: readonly Binding[] = Object.freeze([
+export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze([
   exactEip3009,
   paymentRequest,
   delegated,
@@ -228,9 +229,7 @@ export const BINDINGS: readonly Binding[] = Object.freeze([
   exactXrpl,
   uptoPermit2,
   uptoSvm,
-]);
-
-const PROBE_CONTEXT = { info: toLegalContext(`0x${"00".repeat(32)}`, "https://pairing.invalid/").legalContext, schema: LEGAL_CONTEXT_SCHEMA };
+]))();
 
 /**
  * The x402 pairing that serves an option: for an `exact` option on a Lightning network, `x402/exact/lnbtc` when its
@@ -241,7 +240,8 @@ const PROBE_CONTEXT = { info: toLegalContext(`0x${"00".repeat(32)}`, "https://pa
 export function pairingOf(option: PaymentRequirements): PairingOn<"x402"> | undefined {
   const ln = lnbtcPairingOf(option);
   if (ln !== undefined) return ln;
-  const doc = { x402Version: 2, resource: { url: "https://pairing.invalid/" }, accepts: [option], extensions: { [LEGAL_CONTEXT]: PROBE_CONTEXT } };
+  const info = toLegalContext(`0x${"00".repeat(32)}`, "https://pairing.invalid/").legalContext;
+  const doc = { x402Version: 2, resource: { url: "https://pairing.invalid/" }, accepts: [option], extensions: { [LEGAL_CONTEXT]: { info, schema: LEGAL_CONTEXT_SCHEMA } } };
   for (const b of BINDINGS) {
     if (!b.id.startsWith("x402/")) continue;
     if (!isRefusal((b as X402Binding).read(doc as PaymentRequired))) return b.id as PairingOn<"x402">;

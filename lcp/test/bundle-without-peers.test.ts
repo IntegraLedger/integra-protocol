@@ -9,7 +9,9 @@
 // agreedRefusals row, each in the vector's B6 credential) from the root and the `./mpp` bundles and built files, in a
 // Node process run in the consumer's project, where `@stacks/transactions` does not resolve. The `./core` bundle holds
 // the core's own modules and no other: no pairing, rail, dependency or peer. A Worker that imports `isRefusal` from both
-// the root and `./core` bundles one copy of it, so a refusal made through either path is a refusal to both.
+// the root and `./core` bundles one copy of it, so a refusal made through either path is a refusal to both. A Worker that
+// imports `canonicalJson` alone from the root holds the core's modules and the root's and no pairing: the package
+// declares `"sideEffects": false`, and the root builds `BINDINGS` in a call marked pure.
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -138,10 +140,13 @@ beforeAll(async () => {
   );
 }, 0);
 
-// A Worker that imports from the root and from `./core`: its bundle, run by Node, gives whether the two paths' functions
-// are one, the codes of a refusal made through each path, and each path's isRefusal of both refusals and of a value
-// shaped like one. The codes are the ones docs/reference/refusals.md lists for the core.
-const BOTH_WORKER = `
+// Two Workers, bundled by one build and run by Node. `both` imports from the root and from `./core`: it gives whether the
+// two paths' functions are one, the codes of a refusal made through each path, and each path's isRefusal of both
+// refusals and of a value shaped like one. `canonicalJson` imports that one name from the root: it gives the RFC 8785
+// form of {"b":1,"a":[2]}, members sorted by name (RFC 8785 §3.2.3), and the code of a refusal. The codes are the ones
+// docs/reference/refusals.md lists for the core.
+const WORKERS: Record<string, string> = {};
+WORKERS["both"] = `
 import * as root from ${JSON.stringify(PKG.name)};
 import * as core from ${JSON.stringify(`${PKG.name}/core`)};
 const viaCore = core.canonicalJson(Number.NaN);
@@ -155,21 +160,43 @@ export const answers = {
   root: [root.isRefusal(viaCore), root.isRefusal(viaRoot), root.isRefusal(shaped)],
 };
 `;
-/** What the bundle of BOTH_WORKER answers, or what building or loading it threw. */
-let both: unknown;
+WORKERS["canonicalJson"] = `
+import { canonicalJson } from ${JSON.stringify(PKG.name)};
+export const answers = [canonicalJson({ b: 1, a: [2] }), canonicalJson(Number.NaN).code];
+`;
+/** Per Worker: what its bundle answers, or what building or loading it threw. */
+let answers: Record<string, unknown> = {};
+/** Per Worker: the modules its bundle holds. */
+let workerModules: Record<string, string[]> = {};
 
 // No time bound (0): the build returns or throws, and the loading process exits by itself.
 beforeAll(async () => {
-  const entry = join(dir, "both.mjs");
-  const out = join(dir, "both-out.mjs");
-  writeFileSync(entry, BOTH_WORKER);
-  both = await build({ ...WORKER, entryPoints: [entry], outfile: out }).then(
-    () => {
-      const load = `import { pathToFileURL } from "node:url"; const m = await import(pathToFileURL(process.argv[1]).href); process.stdout.write(JSON.stringify(m.answers));`;
-      return JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", load, out], { encoding: "utf8" }));
+  const names = Object.keys(WORKERS);
+  const entryPoints = names.map((name) => {
+    const file = join(dir, `worker-${name}.mjs`);
+    writeFileSync(file, WORKERS[name]!);
+    return file;
+  });
+  const options = { ...WORKER, entryPoints, outdir: join(dir, "workers"), outExtension: { ".js": ".mjs" }, metafile: true, absWorkingDir: dir };
+  const built = await build(options).then(
+    (r) => {
+      workerModules = Object.fromEntries(names.map((n) => [n, modulesOf(r.metafile?.outputs[`workers/worker-${n}.mjs`]?.inputs ?? {})]));
+      return true;
     },
-    (e: { errors: Message[] }) => ({ threw: e.errors.map((m) => m.text) }),
+    (e: { errors: Message[] }) => {
+      answers = { threw: e.errors.map((m) => m.text) };
+      return false;
+    },
   );
+  if (!built) return;
+  const load = `
+import { pathToFileURL } from "node:url";
+const out = {};
+for (const [name, file] of JSON.parse(process.argv[1])) out[name] = (await import(pathToFileURL(file).href)).answers;
+process.stdout.write(JSON.stringify(out));
+`;
+  const jobs = names.map((n) => [n, join(dir, "workers", `worker-${n}.mjs`)]);
+  answers = JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", load, JSON.stringify(jobs)], { encoding: "utf8" }));
 }, 0);
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -236,12 +263,22 @@ describe("each public entry point bundled for a Worker with no optional peer ins
   });
 
   it("a Worker importing from the root and from ./core holds one isRefusal, which knows a refusal from either path", () => {
-    expect(both).toEqual({
+    expect(answers["both"]).toEqual({
       isRefusal: true,
       canonicalJson: true,
       codes: ["core/content-not-json", "core/slot-reserved"],
       core: [true, true, false],
       root: [true, true, false],
     });
+  });
+
+  it("a Worker importing canonicalJson alone from the root holds the core's modules and the root's, and no pairing", () => {
+    expect(workerModules["canonicalJson"]).toEqual([
+      `${PKG.name}/dist/core.js`,
+      `${PKG.name}/dist/index.js`,
+      `${PKG.name}/dist/internal/core.js`,
+      `${PKG.name}/dist/refusal.js`,
+    ]);
+    expect(answers["canonicalJson"]).toEqual(['{"a":[2],"b":1}', "core/content-not-json"]);
   });
 });

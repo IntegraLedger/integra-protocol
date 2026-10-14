@@ -27,6 +27,7 @@
     "stablecoin"
   ],
   "type": "module",
+  "sideEffects": false,
   "engines": {
     "node": ">=26.11.1"
   },
