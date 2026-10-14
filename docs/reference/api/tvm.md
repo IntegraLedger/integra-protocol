@@ -141,12 +141,12 @@ The read keys a payment's settlement is read by.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the destination of the W5 request's one message. |
+| <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. |
 | <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` | - |
 | <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the body of the message to the payer's wallet. |
 | <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` | The representation hash of the Jetton transfer body the W5 request sends. |
 | <a id="property-validuntil"></a> `validUntil` | `number` | - |
-| <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw: the destination of the settlement message. |
+| <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw: the address TON sends the settlement message to. |
 
 ***
 
@@ -240,7 +240,15 @@ TEP-74's text comment: 32 zero bits, then the UTF-8 of the hash's LCP string. A 
 
 Reads the signed request in a settlement BoC: an internal message whose body is a W5 `internal_signed` request with
 exactly one `action_send_msg` behind an empty list, carrying a Jetton transfer whose forward payload is a reference
-to a text comment holding an LCP string.
+to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
+refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
+for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
+it, at mainnet's configuration (global version 15, workchains -1 and 0, no extra currencies): a source of
+`addr_none` or an `addr_std` with no anycast (the outgoing message's the W5 wallet's own), a destination TON sends
+to, `extra_flags` of at most 3, its state init validated as TON validates it, a referenced body with nothing after
+it, and at most two nested Merkle proofs or updates. The settlement message TON would not send is
+`tvm/boc-malformed`, and the outgoing one `tvm/not-jetton-transfer`. `wallet` and `jettonWallet` are the addresses
+TON sends to: an `addr_var` of 256 bits names its `addr_std`.
 
 #### Parameters
 
