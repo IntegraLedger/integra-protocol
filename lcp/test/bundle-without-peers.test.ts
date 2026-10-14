@@ -66,8 +66,8 @@ process.stdout.write(JSON.stringify(loaded));
 `;
 
 // The Stacks pairing in the consumer's project: argv[1] is a JSON list of [the vector file, ...files]; prints whether
-// @stacks/transactions resolves there, and for each file the pairing's bound and reference of M4 and of each
-// agreedRefusals row.
+// @stacks/transactions resolves there, the count of agreedRefusals rows the file holds, and for each file the count of
+// answers it gave and the pairing's bound and reference of M4 and of each agreedRefusals row.
 const STACKS = `
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -75,16 +75,22 @@ const [vectors, ...files] = JSON.parse(process.argv[1]);
 const V = JSON.parse(readFileSync(vectors, "utf8"));
 const b6 = V.buyer.rows.find((r) => r.name === "B6").input.presented;
 const credential = (w) => ({ ...b6, payload: { ...b6.payload, transaction: Buffer.from(w.slice(2), "hex").toString("base64") } });
-const wires = [V.M4.wireHex, ...V.agreedRefusals.rows.map((r) => r.wireHex)];
+const rows = V.agreedRefusals.rows;
+const wires = [V.M4.wireHex, ...rows.map((r) => r.wireHex)];
 const peer = await import("@stacks/transactions").then(() => "resolves", (e) => String(e.code));
+const ran = {};
 const answers = {};
 for (const file of files) {
   const m = await import(pathToFileURL(file).href);
   const pairing = m.chargeUsdcStacks ?? m.BINDINGS.find((b) => b.id === "mpp/charge/usdc/stacks");
+  ran[file] = 0;
   answers[file] = [];
-  for (const w of wires) answers[file].push([await pairing.bound(credential(w)), await pairing.reference(credential(w))]);
+  for (const w of wires) {
+    answers[file].push([await pairing.bound(credential(w)), await pairing.reference(credential(w))]);
+    ran[file]++;
+  }
 }
-process.stdout.write(JSON.stringify({ peer, answers }));
+process.stdout.write(JSON.stringify({ peer, rows: rows.length, ran, answers }));
 `;
 
 // The hook has no time bound (0): the build returns or throws, and the loading process exits by itself, so how long
@@ -141,8 +147,8 @@ describe("each public entry point bundled for a Worker with no optional peer ins
 
   it("the usdc Stacks pairing answers its vectors from the root and ./mpp bundles and built files, with no peer", () => {
     const V = JSON.parse(readFileSync(join(ROOT, "vectors", "mpp-charge-usdc-stacks.json"), "utf8"));
-    const rows = V.agreedRefusals.rows as { expect: string }[];
-    expect(rows.length).toBe(42);
+    // Every agreedRefusals row the file holds runs, and M4: the count is the file's own.
+    const rows = rowsOf(V.agreedRefusals.rows as { wireHex: string; expect: string }[], "vectors/mpp-charge-usdc-stacks.json agreedRefusals.rows");
     const want = [
       [V.M4.expectBound, V.M4.expectReference],
       ...rows.map((r) => [{ refused: true, code: r.expect }, { refused: true, code: r.expect }]),
@@ -151,10 +157,14 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     const run = [join(ROOT, "vectors", "mpp-charge-usdc-stacks.json"), ...files];
     const got = JSON.parse(
       execFileSync(process.execPath, ["--input-type=module", "-e", STACKS, JSON.stringify(run)], { cwd: dir, encoding: "utf8" }),
-    ) as { peer: string; answers: Record<string, unknown> };
+    ) as { peer: string; rows: number; ran: Record<string, number>; answers: Record<string, unknown> };
     expect(got.peer).toBe("ERR_MODULE_NOT_FOUND");
+    expect(got.rows).toBe(rows.length);
     expect(Object.keys(got.answers)).toEqual(files);
-    for (const file of files) expect([file, got.answers[file]]).toEqual([file, want]);
+    for (const file of files) {
+      expect([file, got.ran[file]]).toEqual([file, rows.length + 1]);
+      expect([file, got.answers[file]]).toEqual([file, want]);
+    }
   });
 
   it.each(KEYS)("%s loads from its bundle with every peer absent", (key) => {
