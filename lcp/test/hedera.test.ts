@@ -165,6 +165,35 @@ describe("x402-exact-hedera.json", () => {
     expect(await exactHedera.recover(V.V5.reference, readerOf(V.V5.recover.entries))).toBe(V.V5.recover.expect);
   });
 
+  // A Hedera transaction that reaches consensus with a status other than SUCCESS is final: the network charges its fee
+  // and makes none of its transfers (HAPI: the TransactionReceipt's status, a ResponseCodeEnum, and the Mirror Node's
+  // `result`), as the V5 status rows read it, failed with that result. recover refuses such entries hedera/not-success, as the MPP Hedera
+  // charge's fetchPresented does; a transaction id that no counted user entry uses yet is a read to repeat,
+  // hedera/not-found (docs/reference/refusals.md).
+  it("V5: recover refuses counted user entries with no SUCCESS as hedera/not-success, and none yet as hedera/not-found", async () => {
+    type Row = { entries: MirrorEntry[] | null | "reader-error"; expect: { state: string; why?: string } };
+    const failedRow = (r: Row) => r.expect.state === "failed" && r.expect.why!.startsWith("result:");
+    for (const row of rowsOf(V.V5.rows as Row[], "x402-exact-hedera.json V5.rows", {
+      keep: ["the rows status answers failed with a result", failedRow],
+      leave: ["every other row", (r) => !failedRow(r)],
+    })) {
+      expect(await exactHedera.recover(V.V5.reference, readerOf(row.entries)), JSON.stringify(row.entries)).toEqual({
+        refused: true,
+        code: "hedera/not-success",
+      });
+    }
+    const notFound = (r: Row) => r.expect.state === "pending" && r.expect.why === "not-found";
+    for (const row of rowsOf(V.V5.rows as Row[], "x402-exact-hedera.json V5.rows", {
+      keep: ["the rows status answers pending not-found", notFound],
+      leave: ["every other row", (r) => !notFound(r)],
+    })) {
+      expect(await exactHedera.recover(V.V5.reference, readerOf(row.entries)), JSON.stringify(row.entries)).toEqual({
+        refused: true,
+        code: "hedera/not-found",
+      });
+    }
+  });
+
   it("status of a reader for another network is pending unreadable", async () => {
     expect(await hederaStatus(V.V5.reference, readerOf(V.V5.rows[0].entries, "hedera:mainnet"))).toEqual({
       state: "pending",

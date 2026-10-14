@@ -528,9 +528,11 @@ export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promis
 }
 
 /**
- * The hash from the landed user transaction's memo alone, for anyone holding the transaction id. A ref whose
- * `transactionId` is not a Mirror Node transaction id (`shard.realm.num-seconds-nanos`, as `reference` writes it) is
- * `hedera/wrong-reader`, with nothing read. One call.
+ * The hash from the landed user transaction's memo alone, for anyone holding the transaction id. A transaction id that
+ * no counted user entry uses yet is `hedera/not-found`; counted user entries with no `SUCCESS` among them are
+ * `hedera/not-success`: the transaction reached consensus and failed, and a later read gives the same answer. A ref
+ * whose `transactionId` is not a Mirror Node transaction id (`shard.realm.num-seconds-nanos`, as `reference` writes it)
+ * is `hedera/wrong-reader`, with nothing read. One call.
  */
 async function recover(
   ref: { network: HederaNetwork; transactionId: string },
@@ -541,8 +543,9 @@ async function recover(
   const entries = await entriesOf(ref.network, ref.transactionId, reader);
   if (entries === "unreadable") return refusal("hedera/unreadable");
   if (entries === "not-found") return refusal("hedera/not-found");
-  const success = counted(entries).find((e) => e.result === SUCCESS);
-  if (success === undefined) return refusal("hedera/not-found");
+  const own = counted(entries);
+  const success = own.find((e) => e.result === SUCCESS);
+  if (success === undefined) return own.length === 0 ? refusal("hedera/not-found") : refusal("hedera/not-success");
   const memo = memoOf(success);
   if (memo === null) return refusal("hedera/unreadable");
   if (memo.length === 0) return refusal("hedera/no-memo");
