@@ -213,6 +213,30 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
     );
   });
 
+  // go-codec finds a key's member with bytes.Index over a table of the struct's names in byte order, each written as a
+  // separator byte (0xFE less the name's first byte mod 64, less its length mod 64), the name, FF and its index
+  // (go-codec v1.1.10 helper.go, rgetResolveSFI and indexForEncName). The transaction's table holds "apep" FF 00 0C D9
+  // "apfa" ... D9 "asnd" FF, so the 68 bytes from "apep" to "asnd" are found there and read as asnd; algokit reads them
+  // as a key no member has. A key that is not exactly a member's name is refused, so a member has one key.
+  it("a key go-codec's names table finds across several names is refused", async () => {
+    const K = cat(
+      ...["apep", "apfa", "apgs", "apid", "apls", "aprv", "apsu", "arcv"].map((n, i) => cat(ascii(n), [0xff, 0x00, 0x0c + i, 0xd9])),
+      ascii("asnd"),
+    );
+    const X = bin(new Uint8Array(32).fill(7));
+    const Y = bin(new Uint8Array(32).fill(8));
+    const txn = (...pairs: [Uint8Array, Uint8Array][]) => map(keyed([["sig", bin(SIG)], ["txn", map([...keyed(TXN), ...pairs])]]));
+    expect(K.length).toBe(68);
+    await check(
+      [
+        { case: "the key, then asnd, both the same", entry: txn([str(K), X], [str("asnd"), X]), expect: "avm/txn-malformed" },
+        { case: "asnd, then the key with other bytes", entry: txn([str("asnd"), X], [str(K), Y]), expect: "avm/txn-malformed" },
+        { case: "the key alone", entry: txn([str(K), X]), expect: "avm/txn-malformed" },
+      ],
+      "a key found across names",
+    );
+  });
+
   // Each reader leaves a member at its default out of the canonical encoding. A member of another transaction type
   // at its default is no member for WellFormed, which compares each type's members with their zero value.
   it("a member written at its default", async () => {
@@ -305,6 +329,11 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
         { case: "msig [1]: algod reads version 1", entry: entryOf(TXN, [["msig", arr([uint(1)])]]), expect: "avm/txn-malformed" },
         { case: "msig with four elements, one more than its members", entry: entryOf(TXN, [["msig", arr([NIL, NIL, NIL, NIL])]]), expect: "avm/txn-malformed" },
         { case: "txn as an array", entry: map(keyed([["sig", bin(SIG)], ["txn", arr([str("axfer")])]])), expect: "avm/txn-malformed" },
+        {
+          case: "txn [axfer], then V2's txn: both readers read V2's members, and a transaction written as an array is refused wherever it occurs",
+          entry: map(keyed([["sig", bin(SIG)], ["txn", arr([str("axfer")])], ["txn", map(keyed(TXN))]])),
+          expect: "avm/txn-malformed",
+        },
       ],
       "a struct as an array",
     );

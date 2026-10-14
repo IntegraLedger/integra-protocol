@@ -316,8 +316,9 @@ const HEADER: readonly (readonly [string, Kind])[] = [
   ["rekey", ADDRESS],
 ];
 /**
- * The transaction, its embedded structs' members flattened into one map. Written as an array it is refused: the
- * facilitator's decoder reads an array as a transaction with no type and refuses it.
+ * The transaction, its embedded structs' members flattened into one map. Written as an array it is refused wherever
+ * it occurs: the facilitator's decoder reads a last `txn` written as an array as a transaction with no type and refuses
+ * it, and an earlier one, which both readers read under a later map, is refused too, so a transaction has one form.
  */
 const TRANSACTION = struct([...HEADER, ...Object.values(TYPE_FIELDS).flat()], false);
 /** The signed transaction. Written as an array it is refused: the facilitator's decoder reads it with no transaction. */
@@ -460,8 +461,9 @@ function decodeInto(kind: Kind, node: Node, cur: Value): Value {
       };
       if (node.k === "map") {
         for (const [key, x] of node.entries) {
-          // decStructFieldKey reads a key as DecodeStringAsBytes does; an empty key panics in indexForEncName, and
-          // a key no member has is refused (ErrorIfNoField).
+          // decStructFieldKey reads a key as DecodeStringAsBytes does; an empty key panics in indexForEncName. A key
+          // that is not exactly a member's name is refused: ErrorIfNoField refuses most, and a key for which
+          // indexForEncName's search of its names table finds a member is refused here too, so a member has one key.
           const name = key.k === "str" || key.k === "bin" ? key.b : key.k === "array" ? bytesFromItems(key.items) : refuse();
           const field = name.length === 0 ? undefined : kind.fields.find(([n]) => sameAscii(name, n));
           if (field === undefined) return refuse();
