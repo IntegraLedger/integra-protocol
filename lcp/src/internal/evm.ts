@@ -263,8 +263,11 @@ export async function eip3009Status(
  * Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
  * that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
  * a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
- * `evm/unreadable`; no receipt (`null`) is `evm/not-found`. A ref whose `transaction` is not a 32-byte hash is
- * `evm/wrong-reader`, with nothing read. One call.
+ * `evm/unreadable`; no receipt (`null`) is `evm/not-found`. A reverted transaction is `evm/reverted` where the
+ * receipt's block is at or below the reader's `finalized` mark, and `evm/not-final`, a read to repeat, above it or where
+ * that mark cannot be read: a block above it can be replaced by one in which the transaction succeeds, and a refusal
+ * names no mark. The mark is read only for a revert. A ref whose `transaction` is not a 32-byte hash is
+ * `evm/wrong-reader`, with nothing read. At most two calls.
  */
 export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -277,7 +280,10 @@ export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<
   }
   if (receipt === null) return refusal("evm/not-found");
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
-  if (receipt.status === 0) return refusal("evm/reverted");
+  if (receipt.status === 0) {
+    const read = await failedAt(receipt.blockNumber, "reverted", reader);
+    return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
+  }
 
   const found = new Set<AtrHash>();
   for (const log of receipt.logs) {
@@ -923,8 +929,10 @@ export function isLog(l: unknown): l is EvmLog {
 /**
  * Recovers H from a settlement transaction through MetaMask's DelegationManager: among its `RedeemedDelegation` logs,
  * the leaves are those whose data word 1 (the delegate) is the redeemer in topic 2 or the wildcard delegate; exactly
- * one distinct leaf salt (data word 5) is H. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`,
- * with nothing read. One call.
+ * one distinct leaf salt (data word 5) is H. A reverted transaction is `evm/reverted` at or below the reader's
+ * `finalized` mark and `evm/not-final` above it or where that mark cannot be read, as `eip3009Recover` answers; the mark
+ * is read only for a revert. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read.
+ * At most two calls.
  */
 export async function redeemedLeafRecover(
   ref: { network: Eip155; transaction: Hex },
@@ -940,7 +948,10 @@ export async function redeemedLeafRecover(
   }
   if (receipt === null) return refusal("evm/not-found");
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
-  if (receipt.status === 0) return refusal("evm/reverted");
+  if (receipt.status === 0) {
+    const read = await failedAt(receipt.blockNumber, "reverted", reader);
+    return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
+  }
   const salts = new Set<AtrHash>();
   for (const log of receipt.logs) {
     if (!sameAddress(log.address, DELEGATION_MANAGER) || !sameBytes(log.topics[0], REDEEMED_DELEGATION_TOPIC)) continue;

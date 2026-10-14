@@ -18,6 +18,7 @@ export const READS_TO_REPEAT: readonly string[] = [
   "ccd/not-finalized",
   "ccd/not-found",
   "ccd/unreadable",
+  "evm/not-final",
   "evm/not-found",
   "evm/unreadable",
   "hedera/not-final",

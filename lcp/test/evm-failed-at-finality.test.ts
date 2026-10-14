@@ -39,6 +39,7 @@ import { BATCH_SETTLEMENT, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.
 import { problem, type MppCredential } from "../src/mpp.js";
 import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC } from "../src/internal/hedera-session.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
+import { readToRepeat } from "../src/refusal.js";
 import { load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -518,5 +519,65 @@ describe("a fetchPresented revert is refused only at or below the finalized mark
       expect(MV10.find((r) => r.code === code)?.expect, code).toEqual(internal);
       expect(problem(code), code).toEqual(internal);
     }
+  });
+});
+
+// An EVM `recover` that reads a revert gives a failed answer too, and a refusal names no mark: `evm/reverted` only where
+// the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read,
+// `evm/not-final`, a read to repeat (docs/guides/rails.md, "Reading settlement").
+describe("an EVM recover refuses a revert as final only at or below the finalized mark", () => {
+  /** A pairing with a `recover`, the ref it reads, the receipt (and transaction) it reads, its verdict and its not-final code. */
+  type Recovered = [id: string, network: string, ref: object, f: Failure, verdict: string, notFinal: string];
+  const RECOVERS: Recovered[] = [
+    ["x402/exact/eip155/eip3009", BASE, { asset: TOKEN }, { why: "reverted", logs: [used(H)], reverted: true }, "evm/reverted", "evm/not-final"],
+    ["x402/exact/eip155/erc7710-salt", BASE, {}, { why: "reverted", logs: [leaf], reverted: true }, "evm/reverted", "evm/not-final"],
+    ["x402/exact/eip155/permit2", BASE, {}, { why: "reverted", logs: [transfer(PAYER, PAYEE)], reverted: true }, "evm/reverted", "evm/not-final"],
+    ["x402/upto/eip155/permit2", BASE, {}, { why: "reverted", logs: [transfer(PAYER, PAYEE)], reverted: true }, "evm/reverted", "evm/not-final"],
+    ["x402/batch-settlement/eip155", BASE, {}, { why: "reverted", logs: [deposited], reverted: true }, "evm/reverted", "evm/not-final"],
+    ["mpp/session/evm", BASE, {}, { why: "reverted", logs: [transfer(PAYER, sessionEscrow)], reverted: true }, "evm/reverted", "evm/not-final"],
+  ];
+  const recoverOf = (id: string) =>
+    (BINDINGS.find((b) => b.id === id) as unknown as { recover: (ref: object, reader: EvmReader) => Promise<unknown> }).recover;
+
+  for (const [id, network, ref, f, verdict, notFinal] of RECOVERS) {
+    it(`${id}: ${verdict} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
+      const recover = recoverOf(id);
+      const full = { network, transaction: TX, ...ref };
+      for (const [finalized, safe] of [
+        [BLOCK, BLOCK],
+        [BLOCK + 5n, BLOCK + 10n],
+      ] as const) {
+        const marks: string[] = [];
+        expect(await recover(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}`).toEqual({
+          refused: true,
+          code: verdict,
+        });
+        expect(marks).toContain("finalized");
+      }
+      for (const [finalized, safe] of [
+        [BLOCK - 1n, BLOCK],
+        [BLOCK - 1n, BLOCK - 1n],
+        ["fails", BLOCK],
+        ["fails", "fails"],
+      ] as const) {
+        const marks: string[] = [];
+        expect(await recover(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual({
+          refused: true,
+          code: notFinal,
+        });
+        expect(marks).toContain("finalized");
+      }
+    });
+  }
+
+  it("covers every EVM pairing with a recover", () => {
+    const evm = BINDINGS.filter((b) => /eip155|\/evm/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function");
+    expect(new Set(RECOVERS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
+  });
+
+  it("evm/not-final is a code the package returns, and a read to repeat", () => {
+    expect(REFUSAL_CODES.has("evm/not-final")).toBe(true);
+    expect(readToRepeat("evm/not-final")).toBe(true);
+    expect(readToRepeat("evm/reverted")).toBe(false);
   });
 });

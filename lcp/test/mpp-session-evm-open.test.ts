@@ -309,7 +309,7 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
     expect(await recoverOf({ from: relayer, to: f.usdc, input })).toEqual(refused("evm/no-open-call"));
   });
 
-  it("reads the receipt and the transaction: at most two calls, one where the receipt is a revert", async () => {
+  it("reads the receipt and the transaction: at most two calls; a revert reads the receipt and the finalized mark", async () => {
     const counted = (r: EvmReader) => {
       const seen: string[] = [];
       const c: EvmReader = {
@@ -327,7 +327,7 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
     expect(opened.seen).toEqual(["receipt", "transaction"]);
     const reverted = counted(reader(R.cases[0].transaction, { ...R.receipt, status: 0 }));
     expect(await sessionEvm.recover(ref, reverted.c)).toEqual(refused("evm/reverted"));
-    expect(reverted.seen).toEqual(["receipt"]);
+    expect(reverted.seen).toEqual(["receipt", "blockNumber"]);
   });
 
   it("a revert, no receipt, a failed read and a reader for another network", async () => {

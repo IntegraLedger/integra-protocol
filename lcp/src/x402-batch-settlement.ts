@@ -36,6 +36,7 @@ import {
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
 import {
   carriesBinding,
+  failedAt,
   failedIfFinal,
   isLog,
   isReceipt,
@@ -724,7 +725,9 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. A failed
  * read, a reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a
  * string `address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
- * `evm/not-found`. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read.
+ * `evm/not-found`. A reverted transaction is `evm/reverted` at or below the reader's `finalized` mark and
+ * `evm/not-final`, a read to repeat, above it or where that mark cannot be read; the mark is read only for a revert. A
+ * ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls.
  */
 async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -739,7 +742,10 @@ async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: Ev
   }
   if (receipt === null) return refusal("evm/not-found");
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
-  if (receipt.status !== 1) return refusal("evm/reverted");
+  if (receipt.status === 0) {
+    const read = await failedAt(receipt.blockNumber, "reverted", reader);
+    return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
+  }
   const created = receipt.logs.filter(
     (l) => l.address.toLowerCase() === BATCH_SETTLEMENT.toLowerCase() && sameBytes(l.topics[0], CHANNEL_CREATED_TOPIC),
   );

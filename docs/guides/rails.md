@@ -191,8 +191,11 @@ only when the receipt's block is at or below the reader's `finalized` mark. Abov
 read, `status` answers pending with the same reason, and a later read gives the verdict. Where `fetchPresented` refuses
 a reverted transaction, on `mpp/charge/tempo/push` and `mpp/session/hedera`, the same mark places the refusal:
 `tempo/reverted` or `hedera/reverted` at or below it, and above it, or where it cannot be read, `tempo/not-final` or
-`hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). Settled answers are not
-held to the mark: they carry the mark they reached.
+`hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). An EVM `recover`
+(`x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`,
+`x402/upto/eip155/permit2`, `x402/batch-settlement/eip155` and `mpp/session/evm`) places a revert by the same mark:
+`evm/reverted` at or below it, and `evm/not-final`, a read to repeat, above it or where it cannot be read. Settled
+answers are not held to the mark: they carry the mark they reached.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another

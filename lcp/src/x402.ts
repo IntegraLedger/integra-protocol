@@ -42,6 +42,7 @@ import {
 import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-abi.js";
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import {
+  failedAt,
   isLog,
   isReceipt,
   permit2Status,
@@ -792,9 +793,10 @@ type ProxySettle = { selector: Hex; permit: number; owner: number };
  * cancelling one included, whose input carries a call with the same nonce and owner, and whose receipt holds a
  * `Transfer` from that owner emitted by the contract that call names as its token, gives H. `status` with the ATR's
  * reference tells which transaction paid. A reader for another network, a ref or reader that is not an object, or a
- * ref whose `transaction` is not a 32-byte hash, is `evm/wrong-reader`, with nothing read; no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read,
- * a malformed receipt or `nonceBitmap` answer, or an input that is not hex bytes is `evm/unreadable`. At most four
- * calls.
+ * ref whose `transaction` is not a 32-byte hash, is `evm/wrong-reader`, with nothing read; no receipt or no transaction
+ * is `evm/not-found`; a reverted one is `evm/reverted` at or below the reader's `finalized` mark and `evm/not-final`, a
+ * read to repeat, above it or where that mark cannot be read (the mark is read only for a revert); a failed read, a
+ * malformed receipt or `nonceBitmap` answer, or an input that is not hex bytes is `evm/unreadable`. At most four calls.
  */
 function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
   const settles = PROXY_SETTLES[id];
@@ -810,7 +812,10 @@ function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
     }
     if (receipt === null) return refusal("evm/not-found");
     if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
-    if (receipt.status === 0) return refusal("evm/reverted");
+    if (receipt.status === 0) {
+      const read = await failedAt(receipt.blockNumber, "reverted", reader);
+      return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
+    }
     try {
       tx = await reader.transaction(ref.transaction);
     } catch {

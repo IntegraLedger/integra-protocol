@@ -175,6 +175,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "evm/no-open-call",
   "evm/no-permit2-settle",
   "evm/nonce-not-used",
+  "evm/not-final",
   "evm/not-found",
   "evm/reverted",
   "evm/unreadable",

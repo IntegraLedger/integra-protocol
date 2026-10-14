@@ -57,6 +57,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import {
+  failedAt,
   failedIfFinal,
   isLog,
   isReceipt,
@@ -1029,8 +1030,9 @@ async function openRead(
  * the called contract; else `evm/no-open-call`. A transaction sent through an ERC-4337 EntryPoint is refused so: the
  * account's calldata does not show which contract the account called. A reader for another network, a ref or reader
  * that is not an object, or a ref whose `transaction` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is
- * `evm/reverted`; a failed read, a malformed receipt or transaction, or calldata longer than `MAX_CALLDATA` is
- * `evm/unreadable`. At most two calls.
+ * `evm/reverted` at or below the reader's `finalized` mark and `evm/not-final`, a read to repeat, above it or where that
+ * mark cannot be read (the mark is read only for a revert); a failed read, a malformed receipt or transaction, or
+ * calldata longer than `MAX_CALLDATA` is `evm/unreadable`. At most two calls.
  */
 async function evmRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -1044,7 +1046,10 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
   }
   if (receipt === null) return refusal("evm/not-found");
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
-  if (receipt.status === 0) return refusal("evm/reverted");
+  if (receipt.status === 0) {
+    const read = await failedAt(receipt.blockNumber, "reverted", reader);
+    return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
+  }
   try {
     tx = await reader.transaction(ref.transaction);
   } catch {

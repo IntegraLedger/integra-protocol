@@ -47,6 +47,7 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   // finalized height.
   "casper/not-executed",
   "ccd/not-finalized",
+  "evm/not-final",
   "hedera/not-final",
   "polkadot/not-final",
   "svm/not-final",

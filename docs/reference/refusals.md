@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 492 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 493 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -33,7 +33,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`ucp`](#ucp) | 13 | UCP checkouts and bookings (`@integraledger/lcp/ucp`). |
 | [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
-| [`evm`](#evm) | 15 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
+| [`evm`](#evm) | 16 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
 | [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
 | [`svm`](#svm) | 28 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
@@ -336,8 +336,9 @@ EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, 
 | `evm/no-open-call` | The `mpp/session/evm` `recover` finds that the transaction's own call is not an escrow open call (`open`, `openWithAuthorization` or `openWithPermit2`, with a recipient and the leading argument words), or that the receipt holds no `Transfer` of the call's token from its payer into the called contract. An opening sent through an ERC-4337 EntryPoint is refused so. |
 | `evm/no-permit2-settle` | The Permit2 pairings' `recover` finds no call of the scheme's x402 proxy (`settle` or `settleWithPermit`, with an address in the permit's token word and in the owner word) at any offset of the transaction's input with a `Transfer` in the receipt that the call's token emits from the call's owner. A transaction whose input carries the call but whose receipt holds no such `Transfer` is refused so, whether the owner's nonce was spent elsewhere in the block or cancelled by the owner. |
 | `evm/nonce-not-used` | The Permit2 pairings' `recover` finds that Permit2 did not mark the proxy call's nonce used for its owner in the receipt's block: the bit is unset at that block, or already set at the block before. |
+| `evm/not-final` | **Read to repeat.** A transaction an EVM `recover` reads reverted, in a block above the reader's `finalized` mark or with a reader that cannot give that mark: a read to repeat, since that block can be replaced. |
 | `evm/not-found` | **Read to repeat.** The reader found no receipt for the transaction the reference names, or, where an EVM `recover` reads the transaction itself, no transaction. |
-| `evm/reverted` | The transaction the reference names reverted. |
+| `evm/reverted` | The transaction an EVM `recover` reads reverted, in a block at or below the reader's `finalized` mark. |
 | `evm/unreadable` | **Read to repeat.** The reader threw, or returned a receipt, log, transaction or `eth_call` answer that is not well formed, when an EVM `recover` read the transaction or when `authorizationUsed` made its `eth_call` (an answer that is not one 32-byte word, or for `eip3009` a word other than 0 or 1); or the `mpp/session/evm` `recover` read calldata longer than 131,072 bytes. |
 | `evm/wrong-reader` | The reader passed to an EVM `recover` or to `authorizationUsed` is missing or declares a different network than the reference names, or the ref given to an EVM `recover` is not an object or names a `transaction` that is not a 32-byte hash. An EVM `status` gives such a reader pending `unreadable` instead, with nothing read. |
 
