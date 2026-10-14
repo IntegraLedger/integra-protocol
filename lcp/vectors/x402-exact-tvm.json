@@ -809,6 +809,26 @@
    {
     "case": "any tvm function that needs the SDK when @ton/core is not installed",
     "expect": "tvm/peer-missing"
+   },
+   {
+    "case": "an option whose payTo is a raw address whose workchain, 128, is outside addr_std's workchain_id:int8",
+    "option": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "128:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "build with a wallet or jettonWallet whose raw workchain, -129, is outside addr_std's workchain_id:int8",
+    "wallet": "-129:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
+    "expect": "x402/option-malformed"
    }
   ]
  },

@@ -495,8 +495,14 @@ function sameAccount(a: string, b: string): boolean {
   return x !== null && y !== null && x.equals(y);
 }
 
+/**
+ * A raw `workchain:hex` address, or null. Its workchain must fit TL-B's `addr_std` `workchain_id:int8`, [-128, 127]:
+ * outside it, no `addr_std` can hold it, and every address this pairing writes is an `addr_std`.
+ */
 function rawAddress(s: unknown): Address | null {
   if (peer === undefined || typeof s !== "string" || !RAW_ADDRESS.test(s)) return null;
+  const workchain = Number(s.slice(0, s.indexOf(":")));
+  if (workchain < -128 || workchain > 127) return null;
   try {
     return peer.Address.parseRaw(s);
   } catch {

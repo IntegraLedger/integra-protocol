@@ -568,6 +568,51 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
+  // TL-B's addr_std (block.tlb): `workchain_id:int8`, so a raw `workchain:hex` address whose workchain is outside
+  // [-128, 127] is not one an addr_std can hold. Every raw address the pairing reads is held to it: the option filter's
+  // asset, payTo and responseDestination (`tvm/option-malformed`, wherever the filter runs), build's wallet and
+  // jettonWallet (`x402/option-malformed`), and status's reference (pending `unreadable`, with nothing read). -128 and
+  // 127 build.
+  it("a raw address whose workchain is outside int8 is refused at every read, never a throw", async () => {
+    const hex = (raw: string) => raw.slice(raw.indexOf(":") + 1);
+    const outside = ["128", "-129", "9999999999", "-9999999999"];
+    for (const wc of outside) {
+      const malformed = { refused: true, code: "tvm/option-malformed" };
+      for (const field of ["asset", "payTo", "responseDestination"] as const) {
+        const at = (o: PaymentRequirements): PaymentRequirements =>
+          field === "responseDestination"
+            ? { ...o, extra: { ...o.extra, responseDestination: `${wc}:${hex(o.payTo)}` } }
+            : { ...o, [field]: `${wc}:${hex(o[field])}` };
+        const offered = at(O);
+        const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [offered] };
+        expect([wc, field, exactTvm.advertise(doc, H, V.fixed.link, offered)]).toEqual([wc, field, malformed]);
+        expect([wc, field, pairingOf(offered)]).toEqual([wc, field, undefined]);
+        const accepted = at(placed);
+        const built = await exactTvm.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
+        expect([wc, field, built]).toEqual([wc, field, malformed]);
+        const p = await signed();
+        expect([wc, field, await exactTvm.bound({ ...p, accepted })]).toEqual([wc, field, malformed]);
+        expect([wc, field, await exactTvm.reference({ ...p, accepted })]).toEqual([wc, field, malformed]);
+      }
+      for (const field of ["wallet", "jettonWallet"] as const) {
+        const built = await exactTvm.build({ ...choice(), [field]: `${wc}:${hex(V.fixed[field])}` }, H);
+        expect([wc, field, built]).toEqual([wc, field, { refused: true, code: "x402/option-malformed" }]);
+        const { reader, calls } = counting(readerFor(V.V4.status[0]));
+        const ref = { ...REF, [field]: `${wc}:${hex(REF[field])}` };
+        expect([wc, field, await exactTvm.status(ref, reader)]).toEqual([wc, field, { state: "pending", why: "unreadable" }]);
+        expect(calls).toEqual([]);
+      }
+    }
+    for (const wc of ["-128", "127"]) {
+      const u = await exactTvm.build({ ...choice(), wallet: `${wc}:${hex(V.fixed.wallet)}`, jettonWallet: `${wc}:${hex(V.fixed.jettonWallet)}` }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const p = u.complete(new Uint8Array(64));
+      if ("refused" in p) throw new Error(p.code);
+      const ref = await exactTvm.reference(p);
+      expect(ref).toMatchObject({ wallet: `${wc}:${hex(V.fixed.wallet)}`, jettonWallet: `${wc}:${hex(V.fixed.jettonWallet)}` });
+    }
+  });
+
   it("build refuses an option whose forward payload is not the hash's comment", async () => {
     expect(await exactTvm.build({ ...choice(), required: { ...required, accepts: [O] }, accepted: O }, H)).toEqual({
       refused: true,
