@@ -167,7 +167,9 @@ The `checkout_jwt` the mandate discloses.
 
 > **jwsPayload**(`j`): [`Refusal`](index.md#refusal) \| [`Payload`](#payload)
 
-The payload of a compact JWS, decoded as one JSON object. The signature is never verified.
+The payload of a compact JWS, decoded as one JSON object. Each segment is base64url without padding in its canonical
+form (RFC 7515 §2, RFC 4648 §3.5); a JWS with a segment in another form is `ap2/jws-malformed`. The signature is
+never verified.
 
 #### Parameters
 
@@ -189,7 +191,9 @@ The closed Checkout Mandate in a presentation, one SD-JWT or AP2's chain of the 
 `~~` (at most these two hops, each an SD-JWT): exactly one resolved object of the last SD-JWT whose `vct` is
 `mandate.checkout.1`, its `checkout_hash`, and its `checkout_jwt` when disclosed. No signature is verified, nor the
 open mandate's `cnf` delegation to the closed mandate's signer, nor the closed mandate's `sd_hash` or
-`issuer_jwt_hash` link to the open one; the open mandate's constraints are not read. A hop whose payload, with each
+`issuer_jwt_hash` link to the open one; the open mandate's constraints are not read. Each segment of each hop's
+issuer-signed JWT and each disclosure is base64url without padding in its canonical form (RFC 4648 §3.5), or the
+mandate is `ap2/mandate-malformed`; the last hop's Key Binding JWT is not read. A hop whose payload, with each
 disclosed value where its reference sits, nests more than 64 levels is `ap2/too-large`.
 
 #### Parameters
