@@ -70,16 +70,19 @@ describe("standard base64 in its canonical form", () => {
       for (const t of texts.filter((x) => x.length === n - 1)) for (const c of chars) texts.push(t + c);
     }
     expect(texts.length).toBe(1 + 8 + 64 + 512 + 4096 + 32768);
-    for (const s of rowsOf(texts, "every text of up to five of the eight characters", { exact: 1 + 8 + 64 + 512 + 4096 + 32768 })) {
+    // Each text's three answers are compared with ECMA-262's, and every text where one differs is listed. The test has no
+    // time bound (0): it reads a fixed list and returns, so how long it takes depends only on the machine.
+    const same = (a: Uint8Array | null, b: Uint8Array | null) =>
+      a === null || b === null ? a === b : a.length === b.length && a.every((x, i) => x === b[i]);
+    const differ = rowsOf(texts, "every text of up to five of the eight characters", { exact: 1 + 8 + 64 + 512 + 4096 + 32768 }).filter((s) => {
       const want = ecma(s);
-      expect(scure(s), s).toEqual(want);
-      expect(fromBase64(s), s).toEqual(want);
       const got = base64Bytes(s, 1 << 20);
-      expect(got instanceof Uint8Array ? got : null, s).toEqual(want);
-    }
+      return !same(scure(s), want) || !same(fromBase64(s), want) || !same(got instanceof Uint8Array ? got : null, want);
+    });
+    expect(differ).toEqual([]);
     expect([raised("QQ=="), raised("QUI=")]).toEqual(["QR==", "QUJ="]);
     expect([fromBase64("QR=="), fromBase64("QUJ="), base64Bytes("QR==", 8)]).toEqual([null, null, "malformed"]);
-  });
+  }, 0);
 });
 
 describe("each pairing's vector row for its signed payload with a pad bit set", () => {
