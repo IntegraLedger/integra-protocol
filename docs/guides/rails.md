@@ -191,7 +191,11 @@ only when the receipt's block is at or below the reader's `finalized` mark. Abov
 read, `status` answers pending with the same reason, and a later read gives the verdict. Where `fetchPresented` refuses
 a reverted transaction, on `mpp/charge/tempo/push` and `mpp/session/hedera`, the same mark places the refusal:
 `tempo/reverted` or `hedera/reverted` at or below it, and above it, or where it cannot be read, `tempo/not-final` or
-`hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). An EVM `recover`
+`hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). A receipt that succeeded
+without exactly one of the logs `bound` reads H from there, the `TransferWithMemo` with the challenge's attribution
+memo or the escrow's `ChannelOpened` naming the channel, is read at the same mark: above it `fetchPresented` answers
+`tempo/not-final` or `hedera/not-final`, and at or below it returns the landed logs, from which `bound` gives the
+verdict. An EVM `recover`
 (`x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`,
 `x402/upto/eip155/permit2`, `x402/batch-settlement/eip155` and `mpp/session/evm`) places by the same mark a revert and
 each verdict it reads from the receipt, the settle call it finds with the receipt's `Transfer`, or Permit2's nonce

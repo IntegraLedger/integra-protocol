@@ -456,30 +456,53 @@ describe("an EVM failed answer is given only at or below the finalized mark", ()
 // `<ns>/reverted` only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
 // mark cannot be read, `<ns>/not-final`, a read to repeat, which MPP answers 500 `internal-payment-error` with no
 // challenge (mpp-challenge.json MV10). The Hedera code is mpp-session-hedera-solana-xrpl.json's agreedRefusals row.
-// Each credential is its vector file's B6 buyer row as sent, without the `landed` member `fetchPresented` adds.
-describe("a fetchPresented revert is refused only at or below the finalized mark", () => {
+// A receipt that succeeded without the one log `bound` reads H from is read at the same mark, since a block above it
+// can be replaced by one with other logs: `<ns>/not-final` above it, and the landed credential at or below it, which
+// `bound` refuses (docs/reference/refusals.md, `tempo/memo-not-bound` and `hedera/channel-log-not-found`). Each
+// credential is its vector file's B6 buyer row as sent, without the `landed` member `fetchPresented` adds, and the
+// receipt's logs are that member's.
+describe("a fetchPresented revert, or a receipt without the bound log, is refused only at or below the finalized mark", () => {
   const PU = load("mpp-charge-tempo-push.json");
   const HS = load("mpp-session-hedera-solana-xrpl.json");
   const MV10 = load("mpp-challenge.json").MV10.rows as { code: string; expect: { status: number; type: string } }[];
+  const b6 = (file: typeof PU, pairing: string) =>
+    file.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B6" && r.pairing === pairing);
   const asSent = (file: typeof PU, pairing: string) => {
-    const row = file.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B6" && r.pairing === pairing);
-    const { landed: _landed, ...credential } = row.input.presented;
+    const { landed: _landed, ...credential } = b6(file, pairing).input.presented;
     return credential as MppCredential;
   };
+  const landedLogs = (file: typeof PU, pairing: string) => b6(file, pairing).input.presented.landed.logs as EvmLog[];
   const hederaNotFinal = (HS.agreedRefusals.rows as { case: string; expect: string }[]).find((r) =>
     r.case.startsWith("fetchPresented of a hedera opening whose transaction reverted"),
   )!.expect;
-  const CASES: [id: string, network: string, credential: MppCredential, reverted: string, notFinal: string][] = [
-    ["mpp/charge/tempo/push", TEMPO, asSent(PU, "mpp/charge/tempo/push"), "tempo/reverted", "tempo/not-final"],
-    ["mpp/session/hedera", HEDERA, asSent(HS, "mpp/session/hedera"), "hedera/reverted", hederaNotFinal],
+  const CASES: [id: string, network: string, credential: MppCredential, reverted: string, notFinal: string, logs: EvmLog[], unbound: string][] = [
+    [
+      "mpp/charge/tempo/push",
+      TEMPO,
+      asSent(PU, "mpp/charge/tempo/push"),
+      "tempo/reverted",
+      "tempo/not-final",
+      landedLogs(PU, "mpp/charge/tempo/push"),
+      "tempo/memo-not-bound",
+    ],
+    [
+      "mpp/session/hedera",
+      HEDERA,
+      asSent(HS, "mpp/session/hedera"),
+      "hedera/reverted",
+      hederaNotFinal,
+      landedLogs(HS, "mpp/session/hedera"),
+      "hedera/channel-log-not-found",
+    ],
   ];
   const fetchOf = (id: string) =>
     (BINDINGS.find((b) => b.id === id) as unknown as {
       fetchPresented: (c: MppCredential, reader: EvmReader) => Promise<{ refused: true; code: string } | { landed: unknown }>;
     }).fetchPresented;
+  const boundOf = (id: string) => (BINDINGS.find((b) => b.id === id) as unknown as { bound: (c: unknown) => Promise<unknown> }).bound;
   const reverted: Failure = { why: "reverted", logs: [], reverted: true };
 
-  for (const [id, network, credential, revertedCode, notFinal] of CASES) {
+  for (const [id, network, credential, revertedCode, notFinal, logs, unbound] of CASES) {
     it(`${id}: ${revertedCode} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
       const fetchPresented = fetchOf(id);
       for (const [finalized, safe] of [
@@ -506,11 +529,48 @@ describe("a fetchPresented revert is refused only at or below the finalized mark
         ).toEqual({ refused: true, code: notFinal });
         expect(marks).toContain("finalized");
       }
-      // A receipt that succeeded is not held to the mark: it lands above it, and no mark is read.
+      // A receipt that succeeded with the log `bound` reads is not held to the mark: it lands above it, and no mark is
+      // read; `bound` gives H from it.
       const marks: string[] = [];
-      const landed = await fetchPresented(credential, reader(network, { why: "", logs: [] }, BLOCK - 1n, BLOCK - 1n, marks));
+      const landed = await fetchPresented(credential, reader(network, { why: "", logs }, BLOCK - 1n, BLOCK - 1n, marks));
       expect("landed" in landed && landed.landed).toMatchObject({ blockNumber: BLOCK });
       expect(marks).toEqual([]);
+      expect(await boundOf(id)(landed)).toBe(H);
+    });
+
+    it(`${id}: a receipt that succeeded without the log bound reads is ${notFinal} above the mark, and lands at or below it, where bound gives ${unbound}`, async () => {
+      const fetchPresented = fetchOf(id);
+      const without: Failure = { why: "", logs: [] };
+      for (const [finalized, safe] of [
+        [BLOCK - 1n, BLOCK],
+        [BLOCK - 1n, BLOCK - 1n],
+        ["fails", BLOCK],
+        ["fails", "fails"],
+      ] as const) {
+        const marks: string[] = [];
+        expect(await fetchPresented(credential, reader(network, without, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual({
+          refused: true,
+          code: notFinal,
+        });
+        expect(marks).toContain("finalized");
+      }
+      for (const [finalized, safe] of [
+        [BLOCK, BLOCK],
+        [BLOCK + 5n, BLOCK + 10n],
+      ] as const) {
+        const marks: string[] = [];
+        const landed = await fetchPresented(credential, reader(network, without, finalized, safe, marks));
+        expect("landed" in landed && landed.landed, `finalized ${finalized}`).toMatchObject({ blockNumber: BLOCK, logs: [] });
+        expect(marks).toContain("finalized");
+        expect(await boundOf(id)(landed)).toEqual({ refused: true, code: unbound });
+      }
+      // Two copies of the log `bound` reads are not exactly one: the same mark places them.
+      const marks: string[] = [];
+      expect(await fetchPresented(credential, reader(network, { why: "", logs: [...logs, ...logs] }, BLOCK - 1n, BLOCK - 1n, marks))).toEqual({
+        refused: true,
+        code: notFinal,
+      });
+      expect(marks).toContain("finalized");
     });
   }
 

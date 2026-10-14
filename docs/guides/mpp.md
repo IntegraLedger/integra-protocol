@@ -154,7 +154,10 @@ on the XRP Ledger, which it reads only once the transaction is in a validated le
 that), and
 `hedera/not-success` on Hedera. The Hedera session's `fetchPresented` refuses a reverted opening by the same mark:
 `hedera/reverted` at or below it, `hedera/not-final` above it or where it cannot be read
-([Reading settlement](./sessions.md#reading-settlement)). A read
+([Reading settlement](./sessions.md#reading-settlement)). On the Tempo push charge and the Hedera session, a
+transaction that succeeded without exactly one of the logs `bound` reads H from is read by the same mark: above it
+`fetchPresented` answers `tempo/not-final` or `hedera/not-final`, and at or below it returns the landed credential,
+which `bound` refuses (`tempo/memo-not-bound`, `tempo/ambiguous` or `hedera/channel-log-not-found`). A read
 that fails, cannot yet read the landed payment, or reads a revert or error that is not final yet is a read to repeat,
 not a refusal of the payment: the seller asks again later. `readToRepeat(code)`, from the package root, is true for each
 such code ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)).

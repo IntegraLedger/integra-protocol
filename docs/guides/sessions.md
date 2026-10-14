@@ -267,7 +267,9 @@ or where the mark cannot be read, it reads as pending with the same reason
 ([Reading settlement](./rails.md#reading-settlement)). On `mpp/session/hedera`, `fetchPresented`, which reads the
 opening's receipt before `bound`, refuses a revert by the same mark: an opening that reverted is `hedera/reverted` only
 once its block is at or below the reader's `finalized` mark, and `hedera/not-final`, a read to repeat, above that mark
-or where it cannot be read. A reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a
+or where it cannot be read. An opening that succeeded whose escrow logs hold not exactly one `ChannelOpened` naming the
+channel is read by the same mark: `hedera/not-final` above it, and landed at or below it, where `bound` refuses it as
+`hedera/channel-log-not-found`. A reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a
 list of logs), or that holds a log that is not an object with a string `address`, an array of string `topics` and a
 string `data`, is `hedera/unreadable`, a read to repeat, and no mark is read for it. `recover` reads the same mark: an
 opening that reverted, whether or not its receipt holds the opening's log, is `hedera/reverted`, and a receipt without

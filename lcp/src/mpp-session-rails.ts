@@ -226,7 +226,11 @@ function hederaChain(network: string): 295 | 296 {
  * is `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below the
  * reader's `finalized` mark is `hedera/reverted`: nothing moved. A revert above that mark, or where the mark cannot be
  * read, is `hedera/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds.
- * The mark is read only for a revert.
+ * A receipt that succeeded whose logs kept as `landed` do not hold exactly one `ChannelOpened` from the escrow naming
+ * `payload.channelId`, the log `bound` reads, is read at the same mark: above it, or where it cannot be read, it is
+ * `hedera/not-final`, since a block that replaces it can hold other logs; at or below it the credential is returned
+ * with `landed`, and `bound` gives the verdict. The mark is read only for a revert or such a receipt, and not for a
+ * `channelId` that is not a 32-byte hash, which `bound` refuses whatever the chain holds. At most two calls.
  */
 async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
   const e = opening(presented, HEDERA);
@@ -251,7 +255,23 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
     return read.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
   }
   const logs = receipt.logs.filter((l) => sameBytes(l.address.toLowerCase(), escrow)).slice(0, MAX_LANDED_LOGS);
+  const channel = normalHash(e.payload["channelId"]);
+  const opened = channel === null || channelOpened(logs, escrow, channel).length === 1;
+  if (!opened && !(await finalAt(receipt.blockNumber, reader as EvmReader))) return refusal("hedera/not-final");
   return { ...presented, landed: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
+}
+
+/** The `ChannelOpened` logs from `escrow` among `logs` that name `channel`, with four words of data. */
+function channelOpened(logs: readonly unknown[], escrow: Hex, channel: string): EvmLog[] {
+  return logs.filter(
+    (l): l is EvmLog =>
+      isLog(l) &&
+      l.address.toLowerCase() === escrow &&
+      l.topics.length === 4 &&
+      l.topics[0]!.toLowerCase() === CHANNEL_OPENED_TOPIC &&
+      l.topics[1]!.toLowerCase() === channel &&
+      bytesOf(l.data)?.length === 128,
+  );
 }
 
 /**
@@ -269,15 +289,7 @@ async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
   if (channel === null) return refusal("mpp/credential-malformed");
   const escrow = hederaEscrow(e.checked);
   if (isRefusal(escrow)) return escrow;
-  const opened = landed.logs.filter(
-    (l) =>
-      isLog(l) &&
-      l.address.toLowerCase() === escrow &&
-      l.topics.length === 4 &&
-      l.topics[0]!.toLowerCase() === CHANNEL_OPENED_TOPIC &&
-      l.topics[1]!.toLowerCase() === channel &&
-      bytesOf(l.data)?.length === 128,
-  );
+  const opened = channelOpened(landed.logs, escrow, channel);
   if (opened.length !== 1) return refusal("hedera/channel-log-not-found");
   const log = opened[0]!;
   const data = bytesOf(log.data)!;

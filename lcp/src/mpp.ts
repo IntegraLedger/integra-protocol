@@ -69,7 +69,7 @@ import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { failedIfFinal, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
+import { failedIfFinal, finalAt, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
@@ -782,8 +782,12 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
  * `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is `tempo/not-final`, a
  * read to repeat: the block can be replaced by one in which the transaction succeeds. A `TransferWithMemo` log from
  * `currency` that is not of the event's form, a 32-byte sender and recipient topic and an amount word, is
- * `tempo/unreadable` too: the reader's answer is not well formed. A reader that is missing or for another network than
- * the challenge names is `tempo/wrong-reader`.
+ * `tempo/unreadable` too: the reader's answer is not well formed. A receipt that succeeded whose logs from `currency`
+ * do not hold exactly one `TransferWithMemo` with this challenge's attribution memo, the log `bound` reads, is read at
+ * the same mark: above it, or where it cannot be read, it is `tempo/not-final`, since a block that replaces it can hold
+ * other logs; at or below it the credential is returned with `landed`, and `bound` gives the verdict. The mark is read
+ * only for a revert or such a receipt. A reader that is missing or for another network than the challenge names is
+ * `tempo/wrong-reader`. At most two calls.
  */
 async function pushFetchPresented(presented: MppCredential, reader: EvmReader): Promise<LandedCredential | Refusal> {
   if (
@@ -810,7 +814,24 @@ async function pushFetchPresented(presented: MppCredential, reader: EvmReader): 
   if (memoLogs.some((l) => transferParts(l, currency, TRANSFER_WITH_MEMO_TOPIC) === undefined)) {
     return refusal("tempo/unreadable");
   }
+  const attributed = attributedMemoLogs(logs, currency, presented.challenge);
+  if (attributed.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("tempo/not-final");
   return { ...presented, landed: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
+}
+
+/** The `TransferWithMemo` logs from `currency` among `logs` whose memo topic is the challenge's attribution memo. */
+function attributedMemoLogs(logs: readonly unknown[], currency: Hex, challenge: MppCredential["challenge"]): EvmLog[] {
+  const { realm, id } = challenge;
+  return logs.filter(
+    (l): l is EvmLog =>
+      isObject(l) &&
+      Array.isArray(l.topics) &&
+      l.topics.length === 4 &&
+      sameBytes(l.address, currency) &&
+      sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC) &&
+      typeof l.topics[3] === "string" &&
+      checkAttribution(l.topics[3], realm, id) === true,
+  );
 }
 
 /**
@@ -825,17 +846,7 @@ function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Echoed;
   if (!isObject(landed) || !Array.isArray(landed.logs)) return refusal("tempo/read-first");
   const currency = requestAddress(e.checked, "currency");
   if (isRefusal(currency)) return currency;
-  const { realm, id } = presented.challenge;
-  const found = landed.logs.filter(
-    (l) =>
-      isObject(l) &&
-      Array.isArray(l.topics) &&
-      l.topics.length === 4 &&
-      sameBytes(l.address, currency) &&
-      sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC) &&
-      typeof l.topics[3] === "string" &&
-      checkAttribution(l.topics[3], realm, id) === true,
-  );
+  const found = attributedMemoLogs(landed.logs, currency, presented.challenge);
   if (found.length === 0) return refusal("tempo/memo-not-bound");
   if (found.length > 1) return refusal("tempo/ambiguous");
   return { h: e.h, checked: e.checked, currency, log: found[0]! };
