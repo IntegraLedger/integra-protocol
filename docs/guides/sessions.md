@@ -40,7 +40,7 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 
 | Pairing | H at the opening | Within, and the close | `boundWithin` | `until` |
 |---|---|---|---|---|
-| `x402/batch-settlement/eip155` | The channel configuration's `salt`. The channel id, which the deposit authorization and every voucher sign, commits to it. | A voucher, or a refund with an amount, is within; a full refund is the close. | The `salt` of the payment's channel configuration, once it hashes to the voucher's channel id. | none |
+| `x402/batch-settlement/eip155` | The channel configuration's `salt`. The channel id, which the deposit authorization and every voucher sign, commits to it. | A voucher, or a refund whose amount is a positive decimal below 2^128, is within; a full refund, which names no amount, is the close. | The `salt` of the payment's channel configuration, once it hashes to the voucher's channel id. | none |
 | `x402/batch-settlement/solana` | The opening transaction's seller Memo instruction, H's LCP string (the option's `extra.memo`), beside x402's receiver-authorizer binding memo. | A voucher or a top-up is within; a refund is the close. | Refuses `x402/not-bound-within`. | none |
 | `mpp/session/evm` | The channel's `salt`: in the signed `open` call, the EIP-3009 nonce MPP derives over the channel parameters and the salt, or the Permit2 witness. | A voucher or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/session/tempo` | The `salt` of the signed `open` call to the channel escrow. | A voucher or a top-up is within; `close` is the close. | On the v2 escrow, the salt in the payment's channel descriptor, once the descriptor's channel id is the payment's channel. | none |

@@ -593,7 +593,7 @@ async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned
  * The opening's deposit: its amount, a positive decimal below 2^128, as the channel contract's `deposit` takes a
  * `uint128` and refuses 0, and its authorization, exactly one of the EIP-3009 and Permit2 forms. The authorization's
  * time bound, the EIP-3009 `validBefore` or the Permit2 `deadline`, is a decimal below 2^256, the `uint256` the deposit
- * collectors decode it as, and is read as given.
+ * collectors decode it as, and `settleBy` is its value.
  */
 function depositOf(payload: Record<string, unknown>) {
   const deposit = payload["deposit"];
