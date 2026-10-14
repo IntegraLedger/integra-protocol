@@ -77,6 +77,33 @@ describe("buyer.json BA13: a PAYMENT-REQUIRED without its pad characters is not 
   });
 });
 
+// RFC 4648 section 3.5: "These pad bits MUST be set to zero by conforming encoders", and "decoders MAY chose to reject
+// an encoding if the pad bits have not been set to zero". required's base64 ends in "==": its last character before the
+// padding holds two bits of the last byte and four pad bits.
+describe("buyer.json BA19: a PAYMENT-REQUIRED with a pad bit set is not canonical base64 (RFC 4648 section 3.5)", () => {
+  const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+  const canonical = Buffer.from(JSON.stringify(AG.required), "utf8").toString("base64");
+
+  it("requiredPadBit is required's base64 with the lowest pad bit of its last character before the padding set", () => {
+    expect(canonical.endsWith("==")).toBe(true);
+    const at = canonical.length - 3;
+    const bits = ALPHABET.indexOf(canonical[at]!);
+    expect(bits & 0b1111).toBe(0);
+    expect(AG.requiredPadBit).toBe(canonical.slice(0, at) + ALPHABET[bits | 1] + canonical.slice(at + 1));
+    expect(BASE64.test(AG.requiredPadBit)).toBe(true);
+    expect(Buffer.from(AG.requiredPadBit, "base64").equals(Buffer.from(canonical, "base64"))).toBe(true);
+    expect(Buffer.from(AG.requiredPadBit, "base64").toString("base64")).toBe(canonical);
+  });
+
+  it("BA19's 402 sends it as the header, and the gate declines agreement-failed with nothing signed or paid, as BA13", () => {
+    const r = row("BA19");
+    expect(r.input.agreement).toEqual([{ status: 402, paymentRequiredHeader: "requiredPadBit" }]);
+    expect(r.input.approve).toBeUndefined();
+    expect(r.expect).toEqual(row("BA13").expect);
+  });
+});
+
 describe("buyer.json BA12: an offer naming no agreement URL, for a pairing whose payment is not a public proof", () => {
   it("D's read gives no agreement URL, A hashes to D's hash and C does not", async () => {
     const r = exactEip3009.read(B.fixed.D);
@@ -112,9 +139,9 @@ describe("buyer.json BA14: an unpaid request answered 202 is agreement-pending, 
     expect(row("BA14").expect).toEqual({ decline: "agreement-pending", signCalls: 0, agreementFetches: 1, paidRequests: 0 });
   });
 
-  it("the BA rows run BA1 to BA18 in order", () => {
+  it("the BA rows run BA1 to BA19 in order", () => {
     const names = B.rows.map((r: { name: string }) => r.name).filter((n: string) => /^BA[0-9]+$/.test(n));
-    expect(names).toEqual(Array.from({ length: 18 }, (_, i) => `BA${i + 1}`));
+    expect(names).toEqual(Array.from({ length: 19 }, (_, i) => `BA${i + 1}`));
   });
 });
 

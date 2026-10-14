@@ -215,9 +215,10 @@ challenge that advertises the link.
 
 [`vectors/buyer.json`](../../lcp/vectors/buyer.json) fixes the exchange in `fixed.agreement` and the `BA` rows:
 
-- **Unpaid**, the URL answers `402` with `PAYMENT-REQUIRED`: the base64 of an x402 challenge, pad characters included,
-  advertising the same H and link. The buyer gates decline a challenge that advertises another H (`BA2`) and a header
-  without its pad characters (`BA13`).
+- **Unpaid**, the URL answers `402` with `PAYMENT-REQUIRED`: the base64 of an x402 challenge, pad characters included
+  and pad bits zero (RFC 4648 §3.5), as a standard encoder writes it, advertising the same H and link. The buyer gates
+  decline a challenge that advertises another H (`BA2`), a header without its pad characters (`BA13`) and a header with
+  a pad bit set (`BA19`).
 - **Settling**, a paid request answers `202` with `Retry-After`, and the buyer sends the same signed payment again,
   until the agreement option's `maxTimeoutSeconds` plus 180 seconds have passed (`BA1`, `BA3`). The buyer gates decline
   an unpaid request answered `202` as `agreement-pending`, and sign nothing (`BA14`).
