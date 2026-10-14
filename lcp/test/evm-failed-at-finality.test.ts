@@ -524,14 +524,14 @@ describe("a fetchPresented revert is refused only at or below the finalized mark
   });
 });
 
-// An EVM or Tempo `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap without the one use it
-// reads H from, gives a verdict a block above the mark can change, and a refusal names no mark: the verdict only where
-// the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the
-// rail's not-final code, a read to repeat (docs/guides/rails.md, "Reading settlement"). The TIP-20 channel reserve's
-// `ChannelOpened` carries the salt in data word 3 (TIP-1034). The settle calls are viem's encodings
-// of the x402 Permit2 proxies' `settle` (x402 contracts/evm/src/x402ExactPermit2Proxy.sol, x402UptoPermit2Proxy.sol),
-// and the open call draft-evm-session-00's `open`.
-describe("an EVM or Tempo recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
+// An EVM, Tempo or Hedera session `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap
+// without the one use it reads H from, gives a verdict a block above the mark can change, and a refusal names no mark:
+// the verdict only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+// cannot be read, the rail's not-final code, a read to repeat (docs/guides/rails.md, "Reading settlement"). The settle
+// calls are viem's encodings of the x402 Permit2 proxies' `settle` (x402 contracts/evm/src/x402ExactPermit2Proxy.sol,
+// x402UptoPermit2Proxy.sol), and the open call draft-evm-session-00's `open`. The TIP-20 channel reserve's
+// `ChannelOpened` carries the salt in data word 3 (TIP-1034).
+describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
   const PERMIT = {
     name: "permit",
     type: "tuple",
@@ -586,6 +586,9 @@ describe("an EVM or Tempo recover gives a revert or a verdict read from the chai
     log(TIP20_CHANNEL_RESERVE, [CHANNEL_OPENED_V2_TOPIC, CHANNEL, topic(PAYER), topic(PAYEE)], ("0x" +
       [hex64(TOKEN), hex64(PAYEE), hex64(uint(VALUE)), salt.slice(2)].join("")) as Hex);
   const witnessOf = (h: Hex) => log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PAYER), h]);
+  /** The Hedera escrow's `ChannelOpened(channel, payer, payee)` with its four data words: token, signer, salt H, deposit. */
+  const hederaOpened = log(sessionEscrow, [CHANNEL_OPENED_TOPIC as Hex, CHANNEL, topic(PAYER), topic(PAYEE)], ("0x" +
+    [hex64(TOKEN), hex64(STRANGER), H.slice(2), hex64(uint(VALUE))].join("")) as Hex);
   const openCall: EvmTransaction = {
     from: PAYER,
     to: sessionEscrow,
@@ -661,6 +664,17 @@ describe("an EVM or Tempo recover gives a revert or a verdict read from the chai
       "tempo/not-final",
     ],
     [
+      "mpp/session/hedera",
+      HEDERA,
+      { bindingLog: { address: sessionEscrow, topic0: CHANNEL_OPENED_TOPIC, index: 1, value: CHANNEL } },
+      [
+        { why: "hedera/reverted", logs: [hederaOpened], reverted: true },
+        // The escrow's `ChannelOpened` for another channel.
+        { why: "hedera/channel-log-not-found", logs: [{ ...hederaOpened, topics: [CHANNEL_OPENED_TOPIC as Hex, NONCE, topic(PAYER), topic(PAYEE)] }] },
+      ],
+      "hedera/not-final",
+    ],
+    [
       "mpp/subscription/tempo",
       TEMPO,
       {},
@@ -709,8 +723,10 @@ describe("an EVM or Tempo recover gives a revert or a verdict read from the chai
     }
   }
 
-  it("covers every EVM and Tempo pairing with a recover", () => {
-    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function");
+  it("covers every EVM, Tempo and Hedera session pairing with a recover", () => {
+    const evm = BINDINGS.filter(
+      (b) => /eip155|\/evm|tempo|session\/hedera/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function",
+    );
     expect(new Set(RECOVERS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
   });
 

@@ -201,7 +201,8 @@ holds no `Transfer` from its payer): the verdict at or below it, and `evm/not-fi
 where it cannot be read. A transaction whose own call is not an escrow open call is `evm/no-open-call` on every read,
 since its calldata is its own. A Tempo `recover` (`mpp/session/tempo` and `mpp/subscription/tempo`) places a revert,
 `tempo/open-not-found`, `tempo/no-witness` and `tempo/ambiguous` by the same mark, with `tempo/not-final` above it or
-where it cannot be read. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
+where it cannot be read, and the `mpp/session/hedera` `recover` a revert and `hedera/channel-log-not-found`, with
+`hedera/not-final`. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
 mark they reached, or none.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a

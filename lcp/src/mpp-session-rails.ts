@@ -8,7 +8,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
 import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmRef } from "./evm.js";
-import { failedAt, isLog, isReceipt } from "./internal/evm.js";
+import { failedAt, finalAt, isLog, isReceipt } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
   CHANNEL_CLOSED_TOPIC,
@@ -338,8 +338,14 @@ async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: Hede
  * so is a ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` is present and not an object with an
  * address `address` and a 32-byte `value`, the members `recover` reads; nothing is read for any of them. A failed read,
  * or a reader answer that is not a receipt or holds a log that is not an object with a string `address`, an array of
- * string `topics` and a string `data`, is `hedera/unreadable`. No receipt is `hedera/not-found`, and a reverted one
- * `hedera/reverted`, whether or not it holds the opening's log, as the EVM and Tempo recovers answer a revert.
+ * string `topics` and a string `data`, is `hedera/unreadable`. No receipt is `hedera/not-found`. A reverted one is
+ * `hedera/reverted`, whether or not it holds the opening's log, and a receipt with no `ChannelOpened` log from the binding
+ * log's address naming its channel with four words of data is `hedera/channel-log-not-found`. Both are given only where
+ * the receipt's block is at or below the reader's `finalized` mark: above it, or where that mark cannot be read, each is
+ * `hedera/not-final`, a read to repeat, as the EVM and Tempo recovers answer, since a block above the mark can be
+ * replaced by one in which the transaction succeeds or holds other logs. The mark is read only for those. A ref with no
+ * binding log names no log to read: once the receipt is not a revert, it is `hedera/channel-log-not-found`. At most two
+ * calls.
  */
 async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
@@ -354,7 +360,10 @@ async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Pr
   }
   if (receipt === null) return refusal("hedera/not-found");
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
-  if (receipt.status === 0) return refusal("hedera/reverted");
+  if (receipt.status === 0) {
+    const read = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
+    return read.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
+  }
   if (b === undefined) return refusal("hedera/channel-log-not-found");
   const log = receipt.logs.find(
     (l) =>
@@ -364,8 +373,10 @@ async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Pr
       l.topics[1]!.toLowerCase() === b.value.toLowerCase(),
   );
   const data = log === undefined ? undefined : bytesOf(log.data);
-  if (data === undefined || data.length !== 128) return refusal("hedera/channel-log-not-found");
-  return hexOf(wordAt(data, 2)!) as AtrHash;
+  if (data !== undefined && data.length === 128) return hexOf(wordAt(data, 2)!) as AtrHash;
+  return (await finalAt(receipt.blockNumber, reader as EvmReader))
+    ? refusal("hedera/channel-log-not-found")
+    : refusal("hedera/not-final");
 }
 
 /** The read keys of a close, from the issued challenge and the channel: a reported transaction, or the log search. */
