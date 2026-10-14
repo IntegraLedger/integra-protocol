@@ -207,9 +207,9 @@ Each entry point is imported by its subpath. The core:
 | `BINDINGS` | Every pairing this package implements. |
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
 
-A Worker that needs only the core imports `@integraledger/lcp/core`. It exports every function in the table but
-`pairingOf`, each the root's own function, and the types `AtrHash`, `CoreRefusal`, `Json` and `Refusal`. It imports no
-pairing, no rail and no optional peer, so the Worker's bundle holds the core alone.
+A Worker that needs only the core imports `@integraledger/lcp/core`. It exports every name in the table but `BINDINGS`
+and `pairingOf`, each the root's own function, and the types `AtrHash`, `CoreRefusal`, `Json` and `Refusal`. It
+imports no pairing, no rail and no optional peer, so the Worker's bundle holds the core alone.
 
 The protocol and rail entry points:
 
