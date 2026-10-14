@@ -539,7 +539,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. A transaction written {\"$repeat\": [s, n]} is s repeated n times; the rows below repeat AA and U+10000, four UTF-16 code units and three code points, and a length is counted in UTF-16 code units, as JavaScript's String length counts it.",
   "rows": [
    {
     "case": "a transaction that is not padded standard base64",
@@ -572,6 +572,16 @@
    {
     "case": "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number",
     "expect": "pending unreadable"
+   },
+   {
+    "case": "a transaction of 87384 UTF-16 code units and 65538 code points, whose length gives 65538 decoded bytes, over 64 KiB",
+    "transaction": {
+     "$repeat": [
+      "AA\ud800\udc00",
+      21846
+     ]
+    },
+    "expect": "aptos/tx-too-large"
    }
   ]
  },

@@ -381,3 +381,23 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
     expect(exactCardano.claims).toBe(true);
   });
 });
+
+// The agreedRefusals row whose transaction is written {"$repeat": [s, n]}: s repeated n times, each s four UTF-16 code
+// units and three code points. Its length is counted in UTF-16 code units, as the about states.
+describe("x402-exact-cardano.json agreedRefusals: a transaction beyond the BMP over the decoded bound", () => {
+  const rows = (V.agreedRefusals.rows as { case: string; transaction?: { $repeat: [string, number] }; expect: string }[]).filter(
+    (r) => r.transaction !== undefined,
+  );
+  it("one row, whose text is 87384 UTF-16 code units and 65538 code points", () => {
+    expect(rows).toHaveLength(1);
+    const [s, n] = rows[0]!.transaction!.$repeat;
+    const text = s.repeat(n);
+    expect([text.length, [...text].length]).toEqual([87384, 65538]);
+  });
+  for (const r of rows) {
+    it(`${r.case}: ${r.expect}`, async () => {
+      const [s, n] = r.transaction!.$repeat;
+      expect(await decodeCardanoTx(s.repeat(n))).toEqual({ refused: true, code: r.expect });
+    });
+  }
+});

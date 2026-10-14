@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.35.0. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter. V4's status rows read with position 5, the checkpoint from which the caller needs the endpoint's history. A reader answer's firstCheckpoint is the endpoint's serviceConfig.availableRange(type: \"Query\", field: \"transaction\").first, which Sui's GraphQL schema (MystenLabs/sui, crates/sui-indexer-alt-graphql/schema.graphql) defines as the \"Inclusive lower checkpoint for which data is available\"; a row that gives none answers null, an endpoint that states no range. An absent transaction past its epoch bound is expired only while the endpoint holds transactions from the position or earlier.",
+ "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.35.0. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter. V4's status rows read with position 5, the checkpoint from which the caller needs the endpoint's history. A reader answer's firstCheckpoint is the endpoint's serviceConfig.availableRange(type: \"Query\", field: \"transaction\").first, which Sui's GraphQL schema (MystenLabs/sui, crates/sui-indexer-alt-graphql/schema.graphql) defines as the \"Inclusive lower checkpoint for which data is available\"; a row that gives none answers null, an endpoint that states no range. An absent transaction past its epoch bound is expired only while the endpoint holds transactions from the position or earlier. V3's MoveCall row is recipe R with one MoveCall appended, written with @mysten/sui 2.35.0's bcs (@mysten/bcs 2.1.2).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
@@ -83,6 +83,16 @@
    "case": "a transaction of 131073 bytes",
    "zeroBytes": 131073,
    "expectBound": "sui/tx-too-large"
+  },
+  {
+   "case": "recipe R with a MoveCall 0x2::\ufeffcoin::value() appended: a module name led by U+FEFF, which BCS reads as strict UTF-8 and keeps, so the bytes serialise back to themselves and H is the one unused pure input",
+   "tx": {
+    "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AwIAAQEBAAEBAwAAAAABAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIH77u/Y29pbgV2YWx1ZQAALroxn2FxMg4q8Rb8jyGYG2fnLKfwwGABQ2RyDxOU2hsALroxn2FxMg4q8Rb8jyGYG2fnLKfwwGABQ2RyDxOU2hvoAwAAAAAAAEBLTAAAAAAAAdIEAAAAAAAA",
+    "bytes": 237,
+    "blake2b": "0xfe2be179d227859c597bae687beac10d048663c358f9bd36b0e3f250b683a8a1",
+    "digest": "J7BN6ACgKU8UGHV7zkzAH2onuxUwD78nYF4N3y1eGivt"
+   },
+   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   }
  ],
  "V4": {
@@ -220,7 +230,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. A transaction written {\"$repeat\": [s, n]} is s repeated n times; the rows below repeat AA and U+10000, four UTF-16 code units and three code points, and a length is counted in UTF-16 code units, as JavaScript's String length counts it.",
   "rows": [
    {
     "case": "one unused Pure input that is not exactly 32 bytes",
@@ -257,6 +267,16 @@
    {
     "case": "@mysten/sui is not installed: decoding, recover and build refuse, and status reads as pending unreadable ()",
     "expect": "sui/peer-missing"
+   },
+   {
+    "case": "a transaction of 174764 UTF-16 code units and 131073 code points, whose length gives 131073 decoded bytes, over 128 KiB",
+    "transaction": {
+     "$repeat": [
+      "AA𐀀",
+      43691
+     ]
+    },
+    "expect": "sui/tx-too-large"
    }
   ]
  },

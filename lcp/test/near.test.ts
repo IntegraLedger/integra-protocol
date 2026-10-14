@@ -100,6 +100,17 @@ describe("x402-exact-near.json", () => {
     expect(createHash("sha256").update(prefixed).digest("hex")).toBe(V.V1.expectRequestHash);
   });
 
+  // JSON reads 0.0 as the number 0 (RFC 8259 section 6: a number is digits with an optional fraction), so a signer's
+  // answer with keyType written 0.0 is keyType 0.
+  it("V2: complete with keyType written 0.0 gives V2's payment", async () => {
+    expect(V.V2.keyTypeWritten.keyType).toBe(0);
+    const u = await exactNear.build(choice(), H);
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete({ keyType: V.V2.keyTypeWritten.keyType, bytes: ed25519.sign(u.request.hash, seed) });
+    if ("refused" in p) throw new Error(p.code);
+    expect(p.payload.signedDelegateAction).toBe(V.V2.expectSignedDelegateAction);
+  });
+
   it("V2: complete, bound and reference, and each refusal", async () => {
     const u = await exactNear.build(choice(), H);
     if ("refused" in u) throw new Error(u.code);
