@@ -1348,8 +1348,8 @@
     "case": "status with more than one matching invocation",
     "twoMatches": true,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "failed",
+     "why": "not-this-instrument"
     }
    }
   ]

@@ -216,10 +216,11 @@ describe("x402-exact-starknet.json", () => {
   });
 
   // The trace walk reads 16 levels and 512 invocations (docs/reference/refusals.md, `starknet/no-transfer`). A trace
-  // beyond them is read no further: from an accepted receipt it holds no transfer the call reads, from a pre-confirmed
-  // one it is a read to repeat, and status answers pending unreadable for it. An invocation that is not well formed is
+  // beyond them is read no further: from an accepted receipt, whose trace does not change, it holds no transfer the call
+  // reads, so status answers it failed not-this-instrument, as the file's S5 row for no matching transfer; from a
+  // pre-confirmed one it is a read to repeat, and status pending pre-confirmed. An invocation that is not well formed is
   // a reader answer out of its documented form, unreadable at every finality.
-  it("starknetLandedNonce reads a trace within 16 levels and 512 invocations, and refuses one beyond them as no-transfer", async () => {
+  it("starknetLandedNonce reads a trace within 16 levels and 512 invocations, and refuses one beyond them as no-transfer, which status answers failed", async () => {
     const landed = V.S5.landedNonce;
     const pre = { ...landed.receipt, finality: "PRE_CONFIRMED", blockNumber: null };
     const execute: StarknetInvocation = landed.trace.calls[0];
@@ -242,6 +243,8 @@ describe("x402-exact-starknet.json", () => {
     const wide = (n: number) => ({ ...landed.trace, calls: [...Array(n).fill(filler), execute] });
     const within = [deep(13), wide(509)];
     const beyond = [deep(14), wide(510)];
+    const noMatch = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer"));
+    expect(noMatch.expect).toEqual({ state: "failed", why: "not-this-instrument" });
     for (const trace of rowsOf(within, "traces at the bounds", { exact: 2 })) {
       expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace }))).toBe(landed.expect);
     }
@@ -251,12 +254,29 @@ describe("x402-exact-starknet.json", () => {
         code: "starknet/no-transfer",
       });
       expect(await starknetLandedNonce(REF, readerFor({ receipt: pre, trace }))).toEqual({ refused: true, code: "starknet/not-final" });
-      expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace }))).toEqual({ state: "pending", why: "unreadable" });
+      expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace }))).toEqual(noMatch.expect);
+      expect(await exactStarknet.status(REF, readerFor({ receipt: pre, trace }))).toEqual({ state: "pending", why: "pre-confirmed" });
     }
     const malformed = { ...landed.trace, calls: [{ ...execute, calls: [{ ...transfer, calldata: "0x1" }] }] } as never;
     for (const receipt of [landed.receipt, pre]) {
       expect(await starknetLandedNonce(REF, readerFor({ receipt, trace: malformed }))).toEqual({ refused: true, code: "starknet/unreadable" });
     }
+  });
+
+  // The signed OutsideExecution carries one call (`OutsideExecutionTypedData`'s one-member `Calls`), so a trace holding the
+  // matching transfer twice under this nonce is not the signed execution, whatever the receipt's events show. An
+  // accepted receipt's trace does not change: status answers it failed not-this-instrument, as the file's S5 row for
+  // two Transfers from the payer, where starknetLandedNonce gives the one nonce both carry.
+  it("status answers a trace holding the matching transfer twice under the nonce failed not-this-instrument", async () => {
+    const landed = V.S5.landedNonce;
+    const execute: StarknetInvocation = landed.trace.calls[0];
+    const transfer: StarknetInvocation = execute.calls[0]!;
+    const twice = { ...landed.trace, calls: [{ ...execute, calls: [transfer, transfer] }] };
+    const two = V.S5.status.find((r: { case: string }) => r.case === "two Transfers from the payer on the asset");
+    expect(two.expect).toEqual({ state: "failed", why: "not-this-instrument" });
+    expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: twice }))).toEqual(two.expect);
+    expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace: twice }))).toBe(landed.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: landed.trace })))).toEqual(V.S5.status[0].expect);
   });
 
   // A missing or malformed idDigest cannot name the landed transfer, so the read is pending, never failed
