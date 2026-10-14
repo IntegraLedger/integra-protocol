@@ -645,11 +645,13 @@ function keychainLog(logs: readonly EvmLog[], topic0: Hex, addresses: readonly u
  * The read keys of a transfer made under the subscription's access key, from a receipt of the key's registration: the
  * account whose key authorization carried `h` and registered the key, then `accessKey` with that account, the token's
  * `Transfer` to the recipient's digest, and the keychain's `AccessKeySpend` filter for the account, the key and the
- * token. Refused when `ref` carries no access key, or the receipt did not register it under `h`.
+ * token. Refused when `ref` carries no access key (`tempo/no-access-key`), when `h` is not a 32-byte hash
+ * (`mpp/input-malformed`), or when the receipt did not register the key under `h`.
  */
 export function keySearch(ref: SessionRef, receipt: EvmReceipt, h: AtrHash): SessionRef | Refusal {
   const k = isObject(ref) ? ref.accessKey : undefined;
   if (!isObject(k) || !isAddress(k.keyId) || !isAddress(k.token) || normalHash(k.to) === null) return refusal("tempo/no-access-key");
+  if (normalHash(h) === null) return refusal("mpp/input-malformed");
   const account = keyAccount(receipt, h, k.keyId);
   if (isRefusal(account)) return account;
   const word = (a: Hex) => hexOf(addressWord(a));

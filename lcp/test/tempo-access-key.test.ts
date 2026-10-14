@@ -72,10 +72,18 @@ describe("keySearch: the account the witness names, and the key's read keys", ()
     expect(keySearch({ network: NETWORK }, r, F.revertedActivation.witness)).toEqual({ refused: true, code: "tempo/no-access-key" });
   });
 
-  it("refuses an H or a receipt it cannot read, and a witness log naming H whose account topic is not a padded address, as tempo/unreadable", () => {
+  // An H is a 32-byte hash, the caller's input: one that is not is mpp/input-malformed (docs/reference/refusals.md), as
+  // the other MPP helpers answer a malformed input, and never tempo/unreadable, a read to repeat.
+  it("refuses an H that is not a 32-byte hash as mpp/input-malformed", () => {
+    const r = receiptOf(F.revertedActivation.receipt);
+    for (const h of ["0x1234", F.revertedActivation.witness.slice(2), `${F.revertedActivation.witness}00`, 5, undefined]) {
+      expect([h, keySearch(recorded, r, h as Hex)]).toEqual([h, { refused: true, code: "mpp/input-malformed" }]);
+    }
+  });
+
+  it("refuses a receipt it cannot read, and a witness log naming H whose account topic is not a padded address, as tempo/unreadable", () => {
     const r = receiptOf(F.revertedActivation.receipt);
     const unreadable = { refused: true, code: "tempo/unreadable" };
-    expect(keySearch(recorded, r, "0x1234" as Hex)).toEqual(unreadable);
     expect(keySearch(recorded, { ...r, logs: null } as never, F.revertedActivation.witness)).toEqual(unreadable);
     const logs = r.logs.map((l) =>
       l.topics[0] === KEY_AUTHORIZATION_WITNESS_TOPIC ? { ...l, topics: [l.topics[0]!, `0x${"ff".repeat(32)}` as Hex, l.topics[2]!] } : l,
