@@ -38,6 +38,7 @@ import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, load, readerFor, realm } from "./mpp-fixtures.js";
+import { READS_TO_REPEAT } from "./refusal-classes.js";
 import { rowsOf } from "./rows.js";
 
 const sha256 = (s: string) => "0x" + createHash("sha256").update(s).digest("hex");
@@ -275,7 +276,7 @@ describe("mpp-challenge.json", () => {
 
 // `problem` maps the codes this package returns, and only those. The statuses and types are MPP's Status Codes and
 // Error Codes tables (draft-httpauth-payment-01 at 08e7dd87, lines 168-176 and 852-864); MV10 gives a row of each
-// class.
+// class, and refusal-classes.ts gives each code's class as a read to repeat.
 describe("problem", () => {
   type Row = { code: string; expect: { status: number; type: string } };
   const rows = V.MV10.rows as Row[];
@@ -285,13 +286,20 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // 13 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five read-first codes.
+    // MV10's 500 rows: 13 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five
+    // read-first codes.
     expect(answered500.length).toBe(23);
     for (const code of rowsOf([...REFUSAL_CODES], "REFUSAL_CODES, the codes the package returns")) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);
       if (row !== undefined) expect([code, p]).toEqual([code, row.expect]);
-      else expect([code, p]).toEqual([code, verificationFailed]);
+      else expect([code, p]).toEqual([code, READS_TO_REPEAT.includes(code) ? internal : verificationFailed]);
+    }
+  });
+
+  it("answers each read to repeat 500 internal-payment-error, on every rail", () => {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 39 })) {
+      expect([code, problem(code)]).toEqual([code, internal]);
     }
   });
 

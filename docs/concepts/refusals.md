@@ -100,6 +100,39 @@ another network. So does a `recover` given a ref whose transaction id is not in 
 transaction. Check `reader.network` against
 the reference's network before you poll, and give every polling loop a deadline of its own.
 
+## Reads to repeat
+
+A refusal from a read is a verdict or a read to repeat. `readToRepeat(code)` is true for a read to repeat: the answer
+rests on a read of the rail that may answer differently later, with nothing for you to change, so ask again later. The
+payment may already have moved, so do not ask the buyer to pay again. These are each reader's `<rail>/unreadable` (the
+reader failed, or answered out of its documented form) and `<rail>/not-found` (no landed transaction for the reference
+yet), and the codes of a transaction that is not final yet: `casper/not-executed`, `ccd/not-finalized`,
+`xrpl/not-validated`, and `tempo/not-final` and `hedera/not-final` (a revert above the reader's `finalized` mark). The
+[refusal code reference](../reference/refusals.md) marks each of them.
+
+Every other code is false. A verdict, such as `evm/reverted`, gives the same answer on every read. A call you must change
+before it can succeed gives the same answer too, so it is not a read to repeat: `<rail>/wrong-reader` (a reader for
+another network, or a ref the rail cannot read), `<rail>/read-first` (`bound` or `reference` on a push credential before
+`fetchPresented` has read it), a missing peer dependency, and malformed input. A code the package does not return is
+false, whatever its reason.
+
+```ts
+import { readToRepeat } from "@integraledger/lcp";
+
+const codes = ["xrpl/not-validated", "tempo/not-final", "evm/unreadable", "evm/reverted", "evm/wrong-reader", "tempo/read-first", "claim/unreadable"];
+for (const code of codes) console.log(code, readToRepeat(code));
+```
+
+```text
+xrpl/not-validated true
+tempo/not-final true
+evm/unreadable true
+evm/reverted false
+evm/wrong-reader false
+tempo/read-first false
+claim/unreadable false
+```
+
 ## Next
 
 - [Refusal codes](../reference/refusals.md): every code, with its meaning.

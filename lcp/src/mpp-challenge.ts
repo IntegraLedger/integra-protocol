@@ -41,7 +41,7 @@ import {
   xrplChargePairings,
   xrplSessionPairings,
 } from "./mpp-rail-checks.js";
-import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { carriesRefused, isRefusal, readToRepeat, refusal, type Refusal } from "./refusal.js";
 
 /** A challenge's auth-params after quoted-string unescaping. `request` and `opaque` are base64url-nopad JSON. */
 export interface MppChallenge {
@@ -1040,25 +1040,6 @@ export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairingId)
 const MALFORMED = ["mpp/credential-malformed", "mpp/request-malformed", "mpp/opaque-malformed"];
 const INVALID_CHALLENGE = ["mpp/id-not-ours"];
 /**
- * The codes a `fetchPresented` returns when its read fails, cannot yet read the landed payment, or reads a revert above
- * the reader's `finalized` mark.
- */
-const READ_TO_REPEAT = [
-  "tempo/not-found",
-  "tempo/not-final",
-  "tempo/unreadable",
-  "svm/not-found",
-  "svm/unreadable",
-  "stellar/not-found",
-  "stellar/unreadable",
-  "xrpl/not-found",
-  "xrpl/not-validated",
-  "xrpl/unreadable",
-  "hedera/not-found",
-  "hedera/not-final",
-  "hedera/unreadable",
-];
-/**
  * The codes of a call that cannot read the payment: a reader that is not for the network the challenge or reference
  * names, or a ref `recover` cannot read, and `bound` or `reference` on a push credential before `fetchPresented` has
  * read it.
@@ -1081,11 +1062,10 @@ const CANNOT_READ = [
  * Codes and Error Codes tables, under `https://paymentauth.org/problems/`:
  * - 402 `malformed-credential`: `mpp/credential-malformed`, `mpp/request-malformed` and `mpp/opaque-malformed`;
  * - 402 `invalid-challenge`: `mpp/id-not-ours`;
- * - 500 `internal-payment-error`: a read to repeat, which a `fetchPresented` returns when its read fails, cannot yet
- *   read the landed payment, or reads a revert above the reader's `finalized` mark, so the seller asks again later:
- *   `tempo/not-found`, `tempo/not-final`, `tempo/unreadable`, `svm/not-found`, `svm/unreadable`, `stellar/not-found`,
- *   `stellar/unreadable`, `xrpl/not-found`, `xrpl/not-validated`, `xrpl/unreadable`, `hedera/not-found`,
- *   `hedera/not-final` and `hedera/unreadable`;
+ * - 500 `internal-payment-error`: a read to repeat, a code `readToRepeat` answers true for, so the seller asks again
+ *   later: a reader that failed or answered out of its form (`<rail>/unreadable`), no landed transaction yet
+ *   (`<rail>/not-found`), or a transaction not final yet, such as a revert above the reader's `finalized` mark
+ *   (`tempo/not-final`, `hedera/not-final`) or one not in a validated ledger (`xrpl/not-validated`);
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
  *   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
  *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader` and
@@ -1098,7 +1078,7 @@ const CANNOT_READ = [
  * Neither carries `Payment-Receipt`.
  */
 export function problem(code: string): { status: 402 | 500; type: string } {
-  if (!REFUSAL_CODES.has(code) || READ_TO_REPEAT.includes(code) || CANNOT_READ.includes(code)) {
+  if (!REFUSAL_CODES.has(code) || readToRepeat(code) || CANNOT_READ.includes(code)) {
     return { status: 500, type: `${PROBLEM_BASE}internal-payment-error` };
   }
   if (MALFORMED.includes(code)) return { status: 402, type: `${PROBLEM_BASE}malformed-credential` };
