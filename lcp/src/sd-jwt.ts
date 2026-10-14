@@ -2,9 +2,9 @@
  * The SD-JWT reader: RFC 9901 §7.1 steps 1 and 3–5, without step 2's signature check. It splits a presentation into
  * the issuer-signed JWT, its disclosures and an optional Key Binding JWT, and resolves the disclosures into the issuer
  * payload by digest. Every disclosure must be referenced, and no digest may be referenced twice. One allowance: a
- * digest in an object's `_sd` that does not name a three-element disclosure is ignored there, whether it names a
- * two-element disclosure or none; a digest that names no disclosure is ignored once, and a second `_sd` listing of it
- * is malformed. Refusal codes are the caller's.
+ * digest in an object's `_sd` that does not name a three-element disclosure, whether it names a two-element disclosure
+ * or none, is ignored at its first `_sd` listing, and a second `_sd` listing of it is malformed. Refusal codes are the
+ * caller's.
  */
 import { MAX_JSON_DEPTH, type Json } from "./core.js";
 import { type Refusal } from "./refusal.js";
@@ -175,8 +175,8 @@ export async function readSdJwt(
   }
 
   const referenced = new Set<string>();
-  /** The digests an `_sd` lists that name no disclosure: each may be listed once. */
-  const listedUndisclosed = new Set<string>();
+  /** The digests an `_sd` lists that name no three-element disclosure: each may be listed once. */
+  const listedIgnored = new Set<string>();
   type Outcome = { ok: true; value: Json } | { ok: false; answer: () => Refusal };
   const fail = (answer: () => Refusal): Outcome => ({ ok: false, answer });
 
@@ -227,12 +227,11 @@ export async function readSdJwt(
     for (const digest of sd as readonly Json[]) {
       if (typeof digest !== "string") return fail(refusals.malformed);
       const d = byDigest.get(digest);
-      if (d === undefined) {
-        if (listedUndisclosed.has(digest)) return fail(refusals.malformed);
-        listedUndisclosed.add(digest);
+      if (d === undefined || d.name === undefined) {
+        if (listedIgnored.has(digest)) return fail(refusals.malformed);
+        listedIgnored.add(digest);
         continue;
       }
-      if (d.name === undefined) continue;
       if (referenced.has(digest)) return fail(refusals.malformed);
       referenced.add(digest);
       const name = d.name;

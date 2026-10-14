@@ -1,5 +1,5 @@
 {
- "about": "Rows for the SD-JWT reader (src/sd-jwt.ts). C4 is RFC 9901's published disclosures and digests (sections 4.2.3 and 4.2.4.2). C6 and C7 are Verifiable Intent presentations built with Python 3 as compact JSON with fixed ES256 signatures. C8's presentations are built with Python 3 as compact JSON, with a placeholder signature the reader never checks, from C4's family_name disclosure and a decoy digest that names no disclosure. The reader applies RFC 9901 section 7.1 steps 1 and 3-5, without step 2's signature check, with one allowance: a digest in _sd that does not name a three-element disclosure is ignored there, and one that names no disclosure is ignored once; section 7.1 step 4 rejects a digest met more than once, so C8's second listing is malformed. The reader's refusal codes are the caller's; these rows name the reason: malformed, sd-alg-unsupported, unreferenced or too-large.",
+ "about": "Rows for the SD-JWT reader (src/sd-jwt.ts). C4 is RFC 9901's published disclosures and digests (sections 4.2.3 and 4.2.4.2). C6 and C7 are Verifiable Intent presentations built with Python 3 as compact JSON with fixed ES256 signatures. C8's presentations are built with Python 3 as compact JSON, with a placeholder signature the reader never checks, from C4's family_name and FR disclosures and a decoy digest that names no disclosure. The reader applies RFC 9901 section 7.1 steps 1 and 3-5, without step 2's signature check, with one allowance: a digest in _sd that does not name a three-element disclosure, whether it names a two-element disclosure or none, is ignored at its first _sd listing; section 7.1 step 4 rejects a digest met more than once, so C8's second listing is malformed. The reader's refusal codes are the caller's; these rows name the reason: malformed, sd-alg-unsupported, unreferenced or too-large.",
  "C4": [
   {
    "disclosure": "WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsICJmYW1pbHlfbmFtZSIsICJNw7ZiaXVzIl0",
@@ -88,6 +88,25 @@
     "presentation": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsiWDl5SDBBanJkbTFPaWo0dFdzbzlVenpLSnZQb0R4d211RWNPM1hBZFJDMCIsInZldWJvaXI0LW5QbG4tZkUwOFNLNFJaV0Y5MTJ4eUIzUE45c3ZET3BIZGMiXSwiX3NkX2FsZyI6InNoYS0yNTYifQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsICJmYW1pbHlfbmFtZSIsICJNw7ZiaXVzIl0~",
     "expectResolved": {
      "family_name": "Möbius"
+    }
+   },
+   {
+    "case": "a digest that names a two-element disclosure, listed twice in the payload's _sd and once as {\"...\": digest}",
+    "presentation": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsidzBJOEVLY2RDdFVQa0dDTlVyZndWcDJ4RWdOanRvSURsT3hjOS1QbE9ocyIsIncwSThFS2NkQ3RVUGtHQ05VcmZ3VnAyeEVnTmp0b0lEbE94YzktUGxPaHMiXSwibmF0aW9uYWxpdGllcyI6W3siLi4uIjoidzBJOEVLY2RDdFVQa0dDTlVyZndWcDJ4RWdOanRvSURsT3hjOS1QbE9ocyJ9XSwiX3NkX2FsZyI6InNoYS0yNTYifQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0~",
+    "expect": "malformed"
+   },
+   {
+    "case": "a digest that names a two-element disclosure, listed in the payload's _sd, in a disclosed object's _sd and once as {\"...\": digest}",
+    "presentation": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsidzBJOEVLY2RDdFVQa0dDTlVyZndWcDJ4RWdOanRvSURsT3hjOS1QbE9ocyIsImtiVlc3SnNkQ0NMb0U3MF8zeWNlZkNBZ0lHTG9IdTIzR1p0NGpzY2p3REEiXSwibmF0aW9uYWxpdGllcyI6W3siLi4uIjoidzBJOEVLY2RDdFVQa0dDTlVyZndWcDJ4RWdOanRvSURsT3hjOS1QbE9ocyJ9XSwiX3NkX2FsZyI6InNoYS0yNTYifQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0~WyJjMkZzZEMxaFpHUnlaWE56IiwiYWRkcmVzcyIseyJfc2QiOlsidzBJOEVLY2RDdFVQa0dDTlVyZndWcDJ4RWdOanRvSURsT3hjOS1QbE9ocyJdfV0~",
+    "expect": "malformed"
+   },
+   {
+    "case": "control: the same digest listed once in the payload's _sd and once as {\"...\": digest} resolves where the element sits",
+    "presentation": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfc2QiOlsidzBJOEVLY2RDdFVQa0dDTlVyZndWcDJ4RWdOanRvSURsT3hjOS1QbE9ocyJdLCJuYXRpb25hbGl0aWVzIjpbeyIuLi4iOiJ3MEk4RUtjZEN0VVBrR0NOVXJmd1ZwMnhFZ05qdG9JRGxPeGM5LVBsT2hzIn1dLCJfc2RfYWxnIjoic2hhLTI1NiJ9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0~",
+    "expectResolved": {
+     "nationalities": [
+      "FR"
+     ]
     }
    }
   ]

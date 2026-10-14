@@ -52,9 +52,10 @@ describe("sd-jwt.json", () => {
     }
   });
 
-  // RFC 9901 §7.1 step 4: a digest met more than once is rejected. A decoy listed twice, in one _sd or in two, is the
-  // reader's malformed; listed once it is ignored, and C7's L2a lists one once in _sd and once as {"...": digest}.
-  it("C8: a digest that names no disclosure is ignored once, and a second _sd listing is malformed", async () => {
+  // RFC 9901 §7.1 step 4: a digest met more than once is rejected. A digest in _sd that names a two-element disclosure
+  // or none, listed twice, in one _sd or in two, is the reader's malformed; listed once it is ignored, and C7's L2a
+  // lists each kind once in _sd and once as {"...": digest}.
+  it("C8: a digest in _sd that names no three-element disclosure is ignored once, and a second _sd listing is malformed", async () => {
     for (const row of V.C8.rows) {
       const r = await readSdJwt(row.presentation, REFUSALS);
       if (row.expect !== undefined) expect(r, row.case).toEqual({ refused: true, code: row.expect });
