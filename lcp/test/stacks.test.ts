@@ -347,8 +347,9 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
   });
 
   // stacks-core 4.0.5 (stacks-network/stacks-core d736ba0) reads a transaction with
-  // `StacksTransaction::consensus_deserialize` (stacks-codec/src/transaction.rs:3078) and names it by the hash of its
-  // serialization; each test cites the rule it reads, and each answer here is that deserializer's, run on these bytes.
+  // `StacksTransaction::consensus_deserialize` (stacks-codec/src/transaction.rs:3065-3067, :3078-3165) and names it by
+  // the hash of its serialization; each test cites the rule it reads, and each answer here is that deserializer's, run
+  // on these bytes.
   // A transaction it decodes and serializes back to the same bytes binds H when it calls `transfer` with (some H) as
   // its fourth argument, else is `mpp/stacks-memo-not-h`; any other bytes are `mpp/stacks-tx-malformed`. Each
   // transaction is M4's with one part replaced, written as the serialization writes it; none is signed again.
@@ -967,10 +968,10 @@ function withBigints(v: unknown): unknown {
 }
 
 // The agreedRefusals rows: M4's signed transaction with one part replaced, each answer what stacks-core 4.0.5's
-// deserializer reads (StacksTransaction::consensus_deserialize, stacks-codec/src/transaction.rs:3078), the sources the
-// tests above name: a token transfer's recipient (type 0), a pay-to-alt coinbase's (5), a Nakamoto coinbase's (8) and
-// its VRF proof, a contract call's argument, contract and function (2), a smart contract (6 and 1), a coinbase's anchor
-// mode (4), a poisoned microblock (3), a tenure change (7), a post-condition, and a multisig authorization.
+// deserializer reads (StacksTransaction::consensus_deserialize, stacks-codec/src/transaction.rs:3065-3067), the sources
+// the tests above name: a token transfer's recipient (type 0), a pay-to-alt coinbase's (5), a Nakamoto coinbase's (8)
+// and its VRF proof, a contract call's argument, contract and function (2), a smart contract (6 and 1), a coinbase's
+// anchor mode (4), a poisoned microblock (3), a tenure change (7), a post-condition, and a multisig authorization.
 describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
   // The part of M4's wire each row replaces, in the file's order: the rows the file holds, as this list states them.
   const PARTS = [

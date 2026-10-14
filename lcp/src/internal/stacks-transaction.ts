@@ -1,9 +1,9 @@
 /**
  * A Stacks transaction read as a Stacks node reads it. stacks-core 4.0.5 (stacks-network/stacks-core d736ba0) reads a
- * transaction with `StacksTransaction::consensus_deserialize` (stacks-codec/src/transaction.rs:3078) and names it by
- * the SHA-512/256 of its serialization; `readStacksTransaction` accepts exactly the bytes that decode there and
- * serialize back to themselves, rule by rule, and gives the fields `../mpp-usdc.ts` reads. No entry point exports
- * these names.
+ * transaction with `StacksTransaction::consensus_deserialize` (stacks-codec/src/transaction.rs:3065-3067, which reads
+ * with `consensus_deserialize_with_len`, :3078-3165) and names it by the SHA-512/256 of its serialization
+ * (:3256-3261); `readStacksTransaction` accepts exactly the bytes that decode there and serialize back to themselves,
+ * rule by rule, and gives the fields `../mpp-usdc.ts` reads. No entry point exports these names.
  */
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
@@ -273,8 +273,9 @@ function responseOf(ok: ClarityType, err: ClarityType): ClarityType {
 
 /**
  * The least type both admit, as a node types a list's items (`least_supertype_v2_1`, signatures.rs:1130-1281): a
- * tuple's members are the first's, each in the second too; an empty list takes the other's items; buffers and
- * strings the longer length; `NoType` the other; any other pair only when equal.
+ * tuple's members are the first's, each in the second too, each member joined; two lists, two optionals and two
+ * responses join their parts, an empty list taking the other's items; buffers and strings the longer length; `NoType`
+ * the other; any other pair only when equal.
  */
 function supertype(a: ClarityType, b: ClarityType): ClarityType {
   if (a.k === "tuple" && b.k === "tuple") {
@@ -308,7 +309,8 @@ const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
  * One Clarity value at `level`, the outermost counting 1, as a node reads it unsanitized
- * (`Value::consensus_deserialize`, clarity-types/src/types/serialization.rs:616-1100): its type.
+ * (`Value::consensus_deserialize`, clarity-types/src/types/serialization.rs:1478-1483, which reads with
+ * `inner_deserialize_read`, :620-1119): its type.
  */
 function value(r: Reader, level: number): ClarityType {
   need(level <= MAX_CLARITY_DEPTH);
