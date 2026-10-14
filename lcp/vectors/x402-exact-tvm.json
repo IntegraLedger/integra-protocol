@@ -871,6 +871,81 @@
     "case": "bound with a settlementBoc whose last character before the padding has a bit set past the last byte (buyer row B6's): the same bytes, not in canonical form (RFC 4648 §3.5)",
     "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87x==",
     "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose Jetton transfer's custom_payload is a library cell with one reference: TON creates a library cell only with 264 bits and no references (ton-blockchain/ton crypto/vm/cells/DataCell.cpp, CellChecker)",
+    "settlementBoc": "te6cckECCQEAAXgAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFsjwIL69CHo/W9ly2Of6G9q6DudCaF4Ooi7xXicEwR1VPExC/rXhNed9B3CP+atQWQ+KAkdoU8Z/CXbcnUcF7gWACAgoOw8htAwgDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAJhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aQwYFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQJQgIBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQcAAloAAHtqN/A=",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose Jetton transfer's custom_payload is a Merkle proof of a 280-bit pruned branch (its type, one hash and one depth, with no level mask byte): TON creates a pruned branch only with a level mask from 1 to 7 and (2 + 34 × the mask's set bits) × 8 bits (ton-blockchain/ton crypto/vm/cells/DataCell.cpp, CellChecker)",
+    "settlementBoc": "te6cckECCQEAAZwAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFsU8kU+7bwabARskNwt+h/zFWfLZMkCT7VVhT9m3YqeZwvf4KsLgljuiqgYxnxQCvfYKZR94xU4Pjf8G0VPzVAaACAgoOw8htAwgDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAJhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aQwYFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQJRgMREREREREREREREREREREREREREREREREREREREREREQADByhGARERERERERERERERERERERERERERERERERERERERERERAAMAADzGnSM=",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose comment cell's first descriptor byte gives level mask 1 where its references give 0: TON refuses a cell whose descriptor's level mask is not the one it computes (ton-blockchain/ton crypto/vm/boc.cpp, create_data_cell)",
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwYDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwUgogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAAA1qfMCA==",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose comment cell stores its hash and depth with one hash bit flipped: TON refuses a stored hash or depth that differs from the one it computes (ton-blockchain/ton crypto/vm/boc.cpp, create_data_cell)",
+    "settlementBoc": "te6cckECBwEAAXIAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwYDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwUQou8IlTTDAcbMjxRneWW080l9J9ENgWbl2DSVrMm73JbeAAAAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQAAIt69R0=",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose comment cell has a padded last byte of 0x80, a completion tag with no data bit before it: TON refuses it as an overlong encoding (ton-blockchain/ton crypto/vm/boc.cpp, CellSerializationInfo::get_bits)",
+    "settlementBoc": "te6cckECBwEAAVEAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwYDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwUAowAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZIAAAN9aOgU=",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) written with an index whose last entry spans one byte past the last cell: TON refuses unused space in a cell's serialization (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::deserialize_cell)",
+    "settlementBoc": "te6ccsECBwEAAVEAADMAhwCQAMcA+wFOAVEBYEIADtENNxn3kUIAFNc7yAew3UEFynQJ0dvfenH1I4gDsi+AAAAAAAAAAAAAAAAAAQEBoXNpbnR///8RarE7vAAAAAWZIPP+AGU2U43mAfjsaje+4nhm8OhSvY/YhUPSfyJY4EizAfVKK5gCHoEsiHyhC0CjReCANAplzQr9+N2Hxg1BoAICCg7DyG0DBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAAoIqnYg==",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) written with an index and cache bits, the root's cache bit set though only the root list names it: TON refuses a cache bit that differs from whether two or more references name the cell (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::deserialize)",
+    "settlementBoc": "te6ccuECBwEAAVAAAGcBDgEgAY4B9gKcAqABYEIADtENNxn3kUIAFNc7yAew3UEFynQJ0dvfenH1I4gDsi+AAAAAAAAAAAAAAAAAAQEBoXNpbnR///8RarE7vAAAAAWZIPP+AGU2U43mAfjsaje+4nhm8OhSvY/YhUPSfyJY4EizAfVKK5gCHoEsiHyhC0CjReCANAplzQr9+N2Hxg1BoAICCg7DyG0DBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAlqwXH",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose Jetton transfer's custom_payload is a pruned branch of level mask 1 under no Merkle proof, so the root's level is 1: TON refuses a bag of cells whose root's level is not 0 (ton-blockchain/ton crypto/vm/boc.cpp, std_boc_deserialize)",
+    "settlementBoc": "te6cckECCAEAAXcAIWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBIaFzaW50f///EWqxO7wAAAAFqZcwEnoHa45IfDH1N4ESGTr+p/GDT4LToXkKcxBG+cLb8U5BfgepxOs5q11XnnBrz4q4t4hwggjd2VdaZfCZA6ACIgoOw8htAwcDIWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBCJhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aQwYFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQoSAEBEREREREREREREREREREREREREREREREREREREREREREAAwAA/+WwdQ==",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose Jetton transfer's custom_payload is a Merkle proof of a pruned branch whose stored depth is 1,025: TON refuses a cell whose depth at any level is over 1,024 (ton-blockchain/ton crypto/vm/cells/DataCell.cpp, CellChecker; cells/CellTraits.h, max_depth)",
+    "settlementBoc": "te6cckECCQEAAZ0AAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFpxo0sqYXZmXoyhBtXrrx6t/enw7+mId6K4KuA3Qib/YvGHtONhwyb5IRZsmY7vUuR7vo3KB6r3j+c6OrJPIjgqACAgoOw8htAwgDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAJhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aQwYFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQJRgMREREREREREREREREREREREREREREREREREREREREREQQBByhIAQEREREREREREREREREREREREREREREREREREREREREREQQBAACadimr",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose Jetton transfer's custom_payload is a library cell written with five references: TON refuses a cell descriptor of more than four references (ton-blockchain/ton crypto/vm/boc.cpp, CellSerializationInfo::init)",
+    "settlementBoc": "te6cckECCQEAAXwAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFqoPhaKWfYMvsgSSYhCFdbvu6KTAmvO1ccw/Q9HrqrvNXL5xAHHkh91PI9BeaKZ2IWY1c/cB7tTK+TGthe4sCgKACAgoOw8htAwgDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAJhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aQwYFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQNQgIBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQcHBwcHAAJaAAA9j6VQ",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) written with a reference size of 5 bytes: TON reads a reference size of 1 to 4 (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::Info::parse_serialized_header)",
+    "settlementBoc": "te6cckUCAAAAAAcAAAAAAQAAAAAAAWgAAAAAAAFgQgAO0Q03GfeRQgAU1zvIB7DdQQXKdAnR2996cfUjiAOyL4AAAAAAAAAAAAAAAAABAAAAAAEBoXNpbnR///8RarE7vAAAAAWZIPP+AGU2U43mAfjsaje+4nhm8OhSvY/YhUPSfyJY4EizAfVKK5gCHoEsiHyhC0CjReCANAplzQr9+N2Hxg1BoAAAAAACAgoOw8htAwAAAAAGAAAAAAMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEAAAAABAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwAAAAAFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQAAJSprkQ=",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) written with an offset size of 9 bytes: TON reads an offset size of 1 to 8 (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::Info::parse_serialized_header)",
+    "settlementBoc": "te6cckEJBwEAAAAAAAAAAAFQAAFgQgAO0Q03GfeRQgAU1zvIB7DdQQXKdAnR2996cfUjiAOyL4AAAAAAAAAAAAAAAAABAQGhc2ludH///xFqsTu8AAAABZkg8/4AZTZTjeYB+OxqN77ieGbw6FK9j9iFQ9J/IljgSLMB9UormAIegSyIfKELQKNF4IA0CmXNCv343YfGDUGgAgIKDsPIbQMGAwFoYgAIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiKAX14QAAAAAAAAAAAAAAAAAAQQBYQ+KfqUAAAAAAAAAACJxCAEkhnSu2XytibmQ2ylpL0WeMVN1U5BQf9RR1IfWeEuf2gMFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQAAJzFRLk=",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose header counts 8 absent cells among its 7: TON refuses more absent cells than cells (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::Info::parse_serialized_header)",
+    "settlementBoc": "te6cckECBwEIAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwYDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwUAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAAAEQWQQw==",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose header sets the cache-bits flag with no index: TON reads cache bits only with an index (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::Info::parse_serialized_header)",
+    "settlementBoc": "te6ccmECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwYDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwUAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAAAFf8t0Q==",
+    "expect": "tvm/boc-malformed"
+   },
+   {
+    "case": "bound with V2's settlement (buyer row B6's) whose data size counts one byte past its last cell, with no index: TON refuses cells that do not fill the data exactly (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::deserialize)",
+    "settlementBoc": "te6cckECBwEAAVEAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwYDAWhiAAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIoBfXhAAAAAAAAAAAAAAAAAABBAFhD4p+pQAAAAAAAAAAInEIASSGdK7ZfK2JuZDbKWkvRZ4xU3VTkFB/1FHUh9Z4S5/aAwUAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAAAAA6BKtw=",
+    "expect": "tvm/boc-malformed"
    }
   ]
  },

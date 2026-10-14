@@ -1,8 +1,8 @@
 // Runs the TON pairing's vector file through the tvm entry point. Every expected value is the file's, computed with
-// pytoniq-core 0.2.0 and PyNaCl 1.6.2.
+// pytoniq-core 0.2.0 and PyNaCl 1.6.2, except where a test names another source.
 import { readFileSync } from "node:fs";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { beginCell, type Builder, Cell, Dictionary, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
+import { beginCell, type Builder, Cell, crc32c, Dictionary, loadCommonMessageInfoRelaxed, loadStateInit, storeStateInit } from "@ton/core";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -79,6 +79,143 @@ function readerFor(a: {
   };
 }
 const REF: TvmRef = V.V4.ref;
+
+// A bag of cells written field by field in the layout TON's deserializer reads (ton-blockchain/ton crypto/vm/boc.cpp,
+// BagOfCells::Info::parse_serialized_header and BagOfCells::deserialize), so that a test can give any field a value
+// TON refuses. A cell is its two descriptor bytes, its stored hashes and depths when d1 says so, its data with the
+// completion tag, and one index per reference. Cells are written parents first, and the CRC32C of every byte before
+// it closes the bag.
+type Written = { d1: number; d2: number; stored: Buffer; data: Buffer; refs: Written[] };
+const u16 = (v: number) => Buffer.from([v >> 8, v & 255]);
+function writtenOf(c: Cell, hashes = false, memo = new Map<string, Written>()): Written {
+  const known = memo.get(hashHex(c));
+  if (known !== undefined) return known;
+  const n = c.bits.length;
+  const data = Buffer.alloc(Math.ceil(n / 8));
+  for (let i = 0; i < n; i++) if (c.bits.at(i)) data[i >> 3] = data[i >> 3]! | (0x80 >> (i & 7));
+  if (n % 8 !== 0) data[n >> 3] = data[n >> 3]! | (0x80 >> (n & 7));
+  // A cell stores the hash and depth of level 0 and of each level its mask sets, the hashes first.
+  const levels = [0, 1, 2, 3].filter((l) => l === 0 || ((c.mask.value >> (l - 1)) & 1) === 1);
+  const stored = Buffer.concat(hashes ? [...levels.map((l) => c.hash(l)), ...levels.map((l) => u16(c.depth(l)))] : []);
+  const w: Written = {
+    d1: c.refs.length + (c.isExotic ? 8 : 0) + (hashes ? 16 : 0) + c.mask.value * 32,
+    d2: Math.floor(n / 8) + Math.ceil(n / 8),
+    stored,
+    data,
+    refs: c.refs.map((r) => writtenOf(r, hashes, memo)),
+  };
+  memo.set(hashHex(c), w);
+  return w;
+}
+const bigEndian = (v: number, size: number) => {
+  const b = Buffer.alloc(size);
+  for (let i = size - 1, x = v; i >= 0; i--, x = Math.floor(x / 256)) b[i] = x % 256;
+  return b;
+};
+function bagOf(
+  root: Written,
+  h: { index?: boolean; cacheBits?: boolean; flipCache?: number; refSize?: number; offSize?: number; absent?: number; pastCells?: number[]; beforeCrc?: number[] } = {},
+): string {
+  const order: Written[] = [];
+  const seen = new Set<Written>();
+  const visit = (w: Written) => {
+    if (seen.has(w)) return;
+    seen.add(w);
+    w.refs.forEach(visit);
+    order.push(w);
+  };
+  visit(root);
+  order.reverse();
+  const at = new Map(order.map((w, i) => [w, i]));
+  const refSize = h.refSize ?? 1;
+  const offSize = h.offSize ?? 2;
+  const named = order.map((w) => (w === root ? 1 : 0));
+  const cells = order.map((w) => {
+    const refs = w.refs.map((r) => {
+      named[at.get(r)!]!++;
+      return bigEndian(at.get(r)!, refSize);
+    });
+    return Buffer.concat([Buffer.from([w.d1, w.d2]), w.stored, w.data, ...refs]);
+  });
+  const past = Buffer.from(h.pastCells ?? []);
+  const data = Buffer.concat([...cells, past]);
+  const index: Buffer[] = [];
+  let end = 0;
+  for (let i = 0; h.index === true && i < cells.length; i++) {
+    end += cells[i]!.length + (i === cells.length - 1 ? past.length : 0);
+    const cached = named[i]! > 1 !== (h.flipCache === i);
+    index.push(bigEndian(h.cacheBits === true ? end * 2 + (cached ? 1 : 0) : end, offSize));
+  }
+  const flags = (h.index === true ? 0x80 : 0) | 0x40 | (h.cacheBits === true ? 0x20 : 0) | refSize;
+  const head = Buffer.concat([
+    bigEndian(0xb5ee9c72, 4),
+    Buffer.from([flags, offSize]),
+    bigEndian(order.length, refSize),
+    bigEndian(1, refSize),
+    bigEndian(h.absent ?? 0, refSize),
+    bigEndian(data.length, offSize),
+    bigEndian(0, refSize),
+  ]);
+  const bag = Buffer.concat([head, ...index, data, Buffer.from(h.beforeCrc ?? [])]);
+  return Buffer.concat([bag, crc32c(bag)]).toString("base64");
+}
+
+// The Jetton transfer at `path` under `root`, given a custom_payload, with every cell above it rebuilt. No read parses
+// a custom_payload; the request's signature is left as it is, which bound does not verify.
+const cellAt = (root: Cell, path: readonly number[]): Cell => path.reduce((c, i) => c.refs[i]!, root);
+function replaced(c: Cell, path: readonly number[], to: Cell): Cell {
+  if (path.length === 0) return to;
+  const b = beginCell().storeBits(c.bits);
+  c.refs.forEach((r, i) => b.storeRef(i === path[0] ? replaced(r, path.slice(1), to) : r));
+  return b.endCell();
+}
+function paying(root: Cell, path: readonly number[], customPayload: Cell): Cell {
+  const s = cellAt(root, path).beginParse();
+  const op = s.loadUint(32);
+  const queryId = s.loadUintBig(64);
+  const amount = s.loadCoins();
+  const destination = s.loadAddress();
+  const response = s.loadMaybeAddress();
+  if (s.loadMaybeRef() !== null) throw new Error("the transfer already carries a custom_payload");
+  const forwardTon = s.loadCoins();
+  if (!s.loadBit()) throw new Error("the forward payload is not a reference");
+  const forward = s.loadRef();
+  const transfer = beginCell()
+    .storeUint(op, 32)
+    .storeUint(queryId, 64)
+    .storeCoins(amount)
+    .storeAddress(destination)
+    .storeAddress(response)
+    .storeMaybeRef(customPayload)
+    .storeCoins(forwardTon)
+    .storeBit(1)
+    .storeRef(forward)
+    .endCell();
+  return replaced(root, path, transfer);
+}
+const h32 = (k: number) => Buffer.alloc(32, k);
+const leaf = beginCell().storeUint(0x5a, 8).endCell();
+/** A pruned branch of `mask` (set bits running up from the lowest, which @ton/core builds), its hashes 0x11, 0x22 and 0x33 bytes. */
+function prunedOf(mask: number, depth = 3): Cell {
+  const count = [0, 1, 2].filter((i) => ((mask >> i) & 1) === 1).length;
+  const b = beginCell().storeUint(1, 8).storeUint(mask, 8);
+  for (let i = 0; i < count; i++) b.storeBuffer(h32(0x11 * (i + 1)));
+  for (let i = 0; i < count; i++) b.storeUint(depth + i, 16);
+  return b.endCell({ exotic: true });
+}
+const merkleProofOf = (child: Cell) =>
+  beginCell().storeUint(3, 8).storeBuffer(child.hash(0)).storeUint(child.depth(0), 16).storeRef(child).endCell({ exotic: true });
+/** `child` under an ordinary cell of one byte, then `n` Merkle proofs. */
+const provenOf = (child: Cell, n: number) => {
+  let c = beginCell().storeUint(0x5a, 8).storeRef(child).endCell();
+  for (let i = 0; i < n; i++) c = merkleProofOf(c);
+  return c;
+};
+const libraryOf = (refs: Cell[]) => {
+  const b = beginCell().storeUint(2, 8).storeBuffer(h32(1));
+  refs.forEach((r) => b.storeRef(r));
+  return b.endCell({ exotic: true });
+};
 
 describe("x402-exact-tvm.json", () => {
   it("V1: the carrier comment and its BoC", () => {
@@ -390,6 +527,146 @@ describe("x402-exact-tvm.json", () => {
     ] as const) {
       const boc = swap(root, path).toBoc({ idx: false, crc32: true }).toString("base64");
       expect([path, await exactTvm.bound(payment(boc, p.accepted))]).toEqual([path, { refused: true, code }]);
+    }
+  });
+
+  // Each form is one TON's bag-of-cells deserialization refuses (ton-blockchain/ton crypto/vm/boc.cpp and
+  // crypto/vm/cells/DataCell.cpp, at the function each names), written into V2's settlement and into its Jetton transfer
+  // body. bound and tvmCarrier read the settlement and recover reads the body, and each refuses every form with
+  // tvm/boc-malformed, while the same writer's bytes without a form bind H. TON's emulator (@ton/sandbox 0.45.0)
+  // refuses each form's settlement with "Can't deserialize message boc".
+  it("a settlement BoC TON's deserialization refuses is tvm/boc-malformed at bound and tvmCarrier, and its body tvm/unreadable at recover", async () => {
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const transferAt = [0, 0, 1, 0] as const;
+    const body = cellAt(settlement, transferAt);
+    const comment = Cell.fromBase64(V.V1.expectBoc);
+    const withComment = (root: Cell, edit: (w: Written) => void) => {
+      const memo = new Map<string, Written>();
+      const w = writtenOf(root, false, memo);
+      edit(memo.get(hashHex(comment))!);
+      return bagOf(w);
+    };
+    const placeholder = beginCell().storeUint(0xc0ffee, 24).endCell();
+    const forms: [string, (root: Cell, at: readonly number[]) => string][] = [
+      // DataCell.cpp, CellChecker: a library cell is 264 bits with no reference.
+      ["a library cell with a reference", (r, at) => bagOf(writtenOf(paying(r, at, libraryOf([leaf]))))],
+      // CellChecker: a pruned branch's second byte is its level mask, from 1 to 7, and it is (2 + 34 × the mask's set
+      // bits) × 8 bits long. @ton/core reads a 280-bit pruned branch (type, hash, depth) as one of mask 1.
+      [
+        "a pruned branch of 280 bits",
+        (r, at) => bagOf(writtenOf(paying(r, at, merkleProofOf(beginCell().storeUint(1, 8).storeBuffer(h32(0x11)).storeUint(3, 16).endCell({ exotic: true }))))),
+      ],
+      // boc.cpp, CellSerializationInfo::create_data_cell: the level mask d1 gives is the one TON computes.
+      ["a descriptor level mask of 1 on a cell of level 0", (r) => withComment(r, (w) => (w.d1 |= 0x20))],
+      // create_data_cell: each stored hash and depth is the one TON computes.
+      [
+        "a stored representation hash with one bit flipped",
+        (r) =>
+          withComment(r, (w) => {
+            const hash = Buffer.from(comment.hash());
+            hash[0] = hash[0]! ^ 1;
+            w.d1 |= 0x10;
+            w.stored = Buffer.concat([hash, u16(0)]);
+          }),
+      ],
+      // CellSerializationInfo::get_bits: a partial last byte holds a data bit before its completion tag.
+      [
+        "a padded last byte of 0x80",
+        (r) =>
+          withComment(r, (w) => {
+            w.d2 += 1;
+            w.data = Buffer.concat([w.data, Buffer.from([0x80])]);
+          }),
+      ],
+      // BagOfCells::deserialize_cell: an index entry ends where its cell ends.
+      ["an index entry one byte past its cell", (r) => bagOf(writtenOf(r), { index: true, pastCells: [0] })],
+      // BagOfCells::deserialize: a cache bit is set exactly when two or more references, the root's counted, name the cell.
+      ["a cache bit set on a cell named once", (r) => bagOf(writtenOf(r), { index: true, cacheBits: true, flipCache: 0 })],
+      // std_boc_deserialize: the root is of level 0.
+      ["a root of level 1", (r, at) => bagOf(writtenOf(paying(r, at, prunedOf(1))))],
+      // CellChecker and CellTraits::max_depth: a cell's depth at each level is at most 1,024.
+      ["a pruned branch whose stored depth is 1,025", (r, at) => bagOf(writtenOf(paying(r, at, merkleProofOf(prunedOf(1, 1025)))))],
+      // CellSerializationInfo::init: a cell has at most four references.
+      [
+        "a library cell written with five references",
+        (r, at) => {
+          const memo = new Map<string, Written>();
+          const w = writtenOf(paying(r, at, placeholder), false, memo);
+          Object.assign(memo.get(hashHex(placeholder))!, {
+            d1: 5 + 8,
+            d2: 66,
+            data: Buffer.concat([Buffer.from([2]), h32(1)]),
+            refs: Array.from({ length: 5 }, () => writtenOf(leaf)),
+          });
+          return bagOf(w);
+        },
+      ],
+      // BagOfCells::Info::parse_serialized_header: references of 1 to 4 bytes, offsets of 1 to 8, no more absent cells
+      // than cells, and cache bits only with an index.
+      ["references of 5 bytes", (r) => bagOf(writtenOf(r), { refSize: 5 })],
+      ["offsets of 9 bytes", (r) => bagOf(writtenOf(r), { offSize: 9 })],
+      ["255 absent cells", (r) => bagOf(writtenOf(r), { absent: 255 })],
+      ["cache bits with no index", (r) => bagOf(writtenOf(r), { cacheBits: true })],
+      // BagOfCells::deserialize: with no index, the cells fill the data the header counts.
+      ["a data size one byte past the cells, with no index", (r) => bagOf(writtenOf(r), { pastCells: [0] })],
+    ];
+    const recovered = (boc: string) =>
+      exactTvm.recover({ network: REF.network, transaction: "x" }, readerFor({ inBodyHex: Buffer.from(boc, "base64").toString("hex") }));
+    expect(await exactTvm.bound(payment(bagOf(writtenOf(settlement))))).toBe(H);
+    expect(await recovered(bagOf(writtenOf(body)))).toBe(H);
+    const malformed = { refused: true, code: "tvm/boc-malformed" };
+    // recover reads the body from the reader, so a body TON would not deserialize is an answer out of the reader's form.
+    const unreadable = { refused: true, code: "tvm/unreadable" };
+    for (const [name, form] of rowsOf(forms, "the forms TON's deserialization refuses", { exact: 15 })) {
+      const boc = form(settlement, transferAt);
+      expect([name, await exactTvm.bound(payment(boc))]).toEqual([name, malformed]);
+      expect([name, tvmCarrier(boc)]).toEqual([name, malformed]);
+      expect([name, await recovered(form(body, []))]).toEqual([name, unreadable]);
+    }
+  });
+
+  // TON takes a bag's CRC32C from the input's last four bytes and reads the cells to the data size its header gives
+  // (ton-blockchain/ton crypto/vm/boc.cpp, BagOfCells::deserialize), so a byte between the cells and the CRC32C is
+  // read past. TON's emulator (@ton/sandbox 0.45.0) deserializes such a settlement, and lcp reads it as V2's.
+  it("a settlement BoC with a byte between its cells and its CRC32C reads as V2's", async () => {
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const boc = bagOf(writtenOf(settlement), { beforeCrc: [0] });
+    expect(await exactTvm.bound(payment(boc))).toBe(H);
+    expect(await exactTvm.reference(payment(boc))).toEqual(V.V3.expectReference);
+    const c = tvmCarrier(boc);
+    if ("refused" in c) throw new Error(c.code);
+    expect([c.h, c.requestBodyHash]).toEqual([H, V.V3.expectReference.requestBodyHash]);
+    const body = bagOf(writtenOf(cellAt(settlement, [0, 0, 1, 0])), { beforeCrc: [0] });
+    const reader = readerFor({ inBodyHex: Buffer.from(body, "base64").toString("hex") });
+    expect(await exactTvm.recover({ network: REF.network, transaction: "x" }, reader)).toBe(H);
+  });
+
+  // A pruned branch's level mask need not set its bits from the lowest up: under two Merkle proofs, one of mask 2 is a
+  // cell TON reads and sends (fixtures/tvm-pruned-branch-mask-2.json gives how TON runs it). bound binds that
+  // settlement, and reference gives the hashes TON's HASHCU gives. For masks 1, 3 and 7, which @ton/core builds, the
+  // Jetton transfer body is written with each cell's hashes and depths at every level as @ton/core computes them,
+  // and the read checks each against its own as TON does (CellSerializationInfo::create_data_cell): recover reads it.
+  // For masks 1 and 3, whose settlement has at most two Merkle levels, reference gives @ton/core's hashes too.
+  it("a pruned branch of each level mask is hashed as TON hashes it", async () => {
+    const F = JSON.parse(readFileSync(new URL("./fixtures/tvm-pruned-branch-mask-2.json", import.meta.url), "utf8"));
+    expect(await exactTvm.bound(payment(F.settlementBoc))).toBe(H);
+    expect(await exactTvm.reference(payment(F.settlementBoc))).toEqual({
+      ...V.V3.expectReference,
+      requestBodyHash: F.expectRequestBodyHash,
+      transferBodyHash: F.expectTransferBodyHash,
+      wallet: F.wallet,
+      validUntil: F.validUntil,
+    });
+    const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
+    const transferAt = [0, 0, 1, 0] as const;
+    for (const [mask, proofs] of [[1, 1], [3, 2], [7, 3]] as const) {
+      const root = paying(settlement, transferAt, provenOf(prunedOf(mask), proofs));
+      const transfer = cellAt(root, transferAt);
+      const reader = readerFor({ inBodyHex: Buffer.from(bagOf(writtenOf(transfer, true)), "base64").toString("hex") });
+      expect([mask, await exactTvm.recover({ network: REF.network, transaction: "x" }, reader)]).toEqual([mask, H]);
+      if (proofs > 2) continue;
+      const ref = await exactTvm.reference(payment(root.toBoc({ idx: false, crc32: true }).toString("base64")));
+      expect([mask, ref]).toEqual([mask, { ...V.V3.expectReference, requestBodyHash: `0x${hashHex(root.refs[0]!)}`, transferBodyHash: `0x${hashHex(transfer)}` }]);
     }
   });
 

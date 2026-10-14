@@ -4,6 +4,7 @@
  * payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions
  * it led to, through a bounded reader.
  */
+import { sha256 } from "@noble/hashes/sha2.js";
 import type * as TonCore from "@ton/core";
 import type { Address, Cell, MessageRelaxed, Slice } from "@ton/core";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
@@ -144,6 +145,12 @@ const ID = "x402/exact/tvm" as const;
 const MAX_BOC_BYTES = 8192;
 const MAX_CELLS = 512;
 const MAX_DEPTH = 32;
+/** The three bag-of-cells magics TON reads: ton-blockchain/ton `crypto/vm/boc.h`, `boc_generic`, `boc_idx`, `boc_idx_crc32c`. */
+const BOC_GENERIC = 0xb5ee9c72;
+const BOC_INDEXED = 0x68ff65f3;
+const BOC_INDEXED_CRC32C = 0xacc3a728;
+/** The deepest a TON cell may be at any level: ton-blockchain/ton `CellTraits::max_depth`. */
+const CELL_MAX_DEPTH = 1024;
 /** The cells TON's validation reads of a message's state init, at most: ton-blockchain/ton `default_validate_max_cells`. */
 const STATE_INIT_MAX_READS = 1024;
 const COINS_LIMIT = 1n << 120n;
@@ -186,26 +193,245 @@ function bocOf(c: Cell): string {
 }
 
 /**
- * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, or the refusal. An exotic cell is
- * refused only where a read parses it: every parse here refuses one without throwing, and a cell no read parses,
- * such as a state init's library code, is left as it is.
+ * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, or the refusal. The bytes are read
+ * as TON deserializes a bag of cells (`deserialized`): bytes TON refuses are `tvm/boc-malformed`. An exotic cell TON
+ * accepts is refused only where a read parses it: every parse here refuses one without throwing, and a cell no read
+ * parses, such as a state init's library code or a Jetton transfer's custom payload, is left as it is.
  */
 function rootOf(boc: unknown): Cell | Refusal {
   if (peer === undefined) return refusal("tvm/peer-missing");
   const bytes = boc === "" ? null : fromBase64(boc);
   if (bytes === null) return refusal("tvm/boc-malformed");
   if (bytes.length > MAX_BOC_BYTES) return refusal("tvm/boc-too-large");
-  let roots: Cell[];
-  try {
-    roots = peer.Cell.fromBoc(Buffer.from(bytes));
-  } catch {
-    return refusal("tvm/boc-malformed");
-  }
-  if (roots.length !== 1) return refusal("tvm/boc-malformed");
-  const root = roots[0]!;
+  const root = deserialized(bytes);
+  if (root === null) return refusal("tvm/boc-malformed");
   if (root.depth() > MAX_DEPTH) return refusal("tvm/boc-too-large");
   if (cellCount(root) > MAX_CELLS) return refusal("tvm/boc-too-large");
   return root;
+}
+
+/**
+ * The one root of a bag of cells as TON deserializes it (ton-blockchain/ton `crypto/vm/boc.cpp`,
+ * `std_boc_deserialize`), or null where TON refuses the bytes:
+ * - the header (`parse_serialized_header`): one of the three magics, cache bits only with an index, a reference size
+ *   of 1 to 4 bytes and an offset size of 1 to 8, at least one cell, exactly one root, no more absent cells than
+ *   cells, a data size within the cell count's bounds, and the bytes holding all of it;
+ * - with a CRC32C, the input's last four bytes are the CRC32C of every byte before them;
+ * - each cell's bytes (`deserialize`, `deserialize_cell`): at most four references, each to a later cell, the bytes
+ *   read exactly (the cells fill the data, or each index entry bounds one cell with no unused space), a partial last
+ *   data byte holding a data bit before its completion tag, and with cache bits, each cell's flag set exactly when two
+ *   or more references (the root's counted) name it;
+ * - each cell as TON creates it (`crypto/vm/cells/DataCell.cpp`, `CellChecker`, and `create_data_cell`): at most 1,023
+ *   bits; an exotic cell of type 1 to 4 with its exact bits and references (a pruned branch none, a library cell none,
+ *   a Merkle proof one, a Merkle update two, each Merkle child's level-0 hash and depth as the cell stores them); a
+ *   depth of at most 1,024 at every level; the level mask its first byte gives equal to the one computed; and where it
+ *   stores hashes and depths, each one equal to the computed one;
+ * - the root's level 0.
+ */
+function deserialized(b: Uint8Array): Cell | null {
+  const at = (o: number, n: number): number => {
+    let v = 0;
+    for (let i = 0; i < n; i++) v = v * 256 + b[o + i]!;
+    return v;
+  };
+  if (b.length < 6) return null;
+  const magic = at(0, 4);
+  if (magic !== BOC_GENERIC && magic !== BOC_INDEXED && magic !== BOC_INDEXED_CRC32C) return null;
+  const generic = magic === BOC_GENERIC;
+  const flags = b[4]!;
+  const indexed = !generic || (flags & 0x80) !== 0;
+  const crc = generic ? (flags & 0x40) !== 0 : magic === BOC_INDEXED_CRC32C;
+  const cacheBits = generic && (flags & 0x20) !== 0;
+  const refSize = flags & 7;
+  const offSize = b[5]!;
+  if ((cacheBits && !indexed) || refSize < 1 || refSize > 4 || offSize < 1 || offSize > 8) return null;
+  const rootsAt = 6 + 3 * refSize + offSize;
+  if (b.length < rootsAt) return null;
+  // TON reads the three counts into an int, so a count of 2^31 or more is negative there.
+  const cells = at(6, refSize);
+  const roots = at(6 + refSize, refSize);
+  const absent = at(6 + 2 * refSize, refSize);
+  const dataSize = at(6 + 3 * refSize, offSize);
+  if (cells < 1 || cells >= 2 ** 31 || roots !== 1 || absent > cells) return null;
+  if (dataSize > cells * 1024 || dataSize < cells * (2 + refSize) - refSize) return null;
+  const indexAt = rootsAt + (generic ? refSize : 0);
+  const dataAt = indexAt + (indexed ? cells * offSize : 0);
+  if (dataAt + dataSize + (crc ? 4 : 0) > b.length) return null;
+  if (crc && !peer!.crc32c(Buffer.from(b.subarray(0, b.length - 4))).equals(Buffer.from(b.subarray(b.length - 4)))) return null;
+  const rootIdx = generic ? at(rootsAt, refSize) : 0;
+  if (rootIdx >= cells) return null;
+  const data = b.subarray(dataAt, dataAt + dataSize);
+  const spans: [number, number][] = [];
+  if (indexed) {
+    let start = 0;
+    for (let i = 0; i < cells; i++) {
+      const raw = at(indexAt + i * offSize, offSize);
+      const end = cacheBits ? Math.floor(raw / 2) : raw;
+      if (start > end || end > dataSize) return null;
+      spans.push([start, end]);
+      start = end;
+    }
+  } else {
+    let start = 0;
+    for (let i = 0; i < cells; i++) {
+      if (data.length - start < 2) return null;
+      const d1 = data[start]!;
+      const d2 = data[start + 1]!;
+      if ((d1 & 7) > 4) return null;
+      const size = cellSize(d1, d2, refSize);
+      if (data.length - start < size) return null;
+      spans.push([start, start + size]);
+      start += size;
+    }
+    if (start !== dataSize) return null;
+  }
+  const built: Cell[] = new Array<Cell>(cells);
+  const named = new Uint8Array(cells);
+  named[rootIdx] = 1;
+  try {
+    for (let i = cells - 1; i >= 0; i--) {
+      const [start, end] = spans[i]!;
+      const s = data.subarray(start, end);
+      if (s.length < 2) return null;
+      const d1 = s[0]!;
+      const d2 = s[1]!;
+      const refCount = d1 & 7;
+      if (refCount > 4 || cellSize(d1, d2, refSize) !== s.length) return null;
+      const mask = d1 >> 5;
+      const stored = (d1 & 16) === 0 ? 0 : popcount(mask) + 1;
+      const bytesAt = 2 + stored * 34;
+      const bytes = (d2 >> 1) + (d2 & 1);
+      const refsAt = bytesAt + bytes;
+      const refs: Cell[] = [];
+      for (let k = 0; k < refCount; k++) {
+        let r = 0;
+        for (let j = 0; j < refSize; j++) r = r * 256 + s[refsAt + k * refSize + j]!;
+        if (r <= i || r >= cells) return null;
+        refs.push(built[r]!);
+        if (named[r]! < 2) named[r]!++;
+      }
+      let bits = bytes * 8;
+      if ((d2 & 1) === 1) {
+        const last = s[refsAt - 1]!;
+        if ((last & 0x7f) === 0) return null;
+        bits -= 1 + (31 - Math.clz32(last & -last));
+      }
+      const c = cellFrom((d1 & 8) !== 0, s.subarray(bytesAt, refsAt), bits, refs);
+      if (c === null || c.mask.value !== mask) return null;
+      for (let level = 0; level <= 3; level++) if (c.depth(level) > CELL_MAX_DEPTH) return null;
+      if (stored > 0) {
+        const hashAt = (k: number) => Buffer.from(s.subarray(2 + k * 32, 2 + k * 32 + 32));
+        const depthAt = (k: number) => s[2 + stored * 32 + k * 2]! * 256 + s[3 + stored * 32 + k * 2]!;
+        if (!hashAt(stored - 1).equals(c.hash()) || depthAt(stored - 1) !== c.depth()) return null;
+        for (let level = 0, k = 0; level < c.level(); level++) {
+          if (level !== 0 && ((mask >> (level - 1)) & 1) === 0) continue;
+          if (!hashAt(k).equals(c.hash(level)) || depthAt(k) !== c.depth(level)) return null;
+          k++;
+        }
+      }
+      built[i] = c;
+    }
+  } catch {
+    return null;
+  }
+  if (cacheBits) {
+    for (let i = 0; i < cells; i++) if ((named[i]! > 1) !== (at(indexAt + i * offSize, offSize) % 2 === 1)) return null;
+  }
+  const root = built[rootIdx]!;
+  return root.level() === 0 ? root : null;
+}
+
+/** A serialized cell's byte length from its two descriptor bytes (`CellSerializationInfo::init`). */
+function cellSize(d1: number, d2: number, refSize: number): number {
+  const stored = (d1 & 16) === 0 ? 0 : popcount(d1 >> 5) + 1;
+  return 2 + stored * 34 + (d2 >> 1) + (d2 & 1) + (d1 & 7) * refSize;
+}
+
+function popcount(n: number): number {
+  let k = 0;
+  for (let m = n; m !== 0; m &= m - 1) k++;
+  return k;
+}
+
+/**
+ * A cell from its data bits and its references as TON's `CellChecker` creates it, or null. An ordinary cell has at
+ * most 1,023 bits. An exotic cell's first byte is its type: a pruned branch (1, `prunedBranch`), a library cell (2:
+ * 264 bits, no references), a Merkle proof (3: 280 bits, one reference) or a Merkle update (4: 552 bits, two
+ * references), where the cell stores each child's level-0 hash and depth; any other type is refused.
+ */
+function cellFrom(exotic: boolean, data: Uint8Array, bits: number, refs: Cell[]): Cell | null {
+  const T = peer!;
+  if (bits > 1023) return null;
+  const cellBits = new T.BitString(Buffer.from(data), 0, bits);
+  if (!exotic) return new T.Cell({ bits: cellBits, refs });
+  if (bits < 8) return null;
+  const type = data[0]!;
+  if (type === 1) return prunedBranch(data, bits);
+  const children = type === 2 ? 0 : type === 3 ? 1 : type === 4 ? 2 : -1;
+  if (children < 0 || refs.length !== children || bits !== (type === 2 ? 264 : 8 + children * 272)) return null;
+  for (let k = 0; k < children; k++) {
+    const hash = Buffer.from(data.subarray(1 + k * 32, 33 + k * 32));
+    const depth = data[1 + children * 32 + k * 2]! * 256 + data[2 + children * 32 + k * 2]!;
+    if (!hash.equals(refs[k]!.hash(0)) || depth !== refs[k]!.depth(0)) return null;
+  }
+  return new T.Cell({ exotic: true, bits: cellBits, refs });
+}
+
+/**
+ * A pruned branch as TON's `CellChecker` reads one (`check_pruned_branch`, `compute_hash`): no references, a level mask
+ * from 1 to 7 in its second byte, then one stored hash and one stored depth for each bit the mask sets, and nothing
+ * else. Its hash and depth at level i are the stored ones of the lowest set bit at or above i; above every set bit,
+ * its own representation hash and depth 0. `@ton/core` reads only masks whose set bits run up from the lowest, so this
+ * cell is made from its class's prototype with TON's hashes and depths, and `@ton/core` hashes each parent of it from
+ * those as it hashes any child.
+ */
+function prunedBranch(data: Uint8Array, bits: number): Cell | null {
+  const T = peer!;
+  if (bits < 16) return null;
+  const mask = data[1]!;
+  if (mask < 1 || mask > 7) return null;
+  const count = popcount(mask);
+  if (bits !== (2 + count * 34) * 8) return null;
+  const bytes = Buffer.from(data.subarray(0, bits / 8));
+  const own = Buffer.from(sha256(Buffer.concat([Buffer.from([8 + (mask << 5), bits / 4]), bytes])));
+  const hashes: Buffer[] = [];
+  const depths: number[] = [];
+  for (let level = 0; level <= 3; level++) {
+    let j = level;
+    while (j < 3 && ((mask >> j) & 1) === 0) j++;
+    if (j === 3) {
+      hashes.push(own);
+      depths.push(0);
+      continue;
+    }
+    const k = popcount(mask & ((1 << j) - 1));
+    hashes.push(bytes.subarray(2 + k * 32, 34 + k * 32));
+    depths.push(bytes[2 + count * 32 + k * 2]! * 256 + bytes[3 + count * 32 + k * 2]!);
+  }
+  const LevelMask = T.Cell.EMPTY.mask.constructor as unknown as new (mask: number) => Cell["mask"];
+  const levelMask = new LevelMask(mask);
+  const cellBits = new T.BitString(bytes, 0, bits);
+  Object.freeze(levelMask);
+  Object.freeze(cellBits);
+  const cell = Object.create(T.Cell.prototype) as Cell;
+  Object.defineProperties(cell, {
+    type: { value: T.CellType.PrunedBranch, enumerable: true },
+    bits: { value: cellBits, enumerable: true },
+    refs: { value: Object.freeze([]), enumerable: true },
+    mask: { value: levelMask, enumerable: true },
+    beginParse: {
+      value: (allowExotic = false) => {
+        if (!allowExotic) throw new Error("Exotic cells cannot be parsed");
+        return new T.Slice(new T.BitReader(cellBits), []);
+      },
+    },
+    hash: { value: (level = 3) => hashes[Math.min(level, 3)]! },
+    depth: { value: (level = 3) => depths[Math.min(level, 3)]! },
+    level: { value: () => levelMask.level },
+    equals: { value: (other: Cell) => cell.hash().equals(other.hash()) },
+  });
+  Object.freeze(cell);
+  return cell;
 }
 
 /** The distinct cells under `root`, counted up to one past the bound. */
@@ -265,7 +491,9 @@ function relaxed(c: Cell): MessageRelaxed | null {
 /**
  * Reads the signed request in a settlement BoC: an internal message whose body is a W5 `internal_signed` request with
  * exactly one `action_send_msg` behind an empty list, carrying a Jetton transfer whose forward payload is a reference
- * to a text comment holding an LCP string.
+ * to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
+ * refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
+ * for any cell TON reads, a pruned branch of any level mask included.
  */
 export function tvmCarrier(settlementBoc: string): {
   h: AtrHash;

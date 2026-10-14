@@ -701,7 +701,7 @@ TON (`@integraledger/lcp/tvm`).
 | Code | Meaning |
 |---|---|
 | `tvm/actions` | The W5 request's action list is not exactly one `send_msg` action with no extended actions. |
-| `tvm/boc-malformed` | A TON bag of cells is not non-empty base64 that parses to exactly one root, or the settlement message is not an internal message or its action list is exotic. |
+| `tvm/boc-malformed` | A TON bag of cells is not non-empty base64 of bytes TON deserializes to exactly one root of level 0 (its header, CRC32C and cell layout, and each cell's references, bits, level mask, stored hashes and depth as TON creates the cell), or the settlement message is not an internal message or its action list is exotic. |
 | `tvm/boc-too-large` | A TON bag of cells exceeds the byte, depth or cell-count bound. |
 | `tvm/carrier-mismatch` | The option's `extra.forwardPayload` is not H's comment when `build` is called, or the presented Jetton transfer's forward payload is not the option's. |
 | `tvm/carrier-occupied` | `advertise` finds the option's `extra.forwardPayload` already holding a payload other than H's comment. |
@@ -712,7 +712,7 @@ TON (`@integraledger/lcp/tvm`).
 | `tvm/option-malformed` | A TON option's `extra` is not an object, or its asset, `payTo`, response destination or forward TON amount is invalid, or it does not set `areFeesSponsored` to `true`, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid. |
 | `tvm/payload-not-lcp` | The Jetton transfer carries no forward payload, or its forward payload is not a comment carrying an ATR hash in LCP string form. |
 | `tvm/peer-missing` | The optional peer dependency `@ton/core` cannot be loaded. |
-| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed, or whose inbound message body is not a bag of cells with one root. |
+| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed, or whose inbound message body is not a bag of cells TON deserializes to one root, as `tvm/boc-malformed` reads one. |
 | `tvm/value-too-low` | The TON attached to the Jetton transfer is not more than the option's forward TON amount. |
 | `tvm/wrong-reader` | The TON reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |
 
