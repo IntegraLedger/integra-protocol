@@ -103,9 +103,9 @@ jobs:
       - name: Fetch pnpm
         run: |
           set -eu
-          curl -fsSL -o "$RUNNER_TEMP/pnpm-11.27.1.tgz" https://registry.npmjs.org/pnpm/-/pnpm-11.27.1.tgz
-          echo "a81d4c21b9b09a4b0aebf90ef5e527d4262bdda322d26082978cb549023ac6d9cafc98b19fffaa5c71db438a65f70224edb78d7311187861ff96480d1cdca23c  $RUNNER_TEMP/pnpm-11.27.1.tgz" | sha512sum -c -
-          npm install -g "$RUNNER_TEMP/pnpm-11.27.1.tgz"
+          curl -fsSL -o "$RUNNER_TEMP/pnpm-11.28.2.tgz" https://registry.npmjs.org/pnpm/-/pnpm-11.28.2.tgz
+          echo "755ce2fe3c05bfd7bb412b42aff3c5c55cd38c529c6eca810475497ae36746c571e4b6e1814e6e7e4b97d7ee864b8a0e44673c3b297a50e0ac28771c5ce15d27  $RUNNER_TEMP/pnpm-11.28.2.tgz" | sha512sum -c -
+          npm install -g "$RUNNER_TEMP/pnpm-11.28.2.tgz"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --if-present run build
       - run: pnpm -r --if-present run typecheck
@@ -129,9 +129,9 @@ jobs:
       - name: Fetch pnpm
         run: |
           set -eu
-          curl -fsSL -o "$RUNNER_TEMP/pnpm-11.27.1.tgz" https://registry.npmjs.org/pnpm/-/pnpm-11.27.1.tgz
-          echo "a81d4c21b9b09a4b0aebf90ef5e527d4262bdda322d26082978cb549023ac6d9cafc98b19fffaa5c71db438a65f70224edb78d7311187861ff96480d1cdca23c  $RUNNER_TEMP/pnpm-11.27.1.tgz" | sha512sum -c -
-          npm install -g "$RUNNER_TEMP/pnpm-11.27.1.tgz"
+          curl -fsSL -o "$RUNNER_TEMP/pnpm-11.28.2.tgz" https://registry.npmjs.org/pnpm/-/pnpm-11.28.2.tgz
+          echo "755ce2fe3c05bfd7bb412b42aff3c5c55cd38c529c6eca810475497ae36746c571e4b6e1814e6e7e4b97d7ee864b8a0e44673c3b297a50e0ac28771c5ce15d27  $RUNNER_TEMP/pnpm-11.28.2.tgz" | sha512sum -c -
+          npm install -g "$RUNNER_TEMP/pnpm-11.28.2.tgz"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @integraledger/lcp run build
       - name: The TypeScript samples in the READMEs and docs/ not marked no-check compile, run and print what the page shows
@@ -157,9 +157,9 @@ jobs:
       - name: Fetch pnpm
         run: |
           set -eu
-          curl -fsSL -o "$RUNNER_TEMP/pnpm-11.27.1.tgz" https://registry.npmjs.org/pnpm/-/pnpm-11.27.1.tgz
-          echo "a81d4c21b9b09a4b0aebf90ef5e527d4262bdda322d26082978cb549023ac6d9cafc98b19fffaa5c71db438a65f70224edb78d7311187861ff96480d1cdca23c  $RUNNER_TEMP/pnpm-11.27.1.tgz" | sha512sum -c -
-          npm install -g "$RUNNER_TEMP/pnpm-11.27.1.tgz"
+          curl -fsSL -o "$RUNNER_TEMP/pnpm-11.28.2.tgz" https://registry.npmjs.org/pnpm/-/pnpm-11.28.2.tgz
+          echo "755ce2fe3c05bfd7bb412b42aff3c5c55cd38c529c6eca810475497ae36746c571e4b6e1814e6e7e4b97d7ee864b8a0e44673c3b297a50e0ac28771c5ce15d27  $RUNNER_TEMP/pnpm-11.28.2.tgz" | sha512sum -c -
+          npm install -g "$RUNNER_TEMP/pnpm-11.28.2.tgz"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @integraledger/lcp run build
       - run: pnpm install --frozen-lockfile
