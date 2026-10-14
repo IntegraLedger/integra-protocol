@@ -442,6 +442,35 @@ The value of JSON text nested at most 64 levels deep; undefined for text that is
 
 ***
 
+### readToRepeat()
+
+> **readToRepeat**(`code`): `boolean`
+
+True when `code` is a read to repeat: a refusal whose answer rests on a read of the rail that may answer differently
+later, with nothing the caller must change. The caller asks again later, since the payment may already have moved.
+These are each reader's `<rail>/unreadable` (the reader failed, or answered out of its documented form) and
+`<rail>/not-found` (the reader holds no landed transaction for the reference yet), and the codes of a transaction that
+is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, and `tempo/not-final` and
+`hedera/not-final` (a revert in a block above the reader's `finalized` mark, which can be replaced by one in which the
+transaction succeeds). The refusal code reference marks each of them.
+
+False for every other string. A verdict is not a read to repeat: a later read gives the same answer. Nor is a call the
+caller must change before it can succeed: `<rail>/wrong-reader` (a reader for another network, or a ref the rail
+cannot read) and `<rail>/read-first` (`bound` or `reference` on a push credential before `fetchPresented` has read
+it), a missing peer dependency, and malformed input. A string the package does not return is false.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `code` | `string` |
+
+#### Returns
+
+`boolean`
+
+***
+
 ### toLcpString()
 
 > **toLcpString**(`h`): `string`
