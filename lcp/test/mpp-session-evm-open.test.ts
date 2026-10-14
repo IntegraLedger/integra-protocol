@@ -145,6 +145,8 @@ describe("ES9: the hash opening's settlement read", () => {
     expect(await statusOf(await opening(H), "error")).toEqual({ state: "pending", why: "unreadable" });
     const noSender = { ...R.cases[0].transaction, from: "0x1234" };
     expect(await statusOf(await opening(H), noSender)).toEqual({ state: "pending", why: "unreadable" });
+    const oddInput = { ...R.cases[0].transaction, input: `${R.cases[0].transaction.input}1` };
+    expect(await statusOf(await opening(H), oddInput)).toEqual({ state: "pending", why: "unreadable" });
   });
 
   // CONTRIBUTING.md, "Failures are values": status answers a ref member it cannot read as pending unreadable and makes
@@ -224,7 +226,8 @@ describe("ES9 permit2: the Permit2 opening reads the escrow's openWithPermit2", 
   };
 
   // go-ethereum's transaction pool admits a transaction of at most 128 KiB (core/txpool/legacypool/legacypool.go,
-  // txMaxSize = 4 * txSlotSize); the read decodes at most that much calldata.
+  // txMaxSize = 4 * txSlotSize); the read decodes at most that much calldata, and a transaction with more is one of the
+  // file's "any other transaction" cases, pending open-call-not-found.
   it("the padded case's calldata is longer than 131,072 bytes", () => {
     const padded = P.cases.find((row: { signatureBytes?: number }) => row.signatureBytes !== undefined);
     expect((transactionOf(padded).input.length - 2) / 2).toBeGreaterThan(131_072);
@@ -292,7 +295,12 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
       functionName: "openWithPermit2",
       args: [a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], `0x${"11".repeat(padded.signatureBytes)}`],
     });
-    expect(await recoverOf({ ...first.transaction, input: long }, first.receipt), padded.case).toEqual(refused("evm/unreadable"));
+    // The calldata is the transaction's own, so every read gives the same: an opening the read does not decode is
+    // refused evm/no-open-call, as one sent through an ERC-4337 EntryPoint is; a transaction that is not well formed
+    // stays evm/unreadable, a read to repeat.
+    expect(await recoverOf({ ...first.transaction, input: long }, first.receipt), padded.case).toEqual(refused("evm/no-open-call"));
+    expect(await recoverOf({ ...first.transaction, input: `${long}1` }, first.receipt)).toEqual(refused("evm/unreadable"));
+    expect(await recoverOf({ ...first.transaction, from: "0x1234" }, first.receipt)).toEqual(refused("evm/unreadable"));
   });
 
   it("the authorization opening: the salt of openWithAuthorization, whose payer is its from", async () => {

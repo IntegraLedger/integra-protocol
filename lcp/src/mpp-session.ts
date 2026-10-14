@@ -248,8 +248,10 @@ const OPEN_WITH_PERMIT2_SELECTOR = "0x70981fe5";
 const OPEN_WITH_AUTHORIZATION_SELECTOR = "0xb82a39ba";
 /**
  * The calldata an opening's read decodes, at most 128 KiB, go-ethereum's transaction pool maximum for a whole
- * transaction (`core/txpool/legacypool/legacypool.go`, `txMaxSize = 4 * txSlotSize // 128KB`); a longer one is pending
- * `unreadable`.
+ * transaction (`core/txpool/legacypool/legacypool.go`, `txMaxSize = 4 * txSlotSize // 128KB`). A transaction with
+ * longer calldata is not an opening the read decodes: `status` answers it pending `open-call-not-found`, as any other
+ * transaction, and `recover` refuses it `evm/no-open-call`, since the calldata is the transaction's own and every read
+ * gives the same.
  */
 const MAX_CALLDATA = 131_072;
 const U96 = 1n << 96n;
@@ -980,6 +982,14 @@ async function closeRead(
 }
 
 /**
+ * Whether `eth_getTransactionByHash`'s answer is well formed: an object whose `from` is an address, whose `to` is an
+ * address or null (a contract creation), and whose `input` is `0x` and an even number of hex digits, of any length.
+ */
+function isTransactionRead(tx: unknown): boolean {
+  return isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, Number.MAX_SAFE_INTEGER);
+}
+
+/**
  * A succeeded transaction read as an EVM session's opening, by `eth_getTransactionByHash`: sent to the escrow, it holds
  * the escrow's open call for the channel. The call is `open(address payee, address token, uint128 deposit, bytes32
  * salt, address authorizedSigner)` in its first 164 bytes of calldata, whose payer is the transaction's sender, or
@@ -993,8 +1003,9 @@ async function closeRead(
  * failed answer names no mark, so it is given only at the highest the reader names.
  *
  * Any other transaction is pending `open-call-not-found`, never failed. A transaction sent through an ERC-4337
- * EntryPoint is one of them: the account's calldata does not show which contract the account called. Calldata longer
- * than `MAX_CALLDATA` is pending `unreadable`. The deposit is not read.
+ * EntryPoint is one of them: the account's calldata does not show which contract the account called; so is one whose
+ * calldata is longer than `MAX_CALLDATA`, which the read does not decode. A failed read, or a transaction that is not
+ * well formed (`isTransactionRead`), is pending `unreadable`. The deposit is not read.
  */
 async function openRead(
   settled: EvmBreadthStatus & { state: "settled" },
@@ -1009,8 +1020,8 @@ async function openRead(
     return { state: "pending", why: "unreadable" };
   }
   if (tx === null) return { state: "pending", why: "not-found" };
-  const readable = isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, MAX_CALLDATA);
-  if (!readable) return { state: "pending", why: "unreadable" };
+  if (!isTransactionRead(tx)) return { state: "pending", why: "unreadable" };
+  if (!isHexBytes(tx.input, 0, MAX_CALLDATA)) return { state: "pending", why: "open-call-not-found" };
   const input = bytesOf(tx.input)!;
   const selector = input.length >= 4 ? hexOf(input.subarray(0, 4)) : undefined;
   const args = input.subarray(4);
@@ -1033,9 +1044,10 @@ async function openRead(
  * the called contract; else `evm/no-open-call`. A transaction sent through an ERC-4337 EntryPoint is refused so: the
  * account's calldata does not show which contract the account called. A reader for another network, a ref or reader
  * that is not an object, or a ref whose `transaction` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`;
- * no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read, a malformed receipt
- * or transaction, or calldata longer than `MAX_CALLDATA` is `evm/unreadable`. A transaction whose own call is not the
- * open call is `evm/no-open-call` on every read, since its calldata is its own. A revert, and a receipt without the
+ * no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read, or a malformed
+ * receipt or transaction (`isTransactionRead`), is `evm/unreadable`. A transaction whose own call is not the open call,
+ * or whose calldata is longer than `MAX_CALLDATA`, is `evm/no-open-call` on every read, since its calldata is its own:
+ * an opening the read does not decode is refused so, as an ERC-4337 one is. A revert, and a receipt without the
  * payer's `Transfer`, are given only where the receipt's block is at or below the reader's `finalized` mark: above it,
  * or where that mark cannot be read, each is `evm/not-final`, a read to repeat, since a block above the mark can be
  * replaced by one in which the transaction succeeds or holds other logs. The mark is read only for those. At most three
@@ -1063,8 +1075,8 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
     return refusal("evm/unreadable");
   }
   if (tx === null) return refusal("evm/not-found");
-  const readable = isObject(tx) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexBytes(tx.input, 0, MAX_CALLDATA);
-  if (!readable) return refusal("evm/unreadable");
+  if (!isTransactionRead(tx)) return refusal("evm/unreadable");
+  if (!isHexBytes(tx.input, 0, MAX_CALLDATA)) return refusal("evm/no-open-call");
   const input = bytesOf(tx.input)!;
   const selector = input.length >= OPEN_CALL_BYTES ? hexOf(input.subarray(0, 4)) : undefined;
   if (tx.to === null || selector === undefined) return refusal("evm/no-open-call");

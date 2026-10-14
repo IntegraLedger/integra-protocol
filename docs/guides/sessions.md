@@ -341,8 +341,9 @@ is at or below the `finalized` mark; above it, where the block can still be repl
 can land until its deadline, it reads as pending. Any other transaction, such as a plain token transfer to the
 escrow, reads as pending, with the reason `open-call-not-found`, never as failed. A transaction sent through an ERC-4337
 EntryPoint reads as pending, with the reason `open-call-not-found`: the account's calldata does not show which contract
-the account called. The deposit is not read. Calldata longer than 131,072 bytes, go-ethereum's transaction pool
-maximum, reads as pending, with the reason `unreadable`.
+the account called. So does a transaction whose calldata is longer than 131,072 bytes, go-ethereum's transaction pool
+maximum, which the read does not decode. A transaction that is not well formed reads as pending, with the reason
+`unreadable`. The deposit is not read.
 
 ## Next
 
