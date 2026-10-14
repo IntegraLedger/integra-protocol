@@ -378,7 +378,7 @@
   }
  },
  "refusals": {
-  "about": "The codes the pairing leaves to the implementation, as rows the TypeScript and Python implementations share.",
+  "about": "The codes the pairing leaves to the implementation, as rows the TypeScript and Python implementations share. A build row with choice is build(choice, H).",
   "rows": [
    {
     "case": "bound: x402Version 1",
@@ -498,6 +498,24 @@
     "expect": {
      "refused": true,
      "code": "casper/signature-malformed"
+    }
+   },
+   {
+    "case": "build: a null choice",
+    "fn": "build",
+    "choice": null,
+    "expect": {
+     "refused": true,
+     "code": "x402/not-v2"
+    }
+   },
+   {
+    "case": "build: a choice that is a string",
+    "fn": "build",
+    "choice": "x",
+    "expect": {
+     "refused": true,
+     "code": "x402/not-v2"
     }
    }
   ]

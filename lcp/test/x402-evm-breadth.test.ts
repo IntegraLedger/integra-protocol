@@ -31,6 +31,7 @@ import {
   bindSalt,
   evmStatus,
   paymentHash,
+  permit2TypedData,
   transferDigest,
   type EvmReader,
   type EvmReceipt,
@@ -1023,6 +1024,47 @@ describe("the records", () => {
     for (const b of [exactPermit2, uptoPermit2]) {
       expect(b.recover, b.id).toBeDefined();
       expect(b.pattern.zeroPartyRecoverable, b.id).toBe(true);
+    }
+  });
+});
+
+// Each breadth file's agreedRefusals rows, run from the rows' own inputs: a choice that is not an object is x402/not-v2
+// at build, and a permitted that is not an object or a list of objects is evm/field-malformed at permit2TypedData, over
+// EV1's other inputs.
+describe("each breadth file's agreedRefusals rows", () => {
+  const files = [
+    ["x402-exact-eip155-permit2.json", P2, exactPermit2],
+    ["x402-exact-eip155-erc7710.json", ERC7710, exactErc7710],
+    ["x402-exact-eip155-erc7710-salt.json", ES, exactErc7710Salt],
+    ["x402-upto-eip155-permit2.json", UP, uptoPermit2],
+    ["x402-auth-capture-eip155-eip3009.json", A3, authCaptureEip3009],
+    ["x402-auth-capture-eip155-permit2.json", AP, authCapturePermit2],
+  ] as const;
+  type Row = { case: string; choice?: unknown; permitted?: unknown; expect: string };
+  for (const [name, file, pairing] of files) {
+    const rows = file.agreedRefusals.rows as Row[];
+    it(`${name}: build refuses a null choice and a string choice`, async () => {
+      const built = rows.filter((r) => "choice" in r);
+      expect(built.map((r) => r.choice)).toEqual([null, "x"]);
+      for (const r of built) {
+        expect(await pairing.build(r.choice as never, file.fixed.H as AtrHash), r.case).toEqual({ refused: true, code: r.expect });
+      }
+    });
+  }
+
+  it("x402-exact-eip155-permit2.json: permit2TypedData refuses a permitted of null, [null] and 42", () => {
+    const rows = (P2.agreedRefusals.rows as Row[]).filter((r) => "permitted" in r);
+    expect(rows.map((r) => r.permitted)).toEqual([null, [null], 42]);
+    const base = {
+      chainId: 84532,
+      spender: P2.EV1.expectSpender as Hex,
+      nonce: BigInt(P2.EV1.expectNonceDecimal),
+      deadline: BigInt(P2.EV1.expectDeadline),
+    };
+    const good = permit2TypedData({ ...base, permitted: { token: P2.fixed.option.asset as Hex, amount: 10000n } });
+    expect("refused" in good).toBe(false);
+    for (const r of rows) {
+      expect(permit2TypedData({ ...base, permitted: r.permitted as never }), r.case).toEqual({ refused: true, code: r.expect });
     }
   });
 });

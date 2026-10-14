@@ -187,6 +187,8 @@ describe("x402/exact/casper", () => {
         if (row.fn === "bound" || row.fn === "reference") {
           const payment = mutate(V.C2.expectPayload, row.mutate);
           expect(await exactCasper[row.fn as "bound" | "reference"](payment)).toEqual(row.expect);
+        } else if (row.fn === "build" && "choice" in row) {
+          expect(await exactCasper.build(row.choice, H)).toEqual(row.expect);
         } else if (row.fn === "build") {
           const option = { ...O, ...(row.optionMutate ?? {}) } as PaymentRequirements;
           const from = row.from ?? V.fixed.from;

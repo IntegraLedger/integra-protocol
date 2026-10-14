@@ -158,6 +158,51 @@ describe("x402-exact-eip155-eip3009.json", () => {
   it("plant", async () => {
     expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(P.plant.receipt)))).toEqual(P.plant.expect);
   });
+
+  // The rows that carry their input, as the agreedRefusals about states: build's choice; read of V5's document with its
+  // legal context's info, its legal context or its accepts replaced; build of V1's choice with another option.
+  it("agreedRefusals: each row that carries its input", async () => {
+    type Row = { case: string; expect: string } & Partial<Record<"choice" | "info" | "legalContext" | "accepts" | "accepted", unknown>>;
+    const rows = (P.agreedRefusals.rows as Row[]).filter((r) => Object.keys(r).length > 2);
+    expect(rows.map((r) => Object.keys(r).filter((k) => k !== "case" && k !== "expect"))).toEqual([
+      ["choice"], ["choice"], ["info"], ["info"], ["legalContext"], ["info"], ["info"], ["accepts"], ["accepted"],
+    ]);
+    const answer = async (r: Row): Promise<unknown> => {
+      if ("choice" in r) return exactEip3009.build(r.choice as never, H);
+      if ("accepted" in r) {
+        const accepted = r.accepted as PaymentRequirements;
+        const req: PaymentRequired = { x402Version: 2, resource: P.fixed.resource, accepts: [accepted] };
+        return exactEip3009.build({ required: req, accepted, from: P.fixed.payer, now: P.fixed.now }, H);
+      }
+      const doc = structuredClone(P.V5.expectDocument);
+      if ("info" in r) doc.extensions.legalContext.info = r.info;
+      if ("legalContext" in r) doc.extensions.legalContext = r.legalContext;
+      if ("accepts" in r) doc.accepts = r.accepts;
+      return exactEip3009.read(doc);
+    };
+    for (const r of rows) expect(await answer(r), r.case).toEqual({ refused: true, code: r.expect });
+  });
+
+  it("agreedRefusals: the long links are 2049 UTF-16 code units and 2048 code points, and 2048 units reads", () => {
+    const info = (P.agreedRefusals.rows as { info?: { legalContextUrl?: string; legalContextAgreementUrl?: string } }[])
+      .map((r) => r.info)
+      .filter((i) => i !== undefined);
+    const long = [info[2]!.legalContextUrl!, info[3]!.legalContextAgreementUrl!];
+    for (const l of long) {
+      expect(l.length).toBe(2049);
+      expect([...l].length).toBe(2048);
+    }
+    // The same link one ASCII letter shorter, 2048 UTF-16 code units: H and the link read back.
+    const prefix = "https://atr.seller.example/";
+    expect(long[0]!.startsWith(`${prefix}a`)).toBe(true);
+    const at2048 = prefix + long[0]!.slice(prefix.length + 1);
+    expect(at2048.length).toBe(2048);
+    const doc = structuredClone(P.V5.expectDocument);
+    doc.extensions.legalContext.info.legalContextUrl = at2048;
+    const r = exactEip3009.read(doc);
+    if ("refused" in r) throw new Error(r.code);
+    expect([r.h, r.link]).toEqual([H, at2048]);
+  });
 });
 
 describe("buyer.json: the rows the core and the binding can check", () => {

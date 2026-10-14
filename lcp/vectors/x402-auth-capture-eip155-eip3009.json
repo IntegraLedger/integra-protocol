@@ -145,6 +145,21 @@
    "code": "x402/salt-malformed"
   }
  },
+ "agreedRefusals": {
+  "about": "Refusal codes where the pairing leaves the code to the implementation, as this package applies them. A row with choice is build's choice, with H.",
+  "rows": [
+   {
+    "case": "build with a null choice",
+    "choice": null,
+    "expect": "x402/not-v2"
+   },
+   {
+    "case": "build with a choice that is a string",
+    "choice": "x",
+    "expect": "x402/not-v2"
+   }
+  ]
+ },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [
