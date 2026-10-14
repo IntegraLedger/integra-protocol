@@ -10,7 +10,6 @@ import { deepFreeze, isObject, normalHash } from "./fields.js";
 import {
   amountOf,
   chargeLegs,
-  fromBase64,
   hederaChargeRequest,
   hederaNetworkOfChainId,
   INT64_LIMIT,
@@ -19,6 +18,7 @@ import {
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { fromBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
@@ -503,10 +503,11 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 /**
  * Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
  * records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
- * not this instrument, and any other result is failed with that result. A failed read, or a reader for another
- * network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read. It never
- * answers expired: a transaction id that no entry uses stays pending `not-found`, and `validUntil` is not read, so the
- * caller decides when to stop reading.
+ * not this instrument, and any other result is failed with that result. A failed read, a reader for another network,
+ * or a SUCCESS entry whose `memo_base64` is not base64 in its canonical form (RFC 4648 §3.5) is pending. A ref whose
+ * `expectMemo` is not a string is pending `unreadable`, with nothing read. It never answers expired: a transaction id
+ * that no entry uses stays pending `not-found`, and `validUntil` is not read, so the caller decides when to stop
+ * reading.
  */
 export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promise<HederaStatus> {
   if (!isObject(ref) || typeof ref.expectMemo !== "string") return { state: "pending", why: "unreadable" };

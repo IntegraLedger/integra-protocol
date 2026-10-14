@@ -688,7 +688,7 @@
   }
  },
  "events": {
-  "case": "SEP-41 transfer events as Stellar testnet's RPC returned them on 2026-09-25 (getEvents on the testnet USDC contract), decoded with stellar-sdk 16.1.0 (Python); the topic filter for a G recipient is the transfer symbol, any from, the recipient as an address, then any trailing topics",
+  "case": "SEP-41 transfer events as Stellar testnet's RPC returned them on 2026-09-25 (getEvents on the testnet USDC contract), decoded with stellar-sdk 16.1.0 (Python); the topic filter for a G recipient is the transfer symbol, any from, the recipient as an address, then any trailing topics; row 3 is row 1 with a bit set past the last byte in its value's last base64 character before the padding",
   "filterFor": {
    "toBase": "GC4HILFF6LHZXGURG7TTYFGNKHZAZCEDTLCAAR2D25EBLNWWKR4LM7FN",
    "expect": [
@@ -733,6 +733,17 @@
      "AAAAEgAAAAAAAAAA7DDC84drxubIsRux1MFR51z9kbfQ1o35kUz3TJBErxs="
     ],
     "value": "AAAACgAAAAAAAAAAAAAAAAAfB3o=",
+    "expect": "stellar/event-malformed"
+   },
+   {
+    "case": "row 1's event with a bit set past the last byte in its value's last character before the padding: the same bytes, not in canonical form (RFC 4648 §3.5)",
+    "topic": [
+     "AAAADwAAAAh0cmFuc2Zlcg==",
+     "AAAAEgAAAAAAAAAAliySGdTPMgwOKj3lgE168ccFTf1UsmSsCg+FYg62rfk=",
+     "AAAAEgAAAAAAAAAA7DDC84drxubIsRux1MFR51z9kbfQ1o35kUz3TJBErxs=",
+     "AAAADgAAAD1VU0RDOkdCQkQ0N0lGNkxXSzdQN01ERVZTQ1dSN0RQVVdWM05ZM0RUUUVWRkw0TkFUNEFRSDNaTExGTEE1AAAA"
+    ],
+    "value": "AAAACgAAAAAAAAAAAAAAAAAfB3p=",
     "expect": "stellar/event-malformed"
    }
   ]

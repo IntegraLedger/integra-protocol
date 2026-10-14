@@ -277,6 +277,11 @@
      ]
     },
     "expect": "sui/tx-too-large"
+   },
+   {
+    "case": "a transaction whose last character before the padding has a bit set past the last byte (V2's transaction): the same bytes, not in canonical form (RFC 4648 §3.5)",
+    "transaction": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB0gQAAAAAAAB=",
+    "expect": "sui/tx-malformed"
    }
   ]
  },

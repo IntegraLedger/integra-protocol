@@ -274,6 +274,15 @@
      "gqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhujKRhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ylc3Btc2eheKR0eXBlpWF4ZmVypHhhaWTOAJ+XPQ=="
     ],
     "expect": "avm/txn-malformed"
+   },
+   {
+    "case": "V2's group with a bit set past the last byte in the payment entry's last character before the padding: the same bytes, not in canonical form (RFC 4648 §3.5)",
+    "paymentIndex": 1,
+    "paymentGroup": [
+     "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+     "gqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz1="
+    ],
+    "expect": "avm/txn-malformed"
    }
   ]
  },

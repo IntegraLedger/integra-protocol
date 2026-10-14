@@ -18,7 +18,7 @@ import {
   type OptionFilter,
   type X402Read,
 } from "./internal/x402.js";
-import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
+import { bytesOfHexDigits, decimalBelow, fromBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -123,7 +123,6 @@ const MAX_RELAYERS = 4;
 const U128_LIMIT = 1n << 128n;
 const U64_LIMIT = 1n << 64n;
 const ACCOUNT = /^[a-z0-9._-]{2,64}$/;
-const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 const utf8 = new TextEncoder();
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
@@ -182,8 +181,8 @@ function carrierOf(signedDelegateAction: string): {
   if (peer === undefined) return refusal("near/peer-missing");
   if (typeof signedDelegateAction !== "string") return refusal("near/sda-malformed");
   if (signedDelegateAction.length > MAX_SDA_BASE64) return refusal("near/sda-too-large");
-  if (signedDelegateAction.length === 0 || !BASE64.test(signedDelegateAction)) return refusal("near/sda-malformed");
-  const bytes = Uint8Array.from(Buffer.from(signedDelegateAction, "base64"));
+  const bytes = signedDelegateAction === "" ? null : fromBase64(signedDelegateAction);
+  if (bytes === null) return refusal("near/sda-malformed");
   let d: Decoded;
   try {
     d = peer.borsh.deserialize(peer.near.SCHEMA.SignedDelegate, bytes) as Decoded;
@@ -265,10 +264,10 @@ function edOrSecp(d: Decoded): boolean {
  * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
  * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
  * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
- * empty relayer list, a reader for another network, or a delegate whose arguments are not base64 is pending. A ref
- * whose nonce, asset, payer, public key or digest is malformed is pending `unreadable`, with nothing read: the asset and
- * the payer must be account ids of 2 to 64 lowercase letters, digits, `.`, `_` or `-`, and the public key `ed25519:`
- * and the base58 of 32 bytes or `secp256k1:` and of 64.
+ * empty relayer list, a reader for another network, or a delegate whose arguments are not base64 in its canonical form
+ * (RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed is pending
+ * `unreadable`, with nothing read: the asset and the payer must be account ids of 2 to 64 lowercase letters, digits,
+ * `.`, `_` or `-`, and the public key `ed25519:` and the base58 of 32 bytes or `secp256k1:` and of 64.
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
@@ -301,8 +300,9 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
   ) {
     return { state: "failed", why: "not-this-instrument" };
   }
-  if (!BASE64.test(dg.argsBase64)) return { state: "pending", why: "unreadable" };
-  if (!hashEquals(await hash(Uint8Array.from(Buffer.from(dg.argsBase64, "base64"))), ref.argsDigest)) {
+  const args = fromBase64(dg.argsBase64);
+  if (args === null) return { state: "pending", why: "unreadable" };
+  if (!hashEquals(await hash(args), ref.argsDigest)) {
     return { state: "failed", why: "not-this-instrument" };
   }
   const byToken = outcome.receipts.filter((r) => r.executor === ref.asset);
@@ -347,9 +347,9 @@ export async function nearRecover(ref: { network: NearNetwork; transaction: stri
   if (outcome === "unreadable") return refusal("near/unreadable");
   if (outcome === null || outcome.delegate === null) return refusal("near/not-found");
   if (outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
-  const args = outcome.delegate.argsBase64;
-  if (typeof args !== "string" || !BASE64.test(args)) return refusal("near/args-malformed");
-  return memoOf(Uint8Array.from(Buffer.from(args, "base64")));
+  const args = fromBase64(outcome.delegate.argsBase64);
+  if (args === null) return refusal("near/args-malformed");
+  return memoOf(args);
 }
 
 async function findOutcome(txHash: string, reader: NearReader): Promise<NearOutcome | null | "unreadable"> {

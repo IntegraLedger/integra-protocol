@@ -7,7 +7,7 @@
 import { base64 } from "@scure/base";
 import { canonicalJson, parseJson, type AtrHash, type Json } from "./core.js";
 import { bytesOf, keccakHex, sameBytes, type Hex } from "./evm-abi.js";
-import { sameBytes as equalBytes } from "./rail-bytes.js";
+import { fromBase64, sameBytes as equalBytes } from "./rail-bytes.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
@@ -488,13 +488,8 @@ async function stacksBinding(
   if (format !== undefined && format !== STACKS_FORMAT) return refusal("mpp/stacks-tx-malformed");
   const text = e.payload["transaction"];
   if (typeof text !== "string" || text.length > Math.ceil(MAX_STACKS_TX / 3) * 4) return refusal("mpp/stacks-tx-malformed");
-  let wire: Uint8Array;
-  try {
-    wire = base64.decode(text);
-  } catch {
-    return refusal("mpp/stacks-tx-malformed");
-  }
-  if (wire.length === 0 || wire.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
+  const wire = fromBase64(text);
+  if (wire === null || wire.length === 0 || wire.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
   const peer = await stacksPeer();
   if (peer === undefined) return refusal("stacks/peer-missing");
   // Decoding accepts a multisig key field that is not a point on the curve; re-serialising it throws. Either is a

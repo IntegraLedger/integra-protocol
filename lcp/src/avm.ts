@@ -9,6 +9,7 @@ import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { msgpackWithinCaps, type AvmPaymentPayload } from "./internal/avm.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { fromBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -76,7 +77,6 @@ export interface AvmUnsigned {
 const ID = "x402/exact/algorand" as const;
 const NETWORK = /^algorand:([-_a-zA-Z0-9]{32})$/;
 const ASSET = /^(0|[1-9][0-9]{0,19})$/;
-const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const UINT64_LIMIT = 1n << 64n;
 /**
  * A transaction id as `reference` writes it: the base32 of a 32-byte hash without padding, 52 characters, the last
@@ -138,14 +138,6 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
     return refusal("avm/option-malformed");
   }
   return true;
-}
-
-function fromBase64(s: unknown): Uint8Array | null {
-  if (typeof s !== "string" || s.length % 4 !== 0 || !BASE64.test(s)) return null;
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 function toBase64(bytes: Uint8Array): string {

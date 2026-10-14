@@ -1,21 +1,45 @@
-/** Byte helpers shared by the rail entry points: strict base64, lowercase hex, and fixed-width integers. */
+/**
+ * Byte helpers shared by the rail entry points: padded standard base64 read in its canonical form only, lowercase hex,
+ * and fixed-width integers.
+ */
 
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /**
- * The bytes of a padded standard base64 string, or "too-large" when they would exceed `maxBytes`, or "malformed".
- * The length is checked before anything is decoded.
+ * True when `s` is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5): the standard alphabet,
+ * `=` padding to a multiple of four characters, and zero bits past the last whole byte in the last character before
+ * the padding.
+ */
+function isBase64(s: unknown): s is string {
+  if (typeof s !== "string" || !BASE64.test(s)) return false;
+  const pad = s.endsWith("==") ? 2 : s.endsWith("=") ? 1 : 0;
+  return pad === 0 || (ALPHABET.indexOf(s[s.length - pad - 1]!) & (pad === 2 ? 0x0f : 0x03)) === 0;
+}
+
+/**
+ * The bytes of `s` when it is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5), or null: a
+ * text whose last character before the padding has a bit set past the last byte is not that form. Every rail's
+ * standard base64 is read here.
+ */
+export function fromBase64(s: unknown): Uint8Array | null {
+  if (!isBase64(s)) return null;
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/**
+ * The bytes of `s` as `fromBase64` reads them, or "too-large" when they would exceed `maxBytes`, or "malformed". The
+ * length is checked before anything is decoded.
  */
 export function base64Bytes(s: unknown, maxBytes: number): Uint8Array | "too-large" | "malformed" {
   if (typeof s !== "string") return "malformed";
   if (s.length % 4 !== 0) return "malformed";
   const pad = s.endsWith("==") ? 2 : s.endsWith("=") ? 1 : 0;
   if ((s.length / 4) * 3 - pad > maxBytes) return "too-large";
-  if (!BASE64.test(s)) return "malformed";
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+  return fromBase64(s) ?? "malformed";
 }
 
 /** Standard padded base64 of `b`. */

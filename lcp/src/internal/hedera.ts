@@ -1,7 +1,7 @@
 /**
  * The Hedera request checks an MPP charge challenge must pass, which `../hedera.ts`'s `advertise` and MPP's
- * `pairingsOf` run, and the readers they share with `../hedera.ts`: entity ids, decimal amounts, base64 and MPP's chain
- * ids. Also the x402 payments a Hedera payer presents, which the root names among the payments `Presented` covers. No
+ * `pairingsOf` run, and the readers they share with `../hedera.ts`: entity ids, decimal amounts and MPP's chain ids.
+ * Also the x402 payments a Hedera payer presents, which the root names among the payments `Presented` covers. No
  * entry point exports these names.
  */
 import { parseJson } from "../core.js";
@@ -23,7 +23,6 @@ export type ExecutorPaymentPayload = X402Payment<ExecutorPayload>;
 
 const ENTITY = /^(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})\.(0|[1-9][0-9]{0,18})$/;
 const DECIMAL = /^(0|[1-9][0-9]{0,18})$/;
-const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 export const INT64_LIMIT = 1n << 63n;
 /**
  * The most splits a charge carries: the payer's debit, the recipient's remainder and eight splits are ten token
@@ -59,15 +58,6 @@ export function amountOf(s: unknown): bigint | undefined {
 function positiveAmountOf(s: unknown): bigint | undefined {
   const v = amountOf(s);
   return v !== undefined && v > 0n ? v : undefined;
-}
-
-/** Padded standard base64 to bytes, or null. */
-export function fromBase64(s: unknown): Uint8Array | null {
-  if (typeof s !== "string" || s.length % 4 !== 0 || !BASE64.test(s)) return null;
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 /**

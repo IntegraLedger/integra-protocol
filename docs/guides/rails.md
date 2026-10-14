@@ -15,6 +15,13 @@ signed form the payer produces, where H sits in it, and the settlement read. The
 exported from the protocol's entry point or the rail's own, as the
 [pairings reference](../reference/pairings.md) lists.
 
+The package reads each standard base64 text on a rail as padded standard base64 (RFC 4648 §4) in its canonical form
+only (RFC 4648 §3.5): what the payer signs (a Sui, Cardano, Aptos, Algorand, Hedera, Solana, Stellar or Stacks
+transaction, a NEAR signed delegate action, a TON message), a TON option's forward payload and the TON state init
+`build` takes, and what a node answers (an Algorand genesis hash, a Hedera Mirror Node memo, NEAR function-call
+arguments, Stellar event topics and values). A text whose last character before the padding has a bit set past the last
+byte spells the same bytes in another form, and each reader answers it as it answers any other malformed text.
+
 ## The forms H takes on a rail
 
 A rail field holds H in one of these forms:

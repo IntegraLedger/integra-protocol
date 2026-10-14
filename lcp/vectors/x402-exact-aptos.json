@@ -582,6 +582,11 @@
      ]
     },
     "expect": "aptos/tx-too-large"
+   },
+   {
+    "case": "a transaction whose last character before the padding has a bit set past the last byte (fixture F's RawTransaction, rawTransactionBytes long, its SHA-256 rawTransactionSha256): the same bytes, not in canonical form (RFC 4648 \u00a73.5)",
+    "transaction": "G2CabCjYU1IHSbrQ5lHPmGBuXQyBUfHw/iddPMT5llraAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARZwcmltYXJ5X2Z1bmdpYmxlX3N0b3JlCHRyYW5zZmVyAQcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ5mdW5naWJsZV9hc3NldAhNZXRhZGF0YQADIDV7C3S8gz6VoRWtImBIVNaw/KFRzs2UERdw5db/ydwrIOjKCU/sRgMpqszCpkTcc8Xjnxoq1ul/grbL3BpZSbnqCGBa9AUAAAAAmDoAAAAAAABkAAAAAAAAAN/StWoAAAAAAR==",
+    "expect": "aptos/tx-malformed"
    }
   ]
  },

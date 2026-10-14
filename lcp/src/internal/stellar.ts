@@ -7,7 +7,6 @@
  * are re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
-import { base64 } from "@scure/base";
 import type {
   HashIdPreimageWire,
   InvokeContractArgsWire,
@@ -23,6 +22,7 @@ import type {
 import { toRawBytes, type AtrHash } from "../core.js";
 import { isObject } from "../fields.js";
 import type { Hex } from "../evm.js";
+import { fromBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 
@@ -342,15 +342,6 @@ export function scValsWithinCaps(wire: unknown): boolean {
   return true;
 }
 
-/** Strict RFC 4648 base64: the standard alphabet, padded to a multiple of 4, with zero padding bits. */
-function strictBase64(s: string): Uint8Array | null {
-  try {
-    return base64.decode(s);
-  } catch {
-    return null;
-  }
-}
-
 /**
  * The envelope's one `invokeHostFunction` operation calling `transfer(from, to, amount)`, its host function within the
  * ScVal cap.
@@ -372,7 +363,7 @@ type Operation = {
  * for byte, with no sub-invocations.
  */
 function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal {
-  const bytes = strictBase64(xdrB64);
+  const bytes = fromBase64(xdrB64);
   if (bytes === null) return refusal("stellar/tx-malformed");
   let wire: TransactionEnvelopeWire;
   try {
@@ -644,7 +635,9 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
     const x = S.xdr;
     const t = topic.map((b) => {
       if (typeof b !== "string" || b.length > MAX_EVENT_XDR) throw new TypeError("topic");
-      return x.ScVal.fromXdr(b, "base64").toXdrObject();
+      const bytes = fromBase64(b);
+      if (bytes === null) throw new TypeError("topic");
+      return x.ScVal.fromXdr(bytes).toXdrObject();
     });
     if (!scValsWithinCaps(t)) return refusal("stellar/event-malformed");
     const name = t[0]!;
@@ -652,7 +645,9 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
     const to = t[2]!;
     const who = to.type === 18 ? addressOf(S, to.address) : null;
     if (who === null) return refusal("stellar/event-malformed");
-    const data = x.ScVal.fromXdr(value, "base64").toXdrObject();
+    const valueBytes = fromBase64(value);
+    if (valueBytes === null) return refusal("stellar/event-malformed");
+    const data = x.ScVal.fromXdr(valueBytes).toXdrObject();
     if (!scValsWithinCaps(data)) return refusal("stellar/event-malformed");
     let toMuxedId: bigint | null = null;
     if (data.type === 17) {

@@ -9,6 +9,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
 import { isObject, notFoundPoint } from "../fields.js";
+import { fromBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { UptoSvmPayload } from "../x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
@@ -407,8 +408,8 @@ export async function svmDigest(tx: SvmTx): Promise<Hex> {
 export function wireOf(b64: unknown): Uint8Array | Refusal {
   if (typeof b64 !== "string" || b64.length === 0) return refusal("svm/tx-malformed");
   if (b64.length > Math.ceil(MAX_WIRE / 3) * 4 + 4) return refusal("svm/tx-too-large");
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b64) || b64.length % 4 !== 0) return refusal("svm/tx-malformed");
-  const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+  const bytes = fromBase64(b64);
+  if (bytes === null) return refusal("svm/tx-malformed");
   if (bytes.length > MAX_WIRE) return refusal("svm/tx-too-large");
   return bytes;
 }

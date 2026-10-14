@@ -406,7 +406,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/asset-mismatch` | A Stellar `build` finds that the simulated transfer calls a token contract other than the option's `asset` (x402) or the request's `currency` (MPP). Nothing reaches the signer. |
 | `stellar/carrier-mismatch` | The option's `payTo` or the challenge's `recipient` does not carry the muxed id derived from H, or the signed transfer's recipient or muxed id is not the one the option or challenge names. |
 | `stellar/carrier-occupied` | `advertise` finds the x402 option's `payTo` not a plain account, or the MPP challenge's `recipient` already muxed. |
-| `stellar/event-malformed` | `transferEventOf` is given topics or data that do not decode as a SEP-41 `transfer` event with an address recipient, or that nest vectors and maps deeper than `SCVAL_MAX_DEPTH`. |
+| `stellar/event-malformed` | `transferEventOf` is given topics or data that are not padded standard base64 in its canonical form (RFC 4648 §3.5), that do not decode as a SEP-41 `transfer` event with an address recipient, or that nest vectors and maps deeper than `SCVAL_MAX_DEPTH`. |
 | `stellar/network-malformed` | A Stellar network is not `stellar:pubnet` or `stellar:testnet`. |
 | `stellar/no-address-auth` | The payer's authorization entry cannot be identified. Before a transaction lands (`decodeStellarTx`, `build`, x402 `bound` and `reference`, MPP `bound` and `reference` of a `transaction` credential): the operation does not carry exactly one address-credential authorization entry for the transfer's `from`. On a landed transaction (MPP `bound` and `reference` of a `hash` credential), which is read by `from`'s first address-credential entry whose `rootInvocation` is the operation's `transfer`: `from` has no such entry and not exactly one address-credential entry. An entry with source-account credentials is not an address entry: only an MPP `hash` credential under a request whose `feePayer` is false or absent reads a payer with no address entry, when the payer is the source account of the transaction and of its operation and a source-account entry is the operation's `transfer`. Or the payer is not an Ed25519 account. |
 | `stellar/no-carrier` | The signed Stellar transfer's recipient is not a muxed address, so it carries no muxed id. |
@@ -488,7 +488,7 @@ Algorand (`@integraledger/lcp/avm`).
 | `avm/group-too-large` | The Algorand payment group is empty or larger than the group bound. |
 | `avm/index-out-of-range` | The Algorand `paymentIndex` does not name a transaction in the payment group. |
 | `avm/network-malformed` | An Algorand option's network starts with `algorand:` but does not name a genesis hash in CAIP-2 form. |
-| `avm/network-mismatch` | The suggested parameters' genesis hash given to `build` is not 32 bytes or is not the network the option names. |
+| `avm/network-mismatch` | The suggested parameters' genesis hash given to `build` is not base64 of 32 bytes or is not the network the option names. |
 | `avm/not-axfer` | The Algorand payment transaction is not an asset transfer. |
 | `avm/not-found` | The Algorand reader found no transaction for the id. |
 | `avm/note-not-lcp` | The Algorand transaction's note is not UTF-8 carrying an ATR hash in LCP string form. |

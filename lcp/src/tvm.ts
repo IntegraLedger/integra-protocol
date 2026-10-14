@@ -20,7 +20,7 @@ import {
   type OptionFilter,
   type X402Read,
 } from "./internal/x402.js";
-import { decimalBelow } from "./rail-bytes.js";
+import { decimalBelow, fromBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /**
@@ -147,7 +147,6 @@ const COINS_LIMIT = 1n << 120n;
 const UINT32_LIMIT = 2 ** 32;
 const NETWORK = /^tvm:(-?(?:0|[1-9][0-9]{0,15}))$/;
 const RAW_ADDRESS = /^-?[0-9]{1,10}:[0-9a-fA-F]{64}$/;
-const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const SIGNATURE_BITS = 512;
 const SEND_MODE = 3;
 /**
@@ -189,12 +188,12 @@ function bocOf(c: Cell): string {
  */
 function rootOf(boc: unknown): Cell | Refusal {
   if (peer === undefined) return refusal("tvm/peer-missing");
-  if (typeof boc !== "string" || boc.length === 0 || !BASE64.test(boc)) return refusal("tvm/boc-malformed");
-  const bytes = Buffer.from(boc, "base64");
+  const bytes = boc === "" ? null : fromBase64(boc);
+  if (bytes === null) return refusal("tvm/boc-malformed");
   if (bytes.length > MAX_BOC_BYTES) return refusal("tvm/boc-too-large");
   let roots: Cell[];
   try {
-    roots = peer.Cell.fromBoc(bytes);
+    roots = peer.Cell.fromBoc(Buffer.from(bytes));
   } catch {
     return refusal("tvm/boc-malformed");
   }

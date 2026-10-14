@@ -389,6 +389,11 @@
    },
    "expect": "hedera/option-malformed",
    "expectRead": "x402/no-payable-option"
+  },
+  {
+   "case": "V2's transaction with a bit set past the last byte in its last character before the padding: the same bytes, not in canonical form (RFC 4648 §3.5)",
+   "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAR==",
+   "expect": "hedera/tx-malformed"
   }
  ],
  "tokenBuild": {
