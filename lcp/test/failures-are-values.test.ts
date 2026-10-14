@@ -35,6 +35,7 @@ import {
 } from "../src/hedera.js";
 import { BINDINGS } from "../src/index.js";
 import { permit2Status, redeemedLeafRecover } from "../src/internal/evm.js";
+import { signedWire } from "../src/internal/svm.js";
 import { xrplCloseStatus } from "../src/internal/xrpl-session.js";
 import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
 import {
@@ -584,6 +585,20 @@ describe("svm", () => {
     const tx = { signatures: [], message: new Uint8Array(0), keys: [], instructions: [null], blockhash: new Uint8Array(32) };
     expect(svmCarrier(tx as never)).toEqual(refused("svm/tx-malformed"));
     expect(channelInstruction(tx as never)).toEqual(refused("svm/tx-malformed"));
+  });
+  // x402-exact-solana.json V2's wire is the compact-u16 count 2, the fee payer's empty slot, the payer's signature, then
+  // a v0 message: the prefix byte 0x80, then the header, whose first byte is the required signature count. Its message
+  // and signature give its wire back; a message too short to hold that prefix and count is refused, never a throw.
+  it("signedWire: V2's message and signature give V2's wire; a message under 2 bytes is svm/tx-malformed", () => {
+    const V = load("x402-exact-solana.json");
+    const wire = new Uint8Array(Buffer.from(V.V2.wireBase64, "base64"));
+    const built = signedWire(wire.subarray(1 + 2 * 64), V.fixed.payer, wire.subarray(1 + 64, 1 + 2 * 64));
+    expect(built instanceof Uint8Array && Buffer.from(built).toString("base64")).toBe(V.V2.wireBase64);
+    for (const message of [new Uint8Array(0), Uint8Array.of(0x80), Uint8Array.of(0x01)]) {
+      let out: unknown;
+      expect(() => (out = signedWire(message, V.fixed.payer, new Uint8Array(64))), String(message)).not.toThrow();
+      expect(out, String(message)).toEqual(refused("svm/tx-malformed"));
+    }
   });
 });
 

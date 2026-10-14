@@ -487,12 +487,14 @@ export function staticNonce(tx: SvmTx): Refusal | null {
 
 /**
  * The wire for a message and one signer's signature: the compact-u16 signature count, one 64-byte slot per required
- * signer in key order with `signature` in the signer's slot and zeros in every other, then the message.
+ * signer in key order with `signature` in the signer's slot and zeros in every other, then the message. A message under
+ * 2 bytes, too short to hold a v0 prefix and its signature count, is `svm/tx-malformed`.
  */
 export function signedWire(message: Uint8Array, signer: string, signature: Uint8Array): Uint8Array | Refusal {
   if (!(signature instanceof Uint8Array) || signature.length !== 64) return refusal("svm/input-malformed");
   const signerKey = keyBytes(signer);
   if (signerKey === null) return refusal("svm/input-malformed");
+  if (message.length < 2) return refusal("svm/tx-malformed");
   const required = (message[0]! & 0x80) !== 0 ? message[1]! : message[0]!;
   const withSlots = new Uint8Array(compactLength(required) + 64 * required + message.length);
   let at = writeCompact(withSlots, 0, required);
