@@ -238,3 +238,5 @@ jobs:
           esac
       - name: The LCP documents the site publishes equal lcp/profiles/, each with its type and caching
         run: node scripts/check-lcp-documents.mjs --out website/out
+      - name: Every link on the site has a name
+        run: node scripts/check-pages.mjs --out website/out
