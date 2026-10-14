@@ -1,8 +1,10 @@
 // Runs the Tron pairing's vector file through the tron entry point. Every expected value is the file's, taken from
 // a live mainnet transaction, coincurve 21.0.0, base58 2.1.1, pycryptodome 3.23.0 and
 // hashlib.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { encodeFunctionData, erc20Abi, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -111,7 +113,45 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     expect(await exactTronMemo.bound(payment(txOf(V.V1.rawHex, V.V1.signatureForPayload)))).toEqual(V.V1.expectBound);
   });
 
-  it("V2: build gives the vector's raw data and id, and complete the vector's 360-byte transaction", async () => {
+  // V2's raw data and transaction are encoded here by hand from TRON's protobuf schema (tronprotocol/protocol 8432beca,
+  // core/Tron.proto L336-385 and L431-449, core/contract/smart_contract.proto L74-81), the calldata viem's; the id is
+  // node:crypto's SHA-256 of the raw data. build's id and complete's transaction are held to them byte for byte.
+  it("V2: build gives the vector's id and complete the vector's 360-byte transaction, byte for byte as TRON's protobuf schema encodes them by hand", async () => {
+    const varint = (n: bigint) => {
+      const o: number[] = [];
+      for (; n >= 0x80n; n >>= 7n) o.push(Number(n & 0x7fn) | 0x80);
+      return [...o, Number(n)];
+    };
+    const int = (no: number, n: bigint) => (n === 0n ? [] : [...varint(BigInt(no << 3)), ...varint(n)]);
+    const len = (no: number, b: ArrayLike<number>) =>
+      b.length === 0 ? [] : [...varint(BigInt((no << 3) | 2)), ...varint(BigInt(b.length)), ...Array.from(b)];
+    const calldata = encodeFunctionData({
+      abi: erc20Abi,
+      functionName: "transfer",
+      args: [`0x${V.fixed.payToBytes.slice(2)}` as Hex, BigInt(O.amount)],
+    });
+    const trigger = [...len(1, bytes(V.fixed.payerBytes)), ...len(2, bytes(V.fixed.assetBytes)), ...len(4, bytes(calldata))];
+    const any = [...len(1, new TextEncoder().encode("type.googleapis.com/protocol.TriggerSmartContract")), ...len(2, trigger)];
+    const contract = [...int(1, 31n), ...len(2, any)];
+    const number = bytes(BigInt(V.fixed.refBlock.number).toString(16).padStart(16, "0"));
+    const raw = Uint8Array.from([
+      ...len(1, number.subarray(6, 8)),
+      ...len(4, bytes(V.fixed.refBlock.id).subarray(8, 16)),
+      ...int(8, BigInt(V.fixed.now) + BigInt(O.maxTimeoutSeconds) * 1000n),
+      ...len(10, new TextEncoder().encode(`lcp:sha256:${H}`)),
+      ...len(11, contract),
+      ...int(14, BigInt(V.fixed.now)),
+      ...int(18, BigInt(V.fixed.feeLimit)),
+    ]);
+    expect(hex(raw)).toBe(V.V2.expectRawHex);
+    expect("0x" + createHash("sha256").update(raw).digest("hex")).toBe(V.V2.expectTxid);
+    const transaction = hex(Uint8Array.from([...len(1, raw), ...len(2, bytes(V.V2.expectSignature))]));
+    expect([transaction.length / 2, V.V2.expectTransactionHex, V.V2.expectPayload.payload.transaction]).toEqual([
+      360,
+      transaction,
+      transaction,
+    ]);
+
     const u = await exactTronMemo.build(choice(), H);
     if ("refused" in u) throw new Error(u.code);
     expect(u.request.kind).toBe("tron-txid");
@@ -128,6 +168,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     const paid = u.complete(signature);
     expect(paid).toEqual(V.V2.expectPayload);
     if ("refused" in paid) throw new Error(paid.code);
+    expect(paid.payload.transaction).toBe(transaction);
     const d = decodeTronTx(paid.payload.transaction);
     if ("refused" in d) throw new Error(d.code);
     expect(hex(d.rawBytes)).toBe(V.V2.expectRawHex);
