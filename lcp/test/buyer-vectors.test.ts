@@ -5,11 +5,12 @@
 import { readFileSync } from "node:fs";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { hash, hashEquals, pairingOf, toLcpString, type AtrHash } from "../src/index.js";
+import { hash, hashEquals, isHttpsLink, isOtherSchemeLink, pairingOf, parseJson, toLcpString, type AtrHash } from "../src/index.js";
 import { chargeStellar, pairingsOf, sessionResume, sessionTempo, type MppChallenge } from "../src/mpp.js";
 import { decodeStringMap } from "../src/mpp-challenge.js";
 import { isRefusal } from "../src/refusal.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
+import { batchSvm } from "../src/x402-batch-settlement.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
@@ -35,7 +36,7 @@ describe("buyer.json: the agreement option the gate asks approval for", () => {
   it("every approval a row expects is the chosen EVM option's amount, asset, payTo and network", () => {
     const terms = { amount: OPTION.amount, asset: OPTION.asset, payTo: OPTION.payTo, network: OPTION.network };
     const rows = B.rows.filter((r: { expect?: { approval?: unknown } }) => r.expect?.approval !== undefined);
-    expect(rows.map((r: { name: string }) => r.name)).toEqual(["BA1", "BA3", "BA4", "BA7", "BA8", "BA9", "BA11"]);
+    expect(rows.map((r: { name: string }) => r.name)).toEqual(["BA1", "BA3", "BA4", "BA7", "BA8", "BA9", "BA11", "BA15", "BA17"]);
     for (const r of rows) expect(r.expect.approval, r.name).toEqual(terms);
     for (const r of rows) expect(typeof r.input.approve, r.name).toBe("boolean");
   });
@@ -111,9 +112,9 @@ describe("buyer.json BA14: an unpaid request answered 202 is agreement-pending, 
     expect(row("BA14").expect).toEqual({ decline: "agreement-pending", signCalls: 0, agreementFetches: 1, paidRequests: 0 });
   });
 
-  it("the BA rows run BA1 to BA14 in order", () => {
+  it("the BA rows run BA1 to BA18 in order", () => {
     const names = B.rows.map((r: { name: string }) => r.name).filter((n: string) => /^BA[0-9]+$/.test(n));
-    expect(names).toEqual(Array.from({ length: 14 }, (_, i) => `BA${i + 1}`));
+    expect(names).toEqual(Array.from({ length: 18 }, (_, i) => `BA${i + 1}`));
   });
 });
 
@@ -281,5 +282,129 @@ describe("buyer.json BW1 and BW2: the within challenge's opaque, a map whose eve
     }
     const voucher = { action: "voucher", channelId: hold.channel };
     expect(row("BW1").control.expect).toMatchObject({ signCalls: 1, signedPayload: voucher });
+  });
+});
+
+// The rows that call a gate function other than transact, and the agreement step's answers the gate cannot read. Each
+// fixture is what its row says it is; the gates run the rows whole.
+describe("buyer.json BA5: a refused agreement URL's detail is the https-link rule's code for it", () => {
+  const r = row("BA5");
+  it("both cases are refused by the rule, the first as a URL of another scheme and the second as any other value", () => {
+    expect(r.input.entries).toEqual(["transact", "agree"]);
+    const [http, relative] = [r.input.agreementUrl as string, r.input.cases[1].agreementUrl as string];
+    expect([isHttpsLink(http), isOtherSchemeLink(http)]).toEqual([false, true]);
+    expect([isHttpsLink(relative), isOtherSchemeLink(relative)]).toEqual([false, false]);
+    expect(r.expect.detail).toBe("x402/link-not-https");
+    expect(r.input.cases[1].expect.detail).toBe("x402/legal-context-malformed");
+    for (const e of [r.expect, r.input.cases[1].expect]) expect([e.decline, e.agreementFetches, e.signCalls]).toEqual(["link-not-https", 0, 0]);
+  });
+});
+
+describe("buyer.json BA15: retry-after in its other forms beside BA3", () => {
+  // RFC 9110 section 10.2.3: Retry-After = HTTP-date / delay-seconds, delay-seconds = 1*DIGIT. The gate's rule: 1 to 9
+  // digits, at least 1 s; 2 s for any other form or none.
+  const wait = (v: string | undefined) => (v !== undefined && /^[0-9]{1,9}$/.test(v) ? Math.max(1, Number(v)) : 2);
+  it("each case is BA3's script with the 202's retry-after replaced, and its paid requests are the bound over the wait", () => {
+    const r = row("BA15");
+    const ba3 = row("BA3");
+    expect(r.input.advanceMs).toBe(ba3.input.advanceMs);
+    for (const c of r.input.cases as { case: string; agreement: { retryAfter?: string }[]; expect: { paidRequests: number } }[]) {
+      expect(c.agreement[0], c.case).toEqual(ba3.input.agreement[0]);
+      const { retryAfter, ...rest } = c.agreement[1]!;
+      const { retryAfter: _, ...ba3Rest } = ba3.input.agreement[1];
+      expect(rest, c.case).toEqual(ba3Rest);
+      expect(c.expect.paidRequests, c.case).toBe(r.input.advanceMs / 1000 / wait(retryAfter));
+    }
+    expect((r.input.cases as { expect: { paidRequests: number } }[]).map((c) => c.expect.paidRequests)).toEqual([120, 240, 120]);
+  });
+});
+
+describe("buyer.json B20, BA16 and BW4: inputs given and not an object are declined before anything is fetched or signed", () => {
+  for (const name of ["B20", "BA16", "BW4"]) {
+    it(name, () => {
+      const r = row(name);
+      for (const c of r.input.cases as { inputs: unknown }[]) {
+        expect(typeof c.inputs !== "object" || Array.isArray(c.inputs), JSON.stringify(c.inputs)).toBe(true);
+      }
+      expect(r.expect).toMatchObject({ decline: "no-payable-option", detail: "x402/input-malformed", signCalls: 0 });
+    });
+  }
+});
+
+describe("buyer.json B19: finish with another pairing's binding", () => {
+  it("D's option is x402/exact/eip155/eip3009's, not the row's binding", () => {
+    const r = row("B19");
+    expect(pairingOf(B.fixed.D.accepts[0])).toBe("x402/exact/eip155/eip3009");
+    expect(r.input.binding).not.toBe(pairingOf(B.fixed.D.accepts[0]));
+    expect(r.expect).toEqual({ decline: "pairing-not-supported", signCalls: 0 });
+  });
+});
+
+describe("buyer.json BA17 and BA18: a byte-order mark, and a space, where the agreement step reads JSON text", () => {
+  const BOM = Buffer.from([0xef, 0xbb, 0xbf]);
+  // Fatal UTF-8 with the mark kept, as this package decodes JSON text.
+  const text = (b: Buffer) => new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(b);
+  it("receiptBomLed is the receipt's JSON text led by EF BB BF, and it is not one JSON object", () => {
+    const bytes = Buffer.from(AG.receiptBomLed, "hex");
+    expect(bytes.subarray(0, 3).equals(BOM)).toBe(true);
+    expect(bytes.subarray(3).toString("utf8")).toBe(JSON.stringify(AG.receipt));
+    expect(parseJson(text(bytes))).toBeUndefined();
+    expect(row("BA17").input.agreement[1]).toEqual({ status: 200, bodyHex: "receiptBomLed" });
+  });
+  it("requiredBomLed is base64 of required's JSON text led by EF BB BF, and requiredInnerSpace is not base64", () => {
+    const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+    const bom = Buffer.from(AG.requiredBomLed, "base64");
+    expect(BASE64.test(AG.requiredBomLed)).toBe(true);
+    expect(bom.subarray(0, 3).equals(BOM)).toBe(true);
+    expect(bom.subarray(3).toString("utf8")).toBe(JSON.stringify(AG.required));
+    expect(parseJson(text(bom))).toBeUndefined();
+    expect(BASE64.test(AG.requiredInnerSpace)).toBe(false);
+    expect(AG.requiredInnerSpace.replace(" ", "")).toBe(Buffer.from(JSON.stringify(AG.required), "utf8").toString("base64"));
+    expect(row("BA18").expect).toEqual({ decline: "agreement-failed", signCalls: 0, agreementFetches: 1, paidRequests: 0 });
+  });
+});
+
+describe("buyer.json BW3: a batch-settlement Solana hold, and the refund values its build takes", () => {
+  const X = load("x402-batch-settlement.json");
+  const opening = X.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B6" && r.pairing === "x402/batch-settlement/solana").input.presented;
+  const doc = X.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B2" && r.pairing === "x402/batch-settlement/solana").input.doc;
+  const hold = row("BW3").input.hold as { opening: string; atrHex: string; network: string; channel: string };
+  it("the hold is the channel B6's opening opens for abc, ES1's PDA, and B2's document advertises abc's hash", async () => {
+    const h = await hash(fromHex(hold.atrHex));
+    expect(await batchSvm.channel.kind(opening)).toBe("open");
+    expect(hashEquals((await batchSvm.bound(opening)) as string, h)).toBe(true);
+    expect(await batchSvm.channel.ref(opening)).toEqual({ network: hold.network, channel: hold.channel });
+    expect(hold.channel).toBe(X.ES1.channelPda);
+    const r = batchSvm.read(doc);
+    if (isRefusal(r)) throw new Error(r.code);
+    expect(hashEquals(r.h, h)).toBe(true);
+    expect(row("BW4").input.hold).toBe("as BW3");
+  });
+  it("the refund builds with the control's values, and this package refuses each malformed limit or blockhash as svm/input-malformed", async () => {
+    const base = { required: doc, accepted: doc.accepts[0], channelConfig: opening.payload.channelConfig, maxClaimableAmount: 0n, refund: {} };
+    const c = row("BW3").control.input.inputs;
+    const built = await batchSvm.buildWithin({ ...base, recentBlockhash: c.recentBlockhash, computeUnitLimit: c.computeUnitLimit, computeUnitPrice: BigInt(c.computeUnitPrice) }, H);
+    expect(isRefusal(built)).toBe(false);
+    for (const k of row("BW3").input.cases as { case: string; inputs: Record<string, unknown> }[]) {
+      if ("computeUnitPrice" in k.inputs) continue;
+      const out = await batchSvm.buildWithin({ ...base, recentBlockhash: c.recentBlockhash, ...k.inputs } as never, H);
+      expect(out, k.case).toEqual({ refused: true, code: "svm/input-malformed" });
+    }
+  });
+});
+
+// D read as the B21 and B22 rows change it: the gate declines what read refuses, before the link is fetched.
+describe("buyer.json B21 and B22: an option on eip155:0, and a link of 2049 UTF-16 code units, at read", () => {
+  it("B21: D with its option on eip155:0 is refused with the row's detail", () => {
+    const doc = structuredClone(B.fixed.D);
+    doc.accepts[0].network = "eip155:0";
+    expect(exactEip3009.read(doc)).toEqual({ refused: true, code: row("B21").expect.detail });
+  });
+  it("B22: D with a link of 2048 code points and 2049 UTF-16 code units is refused with the row's detail", () => {
+    const link = `https://atr.seller.example/${"a".repeat(2020)}\u{10000}`;
+    expect([link.length, [...link].length]).toEqual([2049, 2048]);
+    const doc = structuredClone(B.fixed.D);
+    doc.extensions.legalContext.info.legalContextUrl = link;
+    expect(exactEip3009.read(doc)).toEqual({ refused: true, code: row("B22").expect.detail });
   });
 });

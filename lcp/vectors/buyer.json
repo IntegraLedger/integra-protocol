@@ -1,5 +1,5 @@
 {
- "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; link is where the seller serves A, a path from a random token, not from the hash; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A) and link. The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. The BW rows run the gate's within on a channel of the pairing they name. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding (BE1), or with an opaque holding only the LCP members that name the held H (BW1, BW2). A BX1 case's refusal is what the protocol package's checks of the placed challenge return; the gate then has no challenge it can pay, and declines no-payable-option. A BW row's hold is what openChannel gives for the ATR atrHex and the opening hold.opening names; its challenge is the seller's own within challenge on that channel: the issued request with methodDetails.channelId naming the held channel, JCS-serialized (RFC 8785) and base64url without padding, an id of the seller's, and an opaque whose JSON is opaqueText.",
+ "about": "The buyer gate's rows for the x402/exact/eip155/eip3009 pairing. A is a 138-byte ATR that the gate never parses; C is A with byte 124 changed from 0x30 to 0x31; link is where the seller serves A, a path from a random token, not from the hash; D is the V5 document of x402-exact-eip155-eip3009.json advertising hash(A) and link. The payer is the published Anvil key, account eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, and now is 1790000000. SHA-256 values were computed with GNU coreutils sha256sum and agree with openssl dgst -sha256; B6's digest and signature with viem 2.56.7 and eth-account 0.14.0. Bodies are hex. A row whose input names a stub describes the stub's behaviour. Rows named with a pairing (BS1, BS2, BX1) run that pairing's read and build; their cases each give their own inputs and expect. The BW rows run the gate's within on a channel of the pairing they name. A row's cases share its input and expect except where a case gives its own; control is the same exchange answered in the identity coding (BE1), with an opaque holding only the LCP members that name the held H (BW1, BW2), or with well-formed refund values (BW3). A BX1 case's refusal is what the protocol package's checks of the placed challenge return; the gate then has no challenge it can pay, and declines no-payable-option. A BW row's hold is what openChannel gives for the ATR atrHex and the opening hold.opening names. BW1's and BW2's challenge is the seller's own within challenge on that channel: the issued request with methodDetails.channelId naming the held channel, JCS-serialized (RFC 8785) and base64url without padding, an id of the seller's, and an opaque whose JSON is opaqueText; BW3's and BW4's is the x402 document doc names, advertising the held H. A row with entry calls that gate function rather than transact: finish with the chosen confirm gives and another pairing's binding (B19), confirm (B20) and agree (BA16) with each case's inputs; BA5's entries are the two it runs through. A BW row's refund and inputs are within's.",
  "fixed": {
   "A": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033302064c3ad617320e29c93227d7d",
   "C": "7b2261747256657273696f6e223a2231222c226964223a2230663866616435622d643963622d343639662d613136352d373038363737323839353065222c2278343032223a7b227a223a312e302c2261223a226361665c7530306539227d2c2273656c6c6572223a7b226e6f7465223a22436166c3a920e280942033312064c3ad617320e29c93227d7d",
@@ -60,7 +60,7 @@
   "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "now": 1790000000,
   "agreement": {
-   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says (BA14's first answer, to the unpaid request, is 202); the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.57.4 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60.",
+   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says (BA14's first answer, to the unpaid request, is 202); the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.57.4 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60. requiredBomLed is the base64 of required's JSON text, as JSON.stringify writes it, led by the UTF-8 byte-order mark EF BB BF; requiredInnerSpace is required's padded base64 with a space after its fourth character; a row that names either in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. receiptBomLed is receipt's JSON text, as JSON.stringify writes it, led by EF BB BF, in hex: a step's bodyHex names the fixed.agreement member whose bytes the 200 answer's body is.",
    "url": "https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273",
    "option": {
     "scheme": "exact",
@@ -251,7 +251,10 @@
     }
    },
    "requiredTimeoutText": "{\"x402Version\":2,\"resource\":{\"url\":\"https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273\"},\"accepts\":[{\"scheme\":\"exact\",\"network\":\"eip155:84532\",\"amount\":\"1\",\"asset\":\"0x036CbD53842c5426634e7929541eC2318f3dCF7e\",\"payTo\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\",\"maxTimeoutSeconds\":60.0,\"extra\":{\"name\":\"USDC\",\"version\":\"2\"}}],\"extensions\":{\"legalContext\":{\"info\":{\"type\":\"sha256\",\"value\":\"0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938\",\"legalContextUrl\":\"https://atr.seller.example/4a57a46d-5bd4-4a60-a92e-2229874df072\"},\"schema\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"type\":{\"const\":\"sha256\"},\"value\":{\"type\":\"string\",\"pattern\":\"^0x[0-9a-f]{64}$\"},\"legalContextUrl\":{\"type\":\"string\",\"pattern\":\"^https://\"}},\"required\":[\"type\",\"value\",\"legalContextUrl\"]}}}}",
-   "requiredUnpadded": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50L2I5ZDNkNGI3LTJjOTktNGQ1Zi05MTc4LTgzNzY0NWY3NTI3MyJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ"
+   "requiredUnpadded": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50L2I5ZDNkNGI3LTJjOTktNGQ1Zi05MTc4LTgzNzY0NWY3NTI3MyJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ",
+   "requiredBomLed": "77u/eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50L2I5ZDNkNGI3LTJjOTktNGQ1Zi05MTc4LTgzNzY0NWY3NTI3MyJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ==",
+   "requiredInnerSpace": "eyJ4 NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuc2VsbGVyLmV4YW1wbGUvYWdyZWVtZW50L2I5ZDNkNGI3LTJjOTktNGQ1Zi05MTc4LTgzNzY0NWY3NTI3MyJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJhbW91bnQiOiIxIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV0sImV4dGVuc2lvbnMiOnsibGVnYWxDb250ZXh0Ijp7ImluZm8iOnsidHlwZSI6InNoYTI1NiIsInZhbHVlIjoiMHg4YjFlMTIyNTgwYWUzZjZhOGMzZDM2YTI0Mjk0ZTEyNjBhODdiZGU3MGY1OTcyNzliOTczZTM5MzEwMDcyOTM4IiwibGVnYWxDb250ZXh0VXJsIjoiaHR0cHM6Ly9hdHIuc2VsbGVyLmV4YW1wbGUvNGE1N2E0NmQtNWJkNC00YTYwLWE5MmUtMjIyOTg3NGRmMDcyIn0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0eXBlIjp7ImNvbnN0Ijoic2hhMjU2In0sInZhbHVlIjp7InR5cGUiOiJzdHJpbmciLCJwYXR0ZXJuIjoiXjB4WzAtOWEtZl17NjR9JCJ9LCJsZWdhbENvbnRleHRVcmwiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJeaHR0cHM6Ly8ifX0sInJlcXVpcmVkIjpbInR5cGUiLCJ2YWx1ZSIsImxlZ2FsQ29udGV4dFVybCJdfX19fQ==",
+   "receiptBomLed": "efbbbf7b2261747248617368223a22307838623165313232353830616533663661386333643336613234323934653132363061383762646537306635393732373962393733653339333130303732393338222c22616772656564223a747275652c226e6574776f726b223a226569703135353a3834353332222c227472616e73616374696f6e223a22307861626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162227d"
   }
  },
  "rows": [
@@ -739,13 +742,34 @@
    "name": "BA5",
    "input": {
     "agreementUrl": "http://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273",
-    "signer": "counting"
+    "signer": "counting",
+    "entries": [
+     "transact",
+     "agree"
+    ],
+    "cases": [
+     {
+      "case": "an agreement URL of another scheme, http"
+     },
+     {
+      "case": "an agreement URL that is a relative reference, not an absolute URL",
+      "agreementUrl": "api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273",
+      "expect": {
+       "decline": "link-not-https",
+       "detail": "x402/legal-context-malformed",
+       "agreementFetches": 0,
+       "signCalls": 0
+      }
+     }
+    ]
    },
    "expect": {
     "decline": "link-not-https",
+    "detail": "x402/link-not-https",
     "agreementFetches": 0,
     "signCalls": 0
-   }
+   },
+   "note": "transact, through an offer naming the agreement URL, and agree, called with it alone, decline before any fetch or signer call; the detail is this package's code for the value in x402's namespace, as the https-link rule's refusedAs gives it (core-vectors.json links): link-not-https for an absolute URL of another scheme, legal-context-malformed for any other value the rule refuses."
   },
   {
    "name": "BA6",
@@ -1615,6 +1639,359 @@
    },
    "control": "as BW1",
    "note": "MPP's opaque \"MUST be a JSON object whose values are strings (a flat string-to-string map)\" (draft-httpauth-payment-01 at 08e7dd87, lines 348-352). 1 is not a string, so neither opaque is one MPP allows, whether or not its legalContext names the held H: the gate declines offer-unreadable with mpp/opaque-malformed, lcp's code for an opaque that is not a flat string map, and signs nothing. pairingsOf refuses each challenge with that code."
+  },
+  {
+   "name": "B19",
+   "input": {
+    "entry": "finish",
+    "doc": "D",
+    "chosen": "the chosen confirm gives for D through x402/exact/eip155/eip3009, the link serving A",
+    "binding": "x402/exact/eip155/permit2",
+    "signature": "B6's signature",
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "pairing-not-supported",
+    "signCalls": 0
+   },
+   "note": "finish compares chosen.pairing with the binding's id before it rebuilds anything: the rebuilt request must be the one the signer saw, from the pairing that built it."
+  },
+  {
+   "name": "B20",
+   "input": {
+    "entry": "confirm",
+    "doc": "D",
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "inputs a string",
+      "inputs": "x"
+     },
+     {
+      "case": "inputs a number",
+      "inputs": 5
+     },
+     {
+      "case": "inputs a list",
+      "inputs": []
+     }
+    ]
+   },
+   "expect": {
+    "decline": "no-payable-option",
+    "detail": "x402/input-malformed",
+    "fetches": 0,
+    "signCalls": 0
+   },
+   "note": "inputs given and not an object is declined before the link is fetched or the signer called, as transact declines it: nothing the caller passes is dropped silently."
+  },
+  {
+   "name": "BA15",
+   "input": {
+    "doc": "as BA1",
+    "signer": "counting",
+    "approve": true,
+    "advanceMs": 240000,
+    "cases": [
+     {
+      "case": "the 202 carries no retry-after: 2 s",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequired": "required"
+       },
+       {
+        "status": 202,
+        "repeats": true
+       }
+      ],
+      "expect": {
+       "decline": "agreement-pending",
+       "signCalls": 1,
+       "paidRequests": 120,
+       "approval": {
+        "amount": "1",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "network": "eip155:84532"
+       }
+      }
+     },
+     {
+      "case": "retry-after 0: at least 1 s",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequired": "required"
+       },
+       {
+        "status": 202,
+        "retryAfter": "0",
+        "repeats": true
+       }
+      ],
+      "expect": {
+       "decline": "agreement-pending",
+       "signCalls": 1,
+       "paidRequests": 240,
+       "approval": {
+        "amount": "1",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "network": "eip155:84532"
+       }
+      }
+     },
+     {
+      "case": "retry-after an HTTP-date, not delay-seconds: 2 s",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequired": "required"
+       },
+       {
+        "status": 202,
+        "retryAfter": "Wed, 21 Oct 2026 07:28:00 GMT",
+        "repeats": true
+       }
+      ],
+      "expect": {
+       "decline": "agreement-pending",
+       "signCalls": 1,
+       "paidRequests": 120,
+       "approval": {
+        "amount": "1",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "network": "eip155:84532"
+       }
+      }
+     }
+    ]
+   },
+   "expect": {
+    "decline": "agreement-pending",
+    "signCalls": 1,
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    }
+   },
+   "note": "BA3's exchange with the 202's retry-after in each other form. After a 202 the gate waits retry-after's delay-seconds (RFC 9110 section 10.2.3) of 1 to 9 digits, at least 1 s, and 2 s when the header is absent or in any other form, an HTTP-date included, never past the exchange's bound of 240 s: paid requests go at 0, 2, ..., 238 s, or at 0, 1, ..., 239 s with retry-after 0."
+  },
+  {
+   "name": "BA16",
+   "input": {
+    "entry": "agree",
+    "atr": "fixed.A",
+    "agreementUrl": "fixed.agreement.url",
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "inputs a string",
+      "inputs": "x"
+     },
+     {
+      "case": "inputs a number",
+      "inputs": 5
+     },
+     {
+      "case": "inputs a list",
+      "inputs": []
+     }
+    ]
+   },
+   "expect": {
+    "decline": "no-payable-option",
+    "detail": "x402/input-malformed",
+    "agreementFetches": 0,
+    "signCalls": 0
+   },
+   "note": "agree declines inputs given and not an object before the agreement URL is fetched or the signer called, in the namespace agree uses for its own inputs, x402."
+  },
+  {
+   "name": "BA17",
+   "input": {
+    "doc": "as BA1",
+    "agreement": [
+     {
+      "status": 402,
+      "paymentRequired": "required"
+     },
+     {
+      "status": 200,
+      "bodyHex": "receiptBomLed"
+     }
+    ],
+    "signer": "counting",
+    "approve": true
+   },
+   "expect": {
+    "decline": "agreement-failed",
+    "signCalls": 1,
+    "paidRequests": 1,
+    "moved": true,
+    "approval": {
+     "amount": "1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "network": "eip155:84532"
+    }
+   },
+   "note": "The 200 body is the receipt's JSON text led by a byte-order mark. Decoded as fatal UTF-8 with the mark kept, as the readers of this package decode JSON text, it is not one JSON object (RFC 8259 section 8.1 lets a parser ignore the mark, and this rule does not), so the receipt is unreadable once the agreement payment is sent: the decline carries that payment as moved, and the full payment is never signed."
+  },
+  {
+   "name": "BA18",
+   "input": {
+    "doc": "as BA1",
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "PAYMENT-REQUIRED the base64 of required's JSON text led by a byte-order mark",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequiredHeader": "requiredBomLed"
+       }
+      ]
+     },
+     {
+      "case": "PAYMENT-REQUIRED required's padded base64 with a space after its fourth character",
+      "agreement": [
+       {
+        "status": 402,
+        "paymentRequiredHeader": "requiredInnerSpace"
+       }
+      ]
+     }
+    ]
+   },
+   "expect": {
+    "decline": "agreement-failed",
+    "signCalls": 0,
+    "agreementFetches": 1,
+    "paidRequests": 0
+   },
+   "note": "PAYMENT-REQUIRED is read as strict base64 (RFC 4648: padded, the standard alphabet, nothing outside it, so no space, section 3.3) whose bytes are fatal UTF-8 with a byte-order mark kept: the space is not base64, and the mark leaves text that is not one JSON object, so the 402 carries no readable PAYMENT-REQUIRED and nothing is signed or paid, as BA13. Python 3.12.3's base64.b64decode(validate=True) refuses the space; it decodes the first, and json.loads refuses its text (Unexpected UTF-8 BOM)."
+  },
+  {
+   "name": "BW3",
+   "input": {
+    "pairing": "x402/batch-settlement/solana",
+    "hold": {
+     "opening": "x402-batch-settlement.json buyer row B6 for x402/batch-settlement/solana, input.presented",
+     "atrHex": "616263",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "channel": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8"
+    },
+    "doc": "x402-batch-settlement.json buyer row B2 for x402/batch-settlement/solana, input.doc",
+    "refund": {},
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "computeUnitLimit -1",
+      "inputs": {
+       "computeUnitLimit": -1
+      }
+     },
+     {
+      "case": "computeUnitLimit 4294967296, past a u32",
+      "inputs": {
+       "computeUnitLimit": 4294967296
+      }
+     },
+     {
+      "case": "computeUnitPrice 1.5, not a decimal integer string",
+      "inputs": {
+       "computeUnitPrice": "1.5"
+      }
+     },
+     {
+      "case": "recentBlockhash 7, not a string",
+      "inputs": {
+       "recentBlockhash": 7
+      }
+     }
+    ]
+   },
+   "expect": {
+    "decline": "no-payable-option",
+    "detail": "x402/input-malformed",
+    "signCalls": 0
+   },
+   "control": {
+    "input": {
+     "inputs": {
+      "computeUnitLimit": 200000,
+      "computeUnitPrice": "1",
+      "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+     }
+    },
+    "expect": {
+     "signCalls": 1
+    }
+   },
+   "note": "A refund's build takes the buyer's own Solana values: recentBlockhash a base58 hash, computeUnitLimit a u32 and computeUnitPrice a decimal string. A value given and malformed is declined before the build and the signer call, never dropped; with well-formed values (control) the gate signs the refund."
+  },
+  {
+   "name": "BW4",
+   "input": {
+    "pairing": "x402/batch-settlement/solana",
+    "hold": "as BW3",
+    "doc": "x402-batch-settlement.json buyer row B2 for x402/batch-settlement/solana, input.doc",
+    "refund": {},
+    "signer": "counting",
+    "cases": [
+     {
+      "case": "inputs a string",
+      "inputs": "x"
+     },
+     {
+      "case": "inputs a number",
+      "inputs": 5
+     },
+     {
+      "case": "inputs a list",
+      "inputs": []
+     }
+    ]
+   },
+   "expect": {
+    "decline": "no-payable-option",
+    "detail": "x402/input-malformed",
+    "signCalls": 0
+   },
+   "note": "within declines inputs given and not an object before the build and the signer call, as transact does."
+  },
+  {
+   "name": "B21",
+   "input": {
+    "doc": "D with its one option's network eip155:0, which is not an EIP-155 chain id",
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "offer-unreadable",
+    "detail": "x402/no-payable-option",
+    "fetches": 0,
+    "signCalls": 0
+   },
+   "note": "An EIP-155 chain id is a positive integer, so read serves no option of eip155:0 and the link is never fetched."
+  },
+  {
+   "name": "B22",
+   "input": {
+    "doc": "D with its legalContextUrl https://atr.seller.example/ followed by 2020 a and U+10000: 2049 UTF-16 code units and 2048 code points",
+    "signer": "counting"
+   },
+   "expect": {
+    "decline": "offer-unreadable",
+    "detail": "x402/legal-context-malformed",
+    "fetches": 0,
+    "signCalls": 0
+   },
+   "note": "The link bound is 2048 characters counted in UTF-16 code units, as JavaScript's String length counts it; U+10000 is one code point of two UTF-16 code units."
   }
  ]
 }

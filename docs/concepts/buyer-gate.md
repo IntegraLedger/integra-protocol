@@ -80,14 +80,14 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 | `hash-mismatch` | The served bytes do not hash to H: one changed byte, the same JSON written another way, or an agreement resource advertising another ATR's hash. |
 | `signed-not-bound` | What the signer returned does not carry the H the buyer compared. |
 | `offer-unreadable` | The pairing's `read` refused the document, or its `build` refused the option with the buyer's inputs, such as a Stellar simulated transfer whose amount, token or payer is not the option's; the row carries the refusal code, and nothing is signed. |
-| `link-not-https` | The link or the agreement URL that `read` gave is not an `https` link, and it is not fetched. Each pairing's own `read` refuses a link or agreement URL of another scheme, which declines `offer-unreadable` with the refusal's code. |
+| `link-not-https` | The link or the agreement URL that `read` gave is not an `https` link, and it is not fetched. Each pairing's own `read` refuses a link or agreement URL of another scheme, which declines `offer-unreadable` with the refusal's code. An agreement URL refused at the agreement step, by `transact` or by `agree` called with it alone, carries this package's code for the value as its detail: `x402/link-not-https` for a URL of another scheme, `x402/legal-context-malformed` for any other value (`BA5`). |
 | `atr-unfetchable` | The fetch redirected, returned an error status, failed, did not answer in time, or answered in a content coding other than `identity`. |
 | `atr-too-large` | The body is larger than 1 MiB. The fetch is cancelled. |
 | `signer-failed` | The signer rejected. |
-| `no-payable-option` | No option is payable by the buyer's accounts. Nothing is fetched. |
-| `pairing-not-supported` | The pairing id is not one the gate implements. |
+| `no-payable-option` | No option is payable by the buyer's accounts. The same decline, with the detail `<namespace>/input-malformed`, answers inputs the caller gave `confirm`, `agree` or `within` that are not an object, and a refund's own Solana value that is malformed (`B20`, `BA16`, `BW3`, `BW4`). Nothing is fetched or signed. |
+| `pairing-not-supported` | The pairing id is not one the gate implements, or `finish` is handed a chosen payment of another pairing than its binding's (`B19`), before anything is rebuilt. |
 | `agreement-pending` | An agreement payment for this ATR is settling, and the full payment is not signed: the gate made the agreement payment and its receipt did not arrive in time (`BA3`), or the agreement URL answered the unpaid request `202` (`BA14`), and nothing is signed. After that unpaid `202`, call again later without approval: once the agreement payment is recorded, the agreement URL answers its receipt. Never sign a second agreement payment. |
-| `agreement-failed` | The agreement's receipt names another ATR's hash, or an agreement answer is in a content coding other than `identity`; the full payment is not signed. |
+| `agreement-failed` | The agreement's receipt names another ATR's hash, an agreement answer is in a content coding other than `identity`, `PAYMENT-REQUIRED` is not strict base64 (`BA13`, `BA18`), or the JSON text of `PAYMENT-REQUIRED` or of the receipt is led by a byte-order mark (`BA17`, `BA18`); the full payment is not signed. |
 | `agreement-not-offered` | The chosen pairing's payment is not a public proof of H (`pattern.publicProof` is false) and the offer names no agreement URL. The link is fetched and compared first; nothing is signed. |
 
 ## The agreement URL
@@ -106,9 +106,11 @@ The agreement payment is a payment like any other, so the buyer's agent approves
 3. **Hand the agent** that option's amount, token (`asset`), payee (`payTo`) and network, and sign only once it
    approves.
 4. **Pay and wait** for the `200` receipt. The exchange is bounded by the chosen option's `maxTimeoutSeconds` plus
-   180 seconds; `maxTimeoutSeconds` is a JSON number with an integral value, so `60.0` is `60`.
+   180 seconds; `maxTimeoutSeconds` is a JSON number with an integral value, so `60.0` is `60`. After a `202` the gate
+   sends the same payment again after `Retry-After`'s delay-seconds (RFC 9110 section 10.2.3) of 1 to 9 digits, at least
+   1 second, and after 2 seconds when the header is absent or in any other form, an HTTP-date included (`BA15`).
 
-The buyer vector rows `BA1` to `BA14` fix this exchange: its order, the approval and the bounds.
+The buyer vector rows `BA1` to `BA18` fix this exchange: its order, the approval and the bounds.
 
 ## What the gate checks, and what it does not
 
