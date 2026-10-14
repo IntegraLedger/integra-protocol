@@ -59,6 +59,7 @@ import {
 import {
   failedAt,
   failedIfFinal,
+  finalAt,
   isLog,
   isReceipt,
   receiveTypedData,
@@ -1029,10 +1030,14 @@ async function openRead(
  * `Transfer` of the call's token, of any value, from its payer (the transaction's sender for `open`, else `from`) into
  * the called contract; else `evm/no-open-call`. A transaction sent through an ERC-4337 EntryPoint is refused so: the
  * account's calldata does not show which contract the account called. A reader for another network, a ref or reader
- * that is not an object, or a ref whose `transaction` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is
- * `evm/reverted` at or below the reader's `finalized` mark and `evm/not-final`, a read to repeat, above it or where that
- * mark cannot be read (the mark is read only for a revert); a failed read, a malformed receipt or transaction, or
- * calldata longer than `MAX_CALLDATA` is `evm/unreadable`. At most two calls.
+ * that is not an object, or a ref whose `transaction` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`;
+ * no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read, a malformed receipt
+ * or transaction, or calldata longer than `MAX_CALLDATA` is `evm/unreadable`. A transaction whose own call is not the
+ * open call is `evm/no-open-call` on every read, since its calldata is its own. A revert, and a receipt without the
+ * payer's `Transfer`, are given only where the receipt's block is at or below the reader's `finalized` mark: above it,
+ * or where that mark cannot be read, each is `evm/not-final`, a read to repeat, since a block above the mark can be
+ * replaced by one in which the transaction succeeds or holds other logs. The mark is read only for those. At most three
+ * calls.
  */
 async function evmRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -1067,14 +1072,13 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
   const payer = relayed ? addressAt(args, 5) : (tx.from.toLowerCase() as Hex);
   const token = addressAt(args, 1);
   const escrow = tx.to;
-  const pulled =
-    payer !== undefined &&
-    token !== undefined &&
-    receipt.logs.some((l) => {
-      const t = transferParts(l, token, TRANSFER_TOPIC);
-      return t !== undefined && sameBytes(t.from, payer) && sameBytes(t.to, escrow);
-    });
-  return pulled ? (hexOf(wordAt(args, 3)!) as AtrHash) : refusal("evm/no-open-call");
+  if (payer === undefined || token === undefined) return refusal("evm/no-open-call");
+  const pulled = receipt.logs.some((l) => {
+    const t = transferParts(l, token, TRANSFER_TOPIC);
+    return t !== undefined && sameBytes(t.from, payer) && sameBytes(t.to, escrow);
+  });
+  if (pulled) return hexOf(wordAt(args, 3)!) as AtrHash;
+  return (await finalAt(receipt.blockNumber, reader)) ? refusal("evm/no-open-call") : refusal("evm/not-final");
 }
 
 /**

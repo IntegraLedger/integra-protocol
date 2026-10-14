@@ -261,13 +261,14 @@ export async function eip3009Status(
 
 /**
  * Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
- * that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
- * a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
- * `evm/unreadable`; no receipt (`null`) is `evm/not-found`. A reverted transaction is `evm/reverted` where the
- * receipt's block is at or below the reader's `finalized` mark, and `evm/not-final`, a read to repeat, above it or where
- * that mark cannot be read: a block above it can be replaced by one in which the transaction succeeds, and a refusal
- * names no mark. The mark is read only for a revert. A ref whose `transaction` is not a 32-byte hash is
- * `evm/wrong-reader`, with nothing read. At most two calls.
+ * that `asset` emitted in it; none is `evm/no-authorization-use`, and more than one `evm/ambiguous`. A failed read, a
+ * reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a string
+ * `address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
+ * `evm/not-found`. A reverted transaction is `evm/reverted`. A revert, `evm/no-authorization-use` and `evm/ambiguous`
+ * are given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+ * cannot be read, each is `evm/not-final`, a read to repeat: a block above the mark can be replaced by one in which the
+ * transaction succeeds or holds other logs, and a refusal names no mark. The mark is read only for those. A ref whose
+ * `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls.
  */
 export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -293,6 +294,7 @@ export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<
     if (h === null) return refusal("evm/unreadable");
     found.add(h);
   }
+  if (found.size !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
   if (found.size === 0) return refusal("evm/no-authorization-use");
   if (found.size > 1) return refusal("evm/ambiguous");
   return [...found][0]!;
@@ -833,8 +835,16 @@ export async function failedAt<W extends string>(
   why: W,
   reader: EvmReader,
 ): Promise<{ state: "failed"; why: W } | { state: "pending"; why: W }> {
+  return (await finalAt(at, reader)) ? { state: "failed", why } : { state: "pending", why };
+}
+
+/**
+ * Whether block `at` is at or below the reader's `finalized` mark, where a verdict read from a receipt in that block,
+ * which names no mark, is given; a failed mark read counts as not reached. One call.
+ */
+export async function finalAt(at: bigint, reader: EvmReader): Promise<boolean> {
   const finalized = await mark(reader, "finalized");
-  return finalized !== null && finalized >= at ? { state: "failed", why } : { state: "pending", why };
+  return finalized !== null && finalized >= at;
 }
 
 /**
@@ -929,10 +939,11 @@ export function isLog(l: unknown): l is EvmLog {
 /**
  * Recovers H from a settlement transaction through MetaMask's DelegationManager: among its `RedeemedDelegation` logs,
  * the leaves are those whose data word 1 (the delegate) is the redeemer in topic 2 or the wildcard delegate; exactly
- * one distinct leaf salt (data word 5) is H. A reverted transaction is `evm/reverted` at or below the reader's
- * `finalized` mark and `evm/not-final` above it or where that mark cannot be read, as `eip3009Recover` answers; the mark
- * is read only for a revert. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read.
- * At most two calls.
+ * one distinct leaf salt (data word 5) is H; none is `evm/no-leaf`, and more than one `evm/ambiguous`. A reverted
+ * transaction is `evm/reverted`. A revert, `evm/no-leaf` and `evm/ambiguous` are given only at or below the reader's
+ * `finalized` mark, and above it, or where that mark cannot be read, each is `evm/not-final`, as `eip3009Recover`
+ * answers; the mark is read only for those. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with
+ * nothing read. At most two calls.
  */
 export async function redeemedLeafRecover(
   ref: { network: Eip155; transaction: Hex },
@@ -961,6 +972,7 @@ export async function redeemedLeafRecover(
     if (saltWord === undefined) continue;
     salts.add(hexOf(saltWord));
   }
+  if (salts.size !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
   if (salts.size === 0) return refusal("evm/no-leaf");
   if (salts.size > 1) return refusal("evm/ambiguous");
   return [...salts][0]!;

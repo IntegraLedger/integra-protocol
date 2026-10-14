@@ -43,6 +43,7 @@ import { addressOfWord, bytesOf, hexOf, sameBytes, uintOf, wordAt } from "./evm-
 import { chainIdOf, deepFreeze, isAddress, isObject, normalHash, uint256Of } from "./fields.js";
 import {
   failedAt,
+  finalAt,
   isLog,
   isReceipt,
   permit2Status,
@@ -794,9 +795,12 @@ type ProxySettle = { selector: Hex; permit: number; owner: number };
  * `Transfer` from that owner emitted by the contract that call names as its token, gives H. `status` with the ATR's
  * reference tells which transaction paid. A reader for another network, a ref or reader that is not an object, or a
  * ref whose `transaction` is not a 32-byte hash, is `evm/wrong-reader`, with nothing read; no receipt or no transaction
- * is `evm/not-found`; a reverted one is `evm/reverted` at or below the reader's `finalized` mark and `evm/not-final`, a
- * read to repeat, above it or where that mark cannot be read (the mark is read only for a revert); a failed read, a
- * malformed receipt or `nonceBitmap` answer, or an input that is not hex bytes is `evm/unreadable`. At most four calls.
+ * is `evm/not-found`; a reverted one is `evm/reverted`; a failed read, a malformed receipt or `nonceBitmap` answer, or
+ * an input that is not hex bytes is `evm/unreadable`. A revert, `evm/no-permit2-settle`, `evm/ambiguous` and
+ * `evm/nonce-not-used` are given only where the receipt's block is at or below the reader's `finalized` mark: above it,
+ * or where that mark cannot be read, each is `evm/not-final`, a read to repeat, since a block above the mark can be
+ * replaced by one in which the transaction succeeds, holds other logs or leaves Permit2 another bitmap. The mark is read
+ * only for those. At most five calls.
  */
 function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
   const settles = PROXY_SETTLES[id];
@@ -832,6 +836,7 @@ function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
       }),
     );
     const found = [...new Map(anchored.map((c) => [`${c.nonce}${c.owner}`, c] as const)).values()];
+    if (found.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
     if (found.length === 0) return refusal("evm/no-permit2-settle");
     if (found.length > 1) return refusal("evm/ambiguous");
     const { nonce, owner, token, deadline } = found[0]!;
@@ -839,10 +844,12 @@ function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
     const block = receipt.blockNumber;
     const after = await authorizationUsed(used, owner, block, reader);
     if (isRefusal(after)) return refusal("evm/unreadable");
-    if (!after) return refusal("evm/nonce-not-used");
-    const before = block === 0n ? false : await authorizationUsed(used, owner, block - 1n, reader);
-    if (isRefusal(before)) return refusal("evm/unreadable");
-    return before ? refusal("evm/nonce-not-used") : nonce;
+    if (after) {
+      const before = block === 0n ? false : await authorizationUsed(used, owner, block - 1n, reader);
+      if (isRefusal(before)) return refusal("evm/unreadable");
+      if (!before) return nonce;
+    }
+    return (await finalAt(block, reader)) ? refusal("evm/nonce-not-used") : refusal("evm/not-final");
   };
 }
 

@@ -38,6 +38,7 @@ import {
   carriesBinding,
   failedAt,
   failedIfFinal,
+  finalAt,
   isLog,
   isReceipt,
   receiveTypedData,
@@ -725,9 +726,10 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. A failed
  * read, a reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a
  * string `address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
- * `evm/not-found`. A reverted transaction is `evm/reverted` at or below the reader's `finalized` mark and
- * `evm/not-final`, a read to repeat, above it or where that mark cannot be read; the mark is read only for a revert. A
- * ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls.
+ * `evm/not-found`. A reverted transaction is `evm/reverted`; a receipt with no such log is `evm/no-channel-created`,
+ * and one with more than one `evm/ambiguous`. Each of the three is given only at or below the reader's `finalized`
+ * mark, and above it, or where that mark cannot be read, is `evm/not-final`, a read to repeat; the mark is read only for
+ * them. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls.
  */
 async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
@@ -749,6 +751,7 @@ async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: Ev
   const created = receipt.logs.filter(
     (l) => l.address.toLowerCase() === BATCH_SETTLEMENT.toLowerCase() && sameBytes(l.topics[0], CHANNEL_CREATED_TOPIC),
   );
+  if (created.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
   if (created.length === 0) return refusal("evm/no-channel-created");
   if (created.length > 1) return refusal("evm/ambiguous");
   const c = batchChannelCreated(created[0]!, chainId);

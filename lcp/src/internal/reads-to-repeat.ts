@@ -41,10 +41,10 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   "tron/not-found",
   "tvm/not-found",
   "xrpl/not-found",
-  // The transaction is not final yet: not executed, not finalized, not in a validated ledger, reverted in a block
-  // above the reader's `finalized` mark, which can be replaced by one in which it succeeds, failed with an error at
-  // Solana's `confirmed` and not found at `finalized`, or not dispatched as the payment in a Polkadot block above the
-  // finalized height.
+  // The transaction is not final yet: not executed, not finalized, not in a validated ledger, reverted or read without
+  // what the read looks for in a block above the reader's `finalized` mark, which can be replaced by one in which it
+  // succeeds or holds other logs, failed with an error at Solana's `confirmed` and not found at `finalized`, or not
+  // dispatched as the payment in a Polkadot block above the finalized height.
   "casper/not-executed",
   "ccd/not-finalized",
   "evm/not-final",

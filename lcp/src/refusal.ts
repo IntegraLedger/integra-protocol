@@ -27,10 +27,11 @@ export function isRefusal(v: unknown): v is Refusal {
  * These are each reader's `<rail>/unreadable` (the reader failed, or answered out of its documented form) and
  * `<rail>/not-found` (the reader holds no landed transaction for the reference yet), and the codes of a transaction that
  * is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final` and
- * `hedera/not-final` (a revert in a block above the reader's `finalized` mark, which can be replaced by one in which the
- * transaction succeeds), `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above the
- * finalized height), `svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`)
- * and `tempo/not-final` (as `evm/not-final`, on Tempo). The refusal code reference marks each of them.
+ * `hedera/not-final` (a revert, or a receipt without what the read looks for, in a block above the reader's `finalized`
+ * mark, which can be replaced by one in which the transaction succeeds or holds other logs), `polkadot/not-final` (an
+ * extrinsic not dispatched as the payment, in a block above the finalized height), `svm/not-final` (an error at Solana's
+ * `confirmed`, with the transaction not found at `finalized`) and `tempo/not-final` (as `evm/not-final`, on Tempo). The
+ * refusal code reference marks each of them.
  *
  * False for every other string. A verdict is not a read to repeat: a later read gives the same answer. Nor is a call the
  * caller must change before it can succeed: `<rail>/wrong-reader` (a reader for another network, or a ref the rail

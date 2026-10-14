@@ -193,9 +193,14 @@ a reverted transaction, on `mpp/charge/tempo/push` and `mpp/session/hedera`, the
 `tempo/reverted` or `hedera/reverted` at or below it, and above it, or where it cannot be read, `tempo/not-final` or
 `hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). An EVM `recover`
 (`x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`,
-`x402/upto/eip155/permit2`, `x402/batch-settlement/eip155` and `mpp/session/evm`) places a revert by the same mark:
-`evm/reverted` at or below it, and `evm/not-final`, a read to repeat, above it or where it cannot be read. Settled
-answers are not held to the mark: they carry the mark they reached.
+`x402/upto/eip155/permit2`, `x402/batch-settlement/eip155` and `mpp/session/evm`) places by the same mark a revert and
+each verdict it reads from the receipt, the settle call it finds with the receipt's `Transfer`, or Permit2's nonce
+bitmap at the receipt's block (`evm/no-authorization-use`, `evm/no-leaf`, `evm/no-channel-created`,
+`evm/no-permit2-settle`, `evm/nonce-not-used`, `evm/ambiguous`, and `evm/no-open-call` for an open call whose receipt
+holds no `Transfer` from its payer): the verdict at or below it, and `evm/not-final`, a read to repeat, above it or
+where it cannot be read. A transaction whose own call is not an escrow open call is `evm/no-open-call` on every read,
+since its calldata is its own. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
+mark they reached, or none.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another

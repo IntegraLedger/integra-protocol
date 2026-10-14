@@ -8,6 +8,7 @@
 // them; the transfer digest is SHA-256 over the named fields, by node:crypto. The published Anvil development accounts
 // 0 and 1 are the payer and the payee; H is SHA-256("abc") (FIPS 180-2).
 import { createHash } from "node:crypto";
+import { encodeFunctionData, parseAbi } from "viem";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import {
@@ -35,7 +36,7 @@ import {
   RECEIVE_POLICY_GUARD,
   TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
-import { BATCH_SETTLEMENT, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
+import { BATCH_SETTLEMENT, CHANNEL_CREATED_TOPIC, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
 import { problem, type MppCredential } from "../src/mpp.js";
 import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC } from "../src/internal/hedera-session.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
@@ -522,57 +523,177 @@ describe("a fetchPresented revert is refused only at or below the finalized mark
   });
 });
 
-// An EVM `recover` that reads a revert gives a failed answer too, and a refusal names no mark: `evm/reverted` only where
-// the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read,
-// `evm/not-final`, a read to repeat (docs/guides/rails.md, "Reading settlement").
-describe("an EVM recover refuses a revert as final only at or below the finalized mark", () => {
-  /** A pairing with a `recover`, the ref it reads, the receipt (and transaction) it reads, its verdict and its not-final code. */
-  type Recovered = [id: string, network: string, ref: object, f: Failure, verdict: string, notFinal: string];
+// An EVM `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap without the one use it reads H
+// from, gives a verdict a block above the mark can change, and a refusal names no mark: the verdict only where the
+// receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read,
+// `evm/not-final`, a read to repeat (docs/guides/rails.md, "Reading settlement"). The settle calls are viem's encodings
+// of the x402 Permit2 proxies' `settle` (x402 contracts/evm/src/x402ExactPermit2Proxy.sol, x402UptoPermit2Proxy.sol),
+// and the open call draft-evm-session-00's `open`.
+describe("an EVM recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
+  const PERMIT = {
+    name: "permit",
+    type: "tuple",
+    components: [
+      { name: "permitted", type: "tuple", components: [{ name: "token", type: "address" }, { name: "amount", type: "uint256" }] },
+      { name: "nonce", type: "uint256" },
+      { name: "deadline", type: "uint256" },
+    ],
+  } as const;
+  const settleAbi = <const I extends readonly object[]>(inputs: I) =>
+    [{ type: "function", name: "settle", stateMutability: "nonpayable", outputs: [], inputs }] as const;
+  const PROXY = settleAbi([
+    PERMIT,
+    { name: "owner", type: "address" },
+    { name: "witness", type: "tuple", components: [{ name: "to", type: "address" }, { name: "validAfter", type: "uint256" }] },
+    { name: "signature", type: "bytes" },
+  ] as const);
+  const UPTO_PROXY = settleAbi([
+    PERMIT,
+    { name: "amount", type: "uint256" },
+    { name: "owner", type: "address" },
+    {
+      name: "witness",
+      type: "tuple",
+      components: [{ name: "to", type: "address" }, { name: "facilitator", type: "address" }, { name: "validAfter", type: "uint256" }],
+    },
+    { name: "signature", type: "bytes" },
+  ] as const);
+  const OPEN = parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]);
+  const permit = (nonce: Hex) => ({ permitted: { token: TOKEN, amount: VALUE }, nonce: BigInt(nonce), deadline: 1790000060n });
+  const settle = (nonce: Hex) =>
+    encodeFunctionData({ abi: PROXY, functionName: "settle", args: [permit(nonce), PAYER, { to: PAYEE, validAfter: 0n }, "0x"] });
+  const settleUpto = (nonce: Hex) =>
+    encodeFunctionData({
+      abi: UPTO_PROXY,
+      functionName: "settle",
+      args: [permit(nonce), VALUE, PAYER, { to: PAYEE, facilitator: STRANGER, validAfter: 0n }, "0x"],
+    });
+  /** A transaction from the payer to the proxy whose input is these calls, one after another. */
+  const calling = (...calls: Hex[]): EvmTransaction => ({
+    from: PAYER,
+    to: EXACT_PERMIT2_PROXY,
+    input: ("0x" + calls.map((c) => c.slice(2)).join("")) as Hex,
+  });
+  const OTHER_NONCE = ("0x" + NONCE.slice(2, 64) + "00") as Hex;
+  const plainTransfer: EvmTransaction = { from: PAYER, to: TOKEN, input: ("0xa9059cbb" + hex64(PAYEE) + hex64(uint(VALUE))) as Hex };
+  const leafWith = (salt: Hex) =>
+    log(DELEGATION_MANAGER, [REDEEMED_DELEGATION_TOPIC, topic(PAYER), topic(STRANGER)], ("0x" +
+      [hex64(PAYER), hex64(STRANGER), hex64("0x0"), hex64("0x0"), hex64("0x0"), salt.slice(2)].join("")) as Hex);
+  const created = log(BATCH_SETTLEMENT, [CHANNEL_CREATED_TOPIC, CHANNEL]);
+  const openCall: EvmTransaction = {
+    from: PAYER,
+    to: sessionEscrow,
+    input: encodeFunctionData({ abi: OPEN, functionName: "open", args: [PAYEE, TOKEN, VALUE, H, STRANGER] }),
+  };
+  const permit2Rows = (settleOf: (nonce: Hex) => Hex): Failure[] => [
+    { why: "evm/reverted", logs: [transfer(PAYER, PAYEE)], reverted: true },
+    { why: "evm/no-permit2-settle", logs: [transfer(PAYER, PAYEE)], tx: plainTransfer },
+    { why: "evm/ambiguous", logs: [transfer(PAYER, PAYEE)], tx: calling(settleOf(PERMIT2_NONCE), settleOf(OTHER_NONCE)), call: spentInBlock },
+    { why: "evm/nonce-not-used", logs: [transfer(PAYER, PAYEE)], tx: calling(settleOf(PERMIT2_NONCE)), call: () => uint(0n) },
+    { why: "evm/nonce-not-used", logs: [transfer(PAYER, PAYEE)], tx: calling(settleOf(PERMIT2_NONCE)), call: () => uint(1n) },
+  ];
+
+  /** A pairing with a `recover`, the network and ref it reads, and the reads that give each verdict (`why`). */
+  type Recovered = [id: string, network: string, ref: object, failures: Failure[], notFinal: string];
   const RECOVERS: Recovered[] = [
-    ["x402/exact/eip155/eip3009", BASE, { asset: TOKEN }, { why: "reverted", logs: [used(H)], reverted: true }, "evm/reverted", "evm/not-final"],
-    ["x402/exact/eip155/erc7710-salt", BASE, {}, { why: "reverted", logs: [leaf], reverted: true }, "evm/reverted", "evm/not-final"],
-    ["x402/exact/eip155/permit2", BASE, {}, { why: "reverted", logs: [transfer(PAYER, PAYEE)], reverted: true }, "evm/reverted", "evm/not-final"],
-    ["x402/upto/eip155/permit2", BASE, {}, { why: "reverted", logs: [transfer(PAYER, PAYEE)], reverted: true }, "evm/reverted", "evm/not-final"],
-    ["x402/batch-settlement/eip155", BASE, {}, { why: "reverted", logs: [deposited], reverted: true }, "evm/reverted", "evm/not-final"],
-    ["mpp/session/evm", BASE, {}, { why: "reverted", logs: [transfer(PAYER, sessionEscrow)], reverted: true }, "evm/reverted", "evm/not-final"],
+    [
+      "x402/exact/eip155/eip3009",
+      BASE,
+      { asset: TOKEN },
+      [
+        { why: "evm/reverted", logs: [used(H)], reverted: true },
+        { why: "evm/no-authorization-use", logs: [transfer(PAYER, PAYEE)] },
+        { why: "evm/ambiguous", logs: [used(H), used(NONCE)] },
+      ],
+      "evm/not-final",
+    ],
+    [
+      "x402/exact/eip155/erc7710-salt",
+      BASE,
+      {},
+      [
+        { why: "evm/reverted", logs: [leaf], reverted: true },
+        { why: "evm/no-leaf", logs: [transfer(PAYER, PAYEE)] },
+        { why: "evm/ambiguous", logs: [leaf, leafWith(NONCE)] },
+      ],
+      "evm/not-final",
+    ],
+    ["x402/exact/eip155/permit2", BASE, {}, permit2Rows(settle), "evm/not-final"],
+    ["x402/upto/eip155/permit2", BASE, {}, permit2Rows(settleUpto), "evm/not-final"],
+    [
+      "x402/batch-settlement/eip155",
+      BASE,
+      {},
+      [
+        { why: "evm/reverted", logs: [deposited], reverted: true },
+        { why: "evm/no-channel-created", logs: [deposited] },
+        { why: "evm/ambiguous", logs: [created, created] },
+      ],
+      "evm/not-final",
+    ],
+    [
+      "mpp/session/evm",
+      BASE,
+      {},
+      [
+        { why: "evm/reverted", logs: [transfer(PAYER, sessionEscrow)], reverted: true, tx: openCall },
+        // The payer's open call to the escrow, with no `Transfer` of the deposit from the payer into the escrow.
+        { why: "evm/no-open-call", logs: [transfer(STRANGER, sessionEscrow)], tx: openCall },
+      ],
+      "evm/not-final",
+    ],
   ];
   const recoverOf = (id: string) =>
     (BINDINGS.find((b) => b.id === id) as unknown as { recover: (ref: object, reader: EvmReader) => Promise<unknown> }).recover;
 
-  for (const [id, network, ref, f, verdict, notFinal] of RECOVERS) {
-    it(`${id}: ${verdict} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
-      const recover = recoverOf(id);
-      const full = { network, transaction: TX, ...ref };
-      for (const [finalized, safe] of [
-        [BLOCK, BLOCK],
-        [BLOCK + 5n, BLOCK + 10n],
-      ] as const) {
-        const marks: string[] = [];
-        expect(await recover(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}`).toEqual({
-          refused: true,
-          code: verdict,
-        });
-        expect(marks).toContain("finalized");
-      }
-      for (const [finalized, safe] of [
-        [BLOCK - 1n, BLOCK],
-        [BLOCK - 1n, BLOCK - 1n],
-        ["fails", BLOCK],
-        ["fails", "fails"],
-      ] as const) {
-        const marks: string[] = [];
-        expect(await recover(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual({
-          refused: true,
-          code: notFinal,
-        });
-        expect(marks).toContain("finalized");
-      }
-    });
+  for (const [id, network, ref, failures, notFinal] of RECOVERS) {
+    for (const f of rowsOf(failures, `${id}: its verdicts`)) {
+      it(`${id}: ${f.why} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
+        const recover = recoverOf(id);
+        const verdict = f.why;
+        const full = { network, transaction: TX, ...ref };
+        for (const [finalized, safe] of [
+          [BLOCK, BLOCK],
+          [BLOCK + 5n, BLOCK + 10n],
+        ] as const) {
+          const marks: string[] = [];
+          expect(await recover(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}`).toEqual({
+            refused: true,
+            code: verdict,
+          });
+          expect(marks).toContain("finalized");
+        }
+        for (const [finalized, safe] of [
+          [BLOCK - 1n, BLOCK],
+          [BLOCK - 1n, BLOCK - 1n],
+          ["fails", BLOCK],
+          ["fails", "fails"],
+        ] as const) {
+          const marks: string[] = [];
+          expect(await recover(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual({
+            refused: true,
+            code: notFinal,
+          });
+          expect(marks).toContain("finalized");
+        }
+      });
+    }
   }
 
   it("covers every EVM pairing with a recover", () => {
     const evm = BINDINGS.filter((b) => /eip155|\/evm/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function");
     expect(new Set(RECOVERS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
+  });
+
+  // A transaction whose own call is not an escrow open call holds none on any read: its calldata is its own.
+  it("mpp/session/evm: a transaction whose own call is not an open call is evm/no-open-call above the mark, with no mark read", async () => {
+    const marks: string[] = [];
+    const f: Failure = { why: "evm/no-open-call", logs: [transfer(PAYER, sessionEscrow)], tx: plainTransfer };
+    expect(await recoverOf("mpp/session/evm")({ network: BASE, transaction: TX }, reader(BASE, f, BLOCK - 1n, BLOCK - 1n, marks))).toEqual({
+      refused: true,
+      code: "evm/no-open-call",
+    });
+    expect(marks).toEqual([]);
   });
 
   it("evm/not-final is a code the package returns, and a read to repeat", () => {

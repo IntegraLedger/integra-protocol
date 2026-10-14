@@ -204,9 +204,9 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these ru
 | A code this package does not return | 500 | `internal-payment-error` |
 
 A read to repeat is a code `readToRepeat` answers true for, such as what a `fetchPresented` or `recover` returns when
-its read fails, cannot yet read the landed payment, or reads a revert or error that is not final yet: the seller
-asks again later ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)). A call that cannot read the payment is the
-seller's own call: a reader that is not
+its read fails, cannot yet read the landed payment, or reads a revert, an error or a verdict that is not final yet:
+the seller asks again later ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)). A call that cannot read the
+payment is the seller's own call: a reader that is not
 for the network the challenge or reference names, or a ref `recover` cannot read: one that is not an object, one
 whose `transaction` is not in its rail's form (a 32-byte hash on Tempo and the Hedera session, a signature, base58 of
 64 bytes, on Solana, 64 hex digits on XRPL), or on the Hedera session one that names a `bindingLog` that is not an
