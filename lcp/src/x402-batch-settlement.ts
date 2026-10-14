@@ -135,6 +135,10 @@ export interface Eip712Request {
   message: { [k: string]: Json };
 }
 
+/**
+ * The configuration's types, which the channel contract's `getChannelId` hashes whatever their values: five addresses,
+ * a `uint40` withdrawal delay and a 32-byte salt.
+ */
 function isChannelConfig(c: unknown): c is ChannelConfig {
   if (!isObject(c)) return false;
   const delay = c["withdrawDelay"];
@@ -325,6 +329,19 @@ function nonZeroAddress(v: unknown): v is Hex {
 }
 
 /**
+ * A channel configuration the channel contract's `deposit` takes: a payer, receiver, receiver authorizer and token
+ * that are not the zero address, else it reverts `InvalidChannel`, and a withdrawal delay from 900 to 2,592,000
+ * seconds, else `WithdrawDelayOutOfRange`. A zero payer authorizer it takes: the payer then signs the vouchers.
+ */
+function isDepositConfig(c: unknown): c is ChannelConfig {
+  return (
+    isChannelConfig(c) &&
+    [c.payer, c.receiver, c.receiverAuthorizer, c.token].every(nonZeroAddress) &&
+    isDelay(c.withdrawDelay)
+  );
+}
+
+/**
  * The batch-settlement pairing an option names, or undefined: the filter each of the three pairings applies to an
  * option, through which the root `pairingOf` names it. A Solana option names `extra.receiverAuthorizer` and client
  * voucher signing (`extra.voucherSigner` absent or `"client"`), and its `extra.withdrawDelay` is at least a
@@ -396,12 +413,15 @@ function isHexSignature(s: unknown): s is Hex {
 
 // ── EVM pairing ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The EVM channel's id from a payment's config, which must equal its voucher's channel id. */
+/**
+ * The EVM channel's id from a payment's config, which must equal its voucher's channel id. A config the channel
+ * contract's `deposit` refuses is `x402/payload-malformed`.
+ */
 async function evmRef(p: unknown): Promise<{ network: string; channel: string } | Refusal> {
   const x = payloadOf(p, EVM_ID);
   if (isRefusal(x)) return x;
   const config = x.payload["channelConfig"];
-  if (!isChannelConfig(config)) return refusal("x402/payload-malformed");
+  if (!isDepositConfig(config)) return refusal("x402/payload-malformed");
   const voucher = x.payload["voucher"];
   if (!isObject(voucher) || typeof voucher["channelId"] !== "string") return refusal("x402/payload-malformed");
   const id = batchChannelId(chainIdOf(x.accepted.network)!, config);
@@ -423,7 +443,8 @@ function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
 /**
  * The opening's two authorizations: the deposit's token authorization, then the voucher. A `from` or `payerAuthorizer`
  * that is not an address string, an `authSalt` that is not a string of `0x` and 64 hex digits, or a `deposit` or `now`
- * out of range is `x402/option-malformed`.
+ * out of range is `x402/option-malformed`, as is a `from`, or an option's `payTo` or `asset`, that is the zero address:
+ * the channel contract's `deposit` refuses a configuration whose payer, receiver or token is.
  */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
@@ -448,6 +469,7 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
     withdrawDelay: extra["withdrawDelay"] as number,
     salt,
   };
+  if (!isDepositConfig(config)) return refusal("x402/option-malformed");
   const channelId = batchChannelId(chainId, config);
   if (isRefusal(channelId)) return channelId;
   const deadline = BigInt(c.now) + BigInt(accepted.maxTimeoutSeconds);
@@ -513,13 +535,16 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   };
 }
 
-/** A later voucher, or a refund, for a channel opened under `h`. */
+/**
+ * A later voucher, or a refund, for a channel opened under `h`. A `channelConfig` the channel contract's `deposit`
+ * refuses is `x402/payload-malformed`.
+ */
 async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(w)) return refusal("x402/not-v2");
   const ok = chosen(w.required, w.accepted, filterOf(isId(EVM_ID)));
   if (ok !== true) return ok;
   const config = w.channelConfig;
-  if (!isChannelConfig(config)) return refusal("x402/payload-malformed");
+  if (!isDepositConfig(config)) return refusal("x402/payload-malformed");
   if (normalHash(config.salt) !== normalHash(h)) return refusal("x402/channel-id-mismatch");
   if (typeof w.maxClaimableAmount !== "bigint" || w.maxClaimableAmount < 0n || w.maxClaimableAmount >= U128_LIMIT) {
     return refusal("x402/option-malformed");
@@ -576,15 +601,15 @@ function depositOf(payload: Record<string, unknown>) {
 }
 
 /**
- * The opening's `salt`, once its config hashes to the voucher's channel id. No signature is verified here. A deposit
- * amount that is not a positive decimal below 2^128, as the channel contract's `deposit` takes a `uint128` and refuses
- * 0, is `x402/payload-malformed`, as `reference` answers it.
+ * The opening's `salt`, once its config hashes to the voucher's channel id. No signature is verified here. A config
+ * the channel contract's `deposit` refuses, or a deposit amount that is not a positive decimal below 2^128, as that
+ * `deposit` takes a `uint128` and refuses 0, is `x402/payload-malformed`, as `reference` answers it.
  */
 async function evmBound(presented: unknown): Promise<AtrHash | Refusal> {
   const x = payloadOf(presented, EVM_ID);
   if (isRefusal(x)) return x;
   if (x.payload["type"] !== "deposit") return refusal("x402/not-an-opening");
-  if (!isChannelConfig(x.payload["channelConfig"])) return refusal("x402/payload-malformed");
+  if (!isDepositConfig(x.payload["channelConfig"])) return refusal("x402/payload-malformed");
   const d = depositOf(x.payload);
   if (isRefusal(d)) return d;
   const r = await evmRef(presented);

@@ -544,10 +544,12 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     case: string;
     pairing?: string;
     call?: "build" | "buildWithin";
-    calls?: ("bound" | "reference")[];
+    calls?: ("bound" | "reference" | "channel.ref" | "buildWithin")[];
     choice?: unknown;
     h?: unknown;
     depositAmount?: string;
+    configMembers?: Record<string, unknown>[];
+    zeroMembers?: ("from" | "payTo" | "asset")[];
     expect: string;
   };
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-batch-settlement.json agreedRefusals.rows", {
@@ -559,18 +561,45 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   });
   const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
   /** The members a row carries its input in. Each row carries exactly one, and one test below runs the rows of each. */
-  const INPUTS = ["choice", "h", "depositAmount"] as const;
+  const INPUTS = ["choice", "h", "depositAmount", "configMembers", "zeroMembers"] as const;
   const inputOf = (r: Row) => INPUTS.filter((k) => k in r);
-  const carrying = (input: (typeof INPUTS)[number], exact: number) =>
-    rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and what they call", {
+  const carrying = (input: (typeof INPUTS)[number], exact: number, pairing?: string) => {
+    const kept = (r: Row) => inputOf(r)[0] === input && (pairing === undefined || r.pairing === pairing);
+    return rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and what they call", {
       exact,
-      keep: [`the rows with ${input}`, (r) => inputOf(r)[0] === input],
-      leave: ["the rows with another input, which another test in this block runs", (r) => inputOf(r)[0] !== input],
+      keep: [`the rows with ${input}${pairing === undefined ? "" : ` for ${pairing}`}`, kept],
+      leave: ["the rows with another input or pairing, which another test in this block runs", (r) => !kept(r)],
     });
+  };
 
   it("each row carries its input in exactly one member", () => {
     for (const r of rows) expect(inputOf(r), r.case).toHaveLength(1);
+    expect(rows.filter((r) => "configMembers" in r).map((r) => r.pairing)).toEqual(["x402/batch-settlement/eip155"]);
   });
+
+  /** EB2 and EB3's opening, with its ERC-3009 and with a Permit2 deposit authorization. */
+  const openings = async () => [
+    ["eip3009", (await evmOpening()).payment],
+    ["permit2", (await evmOpening("permit2")).payment],
+  ] as const;
+  /** The channel id of an EVM channel configuration on Base Sepolia, by viem's EIP-712 typed-data hash. */
+  const viemChannelId = (config: Record<string, unknown>) =>
+    hashTypedData({
+      domain: { name: "x402 Batch Settlement", version: "1", chainId: 84532, verifyingContract: "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003" },
+      types: {
+        ChannelConfig: [
+          { name: "payer", type: "address" },
+          { name: "payerAuthorizer", type: "address" },
+          { name: "receiver", type: "address" },
+          { name: "receiverAuthorizer", type: "address" },
+          { name: "token", type: "address" },
+          { name: "withdrawDelay", type: "uint40" },
+          { name: "salt", type: "bytes32" },
+        ],
+      },
+      primaryType: "ChannelConfig",
+      message: config as never,
+    });
 
   it("each pairing's build, and the EVM and SVM buildWithin, refuse a null choice and a string choice", async () => {
     const choices = carrying("choice", 10);
@@ -646,6 +675,72 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         expect(ref.transferLog?.digest, `${form} ${amount}`).toBe(`0x${digest.digest("hex")}`);
       }
     }
+  });
+
+  // The channel contract's deposit reverts InvalidChannel on a configuration whose payer, receiver, receiverAuthorizer
+  // or token is the zero address, and WithdrawDelayOutOfRange on a withdrawDelay outside 900 to 2592000
+  // (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L85-86 and L206-212). It takes a zero
+  // payerAuthorizer: the payer then signs the vouchers (L530-538; scheme_batch_settlement_evm.md L21 at the same commit).
+  // Each configuration's voucher carries its channel id, viem's typed-data hash of it, so only its form decides.
+  it("the EVM bound, reference, channel.ref and buildWithin refuse a channelConfig the channel contract's deposit refuses, and read its edges", async () => {
+    const configs = carrying("configMembers", 1, "x402/batch-settlement/eip155");
+    const ZERO = "0x0000000000000000000000000000000000000000";
+    expect(configs.map((r) => [r.calls, r.configMembers])).toEqual([
+      [
+        ["bound", "reference", "channel.ref", "buildWithin"],
+        [{ payer: ZERO }, { receiver: ZERO }, { receiverAuthorizer: ZERO }, { token: ZERO }, { withdrawDelay: 899 }, { withdrawDelay: 2592001 }],
+      ],
+    ]);
+    const doc = evmDoc();
+    for (const [form, payment] of await openings()) {
+      const p = payment.payload as Record<string, any>;
+      const withConfig = (members: Record<string, unknown>) => {
+        const config = { ...p["channelConfig"], ...members };
+        const payment2 = { ...payment, payload: { ...p, channelConfig: config, voucher: { ...p["voucher"], channelId: viemChannelId(config) } } };
+        const runs: Record<string, () => Promise<unknown>> = {
+          bound: () => batchEvm.bound(payment2),
+          reference: () => batchEvm.reference(payment2),
+          "channel.ref": () => batchEvm.channel.ref(payment2),
+          buildWithin: () =>
+            batchEvm.buildWithin({ required: doc, accepted: doc.accepts[0]!, channelConfig: config, maxClaimableAmount: BigInt(V.EB2.maxClaimableAmount) }, H),
+        };
+        return { config, runs };
+      };
+      for (const r of configs) {
+        for (const members of r.configMembers!) {
+          const { runs } = withConfig(members);
+          for (const call of r.calls!) expect(await runs[call]!(), `${form} ${call} ${JSON.stringify(members)}`).toEqual(refused(r.expect));
+        }
+      }
+      for (const members of [{ withdrawDelay: 900 }, { withdrawDelay: 2592000 }, { payerAuthorizer: ZERO }]) {
+        const { config, runs } = withConfig(members);
+        const label = `${form} ${JSON.stringify(members)}`;
+        const id = viemChannelId(config).toLowerCase();
+        expect(await runs["bound"]!(), label).toBe(H);
+        expect((unwrap(await runs["reference"]!()) as { bindingLog: { value: string } }).bindingLog.value, label).toBe(id);
+        expect(await runs["channel.ref"]!(), label).toEqual({ network: "eip155:84532", channel: id });
+        expect("refused" in (unwrap(await runs["buildWithin"]!()) as object), label).toBe(false);
+      }
+    }
+  });
+
+  it("the EVM build refuses a from, or an option's payTo or asset, that is the zero address, and builds with a zero payerAuthorizer", async () => {
+    const zeros = carrying("zeroMembers", 1);
+    expect(zeros.map((r) => [r.pairing, r.call, r.zeroMembers])).toEqual([["x402/batch-settlement/eip155", "build", ["from", "payTo", "asset"]]]);
+    const ZERO = "0x0000000000000000000000000000000000000000";
+    const choiceWith = (option: PaymentRequirements, inChoice: Record<string, unknown>) => {
+      const doc = unwrap(batchEvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [option] }, H, V.fixed.link, option));
+      const base = { required: doc, accepted: doc.accepts[0]!, from: E.payer, now: E.now, payerAuthorizer: E.payerAuthorizer, deposit: BigInt(E.deposit), authSalt: E.authSalt };
+      return { ...base, ...inChoice };
+    };
+    for (const r of zeros) {
+      for (const member of r.zeroMembers!) {
+        const option: PaymentRequirements = member === "from" ? E.option : { ...E.option, [member]: ZERO };
+        const choice = choiceWith(option, member === "from" ? { from: ZERO } : {});
+        expect(await batchEvm.build(choice, H), member).toEqual(refused(r.expect));
+      }
+    }
+    expect("refused" in (await batchEvm.build(choiceWith(E.option, { payerAuthorizer: ZERO }), H))).toBe(false);
   });
 });
 

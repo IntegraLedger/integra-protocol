@@ -822,7 +822,7 @@
   "expectPairing": "x402/batch-settlement/cloudflare"
  },
  "agreedRefusals": {
-  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h. A row with pairing and calls runs each of those functions of that pairing on EB2 and EB3's opening, with deposit.amount replaced by depositAmount: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies.",
+  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h. A row with pairing and calls runs each of those functions of that pairing on EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies. With depositAmount, deposit.amount is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set, and voucher.channelId is the channel id of the configuration that results; buildWithin runs with the advertised option, that configuration and EB2's maxClaimableAmount, under H. A row with pairing, call and zeroMembers runs that call once per member named, with that member the zero address: the EVM build of EB2 and EB3's opening, with from in its choice, or payTo or asset in fixed.evm.option, the zero address.",
   "rows": [
    {
     "case": "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal, is 0, or is 2^128 or more",
@@ -966,6 +966,48 @@
     ],
     "depositAmount": "0",
     "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "EVM bound, reference, channel.ref or buildWithin with a channelConfig the channel contract's deposit refuses: a payer, receiver, receiverAuthorizer or token that is the zero address (InvalidChannel), or a withdrawDelay below 900 or above 2592000 (WithdrawDelayOutOfRange) (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L85-86 and L206-212)",
+    "pairing": "x402/batch-settlement/eip155",
+    "calls": [
+     "bound",
+     "reference",
+     "channel.ref",
+     "buildWithin"
+    ],
+    "configMembers": [
+     {
+      "payer": "0x0000000000000000000000000000000000000000"
+     },
+     {
+      "receiver": "0x0000000000000000000000000000000000000000"
+     },
+     {
+      "receiverAuthorizer": "0x0000000000000000000000000000000000000000"
+     },
+     {
+      "token": "0x0000000000000000000000000000000000000000"
+     },
+     {
+      "withdrawDelay": 899
+     },
+     {
+      "withdrawDelay": 2592001
+     }
+    ],
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "EVM build whose from, or whose option's payTo or asset, is the zero address, which the channel contract's deposit refuses as the channel's payer, receiver or token (InvalidChannel, x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L206-209)",
+    "pairing": "x402/batch-settlement/eip155",
+    "call": "build",
+    "zeroMembers": [
+     "from",
+     "payTo",
+     "asset"
+    ],
+    "expect": "x402/option-malformed"
    }
   ]
  },
