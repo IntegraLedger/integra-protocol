@@ -809,10 +809,13 @@ describe("x402-exact-solana.json agreedRefusals: the rows that carry only case a
       const failed = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
       return [await svmRecover(named, readerFor("confirmed", landed(wireV4, failed.err)))];
     },
-    // A transaction answer whose wire is the base64 text, not its bytes, is not a landed transaction's shape.
+    // A transaction answer whose wire is the base64 text, not its bytes, is not a landed transaction's shape; nor is a
+    // wire one byte short of V4's, which does not decode: a transaction the chain executed is a well-formed one within
+    // Solana's 1232-byte packet (PACKET_DATA_SIZE), so a landed wire that does not decode is the reader's.
     "recover when the reader fails or returns a malformed transaction": async () => [
       await svmRecover(named, readerFor("reader-error", landed(wireV4))),
       await svmRecover(named, readerFor("finalized", { ...landed(wireV4), wire: V.V4.landedWireBase64 })),
+      await svmRecover(named, readerFor("finalized", landed(wireV4.subarray(0, wireV4.length - 1)))),
     ],
     "build or buildSvmMessage with a malformed key, token program, decimals, amount, compute budget or signature": async () => {
       const c = v1Choice();

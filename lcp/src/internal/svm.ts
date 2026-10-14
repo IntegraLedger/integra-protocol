@@ -932,8 +932,8 @@ export async function svmLocate(
 /**
  * Zero-party recovery: the ATR hash in the landed transaction's one memo. A transaction that landed with an error is
  * `svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at `confirmed` holds it, since
- * a block that is not finalized can be replaced. A ref whose `transaction` is not a signature, base58 of 64 bytes, is
- * `svm/wrong-reader`, with nothing read. One or two calls.
+ * a block that is not finalized can be replaced. A landed wire that does not decode is `svm/unreadable`. A ref whose
+ * `transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
  */
 export async function svmRecover(
   ref: { network: SolanaNetwork; transaction: string },
@@ -947,7 +947,9 @@ export async function svmRecover(
 
 /**
  * The named transaction, landed without error and decoded, read at `finalized`, then `confirmed`. An error the read at
- * `finalized` holds is `svm/err`; one only the read at `confirmed` holds is `svm/not-final`. One or two calls.
+ * `finalized` holds is `svm/err`; one only the read at `confirmed` holds is `svm/not-final`. A landed wire that does not
+ * decode is `svm/unreadable`: a transaction the chain executed is a well-formed one within Solana's packet size, the
+ * bound the decoder holds a wire to, so such a wire is the reader's answer out of its documented form. One or two calls.
  */
 export async function landedTransaction(
   ref: { network: SolanaNetwork; transaction: string },
@@ -961,7 +963,8 @@ export async function landedTransaction(
   if (read.landed.err !== null && read.landed.err !== undefined) {
     return read.commitment === "finalized" ? refusal("svm/err") : refusal("svm/not-final");
   }
-  return decodeSvmTx(read.landed.wire);
+  const tx = decodeSvmTx(read.landed.wire);
+  return isRefusal(tx) ? refusal("svm/unreadable") : tx;
 }
 
 // ── the payment-channels program ─────────────────────────────────────────────────────────────────────────────────

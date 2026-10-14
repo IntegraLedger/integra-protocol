@@ -764,8 +764,8 @@ found, shows the message never landed.
 
 Zero-party recovery: the ATR hash in the landed transaction's one memo. A transaction that landed with an error is
 `svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at `confirmed` holds it, since
-a block that is not finalized can be replaced. A ref whose `transaction` is not a signature, base58 of 64 bytes, is
-`svm/wrong-reader`, with nothing read. One or two calls.
+a block that is not finalized can be replaced. A landed wire that does not decode is `svm/unreadable`. A ref whose
+`transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
 
 #### Parameters
 

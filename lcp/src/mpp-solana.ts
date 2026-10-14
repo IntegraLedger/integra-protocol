@@ -257,8 +257,9 @@ function isSignatureText(s: unknown): s is string {
 /**
  * Zero-party: the one LCP memo of the landed transaction, read at `finalized`, then `confirmed`. A transaction that
  * landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at
- * `confirmed` holds it. A ref whose `transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with
- * nothing read. One or two calls.
+ * `confirmed` holds it. A landed wire that does not decode is `svm/unreadable`, an answer out of the reader's documented
+ * form. A ref whose `transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One
+ * or two calls.
  */
 async function recover(ref: { network: SolanaNetwork; transaction: string }, reader: SvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
@@ -273,7 +274,7 @@ async function recover(ref: { network: SolanaNetwork; transaction: string }, rea
   if (read === "not-found") return refusal("svm/not-found");
   if (read.failed) return finalized ? refusal("svm/err") : refusal("svm/not-final");
   const tx = decodeSvmTx(read.wire);
-  if (isRefusal(tx)) return tx;
+  if (isRefusal(tx)) return refusal("svm/unreadable");
   const c = mppSvmCarrier(tx);
   return isRefusal(c) ? c : c.h;
 }

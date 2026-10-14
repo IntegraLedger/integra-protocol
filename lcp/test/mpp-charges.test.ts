@@ -233,6 +233,10 @@ describe("mpp-charge-solana.json", () => {
     expect(await chargeSolana.recover(named, answering({ notFound: true, slot: null }))).toEqual(refused("svm/not-found"));
     expect(await chargeSolana.fetchPresented(cr, answering(null))).toEqual(refused("svm/unreadable"));
     expect(await chargeSolana.recover(named, answering(null))).toEqual(refused("svm/unreadable"));
+    // A wire one byte short of the landed one does not decode: a transaction the chain executed is a well-formed one
+    // within Solana's 1232-byte packet (PACKET_DATA_SIZE), so a landed wire that does not decode is the reader's.
+    const short = { ...landed, wire: landed.wire.subarray(0, landed.wire.length - 1) };
+    expect(await chargeSolana.recover(named, answering(short))).toEqual(refused("svm/unreadable"));
     expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toBe(V.recover.expect);
   });
 

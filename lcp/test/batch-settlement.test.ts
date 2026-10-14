@@ -544,6 +544,15 @@ describe("x402-batch-settlement.json: SVM", () => {
     };
     expect(await batchSvm.recover(ref, atConfirmed)).toEqual(refused("svm/not-final"));
   });
+
+  // A transaction the chain executed is a well-formed one within Solana's 1232-byte packet (PACKET_DATA_SIZE), so a
+  // landed wire that does not decode, here one byte short of ES5's, is the reader's answer out of its documented form.
+  it("ES5: recover of a landed wire that does not decode is svm/unreadable", async () => {
+    const wire = b64(V.ES5.landedWireBase64);
+    const ref = { network: V.ES5.ref.network, transaction: V.ES5.txid };
+    const short = svmReaderFor("finalized", landed(wire.subarray(0, wire.length - 1)), V.ES5.txid);
+    expect(await batchSvm.recover(ref, short)).toEqual(refused("svm/unreadable"));
+  });
 });
 
 // A decimal string is read by its value: the EVM deposit amount, validBefore and the Solana channel salt each go into
