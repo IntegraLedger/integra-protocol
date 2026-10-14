@@ -576,7 +576,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
 
   it("each row carries its input in exactly one member", () => {
     for (const r of rows) expect(inputOf(r), r.case).toHaveLength(1);
-    expect(rows.filter((r) => "configMembers" in r).map((r) => r.pairing)).toEqual(["x402/batch-settlement/eip155"]);
+    expect(rows.filter((r) => "configMembers" in r).map((r) => r.pairing)).toEqual(["x402/batch-settlement/eip155", "x402/batch-settlement/solana"]);
   });
 
   /** EB2 and EB3's opening, with its ERC-3009 and with a Permit2 deposit authorization. */
@@ -752,6 +752,45 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         expect(await runs["channel.ref"]!(), label).toEqual({ network: "eip155:84532", channel: id });
         expect("refused" in (unwrap(await runs["buildWithin"]!()) as object), label).toBe(false);
       }
+    }
+  });
+
+  // The payment-channels program's open refuses a grace_period of 0 (GracePeriodMustBeNonZero) and takes it as a u32
+  // (solana-foundation/payment-channels 0c07d5751c8972abf6a219570a3f39a72f46f879, the revision x402 751590a2 pins,
+  // program/payment_channels/src/instructions/open.rs L85, L116 and L267-269), and channelConfig.withdrawDelay is that
+  // grace_period (scheme_batch_settlement_svm.md L331 at x402 751590a2), so 1 and 2^32 - 1 are read. The delay is no
+  // seed of the channel PDA, so each configuration's channel is ES1's.
+  it("the Solana bound, reference, channel.ref and buildWithin refuse a withdrawDelay of 0 or 2^32, and read 1 and 2^32 - 1", async () => {
+    const configs = carrying("configMembers", 1, "x402/batch-settlement/solana");
+    expect(configs.map((r) => [r.calls, r.configMembers])).toEqual([
+      [["bound", "reference", "channel.ref", "buildWithin"], [{ withdrawDelay: 0 }, { withdrawDelay: 2 ** 32 }]],
+    ]);
+    const accepted = V.ES4.accepted as PaymentRequirements;
+    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
+    const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
+    const runsFor = (members: Record<string, unknown>): Record<string, () => Promise<unknown>> => {
+      const config = { ...V.ES4.config, ...members };
+      const opening = svmPayment({ type: "deposit", channelConfig: config, voucher, deposit: { amount: S.deposit, transaction: V.ES2.wireBase64 } });
+      return {
+        bound: () => batchSvm.bound(opening),
+        reference: () => batchSvm.reference(opening),
+        "channel.ref": () => batchSvm.channel.ref(opening),
+        buildWithin: () => batchSvm.buildWithin({ required, accepted, channelConfig: config, maxClaimableAmount: 1000n }, H),
+      };
+    };
+    for (const r of configs) {
+      for (const members of r.configMembers!) {
+        const runs = runsFor(members);
+        for (const call of r.calls!) expect(await runs[call]!(), `${call} ${JSON.stringify(members)}`).toEqual(refused(r.expect));
+      }
+    }
+    const asGiven = unwrap(await runsFor({})["reference"]!());
+    for (const withdrawDelay of [1, 2 ** 32 - 1]) {
+      const runs = runsFor({ withdrawDelay });
+      expect(await runs["bound"]!(), String(withdrawDelay)).toBe(H);
+      expect(await runs["reference"]!(), String(withdrawDelay)).toEqual(asGiven);
+      expect(await runs["channel.ref"]!(), String(withdrawDelay)).toEqual(V.ES4.expectRef);
+      expect("refused" in (unwrap(await runs["buildWithin"]!()) as object), String(withdrawDelay)).toBe(false);
     }
   });
 

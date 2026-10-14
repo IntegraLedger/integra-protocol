@@ -822,7 +822,7 @@
   "expectPairing": "x402/batch-settlement/cloudflare"
  },
  "agreedRefusals": {
-  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h. A row with pairing and calls runs each of those functions of that pairing on EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies. With depositAmount, deposit.amount is replaced by it. With validBeforeOrDeadline, the ERC-3009 authorization's validBefore, or the Permit2 authorization's deadline, is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set, and voucher.channelId is the channel id of the configuration that results; buildWithin runs with the advertised option, that configuration and EB2's maxClaimableAmount, under H. With refundAmounts, each value is the amount of a refund payload that carries the opening's channelConfig and voucher, one run per value. A row with pairing, call and zeroMembers runs that call once per member named, with that member the zero address: the EVM build of EB2 and EB3's opening, with from in its choice, or payTo or asset in fixed.evm.option, the zero address.",
+  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h; with zeroMembers, the EVM build of EB2 and EB3's opening once per member named, with that member the zero address: from in its choice, or payTo or asset in fixed.evm.option. A row with pairing and calls runs each of those functions of that pairing on an opening. On the EVM pairing it is EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies; buildWithin takes the advertised option and EB2's maxClaimableAmount. On the Solana pairing it is ES2's opening as ES4 presents it: ES4's config, a voucher for ES1's PDA, and ES2's wire as deposit.transaction; buildWithin takes the advertised Solana option and maxClaimableAmount 1000. With depositAmount, deposit.amount is replaced by it. With validBeforeOrDeadline, the ERC-3009 authorization's validBefore, or the Permit2 authorization's deadline, is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set; voucher.channelId is the channel id of the configuration that results, and buildWithin takes that configuration, under H. With refundAmounts, each value is the amount of a refund payload that carries the opening's channelConfig and voucher, one run per value.",
   "rows": [
    {
     "case": "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal, is 0, or is 2^128 or more",
@@ -1030,6 +1030,25 @@
      "340282366920938463463374607431768211456",
      "1e3",
      null
+    ],
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "Solana bound, reference, channel.ref or buildWithin with a channelConfig whose withdrawDelay is not from 1 to 2^32 - 1: 0, which the payment-channels program's open refuses (GracePeriodMustBeNonZero), or 2^32, one above the largest u32, the type of the grace_period it maps to (solana-foundation/payment-channels 0c07d5751c8972abf6a219570a3f39a72f46f879, the revision x402-foundation/x402 751590a2 pins in typescript/packages/mechanisms/svm/idl/payment-channels.source.json; program/payment_channels/src/instructions/open.rs L85, L116 and L267-269; scheme_batch_settlement_svm.md L331 at x402 751590a2)",
+    "pairing": "x402/batch-settlement/solana",
+    "calls": [
+     "bound",
+     "reference",
+     "channel.ref",
+     "buildWithin"
+    ],
+    "configMembers": [
+     {
+      "withdrawDelay": 0
+     },
+     {
+      "withdrawDelay": 4294967296
+     }
     ],
     "expect": "x402/payload-malformed"
    }

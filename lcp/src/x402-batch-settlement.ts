@@ -820,17 +820,26 @@ interface SvmChannelConfig {
 
 const U64_DECIMAL = /^[0-9]{1,20}$/;
 const U64_LIMIT = 1n << 64n;
+const U32_LIMIT = 2 ** 32;
 
+/**
+ * A Solana channel configuration: its keys, a decimal `u64` salt, an `openSlot` that is a safe integer of at least 0,
+ * and a `withdrawDelay` that is a positive integer below 2^32, as the payment-channels program's `grace_period` is a
+ * `u32` its `open` refuses as 0.
+ */
 function isSvmConfig(c: unknown): c is SvmChannelConfig {
   if (!isObject(c)) return false;
   const u64 = (v: unknown) => typeof v === "string" && U64_DECIMAL.test(v) && BigInt(v) < U64_LIMIT;
+  const delay = c["withdrawDelay"];
   return (
     isKey(c["payer"]) &&
     isKey(c["payerAuthorizer"]) &&
     isKey(c["receiver"]) &&
     (c["receiverAuthorizer"] === undefined || isKey(c["receiverAuthorizer"])) &&
     isKey(c["token"]) &&
-    Number.isSafeInteger(c["withdrawDelay"]) &&
+    Number.isInteger(delay) &&
+    (delay as number) >= 1 &&
+    (delay as number) < U32_LIMIT &&
     u64(c["salt"]) &&
     Number.isSafeInteger(c["openSlot"]) &&
     (c["openSlot"] as number) >= 0
@@ -864,7 +873,11 @@ function svmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
   return refusal("x402/channel-kind-unknown");
 }
 
-/** The channel PDA from a payment's config, which must equal its voucher's id and its channel instruction's account. */
+/**
+ * The channel PDA from a payment's config, which must equal its voucher's id and its channel instruction's account. A
+ * config that is not one (`isSvmConfig`), such as one whose `withdrawDelay` is not a positive integer below 2^32, is
+ * `x402/payload-malformed`.
+ */
 async function svmRef(p: unknown): Promise<{ network: string; channel: string } | Refusal> {
   const x = payloadOf(p, SVM_ID);
   if (isRefusal(x)) return x;
