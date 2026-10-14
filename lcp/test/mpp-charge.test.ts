@@ -562,6 +562,21 @@ function wireT(calldata: string): Uint8Array {
 }
 
 describe("mpp-charge-tempo-memo.json", () => {
+  // The splits rows are the buyer gate's (the Tempo pairings here read no splits): each replaces only
+  // methodDetails.splits of the splits request, whose primary amount is amount minus the splits' sum (draft-tempo-charge-00
+  // L233). The last row's splits is present and null: present, so not the absent case, and not a list of entries.
+  it("splits: the request leaves the primary its remainder, and each refusal row gives a present splits", () => {
+    const r = JSON.parse(M.splits.request);
+    const sum = (r.methodDetails.splits as { amount: string }[]).reduce((t, x) => t + BigInt(x.amount), 0n);
+    expect((BigInt(r.amount) - sum).toString()).toBe(M.splits.expectPrimaryAmount);
+    const rows = M.splits.agreedRefusals.rows as { case: string; splits: unknown; expect: string }[];
+    for (const row of rows) {
+      expect("splits" in row, row.case).toBe(true);
+      expect(row.expect, row.case).toMatch(/^mpp\/(splits|input)-malformed$/);
+    }
+    expect(rows.at(-1)).toEqual({ case: "splits present and null", splits: null, expect: "mpp/splits-malformed" });
+  });
+
   const ch = placedOf(C_T);
   const memo = M.MV7.expectMemo;
 

@@ -105,7 +105,7 @@
    }
   ],
   "agreedRefusals": {
-   "about": "Refusal codes the specification leaves to the implementation, as the buyer gate applies them to a Tempo challenge's splits.",
+   "about": "The splits rules of the Tempo charge draft (draft-tempo-charge-00 at 08e7dd87), as the buyer gate applies them to a Tempo challenge's splits before any fetch, each with this package's refusal code: a client rejects a request whose splits sum to amount or more (L255-258); splits, if present, contains at least 1 entry (L263), so a present splits that is not a list of entries, null included, is malformed; each splits[i].amount is greater than zero (L247-248); a split's recipient is an address (L244) and its memo a bytes32 hex value (L243, L248-250). The draft's servers SHOULD limit splits to 10 entries (L263-267), the bound the gate applies to the eleven-split row.",
    "rows": [
     {
      "case": "splits summing to amount (1000000)",
@@ -201,6 +201,11 @@
        "recipient": "0xA1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2"
       }
      ],
+     "expect": "mpp/splits-malformed"
+    },
+    {
+     "case": "splits present and null",
+     "splits": null,
      "expect": "mpp/splits-malformed"
     }
    ]
