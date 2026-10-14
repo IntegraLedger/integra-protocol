@@ -79,8 +79,8 @@ export interface ViUnsigned {
   transactionId: string;
 }
 
-export interface CardPairing<Id extends CardPairingId, U> {
-  id: Id;
+export interface CardPairing<PairingId extends CardPairingId, U> {
+  id: PairingId;
   pattern: LcpPattern;
   claims: boolean;
   unplaced(option: CardOption): CardOption | Refusal;

@@ -59,7 +59,8 @@ node scripts/docs-reference.mjs --check
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.
 - `node scripts/check-pages.mjs --out website/out`, after the site's build, checks that every link on the site has a
-  name: its text, a non-empty `aria-label`, `aria-labelledby` or `title`, or the `alt` of an image inside it.
+  name: its text, a non-empty `aria-label`, `aria-labelledby` or `title`, or the `alt` of an image inside it. It also
+  checks that every link to a fragment of a page on the site, `#x` or `/path#x`, finds an element with that id there.
 
 CI runs the commands in the block above and the rest of `.github/workflows/ci.yml` on every push to `main` and when
 dispatched by hand. No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change

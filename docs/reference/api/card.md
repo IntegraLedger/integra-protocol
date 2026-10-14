@@ -26,7 +26,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 | Type Parameter |
 | ------ |
-| `Id` *extends* [`CardPairingId`](#cardpairingid-1) |
+| `PairingId` *extends* [`CardPairingId`](#cardpairingid) |
 | `U` |
 
 #### Properties
@@ -34,7 +34,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 | Property | Type |
 | ------ | ------ |
 | <a id="property-claims"></a> `claims` | `boolean` |
-| <a id="property-id"></a> `id` | `Id` |
+| <a id="property-id"></a> `id` | `PairingId` |
 | <a id="property-pattern"></a> `pattern` | [`LcpPattern`](x402.md#lcppattern) |
 | <a id="property-tie"></a> `tie` | (`options`) => \[`"card"`, \{ `options`: readonly [`CardOption`](#cardoption)[]; \}\] |
 
