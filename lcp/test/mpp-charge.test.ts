@@ -809,6 +809,29 @@ describe("mpp-charge-tempo-memo.json splits.expectCalls", () => {
     );
   });
 
+  // Each call's data is eth-abi 6.0.0's transferWithMemo(address,uint256,bytes32) or transfer(address,uint256) of its
+  // recipient, amount and memo, the primary's memo being MV7.expectMemo; viem 2.57.4's encodeFunctionData re-derives each.
+  it("the calls are byte for byte eth-abi's and viem's transferWithMemo and transfer calldata of each recipient, amount and memo", () => {
+    const abi = parseAbi([
+      "function transferWithMemo(address to, uint256 amount, bytes32 memo)",
+      "function transfer(address to, uint256 amount)",
+    ]);
+    expect(transfers[0]!.memo).toBe(M.MV7.expectMemo);
+    const memos: (ViemHex | undefined)[] = [M.MV7.expectMemo, ...splits.map((s) => s.memo)];
+    const encoded = transfers.map((t, i) => {
+      const memo = memos[i];
+      const to = t.to.toLowerCase() as ViemHex;
+      return {
+        to: r.currency,
+        data:
+          memo === undefined
+            ? encodeFunctionData({ abi, functionName: "transfer", args: [to, t.amount] })
+            : encodeFunctionData({ abi, functionName: "transferWithMemo", args: [to, t.amount, memo] }),
+      };
+    });
+    expect(encoded).toEqual(calls);
+  });
+
   const withMemo = rowsOf(calls, "mpp-charge-tempo-memo.json splits.expectCalls", {
     keep: ["the transferWithMemo calls", (c) => c.data.startsWith(TRANSFER_WITH_MEMO_SELECTOR)],
     leave: ["the transfer call of the split without a memo, which no export of the package builds", (c) => c.data.startsWith(transferSelector)],
