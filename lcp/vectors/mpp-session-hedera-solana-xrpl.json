@@ -417,12 +417,14 @@
   ]
  },
  "XS1": {
+  "case": "xrplChannelId(account, destination, sequence): the PayChannel ledger entry's ID, the SHA-512Half of the PayChannel space key 0x0078, the source's AccountID, the destination's AccountID and the Sequence of the PaymentChannelCreate (xrpl.org, PayChannel, \"PayChannel ID Format\": docs/references/protocol/ledger-data/ledger-entry-types/paychannel.md L97-103 at XRPLF/xrpl-dev-portal 1a22a493; rippled src/libxrpl/protocol/Indexes.cpp L99, L131-135 and L437-441 and include/xrpl/protocol/digest.h L152-166 and L212-221 at XRPLF/rippled 791c96fa, which hash the space as a big-endian UInt16 and the sequence as a big-endian UInt32). No tool on this box computes a PayChannel id, so expect is computed by hand: node:crypto's SHA-512 of those 46 bytes, its first 32 bytes, each AccountID from ripple-binary-codec 2.11.0's AccountID type; Python 3.12.3's hashlib with a hand base58 decoding agrees.",
   "account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "destination": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
   "sequence": 382,
   "expect": "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7"
  },
  "XS2": {
+  "case": "XS2's opening: a PaymentChannelCreate from account, the payer of Ed25519 entropy 01x16, to SS1's xrpl recipient, of deposit drops, with settleDelay, fee, sequence and lastLedgerSequence, and one memo whose MemoData is the UTF-8 of toLcpString(H), signed by the payer. The tool that wrote the blob is not recorded with it, so its fields are written here by hand: expectTxJson, from xrpl.org's PaymentChannelCreate (docs/references/protocol/transactions/types/paymentchannelcreate.md L38-45) and Transaction Common Fields (docs/references/protocol/transactions/common-fields.md L10-30 and L110-116) at XRPLF/xrpl-dev-portal 1a22a493, with these values. build's request.txJson is expectTxJson, and the blob's fields other than SigningPubKey and TxnSignature, as ripple-binary-codec 2.11.0 decodes them, are expectTxJson. The blob is reproduced byte for byte from expectTxJson: the payer's key is derived from the entropy by xrpl.org's Ed25519 Key Derivation (docs/concepts/accounts/cryptographic-keys.md L162-176, node:crypto's SHA-512Half and @noble/curves 2.4.0), its signature is @noble/curves' Ed25519 over ripple-binary-codec's encodeForSigning, and the blob is ripple-binary-codec's encode with SigningPubKey and TxnSignature. ripple-binary-codec is the peer lcp reads blobs with; build writes txJson without it. expectChannel is XS1's formula for account, SS1's xrpl recipient and sequence, computed by hand as XS1's is.",
   "blob": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
   "expectLength": 306,
   "expectHash": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
@@ -435,7 +437,26 @@
   "sequence": 7,
   "lastLedgerSequence": 1000,
   "cancelAfter": 533171558,
-  "expectUntil": 1479856358
+  "expectUntil": 1479856358,
+  "expectTxJson": {
+   "TransactionType": "PaymentChannelCreate",
+   "Flags": 0,
+   "Sequence": 7,
+   "LastLedgerSequence": 1000,
+   "SettleDelay": 3600,
+   "Amount": "1000000",
+   "Fee": "12",
+   "PublicKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
+   "Account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "Destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+   "Memos": [
+    {
+     "Memo": {
+      "MemoData": "6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+     }
+    }
+   ]
+  }
  },
  "XS3": {
   "drops": "100",

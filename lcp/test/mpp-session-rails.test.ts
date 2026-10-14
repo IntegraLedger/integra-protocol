@@ -21,7 +21,8 @@ import {
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
-import { decode as decodeXrpl, encode as encodeXrpl } from "ripple-binary-codec";
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { coreTypes, decode as decodeXrpl, encode as encodeXrpl, encodeForSigning } from "ripple-binary-codec";
 import { encodeAbiParameters, encodeFunctionData, hashTypedData, keccak256, parseAbi, parseAbiParameters, type Hex as ViemHex } from "viem";
 import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/index.js";
 import type { EvmReceipt } from "../src/evm.js";
@@ -503,6 +504,15 @@ describe("mpp/session/solana", () => {
   });
 });
 
+/** The PayChannel ledger entry's ID, by hand: SHA-512Half of 0x0078 ‖ AccountID ‖ AccountID ‖ the sequence, big-endian. */
+function payChannelId(account: string, destination: string, sequence: number): string {
+  const accountId = (a: string) => Uint8Array.from(coreTypes.AccountID!.from(a).toBytes());
+  const seq = new Uint8Array(4);
+  new DataView(seq.buffer).setUint32(0, sequence, false);
+  const space = Uint8Array.of(0x00, 0x78);
+  return createHash("sha512").update(Buffer.concat([space, accountId(account), accountId(destination), seq])).digest().subarray(0, 32).toString("hex").toUpperCase();
+}
+
 describe("mpp/session/xrpl", () => {
   const open = (transaction: string) => cred(C_X, { action: "open", transaction, amount: "100", signature: "00" });
   const reader = (landed: XrplLanded | { notFound: true; searchedAll: boolean }, blob: string | null = null): XrplReader => ({
@@ -512,7 +522,11 @@ describe("mpp/session/xrpl", () => {
     validatedLedger: async () => 1000,
   });
 
-  it("XS1: the channel id", () => {
+  // XS1's id is computed by hand from the XRPL specification: SHA-512Half of the PayChannel space key 0x0078, the two
+  // AccountIDs and the sequence as a big-endian UInt32 (xrpl.org, "PayChannel ID Format"; rippled Indexes.cpp L437-441
+  // at 791c96fa), with node:crypto and ripple-binary-codec's AccountID; xrplChannelId is held to it.
+  it("XS1: the channel id, as the PayChannel ID format computes it by hand", () => {
+    expect(payChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
     expect(xrplChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
   });
 
@@ -674,7 +688,16 @@ describe("mpp/session/xrpl", () => {
     );
   });
 
-  it("build gives XS2's decoded fields other than the signature; the first claim is XS3's", async () => {
+  // XS2's expectTxJson is written by hand from xrpl.org's PaymentChannelCreate and common fields. The blob is reproduced
+  // here from it: the payer's key from entropy 01x16 by xrpl.org's Ed25519 Key Derivation (node:crypto's SHA-512Half),
+  // @noble/curves' signature over ripple-binary-codec's encodeForSigning, and ripple-binary-codec's encode.
+  it("build's txJson is XS2's fields as written by hand, which reproduce the blob, and its channel is the PayChannel ID by hand; the first claim is XS3's", async () => {
+    const secret = createHash("sha512").update(new Uint8Array(16).fill(1)).digest().subarray(0, 32);
+    const signing = { ...V.XS2.expectTxJson, SigningPubKey: `ED${hex(ed25519.getPublicKey(secret)).toUpperCase()}` };
+    const signature = hex(ed25519.sign(Buffer.from(encodeForSigning(signing), "hex"), secret)).toUpperCase();
+    expect(encodeXrpl({ ...signing, TxnSignature: signature })).toBe(V.XS2.blob);
+    const recipient = JSON.parse(Buffer.from(V.SS1.xrpl.challenge.request, "base64url").toString("utf8")).recipient;
+    expect(payChannelId(V.XS2.account, recipient, V.XS2.sequence)).toBe(V.XS2.expectChannel);
     const u = await sessionXrpl.build(
       {
         challenge: C_X,
@@ -695,7 +718,8 @@ describe("mpp/session/xrpl", () => {
     const decoded = decodeXrpl(V.XS2.blob) as Record<string, unknown>;
     delete decoded["SigningPubKey"];
     delete decoded["TxnSignature"];
-    expect(u.request.txJson).toEqual(decoded);
+    expect(decoded).toEqual(V.XS2.expectTxJson);
+    expect(u.request.txJson).toEqual(V.XS2.expectTxJson);
     expect(u.request.claim.channelId).toBe(V.XS2.expectChannel);
     expect(hex(u.request.claim.bytes).toUpperCase()).toBe(V.XS3.expect);
     expect(hex(xrplClaim(V.XS2.expectChannel, BigInt(V.XS3.drops)) as Uint8Array).toUpperCase()).toBe(V.XS3.expect);
