@@ -71,8 +71,8 @@ npm install @integraledger/lcp
 The package is ESM only, with type declarations for every entry point. Its three dependencies are `@noble/curves`,
 `@noble/hashes` and `@scure/base`.
 
-Some rails parse their wire formats with the rail's own library. Those libraries are optional peer dependencies:
-install the one for each rail you use, at a version in the range the package names.
+Some rails parse or write their wire formats with the rail's own library. Those libraries are optional peer
+dependencies: install the one for each rail you use, at a version in the range the package names.
 
 | Rail | Install | Used by |
 |---|---|---|

@@ -110,7 +110,7 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | Sui | `sui` | `x402/exact/sui` | One `Pure` input, H's 32 bytes, that no command uses. |
 | Tron | `tron` | `x402/exact/tron/lcp-trc20-memo` | The TRC-20 transfer's memo, `raw_data.data`: H's LCP string. |
 | TON | `tvm` | `x402/exact/tvm` | The Jetton transfer's forward payload: a TEP-74 text comment holding H's LCP string. |
-| Stacks | `stacks` | `mpp/charge/usdc/stacks` | The SIP-010 `transfer`'s memo: H's 32 bytes. |
+| Stacks | `stacks` | `mpp/charge/usdc/stacks` | The SIP-010 `transfer`'s memo: H's 32 bytes. The signed transaction is read as a Stacks node decodes it: bytes a node does not decode and serialize back to themselves are `mpp/stacks-tx-malformed`. |
 | Lightning | `lightning` | `x402/exact/lnbtc` | The BOLT11 invoice's `m` field, which the seller's node signs. The invoice calls of LND v0.21.4 and Core Lightning v26.06.8 write no `m`, so a seller on either uses `x402/exact/lnbtc/invoice-named`. |
 | | | `x402/exact/lnbtc/invoice-named` | Nothing in the invoice: the ATR's `x402` slot names the invoice instead. The buyer's `build` reads that slot only from an ATR whose first members are `atrVersion`, `id` and `x402` and whose top-level member names do not repeat; inside the slot, a repeated member name reads as `JSON.parse` reads it, the last one counting. |
 | | | `mpp/charge/lightning`, `mpp/session/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
@@ -120,8 +120,8 @@ states the rail's rules clause by clause.
 
 ## Peer dependencies
 
-Some rails parse their wire formats with the rail's own library, which the package declares as an optional peer
-dependency. Install the one for each rail you use:
+Some rails parse or write their wire formats with the rail's own library, which the package declares as an optional
+peer dependency. Install the one for each rail you use:
 
 | Rail | Install |
 |---|---|

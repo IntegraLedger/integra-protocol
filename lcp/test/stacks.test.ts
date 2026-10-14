@@ -114,9 +114,10 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     }
   });
 
-  // SIP-005 writes a contract call's function name as a length byte and its bytes. @stacks/transactions 7.6.0 decodes
-  // it with TextDecoder's default, which removes a leading U+FEFF, so EF BB BF then "transfer" reads as "transfer";
-  // written back, the name is three bytes shorter, so the transaction does not re-serialise to its own bytes.
+  // SIP-005 writes a contract call's function name as a length byte and its bytes, which stacks-core 4.0.5 reads as a
+  // Clarity name (clarity-types/src/representations.rs:96-116): EF BB BF then "transfer" is not one, so no Stacks node
+  // decodes the transaction. @stacks/transactions 7.6.0 reads the same bytes as "transfer", its TextDecoder's default
+  // removing a leading U+FEFF.
   it("bound and reference refuse a call of transfer led by a byte-order mark, another function", async () => {
     const whole = Buffer.from(await withMemo()).toString("hex");
     const name = `08${Buffer.from("transfer").toString("hex")}`;
@@ -128,9 +129,11 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     expect(await chargeUsdcStacks.reference(credential(led))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
   });
 
-  // SIP-005: a multisig spending condition's public-key field holds a secp256k1 point: compressed (0x02 or 0x03 and
-  // its x) or, after 0x04, its x and y. Where x^3 + 7 has no square root modulo the field prime (SEC 2, 2.4.1), no
-  // point has that x, whatever the y, and the transaction does not decode and re-serialise to the same bytes.
+  // A multisig spending condition's public-key field holds 33 bytes, a compressed secp256k1 point (0x02 or 0x03 and
+  // its x), which stacks-core 4.0.5 parses (stacks-common/src/types/mod.rs:54-73); the condition holds exactly the
+  // signatures it requires (stacks-codec/src/transaction.rs:852). Where x^3 + 7 has no square root modulo the field
+  // prime (SEC 2, 2.4.1), no point has that x, and an uncompressed spelling (0x04, x and y) is not 33 bytes of a
+  // compressed point: neither is a transaction a Stacks node decodes.
   it("bound and reference refuse a multisig transaction whose key field is not a point on the curve", async () => {
     const [address, name] = F.contract.split(".");
     const publicKey = S.privateKeyToPublic(KEY) as string;
@@ -154,7 +157,10 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     });
     tx.anchorMode = S.AnchorMode.OnChainOnly;
     const condition = tx.auth.spendingCondition as { fields: unknown[] };
-    condition.fields = [S.createTransactionAuthField(S.PubKeyEncoding.Compressed, S.createStacksPublicKey(publicKey))];
+    condition.fields = [
+      S.createTransactionAuthField(S.PubKeyEncoding.Compressed, S.createStacksPublicKey(publicKey)),
+      S.createTransactionAuthField(S.PubKeyEncoding.Compressed, S.createMessageSignature("00".repeat(65))),
+    ];
     const multisig = S.serializeTransactionBytes(tx);
     expect(await chargeUsdcStacks.bound(credential(multisig))).toBe(V.M4.expectBound);
 
@@ -338,6 +344,313 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
         });
       }
     }
+  });
+
+  // stacks-core 4.0.5 (stacks-network/stacks-core d736ba0) reads a transaction with
+  // `StacksTransaction::consensus_deserialize` (stacks-codec/src/transaction.rs:3078) and names it by the hash of its
+  // serialization; each test cites the rule it reads, and each answer here is that deserializer's, run on these bytes.
+  // A transaction it decodes and serializes back to the same bytes binds H when it calls `transfer` with (some H) as
+  // its fourth argument, else is `mpp/stacks-memo-not-h`; any other bytes are `mpp/stacks-tx-malformed`. Each
+  // transaction is M4's with one part replaced, written as the serialization writes it; none is signed again.
+  describe("transactions as stacks-core 4.0.5 decodes them", () => {
+    const m4 = V.M4.wireHex.slice(2);
+    /** M4's bytes from offset `a` to `b`, as hex. */
+    const at = (a: number, b?: number) => m4.slice(2 * a, b === undefined ? undefined : 2 * b);
+    const word = (n: bigint | number, bytes: number) => BigInt(n).toString(16).padStart(2 * bytes, "0");
+    const ascii = (s: string) => Buffer.from(s, "latin1").toString("hex");
+    /** A length byte and the name's bytes. */
+    const name = (s: string) => word(s.length, 1) + ascii(s);
+    const int = (n: number) => `00${word(n, 16)}`;
+    const uint = (n: number) => `01${word(n, 16)}`;
+    const buff = (len: number) => `02${word(len, 4)}${"41".repeat(len)}`;
+    const some = (v: string) => `0a${v}`;
+    const list = (items: string[]) => `0b${word(items.length, 4)}${items.join("")}`;
+    const tuple = (entries: [string, string][]) => `0c${word(entries.length, 4)}${entries.map(([k, v]) => name(k) + v).join("")}`;
+    const repeat = (n: number, v: string) => Array.from({ length: n }, () => v);
+    // M4: its header up to the anchor mode (109 bytes), the anchor and post-condition modes, the post-condition count
+    // and its one post-condition (to byte 186); then the contract call: type, address (21), contract name (1 + 5),
+    // function name (1 + 8), argument count (4), and the four arguments, the amount at 227 and (some H) at 288.
+    const sender = at(117, 138); // the post-condition's principal: version and hash160
+    const contract = at(138, 159); // the asset's contract address
+    const signer = at(7, 27);
+    const first = (v: string) => at(0, 227) + v + at(244);
+    const fourth = (v: string) => at(0, 288) + v;
+    const payload = (p: string) => at(0, 186) + p;
+    const anchored = (mode: string, p: string) => at(0, 109) + mode + at(110, 186) + p;
+    const postCondition = (pc: string, mode = "02") => at(0, 110) + mode + "00000001" + pc + at(186);
+    const authorization = (a: string) => at(0, 5) + a + at(109);
+    const amount = word(1_000_000, 8);
+    const H = V.M4.expectBound;
+    const malformed = { refused: true, code: "mpp/stacks-tx-malformed" };
+    const notH = { refused: true, code: "mpp/stacks-memo-not-h" };
+    /** Each case's bound beside its label, and the expected answers beside theirs. */
+    const check = async (cases: [string, string, unknown][]) => {
+      const got: [string, unknown][] = [];
+      for (const [label, text] of cases) got.push([label, await chargeUsdcStacks.bound(credential(Buffer.from(text, "hex")))]);
+      expect(got).toEqual(cases.map(([label, , want]) => [label, want]));
+    };
+
+    // A tuple has members (clarity-types/src/types/mod.rs:1855-1870), named by Clarity names of at most 128 characters
+    // (clarity-types/src/representations.rs:51-56, serialization.rs:233-252), which the serialization writes in name
+    // order as bytes (serialization.rs:1185-1193), so a node writes {a, B} back as {B, a}.
+    it("a tuple has members, each named once by a Clarity name, in name order as bytes", async () => {
+      expect([at(186, 187), at(227, 244), at(288)]).toEqual(["02", uint(1_000_000), `0a0200000020${F.H.slice(2)}`]);
+      await check([
+        ["{B, a}", first(tuple([["B", int(1)], ["a", int(2)]])), H],
+        ["{a-b, a_b}", first(tuple([["a-b", int(1)], ["a_b", int(2)]])), H],
+        ["{a, aa}", first(tuple([["a", int(1)], ["aa", int(2)]])), H],
+        ["{<, <=, =, >, >=}", first(tuple([["<", int(1)], ["<=", int(2)], ["=", int(3)], [">", int(4)], [">=", int(5)]])), H],
+        ["a name of 128 characters", first(tuple([["a".repeat(128), int(1)]])), H],
+        ["the empty tuple", first(tuple([])), malformed],
+        ["(some <the empty tuple>)", first(some(tuple([]))), malformed],
+        ["{a, B}", first(tuple([["a", int(2)], ["B", int(1)]])), malformed],
+        ["{a_b, a-b}", first(tuple([["a_b", int(2)], ["a-b", int(1)]])), malformed],
+        ["{a, a}", first(tuple([["a", int(1)], ["a", int(2)]])), malformed],
+        ["a name of 129 characters", first(tuple([["a".repeat(129), int(1)]])), malformed],
+        ["the name 1a", first(tuple([["1a", int(1)]])), malformed],
+      ]);
+    });
+
+    // A list's type is its items' least common type (mod.rs:1149-1155; signatures.rs:1130-1281, :1336-1401): `none`
+    // takes the type of a (some …), an ok and an err response combine, a tuple keeps the first's members if each is in
+    // the next, an empty list takes the other's items; other types only when equal.
+    it("a list's items have a least common type", async () => {
+      await check([
+        ["(none (some 1))", first(list(["09", some(int(1))])), H],
+        ["((ok 1) (err u1))", first(list([`07${int(1)}`, `08${uint(1)}`])), H],
+        ["({a 1} {a 2, b 3})", first(list([tuple([["a", int(1)]]), tuple([["a", int(2)], ["b", int(3)]])])), H],
+        ["((list) (list 1))", first(list([list([]), list([int(1)])])), H],
+        ["(0x41 0x4141)", first(list([buff(1), buff(2)])), H],
+        ["(1 u1)", first(list([int(1), uint(1)])), malformed],
+        ["(1 none)", first(list([int(1), "09"])), malformed],
+        ["((some 1) (some u1))", first(list([some(int(1)), some(uint(1))])), malformed],
+        ["({a 1, b 3} {a 2})", first(list([tuple([["a", int(1)], ["b", int(3)]]), tuple([["a", int(2)]])])), malformed],
+        ["((list 1) (list u1))", first(list([list([int(1)]), list([uint(1)])])), malformed],
+        ["(0x41 \"A\")", first(list([buff(1), `0d${word(1, 4)}41`])), malformed],
+      ]);
+    });
+
+    // A string-ascii holds alphanumeric, punctuation and whitespace bytes (Rust's ASCII classes: space, tab, newline,
+    // form feed, carriage return) and no others (mod.rs:1202-1214).
+    it("a string-ascii holds alphanumeric, punctuation and whitespace bytes only", async () => {
+      const text = (byte: number) => first(`0d${word(3, 4)}61${word(byte, 1)}62`);
+      await check([
+        ...[0x09, 0x0a, 0x0c, 0x0d, 0x20, 0x21, 0x7e].map((b): [string, string, unknown] => [`byte 0x${word(b, 1)}`, text(b), H]),
+        ...[0x00, 0x0b, 0x1f, 0x7f, 0x80, 0xff].map((b): [string, string, unknown] => [`byte 0x${word(b, 1)}`, text(b), malformed]),
+      ]);
+    });
+
+    // A string-utf8 is well-formed UTF-8 (mod.rs:1261-1279, Rust's str::from_utf8), its bytes kept as they are: a
+    // byte-order mark is a character like any other.
+    it("a string-utf8 is well-formed UTF-8, a byte-order mark included", async () => {
+      const text = (bytes: string) => first(`0e${word(bytes.length / 2, 4)}${bytes}`);
+      await check([
+        ["a byte-order mark", text("efbbbf61"), H],
+        ["é", text("c3a9"), H],
+        ["U+10FFFF", text("f48fbfbf"), H],
+        ["a lone continuation byte", text("80"), malformed],
+        ["an overlong /", text("c0af"), malformed],
+        ["the surrogate U+D800", text("eda080"), malformed],
+        ["past U+10FFFF", text("f4908080"), malformed],
+        ["a truncated character", text("e282"), malformed],
+      ]);
+    });
+
+    // A value's type is at most MAX_VALUE_SIZE, 1,048,576 bytes (mod.rs:48): a list's type is its length times its
+    // item type's size plus a few bytes (signatures.rs:1553-1600), a buffer's or string-ascii's its length plus 4, a
+    // string-utf8's 4 a character plus 4, a tuple's its members' and their names' plus 2 a member and its type's own,
+    // and (some …), (ok …) and (err …) add 1 to the value's (mod.rs:1002-1063).
+    it("a value's type is at most 1,048,576 bytes", async () => {
+      const buffers = (n: number, longest: number) => list([buff(longest), ...repeat(n - 1, buff(0))]);
+      const utf8 = (n: number, characters: number) => list([`0e${word(2 * characters, 4)}${"c3a9".repeat(characters)}`, ...repeat(n - 1, `0e${word(0, 4)}`)]);
+      // 269 one-member tuples {key <buffer>}, the longest `longest` bytes: 269 × (longest + 13 + 2k) + 12 + k bytes for
+      // a key of k characters.
+      const tuples = (longest: number, key = "kk") => list([tuple([[key, buff(longest)]]), ...repeat(268, tuple([[key, buff(0)]]))]);
+      await check([
+        ["200 buffers, the longest 5,238 bytes: 1,048,410", first(buffers(200, 5238)), H],
+        ["200 buffers, the longest 5,239 bytes: 1,048,610", first(buffers(200, 5239)), malformed],
+        ["200 string-utf8, the longest 1,309 characters: 1,048,010", first(utf8(200, 1309)), H],
+        ["200 string-utf8, the longest 1,310 characters: 1,048,810", first(utf8(200, 1310)), malformed],
+        ["269 tuples: 1,048,576", first(tuples(3881)), H],
+        ["(some …) of 1,048,576", first(some(tuples(3881))), malformed],
+        ["(ok …) of 1,048,576", first(`07${tuples(3881)}`), malformed],
+        ["(some …) of 1,048,575", first(some(tuples(3883, "k"))), H],
+        ["{a <1,048,575>}", first(tuple([["a", tuples(3883, "k")]])), malformed],
+      ]);
+    });
+
+    // A principal in a value has a version below 32 (mod.rs:106-111) and a contract principal's name is a contract
+    // name of at most 128 characters: a letter, then letters, digits, - and _, or __transient
+    // (representations.rs:36-60, serialization.rs:233-252).
+    it("a principal in a value has a version below 32 and a contract name of up to 128 characters", async () => {
+      const principal = (n: string) => `06${sender}${name(n)}`;
+      await check([
+        ["a name of 41 characters", first(principal("a".repeat(41))), H],
+        ["a name of 128 characters", first(principal("a".repeat(128))), H],
+        ["__transient", first(principal("__transient")), H],
+        ["version 31", first(`051f${sender.slice(2)}`), H],
+        ["a name of 129 characters", first(principal("a".repeat(129))), malformed],
+        ["a name starting with a digit", first(principal("1abc")), malformed],
+        ["a name holding a dot", first(principal("a.b")), malformed],
+        ["version 32", first(`0520${sender.slice(2)}`), malformed],
+      ]);
+    });
+
+    // A contract call names an address of version below 32 (stacks-common/src/types/chainstate.rs:383-395), a contract
+    // name of 1 to 40 characters (representations.rs:138-160) and a function by its Clarity name (:96-116)
+    // (stacks-codec/src/transaction.rs:2114-2135).
+    it("a contract call names its contract by an address below version 32 and a name of 1 to 40 characters, and its function by a Clarity name", async () => {
+      const call = (address: string, contractName: string, fn: string) => payload(`02${address}${name(contractName)}${name(fn)}${at(223)}`);
+      const address = at(187, 208);
+      await check([
+        ["the contract __transient", call(address, "__transient", "transfer"), H],
+        ["a contract name of 40 characters", call(address, `Token_A-${"x".repeat(32)}`, "transfer"), H],
+        ["address version 31", call(`1f${address.slice(2)}`, "usdcx", "transfer"), H],
+        ["a function transfer-memo", call(address, "usdcx", "transfer-memo"), notH],
+        ["a contract name of 41 characters", call(address, "a".repeat(41), "transfer"), malformed],
+        ["an empty contract name", call(address, "", "transfer"), malformed],
+        ["a contract name starting with a digit", call(address, "1abc", "transfer"), malformed],
+        ["address version 32", call(`20${address.slice(2)}`, "usdcx", "transfer"), malformed],
+        ["the function !", call(address, "usdcx", "!"), malformed],
+        ["the function 1a", call(address, "usdcx", "1a"), malformed],
+        ["an empty function name", call(address, "usdcx", ""), malformed],
+      ]);
+    });
+
+    // A smart contract names a Clarity version from 1 to 7 when versioned (transaction.rs:2825-2842), a contract name
+    // of 1 to 40 characters, and code of printable ASCII, tab and newline (stacks-codec/src/strings.rs:63-112).
+    it("a smart contract's Clarity version is 1 to 7, and its code printable ASCII, tab and newline", async () => {
+      const code = (text: string) => `${word(text.length, 4)}${ascii(text)}`;
+      const ok = code("(define-data-var a\tint\n1)");
+      await check([
+        ["Clarity version 7", payload(`0607${name("hello")}${ok}`), notH],
+        ["Clarity version 1", payload(`0601${name("hello")}${ok}`), notH],
+        ["unversioned, tab and newline", payload(`01${name("hello")}${ok}`), notH],
+        ["Clarity version 8", payload(`0608${name("hello")}${ok}`), malformed],
+        ["Clarity version 0", payload(`0600${name("hello")}${ok}`), malformed],
+        ["a carriage return", payload(`01${name("hello")}${code("(a)\r")}`), malformed],
+        ["the byte 0x7f", payload(`01${name("hello")}${code("(a)\x7f")}`), malformed],
+        ["the byte 0x80", payload(`01${name("hello")}${code("(a)\x80")}`), malformed],
+        ["a contract name of 41 characters", payload(`0603${name("a".repeat(41))}${ok}`), malformed],
+      ]);
+    });
+
+    // A coinbase (payload types 4, 5 and 8) and a poisoned microblock (3) are anchored on chain only
+    // (transaction.rs:3115-3135).
+    it("a coinbase and a poisoned microblock are anchored on chain only", async () => {
+      const coinbase = `04${"12".repeat(32)}`;
+      await check([
+        ["a coinbase on chain", anchored("01", coinbase), notH],
+        ["a coinbase, any anchor mode", anchored("03", coinbase), malformed],
+        ["a coinbase off chain", anchored("02", coinbase), malformed],
+        ["a pay-to-alt coinbase, any anchor mode", anchored("03", `05${"12".repeat(32)}05${sender}`), malformed],
+      ]);
+    });
+
+    // A poisoned-microblock payload holds two microblock headers that differ and share a sequence number or a parent
+    // block (transaction.rs:2942-2962), each signed with a recoverable secp256k1 signature: a recovery id from 0 to 3,
+    // r and s below the group order (:2563-2584; stacks-common/src/util/secp256k1/native.rs:104-115).
+    it("a poisoned-microblock payload holds two headers that differ and share a sequence number or a parent", async () => {
+      const n = "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141";
+      const header = (sequence: number, parent: string, root: string, sig = `00${word(1, 32)}${word(1, 32)}`) =>
+        `00${word(sequence, 2)}${parent.repeat(32)}${root.repeat(32)}${sig}`;
+      const poison = (a: string, b: string) => payload(`03${a}${b}`);
+      const h = header(1, "21", "31");
+      await check([
+        ["roots differ", poison(h, header(1, "21", "32")), notH],
+        ["sequences differ", poison(h, header(2, "21", "31")), notH],
+        ["s one below the group order", poison(h, header(1, "21", "32", `00${word(1, 32)}${(BigInt(`0x${n}`) - 1n).toString(16)}`)), notH],
+        ["the same header twice", poison(h, h), malformed],
+        ["sequence and parent differ", poison(h, header(2, "22", "31")), malformed],
+        ["recovery id 4", poison(h, header(1, "21", "32", `04${word(1, 32)}${word(1, 32)}`)), malformed],
+        ["r the group order", poison(h, header(1, "21", "32", `00${n}${word(1, 32)}`)), malformed],
+        ["any anchor mode", anchored("03", `03${h}${header(1, "21", "32")}`), malformed],
+      ]);
+    });
+
+    // A Nakamoto coinbase's VRF proof parses (stacks-common/src/util/vrf.rs:281-351): Gamma, its first 32 bytes, the
+    // canonical encoding of an Edwards25519 point (RFC 8032 5.1.3) not of small order; c, 16 bytes; s, 32 bytes, a
+    // scalar below the group order L (RFC 8032 5.1). The proof is stacks-core's own Nakamoto coinbase test's
+    // (transaction.rs:3767-3778).
+    it("a Nakamoto coinbase's VRF proof parses: Gamma a canonical point not of small order, s below L", async () => {
+      const vrf =
+        "9275df67a68c8745c0ff97b48201ee6db447f7c93b23ae24cdc2400f52fdb08a1a6ac7ec71bf9c9c76e96ee4675ebff60625af2871850104" +
+        "7bfd87b810c2d2139b73c23bd69de66360953a642c2a330a";
+      const [gamma, c, s] = [vrf.slice(0, 64), vrf.slice(64, 96), vrf.slice(96)];
+      const nakamoto = (proof: string) => payload(`08${"12".repeat(32)}09${proof}`);
+      const le = (n: bigint) => word(n, 32).match(/../g)!.reverse().join("");
+      const p = 2n ** 255n - 19n;
+      const L = 2n ** 252n + 27742317777372353535851937790883648493n;
+      const flipped = gamma.slice(0, 62) + word(parseInt(gamma.slice(62), 16) ^ 0x80, 1);
+      await check([
+        ["stacks-core's proof", nakamoto(vrf), notH],
+        ["Gamma negated", nakamoto(flipped + c + s), notH],
+        ["c all 0xff", nakamoto(gamma + "ff".repeat(16) + s), notH],
+        ["s = L - 1", nakamoto(gamma + c + le(L - 1n)), notH],
+        ["all zero", nakamoto("00".repeat(80)), malformed],
+        ["Gamma the identity, y = 1", nakamoto(le(1n) + c + s), malformed],
+        ["Gamma (0, -1), of order 2", nakamoto(le(p - 1n) + c + s), malformed],
+        ["Gamma y = 2, on no point", nakamoto(le(2n) + c + s), malformed],
+        ["Gamma y = 3 + p, not canonical", nakamoto(le(3n + p) + c + s), malformed],
+        ["s = L", nakamoto(gamma + c + le(L)), malformed],
+      ]);
+    });
+
+    // A tenure change holds three 20-byte consensus hashes, a 32-byte block id, a count, a cause from 0 to 6 and a
+    // 20-byte key hash (transaction.rs:300-345); a node reads them whole.
+    it("a tenure change's cause is 0 to 6, and its fields are whole", async () => {
+      const tenure = (cause: number) => `07${"01".repeat(20)}${"02".repeat(20)}${"03".repeat(20)}${"04".repeat(32)}${word(5, 4)}${word(cause, 1)}${"06".repeat(20)}`;
+      await check([
+        ["cause 6", payload(tenure(6)), notH],
+        ["cause 7", payload(tenure(7)), malformed],
+        ["one byte short", payload(tenure(0).slice(0, -2)), malformed],
+      ]);
+    });
+
+    // A post-condition (transaction.rs:2452-2540) names its principal (:2345-2368) by an address of version below 32
+    // and a contract name of 1 to 40 characters, an asset by a contract name and a Clarity name (:2177-2186), and a
+    // condition code of its type: 1 to 5 for STX, fungible and Staking, 0x10 to 0x12 non-fungible, 0x30 to 0x32 Pox.
+    // The post-condition mode is 1 to 3 (:3137-3152).
+    it("a post-condition's principal, asset and condition code are ones a node reads", async () => {
+      const stx = (principal: string, code = "01") => `00${principal}${code}${amount}`;
+      const asset = (contractName: string, assetName: string) => `${contract}${name(contractName)}${name(assetName)}`;
+      await check([
+        ["Staking, code 5", postCondition(`0302${sender}05${amount}`), H],
+        ["Pox, code 0x32", postCondition(`0401${"32"}`), H],
+        ["non-fungible, code 0x12", postCondition(`0202${sender}${asset("usdcx", "nft")}${uint(1)}12`), H],
+        ["a contract principal named by 40 characters", postCondition(stx(`03${contract}${name("a".repeat(40))}`)), H],
+        ["the post-condition mode 3", postCondition(stx("01"), "03"), H],
+        ["Staking, code 6", postCondition(`0302${sender}06${amount}`), malformed],
+        ["Pox, code 0x33", postCondition(`0401${"33"}`), malformed],
+        ["non-fungible, code 0x13", postCondition(`0202${sender}${asset("usdcx", "nft")}${uint(1)}13`), malformed],
+        ["a contract principal named by 41 characters", postCondition(stx(`03${contract}${name("a".repeat(41))}`)), malformed],
+        ["the asset name 1a", postCondition(`0102${sender}${asset("usdcx", "1a")}01${amount}`), malformed],
+        ["an asset contract named by 41 characters", postCondition(`0102${sender}${asset("a".repeat(41), "usdcx-token")}01${amount}`), malformed],
+        ["an address of version 32", postCondition(stx(`0220${sender.slice(2)}`)), malformed],
+        ["the post-condition mode 4", postCondition(stx("01"), "04"), malformed],
+      ]);
+    });
+
+    // A multisig spending condition (transaction.rs:805-871) holds exactly the signatures it requires, an
+    // order-independent one (:997-1060) at least that many, and a P2WSH one (hash mode 3 or 7) compressed keys and
+    // signatures only.
+    it("a multisig authorization holds exactly the signatures it requires, an order-independent one at least that many", async () => {
+      const key = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"; // the point of the scalar 1 (SEC 2)
+      const sig = (id = "02") => `${id}${"00".repeat(65)}`;
+      const multisig = (mode: string, fields: string[], required: number) =>
+        authorization(`04${mode}${signer}${word(0, 8)}${word(1000, 8)}${word(fields.length, 4)}${fields.join("")}${word(required, 2)}`);
+      await check([
+        ["P2SH, a key and a signature, 1 required", multisig("01", [`00${key}`, sig()], 1), H],
+        ["P2SH, an uncompressed signature", multisig("01", [sig("03")], 1), H],
+        ["order-independent P2SH, two signatures, 1 required", multisig("05", [sig(), sig()], 1), H],
+        ["order-independent P2WSH, two signatures, 1 required", multisig("07", [sig(), sig()], 1), H],
+        ["P2SH, two signatures, 1 required", multisig("01", [sig(), sig()], 1), malformed],
+        ["P2SH, one signature, 2 required", multisig("01", [`00${key}`, sig()], 2), malformed],
+        ["order-independent P2SH, one signature, 2 required", multisig("05", [`00${key}`, sig()], 2), malformed],
+        ["P2WSH, an uncompressed signature", multisig("03", [sig("03")], 1), malformed],
+        ["order-independent P2WSH, an uncompressed key", multisig("07", [`01${key}`, sig()], 1), malformed],
+      ]);
+    });
   });
 
   it("reference gives the read keys, and survives JSON", async () => {
@@ -653,19 +966,44 @@ function withBigints(v: unknown): unknown {
   return JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 }
 
-// The agreedRefusals rows: M4's signed transaction with its payload replaced. The decode and re-serialisation are
-// @stacks/transactions 7.6.0's, the package's Stacks decoder: rows 0 and 1 give its outcome for payload types 7 and 8.
-// Rows 2 to 13 give what stacks-core 4.0.5 reads in a token transfer's recipient (type 0), a pay-to-alt coinbase's (5),
-// a Nakamoto coinbase's (8) and a contract call's argument (2), the sources the recipient tests above name.
+// The agreedRefusals rows: M4's signed transaction with one part replaced, each answer what stacks-core 4.0.5's
+// deserializer reads (StacksTransaction::consensus_deserialize, stacks-codec/src/transaction.rs:3078), the sources the
+// tests above name: a token transfer's recipient (type 0), a pay-to-alt coinbase's (5), a Nakamoto coinbase's (8) and
+// its VRF proof, a contract call's argument, contract and function (2), a smart contract (6 and 1), a coinbase's anchor
+// mode (4), a poisoned microblock (3), a tenure change (7), a post-condition, and a multisig authorization.
 describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
-  const rows = rowsOf(V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", { exact: 2 });
-  it("each wire is M4's up to its payload", () => {
-    const m4 = S.deserializeTransaction(Buffer.from(V.M4.wireHex.slice(2), "hex"));
-    const prefix = V.M4.wireHex.slice(0, V.M4.wireHex.length - 2 * S.serializePayloadBytes(m4.payload).length);
-    for (const r of rows) expect(r.wireHex.startsWith(prefix), r.case).toBe(true);
-    expect(rows.map((r) => r.wireHex.slice(prefix.length, prefix.length + 2))).toEqual(
-      ["07", "08", "00", "00", "00", "05", "05", "05", "08", "08", "08", "08", "08", "02"],
-    );
+  // The part of M4's wire each row replaces, in the file's order: the rows the file holds, as this list states them.
+  const PARTS = [
+    ...["07", "08", "00", "00", "00", "05", "05", "05", "08", "08", "08", "08", "08", "02"].map((t) => `payload ${t}`),
+    ...Array.from({ length: 11 }, () => "payload 02"),
+    "payload 06",
+    "payload 01",
+    "payload 02",
+    "payload 02",
+    "payload 02",
+    "anchor 03, payload 04",
+    ...Array.from({ length: 4 }, () => "payload 08"),
+    "payload 03",
+    ...Array.from({ length: 3 }, () => "post-condition"),
+    ...Array.from({ length: 3 }, () => "authorization"),
+  ];
+  const rows = rowsOf(V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", {
+    exact: PARTS.length,
+  });
+  it("each wire is M4's with the part its case names replaced", () => {
+    const m4 = V.M4.wireHex;
+    const payloadAt = m4.length - 2 * S.serializePayloadBytes(S.deserializeTransaction(Buffer.from(m4.slice(2), "hex")).payload).length;
+    // M4's header up to its anchor mode is 109 bytes, then the anchor and post-condition modes and the post-condition
+    // count; its authorization is bytes 5 to 109.
+    const at = (a: number, b?: number) => m4.slice(2 + 2 * a, b === undefined ? undefined : 2 + 2 * b);
+    const part = (w: string) => {
+      if (w.startsWith(m4.slice(0, payloadAt))) return `payload ${w.slice(payloadAt, payloadAt + 2)}`;
+      if (w.startsWith(`0x${at(0, 109)}03${at(110, 186)}`)) return `anchor 03, payload ${w.slice(payloadAt, payloadAt + 2)}`;
+      if (w.startsWith(`0x${at(0, 115)}`) && w.endsWith(at(186))) return "post-condition";
+      if (w.startsWith(`0x${at(0, 5)}`) && w.endsWith(at(109))) return "authorization";
+      return "other";
+    };
+    expect(rows.map((r) => part(r.wireHex))).toEqual(PARTS);
   });
   for (const r of rows) {
     it(`${r.case}: ${r.expect}`, async () => {

@@ -6,8 +6,8 @@
  */
 import { base64 } from "@scure/base";
 import { canonicalJson, parseJson, type AtrHash, type Json } from "./core.js";
-import { bytesOf, keccakHex, sameBytes, type Hex } from "./evm-abi.js";
-import { fromBase64, sameBytes as equalBytes } from "./rail-bytes.js";
+import { bytesOf, hexOf, keccakHex, sameBytes, type Hex } from "./evm-abi.js";
+import { fromBase64 } from "./rail-bytes.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
@@ -20,6 +20,7 @@ import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { b64uDecode } from "./internal/base64url.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { memoArgument } from "./internal/stacks.js";
+import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
 import { keyString } from "./internal/svm.js";
 import {
   chosenFor,
@@ -428,64 +429,17 @@ function stacksPeer(): Promise<StacksPeer | undefined> {
   return stacksPeerLoad;
 }
 
-type Decoded = ReturnType<StacksPeer["deserializeTransaction"]>;
-
 /**
- * The deepest a Clarity value in a transaction nests, the outermost value counting 1: stacks-core reads each function
- * argument and each non-fungible post-condition's asset value with `UNSANITIZED_DEPTH_CHECK`, 16, and refuses a
- * deeper one.
- */
-const MAX_CLARITY_DEPTH = 16;
-
-/**
- * True when the decoded transaction's Clarity values are ones a Stacks node reads and writes back as the same bytes.
- * A token transfer's or a coinbase's recipient is a principal, standard or contract: stacks-core refuses any other
- * value there, except in a Nakamoto coinbase, where it reads `(some …)` of another value as no recipient and writes it
- * back as `none`. Each function argument and each non-fungible post-condition's asset value nests at most
- * `MAX_CLARITY_DEPTH` levels. The walk keeps its own list and stops at the first value past the bound.
- */
-function clarityAsNodeReads(tx: Decoded, peer: StacksPeer): boolean {
-  const payload = tx.payload as { functionArgs?: unknown; recipient?: unknown };
-  // The peer holds a Nakamoto coinbase's recipient as the value inside its `(some …)`, and no recipient for `none`.
-  if (payload.recipient !== undefined) {
-    const t = isObject(payload.recipient) ? payload.recipient["type"] : undefined;
-    if (t !== peer.ClarityType.PrincipalStandard && t !== peer.ClarityType.PrincipalContract) return false;
-  }
-  const todo: [unknown, number][] = [];
-  if (Array.isArray(payload.functionArgs)) for (const v of payload.functionArgs) todo.push([v, 1]);
-  for (const pc of tx.postConditions.values) {
-    if (pc.conditionType === peer.PostConditionType.NonFungible) todo.push([pc.assetName, 1]);
-  }
-  for (let next = todo.pop(); next !== undefined; next = todo.pop()) {
-    const [v, depth] = next;
-    if (depth > MAX_CLARITY_DEPTH) return false;
-    if (!isObject(v)) continue;
-    const inner = v["value"];
-    switch (v["type"]) {
-      case peer.ClarityType.OptionalSome:
-      case peer.ClarityType.ResponseOk:
-      case peer.ClarityType.ResponseErr:
-        todo.push([inner, depth + 1]);
-        break;
-      case peer.ClarityType.List:
-        if (Array.isArray(inner)) for (const x of inner) todo.push([x, depth + 1]);
-        break;
-      case peer.ClarityType.Tuple:
-        if (isObject(inner)) for (const x of Object.values(inner)) todo.push([x, depth + 1]);
-        break;
-    }
-  }
-  return true;
-}
-
-/**
- * H from the echoed challenge, once its transaction decodes, holds a principal as any recipient and no Clarity value
- * nested deeper than a Stacks node reads, re-serialises to the same bytes and calls `transfer` with `(some H)` as its
- * fourth argument. Nothing but that argument is read.
+ * H from the echoed challenge, once its transaction is one a Stacks node decodes and serializes back to the same bytes
+ * (`readStacksTransaction`) and calls `transfer` with `(some H)` as its fourth argument. Nothing but that argument is
+ * read for H.
  */
 async function stacksBinding(
   input: unknown,
-): Promise<{ h: AtrHash; checked: Echoed; wire: Uint8Array; tx: Decoded; peer: StacksPeer } | Refusal> {
+): Promise<
+  | { h: AtrHash; checked: Echoed; wire: Uint8Array; tx: StacksTransaction; call: NonNullable<StacksTransaction["call"]>; peer: StacksPeer }
+  | Refusal
+> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
   const e = echoedFor(credential, STACKS);
@@ -499,31 +453,12 @@ async function stacksBinding(
   if (wire === null || wire.length === 0 || wire.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
   const peer = await stacksPeer();
   if (peer === undefined) return refusal("stacks/peer-missing");
-  // Decoding accepts a multisig key field that is not a point on the curve; re-serialising it throws. Either is a
-  // transaction that does not decode and re-serialise to the same bytes. The peer decodes a Clarity value by
-  // recursion, so a value nested past the node's bound is refused here whether this host's stack holds it or not.
-  let tx: Decoded;
-  try {
-    tx = peer.deserializeTransaction(wire);
-    if (!clarityAsNodeReads(tx, peer)) return refusal("mpp/stacks-tx-malformed");
-    if (!equalBytes(peer.serializeTransactionBytes(tx), wire)) return refusal("mpp/stacks-tx-malformed");
-  } catch {
-    return refusal("mpp/stacks-tx-malformed");
-  }
-  const memo = memoArgument(e.h)!;
-  const payload = tx.payload as { payloadType?: unknown; functionName?: { content?: unknown }; functionArgs?: unknown };
-  if (payload.payloadType !== peer.PayloadType.ContractCall || payload.functionName?.content !== "transfer") {
-    return refusal("mpp/stacks-memo-not-h");
-  }
-  const args = Array.isArray(payload.functionArgs) ? payload.functionArgs : [];
-  let fourth: string | undefined;
-  try {
-    fourth = args[3] === undefined ? undefined : `0x${peer.serializeCV(args[3])}`.toLowerCase();
-  } catch {
-    fourth = undefined;
-  }
-  if (fourth !== memo) return refusal("mpp/stacks-memo-not-h");
-  return { h: e.h, checked: e.checked, wire, tx, peer };
+  const tx = readStacksTransaction(wire);
+  if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
+  const call = tx.call;
+  const fourth = call?.functionName === "transfer" ? call.args[3] : undefined;
+  if (call === null || fourth === undefined || hexOf(fourth) !== memoArgument(e.h)) return refusal("mpp/stacks-memo-not-h");
+  return { h: e.h, checked: e.checked, wire, tx, call, peer };
 }
 
 async function stacksBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -533,29 +468,23 @@ async function stacksBound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys of the decoded transaction: the profile's network, the called contract, the origin's c32 address and
- * spending-condition nonce, and, for a standard authorization, the transaction id.
+ * spending-condition nonce, and, for a standard authorization, the transaction id. The origin's address version is its
+ * hash mode's on the transaction's network: single-signature P2PKH's, else multisig's.
  */
 async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
   const b = await stacksBinding(input);
   if (isRefusal(b)) return b;
   const network = stacksNetworkOf(b.checked.details);
   if (network === undefined) return refusal("mpp/request-malformed");
-  const { peer, tx } = b;
-  const payload = tx.payload as unknown as { contractAddress: Parameters<StacksPeer["addressToString"]>[0]; contractName: { content: string } };
-  const condition = tx.auth.spendingCondition;
-  let origin: string;
-  let contract: string;
-  try {
-    const net = tx.transactionVersion === 0 ? "mainnet" : "testnet";
-    origin = peer.addressToString(
-      peer.addressFromVersionHash(peer.addressHashModeToVersion(condition.hashMode, net), condition.signer),
-    );
-    contract = `${peer.addressToString(payload.contractAddress)}.${payload.contractName.content}`;
-  } catch {
-    return refusal("mpp/stacks-tx-malformed");
-  }
-  const ref: StacksRef = { network, contract, origin, nonce: BigInt(condition.nonce).toString() };
-  return tx.auth.authType === peer.AuthType.Standard ? { ...ref, transaction: stacksTxid(b.wire) } : ref;
+  const { peer, tx, call } = b;
+  const net = tx.version === 0x00 ? "mainnet" : "testnet";
+  const hashMode = tx.origin.hashMode as Parameters<StacksPeer["addressHashModeToVersion"]>[0];
+  const origin = peer.addressToString(
+    peer.addressFromVersionHash(peer.addressHashModeToVersion(hashMode, net), hexOf(tx.origin.signer).slice(2)),
+  );
+  const contract = `${peer.addressToString(peer.addressFromVersionHash(call.version, hexOf(call.hash160).slice(2)))}.${call.contract}`;
+  const ref: StacksRef = { network, contract, origin, nonce: tx.origin.nonce.toString() };
+  return tx.standard ? { ...ref, transaction: stacksTxid(b.wire) } : ref;
 }
 
 export const chargeUsdcStacks = Object.freeze({
