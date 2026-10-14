@@ -97,24 +97,49 @@ jobs:
           if (bad > 0) process.exit(1);
           console.log(`${packages} package(s): no @integraledger dependency or import outside the allowed set`);
           EOF
-      - name: The Node.js every job fetches is the one .node-version names, against one SHA-256
+      - name: Every job that runs Node.js fetches the one .node-version names, and checks it against one SHA-256
         run: |
           set -eu
           v="$(cat .node-version)"
           test "$(node --version)" = "v$v"
-          fetched=$(grep -ho 'https://nodejs\.org/dist/v[0-9][^ ]*' .github/workflows/*.yml)
-          checked=$(grep -hoE '[0-9a-f]{64}  \$RUNNER_TEMP/node-' .github/workflows/*.yml)
-          test "$(printf '%s\n' "$fetched" | sort -u)" = "https://nodejs.org/dist/v$v/node-v$v-linux-x64.tar.xz"
-          test "$(printf '%s\n' "$checked" | sort -u | wc -l)" -eq 1
-          test "$(printf '%s\n' "$fetched" | wc -l)" -eq "$(printf '%s\n' "$checked" | wc -l)"
-          echo "node $(node --version), as .node-version names and every workflow fetches it, with npm $(npm --version)"
-      - name: The install policy
+          url="https://nodejs.org/dist/v$v/node-v$v-linux-x64.tar.xz"
+          test -z "$(grep -ho 'https://nodejs\.org/dist/v[0-9][^ ]*' .github/workflows/*.yml | grep -vxF "$url" || true)"
+          digest=$(grep -hoE "^ +echo \"[0-9a-f]{64}  \\\$RUNNER_TEMP/node-v$v-linux-x64\\.tar\\.xz\" \\| sha256sum -c -\$" .github/workflows/*.yml | sed -E 's/^ +echo "([0-9a-f]{64}).*/\1/' | sort -u)
+          test "$(printf '%s\n' "$digest" | grep -c .)" -eq 1
+          for f in .github/workflows/*.yml; do
+            awk -v url="$url" -v digest="$digest" -v file="$f" '
+              function report() {
+                if (job != "" && runs > 0 && (fetched != 1 || checked != 1)) {
+                  printf "%s: job %s runs Node.js with %d fetch of %s and %d sha256sum -c of its digest\n", file, job, fetched, url, checked
+                  bad = 1
+                }
+              }
+              /^jobs:$/ { injobs = 1; next }
+              injobs && /^  [A-Za-z0-9_-]+:$/ { report(); job = $1; runs = 0; fetched = 0; checked = 0; next }
+              index($0, "curl -fsSL -o \"$RUNNER_TEMP/node-v") && index($0, " " url) { fetched++; next }
+              index($0, "echo \"" digest "  $RUNNER_TEMP/node-v") && / \| sha256sum -c -$/ { checked++; next }
+              /(^|[ ;&|(])(node|npm|npx|pnpm)( |$)/ { runs++ }
+              END { report(); exit bad }
+            ' "$f"
+          done
+          echo "node $(node --version), npm $(npm --version): every job that runs Node.js fetches $url and checks it against $digest"
+      - name: The install policy, in the workspace and the site
         run: |
           set -eu
-          grep -qx 'minimumReleaseAge: 1440' pnpm-workspace.yaml
-          grep -qx 'trustPolicy: no-downgrade' pnpm-workspace.yaml
-          grep -qx 'strictDepBuilds: true' pnpm-workspace.yaml
-          echo "pnpm-workspace.yaml sets minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds"
+          for f in pnpm-workspace.yaml website/pnpm-workspace.yaml; do
+            grep -qx 'minimumReleaseAge: 1440' "$f"
+            grep -qx 'trustPolicy: no-downgrade' "$f"
+            grep -qx 'strictDepBuilds: true' "$f"
+            other=$(grep -E '^[A-Za-z]' "$f" | sed 's/:.*//' | grep -vxE 'packages|minimumReleaseAge|trustPolicy|strictDepBuilds|allowBuilds|minimumReleaseAgeExclude|overrides' || true)
+            inline=$(grep -E '^(allowBuilds|minimumReleaseAgeExclude): *[^ ]' "$f" || true)
+            allowed=$(awk '/^[A-Za-z]/ { block = ($0 == "allowBuilds:"); next } block && NF && $NF != "false"' "$f")
+            excluded=$(awk '/^[A-Za-z]/ { block = ($0 == "minimumReleaseAgeExclude:"); next } block && NF' "$f" | grep -vxF '  - "@integraledger/*"' || true)
+            if [ -n "$other$inline$allowed$excluded" ]; then
+              printf '%s weakens the install policy:\n%s\n' "$f" "$(printf '%s\n' "$other" "$inline" "$allowed" "$excluded" | grep .)"
+              exit 1
+            fi
+          done
+          echo "pnpm-workspace.yaml and website/pnpm-workspace.yaml set minimumReleaseAge 1440 (excluding only @integraledger/*), trustPolicy no-downgrade and strictDepBuilds, and allow no dependency build"
       - name: Fetch pnpm
         run: |
           set -eu
