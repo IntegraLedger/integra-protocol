@@ -301,6 +301,14 @@
    {
     "case": "VI Autonomous bound with an L1 or L2 cnf.jwk whose x or y is not unpadded base64url of 32 bytes",
     "expect": "card/vi-key-malformed"
+   },
+   {
+    "case": "VI Autonomous bound with an L1 or L2 cnf.jwk whose x or y has a pad bit set in its last character",
+    "expect": "card/vi-key-malformed"
+   },
+   {
+    "case": "VI read or bound with a checkout_jwt or layer segment, or a disclosure, that has a pad bit set in its last character",
+    "expect": "card/vi-malformed"
    }
   ]
  },

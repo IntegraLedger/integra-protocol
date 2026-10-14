@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Json } from "../src/core.js";
 import { refusal } from "../src/refusal.js";
-import { b64urlDecode, b64urlEncode, disclosureDigest, readSdJwt, type SdJwtRefusals } from "../src/sd-jwt.js";
+import { disclosureDigest, jwsSegments, readSdJwt, type SdJwtRefusals } from "../src/sd-jwt.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/sd-jwt.json", import.meta.url), "utf8"));
 const REFUSALS: SdJwtRefusals = {
@@ -89,13 +89,23 @@ describe("sd-jwt.json", () => {
     expect(await readSdJwt(presentation(63, chain), REFUSALS)).toEqual({ refused: true, code: "too-large" });
   });
 
-  it("base64url round trip over every byte value", () => {
-    const all = Uint8Array.from({ length: 256 }, (_, i) => i);
-    const s = b64urlEncode(all);
-    expect(s).toBe(Buffer.from(all).toString("base64url"));
-    expect(b64urlDecode(s)).toEqual(all);
-    expect(b64urlDecode("A")).toBeNull();
-    expect(b64urlDecode("AA==")).toBeNull();
-    expect(b64urlDecode("A+")).toBeNull();
+  // RFC 7515 §2's base64url and RFC 4648 §3.5: a pad bit set in a segment's or disclosure's last character spells the
+  // same bytes in a form that is not canonical. The reader takes the canonical form only, so each C9 row is malformed,
+  // and the header row's control, the same presentation with that header in canonical form, resolves as C8's does.
+  it("C9: a segment or disclosure with a pad bit set is malformed", async () => {
+    const rows = V.C9.rows as { case: string; presentation: string; expect: string; control?: string }[];
+    expect(rows.length).toBe(4);
+    for (const row of rows) {
+      expect(await readSdJwt(row.presentation, REFUSALS), row.case).toEqual({ refused: true, code: row.expect });
+      if (row.control !== undefined) expect((await read(row.control)).resolved, row.case).toEqual(V.C8.rows[2].expectResolved);
+    }
+  });
+
+  it("jwsSegments takes each segment in its canonical form only", () => {
+    // "e30" is the base64url of {} and "QQ" of the byte 0x41; "e31" and "QR" spell the same bytes with a pad bit set.
+    expect(jwsSegments("e30.e30.QQ")).toEqual(["e30", "e30", "QQ"]);
+    for (const s of ["e31.e30.QQ", "e30.e31.QQ", "e30.e30.QR", "e30.e30.QQ==", "e30.e30.Q", "e30.e30.Q+"]) {
+      expect(jwsSegments(s), s).toBeNull();
+    }
   });
 });

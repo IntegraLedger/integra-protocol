@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the ap2/checkout-mandate pairing and the SD-JWT reader it uses (the ap2 entry point of @integraledger/lcp). SHA-256 values were computed with GNU coreutils 9.4 sha256sum and basenc and agree with OpenSSL 3.0.13. The tests build J, D and M from the fixed strings; 'built' holds the same strings as written by Python 3's base64 and hashlib, for other languages. V6's token is AP2's published closed Checkout Mandate, docs/ap2/checkout_mandate.md line 328 at commit e1ea56db of google-agentic-commerce/AP2, pinned by its SHA-256. V7's token is AP2's published chained presentation, line 494 of the same file at the same commit: the open Checkout Mandate's SD-JWT and the closed mandate's, joined by ~~ in the compact serialization of the Delegate SD-JWT draft (GarethCOliver/gco-delegate-sd-jwt at commit e44c0c1). Its last hop is V6's token, and expectSdHash is that hop's sd_hash claim, the digest of the open hop with its trailing ~ restored. The 'implementation' rows fix refusals that neither AP2 nor RFC 9901 names, reader cases from RFC 9901 sections 4 and 7.1, and the chain rows (named chain-*), which follow the draft's compact serialization and the two hops of the checkout chain in AP2's SDK (code/sdk/python/ap2/sdk/checkout_mandate_chain.py at e1ea56db); their tokens were built with Python 3's base64 and hashlib.",
+ "about": "Vectors for the ap2/checkout-mandate pairing and the SD-JWT reader it uses (the ap2 entry point of @integraledger/lcp). SHA-256 values were computed with GNU coreutils 9.4 sha256sum and basenc and agree with OpenSSL 3.0.13. The tests build J, D and M from the fixed strings; 'built' holds the same strings as written by Python 3's base64 and hashlib, for other languages. V6's token is AP2's published closed Checkout Mandate, docs/ap2/checkout_mandate.md line 328 at commit e1ea56db of google-agentic-commerce/AP2, pinned by its SHA-256. V7's token is AP2's published chained presentation, line 494 of the same file at the same commit: the open Checkout Mandate's SD-JWT and the closed mandate's, joined by ~~ in the compact serialization of the Delegate SD-JWT draft (GarethCOliver/gco-delegate-sd-jwt at commit e44c0c1). Its last hop is V6's token, and expectSdHash is that hop's sd_hash claim, the digest of the open hop with its trailing ~ restored. The 'implementation' rows fix refusals that neither AP2 nor RFC 9901 names, reader cases from RFC 9901 sections 4 and 7.1, and the chain rows (named chain-*), which follow the draft's compact serialization and the two hops of the checkout chain in AP2's SDK (code/sdk/python/ap2/sdk/checkout_mandate_chain.py at e1ea56db); their tokens were built with Python 3's base64 and hashlib. The rows named *-pad-bit spell one segment or disclosure of J or M with its last character's lowest pad bit set, the same bytes in a form that is not canonical (RFC 4648 section 3.5), built with Python 3's base64 and hashlib: the reader takes RFC 7515 section 2's base64url in its canonical form only.",
  "fixed": {
   "A": "{\"atrVersion\":\"1\",\"id\":\"6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e70\",\"ap2\":{\"options\":[{\"checkout\":\"chk_2\"}]},\"line_items\":[{\"id\":\"li_1\",\"item\":{\"id\":\"sku_1\",\"title\":\"Quarterly report\"},\"quantity\":1}],\"totals\":[{\"type\":\"total\",\"amount\":19900}]}",
   "H": "0xa1675ca24ac6d8b4be5e46a0a3eda2d21c662667b20923c3a9e820828e9a82af",
@@ -813,6 +813,56 @@
    "expect": {
     "refused": true,
     "code": "ap2/disclosure-unreferenced"
+   }
+  },
+  {
+   "name": "read-payload-pad-bit",
+   "case": "J with its payload segment's pad bit set",
+   "fn": "read",
+   "input": {
+    "doc": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fR.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ap2/jws-malformed"
+   }
+  },
+  {
+   "name": "read-signature-pad-bit",
+   "case": "J with its signature segment's pad bit set; no signature is checked",
+   "fn": "read",
+   "input": {
+    "doc": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ap2/jws-malformed"
+   }
+  },
+  {
+   "name": "mandate-signature-pad-bit",
+   "case": "M with its issuer JWT's signature segment's pad bit set",
+   "fn": "bound",
+   "input": {
+    "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoidVJSek1NY2pRUEdkOGI1MmlybXBVQTNoblB3RUlyVnYxbGVTQzdPeTBydyIsIl9zZCI6WyJmdkJ1Ty10V3NGTFR5UlVtR3FxNlFVbEJEbkpPQWFVM2pkQi0wdTczQ0xnIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SnBaQ0k2SW1Ob2ExOHlJaXdpWTNWeWNtVnVZM2tpT2lKVlUwUWlMQ0owYjNSaGJITWlPbHQ3SW5SNWNHVWlPaUowYjNSaGJDSXNJbUZ0YjNWdWRDSTZNVGs1TURCOVhTd2liR1ZuWVd4RGIyNTBaWGgwSWpwN0luUjVjR1VpT2lKemFHRXlOVFlpTENKMllXeDFaU0k2SWpCNFlURTJOelZqWVRJMFlXTTJaRGhpTkdKbE5XVTBObUV3WVRObFpHRXlaREl4WXpZMk1qWTJOMkl5TURreU0yTXpZVGxsT0RJd09ESTRaVGxoT0RKaFppSXNJbXhsWjJGc1EyOXVkR1Y0ZEZWeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMMk5tWlRreU1tUTFMVGRpWmpFdE5ETmlZUzA1TkdRMkxUUmtZMlUzTm1FNVltSmlNeUo5ZlEuQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiXQ~",
+    "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ap2/mandate-malformed"
+   }
+  },
+  {
+   "name": "mandate-disclosure-pad-bit",
+   "case": "M with D's pad bit set, and the issuer payload's _sd listing that text's digest",
+   "fn": "bound",
+   "input": {
+    "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoidVJSek1NY2pRUEdkOGI1MmlybXBVQTNoblB3RUlyVnYxbGVTQzdPeTBydyIsIl9zZCI6WyIzNWVmbklDZ0ZnZlg1SVVySE5qZEQzS1hpbU1MYV9yRUVoMnczMW5iVlZZIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SnBaQ0k2SW1Ob2ExOHlJaXdpWTNWeWNtVnVZM2tpT2lKVlUwUWlMQ0owYjNSaGJITWlPbHQ3SW5SNWNHVWlPaUowYjNSaGJDSXNJbUZ0YjNWdWRDSTZNVGs1TURCOVhTd2liR1ZuWVd4RGIyNTBaWGgwSWpwN0luUjVjR1VpT2lKemFHRXlOVFlpTENKMllXeDFaU0k2SWpCNFlURTJOelZqWVRJMFlXTTJaRGhpTkdKbE5XVTBObUV3WVRObFpHRXlaREl4WXpZMk1qWTJOMkl5TURreU0yTXpZVGxsT0RJd09ESTRaVGxoT0RKaFppSXNJbXhsWjJGc1EyOXVkR1Y0ZEZWeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMMk5tWlRreU1tUTFMVGRpWmpFdE5ETmlZUzA1TkdRMkxUUmtZMlUzTm1FNVltSmlNeUo5ZlEuQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiXR~",
+    "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ap2/mandate-malformed"
    }
   }
  ],

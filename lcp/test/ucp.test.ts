@@ -127,6 +127,20 @@ describe("ucp.json", () => {
     expect(await ap2Mandate.bound(p as never)).toBe(V.V4.expectBound);
   });
 
+  // RFC 7515 §2's base64url, read in its canonical form only (RFC 4648 §3.5): the signature "AAA…A" of 64 zero bytes
+  // with its last character raised to "B" spells the same bytes with a pad bit set, so the mandate is not well formed.
+  it("V4 with a pad bit set in the mandate's signature segment is ap2/mandate-malformed, on complete and on bound", async () => {
+    const raised = `${b64u(F.mandateHeader)}.${b64u(F.mandatePayload)}.${F.signature.slice(0, -1)}B~${D}~`;
+    const malformed = { refused: true, code: "ap2/mandate-malformed" };
+    expect(await ap2Mandate.bound({ checkout_mandate: raised, checkout_jwt: J })).toEqual(malformed);
+    const signed = { ...V.V2.expectCheckout, ap2: { merchant_authorization: F.merchantAuthorization } } as Checkout;
+    const r = ap2Mandate.read(signed);
+    if ("refused" in r) throw new Error(r.code);
+    const u = await ap2Mandate.build(r.offer, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(await u.complete(raised)).toEqual(malformed);
+  });
+
   it("V5: AP2's published example as a UCP checkout", async () => {
     const token: string = AP2.V6.token;
     const jwt: string = AP2.V6.checkoutJwt;

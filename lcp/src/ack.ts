@@ -172,8 +172,9 @@ export const paymentRequest = Object.freeze({
 });
 
 /**
- * The JSON object in a compact JWS's second segment, decoded as unpadded base64url, fatal UTF-8 and JSON, or null for
- * anything else. The signature is not checked.
+ * The JSON object in a compact JWS's second segment, decoded as base64url without padding, fatal UTF-8 and JSON, or
+ * null for anything else, a segment not in canonical base64url form (RFC 4648 §3.5) included. The signature is not
+ * checked.
  */
 function tokenPayload(token: unknown): Record<string, unknown> | null {
   if (typeof token !== "string" || token.length > MAX_TOKEN) return null;

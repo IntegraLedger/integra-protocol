@@ -31,6 +31,12 @@ Where the pairing's `publicProof` is false, the seller advertises an
 without one. Every checkout pairing's `advertise` takes it as its last argument and writes it where the protocol keeps
 the link, and its `read` returns it as `agreement`.
 
+The AP2, UCP, ACK and card pairings read each compact JWS and SD-JWT segment, each disclosure and each Verifiable
+Intent key coordinate as base64url without padding (RFC 7515 §2) in its canonical form only (RFC 4648 §3.5). One whose
+last character has a bit set past its last byte is malformed, and the pairing refuses it with the code it gives any
+other malformed one. Two compact JWSs are not decoded: a Key Binding JWT, which no pairing reads, and UCP's
+`ap2.merchant_authorization`, which the AP2 Mandate pairings match against UCP's schema pattern only.
+
 ## ACP
 
 In the [Agentic Commerce Protocol](https://www.agenticcommerce.dev), the seller creates a checkout session and the

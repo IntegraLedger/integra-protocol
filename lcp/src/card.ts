@@ -14,10 +14,10 @@
 import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash } from "./core.js";
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
+import { b64uDecode } from "./internal/base64url.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import {
-  b64urlDecode,
   decodeJsonSegment,
   disclosureDigest,
   jwsSegments,
@@ -178,7 +178,10 @@ function readCheckout(doc: unknown): { h: AtrHash; link: string } | Refusal {
   return legalContextOf(payload);
 }
 
-/** The payload of a `checkout_jwt`, its second segment base64url-decoded and JSON-parsed, with a `legalContext`. */
+/**
+ * The payload of a `checkout_jwt`, its second segment base64url-decoded and JSON-parsed, with a `legalContext`. Each
+ * segment is base64url without padding in its canonical form (RFC 4648 §3.5), or the JWT is `card/vi-malformed`.
+ */
 function checkoutPayload(doc: unknown): Record<string, unknown> | Refusal {
   if (typeof doc !== "string") return refusal("card/vi-malformed");
   if (doc.length > MAX_CHECKOUT_JWT) return refusal("card/too-large");
@@ -384,15 +387,16 @@ function jwkOf(cnf: unknown): Record<string, unknown> | null {
 
 /**
  * ES256 over the ASCII `header.payload` of a compact JWS, with a 64-byte r‖s signature, under an EC P-256 public
- * JWK. The JWK's `x` and `y` must each be unpadded base64url of exactly 32 bytes, the full size of a P-256 coordinate
- * (RFC 7518 §6.2.1.2-3), and the key is imported from those bytes as the uncompressed point, so no runtime's JWK
- * decoder decides which keys pass. Coordinates of another form, or a point WebCrypto will not import, are
+ * JWK. The JWK's `x` and `y` must each be base64url without padding of exactly 32 bytes, the full size of a P-256
+ * coordinate (RFC 7518 §6.2.1.2-3), in its canonical form (RFC 4648 §3.5), and the key is imported from those bytes as
+ * the uncompressed point, so no runtime's JWK decoder decides which keys pass. Coordinates of another form, a last
+ * character carrying a bit past the 32 bytes included, or a point WebCrypto will not import, are
  * `card/vi-key-malformed`; any other failure is `card/vi-signature-invalid`.
  */
 async function verifyEs256(jws: string, jwk: Record<string, unknown>): Promise<true | Refusal> {
-  const x = b64urlDecode(jwk["x"] as string);
-  const y = b64urlDecode(jwk["y"] as string);
-  if (x === null || y === null || x.length !== 32 || y.length !== 32) return refusal("card/vi-key-malformed");
+  const x = b64uDecode(jwk["x"]);
+  const y = b64uDecode(jwk["y"]);
+  if (x === undefined || y === undefined || x.length !== 32 || y.length !== 32) return refusal("card/vi-key-malformed");
   const point = new Uint8Array(65);
   point[0] = 0x04;
   point.set(x, 1);
@@ -404,8 +408,8 @@ async function verifyEs256(jws: string, jwk: Record<string, unknown>): Promise<t
     return refusal("card/vi-key-malformed");
   }
   const cut = jws.lastIndexOf(".");
-  const signature = b64urlDecode(jws.slice(cut + 1));
-  if (cut < 0 || signature === null || signature.length !== 64) return refusal("card/vi-signature-invalid");
+  const signature = b64uDecode(jws.slice(cut + 1));
+  if (cut < 0 || signature === undefined || signature.length !== 64) return refusal("card/vi-signature-invalid");
   const signed = new TextEncoder().encode(jws.slice(0, cut));
   const ok = await crypto.subtle.verify(
     { name: "ECDSA", hash: "SHA-256" },

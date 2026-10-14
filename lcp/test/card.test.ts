@@ -31,6 +31,15 @@ const tap = (over: Partial<TapPresented>): TapPresented => ({
 });
 const b64u = (b: Uint8Array) => Buffer.from(b).toString("base64url");
 const unb64u = (s: string) => new Uint8Array(Buffer.from(s, "base64url"));
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+/**
+ * `s`, base64url without padding, with its last character's lowest pad bit set: the same bytes, in a form that is not
+ * canonical (RFC 4648 §3.5). Its length is 2 or 3 mod 4, so that the last character has pad bits.
+ */
+const padBit = (s: string) => {
+  if (s.length % 4 < 2) throw new Error(`no pad bits in ${s.length} characters`);
+  return s.slice(0, -1) + ALPHABET[ALPHABET.indexOf(s.at(-1)!) | 1];
+};
 const enc = (v: unknown) => b64u(new TextEncoder().encode(JSON.stringify(v)));
 /** A compact JWS with the given header and payload and a 64-byte zero signature, for shape tests only. */
 const jws = (header: unknown, payload: unknown) => `${enc(header)}.${enc(payload)}.${b64u(new Uint8Array(64))}`;
@@ -616,6 +625,39 @@ describe("card.json agreedRefusals: every row runs", () => {
       await viAutonomous.bound(await resigned({ user: { ...USER, y: b64u(unb64u(USER.y).subarray(1)) } })),
       await viAutonomous.bound(await resigned({ agent: { ...AGENT, x: `${AGENT.x}=` } })),
     ],
+    "VI Autonomous bound with an L1 or L2 cnf.jwk whose x or y has a pad bit set in its last character": async () => [
+      await viAutonomous.bound(await resigned({ user: { ...USER, x: padBit(USER.x) } })),
+      await viAutonomous.bound(await resigned({ user: { ...USER, y: padBit(USER.y) } })),
+      await viAutonomous.bound(await resigned({ agent: { ...AGENT, x: padBit(AGENT.x) } })),
+    ],
+    "VI read or bound with a checkout_jwt or layer segment, or a disclosure, that has a pad bit set in its last character":
+      async () => {
+        const [ch, cp, cs] = (VI.CJ as string).split(".") as [string, string, string];
+        const [h3, p3, s3] = partsOf(presented.l3b);
+        const [h2, p2, s2] = partsOf(presented.l2);
+        // L2's signature with a pad bit set: L3b's sd_hash names L2's text, so L3b is re-pointed and signed again.
+        const l2 = `${h2}.${p2}.${padBit(s2)}${rest(presented.l2)}`;
+        const l3Payload = { ...payloadOf(presented.l3b), sd_hash: await disclosureDigest(l2) };
+        const l3b = `${await agentSign(`${h3}.${enc(l3Payload)}`)}${rest(presented.l3b)}`;
+        // L3b's checkout mandate disclosure with a pad bit set, listed by that text's digest, and L3b signed again.
+        const discs = presented.l3b.split("~").slice(1, -1);
+        const mandate = discs.find((d) => JSON.parse(Buffer.from(d, "base64url").toString())[1].vct === "mandate.checkout.1")!;
+        const [from, to] = [await disclosureDigest(mandate), await disclosureDigest(padBit(mandate))];
+        const swap = (d: string) => (d === from ? to : d);
+        const p3Swapped = payloadOf(presented.l3b);
+        if (Array.isArray(p3Swapped._sd)) p3Swapped._sd = p3Swapped._sd.map(swap);
+        p3Swapped.delegate_payload = p3Swapped.delegate_payload.map((e: { "...": string }) => ({ "...": swap(e["..."]) }));
+        const discsSwapped = discs.map((d) => `${d === mandate ? padBit(d) : d}~`).join("");
+        const l3bDisclosure = `${await agentSign(`${h3}.${enc(p3Swapped)}`)}~${discsSwapped}`;
+        return [
+          viImmediate.read(`${padBit(ch)}.${cp}.${cs}`),
+          viImmediate.read(`${ch}.${padBit(cp)}.${cs}`),
+          viImmediate.read(`${ch}.${cp}.${padBit(cs)}`),
+          await viAutonomous.bound({ ...presented, l3b: `${h3}.${p3}.${padBit(s3)}${rest(presented.l3b)}` }),
+          await viAutonomous.bound({ ...presented, l2, l3b }),
+          await viAutonomous.bound({ ...presented, l3b: l3bDisclosure }),
+        ];
+      },
   };
 
   it("names a case for every row, and no other", () => {

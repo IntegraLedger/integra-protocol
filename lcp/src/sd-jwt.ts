@@ -3,10 +3,13 @@
  * the issuer-signed JWT, its disclosures and an optional Key Binding JWT, and resolves the disclosures into the issuer
  * payload by digest. Every disclosure must be referenced, and no digest may be referenced twice. One allowance: a
  * digest in an object's `_sd` that does not name a three-element disclosure, whether it names a two-element disclosure
- * or none, is ignored at its first `_sd` listing, and a second `_sd` listing of it is malformed. Refusal codes are the
- * caller's.
+ * or none, is ignored at its first `_sd` listing, and a second `_sd` listing of it is malformed. Each segment of the
+ * issuer-signed JWT and each disclosure is base64url without padding in its canonical form (RFC 7515 §2, RFC 4648
+ * §3.5): one whose last character carries a bit past its last byte is malformed. The Key Binding JWT is not read.
+ * Refusal codes are the caller's.
  */
 import { MAX_JSON_DEPTH, type Json } from "./core.js";
+import { b64uDecode, b64uEncode, isB64u } from "./internal/base64url.js";
 import { type Refusal } from "./refusal.js";
 
 type JsonObject = { [k: string]: Json };
@@ -42,41 +45,22 @@ const MIB = 1_048_576;
 export const RESOLUTION_DEPTH = 16;
 const DEFAULT_BOUNDS: SdJwtBounds = { maxBytes: MIB, maxDisclosures: 128 };
 const PRESENTATION = /^[A-Za-z0-9_.~-]*$/;
-const SEGMENT = /^[A-Za-z0-9_-]*$/;
 
 const ascii = new TextEncoder();
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-/** base64url without padding (RFC 4648 §5) of `bytes`. */
-export function b64urlEncode(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
-}
-
-/** The bytes of unpadded base64url text, or null when it is not that. */
-export function b64urlDecode(s: string): Uint8Array | null {
-  if (typeof s !== "string" || !SEGMENT.test(s) || s.length % 4 === 1) return null;
-  let bin: string;
-  try {
-    bin = atob(s.replaceAll("-", "+").replaceAll("_", "/") + "=".repeat((4 - (s.length % 4)) % 4));
-  } catch {
-    return null;
-  }
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
 /** base64url, unpadded, of SHA-256 over the US-ASCII characters of `s` (RFC 9901 §4.2.3). */
 export async function disclosureDigest(s: string): Promise<string> {
-  return b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", ascii.encode(s))));
+  return b64uEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", ascii.encode(s))));
 }
 
-/** The JSON value that unpadded base64url text decodes to as fatal UTF-8, or null. */
+/**
+ * The JSON value that base64url text without padding, in its canonical form, decodes to as fatal UTF-8, or null. Text
+ * whose last character carries a bit past its last byte is null.
+ */
 export function decodeJsonSegment(s: string): Json | null {
-  const bytes = b64urlDecode(s);
-  if (bytes === null) return null;
+  const bytes = b64uDecode(s);
+  if (bytes === undefined) return null;
   try {
     return JSON.parse(utf8.decode(bytes)) as Json;
   } catch {
@@ -84,12 +68,15 @@ export function decodeJsonSegment(s: string): Json | null {
   }
 }
 
-/** The three segments of a compact JWS, each unpadded base64url, or null. */
+/**
+ * The three segments of a compact JWS, each base64url without padding in its canonical form (RFC 7515 §2, RFC 4648
+ * §3.5), or null. A segment whose last character carries a bit past its last byte is null, the signature's included.
+ */
 export function jwsSegments(s: string): [header: string, payload: string, signature: string] | null {
   if (typeof s !== "string") return null;
   const parts = s.split(".");
   if (parts.length !== 3) return null;
-  for (const p of parts) if (!SEGMENT.test(p) || p.length % 4 === 1) return null;
+  for (const p of parts) if (!isB64u(p)) return null;
   return parts as [string, string, string];
 }
 
