@@ -46,6 +46,7 @@ import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
+const VS = JSON.parse(readFileSync(new URL("../vectors/x402-exact-solana.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const refused = (code: string) => ({ refused: true, code });
 const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
@@ -485,6 +486,22 @@ describe("mpp/session/solana", () => {
     const answering = (a: unknown): SvmReader => ({ ...readerOf(sealed), transaction: async () => a as never });
     expect(await sessionSolana.status(ref, answering({ notFound: true, slot: 1150n }))).toEqual({ state: "pending", why: "not-found" });
     expect(await sessionSolana.status(ref, answering(null))).toEqual({ state: "pending", why: "unreadable" });
+    // Solana's commitment levels (solana.com/docs/rpc, "Configuring State Commitment"): a block at `confirmed` has been
+    // voted on by a supermajority of the cluster, and one at `finalized` has reached maximum lockout. A block that is not
+    // finalized can be replaced, and the close can land in another block and execute otherwise, so an error is a
+    // failure only from the read at `finalized`. The signature fixes the instructions, so a transaction that does not
+    // close the channel is not a close at either commitment. The error is the vector file's (x402-exact-solana.json V4).
+    const err = (VS.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!.err;
+    const at = (commitment: "finalized" | "confirmed", w: Uint8Array): SvmReader => ({
+      ...readerOf(w),
+      transaction: async (_sig, c) => (commitment === "confirmed" && c === "finalized" ? { notFound: true, slot: null } : landedSvm(w, err)),
+    });
+    expect(await sessionSolana.status(ref, at("finalized", sealed))).toEqual({ state: "failed", why: "err" });
+    expect(await sessionSolana.status(ref, at("confirmed", sealed))).toEqual({ state: "pending", why: "not-final" });
+    const notClose = await closeWire(2);
+    for (const commitment of ["finalized", "confirmed"] as const) {
+      expect(await sessionSolana.status(ref, at(commitment, notClose)), commitment).toEqual({ state: "failed", why: "not-a-close" });
+    }
   });
 
   it("build returns the salt and the request's values; complete checks the composed open", async () => {

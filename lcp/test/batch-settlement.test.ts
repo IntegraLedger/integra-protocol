@@ -563,6 +563,29 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(await batchSvm.recover(ref, atConfirmed)).toEqual(refused("svm/not-final"));
   });
 
+  // The same commitment levels place status: an opening that landed with an error is failed err only from the read at
+  // `finalized`, and pending not-final from the read at `confirmed`. The signature fixes the instructions, so a
+  // transaction with no channel instruction (the file's plantNoChannel) is failed at either commitment.
+  it("ES5: status gives err only from the read at finalized, and no-channel-instruction from either commitment", async () => {
+    const wire = b64(V.ES5.landedWireBase64);
+    const ref = { ...V.ES5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
+    const err = (V.ES5.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!.err;
+    const at = (commitment: "finalized" | "confirmed", l: SvmLanded, txid: string): SvmReader => {
+      const r = svmReaderFor("finalized", l, txid);
+      return commitment === "finalized" ? r : { ...r, transaction: async (sig, c) => (c === "finalized" ? { notFound: true, slot: null } : r.transaction(sig, c)) };
+    };
+    expect(await batchSvm.status(ref, at("finalized", landed(wire, err), V.ES5.txid))).toEqual({ state: "failed", why: "err" });
+    expect(await batchSvm.status(ref, at("confirmed", landed(wire, err), V.ES5.txid))).toEqual({ state: "pending", why: "not-final" });
+    const nc = V.ES5.plantNoChannel;
+    expect(nc.expect).toEqual({ state: "failed", why: "no-channel-instruction" });
+    for (const commitment of ["finalized", "confirmed"] as const) {
+      for (const e of [null, err]) {
+        const r = at(commitment, landed(b64(nc.landedWireBase64), e), "nc");
+        expect([commitment, e, await batchSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r)]).toEqual([commitment, e, nc.expect]);
+      }
+    }
+  });
+
   // A transaction the chain executed is a well-formed one within Solana's 1232-byte packet (PACKET_DATA_SIZE), so a
   // landed wire that does not decode, here one byte short of ES5's, is the reader's answer out of its documented form.
   it("ES5: recover of a landed wire that does not decode is svm/unreadable", async () => {

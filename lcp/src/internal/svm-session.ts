@@ -25,9 +25,10 @@ const OPEN_MIN_ACCOUNTS = 6;
 const OPEN_CHANNEL_ACCOUNT = 5;
 
 export type SvmCloseRef = { phase: "close"; network: SolanaNetwork; program: string; channel: string; transaction: string };
+/** A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one. */
 export type SvmCloseStatus =
   | { state: "settled"; commitment: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "unreadable" }
+  | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
   | { state: "failed"; why: "err" | "not-a-close" };
 
 /**
@@ -101,10 +102,14 @@ function isWellFormed(s: unknown): s is string {
 
 /**
  * Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
- * `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel is settled; any other
- * landed transaction is failed `not-a-close`. Not found at either is pending `not-found`; a failed read, or an answer
- * of neither documented shape, is pending `unreadable`. A ref whose program or channel is not the base58 of a 32-byte
- * key is pending `unreadable`, with nothing read. At most two calls.
+ * `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel, in a transaction that
+ * executed without error, is settled. A landed transaction without such an instruction is failed `not-a-close` from a
+ * read at either commitment, since the signature fixes its instructions. One with such an instruction that landed with
+ * an error is failed `err` only from the read at `finalized`, and pending `not-final` from the read at `confirmed`,
+ * since a block that is not finalized can be replaced and the transaction can land in another block and execute
+ * otherwise. Not found at either is pending `not-found`; a failed read, or an answer of neither documented shape, is
+ * pending `unreadable`. A ref whose program or channel is not the base58 of a 32-byte key is pending `unreadable`,
+ * with nothing read. At most two calls.
  */
 export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promise<SvmCloseStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
@@ -124,7 +129,6 @@ export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promi
     return { state: "pending", why: "unreadable" };
   }
   if (found === null) return { state: "pending", why: "not-found" };
-  if (found.landed.err !== null && found.landed.err !== undefined) return { state: "failed", why: "err" };
   const tx = decodeSvmTx(found.landed.wire);
   if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
   const closes = tx.instructions.some((ix) => {
@@ -132,5 +136,8 @@ export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promi
     const at = ix.data[0] === SETTLE_AND_SEAL_DISCRIMINATOR ? 1 : ix.data[0] === SEAL_DISCRIMINATOR ? 0 : -1;
     return at !== -1 && sameKey(tx.keys[ix.accounts[at] ?? -1], channelKey);
   });
-  return closes ? { state: "settled", commitment: found.commitment } : { state: "failed", why: "not-a-close" };
+  if (!closes) return { state: "failed", why: "not-a-close" };
+  const { err } = found.landed;
+  if (err === null || err === undefined) return { state: "settled", commitment: found.commitment };
+  return found.commitment === "finalized" ? { state: "failed", why: "err" } : { state: "pending", why: "not-final" };
 }

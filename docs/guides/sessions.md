@@ -264,7 +264,13 @@ sessions, the Tempo subscription and `x402/batch-settlement/eip155`, an opening,
 subscription's access key reads as failed only once the
 receipt's block is at or below the reader's `finalized` mark; above that mark, where the block can be replaced,
 or where the mark cannot be read, it reads as pending with the same reason
-([Reading settlement](./rails.md#reading-settlement)). On `mpp/session/hedera`, `fetchPresented`, which reads the
+([Reading settlement](./rails.md#reading-settlement)). On `mpp/session/solana`, `x402/upto/solana` and
+`x402/batch-settlement/solana`, an opening or a close that landed with an error, or an `mpp/session/solana` opening
+with no token or SOL transfer, reads as failed only from the read at `finalized`, and as pending `not-final` from the
+read at `confirmed`. An x402 opening with no single `open` or `top_up` payment-channels instruction
+(`no-channel-instruction`), or a close whose instructions do not close the channel (`not-a-close`), reads as failed
+from a read at either commitment, since the signature fixes the instructions. On `mpp/session/hedera`,
+`fetchPresented`, which reads the
 opening's receipt before `bound`, refuses a revert by the same mark: an opening that reverted is `hedera/reverted` only
 once its block is at or below the reader's `finalized` mark, and `hedera/not-final`, a read to repeat, above that mark
 or where it cannot be read. An opening that succeeded whose escrow logs hold not exactly one `ChannelOpened` naming the

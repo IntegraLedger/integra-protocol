@@ -263,13 +263,19 @@ CAIP-2: `solana:` and 32 base58 characters.
 
 ### SvmCloseStatus
 
-> **SvmCloseStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-a-close"`; \}
+> **SvmCloseStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"not-final"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-a-close"`; \}
+
+A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one.
 
 ***
 
 ### SvmStatus
 
-> **SvmStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-this-instrument"` \| `"no-transfer"` \| `"nonce-moved"`; \}
+> **SvmStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"not-final"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-this-instrument"` \| `"no-transfer"` \| `"nonce-moved"`; \}
+
+A Solana settlement read. Pending `not-final` is a failure that rests on how the transaction executed (its `err`, or
+the inner instructions a check reads), seen only at `confirmed`: a block that is not finalized can be replaced, and
+the transaction can land in another block and execute otherwise, so only the read at `finalized` gives that failure.
 
 ## Variables
 
@@ -658,8 +664,10 @@ any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded 
 > **svmChannelStatus**(`ref`, `reader`): `Promise`\<[`ChannelStatus`](#channelstatus)\>
 
 `svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
-discriminator is `open` (1) or `top_up` (3). At most two calls, or five for a durable-nonce reference: the two
-`transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
+discriminator is `open` (1) or `top_up` (3). The test reads only the signed message, so a transaction without it is
+failed `no-channel-instruction` from a read at either commitment; an error is failed `err` only from the read at
+`finalized`, and pending `not-final` from the read at `confirmed`. At most two calls, or five for a durable-nonce
+reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
 
 #### Parameters
 
@@ -787,13 +795,16 @@ a block that is not finalized can be replaced. A landed wire that does not decod
 > **svmStatus**(`ref`, `reader`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
 Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
-without error, and must carry a token or SOL transfer. A failed read, an answer of neither documented shape, or a
-reader for another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`,
-with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's
-first available block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot
-at or past the context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can
-never land. A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or
-five for a durable-nonce reference.
+without error, and must carry a token or SOL transfer, a top-level or an inner instruction. A message the payer did
+not sign is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message.
+An error, or no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the
+read at `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither
+documented shape, or a reader for another network is pending `unreadable`. A ref whose `digest` is not a string is
+pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a
+slot and the node's first available block is at or before `fromSlot`, is read once more at `finalized`; when that
+lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it is failed
+`nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is pending
+`not-found`. At most two calls, or five for a durable-nonce reference.
 
 #### Parameters
 

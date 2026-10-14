@@ -285,6 +285,31 @@ describe("x402-exact-solana.json", () => {
     expect(base58.encode(tx.signatures[0]!)).toBe(V.V4.txid);
   });
 
+  // Solana's commitment levels (solana.com/docs/rpc, "Configuring State Commitment"): a block at `confirmed` has been
+  // voted on by a supermajority of the cluster, and one at `finalized` has reached maximum lockout. A block that is not
+  // finalized can be replaced, and the transaction can land in another block and execute otherwise, so a failure that
+  // rests on execution (an error, or no transfer among the inner instructions) is failed only from the read at
+  // `finalized`. The signature fixes the message, so a message the payer did not sign is not this instrument at either
+  // commitment. The error and the plant's verdicts are the file's (V4.rows, plant.ownDigest, plant.v1Digest).
+  it("V4: status gives err and no-transfer only from the read at finalized, pending not-final from confirmed, and not-this-instrument from either", async () => {
+    const wire = b64(V.V4.landedWireBase64);
+    const ref = V.V4.ref as SvmRef & { transaction: string };
+    const err = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!.err;
+    expect(await svmStatus(ref, readerFor("finalized", landed(wire, err)))).toEqual({ state: "failed", why: "err" });
+    expect(await svmStatus(ref, readerFor("confirmed", landed(wire, err)))).toEqual({ state: "pending", why: "not-final" });
+    const plant = b64(V.plant.landedWireBase64);
+    const own = { ...ref, transaction: "plant", digest: V.plant.ownDigest.digest };
+    expect(V.plant.ownDigest.expect).toEqual({ state: "failed", why: "no-transfer" });
+    expect(await svmStatus(own, readerFor("finalized", landed(plant), "plant"))).toEqual(V.plant.ownDigest.expect);
+    expect(await svmStatus(own, readerFor("confirmed", landed(plant), "plant"))).toEqual({ state: "pending", why: "not-final" });
+    const other = { ...own, digest: V.plant.v1Digest.digest };
+    for (const at of ["finalized", "confirmed"] as const) {
+      for (const e of [null, err]) {
+        expect([at, e, await svmStatus(other, readerFor(at, landed(plant, e), "plant"))]).toEqual([at, e, V.plant.v1Digest.expect]);
+      }
+    }
+  });
+
   // SvmReader.transaction answers a landed transaction, or notFound with the node's slot; any other answer, such as
   // getTransaction's bare null passed through, is neither, and is a read to repeat.
   it("a transaction answer of neither documented shape is pending unreadable, and recover refuses it svm/unreadable", async () => {

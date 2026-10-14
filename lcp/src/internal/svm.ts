@@ -174,9 +174,14 @@ export interface SvmRef {
   channel?: string;
 }
 
+/**
+ * A Solana settlement read. Pending `not-final` is a failure that rests on how the transaction executed (its `err`, or
+ * the inner instructions a check reads), seen only at `confirmed`: a block that is not finalized can be replaced, and
+ * the transaction can land in another block and execute otherwise, so only the read at `finalized` gives that failure.
+ */
 export type SvmStatus =
   | { state: "settled"; commitment: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "unreadable" }
+  | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
   | { state: "failed"; why: "err" | "not-this-instrument" | "no-transfer" | "nonce-moved" };
 
 export interface SvmBuildInput {
@@ -751,30 +756,38 @@ function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
 
 /**
  * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
- * without error, and must carry a token or SOL transfer. A failed read, an answer of neither documented shape, or a
- * reader for another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`,
- * with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's
- * first available block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot
- * at or past the context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can
- * never land. A lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or
- * five for a durable-nonce reference.
+ * without error, and must carry a token or SOL transfer, a top-level or an inner instruction. A message the payer did
+ * not sign is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message.
+ * An error, or no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the
+ * read at `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither
+ * documented shape, or a reader for another network is pending `unreadable`. A ref whose `digest` is not a string is
+ * pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a
+ * slot and the node's first available block is at or before `fromSlot`, is read once more at `finalized`; when that
+ * lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it is failed
+ * `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is pending
+ * `not-found`. At most two calls, or five for a durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
-  return settledBy(ref, reader, (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer"));
+  return settledBy(ref, reader, { execution: (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer") });
 }
 
 /**
- * The shared settlement read: digest, then `err`, then the pairing's own check, which names a failure or returns null.
- * A durable-nonce transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at
- * `finalized`, naming a slot at or past the context slot of the nonce account read, still finds nothing.
+ * The shared settlement read: the digest, then the pairing's check of the signed message (`message`), then `err`,
+ * then its check of how the transaction executed (`execution`); each check names a failure or returns null. A failure
+ * on the signed message, the digest's `not-this-instrument` included, is final from a read at either commitment: the
+ * signature fixes the message, so every landing of it carries the same instructions. A failure on execution is failed
+ * only from the read at `finalized`, and pending `not-final` from the read at `confirmed`, since a block that is not
+ * finalized can be replaced and the transaction can land in another block and execute otherwise. A durable-nonce
+ * transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at `finalized`,
+ * naming a slot at or past the context slot of the nonce account read, still finds nothing.
  */
 export async function settledBy<W extends string>(
   ref: SvmRef & { transaction: string },
   reader: SvmReader,
-  check: (tx: SvmTx, landed: SvmLanded) => W | null,
+  check: { message?: (tx: SvmTx) => W | null; execution?: (tx: SvmTx, landed: SvmLanded) => W | null },
 ): Promise<
   | { state: "settled"; commitment: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "unreadable" }
+  | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
   | { state: "failed"; why: "err" | "not-this-instrument" | "nonce-moved" | W }
 > {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network || typeof ref.digest !== "string") {
@@ -795,10 +808,12 @@ export async function settledBy<W extends string>(
   const tx = decodeSvmTx(read.landed.wire);
   if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
   if ((await svmDigest(tx)) !== ref.digest.toLowerCase()) return { state: "failed", why: "not-this-instrument" };
-  if (read.landed.err !== null && read.landed.err !== undefined) return { state: "failed", why: "err" };
-  const why = check(tx, read.landed);
-  if (why !== null) return { state: "failed", why };
-  return { state: "settled", commitment: read.commitment };
+  const signed = check.message?.(tx) ?? null;
+  if (signed !== null) return { state: "failed", why: signed };
+  const executed =
+    read.landed.err !== null && read.landed.err !== undefined ? "err" : (check.execution?.(tx, read.landed) ?? null);
+  if (executed === null) return { state: "settled", commitment: read.commitment };
+  return read.commitment === "finalized" ? { state: "failed", why: executed } : { state: "pending", why: "not-final" };
 }
 
 /**
@@ -1119,13 +1134,17 @@ export type ChannelStatus = SvmStatus | { state: "failed"; why: "no-channel-inst
 
 /**
  * `svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
- * discriminator is `open` (1) or `top_up` (3). At most two calls, or five for a durable-nonce reference: the two
- * `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
+ * discriminator is `open` (1) or `top_up` (3). The test reads only the signed message, so a transaction without it is
+ * failed `no-channel-instruction` from a read at either commitment; an error is failed `err` only from the read at
+ * `finalized`, and pending `not-final` from the read at `confirmed`. At most two calls, or five for a durable-nonce
+ * reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
  */
 export async function svmChannelStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<ChannelStatus> {
-  return settledBy(ref, reader, (tx) => {
-    const found = tx.instructions.filter((ix) => sameBytes(tx.keys[ix.program], PAYMENT_CHANNELS_BYTES));
-    return found.length === 1 && (found[0]!.data[0] === 1 || found[0]!.data[0] === 3) ? null : "no-channel-instruction";
+  return settledBy(ref, reader, {
+    message: (tx) => {
+      const found = tx.instructions.filter((ix) => sameBytes(tx.keys[ix.program], PAYMENT_CHANNELS_BYTES));
+      return found.length === 1 && (found[0]!.data[0] === 1 || found[0]!.data[0] === 3) ? null : "no-channel-instruction";
+    },
   });
 }
 

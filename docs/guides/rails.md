@@ -209,6 +209,17 @@ where it cannot be read, and the `mpp/session/hedera` `recover` a revert and `he
 `hedera/not-final`. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
 mark they reached, or none.
 
+On Solana a block at `confirmed` has been voted on by a supermajority of the cluster but can still be replaced, and a
+transaction in it can land in another block and execute otherwise; a block at `finalized` has reached maximum lockout.
+So a Solana `status` gives a failure that rests on how the transaction executed, an error (`err`) or no token or SOL
+transfer among its instructions and inner instructions (`no-transfer`), only from the read at `finalized`. From a read
+at `confirmed` alone it answers pending `not-final`, and a later read gives the verdict. A failure that rests only on
+the signed message, which the signature fixes, holds from a read at either commitment: a message the payer did not
+sign (`not-this-instrument`), no single `open` or `top_up` payment-channels instruction (`no-channel-instruction`), or
+a reported close whose instructions do not close the channel (`not-a-close`). The Solana `recover`s and
+`fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and `svm/not-final`, a read
+to repeat, from the read at `confirmed` alone.
+
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
 entry leaves the payment pending while the entry is valid. Past the entry's expiration ledger, `status` searches the
