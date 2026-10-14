@@ -526,12 +526,17 @@ export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promis
   return { state: "failed", why: `result:${first.result}` };
 }
 
-/** The hash from the landed user transaction's memo alone, for anyone holding the transaction id. One call. */
+/**
+ * The hash from the landed user transaction's memo alone, for anyone holding the transaction id. A ref whose
+ * `transactionId` is not a Mirror Node transaction id (`shard.realm.num-seconds-nanos`, as `reference` writes it) is
+ * `hedera/wrong-reader`, with nothing read. One call.
+ */
 async function recover(
   ref: { network: HederaNetwork; transactionId: string },
   reader: HederaReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
+  if (typeof ref.transactionId !== "string" || !MIRROR_ID.test(ref.transactionId)) return refusal("hedera/wrong-reader");
   const entries = await entriesOf(ref.network, ref.transactionId, reader);
   if (entries === "unreadable") return refusal("hedera/unreadable");
   if (entries === "not-found") return refusal("hedera/not-found");

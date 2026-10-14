@@ -556,7 +556,8 @@ function endingProfileCall(xt: Uint8Array, from: number): ProfileCall | null {
  * have the same hash; the record read is then chosen as `polkadotStatus` chooses it, and a named block that the
  * finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at its height, is
  * `polkadot/not-found`. That record must show the extrinsic dispatched with the `Remarked` event for the remark and a
- * `Transferred` event of the call's asset. At most four calls.
+ * `Transferred` event of the call's asset. A ref whose `transaction` is not a `<block hash>-<index>` timepoint is
+ * `polkadot/wrong-reader`, with nothing read. At most four calls.
  */
 export async function polkadotRecover(
   ref: { network: PolkadotNetwork; transaction: string },
@@ -564,7 +565,7 @@ export async function polkadotRecover(
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("polkadot/wrong-reader");
   const tp = typeof ref.transaction === "string" ? TIMEPOINT.exec(ref.transaction) : null;
-  if (tp === null) return refusal("polkadot/transaction-malformed");
+  if (tp === null) return refusal("polkadot/wrong-reader");
   const block = tp[1]! as Hex;
   const index = Number(tp[2]);
   const raws = await readSafely(() => reader.rawExtrinsics(block));

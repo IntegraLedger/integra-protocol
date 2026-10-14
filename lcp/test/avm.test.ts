@@ -172,7 +172,7 @@ describe("x402-exact-algorand.json", () => {
   });
 
   // As above for recover, beside a reader that answers V4's recover fixture, whose note gives the file's H, for any id.
-  it("V4: recover is avm/unreadable for a ref whose txid is not as reference writes it, with nothing read", async () => {
+  it("V4: recover is avm/wrong-reader for a ref whose txid is not as reference writes it, with nothing read", async () => {
     const ref = { network: V.V4.reference.network, txid: V.V4.reference.txid };
     const searched: unknown[] = [];
     const reader: AvmReader = {
@@ -199,7 +199,7 @@ describe("x402-exact-algorand.json", () => {
       1,
     ];
     for (const txid of txids) {
-      expect(await exactAvm.recover({ ...ref, txid }, reader)).toEqual({ refused: true, code: "avm/unreadable" });
+      expect(await exactAvm.recover({ ...ref, txid }, reader)).toEqual({ refused: true, code: "avm/wrong-reader" });
     }
     expect(searched).toEqual([]);
     // A ref on another network than the reader's is avm/wrong-reader, whatever its txid.

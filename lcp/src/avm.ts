@@ -352,14 +352,14 @@ export async function avmStatus(ref: AvmRef, reader: AvmReader): Promise<AvmStat
 
 /**
  * The hash from the landed payment's note, for anyone holding the transaction id. A ref whose `txid` is not the 52
- * base32 characters of a 32-byte hash is `avm/unreadable`, with nothing read. One call.
+ * base32 characters of a 32-byte hash is `avm/wrong-reader`, with nothing read. One call.
  */
 export async function avmRecover(
   ref: { network: AlgorandNetwork; txid: string },
   reader: AvmReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("avm/wrong-reader");
-  if (!isTxid(ref.txid)) return refusal("avm/unreadable");
+  if (!isTxid(ref.txid)) return refusal("avm/wrong-reader");
   let answer: Awaited<ReturnType<AvmReader["search"]>>;
   try {
     answer = await reader.search(ref.txid);

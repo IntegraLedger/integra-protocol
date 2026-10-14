@@ -447,10 +447,14 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
   };
 }
 
-/** Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. One call. */
+/**
+ * Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A ref that
+ * names no `transaction` string is `tvm/wrong-reader`, with nothing read. One call.
+ */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
   if (peer === undefined) return refusal("tvm/peer-missing");
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tvm/wrong-reader");
+  if (typeof ref.transaction !== "string" || ref.transaction === "") return refusal("tvm/wrong-reader");
   let tx: TonTx | null;
   try {
     tx = await reader.byHash(ref.transaction);

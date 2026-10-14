@@ -791,8 +791,8 @@ type ProxySettle = { selector: Hex; permit: number; owner: number };
  * or by the owner's `invalidateUnorderedNonces`, not in which transaction: any transaction of that block, the owner's
  * cancelling one included, whose input carries a call with the same nonce and owner, and whose receipt holds a
  * `Transfer` from that owner emitted by the contract that call names as its token, gives H. `status` with the ATR's
- * reference tells which transaction paid. A reader for another network, or a ref or reader that is not an object, is
- * `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read,
+ * reference tells which transaction paid. A reader for another network, a ref or reader that is not an object, or a
+ * ref whose `transaction` is not a 32-byte hash, is `evm/wrong-reader`, with nothing read; no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read,
  * a malformed receipt or `nonceBitmap` answer, or an input that is not hex bytes is `evm/unreadable`. At most four
  * calls.
  */
@@ -800,6 +800,7 @@ function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
   const settles = PROXY_SETTLES[id];
   return async (ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> => {
     if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+    if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
     let receipt: EvmReceipt | null;
     let tx: EvmTransaction | null;
     try {

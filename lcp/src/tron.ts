@@ -444,9 +444,13 @@ async function solidTimestamp(reader: TronReader): Promise<bigint | null> {
   return isObject(head) && typeof head["timestamp"] === "bigint" ? head["timestamp"] : null;
 }
 
-/** Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. One call. */
+/**
+ * Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. A ref
+ * whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. One call.
+ */
 export async function tronRecover(ref: { network: TronNetwork; txid: Hex }, reader: TronReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tron/wrong-reader");
+  if (normalHash(ref.txid) === null) return refusal("tron/wrong-reader");
   let tx: { rawDataHex: string } | null;
   try {
     tx = await reader.transaction(ref.txid);

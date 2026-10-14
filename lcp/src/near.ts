@@ -339,10 +339,12 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
 
 /**
  * Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A delegate
- * that calls another method is `near/not-ft-transfer`.
+ * that calls another method is `near/not-ft-transfer`. A ref that names no `transaction` string is `near/wrong-reader`,
+ * with nothing read.
  */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
+  if (typeof ref.transaction !== "string" || ref.transaction === "") return refusal("near/wrong-reader");
   if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) return refusal("near/no-relayer");
   const outcome = await findOutcome(ref.transaction, reader);
   if (outcome === "unreadable") return refusal("near/unreadable");

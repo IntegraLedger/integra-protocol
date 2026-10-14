@@ -224,7 +224,7 @@ export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader,
 
 /**
  * Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
- * bytes is `sui/unreadable`, with nothing read. One call.
+ * bytes is `sui/wrong-reader`, with nothing read. One call.
  */
 export async function suiRecover(
   ref: { network: SuiNetwork; digest: string },
@@ -232,7 +232,7 @@ export async function suiRecover(
 ): Promise<AtrHash | Refusal> {
   if (peer === undefined) return refusal("sui/peer-missing");
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("sui/wrong-reader");
-  if (!isDigest(ref.digest)) return refusal("sui/unreadable");
+  if (!isDigest(ref.digest)) return refusal("sui/wrong-reader");
   const answer = await readOnce(reader, ref.digest);
   if (answer === null) return refusal("sui/unreadable");
   const { tx } = answer;

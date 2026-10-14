@@ -175,12 +175,16 @@ export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, dept
   }
 }
 
-/** Reads the hash back from the included transaction alone, by its id. One call. */
+/**
+ * Reads the hash back from the included transaction alone, by its id. A ref whose `txId` is not a 32-byte hash is
+ * `cardano/wrong-reader`, with nothing read. One call.
+ */
 export async function cardanoRecover(
   ref: { network: CardanoNetwork; txId: Hex },
   reader: CardanoReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("cardano/wrong-reader");
+  if (normalHash(ref.txId) === null) return refusal("cardano/wrong-reader");
   let tx: unknown;
   try {
     tx = await reader.transaction(ref.txId, true);

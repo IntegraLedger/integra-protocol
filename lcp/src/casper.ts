@@ -203,12 +203,16 @@ export async function casperStatus(
   return { state: "settled", finality: "finalized", blockHeight: call.blockHeight };
 }
 
-/** The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`. */
+/**
+ * The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`. A
+ * ref whose `transaction` is not 64 hex digits is `casper/wrong-reader`, with nothing read.
+ */
 export async function casperRecover(
   ref: { network: CasperNetwork; asset: PackageHash; transaction: string },
   reader: CasperReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("casper/wrong-reader");
+  if (typeof ref.transaction !== "string" || !PACKAGE.test(ref.transaction)) return refusal("casper/wrong-reader");
   let call: CasperCall | null;
   try {
     call = await reader.transaction(ref.transaction);

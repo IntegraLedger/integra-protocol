@@ -91,6 +91,8 @@ const NETWORK = /^ccd:[0-9a-f]{32}$/;
 const TOKEN = /^[\x21-\x7e]{1,128}$/;
 const DECIMAL = /^[0-9]{1,20}$/;
 const HEX = /^(?:[0-9a-fA-F]{2})*$/;
+/** A block item hash: 32 bytes as hex digits. */
+const ITEM_HASH = /^[0-9a-fA-F]{64}$/;
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const MAX_ADDRESS = 64;
 const MAX_MEMO = 256;
@@ -192,10 +194,12 @@ export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash 
  * The hash from a settlement block item alone, when it is finalized and successful: the memo of its one transfer whose
  * memo `memoCarrier` reads (a PLT memo with tag 24 unwrapped), as `status` counts the transfers whose memo carries
  * `ref.h`. A transfer without a memo, or whose memo `memoCarrier` refuses, is passed over; no such transfer, or more
- * than one, is `ccd/no-carrier`.
+ * than one, is `ccd/no-carrier`. A ref whose `transaction` is not 64 hex digits is `ccd/wrong-reader`, with nothing
+ * read.
  */
 export async function ccdRecover(ref: { network: CcdNetwork; transaction: string }, reader: CcdReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("ccd/wrong-reader");
+  if (typeof ref.transaction !== "string" || !ITEM_HASH.test(ref.transaction)) return refusal("ccd/wrong-reader");
   let it: CcdItem | null;
   try {
     it = await reader.item(ref.transaction);

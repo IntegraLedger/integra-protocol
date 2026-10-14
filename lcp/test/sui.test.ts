@@ -352,13 +352,13 @@ describe("V4 · status and recover", () => {
       }
     }
   });
-  it("recover: a ref whose digest is not base58 of 32 bytes is sui/unreadable, with nothing read", async () => {
+  it("recover: a ref whose digest is not base58 of 32 bytes is sui/wrong-reader, with nothing read", async () => {
     const answers: Answer[] = [{ tx: "V2", status: "SUCCESS", checkpoint: "7" }, { tx: "V2", status: "FAILURE", checkpoint: "7" }, null];
     for (const answer of answers) {
       for (const v of badDigests) {
         const r = reader(V.V4.ref.network, answer);
         const got = await exactSui.recover({ network: V.V4.ref.network, digest: v } as never, r);
-        expect([answer, v, got, r.calls]).toEqual([answer, v, { refused: true, code: "sui/unreadable" }, 0]);
+        expect([answer, v, got, r.calls]).toEqual([answer, v, { refused: true, code: "sui/wrong-reader" }, 0]);
       }
     }
   });

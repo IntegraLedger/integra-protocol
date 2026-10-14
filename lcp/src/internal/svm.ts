@@ -216,6 +216,16 @@ export function isKey(s: unknown): s is string {
   return keyBytes(s) !== null;
 }
 
+/** True when `s` is a transaction signature: base58 of 64 bytes. */
+export function isSignature(s: unknown): s is string {
+  if (typeof s !== "string" || s.length < 64 || s.length > 88) return false;
+  try {
+    return base58.decode(s).length === 64;
+  } catch {
+    return false;
+  }
+}
+
 export function keyString(b: Uint8Array): string {
   return base58.encode(b);
 }
@@ -914,7 +924,10 @@ export async function svmLocate(
   return { complete: false };
 }
 
-/** Zero-party recovery: the ATR hash in the landed transaction's one memo. One or two calls. */
+/**
+ * Zero-party recovery: the ATR hash in the landed transaction's one memo. A ref whose `transaction` is not a signature,
+ * base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
+ */
 export async function svmRecover(
   ref: { network: SolanaNetwork; transaction: string },
   reader: SvmReader,
@@ -931,6 +944,7 @@ export async function landedTransaction(
   reader: SvmReader,
 ): Promise<SvmTx | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
+  if (!isSignature(ref.transaction)) return refusal("svm/wrong-reader");
   const read = await landedAt(reader, ref.transaction);
   if (read === undefined) return refusal("svm/unreadable");
   if ("notFound" in read) return refusal("svm/not-found");

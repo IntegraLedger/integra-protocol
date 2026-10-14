@@ -672,10 +672,11 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. A failed
  * read, a reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a
  * string `address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
- * `evm/not-found`.
+ * `evm/not-found`. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read.
  */
 async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
   const chainId = chainIdOf(ref.network);
   if (chainId === undefined) return refusal("evm/network-malformed");
   let receipt: EvmReceipt | null;

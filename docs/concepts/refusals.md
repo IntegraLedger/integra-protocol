@@ -96,7 +96,8 @@ counts as that mark not reached. A reader that declares a network other than the
 failed payment either, and nothing is read through it: `status` returns pending `unreadable` on every read, so no later
 read settles it, and `recover` refuses `<namespace>/wrong-reader`. A ref or reader that is not an object is read the
 same way, with nothing read: `status` is pending `unreadable`, and `recover` refuses with the code it gives a reader for
-another network, except on `mpp/charge/usdc/stacks`, which refuses `stacks/unreadable`. Check `reader.network` against
+another network. So does a `recover` given a ref whose transaction id is not in its rail's form, which can name no
+transaction. Check `reader.network` against
 the reference's network before you poll, and give every polling loop a deadline of its own.
 
 ## Next

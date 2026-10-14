@@ -34,6 +34,7 @@ import {
   txIdText,
 } from "../src/hedera.js";
 import { BINDINGS } from "../src/index.js";
+import { counting } from "./fixtures/counting-reader.js";
 import { permit2Status, redeemedLeafRecover } from "../src/internal/evm.js";
 import { signedWire } from "../src/internal/svm.js";
 import { xrplCloseStatus } from "../src/internal/xrpl-session.js";
@@ -340,13 +341,15 @@ describe("cardano", () => {
     ["cardanoStatus", cardanoStatus, "x402-exact-cardano.json", UNREADABLE, 0n],
     ["cardanoRecover", cardanoRecover, "x402-exact-cardano.json", refused("cardano/wrong-reader")],
   ]);
-  it("cardanoRecover: a ref whose txId is not a string is cardano/unreadable when the reader answers a transaction", async () => {
+  it("cardanoRecover: a ref whose txId is not a 32-byte hash is cardano/wrong-reader, with nothing read", async () => {
     const V = load("x402-exact-cardano.json");
     const cbor = Uint8Array.from(Buffer.from(V.V2.transactionBase64, "base64"));
     const reader = { network: V.V5.ref.network, transaction: async () => ({ blockHeight: 1n, slot: 1n, valid: true, cbor }) };
     expect(await cardanoRecover(V.V5.ref, reader as never)).toBe(V.V5.recover[0].expect);
     for (const txId of [undefined, null, 5]) {
-      expect(await cardanoRecover({ ...V.V5.ref, txId } as never, reader as never), String(txId)).toEqual(refused("cardano/unreadable"));
+      const { reader: r, calls } = counting(reader);
+      expect(await cardanoRecover({ ...V.V5.ref, txId } as never, r as never), String(txId)).toEqual(refused("cardano/wrong-reader"));
+      expect(calls).toEqual([]);
     }
   });
 });

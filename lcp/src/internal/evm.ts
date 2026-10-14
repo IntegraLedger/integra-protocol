@@ -263,10 +263,12 @@ export async function eip3009Status(
  * Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
  * that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
  * a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
- * `evm/unreadable`; no receipt (`null`) is `evm/not-found`. One call.
+ * `evm/unreadable`; no receipt (`null`) is `evm/not-found`. A ref whose `transaction` is not a 32-byte hash is
+ * `evm/wrong-reader`, with nothing read. One call.
  */
 export async function eip3009Recover(ref: EvmTxRef, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -921,13 +923,15 @@ export function isLog(l: unknown): l is EvmLog {
 /**
  * Recovers H from a settlement transaction through MetaMask's DelegationManager: among its `RedeemedDelegation` logs,
  * the leaves are those whose data word 1 (the delegate) is the redeemer in topic 2 or the wildcard delegate; exactly
- * one distinct leaf salt (data word 5) is H. One call.
+ * one distinct leaf salt (data word 5) is H. A ref whose `transaction` is not a 32-byte hash is `evm/wrong-reader`,
+ * with nothing read. One call.
  */
 export async function redeemedLeafRecover(
   ref: { network: Eip155; transaction: Hex },
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
   let receipt: EvmReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);

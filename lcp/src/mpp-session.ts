@@ -1027,13 +1027,14 @@ async function openRead(
  * and calldata that starts with one of the three selectors and holds those words, and the receipt must hold a
  * `Transfer` of the call's token, of any value, from its payer (the transaction's sender for `open`, else `from`) into
  * the called contract; else `evm/no-open-call`. A transaction sent through an ERC-4337 EntryPoint is refused so: the
- * account's calldata does not show which contract the account called. A reader for another network, or a ref or reader
- * that is not an object, is `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is
+ * account's calldata does not show which contract the account called. A reader for another network, a ref or reader
+ * that is not an object, or a ref whose `transaction` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`; no receipt or no transaction is `evm/not-found`; a reverted one is
  * `evm/reverted`; a failed read, a malformed receipt or transaction, or calldata longer than `MAX_CALLDATA` is
  * `evm/unreadable`. At most two calls.
  */
 async function evmRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
+  if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
   let receipt: EvmReceipt | null;
   let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
   try {
@@ -1076,12 +1077,12 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
  * the TIP-20 channel reserve (TIP-1034, `TIP20_CHANNEL_RESERVE`) emits in the receipt. A v1 escrow's `ChannelOpened`
  * carries no salt, and its open call sits among the Tempo transaction's calls, which the reader does not show: a v1
  * opening, like a receipt with no such log, is `tempo/open-not-found`. Logs giving more than one salt are
- * `tempo/ambiguous`. A ref or reader that is not an object, or a reader for another network than the ref names, is
- * `tempo/wrong-reader`; a failed read is `tempo/unreadable`, no receipt `tempo/not-found` and a revert
+ * `tempo/ambiguous`. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash (with
+ * nothing read), or a reader for another network than the ref names, is `tempo/wrong-reader`; a failed read is `tempo/unreadable`, no receipt `tempo/not-found` and a revert
  * `tempo/reverted`, as `readReceipt` answers. One call.
  */
 async function tempoRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref)) return refusal("tempo/wrong-reader");
+  if (!isObject(ref) || normalHash(ref.transaction) === null) return refusal("tempo/wrong-reader");
   const receipt = await readReceipt(ref.network, ref.transaction, reader);
   if (isRefusal(receipt)) return receipt;
   const salts = new Set<string>();

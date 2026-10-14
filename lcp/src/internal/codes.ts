@@ -302,7 +302,6 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "polkadot/range",
   "polkadot/remark-not-lcp",
   "polkadot/signature-malformed",
-  "polkadot/transaction-malformed",
   "polkadot/unreadable",
   "polkadot/wrong-reader",
   "stacks/no-memo",

@@ -14,6 +14,7 @@ import {
   canonicalCarrier,
   compileV0,
   decodeSvmTx,
+  isSignature,
   keyBytes,
   svmReference,
   svmStatus,
@@ -229,9 +230,13 @@ function isSignatureText(s: unknown): s is string {
   return typeof s === "string" && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(s);
 }
 
-/** Zero-party: the one LCP memo of the landed transaction, read at `finalized`, then `confirmed`. */
+/**
+ * Zero-party: the one LCP memo of the landed transaction, read at `finalized`, then `confirmed`. A ref whose
+ * `transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read.
+ */
 async function recover(ref: { network: SolanaNetwork; transaction: string }, reader: SvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
+  if (!isSignature(ref.transaction)) return refusal("svm/wrong-reader");
   let landed: unknown;
   try {
     landed = await reader.transaction(ref.transaction, "finalized");
