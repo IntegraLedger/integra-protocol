@@ -10,6 +10,7 @@ import { isObject } from "../fields.js";
 import type { HederaNetwork } from "../hedera.js";
 import type { MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import { b64uDecode } from "./base64url.js";
 import type { X402Payment } from "./x402.js";
 
 /** The x402 `exact` payload on Hedera: the partially signed transaction, base64. */
@@ -98,12 +99,17 @@ export function chargeLegs(
   return { currency, amount, legs: all };
 }
 
-/** The Hedera request checks a charge challenge must pass before it is placed. */
+/**
+ * The Hedera request checks a charge challenge must pass before it is placed. The request is read as MPP's challenge
+ * reader takes it, base64url without padding in its canonical form (RFC 4648 §3.5), or it is `mpp/request-malformed`.
+ */
 export function hederaChargeRequest(c: MppChallenge): true | Refusal {
   if (!isObject(c) || c.method !== "hedera" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
+  const bytes = b64uDecode(c.request);
+  if (bytes === undefined) return refusal("mpp/request-malformed");
   let request: unknown;
   try {
-    request = parseJson(new TextDecoder("utf-8", { fatal: true }).decode(fromBase64Url(c.request)));
+    request = parseJson(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch {
     return refusal("mpp/request-malformed");
   }
@@ -118,13 +124,4 @@ export function hederaChargeRequest(c: MppChallenge): true | Refusal {
     if (isRefusal(n)) return n;
   }
   return true;
-}
-
-function fromBase64Url(s: unknown): Uint8Array {
-  if (typeof s !== "string" || !/^[A-Za-z0-9_-]*={0,2}$/.test(s)) throw new Error("not base64url");
-  const plain = s.replace(/=+$/, "").replaceAll("-", "+").replaceAll("_", "/");
-  const padded = plain + "=".repeat((4 - (plain.length % 4)) % 4);
-  const bytes = fromBase64(padded);
-  if (bytes === null) throw new Error("not base64url");
-  return bytes;
 }

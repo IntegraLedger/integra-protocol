@@ -182,6 +182,24 @@ describe("mpp-charge-hedera.json", () => {
     expect(advertised(placed({ ...V.fixed.request, amount: "0", splits: [] }))).toEqual({ refused: true, code: "hedera/option-malformed" });
   });
 
+  // MPP's `request` is base64url-encoded JSON (draft-httpauth-payment-01), read in its canonical form only (RFC 4648
+  // §3.5). Both requests below encode to a length of 2 mod 4, so the last character carries four bits past the last
+  // byte: setting the lowest of them, or adding `=` padding, spells the same JSON in another form. Such a request is not
+  // read, so the Hedera checks never see its amount of 0.
+  it("a request with a pad bit set, or with padding, is mpp/request-malformed before the Hedera checks", () => {
+    const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const padBit = (r: string) => r.slice(0, -1) + ALPHABET[ALPHABET.indexOf(r.at(-1)!) | 1];
+    const malformed = { refused: true, code: "mpp/request-malformed" };
+    for (const request of [V.fixed.request, { ...V.fixed.request, amount: "0", splits: [] }]) {
+      const c = placed(request);
+      expect(c.request.length % 4).toBe(2);
+      for (const spelled of [padBit(c.request), `${c.request}==`]) {
+        expect(Buffer.from(spelled, "base64url")).toEqual(Buffer.from(c.request, "base64url"));
+        expect(advertised({ ...c, request: spelled }), spelled.slice(-4)).toEqual(malformed);
+      }
+    }
+  });
+
   // draft-hedera-charge-00 (`splits`): each entry's `amount` is "Amount in the same base units and token as the primary
   // `amount`", with no sign rule of its own; the primary recipient's remainder "MUST be greater than zero". A token
   // transfer list's checks (hiero-consensus-node CryptoTransferValidator.validateNonDuplicateFungibleTransfers) ask for

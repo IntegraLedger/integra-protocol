@@ -29,6 +29,12 @@ value derived from it, commits to H. Some methods also carry H in a request memb
 each intent and method. Where the payer signs it, as `externalId` on `solana` charges and `methodDetails.invoiceId` on
 `xrpl`, it is in the payment.
 
+The package reads a challenge's `id`, `request` and `opaque` as base64url without padding in its canonical form only
+(RFC 4648 §3.5). One with `=` padding, or whose last character has a bit set past its last byte, is malformed:
+`mpp/id-not-ours`, `mpp/request-malformed` and `mpp/opaque-malformed`, on every pairing, the Hedera charge's request
+checks included. `read` passes over a challenge whose `id` or `opaque` is in such a form, as it passes over one
+that carries no hash.
+
 `issuedDigest(challenge)` is the digest of what the seller issued: SHA-256 over the RFC 8785 form of the bound
 members, with `request` decoded and its `CARRIER` member left out, and `opaque` without the LCP members. The seller
 compares the echoed challenge's digest with the one it recorded at issue. A `stellar` charge's `recipient` is the one
