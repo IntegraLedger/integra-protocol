@@ -107,6 +107,7 @@ const DOMAIN_TYPEHASH = keccak("EIP712Domain(string name,string version,uint256 
 const DOMAIN_NAME = "x402 Batch Settlement";
 const DOMAIN_VERSION = "1";
 const U128_LIMIT = 1n << 128n;
+const U256_LIMIT = 1n << 256n;
 const U40_LIMIT = 1n << 40n;
 const HASH32 = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL = /^[0-9]{1,39}$/;
@@ -579,7 +580,9 @@ async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned
 
 /**
  * The opening's deposit: its amount, a positive decimal below 2^128, as the channel contract's `deposit` takes a
- * `uint128` and refuses 0, and its authorization, exactly one of the EIP-3009 and Permit2 forms.
+ * `uint128` and refuses 0, and its authorization, exactly one of the EIP-3009 and Permit2 forms. The authorization's
+ * time bound, the EIP-3009 `validBefore` or the Permit2 `deadline`, is a decimal below 2^256, the `uint256` the deposit
+ * collectors decode it as, and is read as given.
  */
 function depositOf(payload: Record<string, unknown>) {
   const deposit = payload["deposit"];
@@ -592,12 +595,14 @@ function depositOf(payload: Record<string, unknown>) {
   const p = auth["permit2Authorization"];
   if ((e === undefined) === (p === undefined)) return refusal("x402/deposit-authorization");
   if (e !== undefined) {
-    if (!isObject(e) || typeof e["validBefore"] !== "string" || !DECIMAL.test(e["validBefore"])) return refusal("x402/payload-malformed");
-    if (!isHash32(e["salt"])) return refusal("x402/payload-malformed");
-    return { amount, method: "eip3009" as const, settleBy: BigInt(e["validBefore"]), authSalt: e["salt"] as Hex };
+    if (!isObject(e)) return refusal("x402/payload-malformed");
+    const validBefore = decimalBelow(e["validBefore"], U256_LIMIT);
+    if (validBefore === undefined || !isHash32(e["salt"])) return refusal("x402/payload-malformed");
+    return { amount, method: "eip3009" as const, settleBy: validBefore, authSalt: e["salt"] as Hex };
   }
-  if (!isObject(p) || typeof p["deadline"] !== "string" || !DECIMAL.test(p["deadline"])) return refusal("x402/payload-malformed");
-  return { amount, method: "permit2" as const, settleBy: BigInt(p["deadline"]) };
+  const deadline = isObject(p) ? decimalBelow(p["deadline"], U256_LIMIT) : undefined;
+  if (deadline === undefined) return refusal("x402/payload-malformed");
+  return { amount, method: "permit2" as const, settleBy: deadline };
 }
 
 /**
@@ -625,7 +630,10 @@ async function evmBoundWithin(presented: unknown): Promise<AtrHash | Refusal> {
   return normalHash((x.payload["channelConfig"] as ChannelConfig).salt)!;
 }
 
-/** The opening's read keys: the `Deposited` log, the payer's transfer by digest, and the log filter that finds the opening. */
+/**
+ * The opening's read keys: the `Deposited` log, the payer's transfer by digest, and the log filter that finds the
+ * opening. `settleBy` is the deposit authorization's `validBefore` or `deadline`, in decimal, below 2^256.
+ */
 async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
   const h = await evmBound(presented);
   if (isRefusal(h)) return h;

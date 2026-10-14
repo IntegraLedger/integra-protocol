@@ -822,7 +822,7 @@
   "expectPairing": "x402/batch-settlement/cloudflare"
  },
  "agreedRefusals": {
-  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h. A row with pairing and calls runs each of those functions of that pairing on EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies. With depositAmount, deposit.amount is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set, and voucher.channelId is the channel id of the configuration that results; buildWithin runs with the advertised option, that configuration and EB2's maxClaimableAmount, under H. A row with pairing, call and zeroMembers runs that call once per member named, with that member the zero address: the EVM build of EB2 and EB3's opening, with from in its choice, or payTo or asset in fixed.evm.option, the zero address.",
+  "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h. A row with pairing and calls runs each of those functions of that pairing on EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies. With depositAmount, deposit.amount is replaced by it. With validBeforeOrDeadline, the ERC-3009 authorization's validBefore, or the Permit2 authorization's deadline, is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set, and voucher.channelId is the channel id of the configuration that results; buildWithin runs with the advertised option, that configuration and EB2's maxClaimableAmount, under H. A row with pairing, call and zeroMembers runs that call once per member named, with that member the zero address: the EVM build of EB2 and EB3's opening, with from in its choice, or payTo or asset in fixed.evm.option, the zero address.",
   "rows": [
    {
     "case": "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal, is 0, or is 2^128 or more",
@@ -1008,6 +1008,16 @@
      "asset"
     ],
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "EVM bound or reference of EB2 and EB3's opening whose ERC-3009 validBefore or Permit2 deadline is 2^256, one above the largest uint256, the type the deposit collectors decode it as (x402-foundation/x402 751590a2, contracts/evm/src/periphery/ERC3009DepositCollector.sol L41-42 and contracts/evm/src/periphery/Permit2DepositCollector.sol L83-84)",
+    "pairing": "x402/batch-settlement/eip155",
+    "calls": [
+     "bound",
+     "reference"
+    ],
+    "validBeforeOrDeadline": "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+    "expect": "x402/payload-malformed"
    }
   ]
  },

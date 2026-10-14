@@ -548,6 +548,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     choice?: unknown;
     h?: unknown;
     depositAmount?: string;
+    validBeforeOrDeadline?: string;
     configMembers?: Record<string, unknown>[];
     zeroMembers?: ("from" | "payTo" | "asset")[];
     expect: string;
@@ -561,7 +562,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   });
   const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
   /** The members a row carries its input in. Each row carries exactly one, and one test below runs the rows of each. */
-  const INPUTS = ["choice", "h", "depositAmount", "configMembers", "zeroMembers"] as const;
+  const INPUTS = ["choice", "h", "depositAmount", "validBeforeOrDeadline", "configMembers", "zeroMembers"] as const;
   const inputOf = (r: Row) => INPUTS.filter((k) => k in r);
   const carrying = (input: (typeof INPUTS)[number], exact: number, pairing?: string) => {
     const kept = (r: Row) => inputOf(r)[0] === input && (pairing === undefined || r.pairing === pairing);
@@ -674,6 +675,35 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         const digest = createHash("sha256").update(Buffer.concat([fromHex(E.payer.slice(2)), fromHex(to.slice(2)), word(amount)]));
         expect(ref.transferLog?.digest, `${form} ${amount}`).toBe(`0x${digest.digest("hex")}`);
       }
+    }
+  });
+
+  // The deposit collectors decode the ERC-3009 validBefore and the Permit2 deadline as uint256 (x402-foundation/x402
+  // 751590a2, contracts/evm/src/periphery/ERC3009DepositCollector.sol L41-42 and Permit2DepositCollector.sol L83-84), so
+  // 2^256 - 1, the largest, is read, and the reference's settleBy carries it in decimal.
+  it("the EVM bound and reference refuse EB2 and EB3's opening whose validBefore or deadline is 2^256, and read 2^256 - 1", async () => {
+    const bounds = carrying("validBeforeOrDeadline", 1);
+    expect(bounds.map((r) => [r.pairing, r.calls, BigInt(r.validBeforeOrDeadline!)])).toEqual([
+      ["x402/batch-settlement/eip155", ["bound", "reference"], 2n ** 256n],
+    ]);
+    const largest = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+    expect(BigInt(largest)).toBe(2n ** 256n - 1n);
+    const reads: Record<string, (p: unknown) => Promise<unknown>> = { bound: batchEvm.bound, reference: batchEvm.reference };
+    for (const [form, payment] of await openings()) {
+      const p = payment.payload as Record<string, any>;
+      const a = p["deposit"].authorization;
+      const withBound = (v: string) => {
+        const authorization =
+          form === "eip3009"
+            ? { erc3009Authorization: { ...a.erc3009Authorization, validBefore: v } }
+            : { permit2Authorization: { ...a.permit2Authorization, deadline: v } };
+        return { ...payment, payload: { ...p, deposit: { ...p["deposit"], authorization } } };
+      };
+      for (const r of bounds) {
+        for (const call of r.calls!) expect(await reads[call]!(withBound(r.validBeforeOrDeadline!)), `${form} ${call}`).toEqual(refused(r.expect));
+      }
+      expect(await batchEvm.bound(withBound(largest)), form).toBe(H);
+      expect(unwrap(await batchEvm.reference(withBound(largest))).settleBy, form).toBe(largest);
     }
   });
 
