@@ -558,16 +558,22 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     ],
   });
   const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
+  /** The members a row carries its input in. Each row carries exactly one, and one test below runs the rows of each. */
+  const INPUTS = ["choice", "h", "depositAmount"] as const;
+  const inputOf = (r: Row) => INPUTS.filter((k) => k in r);
+  const carrying = (input: (typeof INPUTS)[number], exact: number) =>
+    rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and what they call", {
+      exact,
+      keep: [`the rows with ${input}`, (r) => inputOf(r)[0] === input],
+      leave: ["the rows with another input, which another test in this block runs", (r) => inputOf(r)[0] !== input],
+    });
+
+  it("each row carries its input in exactly one member", () => {
+    for (const r of rows) expect(inputOf(r), r.case).toHaveLength(1);
+  });
 
   it("each pairing's build, and the EVM and SVM buildWithin, refuse a null choice and a string choice", async () => {
-    const choices = rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and what they call", {
-      exact: 10,
-      keep: ["the rows with a choice", (r) => "choice" in r],
-      leave: [
-        "the rows with an h, which the Solana build test below runs, and the rows with a deposit amount, which the EVM opening test below runs",
-        (r) => "h" in r || "depositAmount" in r,
-      ],
-    });
+    const choices = carrying("choice", 10);
     expect(choices.map((r) => `${r.pairing} ${r.call} ${String(r.choice)}`)).toEqual([
       "x402/batch-settlement/eip155 build null",
       "x402/batch-settlement/eip155 build x",
@@ -587,14 +593,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   });
 
   it("the Solana build refuses ES2's choice with an h that is not a hash", async () => {
-    const hs = rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and what they call", {
-      exact: 3,
-      keep: ["the rows with an h", (r) => "h" in r],
-      leave: [
-        "the rows with a choice, which the null and string choice test above runs, and the rows with a deposit amount, which the EVM opening test below runs",
-        (r) => "choice" in r || "depositAmount" in r,
-      ],
-    });
+    const hs = carrying("h", 3);
     expect(hs.map((r) => r.h)).toEqual(["abc", `0X${H.slice(2)}`, null]);
     const o: PaymentRequirements = S.option;
     const doc = unwrap(batchSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o));
@@ -613,19 +612,16 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     for (const r of hs) expect(await batchSvm.build(choice, r.h as AtrHash), r.case).toEqual(refused(r.expect));
   });
 
-  // The channel contract's deposit takes its amount as a uint128 (x402-foundation/x402 751590a2,
-  // contracts/evm/src/x402BatchSettlement.sol L202), so 2^128 - 1, the largest, is read. The reference's transfer digest
-  // for it is node:crypto's SHA-256 over the payer, the deposit's recipient and that amount as a 32-byte word: the
-  // ERC-3009 collector, or the channel contract for Permit2, at the addresses the scheme gives (scheme_batch_settlement_evm.md
-  // L684-686 at the same commit).
-  it("the EVM bound and reference refuse EB2 and EB3's opening whose deposit amount is 2^128, and read 2^128 - 1", async () => {
-    const amounts = rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and what they call", {
-      exact: 1,
-      keep: ["the rows with a deposit amount", (r) => "depositAmount" in r],
-      leave: ["the rows with a choice or an h, which the tests above run", (r) => "choice" in r || "h" in r],
-    });
+  // The channel contract's deposit takes its amount as a uint128 and refuses 0 (x402-foundation/x402 751590a2,
+  // contracts/evm/src/x402BatchSettlement.sol L202 and L213), so 1 and 2^128 - 1, the least and the largest, are read.
+  // The reference's transfer digest for each is node:crypto's SHA-256 over the payer, the deposit's recipient and that
+  // amount as a 32-byte word: the ERC-3009 collector, or the channel contract for Permit2, at the addresses the scheme
+  // gives (scheme_batch_settlement_evm.md L684-686 at the same commit).
+  it("the EVM bound and reference refuse EB2 and EB3's opening whose deposit amount is 2^128 or 0, and read 1 and 2^128 - 1", async () => {
+    const amounts = carrying("depositAmount", 2);
     expect(amounts.map((r) => [r.pairing, r.calls, BigInt(r.depositAmount!)])).toEqual([
       ["x402/batch-settlement/eip155", ["bound", "reference"], 2n ** 128n],
+      ["x402/batch-settlement/eip155", ["bound", "reference"], 0n],
     ]);
     const word = (v: bigint): Uint8Array => fromHex(v.toString(16).padStart(64, "0"));
     const recipients = [
@@ -639,12 +635,15 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
       const form = method ?? "eip3009";
       for (const r of amounts) {
         const b = pairings[r.pairing as keyof typeof pairings] as unknown as Record<string, (p: unknown) => Promise<unknown>>;
-        for (const call of r.calls!) expect(await b[call]!(withAmount(r.depositAmount!)), `${form} ${call}`).toEqual(refused(r.expect));
-        const largest = BigInt(r.depositAmount!) - 1n;
-        expect(await batchEvm.bound(withAmount(largest.toString())), form).toBe(H);
-        const ref = unwrap(await batchEvm.reference(withAmount(largest.toString())));
-        const digest = createHash("sha256").update(Buffer.concat([fromHex(E.payer.slice(2)), fromHex(to.slice(2)), word(largest)]));
-        expect(ref.transferLog?.digest, form).toBe(`0x${digest.digest("hex")}`);
+        for (const call of r.calls!) {
+          expect(await b[call]!(withAmount(r.depositAmount!)), `${form} ${call} ${r.depositAmount}`).toEqual(refused(r.expect));
+        }
+      }
+      for (const amount of [1n, 2n ** 128n - 1n]) {
+        expect(await batchEvm.bound(withAmount(amount.toString())), `${form} ${amount}`).toBe(H);
+        const ref = unwrap(await batchEvm.reference(withAmount(amount.toString())));
+        const digest = createHash("sha256").update(Buffer.concat([fromHex(E.payer.slice(2)), fromHex(to.slice(2)), word(amount)]));
+        expect(ref.transferLog?.digest, `${form} ${amount}`).toBe(`0x${digest.digest("hex")}`);
       }
     }
   });
@@ -742,9 +741,9 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
 
   const cases: Record<string, () => Promise<unknown[]>> = {
     // The EVM bound and reference read the deposit amount: the reference's transfer digest holds it, and the channel
-    // contract's deposit takes it as a uint128 (x402BatchSettlement.sol L202 at x402 751590a2). channel.ref reads no
-    // deposit, and the Solana pairing reads the opening's deposit from its transaction.
-    "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal, or is 2^128 or more": async () => {
+    // contract's deposit takes it as a uint128 and refuses 0 (x402BatchSettlement.sol L202 and L213 at x402 751590a2).
+    // channel.ref reads no deposit, and the Solana pairing reads the opening's deposit from its transaction.
+    "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal, is 0, or is 2^128 or more": async () => {
       const { payment } = await evmOpening();
       const p = payment.payload as Record<string, any>;
       const { salt: _salt, ...evmNoSalt } = p["channelConfig"];
@@ -753,6 +752,7 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
       const evmVoucher = (config: unknown) => ({ ...payment, payload: { type: "voucher", channelConfig: config, voucher: p["voucher"] } });
       const notDecimal = { ...payment, payload: { ...p, deposit: { ...p["deposit"], amount: "1e5" } } };
       const pastU128 = { ...payment, payload: { ...p, deposit: { ...p["deposit"], amount: "9".repeat(39) } } };
+      const zero = { ...payment, payload: { ...p, deposit: { ...p["deposit"], amount: "0" } } };
       const { payer: _payer, ...svmNoPayer } = V.ES4.config;
       const svmSaltText = { ...V.ES4.config, salt: "forty-two" };
       return [
@@ -760,10 +760,12 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
         await batchEvm.bound(evmOpeningWith(evmDelayText)),
         await batchEvm.bound(notDecimal),
         await batchEvm.bound(pastU128),
+        await batchEvm.bound(zero),
         await batchEvm.reference(evmOpeningWith(evmNoSalt)),
         await batchEvm.reference(evmOpeningWith(evmDelayText)),
         await batchEvm.reference(notDecimal),
         await batchEvm.reference(pastU128),
+        await batchEvm.reference(zero),
         await batchEvm.channel.ref(evmVoucher(evmNoSalt)),
         await batchEvm.channel.ref(evmVoucher(evmDelayText)),
         await batchSvm.bound(svmOpening(svmNoPayer)),

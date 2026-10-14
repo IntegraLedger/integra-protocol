@@ -292,12 +292,12 @@ currency and recipient are not read. An authorization that names more than one t
 so the authorization does not name exactly one, and it is refused the same way.
 
 On `x402/batch-settlement/eip155`, `bound` and `reference` read the opening's deposit amount as the channel contract's
-`deposit` takes it, a `uint128`: an amount that is not a decimal below 2^128 is refused `x402/payload-malformed`. The
-reference's transfer digest holds that amount. The opening's `status` counts the payer's deposit only from the call that
-deposited into this channel. The channel contract collects a deposit and then emits `Deposited` for the channel, so the
-payer's transfer must be among the logs between the contract's previous `Deposited` and the channel's own. A gift into
-the channel beside the payer's deposit into another channel, or the payer's short deposit into it beside a deposit
-elsewhere, reads as failed, with the reason `transfer-not-found`.
+`deposit` takes it, a `uint128` that is not 0: an amount that is not a positive decimal below 2^128 is refused
+`x402/payload-malformed`. The reference's transfer digest holds that amount. The opening's `status` counts the payer's
+deposit only from the call that deposited into this channel. The channel contract collects a deposit and then emits
+`Deposited` for the channel, so the payer's transfer must be among the logs between the contract's previous `Deposited`
+and the channel's own. A gift into the channel beside the payer's deposit into another channel, or the payer's short
+deposit into it beside a deposit elsewhere, reads as failed, with the reason `transfer-not-found`.
 
 An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim; one of type
 `permit2` is sent by the seller's server, which names its transaction to `status`. Both references carry `opens`: the

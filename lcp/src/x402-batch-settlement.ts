@@ -553,14 +553,14 @@ async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned
 }
 
 /**
- * The opening's deposit: its amount, a decimal below 2^128, as the channel contract's `deposit` takes a `uint128`, and
- * its authorization, exactly one of the EIP-3009 and Permit2 forms.
+ * The opening's deposit: its amount, a positive decimal below 2^128, as the channel contract's `deposit` takes a
+ * `uint128` and refuses 0, and its authorization, exactly one of the EIP-3009 and Permit2 forms.
  */
 function depositOf(payload: Record<string, unknown>) {
   const deposit = payload["deposit"];
   if (!isObject(deposit)) return refusal("x402/payload-malformed");
   const amount = decimalBelow(deposit["amount"], U128_LIMIT);
-  if (amount === undefined) return refusal("x402/payload-malformed");
+  if (amount === undefined || amount === 0n) return refusal("x402/payload-malformed");
   const auth = deposit["authorization"];
   if (!isObject(auth)) return refusal("x402/deposit-authorization");
   const e = auth["erc3009Authorization"];
@@ -577,8 +577,8 @@ function depositOf(payload: Record<string, unknown>) {
 
 /**
  * The opening's `salt`, once its config hashes to the voucher's channel id. No signature is verified here. A deposit
- * amount that is not a decimal below 2^128, the `uint128` the channel contract's `deposit` takes, is
- * `x402/payload-malformed`, as `reference` answers it.
+ * amount that is not a positive decimal below 2^128, as the channel contract's `deposit` takes a `uint128` and refuses
+ * 0, is `x402/payload-malformed`, as `reference` answers it.
  */
 async function evmBound(presented: unknown): Promise<AtrHash | Refusal> {
   const x = payloadOf(presented, EVM_ID);
