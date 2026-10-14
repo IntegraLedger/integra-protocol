@@ -522,7 +522,7 @@ describe("x402-batch-settlement.json: SVM", () => {
 // the transfer digest, settleBy and the PDA seeds as the number, so a leading zero changes nothing. The expected values
 // are the file's: EB6's H and channel, EB7's transfer digest, ES4's H and channel, and ES1's PDA.
 describe("x402-batch-settlement.json: a decimal with a leading zero", () => {
-  it("an EVM deposit amount 0100000 and validBefore 01790003600 give EB6's H and channel and EB7's digest; a Solana salt 042 gives ES4's H and ES1's PDA", async () => {
+  it("an EVM deposit amount 0100000, or 100000 written in 40 digits, and validBefore 01790003600 give EB6's H and channel and EB7's digest; a Solana salt 042 gives ES4's H and ES1's PDA", async () => {
     const { payment } = await evmOpening();
     const p = payment.payload as Record<string, any>;
     const auth = p["deposit"].authorization.erc3009Authorization;
@@ -539,6 +539,9 @@ describe("x402-batch-settlement.json: a decimal with a leading zero", () => {
     const ref = unwrap(await batchEvm.reference(padded));
     expect([ref.transferLog?.digest, ref.settleBy]).toEqual([V.EB7.transferDigest, E.validBefore]);
     expect(ref).toEqual(unwrap(await batchEvm.reference(payment)));
+    const wide = { ...payment, payload: { ...p, deposit: { ...p["deposit"], amount: E.deposit.padStart(40, "0") } } };
+    expect(await batchEvm.bound(wide)).toBe(V.EB6.expectBound);
+    expect(unwrap(await batchEvm.reference(wide))).toEqual(unwrap(await batchEvm.reference(payment)));
 
     const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
     const opening = (salt: string) =>
