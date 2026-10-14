@@ -100,8 +100,22 @@ type ClarityType =
 /** The type of `none`'s value and of an empty list's items (`NoType`). */
 const NO_TYPE: ClarityType = { k: "none" };
 
+/**
+ * `f` of each type, computed once: a type does not change once made, and a list's items join into one type item by
+ * item, so a join reads its parts' depth and sizes without walking them again and a value is read in time linear in
+ * its bytes.
+ */
+function once<T>(f: (t: ClarityType) => T): (t: ClarityType) => T {
+  const known = new WeakMap<ClarityType, { v: T }>();
+  return (t) => {
+    let hit = known.get(t);
+    if (hit === undefined) known.set(t, (hit = { v: f(t) }));
+    return hit.v;
+  };
+}
+
 /** signatures.rs:1404-1427. */
-function depth(t: ClarityType): number {
+const depth: (t: ClarityType) => number = once((t) => {
   switch (t.k) {
     case "list":
       return 1 + depth(t.item);
@@ -114,10 +128,10 @@ function depth(t: ClarityType): number {
     default:
       return 1;
   }
-}
+});
 
 /** The most bytes a value of the type serializes to, or undefined past `MAX_VALUE_SIZE` (signatures.rs:1438-1469). */
-function size(t: ClarityType): number | undefined {
+const size: (t: ClarityType) => number | undefined = once((t) => {
   switch (t.k) {
     case "none":
     case "bool":
@@ -160,10 +174,10 @@ function size(t: ClarityType): number | undefined {
       return a === undefined || b === undefined ? undefined : Math.max(a, b) + 1;
     }
   }
-}
+});
 
 /** The bytes the type itself takes, or undefined past `MAX_VALUE_SIZE` (signatures.rs:1477-1498, :1571-1600). */
-function typeSize(t: ClarityType): number | undefined {
+const typeSize: (t: ClarityType) => number | undefined = once((t) => {
   switch (t.k) {
     case "buffer":
     case "ascii":
@@ -193,7 +207,7 @@ function typeSize(t: ClarityType): number | undefined {
     default:
       return 1;
   }
-}
+});
 
 function same(a: ClarityType, b: ClarityType): boolean {
   if (a.k !== b.k) return false;
