@@ -876,18 +876,21 @@ async function boundExecutor(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * Read keys only: the network, the asset, the digest of the payer, and the time by which the transfer settles, counted
- * from the claim. Payee and amount are not recorded: the facilitator builds the executor's transfer and reports what it
- * moved.
+ * from the time `reference` runs: that time in Unix seconds plus the option's `maxTimeoutSeconds`. A sum that is not a
+ * safe integer is `hedera/option-malformed`, as `build`'s `validBefore` is. Payee and amount are not recorded: the
+ * facilitator builds the executor's transfer and reports what it moved.
  */
 async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refusal> {
   const h = await boundExecutor(presented);
   if (isRefusal(h)) return h;
   const { accepted, payload } = executorPresented(presented) as { accepted: PaymentRequirements; payload: ExecutorPayload };
+  const settleBy = Math.floor(Date.now() / 1000) + accepted.maxTimeoutSeconds;
+  if (!Number.isSafeInteger(settleBy)) return refusal("hedera/option-malformed");
   return {
     network: accepted.network as HederaNetwork,
     asset: accepted.asset,
     idDigest: await hederaIdDigest(payload.payer),
-    settleBy: Math.floor(Date.now() / 1000) + accepted.maxTimeoutSeconds,
+    settleBy,
   };
 }
 

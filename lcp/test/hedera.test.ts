@@ -1,7 +1,7 @@
 // Runs the Hedera vector files through the hedera entry point. Every expected value is the files', or names its source.
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { pairingOf, toLcpString, type AtrHash } from "../src/index.js";
 import {
   chargeHedera,
@@ -289,6 +289,32 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     expect(last.request.validBefore).toBe(9007199254740991);
     for (const now of [9007199254740991 - 119, 9007199254740991]) {
       expect(await at(now)).toEqual({ refused: true, code: "hedera/option-malformed" });
+    }
+  });
+
+  // settleBy is the time reference runs, in Unix seconds, plus maxTimeoutSeconds; the clock is held at the vector's now
+  // (1755500000), and 9007199254740991 is Number.MAX_SAFE_INTEGER, 2^53 - 1 (ECMA-262). build runs at now 0 so that its
+  // validBefore, 0 plus the timeout, stays a safe integer for every timeout here.
+  it("reference: settleBy is the time reference runs plus maxTimeoutSeconds, and a sum past 2^53 - 1 is refused", async () => {
+    const at = async (maxTimeoutSeconds: number) => {
+      const o = { ...OX, maxTimeoutSeconds };
+      const doc = exactHederaExecutor.advertise({ ...required, accepts: [o] }, H, X.fixed.link, o);
+      if ("refused" in doc) throw new Error(doc.code);
+      const b = await exactHederaExecutor.build({ required: doc, accepted: doc.accepts[0]!, now: 0 }, H);
+      if ("refused" in b) throw new Error(b.code);
+      const payment = b.complete(X.fixed.payload);
+      if ("refused" in payment) throw new Error(payment.code);
+      return exactHederaExecutor.reference(payment);
+    };
+    const clock = vi.spyOn(Date, "now").mockReturnValue(X.fixed.now * 1000);
+    try {
+      expect(await at(120)).toMatchObject({ settleBy: X.fixed.now + 120 });
+      expect(await at(9007199254740991 - X.fixed.now)).toMatchObject({ settleBy: 9007199254740991 });
+      for (const t of [9007199254740991 - X.fixed.now + 1, 9007199254740991]) {
+        expect(await at(t), String(t)).toEqual({ refused: true, code: "hedera/option-malformed" });
+      }
+    } finally {
+      clock.mockRestore();
     }
   });
 
