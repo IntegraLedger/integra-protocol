@@ -2,6 +2,7 @@
 // says whether the caps admit its input.
 import { readFileSync } from "node:fs";
 import { xdr } from "@stellar/stellar-sdk/base";
+import { msgpackRawDecodeAsMap } from "algosdk";
 import { describe, expect, it } from "vitest";
 import { MSGPACK_MAX_DEPTH } from "../src/avm.js";
 import { msgpackWithinCaps } from "../src/internal/avm.js";
@@ -27,8 +28,14 @@ import { wellFormedUtf8 } from "./utf8-syntax.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/decoder-caps.json", import.meta.url), "utf8"));
 type Row = { name: string; case: string; accept: boolean };
-/** How x402-exact-algorand.json V3.refusals ends the case of each row that writes a string that is not UTF-8. */
-const NOT_UTF8 = "a string that is not well-formed UTF-8 (RFC 3629 §4)";
+/**
+ * How x402-exact-algorand.json V3.refusals ends the case of each row that writes a string the scan refuses: one that is
+ * not UTF-8, or one longer than 200 bytes that begins with the byte-order mark.
+ */
+const SCAN_REFUSES = [
+  "a string that is not well-formed UTF-8 (RFC 3629 §4)",
+  "a string longer than 200 bytes that begins with the byte-order mark EF BB BF, which algosdk 3.8.0's decoder reads without the mark",
+];
 
 describe("XRPL binary: STObject and STArray nesting", () => {
   it("the cap is the vectors'", () => {
@@ -52,23 +59,24 @@ describe("msgpack: array and map nesting, declared lengths, one value", () => {
       expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(r.hex, "hex")), MSGPACK_MAX_DEPTH)).toBe(r.accept);
     });
   }
-  // The payment entries of x402-exact-algorand.json V3.refusals whose case ends in NOT_UTF8 each hold a string that is
-  // not well-formed UTF-8; every other signed transaction in the file passes the scan.
-  it("every signed transaction in the Algorand vectors is within the caps, but the five with a string not UTF-8", () => {
+  // The payment entries of x402-exact-algorand.json V3.refusals whose case ends in one of SCAN_REFUSES each hold a
+  // string the scan refuses; every other signed transaction in the file passes the scan.
+  it("every signed transaction in the Algorand vectors is within the caps, but the six with a string the scan refuses", () => {
     const A = readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8");
-    const notUtf8 = new Set(
+    const refusedByScan = (r: { case: string }) => SCAN_REFUSES.some((end) => r.case.endsWith(end));
+    const refused = new Set(
       rowsOf(JSON.parse(A).V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[] }[], "x402-exact-algorand.json V3.refusals", {
-        exact: 5,
-        keep: ["the rows with a string that is not UTF-8", (r) => r.case.endsWith(NOT_UTF8)],
-        leave: ["every other row, whose entry the loop below finds within the caps", (r) => !r.case.endsWith(NOT_UTF8)],
+        exact: 6,
+        keep: ["the rows with a string the scan refuses", refusedByScan],
+        leave: ["every other row, whose entry the loop below finds within the caps", (r) => !refusedByScan(r)],
       }).map((r) => r.paymentGroup[r.paymentIndex]!),
     );
-    expect(notUtf8.size).toBe(5);
+    expect(refused.size).toBe(6);
     const entries = rowsOf([...A.matchAll(/"(g[A-Za-z0-9+/]{40,}={0,2})"/g)].map((m) => m[1]!), "x402-exact-algorand.json signed transactions in base64", {
-      min: notUtf8.size + 1,
+      min: refused.size + 1,
     });
     for (const e of entries) {
-      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")), MSGPACK_MAX_DEPTH)).toBe(!notUtf8.has(e));
+      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")), MSGPACK_MAX_DEPTH)).toBe(!refused.has(e));
     }
   });
 });
@@ -195,6 +203,53 @@ describe("msgpack: every string is well-formed UTF-8", () => {
       expect(scans([0xc6, 0, 0, 0, b.length, ...b]), h).toBe(true);
       expect(scans([0xc7, b.length, 0x05, ...b]), h).toBe(true);
     }
+  });
+});
+
+// algosdk 3.8.0's decodeSignedTransaction reads a payment entry with its msgpackRawDecodeAsMap, through algorand-msgpack
+// 1.1.0. The scan admits a string exactly when that decoder reads it as the text its bytes spell: the text a fatal
+// TextDecoder that keeps a byte-order mark reads. On well-formed UTF-8 the two part only where algorand-msgpack drops a
+// leading mark, which it does from a string longer than a threshold of its own. The test finds that threshold where
+// the readings part, never from a written number, and checks the scan at every length on both sides of it.
+describe("msgpack: algosdk reads every string the scan admits as the text its bytes spell", () => {
+  const spelled = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  /** `length` bytes of x, the first three replaced by the byte-order mark EF BB BF when `marked`. */
+  const text = (length: number, marked: boolean) =>
+    Uint8Array.from({ length }, (_, k) => (marked && k < 3 ? [0xef, 0xbb, 0xbf][k]! : 0x78));
+  /** `s` in the smallest string format that holds it. */
+  const smallest = (s: Uint8Array) => str(s, s.length < 32 ? "fixstr" : s.length < 256 ? "str 8" : "str 16");
+  /** A string as a fixmap's one key, and as its one value under the key a; and how each is read back from the map. */
+  const AS: Record<string, [(s: number[]) => number[], (m: Map<unknown, unknown>) => unknown]> = {
+    "a map key": [(s) => [0x81, ...s, 0x01], (m) => [...m.keys()][0]],
+    "a map value": [(s) => [0x81, 0xa1, 0x61, ...s], (m) => m.get("a")],
+  };
+
+  it("a string of 1 to 400 bytes, with or without a leading mark, is admitted exactly when algosdk reads it as spelled", () => {
+    const admittedOtherwise: string[] = [];
+    const parted: Record<string, number[]> = {};
+    for (const [as, [at, read]] of Object.entries(AS)) {
+      for (const marked of [false, true]) {
+        const where = `${as}${marked ? " that begins with the mark" : " without the mark"}`;
+        const lengths: number[] = (parted[where] = []);
+        for (let length = marked ? 3 : 1; length <= 400; length++) {
+          const s = text(length, marked);
+          const bytes = at(smallest(s));
+          const asSpelled = read(msgpackRawDecodeAsMap(Uint8Array.from(bytes)) as Map<unknown, unknown>) === spelled.decode(s);
+          if (!asSpelled) lengths.push(length);
+          if (scans(bytes) !== asSpelled) admittedOtherwise.push(`${where}, ${length} bytes: ${scans(bytes) ? "admitted" : "refused"}`);
+        }
+      }
+    }
+    expect(admittedOtherwise).toEqual([]);
+    expect([parted["a map key without the mark"], parted["a map value without the mark"]]).toEqual([[], []]);
+    // The readings part at one length and stay apart to 400 bytes, as a key and as a value: algorand-msgpack's threshold
+    // is the length before it, and a marked string of that length or shorter keeps its mark.
+    const marked = parted["a map value that begins with the mark"]!;
+    expect(marked.length).toBeGreaterThan(0);
+    const threshold = marked[0]! - 1;
+    expect(threshold).toBeGreaterThan(3);
+    expect(marked).toEqual(Array.from({ length: 400 - threshold }, (_, k) => threshold + 1 + k));
+    expect(parted["a map key that begins with the mark"]).toEqual(marked);
   });
 });
 

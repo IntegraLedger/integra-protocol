@@ -11,11 +11,21 @@ export type AvmPaymentPayload = X402Payment<AvmPresented>;
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
+ * The longest string, in bytes, that algosdk 3.8.0's msgpack decoder, algorand-msgpack 1.1.0, reads with its own UTF-8
+ * reader, which keeps a leading byte-order mark. A longer string, a map key or a value, it reads with a TextDecoder that
+ * is not fatal and drops a leading mark (algorand-msgpack 1.1.0, `src/utils/utf8.ts:160-177`, called from
+ * `src/Decoder.ts:762-766`).
+ */
+const MSGPACK_TEXT_DECODER_THRESHOLD = 200;
+
+/**
  * True when `b` is exactly one msgpack value (the msgpack specification's formats) whose arrays and maps nest at most
  * `maxDepth` deep, whose every declared length (a string's, binary's or extension's bytes, an array's elements, a
  * map's keys and values) is no more than the bytes that remain, so no count is trusted past the input, and whose every
- * string (fixstr, str 8, str 16 or str 32; a map key or a value, at any depth) is well-formed UTF-8 (RFC 3629). The
- * value is scanned, never built.
+ * string (fixstr, str 8, str 16 or str 32; a map key or a value, at any depth) is well-formed UTF-8 (RFC 3629) and is
+ * read by algosdk's decoder as the text its bytes spell: no string longer than `MSGPACK_TEXT_DECODER_THRESHOLD` bytes
+ * begins with the byte-order mark EF BB BF, which that decoder drops from such a string. The value is scanned, never
+ * built.
  */
 export function msgpackWithinCaps(b: Uint8Array, maxDepth: number): boolean {
   const n = b.length;
@@ -38,8 +48,10 @@ export function msgpackWithinCaps(b: Uint8Array, maxDepth: number): boolean {
   const text = (length: number | undefined): boolean => {
     const start = i;
     if (!skip(length)) return false;
+    const s = b.subarray(start, i);
+    if (s.length > MSGPACK_TEXT_DECODER_THRESHOLD && s[0] === 0xef && s[1] === 0xbb && s[2] === 0xbf) return false;
     try {
-      UTF8.decode(b.subarray(start, i));
+      UTF8.decode(s);
       return true;
     } catch {
       return false;

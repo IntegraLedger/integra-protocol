@@ -52,6 +52,9 @@ const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (type
 
 /** How V3.refusals ends the case of each row that writes a string that is not UTF-8. */
 const NOT_UTF8 = "a string that is not well-formed UTF-8 (RFC 3629 §4)";
+/** How V3.refusals ends the case of the row whose gen begins with the byte-order mark. */
+const MARKED =
+  "a string longer than 200 bytes that begins with the byte-order mark EF BB BF, which algosdk 3.8.0's decoder reads without the mark";
 const bytesOf = (h: string) => Buffer.from(h.replaceAll(" ", ""), "hex");
 /**
  * V2's payment entry, the msgpack map {sig, txn}, edited by hand (msgpack specification's formats): one span of its
@@ -73,6 +76,16 @@ const msgpackStr = (text: string) => {
 };
 /** "gen": "testnet-v1.0" in V2's payment transaction. */
 const GEN = "a367656e ac 746573746e65742d76312e30";
+/**
+ * Four places for a msgpack string in V2's payment entry: a last member's key and a last member's value in the entry, a
+ * last member's key in the transaction, and an element of an array in the transaction.
+ */
+const ENTRY_PLACES: Record<string, (s: string) => Buffer> = {
+  "the entry's key": (s) => withMember(`${s} 05`),
+  "the entry's value": (s) => withMember(`a2 7a7a ${s}`),
+  "the transaction's key": (s) => withTxnMember(`${s} 05`),
+  "an array in the transaction": (s) => withTxnMember(`a2 7a7a 91 ${s}`),
+};
 
 describe("x402-exact-algorand.json", () => {
   const required = (o: PaymentRequirements): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
@@ -207,26 +220,19 @@ describe("x402-exact-algorand.json", () => {
 
   // One string of each form RFC 3629 §4's syntax refuses (an overlong t, the surrogate U+D800, U+110000 above
   // U+10FFFF, a two-byte lead the string's end cuts short, a lone continuation byte, and a str 8 of 201 bytes holding
-  // C1), each after an x, in four places in V2's payment entry: a last member's key and a last member's value in the
-  // entry, a last member's key in the transaction, and an element of an array in the transaction. Beside them, strings
-  // of the boundary code points the syntax takes, in the same places, give the file's H.
+  // C1), each after an x, in the four ENTRY_PLACES. Beside them, strings of the boundary code points the syntax takes,
+  // in the same places, give the file's H.
   it("bound and reference refuse a string that is not UTF-8 wherever it sits in the entry", async () => {
     const payment = await completed();
     const presentedWith = (entry: Buffer) => ({
       ...payment,
       payload: { paymentIndex: 1, paymentGroup: [V.V2.expectPaymentGroup[0], entry.toString("base64")] },
     });
-    const places: Record<string, (s: string) => Buffer> = {
-      "the entry's key": (s) => withMember(`${s} 05`),
-      "the entry's value": (s) => withMember(`a2 7a7a ${s}`),
-      "the transaction's key": (s) => withTxnMember(`${s} 05`),
-      "an array in the transaction": (s) => withTxnMember(`a2 7a7a 91 ${s}`),
-    };
     const illFormed = ["78 c1b4", "78 eda080", "78 f4908080", "78 c3", "78 80", `c1 ${"78".repeat(200)}`];
     const wellFormed = ["78 c280", "78 dfbf", "78 e0a080", "78 ed9fbf", "78 ee8080", "78 efbbbf", "78 f0908080", "78 f48fbfbf"];
     for (const text of illFormed) expect(wellFormedUtf8(bytesOf(text)), text).toBe(false);
     for (const text of wellFormed) expect(wellFormedUtf8(bytesOf(text)), text).toBe(true);
-    for (const [place, at] of Object.entries(places)) {
+    for (const [place, at] of Object.entries(ENTRY_PLACES)) {
       for (const text of illFormed) {
         const presented = presentedWith(at(msgpackStr(text)));
         const label = `${place}: ${text.slice(0, 16)}`;
@@ -236,6 +242,47 @@ describe("x402-exact-algorand.json", () => {
       for (const text of wellFormed) {
         expect(await exactAvm.bound(presentedWith(at(msgpackStr(text)))), `${place}: ${text}`).toBe(V.V3.expectBound);
       }
+    }
+  });
+
+  // algosdk 3.8.0 decodes msgpack with algorand-msgpack 1.1.0, which reads a string of more than 200 bytes with a
+  // TextDecoder that is not fatal and drops a leading byte-order mark (its src/utils/utf8.ts:160-177), and a shorter one
+  // with its own reader, which keeps the mark. The row whose case ends in MARKED is V2's payment entry with gen written
+  // as the mark and 198 x, 201 bytes, which algosdk reads as 198 x, and is avm/txn-malformed. The same string in each of
+  // the four ENTRY_PLACES is refused, and the mark with 197 x, 200 bytes, which algosdk reads with its mark, gives H.
+  it("V3: a string longer than 200 bytes that begins with a byte-order mark is refused wherever it sits in the entry", async () => {
+    const [row] = rowsOf(
+      V.V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[]; expect: string }[],
+      "x402-exact-algorand.json V3.refusals",
+      {
+        exact: 1,
+        keep: ["the row whose gen begins with the byte-order mark", (r) => r.case.endsWith(MARKED)],
+        leave: [
+          "every other row, whose note, index, group, member or encoding is refused; the test above runs every row through avmCarrier and bound",
+          (r) => !r.case.endsWith(MARKED),
+        ],
+      },
+    );
+    const marked = (xs: number) => `efbbbf ${"78".repeat(xs)}`;
+    const entry = replaced(GEN, `a367656e d9 c9 ${marked(198)}`);
+    expect([row!.paymentIndex, row!.paymentGroup, row!.expect]).toEqual([
+      1,
+      [V.V2.expectPaymentGroup[0], entry.toString("base64")],
+      "avm/txn-malformed",
+    ]);
+    expect(wellFormedUtf8(bytesOf(marked(198)))).toBe(true);
+    expect(decodeSignedTransaction(entry).txn.genesisID).toBe("x".repeat(198));
+    expect(decodeSignedTransaction(replaced(GEN, `a367656e d9 c8 ${marked(197)}`)).txn.genesisID).toBe(`\ufeff${"x".repeat(197)}`);
+    const payment = await completed();
+    const presentedWith = (e: Buffer) => ({
+      ...payment,
+      payload: { paymentIndex: 1, paymentGroup: [V.V2.expectPaymentGroup[0], e.toString("base64")] },
+    });
+    for (const [place, at] of Object.entries(ENTRY_PLACES)) {
+      const presented = presentedWith(at(msgpackStr(marked(198))));
+      expect(await exactAvm.bound(presented), place).toEqual({ refused: true, code: "avm/txn-malformed" });
+      expect(await exactAvm.reference(presented), place).toEqual({ refused: true, code: "avm/txn-malformed" });
+      expect(await exactAvm.bound(presentedWith(at(msgpackStr(marked(197))))), place).toBe(V.V3.expectBound);
     }
   });
 
