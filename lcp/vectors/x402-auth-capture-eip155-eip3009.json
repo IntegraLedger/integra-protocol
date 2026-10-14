@@ -30,6 +30,7 @@
   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
  },
  "EV3": {
+  "case": "The salt and the payment hashes build commits to, on chain 84532 and escrow, the v1.1 deployment. PaymentInfo is {operator captureAuthorizer, payer, receiver payTo, token asset, maxAmount amount, preApprovalExpiry now + maxTimeoutSeconds, authorizationExpiry captureDeadline, refundExpiry refundDeadline, minFeeBps, maxFeeBps, feeReceiver feeRecipient, salt}. expectBindSalt is keccak256(abi.encode(SALT_BINDING_TYPEHASH, receiverAuthorizer, policy zero, H)), x402's salt commitment (x402-foundation/x402 751590a2, specs/schemes/auth-capture/scheme_auth_capture_evm.md L250-267); bound.expectSignatureNonce is the escrow's getHash of PaymentInfo with payer zero and salt expectBindSalt, its payer-agnostic hash, and bound.expectPaymentHash its getHash with the payer (base/commerce-payments v1.1.0 6b0a5ef3, src/AuthCaptureEscrow.sol L65-67 and L383-386, src/collectors/TokenCollector.sol L70-77); unbound is the same with salt H. Each was computed with eth-abi 6.0.0 encode and eth-utils 6.0.0 keccak, outside this package. build writes expectBindSalt as payload.salt and bound.expectSignatureNonce as message.nonce.",
   "escrow": "0xf96815976523E00e65Be8f34cA5e64b4f41EB19c",
   "expectBindSalt": "0x4a7ddc17918c33f6ce173013c74426aed304994db838af82acb19aec125d1be2",
   "bound": {
@@ -49,7 +50,7 @@
   "expectPaymentInfoTypeHash": "0xae68ac7ce30c86ece8196b61a7c486d8f0061f575037fbd34e7fe4e2820c6591"
  },
  "EV4": {
-  "case": "build(choice, H), bound mode: ReceiveWithAuthorization to the v1.1 ERC-3009 collector, nonce signatureNonce, validBefore preApprovalExpiry",
+  "case": "build(choice, H), bound mode: ReceiveWithAuthorization to the v1.1 ERC-3009 collector, nonce signatureNonce, validBefore preApprovalExpiry. expectDigest is the EIP-712 digest computed with eth-account 0.14.0 encode_typed_data over ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce) in the token's domain {name, version, chainId 84532, verifyingContract asset}, with from the payer, to expectTo, value amount, validAfter 0, validBefore now + maxTimeoutSeconds and nonce EV3's bound.expectSignatureNonce: the authorization the collector receives (base/commerce-payments v1.1.0 6b0a5ef3, src/collectors/ERC3009PaymentCollector.sol L42-50). expectSignature is eth-account's signature of it with payerKey.",
   "expectTo": "0x8612dfdc421f80336cd14E8EF9cb1E765dB5ab88",
   "expectDigest": "0xfa63e28e7467f80dd5f5daac7311cad0aef5c3501c1a97fc74b1c217b77a9781",
   "expectTypeHash": {

@@ -896,8 +896,57 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     salt,
   });
 
-  it("EV3: bindSalt, signatureNonce and the payment hash, bound and unbound; the two type hashes", () => {
+  // EV3's salt and hashes are eth-abi's and keccak's, from x402's salt commitment (scheme_auth_capture_evm.md L250-267
+  // at x402 751590a2) and the escrow's getHash (AuthCaptureEscrow.sol L383-386 at commerce-payments 6b0a5ef3). viem
+  // re-derives them here with abi.encode's words, and lcp's bindSalt and paymentHash are held to them.
+  it("EV3: bindSalt, signatureNonce and the payment hash as the escrow's getHash gives them, bound and unbound; the two type hashes", () => {
     const esc = A3.EV3.escrow as Hex;
+    const word = (t: string) => ({ type: t });
+    const getHash = (payer: Hex, salt: Hex) =>
+      keccak256(
+        encodeAbiParameters(
+          [word("uint256"), word("address"), word("bytes32")],
+          [
+            84532n,
+            esc,
+            keccak256(
+              encodeAbiParameters(
+                ["bytes32", "address", "address", "address", "address", "uint120", "uint48", "uint48", "uint48", "uint16", "uint16", "address", "uint256"].map(word),
+                [
+                  keccak256(
+                    toBytes(
+                      "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)",
+                    ),
+                  ),
+                  x.captureAuthorizer,
+                  payer,
+                  f.option.payTo,
+                  f.option.asset,
+                  BigInt(f.option.amount),
+                  f.now + f.option.maxTimeoutSeconds,
+                  x.captureDeadline,
+                  x.refundDeadline,
+                  x.minFeeBps,
+                  x.maxFeeBps,
+                  x.feeRecipient,
+                  BigInt(salt),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    const salt = keccak256(
+      encodeAbiParameters(
+        [word("bytes32"), word("address"), word("address"), word("uint256")],
+        [keccak256(toBytes("x402AuthCaptureSaltBinding(address receiverAuthorizer,address policy,uint256 saltNonce)")), x.receiverAuthorizer, ZERO, BigInt(H)],
+      ),
+    );
+    expect(salt).toBe(A3.EV3.expectBindSalt);
+    expect(getHash(ZERO, salt)).toBe(A3.EV3.bound.expectSignatureNonce);
+    expect(getHash(f.payer, salt)).toBe(A3.EV3.bound.expectPaymentHash);
+    expect(matches(getHash(ZERO, H), A3.EV3.unbound.expectSignatureNonce)).toBe(true);
+    expect(matches(getHash(f.payer, H), A3.EV3.unbound.expectPaymentHash)).toBe(true);
     const s = bindSalt(x.receiverAuthorizer, ZERO, H) as Hex;
     expect(s).toBe(A3.EV3.expectBindSalt);
     expect(paymentHash(84532, esc, info(ZERO, s))).toBe(A3.EV3.bound.expectSignatureNonce);
@@ -916,7 +965,34 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
       keccak256(toBytes("x402AuthCaptureSaltBinding(address receiverAuthorizer,address policy,uint256 saltNonce)")),
     ).toBe(SALT_BINDING_TYPEHASH);
   });
-  it("EV4 eip3009: the receive authorization, its signature, bound and the reference", async () => {
+  // EV4's digest is eth-account's, over ReceiveWithAuthorization with EV3's signatureNonce, the authorization the
+  // collector receives (ERC3009PaymentCollector.sol L42-50 at commerce-payments 6b0a5ef3). viem re-derives it from the
+  // types written here, and build's typed data is held to it.
+  it("EV4 eip3009: the receive authorization, its digest as written from the collector's call, its signature, bound and the reference", async () => {
+    const written = {
+      domain: { name: x.name, version: x.version, chainId: 84532, verifyingContract: f.option.asset },
+      types: {
+        ReceiveWithAuthorization: [
+          { name: "from", type: "address" },
+          { name: "to", type: "address" },
+          { name: "value", type: "uint256" },
+          { name: "validAfter", type: "uint256" },
+          { name: "validBefore", type: "uint256" },
+          { name: "nonce", type: "bytes32" },
+        ],
+      },
+      primaryType: "ReceiveWithAuthorization",
+      message: {
+        from: f.payer,
+        to: A3.EV4.expectTo,
+        value: BigInt(f.option.amount),
+        validAfter: 0n,
+        validBefore: BigInt(f.now + f.option.maxTimeoutSeconds),
+        nonce: A3.EV3.bound.expectSignatureNonce,
+      },
+    } as TypedDataDefinition;
+    expect(hashTypedData(written)).toBe(A3.EV4.expectDigest);
+    expect(await privateKeyToAccount(f.payerKey).signTypedData(written)).toBe(A3.EV4.expectSignature);
     expect(pairingOf(f.option)).toBe("x402/auth-capture/eip155/eip3009");
     const u = await unsigned(authCaptureEip3009, f);
     if (u.request.kind !== "eip712") throw new Error("kind");
