@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58 } from "@scure/base";
-import { KeyType, PublicKey } from "near-api-js";
+import { deserialize, serialize } from "borsh";
+import { KeyType, PublicKey, SCHEMA } from "near-api-js";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
@@ -335,6 +336,30 @@ describe("x402-exact-near.json", () => {
         throw new Error(`no runner for ${row.case}`);
       }
     }
+  });
+
+  // RFC 8259 §8.1: implementations "MUST NOT add a byte order mark (U+FEFF) to the beginning of a networked-transmitted
+  // JSON text". The agreedRefusals row whose arguments begin with one, read with borsh 2.0.0 and near-api-js 7.3.1's
+  // SCHEMA: V2's delegate action with its ft_transfer arguments EF BB BF and V1's arguments, and nothing else changed,
+  // signed with fixed.seedHex over SHA-256 of V1's NEP-461 prefix and the delegate action.
+  it("the agreedRefusals row whose arguments begin with a byte-order mark is V2's delegate action with only them changed", () => {
+    type Signed = {
+      delegateAction: { actions: { functionCall: { args: Uint8Array } }[] };
+      signature: { ed25519Signature: { data: Uint8Array } };
+    };
+    const row = V.agreedRefusals.rows.find((r: { case: string }) => r.case.startsWith("args that begin with a byte-order mark"));
+    expect(row.expect).toBe("near/args-malformed");
+    const read = (b64: string) => deserialize(SCHEMA.SignedDelegate, Buffer.from(b64, "base64")) as Signed;
+    const led = read(row.signedDelegateAction);
+    const v2 = read(V.V2.expectSignedDelegateAction);
+    const args = led.delegateAction.actions[0]!.functionCall.args;
+    expect(Buffer.from(args).toString("hex")).toBe(`efbbbf${Buffer.from(V.V1.expectArgsUtf8, "utf8").toString("hex")}`);
+    const prefix = Buffer.from(V.V1.expectPrefix, "hex");
+    const digest = createHash("sha256").update(prefix).update(serialize(SCHEMA.DelegateAction, led.delegateAction)).digest();
+    const key = PublicKey.fromString(V.fixed.publicKey).data;
+    expect(ed25519.verify(Uint8Array.from(led.signature.ed25519Signature.data), digest, key)).toBe(true);
+    led.delegateAction.actions[0]!.functionCall.args = v2.delegateAction.actions[0]!.functionCall.args;
+    expect(serialize(SCHEMA.DelegateAction, led.delegateAction)).toEqual(serialize(SCHEMA.DelegateAction, v2.delegateAction));
   });
 
   it("the option filter, advertise and read follow x402's document", () => {

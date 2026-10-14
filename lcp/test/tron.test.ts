@@ -246,6 +246,20 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     }
   });
 
+  // Tron.proto: Transaction field 1 is raw_data and raw field 10 is data (tag 0x52), both length-delimited. The
+  // agreedRefusals row whose data begins with a byte-order mark is V2's transaction written by hand: data EF BB BF (U+FEFF
+  // in UTF-8) then H's LCP string, 80 bytes (0x50) in place of 77 (0x4d), so raw_data is 293 bytes (varint a5 02) in place
+  // of 290 (a2 02), and V2's signature is kept.
+  it("the agreedRefusals row whose data begins with a byte-order mark is V2's transaction with only its data changed", () => {
+    const row = V.agreedRefusals.rows.find((r: { case: string }) => r.case.startsWith("data of 80 bytes: a byte-order mark"));
+    const lcp = Buffer.from(`lcp:sha256:${H}`, "utf8").toString("hex");
+    const v2: string = V.V2.expectTransactionHex;
+    expect(v2.startsWith("0aa202")).toBe(true);
+    expect(v2.split(`524d${lcp}`).length).toBe(2);
+    expect(row.transaction).toBe(`0aa502${v2.slice(6).replace(`524d${lcp}`, `5250efbbbf${lcp}`)}`);
+    expect(row.expect).toBe("tron/memo-not-lcp");
+  });
+
   it("the option filter, advertise and read follow x402's document", async () => {
     expect(pairingOf(O)).toBe("x402/exact/tron/lcp-trc20-memo");
     const doc = exactTronMemo.advertise(required, H, V.fixed.link, O);

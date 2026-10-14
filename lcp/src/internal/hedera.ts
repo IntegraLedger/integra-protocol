@@ -91,7 +91,9 @@ export function chargeLegs(
 
 /**
  * The Hedera request checks a charge challenge must pass before it is placed. The request is read as MPP's challenge
- * reader takes it, base64url without padding in its canonical form (RFC 4648 §3.5), or it is `mpp/request-malformed`.
+ * reader takes it, base64url without padding in its canonical form (RFC 4648 §3.5) of strict UTF-8 JSON text whose
+ * leading byte-order mark is kept as a character, or it is `mpp/request-malformed`: a request whose text begins with a
+ * byte-order mark is not JSON.
  */
 export function hederaChargeRequest(c: MppChallenge): true | Refusal {
   if (!isObject(c) || c.method !== "hedera" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
@@ -99,7 +101,7 @@ export function hederaChargeRequest(c: MppChallenge): true | Refusal {
   if (bytes === undefined) return refusal("mpp/request-malformed");
   let request: unknown;
   try {
-    request = parseJson(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    request = parseJson(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes));
   } catch {
     return refusal("mpp/request-malformed");
   }

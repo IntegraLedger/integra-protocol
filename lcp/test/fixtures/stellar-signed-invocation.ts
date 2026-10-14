@@ -1,7 +1,8 @@
 // Builds Soroban `transfer` envelopes with @stellar/stellar-sdk 17.2.1: the XDR codec encodes them and `authorizeEntry`
 // computes the payer's HashIDPreimage and signs it. Each case starts from x402-exact-stellar.json's simulated envelope
 // (the unsigned V2 form) and sets the operation's `transfer` and the invocation the payer's entry signs, and, where a
-// case names them, the token contract both call and the `from` both pass, with the entry's address credential for it.
+// case names them, the token contract both call, the function name both call and the `from` both pass, with the entry's
+// address credential for it.
 import { Keypair, Networks, authorizeEntry, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import type { ScValWire, SorobanAuthorizedInvocationWire, TransactionEnvelopeWire } from "@stellar/stellar-sdk/xdr";
 
@@ -16,6 +17,8 @@ export interface Case {
   subInvocation?: boolean;
   /** The 32-byte id of the token contract both the operation and the signed invocation call. */
   asset?: Uint8Array;
+  /** The bytes of the function name both the operation and the signed invocation call. */
+  functionName?: Uint8Array;
   /** The Ed25519 key of the `from` account both pass, and of the entry's address credential. */
   from?: Uint8Array;
 }
@@ -49,6 +52,10 @@ function shape(simulatedXdr: string, c: Case) {
   if (c.asset !== undefined) {
     body.invokeHostFunctionOp.hostFunction.invokeContract.contractAddress = { type: 1, contractId: c.asset };
     root.function.contractFn.contractAddress = { type: 1, contractId: c.asset };
+  }
+  if (c.functionName !== undefined) {
+    body.invokeHostFunctionOp.hostFunction.invokeContract.functionName = new xdr.XdrString(c.functionName);
+    root.function.contractFn.functionName = new xdr.XdrString(c.functionName);
   }
   if (c.from !== undefined) {
     const from = account(c.from);

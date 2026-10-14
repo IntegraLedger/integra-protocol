@@ -22,7 +22,8 @@ export const NETWORKS: { readonly [n in LnNetwork]: Bolt11["currency"] } = {
   "lnbtc:000000000019d6689c085ae165831e93": "bc",
   "lnbtc:000000000933ea01ad0ee984209779ba": "tb",
 };
-const utf8 = new TextDecoder("utf-8", { fatal: true });
+/** The `d` field's text: strict UTF-8 with a leading byte-order mark kept as a character. */
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** A BOLT11 invoice decoded, up to 8 KiB. The signature is not verified. */
 export function decode(invoice: string): Bolt11 | Refusal {

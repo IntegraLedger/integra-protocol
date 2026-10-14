@@ -81,6 +81,39 @@ describe("BOLT11", () => {
   });
 });
 
+describe("BOLT11: a description that begins with a byte-order mark", () => {
+  // BOLT 11's `d` field is "UTF-8 encoded". The invoice is written and signed by bolt11 1.4.1 with BOLT 11's example
+  // private key, its `d` field EF BB BF then "coffee". Strict UTF-8 reads EF BB BF as U+FEFF, a character of the text, as
+  // bolt11's decode does; light-bolt11-decoder 3.2.0 decodes with TextDecoder's default, which removes a leading U+FEFF.
+  const KEY = "e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734";
+  const text = "﻿coffee";
+  const invoice = bolt11.sign(
+    bolt11.encode({
+      network: { bech32: "bc", pubKeyHash: 0x00, scriptHash: 0x05, validWitnessVersions: [0, 1] },
+      satoshis: 1000,
+      timestamp: 1790000000,
+      tags: [
+        { tagName: "payment_hash", data: "11".repeat(32) },
+        { tagName: "description", data: text },
+      ],
+    }),
+    KEY,
+  ).paymentRequest!;
+
+  it("the d field is EF BB BF then coffee: bolt11 keeps the mark, light-bolt11-decoder removes it", () => {
+    const d = bolt11.decode(invoice).tagsObject.description!;
+    expect(Buffer.from(d, "utf8").toString("hex")).toBe("efbbbf636f66666565");
+    expect(d).toBe(text);
+    expect(section(lightDecode(invoice), "description")).toBe("coffee");
+  });
+
+  it("decodeBolt11 keeps the mark in description", async () => {
+    const b = (await decodeBolt11(invoice)) as Bolt11;
+    expect(b.description).toBe(text);
+    expect(b.tags.filter((t) => t === 13).length).toBe(1);
+  });
+});
+
 describe("BOLT11: an amount past any fixed-width integer", () => {
   // L7's amount is read as an integer of any length (BOLT 11: the amount is a positive decimal integer, then the
   // multiplier); the decoded amount is the file's, its digits times 100 millisatoshi for n.

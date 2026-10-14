@@ -41,6 +41,7 @@ export interface Bolt11 {
   expiry: number;
   paymentHash: Uint8Array;
   descriptionHash: Uint8Array | null;
+  /** The `d` field as strict UTF-8, a leading byte-order mark kept as a character; null when the invoice has none. */
   description: string | null;
   metadata: Uint8Array | null;
   /** Every tagged field's type, in invoice order. */

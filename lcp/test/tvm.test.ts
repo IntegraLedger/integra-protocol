@@ -307,6 +307,32 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
+  // TEP-74's text comment is 32 zero bits, then the text's UTF-8. The V3 refusal whose comment begins with a byte-order
+  // mark is V2's settlement, read with @ton/core 0.63.1, with V1's comment cell replaced by one of 0x00000000, EF BB BF
+  // (U+FEFF in UTF-8) and H's LCP string, signed with fixed.seedHex; its option's forwardPayload holds the same cell.
+  it("V3: the refusal whose comment begins with a byte-order mark is V2's settlement with only its comment changed", async () => {
+    const row = V.V3.refusals.find((r: { case: string }) => r.case.startsWith("a comment of 0x00000000, a byte-order mark"));
+    const led = Cell.fromBase64(row.accepted.extra.forwardPayload);
+    const s = led.beginParse();
+    expect([s.loadUint(32), led.refs.length]).toEqual([0, 0]);
+    expect(s.loadBuffer(s.remainingBits / 8).toString("hex")).toBe(`efbbbf${Buffer.from(`lcp:sha256:${H}`, "utf8").toString("hex")}`);
+    const withRefs = (b: Builder, refs: Cell[]) => (refs.forEach((r) => b.storeRef(r)), b);
+    const swap = (c: Cell, from: Cell, to: Cell): Cell =>
+      c.equals(from) ? to : withRefs(beginCell().storeBits(c.bits), c.refs.map((r) => swap(r, from, to))).endCell();
+    const unsigned = (c: Cell) => withRefs(beginCell().storeBits(c.bits.substring(0, c.bits.length - 512)), c.refs).endCell();
+    const root = Cell.fromBase64(row.settlementBoc);
+    const v2 = Cell.fromBase64((await signed()).payload.settlementBoc);
+    expect(root.bits.equals(v2.bits)).toBe(true);
+    const request = unsigned(root.refs.at(-1)!);
+    expect(request.equals(swap(unsigned(v2.refs.at(-1)!), Cell.fromBase64(V.V1.expectBoc), led))).toBe(true);
+    const signature = root.refs.at(-1)!.beginParse().skip(request.bits.length).loadBuffer(64);
+    expect(ed25519.verify(signature, request.hash(), ed25519.getPublicKey(seed))).toBe(true);
+    expect({ ...row.accepted, extra: { ...row.accepted.extra, forwardPayload: undefined } }).toEqual({
+      ...placed,
+      extra: { ...placed.extra, forwardPayload: undefined },
+    });
+  });
+
   // bound and reference read the transfer the payer signed and the echoed option's scheme, network, asset, payTo and
   // extra, never its amount or timeout. The payment is V2's, so whatever amount or timeout the option echoes, bound
   // gives the file's H (FIPS 180-2's "abc") and reference V3's keys; pairingOf, read and build, which need both, refuse

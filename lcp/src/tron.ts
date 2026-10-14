@@ -130,7 +130,8 @@ const BLOCK_ID = /^0x[0-9a-fA-F]{64}$/;
 const BASE58_ADDRESS_CHARS = 34;
 
 const utf8 = new TextEncoder();
-const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
+/** The memo's text: strict UTF-8, a leading byte-order mark kept, so a memo that begins with one holds no hash. */
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 // ── Protobuf: varints and length-delimited fields, for the fields named in TronRaw only.
 

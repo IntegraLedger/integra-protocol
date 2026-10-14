@@ -50,6 +50,9 @@ export const MAX_XDR = 8192;
 export const SCVAL_MAX_DEPTH = 64;
 const MAX_LOCATE_PAGES = 10;
 const MAX_CANDIDATES = 50;
+/** The symbols read here, as bytes: a symbol is compared byte for byte, so one led by a byte-order mark is another. */
+const TRANSFER = new TextEncoder().encode("transfer");
+const TO_MUXED_ID = new TextEncoder().encode("to_muxed_id");
 
 export function isStellarNetwork(s: unknown): s is StellarNetwork {
   return s === "stellar:pubnet" || s === "stellar:testnet";
@@ -287,13 +290,16 @@ type Parsed = {
   cred: { c: SorobanAddressCredentialsWire; v2: boolean };
 };
 
-/** A contract call's `transfer(from, to, amount)`: the contract, both addresses and the amount, or null. */
+/**
+ * A contract call's `transfer(from, to, amount)`: the contract, both addresses and the amount, or null. The function
+ * name is the symbol `transfer`, byte for byte.
+ */
 function transferOf(
   S: typeof StellarBase,
   call: InvokeContractArgsWire,
 ): { asset: string; from: NonNullable<ReturnType<typeof addressOf>>; to: NonNullable<ReturnType<typeof addressOf>>; amount: bigint } | null {
   const args = call.args;
-  if (new TextDecoder().decode(call.functionName.bytes) !== "transfer" || args.length !== 3 || call.contractAddress.type !== 1) {
+  if (!equalBytes(call.functionName.bytes, TRANSFER) || args.length !== 3 || call.contractAddress.type !== 1) {
     return null;
   }
   const asset = addressOf(S, call.contractAddress);
@@ -623,7 +629,8 @@ export function transferEventTopics(toBase: string): readonly string[] | Refusal
 
 /**
  * A `transfer` event's recipient (the non-muxed `to` topic) and its `to_muxed_id`: the u64 in the event's data map, or
- * null when the data carries none, or carries the string or bytes form.
+ * null when the data carries none, or carries the string or bytes form. The first topic and the data map's key are the
+ * symbols `transfer` and `to_muxed_id`, byte for byte.
  */
 export function transferEventOf(topic: readonly string[], value: string): { toBase: string; toMuxedId: bigint | null } | Refusal {
   const S = need();
@@ -641,7 +648,7 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
     });
     if (!scValsWithinCaps(t)) return refusal("stellar/event-malformed");
     const name = t[0]!;
-    if (name.type !== 15 || new TextDecoder().decode(name.sym.bytes) !== "transfer") return refusal("stellar/event-malformed");
+    if (name.type !== 15 || !equalBytes(name.sym.bytes, TRANSFER)) return refusal("stellar/event-malformed");
     const to = t[2]!;
     const who = to.type === 18 ? addressOf(S, to.address) : null;
     if (who === null) return refusal("stellar/event-malformed");
@@ -651,7 +658,7 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
     if (!scValsWithinCaps(data)) return refusal("stellar/event-malformed");
     let toMuxedId: bigint | null = null;
     if (data.type === 17) {
-      const entry = (data.map ?? []).find((e) => e.key.type === 15 && new TextDecoder().decode(e.key.sym.bytes) === "to_muxed_id");
+      const entry = (data.map ?? []).find((e) => e.key.type === 15 && equalBytes(e.key.sym.bytes, TO_MUXED_ID));
       if (entry !== undefined && entry.val.type === 5) toMuxedId = entry.val.u64;
     } else if (data.type !== 10) return refusal("stellar/event-malformed");
     return { toBase: who.base, toMuxedId };

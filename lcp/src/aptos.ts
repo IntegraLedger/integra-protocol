@@ -458,12 +458,15 @@ function objectAddress(v: unknown): unknown {
   return isObject(v) ? v["inner"] : v;
 }
 
-/** The `transaction` byte array of x402's reference wire form, or undefined when the bytes are not that JSON. */
+/**
+ * The `transaction` byte array of x402's reference wire form, or undefined when the bytes are not that JSON: strict
+ * UTF-8 JSON text whose first byte is `{`.
+ */
 function referenceForm(b: Uint8Array): Uint8Array | undefined {
   if (b[0] !== 0x7b) return undefined;
   let o: unknown;
   try {
-    o = parseJson(new TextDecoder("utf-8", { fatal: true }).decode(b));
+    o = parseJson(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(b));
   } catch {
     return undefined;
   }

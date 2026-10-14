@@ -125,7 +125,8 @@ const U64_LIMIT = 1n << 64n;
 const ACCOUNT = /^[a-z0-9._-]{2,64}$/;
 
 const utf8 = new TextEncoder();
-const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
+/** The arguments' text: strict UTF-8, a leading byte-order mark kept, so arguments that begin with one are not JSON. */
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
  * `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A value
@@ -152,7 +153,9 @@ type Decoded = {
 /**
  * Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
  * arguments whose `memo` is an LCP string. The bytes must be exactly the borsh encoding of what is read, every string
- * in it UTF-8 and every key and the signature Ed25519 or secp256k1, or they are `near/sda-malformed`.
+ * in it UTF-8 and every key and the signature Ed25519 or secp256k1, or they are `near/sda-malformed`. The arguments are
+ * strict UTF-8 JSON text whose leading byte-order mark is kept as a character, so arguments that begin with one are
+ * `near/args-malformed`.
  */
 export function nearCarrier(signedDelegateAction: string): {
   h: AtrHash;

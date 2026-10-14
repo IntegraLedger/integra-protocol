@@ -140,6 +140,23 @@
      }
     },
     "expect": "tvm/carrier-mismatch"
+   },
+   {
+    "case": "a comment of 0x00000000, a byte-order mark (EF BB BF) and H's LCP string, which the option's forwardPayload holds too",
+    "settlementBoc": "te6cckECBwEAAVMAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFi4JjtG9eYMhQL2BN7oPIoMx/iJBrj53IhunqYiIcJ3zdxYCKt7SXA5UXWMmDEBAu8KcZfj1fR9EC2NfZYB3yw6ACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCoAAAAAO+7v2xjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkwir3hA==",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAVgAAqAAAAADvu79sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZKHzdgE="
+     }
+    },
+    "expect": "tvm/payload-not-lcp"
    }
   ]
  },

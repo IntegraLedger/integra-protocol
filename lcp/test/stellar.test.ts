@@ -405,6 +405,31 @@ describe("x402-exact-stellar.json", () => {
     });
   });
 
+  // SEP-41 names the event's first topic the symbol `transfer`, and CAP-67 the data map's key `to_muxed_id`; a symbol
+  // led by EF BB BF (U+FEFF's UTF-8, Unicode §23.8) is another symbol. The two rows that hold one are row 0's event,
+  // re-encoded with @stellar/stellar-sdk 17.2.1 with the one symbol changed.
+  it("events: the rows whose symbol begins with a byte-order mark are row 0's event with that symbol changed", () => {
+    const BOM = [0xef, 0xbb, 0xbf];
+    const symbol = (b64: string) => {
+      const v = xdr.ScVal.fromXdr(b64, "base64").toXdrObject();
+      if (v.type !== 15) throw new Error("not a symbol");
+      return [...v.sym.bytes];
+    };
+    const byCase = (prefix: string) => V.events.rows.find((r: { case?: string }) => r.case?.startsWith(prefix));
+    const led = byCase("not a transfer event: the first topic is the symbol transfer led by a byte-order mark");
+    const keyed = byCase("row 0's event with its data's key to_muxed_id led by a byte-order mark");
+    const row0 = V.events.rows[0];
+    expect(symbol(led.topic[0])).toEqual([...BOM, ...Buffer.from("transfer")]);
+    expect([led.topic.slice(1), led.value]).toEqual([row0.topic.slice(1), row0.value]);
+    expect(keyed.topic).toEqual(row0.topic);
+    const data = (b64: string) => {
+      const v = xdr.ScVal.fromXdr(b64, "base64").toXdrObject();
+      if (v.type !== 17) throw new Error("not a map");
+      return v.map!.map((e) => (e.key.type === 15 ? [...e.key.sym.bytes] : []));
+    };
+    expect(data(keyed.value)).toEqual(data(row0.value).map((k) => (Buffer.from(k).toString() === "to_muxed_id" ? [...BOM, ...k] : k)));
+  });
+
   it("events: the transfer topic filter, and each event's recipient and muxed id", () => {
     expect(transferEventTopics(V.events.filterFor.toBase)).toEqual(V.events.filterFor.expect);
     for (const row of V.events.rows) {
@@ -499,6 +524,10 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
     ["the invocation the payer's entry signs pays V1's M; the operation pays the plain seller G", { operation: { to: G, amount: A }, signed: { to: M, amount: A } }],
     ["the invocation the payer's entry signs has amount 10000001; the operation has 10000000", { operation: { to: M, amount: A }, signed: { to: M, amount: A + 1n } }],
     ["the invocation the payer's entry signs carries a sub-invocation", { ...agree, subInvocation: true }],
+    [
+      "the operation and the invocation the payer's entry signs call transfer led by a byte-order mark (EF BB BF), another function",
+      { ...agree, functionName: Uint8Array.from([0xef, 0xbb, 0xbf, ...Buffer.from("transfer")]) },
+    ],
   ];
   const otherAsset = new Uint8Array(32).fill(7);
   const otherPayer = Keypair.fromRawEd25519Seed(Buffer.from("08".repeat(32), "hex"));

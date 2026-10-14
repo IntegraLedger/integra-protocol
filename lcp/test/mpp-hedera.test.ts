@@ -200,6 +200,18 @@ describe("mpp-charge-hedera.json", () => {
     }
   });
 
+  // RFC 8259 §8.1: implementations "MUST NOT add a byte order mark (U+FEFF) to the beginning of a networked-transmitted
+  // JSON text". The request's bytes are decoded with a leading EF BB BF kept as U+FEFF (the Encoding Standard's UTF-8
+  // decode without BOM handling), so the text that follows the mark is not one JSON value. Such a request is not read, so
+  // the Hedera checks never see its amount of 0, which the same request without the mark shows them.
+  it("a request whose JSON text begins with a byte-order mark is mpp/request-malformed before the Hedera checks", () => {
+    const request = { ...V.fixed.request, amount: "0", splits: [] };
+    const c = placed(request);
+    const led = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(c.request, "base64url")]).toString("base64url");
+    expect(advertised(c)).toEqual({ refused: true, code: "hedera/option-malformed" });
+    expect(advertised({ ...c, request: led })).toEqual({ refused: true, code: "mpp/request-malformed" });
+  });
+
   // draft-hedera-charge-00 (`splits`): each entry's `amount` is "Amount in the same base units and token as the primary
   // `amount`", with no sign rule of its own; the primary recipient's remainder "MUST be greater than zero". A token
   // transfer list's checks (hiero-consensus-node CryptoTransferValidator.validateNonDuplicateFungibleTransfers) ask for

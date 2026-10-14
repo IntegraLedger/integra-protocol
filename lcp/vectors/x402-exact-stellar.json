@@ -354,6 +354,32 @@
     }
    },
    "expect": "stellar/tx-malformed"
+  },
+  {
+   "case": "the operation and the invocation the payer's entry signs call transfer led by a byte-order mark (EF BB BF), another function",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAvvu790cmFuc2ZlcgAAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAEAAAABAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAAAAAAABAAAD6AAAABAAAAABAAAAAQAAABEAAAABAAAAAgAAAA8AAAAKcHVibGljX2tleQAAAAAADQAAACBuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAA8AAAAJc2lnbmF0dXJlAAAAAAAADQAAAEAUVmhdkrKYTR+1f5PY0Xan6ARw0EGL1vhgo37EwzBYCnRgS9SeBOEVjqCXK10Qt857Tv/gg8aOKnoeOgrRFAYBAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAvvu790cmFuc2ZlcgAAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAArp4Fr+PAc/qypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAA==",
+   "accepted": {
+    "scheme": "exact",
+    "network": "stellar:testnet",
+    "amount": "10000000",
+    "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+    "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "areFeesSponsored": true
+    }
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {}
+    }
+   },
+   "expect": "stellar/not-one-transfer"
   }
  ],
  "V5": {
@@ -688,7 +714,7 @@
   }
  },
  "events": {
-  "case": "SEP-41 transfer events as Stellar testnet's RPC returned them on 2026-09-25 (getEvents on the testnet USDC contract), decoded with stellar-sdk 16.1.0 (Python); the topic filter for a G recipient is the transfer symbol, any from, the recipient as an address, then any trailing topics; row 3 is row 1 with a bit set past the last byte in its value's last base64 character before the padding",
+  "case": "SEP-41 transfer events as Stellar testnet's RPC returned them on 2026-09-25 (getEvents on the testnet USDC contract), decoded with stellar-sdk 16.1.0 (Python); the topic filter for a G recipient is the transfer symbol, any from, the recipient as an address, then any trailing topics; row 3 is row 1 with a bit set past the last byte in its value's last base64 character before the padding; rows 4 and 5 are row 0's event re-encoded with @stellar/stellar-sdk 17.2.1 with one symbol led by a byte-order mark (EF BB BF): the first topic's transfer, and the data map's key to_muxed_id",
   "filterFor": {
    "toBase": "GC4HILFF6LHZXGURG7TTYFGNKHZAZCEDTLCAAR2D25EBLNWWKR4LM7FN",
    "expect": [
@@ -745,6 +771,31 @@
     ],
     "value": "AAAACgAAAAAAAAAAAAAAAAAfB3p=",
     "expect": "stellar/event-malformed"
+   },
+   {
+    "case": "not a transfer event: the first topic is the symbol transfer led by a byte-order mark (EF BB BF), another symbol",
+    "topic": [
+     "AAAADwAAAAvvu790cmFuc2ZlcgA=",
+     "AAAAEgAAAAAAAAAA7DDC84drxubIsRux1MFR51z9kbfQ1o35kUz3TJBErxs=",
+     "AAAAEgAAAAAAAAAAliySGdTPMgwOKj3lgE168ccFTf1UsmSsCg+FYg62rfk=",
+     "AAAADgAAAD1VU0RDOkdCQkQ0N0lGNkxXSzdQN01ERVZTQ1dSN0RQVVdWM05ZM0RUUUVWRkw0TkFUNEFRSDNaTExGTEE1AAAA"
+    ],
+    "value": "AAAAEQAAAAEAAAACAAAADwAAAAZhbW91bnQAAAAAAAoAAAAAAAAAAAAAAAAAHwd6AAAADwAAAAt0b19tdXhlZF9pZAAAAAAFAAAAJYXpjHU=",
+    "expect": "stellar/event-malformed"
+   },
+   {
+    "case": "row 0's event with its data's key to_muxed_id led by a byte-order mark (EF BB BF), another key: the data carries no to_muxed_id",
+    "topic": [
+     "AAAADwAAAAh0cmFuc2Zlcg==",
+     "AAAAEgAAAAAAAAAA7DDC84drxubIsRux1MFR51z9kbfQ1o35kUz3TJBErxs=",
+     "AAAAEgAAAAAAAAAAliySGdTPMgwOKj3lgE168ccFTf1UsmSsCg+FYg62rfk=",
+     "AAAADgAAAD1VU0RDOkdCQkQ0N0lGNkxXSzdQN01ERVZTQ1dSN0RQVVdWM05ZM0RUUUVWRkw0TkFUNEFRSDNaTExGTEE1AAAA"
+    ],
+    "value": "AAAAEQAAAAEAAAACAAAADwAAAAZhbW91bnQAAAAAAAoAAAAAAAAAAAAAAAAAHwd6AAAADwAAAA7vu790b19tdXhlZF9pZAAAAAAABQAAACWF6Yx1",
+    "expect": {
+     "toBase": "GCLCZEQZ2THTEDAOFI66LACNPLY4OBKN7VKLEZFMBIHYKYQOW2W7T3Z6",
+     "toMuxedId": null
+    }
    }
   ]
  },

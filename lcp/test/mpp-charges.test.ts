@@ -521,7 +521,7 @@ describe("mpp-charge-stellar.json", () => {
 
   it("bound and build read the invocation the payer's entry signs (x402-exact-stellar.json's V4 and V4build rows)", async () => {
     const signedRows = XST.V4.filter((r: { case: string }) => r.case.includes("the payer's entry signs"));
-    expect(signedRows.length).toBe(4);
+    expect(signedRows.length).toBe(5);
     for (const row of signedRows) {
       const got = await chargeStellar.bound(credential(placed, { type: "transaction", transaction: row.envelope }));
       expect(got, row.case).toEqual(refused(row.expect));

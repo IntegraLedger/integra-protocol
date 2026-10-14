@@ -158,7 +158,8 @@ const SEND_MODE = 3;
 const EXPIRY_MARGIN = 60;
 
 const utf8 = new TextEncoder();
-const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
+/** A comment's text: strict UTF-8, a leading byte-order mark kept, so a comment that begins with one holds no hash. */
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** The comment cell of `lcpComment`. */
 function comment(h: AtrHash): Cell | Refusal {

@@ -113,6 +113,20 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     }
   });
 
+  // SIP-005 writes a contract call's function name as a length byte and its bytes. @stacks/transactions 7.6.0 decodes
+  // it with TextDecoder's default, which removes a leading U+FEFF, so EF BB BF then "transfer" reads as "transfer";
+  // written back, the name is three bytes shorter, so the transaction does not re-serialise to its own bytes.
+  it("bound and reference refuse a call of transfer led by a byte-order mark, another function", async () => {
+    const whole = Buffer.from(await withMemo()).toString("hex");
+    const name = `08${Buffer.from("transfer").toString("hex")}`;
+    expect(whole.split(name).length).toBe(2);
+    expect(whole.indexOf(name) % 2).toBe(0);
+    const led = Uint8Array.from(Buffer.from(whole.replace(name, `0befbbbf${name.slice(2)}`), "hex"));
+    expect(S.deserializeTransaction(led).payload).toMatchObject({ functionName: { content: "transfer" } });
+    expect(await chargeUsdcStacks.bound(credential(led))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+    expect(await chargeUsdcStacks.reference(credential(led))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+  });
+
   // SIP-005: a multisig spending condition's public-key field holds a secp256k1 point: compressed (0x02 or 0x03 and
   // its x) or, after 0x04, its x and y. Where x^3 + 7 has no square root modulo the field prime (SEC 2, 2.4.1), no
   // point has that x, whatever the y, and the transaction does not decode and re-serialise to the same bytes.
