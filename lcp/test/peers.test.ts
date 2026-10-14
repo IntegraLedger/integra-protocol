@@ -1,10 +1,11 @@
 // Every optional peer the package declares is loaded by a module in `src/`: a static or a dynamic import of the peer
-// or of one of its subpaths.
+// or of one of its subpaths. Every package a module in `src/` loads is a dependency or a declared peer.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { rowsOf } from "./rows.js";
 
 interface Manifest {
+  dependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
@@ -31,5 +32,11 @@ describe("declared peers", () => {
 
   it.each(peers)("%s is loaded by a module in src", (name) => {
     expect(loaded.has(name)).toBe(true);
+  });
+
+  it("every package a module in src loads is a dependency or a declared peer", () => {
+    const declared = new Set([...Object.keys(manifest.dependencies ?? {}), ...peers]);
+    expect(loaded.size).toBeGreaterThan(0);
+    expect([...loaded].filter((name) => !declared.has(name))).toEqual([]);
   });
 });

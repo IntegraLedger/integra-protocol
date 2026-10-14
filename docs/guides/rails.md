@@ -132,7 +132,6 @@ peer dependency. Install the one for each rail you use:
 | NEAR | `near-api-js`, `borsh` |
 | TON | `@ton/core` and its peer `@ton/crypto` |
 | Algorand | `algosdk` |
-| Stacks | `@stacks/transactions` |
 
 Without its peer, a rail's functions refuse with `<rail>/peer-missing`, or the pairing serves no option. Every other
 rail needs nothing more than the package.

@@ -18,6 +18,7 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { b64uDecode } from "./internal/base64url.js";
+import { c32Address } from "./internal/c32.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { memoArgument } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
@@ -417,18 +418,6 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   };
 }
 
-type StacksPeer = typeof import("@stacks/transactions");
-let stacksPeerLoad: Promise<StacksPeer | undefined> | undefined;
-
-/** `@stacks/transactions`, loaded once on first use; undefined when it is not installed. */
-function stacksPeer(): Promise<StacksPeer | undefined> {
-  stacksPeerLoad ??= import("@stacks/transactions").then(
-    (m) => m,
-    () => undefined,
-  );
-  return stacksPeerLoad;
-}
-
 /**
  * H from the echoed challenge, once its transaction is one a Stacks node decodes and serializes back to the same bytes
  * (`readStacksTransaction`) and calls `transfer` with `(some H)` as its fourth argument. Nothing but that argument is
@@ -437,8 +426,7 @@ function stacksPeer(): Promise<StacksPeer | undefined> {
 async function stacksBinding(
   input: unknown,
 ): Promise<
-  | { h: AtrHash; checked: Echoed; wire: Uint8Array; tx: StacksTransaction; call: NonNullable<StacksTransaction["call"]>; peer: StacksPeer }
-  | Refusal
+  { h: AtrHash; checked: Echoed; wire: Uint8Array; tx: StacksTransaction; call: NonNullable<StacksTransaction["call"]> } | Refusal
 > {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
@@ -451,14 +439,12 @@ async function stacksBinding(
   if (typeof text !== "string" || text.length > Math.ceil(MAX_STACKS_TX / 3) * 4) return refusal("mpp/stacks-tx-malformed");
   const wire = fromBase64(text);
   if (wire === null || wire.length === 0 || wire.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
-  const peer = await stacksPeer();
-  if (peer === undefined) return refusal("stacks/peer-missing");
   const tx = readStacksTransaction(wire);
   if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
   const call = tx.call;
   const fourth = call?.functionName === "transfer" ? call.args[3] : undefined;
   if (call === null || fourth === undefined || hexOf(fourth) !== memoArgument(e.h)) return refusal("mpp/stacks-memo-not-h");
-  return { h: e.h, checked: e.checked, wire, tx, call, peer };
+  return { h: e.h, checked: e.checked, wire, tx, call };
 }
 
 async function stacksBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -468,21 +454,23 @@ async function stacksBound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys of the decoded transaction: the profile's network, the called contract, the origin's c32 address and
- * spending-condition nonce, and, for a standard authorization, the transaction id. The origin's address version is its
- * hash mode's on the transaction's network: single-signature P2PKH's, else multisig's.
+ * spending-condition nonce, and, for a standard authorization, the transaction id. Each address is written in c32check
+ * as a Stacks node writes it (`c32Address`). The contract's address is the call's version and hash160. The origin's is
+ * its signer's hash160 at its hash mode's version on the transaction's network, as stacks-core 4.0.5 gives a
+ * transaction's origin address (stacks-codec/src/transaction.rs:3441-3458): P2PKH's single-signature version, 22 on
+ * mainnet and 26 on testnet, and every other hash mode's multisig version, 20 and 21 (transaction.rs:897-905,
+ * :1087-1095, :1245-1261; stacks-common/src/address/mod.rs:31-34).
  */
 async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
   const b = await stacksBinding(input);
   if (isRefusal(b)) return b;
   const network = stacksNetworkOf(b.checked.details);
   if (network === undefined) return refusal("mpp/request-malformed");
-  const { peer, tx, call } = b;
-  const net = tx.version === 0x00 ? "mainnet" : "testnet";
-  const hashMode = tx.origin.hashMode as Parameters<StacksPeer["addressHashModeToVersion"]>[0];
-  const origin = peer.addressToString(
-    peer.addressFromVersionHash(peer.addressHashModeToVersion(hashMode, net), hexOf(tx.origin.signer).slice(2)),
-  );
-  const contract = `${peer.addressToString(peer.addressFromVersionHash(call.version, hexOf(call.hash160).slice(2)))}.${call.contract}`;
+  const { tx, call } = b;
+  const single = tx.origin.hashMode === 0x00;
+  const version = tx.version === 0x00 ? (single ? 22 : 20) : single ? 26 : 21;
+  const origin = c32Address(version, tx.origin.signer);
+  const contract = `${c32Address(call.version, call.hash160)}.${call.contract}`;
   const ref: StacksRef = { network, contract, origin, nonce: tx.origin.nonce.toString() };
   return tx.standard ? { ...ref, transaction: stacksTxid(b.wire) } : ref;
 }

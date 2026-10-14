@@ -5,6 +5,9 @@
 // no peer is marked external. One build takes every entry point and writes each one's bundle, the bundle a build of
 // that entry point alone writes. Every bundle builds, each optional peer stays an `import()` left to run time, and one
 // Node process loads each bundle with every peer absent and gives the names Node's own loader gives for the built file.
+// The `usdc` Stacks pairing, which needs no peer, answers its vectors (mpp-charge-usdc-stacks.json: M4 and every
+// agreedRefusals row, each in the vector's B6 credential) from the root and the `./mpp` bundles and built files, in a
+// Node process run in the consumer's project, where `@stacks/transactions` does not resolve.
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -62,6 +65,28 @@ for (const [key, bundle, built] of JSON.parse(process.argv[1])) {
 process.stdout.write(JSON.stringify(loaded));
 `;
 
+// The Stacks pairing in the consumer's project: argv[1] is a JSON list of [the vector file, ...files]; prints whether
+// @stacks/transactions resolves there, and for each file the pairing's bound and reference of M4 and of each
+// agreedRefusals row.
+const STACKS = `
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const [vectors, ...files] = JSON.parse(process.argv[1]);
+const V = JSON.parse(readFileSync(vectors, "utf8"));
+const b6 = V.buyer.rows.find((r) => r.name === "B6").input.presented;
+const credential = (w) => ({ ...b6, payload: { ...b6.payload, transaction: Buffer.from(w.slice(2), "hex").toString("base64") } });
+const wires = [V.M4.wireHex, ...V.agreedRefusals.rows.map((r) => r.wireHex)];
+const peer = await import("@stacks/transactions").then(() => "resolves", (e) => String(e.code));
+const answers = {};
+for (const file of files) {
+  const m = await import(pathToFileURL(file).href);
+  const pairing = m.chargeUsdcStacks ?? m.BINDINGS.find((b) => b.id === "mpp/charge/usdc/stacks");
+  answers[file] = [];
+  for (const w of wires) answers[file].push([await pairing.bound(credential(w)), await pairing.reference(credential(w))]);
+}
+process.stdout.write(JSON.stringify({ peer, answers }));
+`;
+
 // The hook has no time bound (0): the build returns or throws, and the loading process exits by itself, so how long
 // it takes depends only on the machine.
 beforeAll(async () => {
@@ -112,6 +137,24 @@ describe("each public entry point bundled for a Worker with no optional peer ins
       const runtime = new RegExp(`\\bimport\\(\\s*"${peer.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?:/[^"]*)?"\\s*\\)`);
       expect(runtime.test(all), peer).toBe(true);
     }
+  });
+
+  it("the usdc Stacks pairing answers its vectors from the root and ./mpp bundles and built files, with no peer", () => {
+    const V = JSON.parse(readFileSync(join(ROOT, "vectors", "mpp-charge-usdc-stacks.json"), "utf8"));
+    const rows = V.agreedRefusals.rows as { expect: string }[];
+    expect(rows.length).toBe(42);
+    const want = [
+      [V.M4.expectBound, V.M4.expectReference],
+      ...rows.map((r) => [{ refused: true, code: r.expect }, { refused: true, code: r.expect }]),
+    ];
+    const files = [".", "./mpp"].flatMap((key) => [bundleOf(KEYS.indexOf(key)), join(installed, PKG.exports[key]!.default)]);
+    const run = [join(ROOT, "vectors", "mpp-charge-usdc-stacks.json"), ...files];
+    const got = JSON.parse(
+      execFileSync(process.execPath, ["--input-type=module", "-e", STACKS, JSON.stringify(run)], { cwd: dir, encoding: "utf8" }),
+    ) as { peer: string; answers: Record<string, unknown> };
+    expect(got.peer).toBe("ERR_MODULE_NOT_FOUND");
+    expect(Object.keys(got.answers)).toEqual(files);
+    for (const file of files) expect([file, got.answers[file]]).toEqual([file, want]);
   });
 
   it.each(KEYS)("%s loads from its bundle with every peer absent", (key) => {

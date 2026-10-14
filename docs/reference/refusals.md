@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 491 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 490 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -45,7 +45,7 @@ and the namespace counts below match its rows.
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 15 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 19 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`). |
-| [`stacks`](#stacks) | 6 | Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`). |
+| [`stacks`](#stacks) | 5 | Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`). |
 
 ## core
 
@@ -740,7 +740,6 @@ Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/l
 | `stacks/no-memo` | The Stacks transaction is not a call to the reference's contract `transfer`, or its fourth argument is not `(some <32 bytes>)`. |
 | `stacks/not-found` | The Stacks reader answers that the API does not know the transaction (its not-found answer) or that the transaction is unmined. |
 | `stacks/not-success` | The mined Stacks transaction's status is not `success`. |
-| `stacks/peer-missing` | The `usdc` Stacks pairing's `bound` or `reference` (`chargeUsdcStacks`, from `@integraledger/lcp/mpp`) cannot load the optional peer dependency `@stacks/transactions`. |
 | `stacks/unreadable` | The Stacks reader threw or gave an answer of none of its documented shapes (a mined or unmined transaction, or a not-found answer). |
 | `stacks/wrong-reader` | The Stacks reader answers for a different network than the reference names, or the reference or reader given to `recover` is not an object, or the reference names a `transaction` that is not a 32-byte hash. |
 

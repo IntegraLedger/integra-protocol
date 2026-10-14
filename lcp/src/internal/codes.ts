@@ -307,7 +307,6 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "stacks/no-memo",
   "stacks/not-found",
   "stacks/not-success",
-  "stacks/peer-missing",
   "stacks/unreadable",
   "stacks/wrong-reader",
   "starknet/ambiguous",

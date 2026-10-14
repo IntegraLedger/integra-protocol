@@ -83,7 +83,6 @@ dependencies: install the one for each rail you use, at a version in the range t
 | NEAR | `near-api-js`, `borsh` | `x402/exact/near` |
 | TON | `@ton/core` and its peer `@ton/crypto` | `x402/exact/tvm` |
 | Algorand | `algosdk` | `x402/exact/algorand` |
-| Stacks | `@stacks/transactions` | `mpp/charge/usdc/stacks` |
 
 Without its peer, a rail's functions refuse with `<rail>/peer-missing`, or the pairing serves no option. Every other
 rail, and every protocol surface, needs nothing more.
