@@ -707,12 +707,12 @@ TON (`@integraledger/lcp/tvm`).
 | `tvm/carrier-occupied` | `advertise` finds the option's `extra.forwardPayload` already holding a payload other than H's comment. |
 | `tvm/network-malformed` | A TON option's network is not `tvm:` followed by the network's global id, a decimal safe integer with no leading zero (`tvm:-239` mainnet, `tvm:-3` testnet). |
 | `tvm/not-found` | **Read to repeat.** The TON reader found no transaction for the reference. |
-| `tvm/not-jetton-transfer` | The W5 request's outgoing message is not an internal message whose body is a Jetton `transfer`, or the inbound body of the transaction `tvmRecover` reads is not a Jetton `transfer`. |
+| `tvm/not-jetton-transfer` | The W5 request's outgoing message is not an internal message whose body is a Jetton `transfer`, or the transaction `tvmRecover` reads has no inbound message body or one that is not a Jetton `transfer`. |
 | `tvm/not-w5-signed` | The TON settlement message body is not a W5 `internal_signed` request with a trailing signature and no further references. |
 | `tvm/option-malformed` | A TON option's `extra` is not an object, or its asset, `payTo`, response destination or forward TON amount is invalid, or it does not set `areFeesSponsored` to `true`, or, outside `bound` and `reference`, which read neither, its amount or timeout is invalid. |
 | `tvm/payload-not-lcp` | The Jetton transfer carries no forward payload, or its forward payload is not a comment carrying an ATR hash in LCP string form. |
 | `tvm/peer-missing` | The optional peer dependency `@ton/core` cannot be loaded. |
-| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed or has no inbound body. |
+| `tvm/unreadable` | **Read to repeat.** The TON reader threw or returned a transaction that is not well formed. |
 | `tvm/value-too-low` | The TON attached to the Jetton transfer is not more than the option's forward TON amount. |
 | `tvm/wrong-reader` | The TON reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |
 

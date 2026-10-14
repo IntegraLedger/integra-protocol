@@ -54,7 +54,10 @@ export const OP = {
   sendMsg: 0x0ec3c86d,
 } as const;
 
-/** A transaction as a TON Center v3 endpoint reports it. `inBody` is the inbound message body as a BoC. */
+/**
+ * A transaction as a TON Center v3 endpoint reports it. `inBody` is the inbound message body as a BoC, or null when the
+ * transaction has no inbound message body (its `in_msg`, or that message's `message_content.body`, is null).
+ */
 export interface TonTx {
   hash: string;
   account: string;
@@ -456,8 +459,9 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
 }
 
 /**
- * Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A ref that
- * names no `transaction` string is `tvm/wrong-reader`, with nothing read. One call.
+ * Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A
+ * transaction with no inbound message body, or whose body is not a Jetton `transfer`, is `tvm/not-jetton-transfer`. A
+ * ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. One call.
  */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
   if (peer === undefined) return refusal("tvm/peer-missing");
@@ -470,7 +474,8 @@ export async function tvmRecover(ref: { network: TvmNetwork; transaction: string
     return refusal("tvm/unreadable");
   }
   if (tx === null) return refusal("tvm/not-found");
-  if (!isTonTx(tx) || tx.inBody === null) return refusal("tvm/unreadable");
+  if (!isTonTx(tx)) return refusal("tvm/unreadable");
+  if (tx.inBody === null) return refusal("tvm/not-jetton-transfer");
   const body = rootOf(Buffer.from(tx.inBody).toString("base64"));
   if (isRefusal(body)) return body;
   const transfer = jettonTransfer(body);

@@ -423,6 +423,20 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
+  // The payer Jetton wallet runs a TEP-74 transfer on the internal message that carries it, whose body is the transfer
+  // (TEP-74, "transfer"). A transaction with no inbound message body is not that transfer, and a later read of it gives
+  // the same answer: recover refuses it as it refuses a body that is not a Jetton transfer.
+  it("V4: recover refuses a transaction with no inbound body tvm/not-jetton-transfer", async () => {
+    const landed = V.V4.recover[0];
+    const reader = (inBody: Uint8Array | null): TvmReader => ({
+      ...readerFor(landed),
+      byHash: async (h) => ({ hash: h, account: V.fixed.jettonWallet, aborted: false, finality: 2, outMsgs: [], inBody }),
+    });
+    const ref = { network: REF.network, transaction: landed.transaction };
+    expect(await exactTvm.recover(ref, reader(Uint8Array.from(Buffer.from(landed.inBodyHex, "hex"))))).toBe(landed.expect);
+    expect(await exactTvm.recover(ref, reader(null))).toEqual({ refused: true, code: "tvm/not-jetton-transfer" });
+  });
+
   // A request body hash that is not 0x and 64 hex digits cannot find the signed request, so the read is pending, never
   // expired (docs/guides/rails.md, "Reading settlement"); the hash is the same 32 bytes in either case. This reader
   // answers no transaction for a body hash other than the one reference wrote.
