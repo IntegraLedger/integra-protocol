@@ -109,9 +109,9 @@ reader failed, or answered out of its documented form) and `<rail>/not-found` (n
 yet), and the codes of a transaction that is not final yet: `casper/not-executed`, `ccd/not-finalized`,
 `xrpl/not-validated`, `evm/not-final` and `hedera/not-final` (a revert, or a receipt without what the read looks for,
 above the reader's `finalized` mark), `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above
-the finalized height), `svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`)
-and `tempo/not-final` (as `evm/not-final`, on Tempo). The [refusal code reference](../reference/refusals.md) marks each
-of them.
+the finalized height), `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block),
+`svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`) and `tempo/not-final`
+(as `evm/not-final`, on Tempo). The [refusal code reference](../reference/refusals.md) marks each of them.
 
 Every other code is false. A verdict, such as `evm/reverted`, gives the same answer on every read. A call you must change
 before it can succeed gives the same answer too, so it is not a read to repeat: `<rail>/wrong-reader` (a reader for

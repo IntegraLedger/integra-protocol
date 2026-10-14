@@ -31,6 +31,7 @@ export const READS_TO_REPEAT: readonly string[] = [
   "polkadot/unreadable",
   "stacks/not-found",
   "stacks/unreadable",
+  "starknet/not-final",
   "starknet/not-found",
   "starknet/unreadable",
   "stellar/not-found",
@@ -152,8 +153,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   stacks: ["no-memo", "not-success", "wrong-reader"],
   starknet: [
-    "ambiguous", "caller-forbidden", "felt-malformed", "network-malformed", "no-legal-context", "nonce-not-bound",
-    "option-malformed", "reverted", "signature-malformed", "typed-data-malformed", "wrong-reader",
+    "ambiguous", "caller-forbidden", "felt-malformed", "network-malformed", "no-legal-context", "no-transfer",
+    "nonce-not-bound", "option-malformed", "reverted", "signature-malformed", "typed-data-malformed", "wrong-reader",
   ],
   stellar: [
     "amount-mismatch", "asset-mismatch", "carrier-mismatch", "carrier-occupied", "event-malformed", "network-malformed",

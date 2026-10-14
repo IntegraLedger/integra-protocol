@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 493 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 495 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -46,7 +46,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`ccd`](#ccd) | 17 | Concordium (`@integraledger/lcp/ccd`). |
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
 | [`polkadot`](#polkadot) | 19 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
-| [`starknet`](#starknet) | 13 | Starknet (`@integraledger/lcp/starknet`). |
+| [`starknet`](#starknet) | 15 | Starknet (`@integraledger/lcp/starknet`). |
 | [`sui`](#sui) | 11 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 15 | TON (`@integraledger/lcp/tvm`). |
@@ -638,19 +638,21 @@ Starknet (`@integraledger/lcp/starknet`).
 
 | Code | Meaning |
 |---|---|
-| `starknet/ambiguous` | The Starknet transaction holds matching transfers with more than one nonce. |
+| `starknet/ambiguous` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, holds matching transfers with more than one nonce. |
 | `starknet/caller-forbidden` | The Starknet option's fee payer is zero or the any-caller value, or the paying account is the fee payer itself. |
 | `starknet/felt-malformed` | A Starknet fee payer, asset, `payTo`, nonce, payer account or `from` is not a valid felt. |
 | `starknet/network-malformed` | A Starknet network is not one of the Starknet networks this package supports, or the argument to `outsideExecution` is not an object. |
 | `starknet/no-legal-context` | The Starknet payment echoes no decodable `extensions.legalContext.info`. |
+| `starknet/no-transfer` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, holds no `transfer` call on the asset with this payment's identity below an `execute_from_outside_v2`, within 16 levels and 512 invocations. |
 | `starknet/nonce-not-bound` | The Starknet signed `Nonce` is not the low 250 bits of the echoed hash. |
-| `starknet/not-found` | **Read to repeat.** The Starknet reader found no receipt, or no transfer matching the reference in it. |
+| `starknet/not-final` | **Read to repeat.** The Starknet transaction `starknetLandedNonce` reads is `PRE_CONFIRMED` and reverted or holds no single matching transfer: a read to repeat, since a pre-confirmed block can change. |
+| `starknet/not-found` | **Read to repeat.** The Starknet reader found no receipt for the transaction the reference names. |
 | `starknet/option-malformed` | A Starknet option has no `extra` object, or its amount is not a u256 or its timeout is not positive, or the buyer's choice given to `build` is not an object or has an invalid `now`, or an amount or deadline given to a typed-data helper is out of range. |
-| `starknet/reverted` | The Starknet transaction the reference names reverted. |
+| `starknet/reverted` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, reverted. |
 | `starknet/signature-malformed` | The signature given to the Starknet `complete` is not 1 to the allowed number of valid felts. |
 | `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, or exceeds 16 KiB as JSON or nests more than 64 levels; or, for `reference`, its `Calls` is not exactly one call whose `Calldata` is three felts (recipient, amount low and amount high, each half below 2^128), or its `Execute Before` is not a decimal. `reference` does not read the call's `Selector` or `To`. |
-| `starknet/unreadable` | **Read to repeat.** The Starknet reader threw, or returned a receipt or events that are not well formed, or a trace that is missing, not well formed, nested deeper than 16 levels or holding more than 512 invocations; or the reference given to `starknetLandedNonce` has an `asset` that is not a felt. |
-| `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference names. |
+| `starknet/unreadable` | **Read to repeat.** The Starknet reader threw, or returned a receipt or events that are not well formed, or a trace that is missing or holds an invocation that is not well formed. |
+| `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference names, or the reference given to `starknetLandedNonce` has a `transaction` or `asset` that is not a felt or an `idDigest` that is not a 32-byte hash. |
 
 ## sui
 

@@ -291,7 +291,9 @@ export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, r
   if (emitted === "unreadable") return { state: "pending", why: "unreadable" };
   if (!emitted) return { state: "failed", why: "not-this-instrument" };
   const found = await matches(ref, reader);
-  if (found === "unreadable" || found.length > 1) return { state: "pending", why: "unreadable" };
+  if (found === "unreadable" || found === "beyond-bounds" || found.length > 1) {
+    return { state: "pending", why: "unreadable" };
+  }
   if (found.length === 0) return { state: "failed", why: "not-this-instrument" };
   return { state: "settled", finality: receipt.finality, blockNumber: receipt.blockNumber };
 }
@@ -333,10 +335,21 @@ async function transferEmitted(
 /**
  * The nonce that landed in the named transaction for this transfer, for a party holding the ATR to compare with the
  * hash's low 250 bits: the nonce of the `execute_from_outside_v2` below which, at any depth, a `transfer` call on
- * `ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce.
+ * `ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce. A ref or reader
+ * that is not an object, a reader for another network, or a ref whose `transaction` or `asset` is not a felt or whose
+ * `idDigest` is not a 32-byte hash, is `starknet/wrong-reader`, with nothing read. A failed read, a receipt that is not
+ * well formed, or a trace that is missing or holds an invocation that is not well formed, is `starknet/unreadable`, and
+ * no receipt `starknet/not-found`. A receipt at `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` gives the verdict: a reverted
+ * transaction is `starknet/reverted`; a trace that holds no such transfer, or that is nested deeper than 16 levels or
+ * holds more than 512 invocations, which it reads no further, is `starknet/no-transfer`; and transfers under more than
+ * one nonce are `starknet/ambiguous`. A `PRE_CONFIRMED` receipt, or one with no block number, gives each of these as
+ * `starknet/not-final`, since a pre-confirmed block can change. Two calls.
  */
 export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<Felt | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("starknet/wrong-reader");
+  if (feltValue(ref.transaction) === undefined || feltValue(ref.asset) === undefined || normalHash(ref.idDigest) === null) {
+    return refusal("starknet/wrong-reader");
+  }
   let receipt: StarknetReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
@@ -345,12 +358,15 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
   }
   if (receipt === null) return refusal("starknet/not-found");
   if (!isReceipt(receipt)) return refusal("starknet/unreadable");
-  if (receipt.execution === "REVERTED") return refusal("starknet/reverted");
+  const accepted = receipt.finality !== "PRE_CONFIRMED" && receipt.blockNumber !== null;
+  if (receipt.execution === "REVERTED") return accepted ? refusal("starknet/reverted") : refusal("starknet/not-final");
   const found = await matches({ ...ref, nonce: undefined }, reader);
   if (found === "unreadable") return refusal("starknet/unreadable");
-  if (found.length === 0) return refusal("starknet/not-found");
+  if (found === "beyond-bounds" || found.length === 0) {
+    return accepted ? refusal("starknet/no-transfer") : refusal("starknet/not-final");
+  }
   const nonces = new Set(found.map((n) => feltOf(n)));
-  if (nonces.size > 1) return refusal("starknet/ambiguous");
+  if (nonces.size > 1) return accepted ? refusal("starknet/ambiguous") : refusal("starknet/not-final");
   return [...nonces][0]!;
 }
 
@@ -360,12 +376,14 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
  * it is given, for which the call's identity digest, with that invocation's contract as the sender, is the
  * reference's. A call below such a `transfer` is the token's own execution of it (a library call repeats the frame)
  * and is not read as another transfer. A reverted invocation's whole subtree is skipped: a failed call's descendants
- * keep `is_reverted: false`, and their effects are rolled back with it.
+ * keep `is_reverted: false`, and their effects are rolled back with it. A failed trace read, no trace, or an
+ * invocation that is not well formed is "unreadable"; a trace nested deeper than `MAX_DEPTH` levels or holding more
+ * than `MAX_INVOCATIONS` invocations is "beyond-bounds", read no further.
  */
 async function matches(
   ref: { transaction: Felt; asset: Felt; idDigest: Hex; nonce: Felt | undefined },
   reader: StarknetReader,
-): Promise<bigint[] | "unreadable"> {
+): Promise<bigint[] | "unreadable" | "beyond-bounds"> {
   let root: StarknetInvocation | null;
   try {
     root = await reader.trace(ref.transaction);
@@ -384,7 +402,8 @@ async function matches(
   let visited = 0;
   while (stack.length > 0) {
     const { inv, depth, above } = stack.pop()!;
-    if (!isInvocation(inv) || depth > MAX_DEPTH || ++visited > MAX_INVOCATIONS) return "unreadable";
+    if (depth > MAX_DEPTH || ++visited > MAX_INVOCATIONS) return "beyond-bounds";
+    if (!isInvocation(inv)) return "unreadable";
     if (inv.reverted) continue;
     const selector = feltValue(inv.selector);
     if (above.length > 0 && selector === transfer && feltValue(inv.contract) === asset) {

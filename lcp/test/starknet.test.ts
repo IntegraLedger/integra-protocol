@@ -136,14 +136,127 @@ describe("x402-exact-starknet.json", () => {
     }
     expect(await starknetLandedNonce(REF, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
     const underReverted = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer"));
-    expect(await starknetLandedNonce(REF, readerFor(underReverted))).toEqual({ refused: true, code: "starknet/not-found" });
+    expect(await starknetLandedNonce(REF, readerFor(underReverted))).toEqual({ refused: true, code: "starknet/no-transfer" });
     const below = V.S5.status.filter((r: { case: string }) => r.case.startsWith("the payer's transfer one call below the execute"));
     expect(below.map((r: { expect: unknown }) => r.expect)).toEqual([
       { state: "settled", finality: "ACCEPTED_ON_L2", blockNumber: "900" },
       { state: "failed", why: "not-this-instrument" },
     ]);
     expect(await starknetLandedNonce(REF, readerFor(below[0]))).toBe(V.S5.landedNonce.expect);
-    expect(await starknetLandedNonce(REF, readerFor(below[1]))).toEqual({ refused: true, code: "starknet/not-found" });
+    expect(await starknetLandedNonce(REF, readerFor(below[1]))).toEqual({ refused: true, code: "starknet/no-transfer" });
+  });
+
+  // starknetLandedNonce reads the transaction the ref names by its felt hash and finds the transfer by the ref's asset
+  // and identity digest. A ref without them in that form cannot name what the call reads, so it is refused as a ref the
+  // call cannot read, with nothing read (docs/reference/refusals.md: a `recover` given a ref whose transaction id is not
+  // in its rail's form refuses with nothing read, with the code it gives a reader for another network). A felt is 0x and
+  // hex digits below the STARK prime 2^251 + 17·2^192 + 1 (docs.starknet.io, "Cryptography"); the digest is 32 bytes.
+  it("starknetLandedNonce: a ref whose transaction or asset is not a felt, or whose idDigest is not a 32-byte hash, is wrong-reader, with nothing read", async () => {
+    const prime = "0x800000000000011000000000000000000000000000000000000000000000001";
+    const rows: [keyof typeof REF, unknown][] = [
+      ["transaction", undefined],
+      ["transaction", 5],
+      ["transaction", REF.transaction.slice(2)],
+      ["transaction", prime],
+      ["asset", undefined],
+      ["asset", REF.asset.slice(2)],
+      ["asset", prime],
+      ["idDigest", undefined],
+      ["idDigest", REF.idDigest.slice(2)],
+      ["idDigest", `0x${REF.idDigest.slice(4)}`],
+    ];
+    for (const [key, value] of rowsOf(rows, "the malformed transaction, asset and idDigest values", { exact: 10 })) {
+      const { reader, calls } = counting(readerFor(V.S5.landedNonce));
+      expect([key, value, await starknetLandedNonce({ ...REF, [key]: value } as typeof REF, reader)]).toEqual([
+        key,
+        value,
+        { refused: true, code: "starknet/wrong-reader" },
+      ]);
+      expect(calls).toEqual([]);
+    }
+    const upper = { ...REF, transaction: `0x${REF.transaction.slice(2).toUpperCase()}` } as typeof REF;
+    expect(await starknetLandedNonce(upper, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
+  });
+
+  // A Starknet block is final once ACCEPTED_ON_L2 or ACCEPTED_ON_L1; a PRE_CONFIRMED block can still change
+  // (docs/guides/rails.md, "Reading settlement": the Starknet reader's final point is ACCEPTED_ON_L2 or ACCEPTED_ON_L1).
+  // A refusal names no finality, so a revert, no matching transfer, or transfers under two nonces read from a receipt
+  // that is not accepted, or that names no block, is a read to repeat; from an accepted receipt it is the verdict.
+  it("starknetLandedNonce gives a verdict only from a receipt accepted on L2 or L1, and starknet/not-final before", async () => {
+    const landed = V.S5.landedNonce;
+    const accepted = landed.receipt;
+    const pending = [
+      { ...accepted, finality: "PRE_CONFIRMED", blockNumber: null },
+      { ...accepted, finality: "PRE_CONFIRMED" },
+      { ...accepted, blockNumber: null },
+    ];
+    const none = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer")).trace;
+    const execute: StarknetInvocation = landed.trace.calls[0];
+    const other: StarknetInvocation = { ...execute, calldata: execute.calldata.map((c, i) => (i === 1 ? "0x1" : c)) };
+    const twoNonces = { ...landed.trace, calls: [execute, other] };
+    const reverted = { ...accepted, execution: "REVERTED" };
+    const rows: [string, Rec, StarknetInvocation, string][] = [
+      ["a reverted transaction", reverted, landed.trace, "starknet/reverted"],
+      ["no matching transfer", accepted, none, "starknet/no-transfer"],
+      ["transfers under two nonces", accepted, twoNonces, "starknet/ambiguous"],
+    ];
+    for (const [what, receipt, trace, code] of rowsOf(rows, "the verdicts starknetLandedNonce reads", { exact: 3 })) {
+      expect([what, await starknetLandedNonce(REF, readerFor({ receipt, trace }))]).toEqual([what, { refused: true, code }]);
+      for (const p of pending) {
+        const r = receipt === reverted ? { ...p, execution: "REVERTED" } : p;
+        expect([what, r.finality, r.blockNumber, await starknetLandedNonce(REF, readerFor({ receipt: r, trace }))]).toEqual([
+          what,
+          r.finality,
+          r.blockNumber,
+          { refused: true, code: "starknet/not-final" },
+        ]);
+      }
+    }
+    for (const p of pending) expect(await starknetLandedNonce(REF, readerFor({ receipt: p, trace: landed.trace }))).toBe(landed.expect);
+  });
+
+  // The trace walk reads 16 levels and 512 invocations (docs/reference/refusals.md, `starknet/no-transfer`). A trace
+  // beyond them is read no further: from an accepted receipt it holds no transfer the call reads, from a pre-confirmed
+  // one it is a read to repeat, and status answers pending unreadable for it. An invocation that is not well formed is
+  // a reader answer out of its documented form, unreadable at every finality.
+  it("starknetLandedNonce reads a trace within 16 levels and 512 invocations, and refuses one beyond them as no-transfer", async () => {
+    const landed = V.S5.landedNonce;
+    const pre = { ...landed.receipt, finality: "PRE_CONFIRMED", blockNumber: null };
+    const execute: StarknetInvocation = landed.trace.calls[0];
+    const transfer: StarknetInvocation = execute.calls[0]!;
+    const frame = (calls: StarknetInvocation[]): StarknetInvocation => ({
+      contract: REF.from,
+      selector: landed.trace.selector,
+      calldata: [],
+      reverted: false,
+      calls,
+    });
+    // The root is level 1 and the execute level 2, so n frames between the execute and the transfer put it at n + 3.
+    const deep = (n: number) => {
+      let below: StarknetInvocation = transfer;
+      for (let i = 0; i < n; i++) below = frame([below]);
+      return { ...landed.trace, calls: [{ ...execute, calls: [below] }] };
+    };
+    // The root, the execute and the transfer are three invocations; n calls beside the execute make n + 3.
+    const filler: StarknetInvocation = { contract: "0x777", selector: "0x1", calldata: [], reverted: false, calls: [] };
+    const wide = (n: number) => ({ ...landed.trace, calls: [...Array(n).fill(filler), execute] });
+    const within = [deep(13), wide(509)];
+    const beyond = [deep(14), wide(510)];
+    for (const trace of rowsOf(within, "traces at the bounds", { exact: 2 })) {
+      expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace }))).toBe(landed.expect);
+    }
+    for (const trace of rowsOf(beyond, "traces one past the bounds", { exact: 2 })) {
+      expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace }))).toEqual({
+        refused: true,
+        code: "starknet/no-transfer",
+      });
+      expect(await starknetLandedNonce(REF, readerFor({ receipt: pre, trace }))).toEqual({ refused: true, code: "starknet/not-final" });
+      expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace }))).toEqual({ state: "pending", why: "unreadable" });
+    }
+    const malformed = { ...landed.trace, calls: [{ ...execute, calls: [{ ...transfer, calldata: "0x1" }] }] } as never;
+    for (const receipt of [landed.receipt, pre]) {
+      expect(await starknetLandedNonce(REF, readerFor({ receipt, trace: malformed }))).toEqual({ refused: true, code: "starknet/unreadable" });
+    }
   });
 
   // A missing or malformed idDigest cannot name the landed transfer, so the read is pending, never failed
