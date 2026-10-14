@@ -166,17 +166,18 @@ export async function xrplOpenStatus(ref: Omit<XrplRef, "expect">, reader: XrplR
 
 /**
  * Reads a reported close: validated with the channel among the transaction's deleted `PayChannel` entries is settled;
- * validated without it is failed `not-a-close`; otherwise pending. A ref whose channel is not 64 hex digits is pending
- * `unreadable`, with nothing read. One call.
+ * validated without it is failed `not-a-close`; otherwise pending. A ref whose channel or transaction is not 64 hex
+ * digits is pending `unreadable`, with nothing read; the transaction is looked up in upper case. One call.
  */
 export async function xrplCloseStatus(ref: XrplCloseRef, reader: XrplReader): Promise<XrplCloseStatus> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
     return { state: "pending", why: "unreadable" };
   }
   if (typeof ref.channel !== "string" || !HASH256.test(ref.channel)) return { state: "pending", why: "unreadable" };
+  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "pending", why: "unreadable" };
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
-    r = await reader.tx(ref.transaction, null);
+    r = await reader.tx(ref.transaction.toUpperCase(), null);
   } catch {
     return { state: "pending", why: "unreadable" };
   }

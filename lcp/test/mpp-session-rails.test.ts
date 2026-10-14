@@ -689,6 +689,21 @@ describe("mpp/session/xrpl", () => {
     }
     const lower = { ...close, channel: close.channel.toLowerCase(), transaction: "AB".repeat(32) };
     expect(await sessionXrpl.status(lower, reader(closed.landed))).toEqual(closed.expect);
+    // The close's transaction, a Hash256 like the opening's, is read by the same rule: one that is not 64 hex digits
+    // cannot name the close, so the read is pending with nothing read, and the lookup asks for the hash in upper case,
+    // from a reader that holds the close under its upper-case hash alone.
+    const closeHash = "AB".repeat(32);
+    const holdingClose: XrplReader = {
+      ...reader(closed.landed),
+      tx: async (hash) => (hash === closeHash ? closed.landed : { notFound: true, searchedAll: false }),
+    };
+    for (const transaction of [undefined, `0x${closeHash}`, closeHash.slice(2)]) {
+      const { reader: r, calls } = counting(holdingClose);
+      const malformed = { ...close, transaction } as typeof close & { transaction: string };
+      expect([transaction, await sessionXrpl.status(malformed, r)]).toEqual([transaction, { state: "pending", why: "unreadable" }]);
+      expect(calls).toEqual([]);
+    }
+    expect(await sessionXrpl.status({ ...close, transaction: closeHash.toLowerCase() }, holdingClose)).toEqual(closed.expect);
   });
 
   it("XS5: a multi-signed opening is refused by bound, reference and the channel ref", async () => {
