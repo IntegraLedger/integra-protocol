@@ -13,7 +13,7 @@ all welcome.
 
 ## Setting up
 
-You need Node.js `26.10.0` (see `.node-version`) and pnpm `11.28.2`.
+You need Node.js `26.10.0` (see `.node-version`) and pnpm `12.11.2`.
 
 ```sh
 git clone https://github.com/IntegraLedger/integra-protocol.git

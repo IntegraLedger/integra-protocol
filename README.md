@@ -106,7 +106,7 @@ The same pages are published at [lcp.integraledger.com](https://lcp.integraledge
 
 ## Building and testing
 
-You need Node.js `26.10.0` (see `.node-version`) and pnpm `11.28.2`. These are the commands CI runs:
+You need Node.js `26.10.0` (see `.node-version`) and pnpm `12.11.2`. These are the commands CI runs:
 
 ```sh
 pnpm install --frozen-lockfile
