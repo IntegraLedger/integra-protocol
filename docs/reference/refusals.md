@@ -665,11 +665,11 @@ Sui (`@integraledger/lcp/sui`).
 | `sui/hash-not-carried` | The Sui transaction has no unused `Pure` input, or its one unused `Pure` input is not 32 bytes. |
 | `sui/network-malformed` | A Sui option's network starts with `sui:` but is not `sui:mainnet`, `sui:testnet` or `sui:devnet`. |
 | `sui/not-found` | **Read to repeat.** The Sui reader found no transaction for the digest. |
-| `sui/not-programmable` | The Sui `TransactionData` V1's kind is not `ProgrammableTransaction`; a `TransactionData` of another version does not decode, and is `sui/tx-malformed`. |
+| `sui/not-programmable` | The Sui `TransactionData` V1 given to `decodeSuiTx`, or read by `suiRecover` under the reference's digest, has a kind that is not `ProgrammableTransaction`; a `TransactionData` of another version does not decode, and is `sui/tx-malformed`. |
 | `sui/peer-missing` | The optional peer dependency `@mysten/sui` cannot be loaded. |
-| `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, a programmable transaction with a type (a call's type argument, a vector's element type, a funds withdrawal's type) nested 16 levels deep, Sui's type depth limit, or a `Pure` input that is not valid base64 within the bound, or `suiCarrier` is given a transaction that is not a decoded one. |
+| `sui/tx-malformed` | `decodeSuiTx` is given text that is not base64 of a canonical BCS `TransactionData`, or `suiRecover` reads, under the reference's digest, bytes that are not one; or either holds a programmable transaction with a type (a call's type argument, a vector's element type, a funds withdrawal's type) nested 16 levels deep, Sui's type depth limit, or a `Pure` input that is not valid base64 within the bound; or `suiCarrier` is given a transaction that is not a decoded one. |
 | `sui/tx-too-large` | `decodeSuiTx` is given a transaction larger than the size bound. |
-| `sui/unreadable` | **Read to repeat.** The Sui reader failed, or returned a transaction whose digest is not the reference's or that does not decode. |
+| `sui/unreadable` | **Read to repeat.** The Sui reader failed, or returned a transaction whose digest is not the reference's. |
 | `sui/wrong-reader` | The Sui reader answers for a different network than the reference names, or the reference given to `recover` names a `digest` that is not base58 of 32 bytes. |
 
 ## tron

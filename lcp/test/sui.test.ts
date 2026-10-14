@@ -370,6 +370,35 @@ describe("V4 · status and recover", () => {
       expect(got).toEqual(row.expect.startsWith("0x") ? row.expect : { refused: true, code: row.expect });
     });
   }
+  // A transaction's digest is the Blake2b-256 of its intent-prefixed bytes (@mysten/sui's
+  // TransactionDataBuilder.getDigestFromBytes), so bytes under their own digest are the transaction the reference names,
+  // and a later read gives the same bytes. Bytes decodeSuiTx refuses as text are refused by recover with the same code
+  // (V2's bytes with one byte appended are not TransactionData; Sui's TransactionKind tag 10 is
+  // ProgrammableSystemTransaction, MystenLabs/sui 2d56d0e crates/sui-types/src/transaction.rs), and status answers
+  // them failed not-this-instrument.
+  it("recover: bytes under their own digest that do not decode give decodeSuiTx's refusal", async () => {
+    const v2 = Buffer.from(TX["V2"]!, "base64");
+    const system = Buffer.from(v2);
+    expect([system[0], system[1]]).toEqual([0, 0]);
+    system[1] = 10;
+    const rows: [string, Uint8Array, string][] = [
+      ["V2's bytes with one byte appended", Buffer.concat([v2, Uint8Array.of(0)]), "sui/tx-malformed"],
+      ["V2's bytes with the kind tag of a programmable system transaction", system, "sui/not-programmable"],
+    ];
+    for (const [what, bytes, code] of rowsOf(rows, "bytes that do not decode", { exact: 2 })) {
+      expect([what, decodeSuiTx(Buffer.from(bytes).toString("base64"))]).toEqual([what, { refused: true, code }]);
+      const digest = TransactionDataBuilder.getDigestFromBytes(bytes);
+      const r: SuiReader = {
+        network: V.V4.ref.network,
+        read: async () => ({ tx: { transactionBcs: Uint8Array.from(bytes), status: "SUCCESS", checkpoint: 7n }, epoch: 1234n, firstCheckpoint: null }),
+      };
+      expect([what, await exactSui.recover({ network: V.V4.ref.network, digest }, r)]).toEqual([what, { refused: true, code }]);
+      expect([what, await exactSui.status(refOf({ ...V.V4.ref, digest }), r, POSITION)]).toEqual([
+        what,
+        { state: "failed", why: "not-this-instrument" },
+      ]);
+    }
+  });
   it("recover: a reader for another network, a failed read, and no transaction", async () => {
     const ref = { network: "sui:mainnet" as const, digest: V.V2.tx.digest };
     expect(await exactSui.recover(ref, reader("sui:testnet", null))).toEqual({ refused: true, code: "sui/wrong-reader" });

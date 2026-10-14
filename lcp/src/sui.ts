@@ -228,7 +228,9 @@ export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader,
 
 /**
  * Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
- * bytes is `sui/wrong-reader`, with nothing read. One call.
+ * bytes is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the digest are `sui/unreadable`; bytes that
+ * do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`. One
+ * call.
  */
 export async function suiRecover(
   ref: { network: SuiNetwork; digest: string },
@@ -244,7 +246,7 @@ export async function suiRecover(
   if (suiDigest(tx.transactionBcs) !== ref.digest) return refusal("sui/unreadable");
   if (tx.status === "FAILURE") return refusal("sui/aborted");
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
-  if (isRefusal(decoded)) return refusal("sui/unreadable");
+  if (isRefusal(decoded)) return decoded;
   return suiCarrier(decoded);
 }
 
