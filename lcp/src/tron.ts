@@ -448,7 +448,8 @@ async function solidTimestamp(reader: TronReader): Promise<bigint | null> {
 /**
  * Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. A ref
  * whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. Raw data longer than the size bound
- * `decodeTronTx` reads is `tron/tx-too-large`, the code that function gives such a transaction. One call.
+ * `decodeTronTx` reads is `tron/tx-too-large`, the code that function gives such a transaction. Raw data whose SHA-256
+ * is not the id is not the transaction it names, and is `tron/unreadable`, as a failed read is. One call.
  */
 export async function tronRecover(ref: { network: TronNetwork; txid: Hex }, reader: TronReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tron/wrong-reader");
@@ -464,7 +465,7 @@ export async function tronRecover(ref: { network: TronNetwork; txid: Hex }, read
   if (tx.rawDataHex.length > MAX_TX_HEX) return refusal("tron/tx-too-large");
   const rawBytes = bytesOfHexDigits(tx.rawDataHex);
   if (rawBytes === null) return refusal("tron/unreadable");
-  if (!hashEquals(await hash(rawBytes), ref.txid)) return refusal("tron/tx-malformed");
+  if (!hashEquals(await hash(rawBytes), ref.txid)) return refusal("tron/unreadable");
   const raw = decodeRaw(rawBytes);
   if (isRefusal(raw)) return raw;
   return memoHash(raw.data) ?? refusal("tron/memo-not-lcp");

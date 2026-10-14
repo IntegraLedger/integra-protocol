@@ -689,9 +689,9 @@ Tron (`@integraledger/lcp/tron`).
 | `tron/option-malformed` | A TRON option's amount is not a uint256 or its `maxTimeoutSeconds` is outside 1 to the allowed maximum. |
 | `tron/raw-not-canonical` | The TRON raw data does not re-encode to the bytes received. |
 | `tron/signature-malformed` | A TRON transaction carries no signature, too many, or one that is not 65 bytes, or the signature given to `complete` is not 65 bytes with a recovery byte of 0, 1, 27 or 28. |
-| `tron/tx-malformed` | A TRON transaction is not lowercase hex of a protobuf `Transaction` whose raw data decodes with in-range fields, the raw bytes a recovery reads do not hash to the transaction id, or the reference block or time given to `build` is invalid, or `tronCarrier` is given a transaction that is not `decodeTronTx`'s `{ raw, rawBytes }`. |
+| `tron/tx-malformed` | A TRON transaction is not lowercase hex of a protobuf `Transaction` whose raw data decodes with in-range fields, or the reference block or time given to `build` is invalid, or `tronCarrier` is given a transaction that is not `decodeTronTx`'s `{ raw, rawBytes }`. |
 | `tron/tx-too-large` | A TRON transaction's hex, or the raw data a recovery reads, exceeds the size bound. |
-| `tron/unreadable` | **Read to repeat.** The TRON reader threw or returned a transaction whose raw data is not hex. |
+| `tron/unreadable` | **Read to repeat.** The TRON reader threw or returned a transaction whose raw data is not hex, or whose raw bytes do not hash to the transaction id. |
 | `tron/wrong-reader` | The TRON reader answers for a different network than the reference names, or the reference given to `recover` names a `txid` that is not a 32-byte hash. |
 
 ## tvm
