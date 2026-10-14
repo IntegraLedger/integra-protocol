@@ -267,7 +267,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     };
   };
 
-  it("ES6: a full refund carries the voucher, and the request_close only on the retry (x402 751590a2, scheme_batch_settlement_svm.md L626-636; steward client/channel.ts:281-312)", async () => {
+  it("ES6: a full refund carries the voucher, and the request_close only on the retry, byte for byte as @solana/kit compiles it (x402 751590a2, scheme_batch_settlement_svm.md L626-636; steward client/channel.ts:281-312)", async () => {
     const S6 = V.ES6;
     const withMemo = V.ES4.accepted as PaymentRequirements;
     const { memo: _memo, ...noMemoExtra } = withMemo.extra as Record<string, unknown>;
@@ -310,6 +310,15 @@ describe("x402-batch-settlement.json: SVM", () => {
     if (req.kind !== "solana-message") throw new Error(req.kind);
     const solders = b64(V.ES4.closeWireBase64);
     expect(decoded(req.message)).toEqual(decoded(solders.subarray(1 + 64 * solders[0]!)));
+    // Each request_close is held byte for byte to buildMessageSha256: @solana/kit's compilation of ES4's close message
+    // (without its Memo v3 instruction for withoutMemo), the compiler of the steward SDK's request_close
+    // (typescript/packages/mechanisms/svm/src/payment-channels/close.ts L66-92 at x402 751590a2).
+    const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+    const kitClose = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(solders.subarray(1 + 64 * solders[0]!)));
+    const kitNoMemo = { ...kitClose, instructions: kitClose.instructions.filter((ix) => ix.programAddress !== "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr") };
+    expect(sha256(Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitClose))))).toBe(S6.withMemo.buildMessageSha256);
+    expect(sha256(Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitNoMemo))))).toBe(S6.withoutMemo.buildMessageSha256);
+    expect(sha256(req.message)).toBe(S6.withMemo.buildMessageSha256);
     const sig = ed25519.sign(req.message, seed);
     const p = u.complete([base58.encode(sig), base58.encode(vs)]);
     if ("refused" in p) throw new Error(p.code);
@@ -330,6 +339,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     if ("refused" in v) throw new Error(v.code);
     const wr = v.requests[0]!;
     if (wr.kind !== "solana-message") throw new Error(wr.kind);
+    expect(sha256(wr.message)).toBe(S6.withoutMemo.buildMessageSha256);
     const d = decoded(wr.message);
     expect(d.feePayer).toBe(V.fixed.svm.feePayer);
     expect(d.blockhash).toBe(V.fixed.svm.blockhash);
@@ -974,6 +984,10 @@ describe("x402-batch-settlement.json EB9: the EVM within's refund", () => {
         expect(u, r.case).toEqual(r.expect);
         return;
       }
+      // buildWithin's voucher is EB2's: viem's EIP-712 digest of the typed data it writes is EB2.digest.
+      expect(u.requests.map((q) => q.kind)).toEqual(["eip712"]);
+      const [vr] = u.requests;
+      expect(hashTypedData(forViem(vr!.kind === "eip712" ? vr!.typedData : undefined))).toBe(V.EB2.digest);
       const p = unwrap(u.complete([V.EB2.signature]));
       const payload = p.payload as { type: string; amount?: string; voucher: { signature: string } };
       expect(payload.voucher.signature).toBe(V.EB2.signature);

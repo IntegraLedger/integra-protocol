@@ -621,7 +621,8 @@
    "expectKind": "close"
   },
   "withMemo": {
-   "case": "the retry, with ES4's option (extra.memo = L) and recentBlockhash: the solana-message request, then the voucher; decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0 (key order inside a category is not compared: the rail does not fix it); the payload is {type: refund, channelConfig, voucher, transaction}",
+   "case": "the retry, with ES4's option (extra.memo = L) and recentBlockhash: the solana-message request, then the voucher; decompiled, the message has the fee payer, blockhash and instructions of the one inside ES4.closeWireBase64, built with solders 0.26.0, the account keys of each class in byte order; the payload is {type: refund, channelConfig, voucher, transaction}. build compiles the message with its account keys in @solana/kit's order, the compiler of the steward SDK's request_close (x402-foundation/x402 751590a2, typescript/packages/mechanisms/svm/src/payment-channels/close.ts L66-92); buildMessageSha256 is the SHA-256 of that message, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES4.closeWireBase64's message decompiled, and node:crypto's SHA-256.",
+   "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de",
    "payloadMembers": [
     "channelConfig",
     "transaction",
@@ -631,7 +632,8 @@
    "expectKind": "close"
   },
   "withoutMemo": {
-   "case": "the retry, with ES4's option without extra.memo",
+   "case": "the retry, with ES4's option without extra.memo. buildMessageSha256 is the SHA-256 of the message build compiles, computed with @solana/kit 8.4.0 as getCompiledTransactionMessageEncoder of compileTransactionMessage of ES4.closeWireBase64's message decompiled without its Memo v3 instruction, and node:crypto's SHA-256; instructions are that message decompiled.",
+   "buildMessageSha256": "5d2149f7423a7a0826c64e2a93ce7de230f2a9b73d8272f1a6547fcee83675b7",
    "instructions": [
     {
      "program": "ComputeBudget111111111111111111111111111111",
