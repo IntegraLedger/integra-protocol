@@ -824,7 +824,10 @@ With `payer` zero it is x402's `signatureNonce`.
 
 Permit2's typed data under its domain (`name` "Permit2", no version). No witness gives `PermitTransferFrom`; a
 witness gives `PermitWitnessTransferFrom`, or `PermitBatchWitnessTransferFrom` when `permitted` is an array. An empty
-`permitted` array, one of more than 32 entries, and an array with no witness are refused `evm/field-malformed`.
+`permitted` array, one of more than 32 entries, and an array with no witness are refused `evm/field-malformed`. So is
+a witness that is not an object; whose `type` is not an upper-case letter followed by up to 63 letters and digits, or
+is `TokenPermissions` or starts with `Permit`; whose `fields` is not an array of objects with a string `name` and
+`type`; or whose `value` is not an object.
 
 #### Parameters
 

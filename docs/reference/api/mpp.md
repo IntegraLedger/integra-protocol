@@ -255,11 +255,11 @@ The salt's inputs a Gateway signing request carries from the chosen challenge.
 
 ***
 
-### MppPairing
+### MppPairingId
 
-> **MppPairing** = `"mpp/charge/evm/permit2"` \| `"mpp/charge/evm/authorization"` \| `"mpp/charge/evm/transaction"` \| `"mpp/charge/evm/hash"` \| `"mpp/charge/tempo/memo"` \| `"mpp/charge/tempo/push"` \| `"mpp/session/evm"` \| `"mpp/session/tempo"` \| `"mpp/subscription/tempo"` \| `"mpp/charge/lightning"` \| `"mpp/session/lightning"` \| `"mpp/charge/hedera"` \| `"mpp/charge/solana"` \| `"mpp/charge/stellar"` \| `"mpp/charge/xrpl"` \| `"mpp/charge/nearintents"` \| `"mpp/session/hedera"` \| `"mpp/session/solana"` \| `"mpp/session/xrpl"` \| `"mpp/charge/card"` \| `"mpp/charge/stripe"` \| `"mpp/subscription/stripe"` \| `"mpp/charge/usdc/evm"` \| `"mpp/charge/usdc/solana"` \| `"mpp/charge/usdc/stacks"` \| `"mpp/charge/usdc/gateway"`
+> **MppPairingId** = `"mpp/charge/evm/permit2"` \| `"mpp/charge/evm/authorization"` \| `"mpp/charge/evm/transaction"` \| `"mpp/charge/evm/hash"` \| `"mpp/charge/tempo/memo"` \| `"mpp/charge/tempo/push"` \| `"mpp/session/evm"` \| `"mpp/session/tempo"` \| `"mpp/subscription/tempo"` \| `"mpp/charge/lightning"` \| `"mpp/session/lightning"` \| `"mpp/charge/hedera"` \| `"mpp/charge/solana"` \| `"mpp/charge/stellar"` \| `"mpp/charge/xrpl"` \| `"mpp/charge/nearintents"` \| `"mpp/session/hedera"` \| `"mpp/session/solana"` \| `"mpp/session/xrpl"` \| `"mpp/charge/card"` \| `"mpp/charge/stripe"` \| `"mpp/subscription/stripe"` \| `"mpp/charge/usdc/evm"` \| `"mpp/charge/usdc/solana"` \| `"mpp/charge/usdc/stacks"` \| `"mpp/charge/usdc/gateway"`
 
-Every MPP pairing `pairingsOf` can name.
+The id of each MPP pairing `pairingsOf` can name.
 
 ***
 
@@ -775,7 +775,7 @@ it, with that method's default where it names one. A method whose challenge name
 
 ### pairingsOf()
 
-> **pairingsOf**(`c`): [`Refusal`](index.md#refusal) \| readonly [`MppPairing`](#mpppairing)[]
+> **pairingsOf**(`c`): [`Refusal`](index.md#refusal) \| readonly [`MppPairingId`](#mpppairingid)[]
 
 Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. A
 Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money. An
@@ -791,13 +791,13 @@ it, are left out, and a challenge left with no pairing is `mpp/expires-required`
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| readonly [`MppPairing`](#mpppairing)[]
+[`Refusal`](index.md#refusal) \| readonly [`MppPairingId`](#mpppairingid)[]
 
 ***
 
 ### pairingsOfPlaced()
 
-> **pairingsOfPlaced**(`c`): readonly [`MppPairing`](#mpppairing)[]
+> **pairingsOfPlaced**(`c`): readonly [`MppPairingId`](#mpppairingid)[]
 
 The pairings a placed challenge offers: `pairingsOf` over the challenge with its `opaque` removed, so the LCP members
 `place` wrote are not read as an occupied carrier. None when the challenge does not read.
@@ -810,7 +810,7 @@ The pairings a placed challenge offers: `pairingsOf` over the challenge with its
 
 #### Returns
 
-readonly [`MppPairing`](#mpppairing)[]
+readonly [`MppPairingId`](#mpppairingid)[]
 
 ***
 
