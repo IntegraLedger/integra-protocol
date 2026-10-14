@@ -4,7 +4,14 @@ import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { base32 } from "@scure/base";
-import { decodeAddress, decodeSignedTransaction, encodeMsgpack, LogicSig, SignedTransaction } from "algosdk";
+import {
+  decodeAddress,
+  decodeSignedTransaction,
+  encodeMsgpack,
+  LogicSig,
+  msgpackRawDecodeAsMap,
+  SignedTransaction,
+} from "algosdk";
 import { pairingOf, type AtrHash } from "../src/index.js";
 import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
@@ -87,6 +94,29 @@ describe("x402-exact-algorand.json", () => {
       });
       const presented = { ...payment, payload: { paymentIndex: row.paymentIndex, paymentGroup: row.paymentGroup } };
       expect(await exactAvm.bound(presented)).toEqual({ refused: true, code: row.expect });
+    }
+  });
+
+  // The SignedTxn rows: V2's group with its payment entry's one member replaced, which algosdk 3.8.0, the decoder P2
+  // names, refuses; the row above runs each through avmCarrier and bound.
+  it("V3: each SignedTxn row is V2's payment entry with one member replaced, and algosdk refuses it", () => {
+    const rows = (V.V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[]; expect: string }[]).filter((r) =>
+      r.case.startsWith("SignedTxn "),
+    );
+    expect(rows).toHaveLength(7);
+    const keys = (m: Map<unknown, unknown>) => [...m.keys()].map(String).sort();
+    const v2 = msgpackRawDecodeAsMap(Buffer.from(V.V2.expectPaymentGroup[1], "base64")) as Map<string, unknown>;
+    for (const r of rows) {
+      expect([r.paymentIndex, r.paymentGroup[0], r.expect], r.case).toEqual([1, V.V2.expectPaymentGroup[0], "avm/txn-malformed"]);
+      const bytes = Buffer.from(r.paymentGroup[1]!, "base64");
+      expect(() => decodeSignedTransaction(bytes), r.case).toThrow();
+      const m = msgpackRawDecodeAsMap(bytes) as Map<string, unknown>;
+      const txn = m.get("txn") as Map<string, unknown>;
+      const v2txn = v2.get("txn") as Map<string, unknown>;
+      const changed = [...new Set([...keys(m), ...keys(v2)])].filter((k) => k !== "txn" && String(m.get(k)) !== String(v2.get(k)));
+      const txnChanged = [...new Set([...keys(txn), ...keys(v2txn)])].filter((k) => String(txn.get(k)) !== String(v2txn.get(k)));
+      expect(changed.length + txnChanged.length, r.case).toBeGreaterThan(0);
+      expect(changed.filter((k) => k !== "sig").length + txnChanged.length, r.case).toBe(1);
     }
   });
 
