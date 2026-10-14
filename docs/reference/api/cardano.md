@@ -192,7 +192,9 @@ not a 32-byte hash is `x402/payload-malformed`.
 > **cardanoRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Reads the hash back from the included transaction alone, by its id. A ref whose `txId` is not a 32-byte hash is
-`cardano/wrong-reader`, with nothing read. One call.
+`cardano/wrong-reader`, with nothing read. Bytes that are not one CBOR array whose first item, the body, has the id
+as its Blake2b-256 are not the transaction the id names, and are `cardano/unreadable`, as a failed read is, whatever
+the decoder answers for them; its refusals answer only for bytes whose body has the id. One call.
 
 #### Parameters
 

@@ -154,11 +154,14 @@ CAIP-2: `stacks:1` (mainnet), `stacks:2147483648` (testnet).
 
 > **stacksRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call.
-A ref or reader that is not an object, a reader for another network, or a ref whose `transaction` is not a 32-byte
-hash is `stacks/wrong-reader`, with nothing read; a failed read or an answer of no documented shape
-`stacks/unreadable`; an unknown or unmined transaction `stacks/not-found`, any other status `stacks/not-success`,
-and no `(some <32 bytes>)` memo of that call `stacks/no-memo`.
+Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call,
+or at most three for a failed one. A ref or reader that is not an object, a reader for another network, or a ref
+whose `transaction` is not a 32-byte hash is `stacks/wrong-reader`, with nothing read; a failed read, an answer of no
+documented shape, or a mined transaction whose status is none of `success`, `abort_by_response`,
+`abort_by_post_condition` and `problematic_skipped`, `stacks/unreadable`; an unknown or unmined transaction
+`stacks/not-found`. A failed status is `stacks/not-success` once the tip's tenure height is at least the block's plus
+two, as `stacksStatus` reads `bitcoin` finality; below that, or where a tenure read fails, it is `stacks/not-final`,
+since that block can be replaced. No `(some <32 bytes>)` memo of the call is `stacks/no-memo`.
 
 #### Parameters
 

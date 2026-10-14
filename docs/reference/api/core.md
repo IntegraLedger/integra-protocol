@@ -103,6 +103,12 @@ Re-exports [parseJson](index.md#parsejson)
 
 ***
 
+### readToRepeat
+
+Re-exports [readToRepeat](index.md#readtorepeat)
+
+***
+
 ### Refusal
 
 Re-exports [Refusal](index.md#refusal)

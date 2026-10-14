@@ -285,7 +285,9 @@ The hash in the memo of a transaction whose one contract calls `transfer`, and t
 > **tronRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. A ref
-whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. One call.
+whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. Raw data longer than the size bound
+`decodeTronTx` reads is `tron/tx-too-large`, the code that function gives such a transaction. Raw data whose SHA-256
+is not the id is not the transaction it names, and is `tron/unreadable`, as a failed read is. One call.
 
 #### Parameters
 

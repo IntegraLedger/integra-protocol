@@ -235,9 +235,12 @@ false.
 
 > **nearRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A delegate
-that calls another method is `near/not-ft-transfer`. A ref that names no `transaction` string is `near/wrong-reader`,
-with nothing read.
+Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A transaction
+that carries no delegate action, or whose delegate calls another method, is `near/not-ft-transfer`, as `nearStatus`
+answers it failed `not-this-instrument`; one that no relayer the reader lists knows is `near/not-found`. A failed
+read, an outcome that is not well formed, or a delegate whose arguments are not base64 in its canonical form (RFC 4648
+§3.5), an answer out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref
+that names no `transaction` string is `near/wrong-reader`, with nothing read.
 
 #### Parameters
 

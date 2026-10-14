@@ -340,7 +340,15 @@ the core's `hash` over `from`, `to` and `amount` as three 32-byte big-endian wor
 
 The nonce that landed in the named transaction for this transfer, for a party holding the ATR to compare with the
 hash's low 250 bits: the nonce of the `execute_from_outside_v2` below which, at any depth, a `transfer` call on
-`ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce.
+`ref.asset` has this payment's identity. It is found by that identity, not by the recorded nonce. A ref or reader
+that is not an object, a reader for another network, or a ref whose `transaction` or `asset` is not a felt or whose
+`idDigest` is not a 32-byte hash, is `starknet/wrong-reader`, with nothing read. A failed read, a receipt that is not
+well formed, or a trace that is missing or holds an invocation that is not well formed, is `starknet/unreadable`, and
+no receipt `starknet/not-found`. A receipt at `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` gives the verdict: a reverted
+transaction is `starknet/reverted`; a trace that holds no such transfer, or that is nested deeper than 16 levels or
+holds more than 512 invocations, which it reads no further, is `starknet/no-transfer`; and transfers under more than
+one nonce are `starknet/ambiguous`. A `PRE_CONFIRMED` receipt, or one with no block number, gives each of these as
+`starknet/not-final`, since a pre-confirmed block can change. Two calls.
 
 #### Parameters
 

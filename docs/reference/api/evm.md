@@ -678,10 +678,14 @@ carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8
 > **eip3009Recover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
-that `asset` emitted in it. A failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding
-a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
-`evm/unreadable`; no receipt (`null`) is `evm/not-found`. A ref whose `transaction` is not a 32-byte hash is
-`evm/wrong-reader`, with nothing read. One call.
+that `asset` emitted in it; none is `evm/no-authorization-use`, and more than one `evm/ambiguous`. A failed read, a
+reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a string
+`address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
+`evm/not-found`. A reverted transaction is `evm/reverted`. A revert, `evm/no-authorization-use` and `evm/ambiguous`
+are given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
+cannot be read, each is `evm/not-final`, a read to repeat: a block above the mark can be replaced by one in which the
+transaction succeeds or holds other logs, and a refusal names no mark. The mark is read only for those. A ref whose
+`transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls.
 
 #### Parameters
 
