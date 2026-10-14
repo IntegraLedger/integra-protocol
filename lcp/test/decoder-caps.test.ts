@@ -251,6 +251,36 @@ describe("msgpack: algosdk reads every string the scan admits as the text its by
     expect(marked).toEqual(Array.from({ length: 400 - threshold }, (_, k) => threshold + 1 + k));
     expect(parted["a map key that begins with the mark"]).toEqual(marked);
   });
+
+  // The msgpack rows that hold a string the scan judges, each named here with its string's bytes, which the row writes
+  // as a fixstr or a str 8. A row's accept is whether RFC 3629 §4's syntax (utf8-syntax.ts) takes the string and algosdk
+  // reads it as the text its bytes spell; the rows loop above checks the scan against each accept.
+  it("each msgpack row holding a judged string is admitted exactly when the string is UTF-8 that algosdk reads as spelled", () => {
+    const mark = "efbbbf";
+    const strings: Record<string, string> = {
+      MC11: "c1b4",
+      MC12: "eda080",
+      MC13: "f4908080",
+      MC14: "7369c1",
+      MC15: "80",
+      MC16: "f09f9880",
+      MC17: mark + "78".repeat(198),
+      MC18: mark + "78".repeat(197),
+      MC19: "78" + mark + "78".repeat(197),
+    };
+    const rows = rowsOf(V.msgpack.rows as (Row & { hex: string })[], "decoder-caps.json msgpack.rows", {
+      exact: 9,
+      keep: ["MC11 to MC19, whose string is named here", (r) => r.name in strings],
+      leave: ["MC1 to MC10, which judge nesting, declared lengths and one value; the rows loop above runs them", (r) => !(r.name in strings)],
+    });
+    for (const r of rows) {
+      const s = Uint8Array.from(Buffer.from(strings[r.name]!, "hex"));
+      const written = [smallest(s), str(s, "str 8")].map((w) => Buffer.from(w).toString("hex"));
+      expect(written.some((w) => r.hex.includes(w)), r.name).toBe(true);
+      const asSpelled = wellFormedUtf8(s) && msgpackRawDecodeAsMap(Uint8Array.from(smallest(s))) === spelled.decode(s);
+      expect(asSpelled, r.name).toBe(r.accept);
+    }
+  });
 });
 
 describe("ScVal: vector and map nesting, and invocation nesting, in what decodeStellarTx reads", () => {

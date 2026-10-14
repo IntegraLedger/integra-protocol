@@ -1,5 +1,5 @@
 {
- "about": "Decoder caps. XRPL: STObject and STArray fields nest at most 64 levels inside a transaction (an object or array field one level below its container, an array's member object one level below the array); the blobs were written by ripple-binary-codec 2.11.0's encode, each a Payment whose depth is by construction. The cap is checked in one pass over the blob's fields before the codec decodes it, so XC5, the largest blob decodeBlob takes (4096 hex characters) nesting to level 1010, is refused in time linear in its length. msgpack: arrays and maps nest at most 32 levels, the outermost container being level 1, every declared length is at most the bytes left, and the bytes are exactly one value; each row is hand-written from the msgpack specification's formats. ScVal: vectors and maps nest at most 64 levels within one ScVal, the outermost container being level 1; each ScVal is hand-written XDR (RFC 4506). Authorized invocations nest at most 64 levels, the root invocation being level 1. In an envelope the cap applies to what decodeStellarTx reads, the operation and the payer's authorization entry, and no other entry is walked. The envelopes are x402-exact-stellar.json V2's signed envelope edited with @stellar/stellar-sdk 17.2.1's XDR types: SE1 and SE2 wrap the payer's signature (a vector of one map, 2 levels) in vectors, SE3 and SE4 add a second authorization entry under the source account's credentials, SE5 gives the payer's transfer a chain of sub-invocations, SE6 gives the operation a fourth argument, SE7 adds a second authorization entry under address credentials with delegates (the account key of 32 bytes of 04, a void signature, and x(void) on the contract of 32 bytes of 06 as its invocation) whose delegates nest 66 deep, and SE8 replaces the operation with a create-claimable-balance of 1 stroop of the native asset whose one claimant (the account key of 32 bytes of 05) has a predicate nesting 66 deep, 65 not-predicates around an unconditional one. No cap bounds delegates or claim predicates: SE7 is V2's payment, and SE8 is decoded and is not one transfer. A row's expect, where it has one, is decodeStellarTx's refusal. 'accept' says whether the caps admit the input.",
+ "about": "Decoder caps. XRPL: STObject and STArray fields nest at most 64 levels inside a transaction (an object or array field one level below its container, an array's member object one level below the array); the blobs were written by ripple-binary-codec 2.11.0's encode, each a Payment whose depth is by construction. The cap is checked in one pass over the blob's fields before the codec decodes it, so XC5, the largest blob decodeBlob takes (4096 hex characters) nesting to level 1010, is refused in time linear in its length. msgpack: arrays and maps nest at most 32 levels, the outermost container being level 1, every declared length is at most the bytes left, the bytes are exactly one value, every string (a map key or a value, at any depth) is well-formed UTF-8 (RFC 3629), and no string longer than 200 bytes begins with the byte-order mark EF BB BF, which algosdk 3.8.0's decoder, algorand-msgpack 1.1.0, drops from such a string; each row is hand-written from the msgpack specification's formats, and Python 3.12.3's strict UTF-8 codec refuses the string of each row whose case says it is not well-formed. ScVal: vectors and maps nest at most 64 levels within one ScVal, the outermost container being level 1; each ScVal is hand-written XDR (RFC 4506). Authorized invocations nest at most 64 levels, the root invocation being level 1. In an envelope the cap applies to what decodeStellarTx reads, the operation and the payer's authorization entry, and no other entry is walked. The envelopes are x402-exact-stellar.json V2's signed envelope edited with @stellar/stellar-sdk 17.2.1's XDR types: SE1 and SE2 wrap the payer's signature (a vector of one map, 2 levels) in vectors, SE3 and SE4 add a second authorization entry under the source account's credentials, SE5 gives the payer's transfer a chain of sub-invocations, SE6 gives the operation a fourth argument, SE7 adds a second authorization entry under address credentials with delegates (the account key of 32 bytes of 04, a void signature, and x(void) on the contract of 32 bytes of 06 as its invocation) whose delegates nest 66 deep, and SE8 replaces the operation with a create-claimable-balance of 1 stroop of the native asset whose one claimant (the account key of 32 bytes of 05) has a predicate nesting 66 deep, 65 not-predicates around an unconditional one. No cap bounds delegates or claim predicates: SE7 is V2's payment, and SE8 is decoded and is not one transfer. A row's expect, where it has one, is decodeStellarTx's refusal. 'accept' says whether the caps admit the input.",
  "xrpl": {
   "maxDepth": 64,
   "rows": [
@@ -101,6 +101,60 @@
     "name": "MC10",
     "case": "a bin8 of 3 bytes, a float64 and a fixext4 in a fixarray",
     "hex": "93c403616263cb3ff0000000000000d6010a0b0c0d",
+    "accept": true
+   },
+   {
+    "name": "MC11",
+    "case": "a fixmap whose one key is the fixstr C1 B4, an overlong t: a string that is not well-formed UTF-8",
+    "hex": "81a2c1b401",
+    "accept": false
+   },
+   {
+    "name": "MC12",
+    "case": "the fixstr ED A0 80, the surrogate U+D800: a string that is not well-formed UTF-8",
+    "hex": "a3eda080",
+    "accept": false
+   },
+   {
+    "name": "MC13",
+    "case": "a fixmap whose one value, under the key a, is the str8 F4 90 80 80, U+110000, above U+10FFFF: a string that is not well-formed UTF-8",
+    "hex": "81a161d904f4908080",
+    "accept": false
+   },
+   {
+    "name": "MC14",
+    "case": "a fixmap whose one key is the fixstr 73 69 C1, si and a two-byte lead the key's end cuts short, its value 5: a string that is not well-formed UTF-8",
+    "hex": "81a37369c105",
+    "accept": false
+   },
+   {
+    "name": "MC15",
+    "case": "a fixarray holding the fixstr 80, a continuation byte with no lead: a string that is not well-formed UTF-8",
+    "hex": "91a180",
+    "accept": false
+   },
+   {
+    "name": "MC16",
+    "case": "a fixmap whose key and value are each the fixstr F0 9F 98 80, U+1F600, beyond the Basic Multilingual Plane: well-formed UTF-8",
+    "hex": "81a4f09f9880a4f09f9880",
+    "accept": true
+   },
+   {
+    "name": "MC17",
+    "case": "the str8 of 201 bytes, the byte-order mark EF BB BF and 198 x: a string longer than 200 bytes that begins with the mark, which algosdk 3.8.0's decoder reads without it",
+    "hex": "d9c9efbbbf787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
+    "accept": false
+   },
+   {
+    "name": "MC18",
+    "case": "the str8 of 200 bytes, the byte-order mark EF BB BF and 197 x: a string of at most 200 bytes, which algosdk 3.8.0's decoder reads with its mark",
+    "hex": "d9c8efbbbf7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
+    "accept": true
+   },
+   {
+    "name": "MC19",
+    "case": "the str8 of 201 bytes, x, the byte-order mark EF BB BF and 197 x: the mark does not begin the string",
+    "hex": "d9c978efbbbf7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
     "accept": true
    }
   ]
