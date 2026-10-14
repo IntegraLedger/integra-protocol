@@ -293,7 +293,7 @@
     "expect": "x402/payload-malformed"
    },
    {
-    "case": "recover on included bytes whose body does not hash to the id, or with no cbor",
+    "case": "recover on included bytes that are not one CBOR array whose first item, the body, hashes to the id, whatever the decoder answers for them, or with no cbor",
     "expect": "cardano/unreadable"
    },
    {

@@ -543,16 +543,33 @@ describe("x402-exact-cardano.json agreedRefusals: every row that gives no transa
       }
       return out;
     },
-    // V2's id, included in V5's block: V3's bytes, whose body hashes to V3's id, and no cbor. V2's bytes give H.
-    "recover on included bytes whose body does not hash to the id, or with no cbor": async () => {
-      const ref = { network: "cardano:preprod" as const, txId: V.V2.expectReference.txId };
-      const included = V.V5.status[0].tx;
-      expect(await exactCardano.recover(ref, reader(V.V5.tip, included, TX["V2"]))).toBe(H);
-      return [
-        await exactCardano.recover(ref, reader(V.V5.tip, included, TX["V3"])),
-        await exactCardano.recover(ref, reader(V.V5.tip, included)),
-      ];
-    },
+    // V2's id, included in V5's block. The id is Python's hashlib.blake2b(digest_size=32) over V2's body (this file's
+    // about); the same digest over the first item of the plant and of V4's "a trailing byte after the array" gives
+    // V2's id, and over V3's and V4's "no auxiliary data and no key 7" another. Refused: V3's bytes; V4's row with no
+    // key 7, which the decoder refuses aux-missing; the plant under V3's id, which it refuses aux-hash-mismatch; V2's
+    // bytes with a byte after the array; a break byte, the integer 0 and an empty array; and no cbor. V2's bytes give
+    // H, and the plant under V2's id gives the decoder's refusal.
+    "recover on included bytes that are not one CBOR array whose first item, the body, hashes to the id, whatever the decoder answers for them, or with no cbor":
+      async () => {
+        const ref = { network: "cardano:preprod" as const, txId: V.V2.expectReference.txId };
+        const v3 = { ...ref, txId: V.V3.txId };
+        const included = V.V5.status[0].tx;
+        const recovered = (r: typeof ref, cbor?: string) => exactCardano.recover(r, reader(V.V5.tip, included, cbor));
+        const row = (name: string): string => V.V4.find((r: { case: string }) => r.case === name).transactionBase64;
+        const b64 = (...b: number[]) => Buffer.from(b).toString("base64");
+        expect(await recovered(ref, TX["V2"])).toBe(H);
+        expect(await recovered(ref, V.plant.transactionBase64)).toEqual(refused(V.plant.expectBound));
+        return [
+          await recovered(ref, TX["V3"]),
+          await recovered(ref, row("no auxiliary data and no key 7")),
+          await recovered(v3, V.plant.transactionBase64),
+          await recovered(ref, row("a trailing byte after the array")),
+          await recovered(ref, b64(0xff)),
+          await recovered(ref, b64(0x00)),
+          await recovered(ref, b64(0x80)),
+          await recovered(ref),
+        ];
+      },
     // V5's tip and reference, with the inclusion read 1 and 1,000 blocks above the tip.
     "status: an inclusion read above the tip read before it": async () => {
       const out: unknown[] = [];

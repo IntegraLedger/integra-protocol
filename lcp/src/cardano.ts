@@ -177,14 +177,17 @@ export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, dept
 
 /**
  * Reads the hash back from the included transaction alone, by its id. A ref whose `txId` is not a 32-byte hash is
- * `cardano/wrong-reader`, with nothing read. One call.
+ * `cardano/wrong-reader`, with nothing read. Bytes that are not one CBOR array whose first item, the body, has the id
+ * as its Blake2b-256 are not the transaction the id names, and are `cardano/unreadable`, as a failed read is, whatever
+ * the decoder answers for them; its refusals answer only for bytes whose body has the id. One call.
  */
 export async function cardanoRecover(
   ref: { network: CardanoNetwork; txId: Hex },
   reader: CardanoReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("cardano/wrong-reader");
-  if (normalHash(ref.txId) === null) return refusal("cardano/wrong-reader");
+  const txId = normalHash(ref.txId);
+  if (txId === null) return refusal("cardano/wrong-reader");
   let tx: unknown;
   try {
     tx = await reader.transaction(ref.txId, true);
@@ -195,10 +198,11 @@ export async function cardanoRecover(
   if (!isOnChain(tx)) return refusal("cardano/unreadable");
   if (!tx.valid) return refusal("cardano/not-valid");
   if (!(tx.cbor instanceof Uint8Array) || tx.cbor.length > MAX_TX_BYTES) return refusal("cardano/unreadable");
-  const decoded = decodeBytes(tx.cbor);
-  if (isRefusal(decoded)) return decoded;
-  if (typeof ref.txId !== "string" || decoded.txId !== ref.txId.toLowerCase()) return refusal("cardano/unreadable");
-  return decoded.h;
+  const top = oneItem(tx.cbor);
+  const body = top?.kind === "array" ? top.items[0] : undefined;
+  if (top === null || body === undefined || idOf(tx.cbor, body) !== txId) return refusal("cardano/unreadable");
+  const decoded = decodeItem(tx.cbor, top);
+  return isRefusal(decoded) ? decoded : decoded.h;
 }
 
 /** The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not. */
@@ -330,14 +334,28 @@ export const exactCardano = Object.freeze({
 });
 
 function decodeBytes(bytes: Uint8Array): CardanoTx | Refusal {
-  let top: Item;
+  const top = oneItem(bytes);
+  return top === null ? refusal("cardano/tx-malformed") : decodeItem(bytes, top);
+}
+
+/** The one CBOR item `bytes` hold, or null when they are not exactly one well-formed item. */
+function oneItem(bytes: Uint8Array): Item | null {
   try {
     const r = new CborReader(bytes);
-    top = r.item(0);
-    if (r.at !== bytes.length) return refusal("cardano/tx-malformed");
+    const top = r.item(0);
+    return r.at === bytes.length ? top : null;
   } catch {
-    return refusal("cardano/tx-malformed");
+    return null;
   }
+}
+
+/** The transaction id: the Blake2b-256 of the body's bytes as received. */
+function idOf(bytes: Uint8Array, body: Item): Hex {
+  return hexOf(blake2b(bytes.subarray(body.start, body.end), { dkLen: 32 }));
+}
+
+/** `decodeBytes` on the item `oneItem` read from `bytes`. */
+function decodeItem(bytes: Uint8Array, top: Item): CardanoTx | Refusal {
   if (top.kind !== "array" || top.items.length !== 4) return refusal("cardano/tx-malformed");
   const [body, , valid, aux] = top.items as [Item, Item, Item, Item];
   if (body.kind !== "map" || !(valid.kind === "simple" && (valid.value === 20 || valid.value === 21))) {
@@ -351,7 +369,7 @@ function decodeBytes(bytes: Uint8Array): CardanoTx | Refusal {
   const ttl = fields.get(3n);
   if (ttl !== undefined && ttl.kind !== "uint") return refusal("cardano/tx-malformed");
   const auxHash = fields.get(7n);
-  const txId = hexOf(blake2b(bytes.subarray(body.start, body.end), { dkLen: 32 }));
+  const txId = idOf(bytes, body);
   const ttlSlot = ttl === undefined ? null : ttl.value;
 
   if (auxHash === undefined || (aux.kind === "simple" && aux.value === 22)) return refusal("cardano/aux-missing");
