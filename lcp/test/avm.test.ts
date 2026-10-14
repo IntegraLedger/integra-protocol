@@ -16,6 +16,7 @@ import { pairingOf, type AtrHash } from "../src/index.js";
 import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
+import { wellFormedUtf8 } from "./utf8-syntax.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -48,6 +49,30 @@ function readerOf(byTxid: Record<string, Answer>, fallback: Answer, note = V.V4.
   };
 }
 const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
+
+/** How V3.refusals ends the case of each row that writes a string that is not UTF-8. */
+const NOT_UTF8 = "a string that is not well-formed UTF-8 (RFC 3629 §4)";
+const bytesOf = (h: string) => Buffer.from(h.replaceAll(" ", ""), "hex");
+/**
+ * V2's payment entry, the msgpack map {sig, txn}, edited by hand (msgpack specification's formats): one span of its
+ * bytes replaced, or one member appended to the map or to the txn map, its last value, whose last member is xaid.
+ */
+const V2_ENTRY = Buffer.from(V.V2.expectPaymentGroup[1], "base64");
+function replaced(from: string, to: string): Buffer {
+  const at = V2_ENTRY.indexOf(bytesOf(from));
+  if (at < 0 || V2_ENTRY.indexOf(bytesOf(from), at + 1) >= 0) throw new Error(`not once in V2's entry: ${from}`);
+  return Buffer.concat([V2_ENTRY.subarray(0, at), bytesOf(to), V2_ENTRY.subarray(at + bytesOf(from).length)]);
+}
+const withMember = (keyAndValue: string) => Buffer.concat([bytesOf("83"), V2_ENTRY.subarray(1), bytesOf(keyAndValue)]);
+const withTxnMember = (keyAndValue: string) =>
+  Buffer.concat([replaced("a3 74786e 8b", "a3 74786e 8c"), bytesOf(keyAndValue)]);
+/** `text` as one msgpack string: a fixstr up to 31 bytes, else a str 8. */
+const msgpackStr = (text: string) => {
+  const b = bytesOf(text);
+  return Buffer.concat([Buffer.from(b.length < 32 ? [0xa0 | b.length] : [0xd9, b.length]), b]).toString("hex");
+};
+/** "gen": "testnet-v1.0" in V2's payment transaction. */
+const GEN = "a367656e ac 746573746e65742d76312e30";
 
 describe("x402-exact-algorand.json", () => {
   const required = (o: PaymentRequirements): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
@@ -127,6 +152,90 @@ describe("x402-exact-algorand.json", () => {
       const txnChanged = [...new Set([...keys(txn), ...keys(v2txn)])].filter((k) => String(txn.get(k)) !== String(v2txn.get(k)));
       expect(changed.length + txnChanged.length, r.case).toBeGreaterThan(0);
       expect(changed.filter((k) => k !== "sig").length + txnChanged.length, r.case).toBe(1);
+    }
+  });
+
+  // The rows whose case ends in NOT_UTF8: V2's payment entry with one string written by hand, spelled here from the
+  // bytes each case names. RFC 3629 §4's syntax (utf8-syntax.ts) refuses each written string and takes gen's own.
+  it("V3: each row with a string that is not UTF-8 is V2's payment entry with that one string written", () => {
+    const rows = rowsOf(
+      V.V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[]; expect: string }[],
+      "x402-exact-algorand.json V3.refusals",
+      {
+        exact: 5,
+        keep: ["the rows with a string that is not UTF-8", (r) => r.case.endsWith(NOT_UTF8)],
+        leave: [
+          "every other row, whose note, index, group, member or encoding is refused; the test above runs every row through avmCarrier and bound",
+          (r) => !r.case.endsWith(NOT_UTF8),
+        ],
+      },
+    );
+    const written: [Buffer, string][] = [
+      [replaced("a3 74786e 8b", "a4 c1b4786e 8b"), "c1b4786e"],
+      [replaced(GEN, "a367656e ae 746573746e65742d76312e eda080"), "746573746e65742d76312e eda080"],
+      [withTxnMember("a4 f4908080 05"), "f4908080"],
+      [withMember("a3 7369c1 05"), "7369c1"],
+      [replaced(GEN, "a367656e ad 746573746e65742d7631 80 2e30"), "746573746e65742d7631 80 2e30"],
+    ];
+    expect(rows.map((r) => [r.paymentIndex, r.paymentGroup, r.expect])).toEqual(
+      written.map(([entry]) => [1, [V.V2.expectPaymentGroup[0], entry.toString("base64")], "avm/txn-malformed"]),
+    );
+    for (const [, text] of written) expect(wellFormedUtf8(bytesOf(text)), text).toBe(false);
+    expect(wellFormedUtf8(bytesOf("746573746e65742d76312e30"))).toBe(true);
+  });
+
+  // algosdk 3.8.0 decodes msgpack with algorand-msgpack 1.1.0, which keeps each map key of up to 16 bytes in a cache
+  // keyed by the key's bytes for the life of the process, and reads a lead byte at a string's end together with the
+  // bytes after the string. Each pair below is V2's payment entry with one last member keyed by "si" or "msi" and a
+  // two-byte lead (C1) that the key's end cuts short, its value 5 in one entry and "abcdefg" in the other. The pairs are
+  // presented in opposite orders, then each pair again in the other order: every answer is avm/txn-malformed, the
+  // answer for a key RFC 3629 §4's syntax refuses, whatever the process decoded before.
+  it("an entry's answer does not depend on what the process decoded before it", async () => {
+    const payment = await completed();
+    const refused = { refused: true, code: "avm/txn-malformed" };
+    const pair = (key: string) => [withMember(`${key} 05`), withMember(`${key} a7 61626364656667`)];
+    const [e1, e2] = pair("a3 7369c1");
+    const [f1, f2] = pair("a4 6d7369c1");
+    expect([wellFormedUtf8(bytesOf("7369c1")), wellFormedUtf8(bytesOf("6d7369c1"))]).toEqual([false, false]);
+    const answers: unknown[] = [];
+    for (const entry of [e1, e2, f2, f1, e2, e1, f1, f2]) {
+      const presented = { ...payment, payload: { paymentIndex: 1, paymentGroup: [V.V2.expectPaymentGroup[0], entry!.toString("base64")] } };
+      answers.push([await exactAvm.bound(presented), await exactAvm.reference(presented)]);
+    }
+    expect(answers).toEqual(Array.from({ length: 8 }, () => [refused, refused]));
+  });
+
+  // One string of each form RFC 3629 §4's syntax refuses (an overlong t, the surrogate U+D800, U+110000 above
+  // U+10FFFF, a two-byte lead the string's end cuts short, a lone continuation byte, and a str 8 of 201 bytes holding
+  // C1), each after an x, in four places in V2's payment entry: a last member's key and a last member's value in the
+  // entry, a last member's key in the transaction, and an element of an array in the transaction. Beside them, strings
+  // of the boundary code points the syntax takes, in the same places, give the file's H.
+  it("bound and reference refuse a string that is not UTF-8 wherever it sits in the entry", async () => {
+    const payment = await completed();
+    const presentedWith = (entry: Buffer) => ({
+      ...payment,
+      payload: { paymentIndex: 1, paymentGroup: [V.V2.expectPaymentGroup[0], entry.toString("base64")] },
+    });
+    const places: Record<string, (s: string) => Buffer> = {
+      "the entry's key": (s) => withMember(`${s} 05`),
+      "the entry's value": (s) => withMember(`a2 7a7a ${s}`),
+      "the transaction's key": (s) => withTxnMember(`${s} 05`),
+      "an array in the transaction": (s) => withTxnMember(`a2 7a7a 91 ${s}`),
+    };
+    const illFormed = ["78 c1b4", "78 eda080", "78 f4908080", "78 c3", "78 80", `c1 ${"78".repeat(200)}`];
+    const wellFormed = ["78 c280", "78 dfbf", "78 e0a080", "78 ed9fbf", "78 ee8080", "78 efbbbf", "78 f0908080", "78 f48fbfbf"];
+    for (const text of illFormed) expect(wellFormedUtf8(bytesOf(text)), text).toBe(false);
+    for (const text of wellFormed) expect(wellFormedUtf8(bytesOf(text)), text).toBe(true);
+    for (const [place, at] of Object.entries(places)) {
+      for (const text of illFormed) {
+        const presented = presentedWith(at(msgpackStr(text)));
+        const label = `${place}: ${text.slice(0, 16)}`;
+        expect(await exactAvm.bound(presented), label).toEqual({ refused: true, code: "avm/txn-malformed" });
+        expect(await exactAvm.reference(presented), label).toEqual({ refused: true, code: "avm/txn-malformed" });
+      }
+      for (const text of wellFormed) {
+        expect(await exactAvm.bound(presentedWith(at(msgpackStr(text)))), `${place}: ${text}`).toBe(V.V3.expectBound);
+      }
     }
   });
 

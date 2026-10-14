@@ -8,11 +8,14 @@ import type { X402Payment } from "./x402.js";
 
 export type AvmPaymentPayload = X402Payment<AvmPresented>;
 
+const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
 /**
  * True when `b` is exactly one msgpack value (the msgpack specification's formats) whose arrays and maps nest at most
- * `maxDepth` deep, and whose every declared length (a string's, binary's or extension's bytes, an array's elements, a
- * map's keys and values) is no more than the bytes that remain, so no count is trusted past the input. The value is
- * scanned, never built.
+ * `maxDepth` deep, whose every declared length (a string's, binary's or extension's bytes, an array's elements, a
+ * map's keys and values) is no more than the bytes that remain, so no count is trusted past the input, and whose every
+ * string (fixstr, str 8, str 16 or str 32; a map key or a value, at any depth) is well-formed UTF-8 (RFC 3629). The
+ * value is scanned, never built.
  */
 export function msgpackWithinCaps(b: Uint8Array, maxDepth: number): boolean {
   const n = b.length;
@@ -32,6 +35,16 @@ export function msgpackWithinCaps(b: Uint8Array, maxDepth: number): boolean {
     i += length;
     return true;
   };
+  const text = (length: number | undefined): boolean => {
+    const start = i;
+    if (!skip(length)) return false;
+    try {
+      UTF8.decode(b.subarray(start, i));
+      return true;
+    } catch {
+      return false;
+    }
+  };
   const open = (values: number | undefined): boolean => {
     if (values === undefined || values > n - i || pending.length + 1 > maxDepth) return false;
     if (values > 0) {
@@ -49,10 +62,13 @@ export function msgpackWithinCaps(b: Uint8Array, maxDepth: number): boolean {
     if (t <= 0x7f || t >= 0xe0 || t === 0xc0 || t === 0xc2 || t === 0xc3) ok = true;
     else if (t <= 0x8f) ok = open(2 * (t & 0x0f));
     else if (t <= 0x9f) ok = open(t & 0x0f);
-    else if (t <= 0xbf) ok = skip(t & 0x1f);
-    else if (t === 0xc4 || t === 0xd9) ok = skip(uint(1));
-    else if (t === 0xc5 || t === 0xda) ok = skip(uint(2));
-    else if (t === 0xc6 || t === 0xdb) ok = skip(uint(4));
+    else if (t <= 0xbf) ok = text(t & 0x1f);
+    else if (t === 0xc4) ok = skip(uint(1));
+    else if (t === 0xc5) ok = skip(uint(2));
+    else if (t === 0xc6) ok = skip(uint(4));
+    else if (t === 0xd9) ok = text(uint(1));
+    else if (t === 0xda) ok = text(uint(2));
+    else if (t === 0xdb) ok = text(uint(4));
     else if (t === 0xc7) ok = skip(withType(uint(1)));
     else if (t === 0xc8) ok = skip(withType(uint(2)));
     else if (t === 0xc9) ok = skip(withType(uint(4)));

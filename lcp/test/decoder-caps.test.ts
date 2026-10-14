@@ -23,9 +23,12 @@ import {
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { decodeBlob, XRPL_MAX_DEPTH } from "../src/xrpl.js";
 import { rowsOf } from "./rows.js";
+import { wellFormedUtf8 } from "./utf8-syntax.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/decoder-caps.json", import.meta.url), "utf8"));
 type Row = { name: string; case: string; accept: boolean };
+/** How x402-exact-algorand.json V3.refusals ends the case of each row that writes a string that is not UTF-8. */
+const NOT_UTF8 = "a string that is not well-formed UTF-8 (RFC 3629 §4)";
 
 describe("XRPL binary: STObject and STArray nesting", () => {
   it("the cap is the vectors'", () => {
@@ -49,12 +52,148 @@ describe("msgpack: array and map nesting, declared lengths, one value", () => {
       expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(r.hex, "hex")), MSGPACK_MAX_DEPTH)).toBe(r.accept);
     });
   }
-  it("every signed transaction in the Algorand vectors is within the caps", () => {
+  // The payment entries of x402-exact-algorand.json V3.refusals whose case ends in NOT_UTF8 each hold a string that is
+  // not well-formed UTF-8; every other signed transaction in the file passes the scan.
+  it("every signed transaction in the Algorand vectors is within the caps, but the five with a string not UTF-8", () => {
     const A = readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8");
-    const entries = rowsOf([...A.matchAll(/"(g[A-Za-z0-9+/]{40,}={0,2})"/g)].map((m) => m[1]!), "x402-exact-algorand.json signed transactions in base64");
-    expect(entries.length).toBeGreaterThan(0);
+    const notUtf8 = new Set(
+      rowsOf(JSON.parse(A).V3.refusals as { case: string; paymentIndex: number; paymentGroup: string[] }[], "x402-exact-algorand.json V3.refusals", {
+        exact: 5,
+        keep: ["the rows with a string that is not UTF-8", (r) => r.case.endsWith(NOT_UTF8)],
+        leave: ["every other row, whose entry the loop below finds within the caps", (r) => !r.case.endsWith(NOT_UTF8)],
+      }).map((r) => r.paymentGroup[r.paymentIndex]!),
+    );
+    expect(notUtf8.size).toBe(5);
+    const entries = rowsOf([...A.matchAll(/"(g[A-Za-z0-9+/]{40,}={0,2})"/g)].map((m) => m[1]!), "x402-exact-algorand.json signed transactions in base64", {
+      min: notUtf8.size + 1,
+    });
     for (const e of entries) {
-      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")), MSGPACK_MAX_DEPTH)).toBe(true);
+      expect(msgpackWithinCaps(Uint8Array.from(Buffer.from(e, "base64")), MSGPACK_MAX_DEPTH)).toBe(!notUtf8.has(e));
+    }
+  });
+});
+
+// The msgpack specification's type system: "String extending Raw type represents a UTF-8 string", and a decoder's
+// behaviour on "invalid byte sequence" in one "depends on the actual implementation". The scan admits a string only
+// when it is well-formed UTF-8; each verdict below is RFC 3629 §4's syntax (utf8-syntax.ts), never the scan's own
+// decoder.
+type StrFormat = "fixstr" | "str 8" | "str 16" | "str 32";
+/** `s` as one msgpack string of the format (msgpack specification, "str format family"). */
+function str(s: Uint8Array, format: StrFormat): number[] {
+  const n = s.length;
+  if (format === "fixstr" && n > 31) throw new Error("a fixstr holds at most 31 bytes");
+  const head = { fixstr: [0xa0 | n], "str 8": [0xd9, n], "str 16": [0xda, n >> 8, n & 0xff], "str 32": [0xdb, 0, 0, n >> 8, n & 0xff] };
+  return [...head[format], ...s];
+}
+/** Where a string sits: alone, as a fixmap's key or value, after an array's first element, or as a key at level 32. */
+const PLACES: Record<string, (s: number[]) => number[]> = {
+  "the value": (s) => s,
+  "a map key": (s) => [0x81, ...s, 0x01],
+  "a map value": (s) => [0x81, 0xa1, 0x61, ...s],
+  "an array's second element": (s) => [0x92, 0x01, ...s],
+  "a key of a map at level 32": (s) => [...Array<number>(31).fill(0x91), 0x81, ...s, 0x01],
+};
+const scans = (bytes: number[]) => msgpackWithinCaps(Uint8Array.from(bytes), MSGPACK_MAX_DEPTH);
+
+describe("msgpack: every string is well-formed UTF-8", () => {
+  const hex = (h: string) => Uint8Array.from(Buffer.from(h.replaceAll(" ", ""), "hex"));
+  // Boundary code points of RFC 3629 §4's syntax, and one string of each form outside it.
+  const wellFormed = {
+    empty: "",
+    "U+0061": "61",
+    "U+0080": "c2 80",
+    "U+07FF": "df bf",
+    "U+0800": "e0 a0 80",
+    "U+D7FF": "ed 9f bf",
+    "the first code point after the surrogates": "ee 80 80",
+    "U+FEFF, the byte-order mark": "ef bb bf",
+    "U+FFFF": "ef bf bf",
+    "U+10000": "f0 90 80 80",
+    "U+10FFFF": "f4 8f bf bf",
+  };
+  const illFormed = {
+    "overlong t, two bytes": "c1 b4",
+    "overlong /, two bytes": "c0 af",
+    "overlong /, three bytes": "e0 80 af",
+    "overlong /, four bytes": "f0 80 80 af",
+    "the surrogate U+D800": "ed a0 80",
+    "the surrogate U+DFFF": "ed bf bf",
+    "U+110000, above U+10FFFF": "f4 90 80 80",
+    "lead F5": "f5 80 80 80",
+    "byte FF": "ff",
+    "a two-byte lead cut short": "61 c3",
+    "a three-byte lead cut short": "e3 81",
+    "a four-byte lead cut short": "f0 9f 98",
+    "a lone continuation byte": "80",
+    "a continuation byte between letters": "61 bf 62",
+  };
+
+  it("RFC 3629 §4's syntax takes each well-formed sample and refuses each ill-formed one", () => {
+    for (const [name, h] of Object.entries(wellFormed)) expect(wellFormedUtf8(hex(h)), name).toBe(true);
+    for (const [name, h] of Object.entries(illFormed)) expect(wellFormedUtf8(hex(h)), name).toBe(false);
+  });
+
+  for (const [place, at] of Object.entries(PLACES)) {
+    for (const format of ["fixstr", "str 8", "str 16", "str 32"] as const) {
+      it(`a ${format} as ${place}: admitted exactly when RFC 3629 §4's syntax takes it`, () => {
+        for (const [name, h] of [...Object.entries(wellFormed), ...Object.entries(illFormed)]) {
+          expect(scans(at(str(hex(h), format))), name).toBe(wellFormedUtf8(hex(h)));
+        }
+      });
+    }
+  }
+
+  it("a str 16 of 300 bytes is refused for one ill-formed byte anywhere in it", () => {
+    const text = new Uint8Array(300).fill(0x78);
+    expect(scans(str(text, "str 16"))).toBe(true);
+    for (const i of [0, 1, 150, 298, 299]) {
+      const one = text.slice();
+      one[i] = 0xc1;
+      expect(scans(str(one, "str 16")), `byte ${i}`).toBe(false);
+    }
+  });
+
+  // Every string of one or two bytes; and for each lead byte from 0xE0 to 0xF7, every second byte with the other bytes
+  // at the edges of the continuation range, and every last byte after a second byte at those edges. The test has no time
+  // bound (0): it checks a fixed list of strings and returns, so how long it takes depends only on the machine.
+  it("every string of one or two bytes, and of three or four at each lead byte's edges, as a fixstr", () => {
+    let count = 0;
+    const differ: string[] = [];
+    const check = (...s: number[]) => {
+      count++;
+      const value = Uint8Array.of(0xa0 | s.length, ...s);
+      if (msgpackWithinCaps(value, MSGPACK_MAX_DEPTH) !== wellFormedUtf8(value.subarray(1))) {
+        differ.push(Buffer.from(s).toString("hex"));
+      }
+    };
+    for (let a = 0; a < 256; a++) {
+      check(a);
+      for (let b = 0; b < 256; b++) check(a, b);
+    }
+    const edges = [0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0];
+    for (let a = 0xe0; a <= 0xf7; a++) {
+      for (let x = 0; x < 256; x++) {
+        for (const c of edges) {
+          check(a, x, c);
+          check(a, x, c, 0x80);
+          check(a, x, c, 0xc0);
+        }
+        for (const b of edges) {
+          check(a, b, x);
+          check(a, b, 0x80, x);
+        }
+      }
+    }
+    expect([count, differ]).toEqual([256 + 256 * 256 + 24 * 256 * 8 * 5, []]);
+  }, 0);
+
+  it("binary (bin 8, bin 16, bin 32) and extension bytes are not text: they pass whatever bytes they hold", () => {
+    for (const h of Object.values(illFormed)) {
+      const b = [...hex(h)];
+      expect(scans([0xc4, b.length, ...b]), h).toBe(true);
+      expect(scans([0xc5, 0, b.length, ...b]), h).toBe(true);
+      expect(scans([0xc6, 0, 0, 0, b.length, ...b]), h).toBe(true);
+      expect(scans([0xc7, b.length, 0x05, ...b]), h).toBe(true);
     }
   });
 });
