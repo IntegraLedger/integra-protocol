@@ -73,9 +73,21 @@ describe("x402-exact-eip155-eip3009.json", () => {
     expect(await privateKeyToAccount(P.fixed.payerKey).signTypedData(forViem(typedData))).toBe(P.V1.expectSignature);
   });
 
-  it("V2", async () => {
+  // V2's payload is x402 v2's PaymentPayload written by hand from the specification (x402 751590a2,
+  // specs/x402-specification-v2.md §5.2 and specs/schemes/exact/scheme_exact_evm.md §1): its signature is V1's, from
+  // eth-account, and its authorization V1's message. complete's payload is held to it whole, as JSON text.
+  it("V2: complete gives x402's PaymentPayload as the specification writes it from V1's signature and message", async () => {
+    const byHand = {
+      x402Version: 2,
+      resource: P.fixed.resource,
+      accepted: O,
+      payload: { signature: P.V1.expectSignature, authorization: P.V1.expectMessage },
+    };
+    expect(P.V2.expectPayload).toStrictEqual(byHand);
     const payment = (await unsigned()).complete(P.V1.expectSignature) as PaymentPayload;
-    expect(payment).toEqual(P.V2.expectPayload);
+    expect(payment.payload.signature).toBe(P.V1.expectSignature);
+    expect(payment.payload.authorization).toStrictEqual(P.V1.expectMessage);
+    expect(JSON.stringify(payment)).toBe(JSON.stringify(P.V2.expectPayload));
     expect(await exactEip3009.bound(payment)).toBe(P.V2.expectBound);
     const upper = structuredClone(payment);
     upper.payload.authorization.nonce = "0x" + H.slice(2).toUpperCase();

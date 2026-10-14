@@ -69,7 +69,7 @@
   "expectAuthorizationUsedTopic": "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5"
  },
  "V2": {
-  "case": "complete(V1 signature), then bound",
+  "case": "complete(V1 signature), then bound. expectPayload is x402 v2's PaymentPayload, written by hand from the specification (x402-foundation/x402 751590a2, specs/x402-specification-v2.md §5.2.1-5.2.2, L152-213, and specs/schemes/exact/scheme_exact_evm.md §1, L24-63): x402Version 2, resource the fixed resource, accepted O, and payload {signature, authorization}, where signature is V1.expectSignature, computed with eth-account 0.14.0, and authorization is V1.expectMessage, the signed message in x402's string form. The PaymentRequired build is given carries no extensions, so the payload has none to echo.",
   "expectPayload": {
    "x402Version": 2,
    "resource": {
