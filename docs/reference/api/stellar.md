@@ -326,7 +326,8 @@ there is no expiration ledger to pass.
 > **transferEventOf**(`topic`, `value`): [`Refusal`](index.md#refusal) \| \{ `toBase`: `string`; `toMuxedId`: `bigint` \| `null`; \}
 
 A `transfer` event's recipient (the non-muxed `to` topic) and its `to_muxed_id`: the u64 in the event's data map, or
-null when the data carries none, or carries the string or bytes form.
+null when the data carries none, or carries the string or bytes form. The first topic and the data map's key are the
+symbols `transfer` and `to_muxed_id`, byte for byte.
 
 #### Parameters
 

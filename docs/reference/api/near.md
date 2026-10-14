@@ -192,7 +192,9 @@ that is not a 32-byte hash is `x402/payload-malformed`.
 
 Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
 arguments whose `memo` is an LCP string. The bytes must be exactly the borsh encoding of what is read, every string
-in it UTF-8 and every key and the signature Ed25519 or secp256k1, or they are `near/sda-malformed`.
+in it UTF-8 and every key and the signature Ed25519 or secp256k1, or they are `near/sda-malformed`. The arguments are
+strict UTF-8 JSON text whose leading byte-order mark is kept as a character, so arguments that begin with one are
+`near/args-malformed`.
 
 #### Parameters
 

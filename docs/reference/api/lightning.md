@@ -15,7 +15,7 @@ description: "The exports of @integraledger/lcp/lightning."
 | ------ | ------ | ------ |
 | <a id="property-amountmsat"></a> `amountMsat` | `bigint` \| `null` | - |
 | <a id="property-currency"></a> `currency` | `"bc"` \| `"tb"` \| `"tbs"` \| `"bcrt"` | - |
-| <a id="property-description"></a> `description` | `string` \| `null` | - |
+| <a id="property-description"></a> `description` | `string` \| `null` | The `d` field as strict UTF-8, a leading byte-order mark kept as a character; null when the invoice has none. |
 | <a id="property-descriptionhash"></a> `descriptionHash` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
 | <a id="property-expiry"></a> `expiry` | `number` | - |
 | <a id="property-metadata"></a> `metadata` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
