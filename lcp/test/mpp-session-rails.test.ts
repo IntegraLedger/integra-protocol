@@ -37,6 +37,7 @@ import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocat
 import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -60,7 +61,7 @@ describe("SS1: the opening challenges", () => {
       expect(await issuedDigest(row.challenge)).toBe(row.expectIssuedDigest);
       expect(await issuedDigest(row.placed)).toBe(row.expectIssuedDigest);
     }
-    for (const row of V.SS1refusals) {
+    for (const row of rowsOf(V.SS1refusals, "mpp-session-hedera-solana-xrpl.json SS1refusals")) {
       const c: MppChallenge = { ...V.SS1[row.method].challenge, request: b64u(canonicalJson(row.request) as string) };
       if (row.expires !== undefined) c.expires = row.expires;
       expect(pairingsOf(c), row.case).toEqual(refused(row.expect));
@@ -200,7 +201,7 @@ describe("mpp/session/hedera", () => {
     const matches = (r4.closeReceipt.logs as { address: string; topics: string[] }[]).filter(
       (l) =>
         l.address.toLowerCase() === close.search.address.toLowerCase() &&
-        close.search.topics.every((t, i) => t === null || l.topics[i]?.toLowerCase() === t.toLowerCase()),
+        rowsOf(close.search.topics, "the close ref's search topics").every((t, i) => t === null || l.topics[i]?.toLowerCase() === t.toLowerCase()),
     );
     expect(matches).toHaveLength(1);
     expect(await sessionHedera.status({ ...close, transaction: r4.closeTx }, reader)).toMatchObject({ state: "settled" });
@@ -211,7 +212,7 @@ describe("mpp/session/hedera", () => {
   });
 
   it("HS5: channel kinds, boundWithin and until", async () => {
-    for (const [action, kind] of V.HS5.kinds) expect(sessionHedera.channel.kind(cred(C_H, { action }))).toBe(kind);
+    for (const [action, kind] of rowsOf(V.HS5.kinds, "mpp-session-hedera-solana-xrpl.json HS5.kinds")) expect(sessionHedera.channel.kind(cred(C_H, { action }))).toBe(kind);
     expect(sessionHedera.channel.kind(cred(C_H, { action: V.HS5.badAction }))).toEqual(refused(V.HS5.expectBad));
     expect(await sessionHedera.channel.boundWithin(cred(C_H, { action: "voucher" }))).toEqual(refused("mpp/not-bound-within"));
     expect(sessionHedera.channel.until(cred(C_H, { action: "open" }))).toBeUndefined();
@@ -553,7 +554,7 @@ describe("mpp/session/xrpl", () => {
       return { calls, r: each };
     };
     const recoverWhen: Record<string, string> = { "claimed-fee": "xrpl/not-success", "not-this-instrument": "xrpl/not-channel-create" };
-    for (const row of V.XS4.rows) {
+    for (const row of rowsOf(V.XS4.rows, "mpp-session-hedera-solana-xrpl.json XS4.rows")) {
       const { calls, r } = counted(row.landed);
       const status = await sessionXrpl.status({ ...ref, fromLedger: 900 }, r);
       expect(status, row.case).toEqual(row.expect);
@@ -636,7 +637,13 @@ describe("mpp/session/xrpl", () => {
       const c: MppChallenge = { ...V.SS1.xrpl.challenge, request: b64u(canonicalJson(request) as string) };
       return (sessionXrpl.advertise([c], H, V.fixed.link, c) as (MppChallenge & { id: string })[])[0]!;
     };
-    const amountRows = V.SS1refusals.filter((r: { method: string; expect: string }) => r.method === "xrpl" && r.expect === "mpp/request-malformed");
+    const amountRows = rowsOf<any>(V.SS1refusals, "mpp-session-hedera-solana-xrpl.json SS1refusals", {
+      keep: ["the xrpl rows whose request is malformed", (r: { method: string; expect: string }) => r.method === "xrpl" && r.expect === "mpp/request-malformed"],
+      leave: [
+        "the rows that name a channel or carry a malformed expires, which the opening challenges' pairingsOf test above runs",
+        (r: { expect: string; expires?: string }) => r.expect === "mpp/channel-named" || r.expires !== undefined,
+      ],
+    });
     for (const row of amountRows) {
       const c: MppChallenge & { id: string } = { ...C_X, request: b64u(canonicalJson(row.request) as string) };
       expect(await sessionXrpl.build(choice(c), H), row.case).toEqual(refused("mpp/request-malformed"));
@@ -651,12 +658,12 @@ describe("mpp/session/xrpl", () => {
   it("XS4: the opening's status and a reported close", async () => {
     const ref = await sessionXrpl.reference(open(V.XS2.blob));
     if ("refused" in ref) throw new Error(ref.code);
-    for (const row of V.XS4.rows) {
+    for (const row of rowsOf(V.XS4.rows, "mpp-session-hedera-solana-xrpl.json XS4.rows")) {
       expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(row.landed)), row.case).toEqual(row.expect);
     }
     const close = sessionXrpl.closeRef(C_X, V.XS2.expectChannel.toLowerCase());
     if ("refused" in close) throw new Error(close.code);
-    for (const row of V.XS4.closeRows) {
+    for (const row of rowsOf(V.XS4.closeRows, "mpp-session-hedera-solana-xrpl.json XS4.closeRows")) {
       expect(await sessionXrpl.status({ ...close, transaction: "AB".repeat(32) }, reader(row.landed)), row.case).toEqual(row.expect);
     }
     const failing: XrplReader = { ...reader({ notFound: true, searchedAll: false }), tx: async () => { throw new ReaderError("transport"); } };
@@ -785,4 +792,135 @@ describe("the three session pairings' records", () => {
   });
 });
 
+// Each agreedRefusals row, run through the calls its case names: one call for each condition the case lists, on the
+// file's opening challenges, HS3's opening, XS1's and XS2's XRPL values and SV2's channel.
+describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", () => {
+  type Row = { case: string; expect: string };
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: 11 });
+  /** The method's opening challenge, as issued, with its decoded request changed by `change`. */
+  const requestOf = (m: "hedera" | "solana" | "xrpl", change: (r: Record<string, any>) => void): MppChallenge => {
+    const r = JSON.parse(Buffer.from(V.SS1[m].challenge.request, "base64url").toString("utf8"));
+    change(r);
+    return { ...V.SS1[m].challenge, request: b64u(canonicalJson(r) as string) };
+  };
+  const hs3 = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
+  const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
+  const reverted = hederaReader({ [V.HS3.txHash]: { ...receipt, status: 0 } });
+  const xrplOpen = (transaction: string) => cred(C_X, { action: "open", transaction, amount: "100", signature: "00" });
+  /** XS2's opening with `n` memos: its LCP memo, then memos of one zero byte. */
+  const withMemos = (n: number) => {
+    const tx = decodeXrpl(V.XS2.blob) as { Memos: unknown[] };
+    const other = { Memo: { MemoData: "00" } };
+    return encodeXrpl({ ...tx, Memos: [...tx.Memos, ...Array.from({ length: n - tx.Memos.length }, () => other)] } as never);
+  };
+  /** XS1's account with its last character changed: the classic address's checksum fails. */
+  const notAddress = `${V.XS1.account.slice(0, -1)}m`;
+  const hederaChoice = { challenge: C_H, from: V.fixed.payer, now: 1790000000, deposit: BigInt(V.HS2.deposit) };
+  const xrplChoice = {
+    challenge: C_X,
+    from: V.XS2.account,
+    now: 1790000000,
+    deposit: BigInt(V.XS2.deposit),
+    xrpl: {
+      publicKey: (decodeXrpl(V.XS2.blob) as { PublicKey: string }).PublicKey,
+      settleDelay: V.XS2.settleDelay,
+      fee: V.XS2.fee,
+      sequence: V.XS2.sequence,
+      lastLedgerSequence: V.XS2.lastLedgerSequence,
+    },
+  };
 
+  // Each input a row changes is accepted as given, so each refusal below is the change's.
+  it("the inputs the rows change, as given, are accepted", async () => {
+    for (const m of ["hedera", "solana", "xrpl"] as const) expect(pairingsOf(requestOf(m, () => undefined))).toEqual([`mpp/session/${m}`]);
+    expect(await sessionHedera.fetchPresented(hs3, reverted)).toEqual(refused("hedera/reverted"));
+    expect(await sessionXrpl.bound(xrplOpen(withMemos(8)))).toBe(H);
+    expect(xrplChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
+    expect(solanaVoucher(V.SV2.channel, 100n)).toBeInstanceOf(Uint8Array);
+    expect(await sessionHedera.build(hederaChoice, H)).not.toHaveProperty("refused");
+    expect(await sessionXrpl.build(xrplChoice, H)).not.toHaveProperty("refused");
+  });
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "a hedera session request whose currency, recipient or escrowContract is not an address": async () => [
+      pairingsOf(requestOf("hedera", (r) => (r["currency"] = r["currency"].slice(0, -1)))),
+      pairingsOf(requestOf("hedera", (r) => (r["recipient"] = r["recipient"].slice(0, -1)))),
+      pairingsOf(requestOf("hedera", (r) => (r["methodDetails"].escrowContract = r["methodDetails"].escrowContract.slice(0, -1)))),
+    ],
+    "a solana session request whose network is absent or not one of MPP's three names": async () => [
+      pairingsOf(requestOf("solana", (r) => delete r["methodDetails"].network)),
+      pairingsOf(requestOf("solana", (r) => (r["methodDetails"].network = "testnet"))),
+    ],
+    "an xrpl session request whose recipient is not shaped as a classic address (r and 24 to 34 base58 characters)": async () => [
+      pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = `x${r["recipient"].slice(1)}`))),
+      pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = r["recipient"].slice(0, 24)))),
+      pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = `${r["recipient"]}aa`))),
+      pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = `${r["recipient"].slice(0, -1)}0`))),
+    ],
+    "bound of a hedera opening before fetchPresented added the landed logs": async () => [await sessionHedera.bound(hs3)],
+    "fetchPresented or recover with a reader for another hedera network": async () => {
+      const ref = await sessionHedera.reference(hs3);
+      if ("refused" in ref) throw new Error(ref.code);
+      const mainnet = hederaReader({ [V.HS3.txHash]: receipt }, "hedera:mainnet");
+      return [await sessionHedera.fetchPresented(hs3, mainnet), await sessionHedera.recover(ref, mainnet)];
+    },
+    "fetchPresented of a hedera opening whose transaction reverted, in a block above the reader's finalized mark or with a reader that cannot give that mark":
+      async () => [
+        await sessionHedera.fetchPresented(hs3, { ...reverted, blockNumber: async () => receipt.blockNumber - 1n }),
+        await sessionHedera.fetchPresented(hs3, { ...reverted, blockNumber: async () => Promise.reject(new ReaderError("transport")) }),
+      ],
+    "an xrpl opening with more than 8 memos": async () => [
+      await sessionXrpl.bound(xrplOpen(withMemos(9))),
+      await sessionXrpl.reference(xrplOpen(withMemos(9))),
+    ],
+    "xrplChannelId with a malformed address or sequence, or xrplClaim with a malformed id or drops": async () => [
+      xrplChannelId(notAddress, V.XS1.destination, V.XS1.sequence),
+      xrplChannelId(V.XS1.account, notAddress, V.XS1.sequence),
+      xrplChannelId(V.XS1.account, V.XS1.destination, -1),
+      xrplChannelId(V.XS1.account, V.XS1.destination, 2 ** 32),
+      xrplClaim(V.XS2.expectChannel.slice(2), BigInt(V.XS3.drops)),
+      xrplClaim(V.XS2.expectChannel, -1n),
+      xrplClaim(V.XS2.expectChannel, 1n << 64n),
+    ],
+    "solanaVoucher with a malformed channel id or an out-of-range number": async () => [
+      solanaVoucher(V.SV2.channel.slice(0, 32), 100n),
+      solanaVoucher(V.SV2.channel, -1n),
+      solanaVoucher(V.SV2.channel, 1n << 64n),
+      solanaVoucher(V.SV2.channel, 100n, 1n << 63n),
+    ],
+    "bound of a credential whose action is not open": async () => [
+      await sessionHedera.bound(cred(C_H, { action: "voucher", channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` })),
+      await sessionSolana.bound(cred(C_S, { action: "close", channelId: V.SV2.channel, cumulativeAmount: "100", signature: "x" })),
+      await sessionXrpl.bound(cred(C_X, { action: "voucher", channelId: V.XS2.expectChannel, amount: "200", signature: "00" })),
+    ],
+    "build with a malformed from, deposit or XRPL channel terms": async () => {
+      const x = xrplChoice.xrpl;
+      return [
+        await sessionHedera.build({ ...hederaChoice, from: V.fixed.payer.slice(0, -1) }, H),
+        await sessionHedera.build({ ...hederaChoice, deposit: 0n }, H),
+        await sessionHedera.build({ ...hederaChoice, deposit: 1n << 128n }, H),
+        await sessionXrpl.build({ ...xrplChoice, from: notAddress }, H),
+        await sessionXrpl.build({ ...xrplChoice, deposit: 0n }, H),
+        await sessionXrpl.build({ ...xrplChoice, deposit: 1n << 64n }, H),
+        await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, publicKey: "not hex" } }, H),
+        await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, fee: "1.5" } }, H),
+        await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, settleDelay: -1 } }, H),
+        await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, sequence: 2 ** 32 } }, H),
+        await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, lastLedgerSequence: 1.5 } }, H),
+        await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, cancelAfter: -1 } }, H),
+      ];
+    },
+  };
+
+  it("names a case for every row, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(refused(row.expect));
+    });
+  }
+});

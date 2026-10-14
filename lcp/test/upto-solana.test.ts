@@ -12,10 +12,11 @@ import {
 } from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
 import { hash, pairingOf, type AtrHash, type Refusal } from "../src/index.js";
-import { channelPda, openInstructionData, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
+import { TOKEN_2022, channelPda, openInstructionData, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-upto-solana.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -154,7 +155,14 @@ describe("x402-upto-solana.json", () => {
 
   it("agreedRefusals: build refuses a choice that is not an object, and EU3's choice with an h that is not a hash", async () => {
     type Row = { case: string; choice?: unknown; h?: unknown; expect: string };
-    const rows = (V.agreedRefusals.rows as Row[]).filter((r) => "choice" in r || "h" in r);
+    const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-upto-solana.json agreedRefusals.rows", {
+      exact: 5,
+      keep: ["the rows that give build a choice or an h", (r) => "choice" in r || "h" in r],
+      leave: [
+        "the rows that carry only case and expect, which the agreedRefusals runner below runs by their case, and the openSlot row, which the openSlot test below runs",
+        (r) => Object.keys(r).every((k) => k === "case" || k === "expect") || "openSlot" in r,
+      ],
+    });
     expect(rows.map((r) => ("choice" in r ? ["choice", r.choice] : ["h", r.h]))).toEqual([
       ["choice", null], ["choice", "x"], ["h", "abc"], ["h", `0X${H.slice(2)}`], ["h", null],
     ]);
@@ -222,7 +230,7 @@ describe("x402-upto-solana.json", () => {
   it("EU5: status, recover, and a transaction with no channel instruction", async () => {
     const wire = b64(V.EU5.landedWireBase64);
     const ref = { ...V.EU5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
-    for (const row of V.EU5.rows) {
+    for (const row of rowsOf(V.EU5.rows, "x402-upto-solana.json EU5.rows")) {
       expect(await uptoSvm.status(ref, readerFor(row.at, landed(wire, row.err ?? null), V.EU5.txid)), JSON.stringify(row)).toEqual(
         row.expect,
       );
@@ -253,6 +261,86 @@ describe("x402-upto-solana.json", () => {
   });
 
   it("plant: an opening whose carrier is not this ATR's hash is never bound", async () => {
-    for (const row of V.plant) expect(await uptoSvm.bound(payment(row.wireBase64, row.accepted)), row.case).toEqual(refused(row.expect));
+    for (const row of rowsOf(V.plant, "x402-upto-solana.json plant")) expect(await uptoSvm.bound(payment(row.wireBase64, row.accepted)), row.case).toEqual(refused(row.expect));
   });
+});
+
+// The agreedRefusals rows that carry only case and expect: each case names its calls, and each call here is one of
+// them, made with the file's fixed data, EU3's wire and EU5's transaction with no channel instruction.
+describe("x402-upto-solana.json agreedRefusals: the rows that carry only case and expect", () => {
+  type Row = { case: string; choice?: unknown; h?: unknown; openSlot?: string; expect: string };
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-upto-solana.json agreedRefusals.rows", {
+    keep: ["the rows that carry only case and expect", (r) => Object.keys(r).every((k) => k === "case" || k === "expect")],
+    leave: [
+      "the rows that give build a choice or an h, which the agreedRefusals build test above runs, and the openSlot row, which the openSlot test above runs",
+      (r) => "choice" in r || "h" in r || "openSlot" in r,
+    ],
+  });
+  const advertised = (o: PaymentRequirements = O): PaymentRequired => {
+    const doc = uptoSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o);
+    if ("refused" in doc) throw new Error(doc.code);
+    return doc;
+  };
+  /** EU3's choice: the advertised option with fixed's payer, nonce, openSlot, now, tokenProgram and blockhash as recentBlockhash. */
+  const eu3Choice = (doc: PaymentRequired = advertised()) => ({
+    required: doc,
+    accepted: doc.accepts[0]!,
+    payer: V.fixed.payer as string,
+    nonce: BigInt(V.fixed.nonce),
+    openSlot: BigInt(V.fixed.openSlot),
+    now: V.fixed.now as number,
+    tokenProgram: V.fixed.tokenProgram as string,
+    recentBlockhash: V.fixed.blockhash as string,
+  });
+  /** EU3's wire with the first byte of its open instruction's data, EU2's bytes, set to `discriminator`. */
+  const reopened = (discriminator: number): string => {
+    const wire = Buffer.from(V.EU3.wireBase64, "base64");
+    const data = Buffer.from(V.EU2.openInstructionData, "hex");
+    const at = wire.indexOf(data);
+    if (at === -1 || wire.indexOf(data, at + 1) !== -1) throw new Error("EU3's wire holds EU2's open instruction data once");
+    wire[at] = discriminator;
+    return wire.toString("base64");
+  };
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    // The payment-channels program's top_up (3) and request_close (5) discriminators in place of open's (1).
+    "bound when the transaction's one payment-channels instruction is not an open, or there is none": async () => [
+      await uptoSvm.bound(payment(reopened(3), V.EU4.accepted)),
+      await uptoSvm.bound(payment(reopened(5), V.EU4.accepted)),
+      await uptoSvm.bound(payment(V.EU5.noChannel.landedWireBase64, V.EU4.accepted)),
+    ],
+    "build when the choice's tokenProgram differs from extra.tokenProgram, or now is not a non-negative integer": async () => {
+      const c = eu3Choice();
+      return [
+        await uptoSvm.build({ ...c, tokenProgram: TOKEN_2022 }, H),
+        await uptoSvm.build({ ...c, now: -1 }, H),
+        await uptoSvm.build({ ...c, now: 1.5 }, H),
+        await uptoSvm.build({ ...c, now: String(V.fixed.now) as never }, H),
+      ];
+    },
+    "advertise or build with an amount that is not a u64 in decimal or a non-positive maxTimeoutSeconds": async () => {
+      const advertise = (o: PaymentRequirements) => uptoSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o);
+      const doc = advertised();
+      const build = (o: PaymentRequirements) => uptoSvm.build({ ...eu3Choice(doc), required: { ...doc, accepts: [o] }, accepted: o }, H);
+      return [
+        advertise({ ...O, amount: "1.5" }),
+        advertise({ ...O, maxTimeoutSeconds: 0 }),
+        await build({ ...doc.accepts[0]!, amount: "18446744073709551616" }),
+        await build({ ...doc.accepts[0]!, maxTimeoutSeconds: -1 }),
+      ];
+    },
+  };
+
+  it("names a case for every row that carries only case and expect, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      expect(row.expect, "one refusal code").toMatch(/^[a-z0-9]+\/[a-z0-9-]+$/);
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(refused(row.expect));
+    });
+  }
 });

@@ -32,6 +32,7 @@ import {
   CHANNEL_CONFIG_TYPEHASH,
   CHANNEL_CREATED_TOPIC,
   DEPOSITED_TOPIC,
+  batchChannelCreated,
   batchChannelId,
   batchCloudflare,
   batchEvm,
@@ -43,6 +44,7 @@ import {
 import * as batchSettlement from "../src/x402-batch-settlement.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-batch-settlement.json", import.meta.url), "utf8"));
 const E = V.fixed.evm;
@@ -307,7 +309,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(p.payload["voucher"]).toEqual(cp.payload["voucher"]);
     const wire = b64(p.payload["transaction"] as string);
     expect(wire[0]).toBe(2);
-    expect(wire.subarray(1, 65).every((b) => b === 0)).toBe(true);
+    expect(rowsOf(Array.from(wire.subarray(1, 65)), "the wire's first signature slot, the fee payer's, bytes 1 to 64", { exact: 64 }).every((b) => b === 0)).toBe(true);
     expect(hex(wire.subarray(65, 129))).toBe(hex(sig));
     expect(hex(wire.subarray(129))).toBe(hex(req.message));
     expect(batchSvm.channel.kind(p)).toBe(S6.withMemo.expectKind);
@@ -464,7 +466,7 @@ describe("x402-batch-settlement.json: SVM", () => {
     const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
     const ref = { network: V.ES5.ref.network, transaction: V.ES5.txid };
     expect(V.ES8.rows.length).toBe(4);
-    for (const row of V.ES8.rows) {
+    for (const row of rowsOf(V.ES8.rows, "x402-batch-settlement.json ES8.rows", { exact: 4 })) {
       const opening = svmPayment({ type: "deposit", channelConfig: V.ES4.config, voucher, deposit: { amount: S.deposit, transaction: row.wireBase64 } });
       const expected = row.expect.startsWith("0x") ? row.expect : refused(row.expect);
       expect(await batchSvm.bound(opening), row.case).toEqual(expected);
@@ -485,7 +487,11 @@ describe("x402-batch-settlement.json: SVM", () => {
   });
 
   it("ES9: withdrawDelay is compared with a maxTimeoutSeconds that is a number, and never with a converted one", () => {
-    const rows = V.ES9.rows as { maxTimeoutSeconds?: unknown; expectPairing: string | null; expectAdvertise: string | null }[];
+    const rows = rowsOf(
+      V.ES9.rows as { maxTimeoutSeconds?: unknown; expectPairing: string | null; expectAdvertise: string | null }[],
+      "x402-batch-settlement.json ES9.rows",
+      { exact: 9 },
+    );
     expect(rows.length).toBe(9);
     const { maxTimeoutSeconds: _, ...bare } = S.option as PaymentRequirements;
     for (const row of rows) {
@@ -502,7 +508,7 @@ describe("x402-batch-settlement.json: SVM", () => {
   it("ES5: svmChannelStatus, and a transaction with no channel instruction", async () => {
     const wire = b64(V.ES5.landedWireBase64);
     const ref = { ...V.ES5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
-    for (const row of V.ES5.rows) {
+    for (const row of rowsOf(V.ES5.rows, "x402-batch-settlement.json ES5.rows")) {
       expect(await batchSvm.status(ref, svmReaderFor(row.at, landed(wire, row.err ?? null), V.ES5.txid)), JSON.stringify(row)).toEqual(row.expect);
     }
     expect(await batchSvm.recover(ref, svmReaderFor("finalized", landed(wire), V.ES5.txid))).toBe(H);
@@ -535,11 +541,21 @@ describe("the x402-batch-settlement entry point", () => {
 
 describe("x402-batch-settlement.json: the agreedRefusals rows that carry their input", () => {
   type Row = { case: string; pairing?: string; call?: "build" | "buildWithin"; choice?: unknown; h?: unknown; expect: string };
-  const rows = (V.agreedRefusals.rows as Row[]).filter((r) => r.pairing !== undefined);
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-batch-settlement.json agreedRefusals.rows", {
+    keep: ["the rows that name their pairing and call", (r) => r.pairing !== undefined],
+    leave: [
+      "the rows that carry only case and expect: the agreedRefusals runner below runs them by their case, and the EB3 authSalt test above runs the authSalt row",
+      (r) => Object.keys(r).every((k) => k === "case" || k === "expect"),
+    ],
+  });
   const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
 
   it("each pairing's build, and the EVM and SVM buildWithin, refuse a null choice and a string choice", async () => {
-    const choices = rows.filter((r) => "choice" in r);
+    const choices = rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and call", {
+      exact: 10,
+      keep: ["the rows with a choice", (r) => "choice" in r],
+      leave: ["the rows with an h, which the Solana build test below runs", (r) => "h" in r],
+    });
     expect(choices.map((r) => `${r.pairing} ${r.call} ${String(r.choice)}`)).toEqual([
       "x402/batch-settlement/eip155 build null",
       "x402/batch-settlement/eip155 build x",
@@ -559,7 +575,11 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   });
 
   it("the Solana build refuses ES2's choice with an h that is not a hash", async () => {
-    const hs = rows.filter((r) => "h" in r);
+    const hs = rowsOf(rows, "x402-batch-settlement.json agreedRefusals.rows that name their pairing and call", {
+      exact: 3,
+      keep: ["the rows with an h", (r) => "h" in r],
+      leave: ["the rows with a choice, which the null and string choice test above runs", (r) => "choice" in r],
+    });
     expect(hs.map((r) => r.h)).toEqual(["abc", `0X${H.slice(2)}`, null]);
     const o: PaymentRequirements = S.option;
     const doc = unwrap(batchSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o));
@@ -582,7 +602,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
 // The rule a PDA candidate meets (findPda's isPoint): ed25519.Point.fromBytes(bytes, true), decompression only. The
 // rows' point values are Python's integer arithmetic; noble, the decoder findPda calls, agrees on each.
 describe("x402-batch-settlement.json ES10: the Ed25519 point rule", () => {
-  for (const r of V.ES10.rows as { case: string; bytesHex: string; point: boolean }[]) {
+  for (const r of rowsOf(V.ES10.rows as { case: string; bytesHex: string; point: boolean }[], "x402-batch-settlement.json ES10.rows")) {
     it(`${r.case}: ${r.point ? "a point" : "not a point"}`, () => {
       let point: boolean;
       try {
@@ -597,7 +617,10 @@ describe("x402-batch-settlement.json ES10: the Ed25519 point rule", () => {
 });
 
 describe("x402-batch-settlement.json EB9: the EVM within's refund", () => {
-  for (const r of V.EB9.rows as { case: string; refund?: { amount?: string | null } | null; expect: Record<string, unknown> }[]) {
+  for (const r of rowsOf(
+    V.EB9.rows as { case: string; refund?: { amount?: string | null } | null; expect: Record<string, unknown> }[],
+    "x402-batch-settlement.json EB9.rows",
+  )) {
     it(r.case, async () => {
       const doc = evmDoc();
       const refund = r.refund === undefined || r.refund === null ? r.refund : {
@@ -622,6 +645,165 @@ describe("x402-batch-settlement.json EB9: the EVM within's refund", () => {
       const payload = p.payload as { type: string; amount?: string; voucher: { signature: string } };
       expect(payload.voucher.signature).toBe(V.EB2.signature);
       expect({ type: payload.type, ...(payload.amount !== undefined ? { amount: payload.amount } : {}) }).toEqual(r.expect);
+    });
+  }
+});
+
+// The agreedRefusals rows that carry only case and expect, but the authSalt row: each case names its calls, and each
+// call here is one of them, made with the file's fixed data, the EVM opening EB2 and EB3 sign, ES2's Solana opening and
+// ES4's config, the EB7 and EB8 receipts and logs, and EC1's Cloudflare option.
+describe("x402-batch-settlement.json agreedRefusals: the rows that carry only case and expect", () => {
+  type Row = { case: string; pairing?: string; call?: string; choice?: unknown; h?: unknown; expect: string };
+  const authSalt = (r: Row) => r.case.startsWith("EVM build with an authSalt");
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-batch-settlement.json agreedRefusals.rows", {
+    keep: [
+      "the rows that carry only case and expect, but the authSalt row",
+      (r) => Object.keys(r).every((k) => k === "case" || k === "expect") && !authSalt(r),
+    ],
+    leave: [
+      "the rows that name their pairing and call, which the tests of the rows that carry their input above run, and the authSalt row, which the EB3 authSalt test above runs",
+      (r) => r.pairing !== undefined || authSalt(r),
+    ],
+  });
+  const tx = ("0x" + "cd".repeat(32)) as Hex;
+  const named = { network: "eip155:84532" as const, transaction: tx };
+  const svmDoc = (): PaymentRequired => {
+    const o: PaymentRequirements = S.option;
+    return unwrap(batchSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o));
+  };
+  /** ES2's choice: the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash. */
+  const es2Choice = (doc: PaymentRequired = svmDoc()) => ({
+    required: doc,
+    accepted: doc.accepts[0]!,
+    payer: S.payer as string,
+    payerAuthorizer: S.payer as string,
+    deposit: BigInt(S.deposit),
+    salt: 42n,
+    openSlot: BigInt(S.openSlot),
+    tokenProgram: S.tokenProgram as string,
+    recentBlockhash: S.blockhash as string,
+  });
+  const svmVoucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
+  /** ES2's opening as ES4 presents it, with `config` as its channelConfig. */
+  const svmOpening = (config: unknown) =>
+    svmPayment({ type: "deposit", channelConfig: config, voucher: svmVoucher, deposit: { amount: S.deposit, transaction: V.ES2.wireBase64 } });
+  const svmVoucherPayment = (config: unknown) => svmPayment({ type: "voucher", channelConfig: config, voucher: svmVoucher });
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    // The EVM pairing's bound and reference read the deposit amount; channel.ref and the Solana pairing do not read it.
+    "bound, reference or ref with a channelConfig member missing or malformed, or a deposit amount that is not decimal": async () => {
+      const { payment } = await evmOpening();
+      const p = payment.payload as Record<string, any>;
+      const { salt: _salt, ...evmNoSalt } = p["channelConfig"];
+      const evmDelayText = { ...p["channelConfig"], withdrawDelay: String(p["channelConfig"].withdrawDelay) };
+      const evmOpeningWith = (config: unknown) => ({ ...payment, payload: { ...p, channelConfig: config } });
+      const evmVoucher = (config: unknown) => ({ ...payment, payload: { type: "voucher", channelConfig: config, voucher: p["voucher"] } });
+      const notDecimal = { ...payment, payload: { ...p, deposit: { ...p["deposit"], amount: "1e5" } } };
+      const { payer: _payer, ...svmNoPayer } = V.ES4.config;
+      const svmSaltText = { ...V.ES4.config, salt: "forty-two" };
+      return [
+        await batchEvm.bound(evmOpeningWith(evmNoSalt)),
+        await batchEvm.bound(evmOpeningWith(evmDelayText)),
+        await batchEvm.bound(notDecimal),
+        await batchEvm.reference(evmOpeningWith(evmNoSalt)),
+        await batchEvm.reference(evmOpeningWith(evmDelayText)),
+        await batchEvm.reference(notDecimal),
+        await batchEvm.channel.ref(evmVoucher(evmNoSalt)),
+        await batchEvm.channel.ref(evmVoucher(evmDelayText)),
+        await batchSvm.bound(svmOpening(svmNoPayer)),
+        await batchSvm.bound(svmOpening(svmSaltText)),
+        await batchSvm.reference(svmOpening(svmNoPayer)),
+        await batchSvm.reference(svmOpening(svmSaltText)),
+        await batchSvm.channel.ref(svmVoucherPayment(svmNoPayer)),
+        await batchSvm.channel.ref(svmVoucherPayment(svmSaltText)),
+      ];
+    },
+    // EB7's receipt holds a transfer and a Deposited log; its other-contract plant holds the same with the Deposited
+    // log from another address; the last receipt holds EB8's ChannelCreated log from that other address.
+    "recover when no ChannelCreated log from the channel contract is in the receipt": async () => {
+      const other = V.EB7.plantOtherContract.receipt.logs[1].address as string;
+      return [
+        await batchEvm.recover(named, evmReaderFor(V.EB7.receipt)),
+        await batchEvm.recover(named, evmReaderFor(V.EB7.plantOtherContract.receipt)),
+        await batchEvm.recover(named, evmReaderFor({ status: 1, blockNumber: "100", logs: [{ ...V.EB8.log, address: other }] })),
+      ];
+    },
+    "recover when several are": async () => [
+      await batchEvm.recover(named, evmReaderFor({ status: 1, blockNumber: "100", logs: [V.EB8.log, V.EB8.log] })),
+      await batchEvm.recover(named, evmReaderFor({ status: 1, blockNumber: "100", logs: [V.EB8.log, V.EB8.word0Changed] })),
+    ],
+    // EB8's log data is seven words: payer, payerAuthorizer, receiver, receiverAuthorizer, token, withdrawDelay, salt.
+    "batchChannelId or batchChannelCreated with a malformed config or data": async () => {
+      const { salt: _salt, ...noSalt } = E.config;
+      const data = V.EB8.log.data as string;
+      const word = (i: number, w: string) => `0x${data.slice(2, 2 + 64 * i)}${w}${data.slice(2 + 64 * (i + 1))}`;
+      return [
+        batchChannelId(84532, { ...E.config, salt: "0x12" }),
+        batchChannelId(84532, noSalt as never),
+        batchChannelCreated({ ...V.EB8.log, data: data.slice(0, -2) }, 84532),
+        batchChannelCreated({ ...V.EB8.log, data: word(0, "f".repeat(64)) }, 84532),
+        batchChannelCreated({ ...V.EB8.log, data: word(5, "f".repeat(64)) }, 84532),
+      ];
+    },
+    // The EVM completes, the opening's and buildWithin's. The Solana completes refuse a signature count other than the
+    // requests' as svm/input-malformed, as the ES6 test above shows for buildWithin's refund.
+    "complete with a signature count other than the requests', or an EVM signature that is not 0x hex": async () => {
+      const { u } = await evmOpening();
+      const doc = evmDoc();
+      const within = unwrap(
+        await batchEvm.buildWithin(
+          { required: doc, accepted: doc.accepts[0]!, channelConfig: E.config, maxClaimableAmount: BigInt(V.EB2.maxClaimableAmount) },
+          H,
+        ),
+      );
+      const [s1, s2] = [V.EB3.signature as string, V.EB2.signature as string];
+      return [
+        u.complete([s1]),
+        u.complete([s1, s2, s2]),
+        u.complete([s1.slice(2), s2]),
+        u.complete([s1, `0x${"zz".repeat(65)}`]),
+        within.complete([]),
+        within.complete([s2, s2]),
+        within.complete([s2.slice(2)]),
+      ];
+    },
+    "SVM complete with a signature that is not 64 bytes of base58, or a build input out of range": async () => {
+      const doc = svmDoc();
+      const c = es2Choice(doc);
+      const u = unwrap(await batchSvm.build(c, H));
+      const within = { required: doc, accepted: doc.accepts[0]!, channelConfig: V.ES4.config, maxClaimableAmount: 1000n };
+      const w = unwrap(await batchSvm.buildWithin(within, H));
+      const sig = base58.encode(new Uint8Array(64).fill(1));
+      return [
+        u.complete(["x", sig]),
+        u.complete([sig, base58.encode(new Uint8Array(63).fill(1))]),
+        u.complete([`0x${"ab".repeat(64)}`, sig]),
+        w.complete([base58.encode(new Uint8Array(65).fill(1))]),
+        await batchSvm.build({ ...c, deposit: 0n }, H),
+        await batchSvm.build({ ...c, deposit: 2n ** 64n }, H),
+        await batchSvm.build({ ...c, salt: 2n ** 64n }, H),
+        await batchSvm.build({ ...c, openSlot: 2n ** 53n }, H),
+        await batchSvm.build({ ...c, computeUnitLimit: 2 ** 32 }, H),
+        await batchSvm.buildWithin({ ...within, maxClaimableAmount: -1n }, H),
+      ];
+    },
+    "Cloudflare build when the challenge's legalContext hash is not h": async () => {
+      const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [V.EC1.payload.accepted] };
+      const doc = unwrap(batchCloudflare.advertise(required, H, V.fixed.link, V.EC1.payload.accepted));
+      return [await batchCloudflare.build({ required: doc, accepted: doc.accepts[0]! }, H2)];
+    },
+  };
+
+  it("names a case for every row that carries only case and expect, but the authSalt row, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      expect(row.expect, "one refusal code").toMatch(/^[a-z0-9]+\/[a-z0-9-]+$/);
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(refused(row.expect));
     });
   }
 });

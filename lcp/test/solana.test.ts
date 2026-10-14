@@ -5,8 +5,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
+  compileTransactionMessage,
   decompileTransactionMessage,
   getCompiledTransactionMessageDecoder,
+  getCompiledTransactionMessageEncoder,
   getTransactionDecoder,
   isSignerRole,
   isWritableRole,
@@ -14,6 +16,8 @@ import {
 import { ReaderError } from "../src/evm.js";
 import { hash, pairingOf, type AtrHash, type Refusal } from "../src/index.js";
 import {
+  MEMO_V3,
+  buildSvmMessage,
   decodeSvmTx,
   svmCarrier,
   svmLocate,
@@ -26,6 +30,7 @@ import {
 } from "../src/svm.js";
 import { exactSvm, type SvmUnsigned } from "../src/x402-exact-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-solana.json", import.meta.url), "utf8"));
 const b64 = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "base64"));
@@ -101,7 +106,14 @@ describe("x402-exact-solana.json", () => {
 
   it("agreedRefusals: build refuses a choice that is not an object, and V1's choice with an h that is not a hash", async () => {
     type Row = { case: string; choice?: unknown; h?: unknown; expect: string };
-    const rows = (V.agreedRefusals.rows as Row[]).filter((r) => "choice" in r || "h" in r);
+    const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-exact-solana.json agreedRefusals.rows", {
+      exact: 5,
+      keep: ["the rows that give build a choice or an h", (r) => "choice" in r || "h" in r],
+      leave: [
+        "the rows that carry only case and expect, which the agreedRefusals runner below runs by their case",
+        (r) => Object.keys(r).every((k) => k === "case" || k === "expect"),
+      ],
+    });
     expect(rows.map((r) => ("choice" in r ? ["choice", r.choice] : ["h", r.h]))).toEqual([
       ["choice", null], ["choice", "x"], ["h", "abc"], ["h", `0X${H.slice(2)}`], ["h", null],
     ]);
@@ -211,7 +223,7 @@ describe("x402-exact-solana.json", () => {
   });
 
   it("V3: refusals", async () => {
-    for (const row of V.V3) {
+    for (const row of rowsOf(V.V3, "x402-exact-solana.json V3")) {
       if (row.advertiseOption !== undefined) {
         const o: PaymentRequirements = row.advertiseOption;
         expect(exactSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o)).toEqual(
@@ -228,7 +240,7 @@ describe("x402-exact-solana.json", () => {
     const wire = b64(V.V4.landedWireBase64);
     const ref = V.V4.ref as SvmRef & { transaction: string };
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    for (const row of V.V4.rows) {
+    for (const row of rowsOf(V.V4.rows, "x402-exact-solana.json V4.rows")) {
       const reader = readerFor(row.at, landed(wire, row.err ?? null));
       expect(await svmStatus(ref, reader), JSON.stringify(row)).toEqual(row.expect);
     }
@@ -385,7 +397,7 @@ describe("x402-exact-solana.json durableNonce", () => {
     name === null ? null : { owner: D.accounts[name].owner, data: b64(D.accounts[name].dataBase64) };
 
   it("reference records the nonce only for AdvanceNonceAccount naming the nonce accounts", async () => {
-    for (const row of D.reference) {
+    for (const row of rowsOf(D.reference, "x402-exact-solana.json durableNonce.reference")) {
       const p: Payment = {
         x402Version: 2,
         accepted: V.V2.accepted,
@@ -399,7 +411,11 @@ describe("x402-exact-solana.json durableNonce", () => {
   });
 
   it("a message naming its nonce account through a lookup table is refused", async () => {
-    const rows = D.lookupTable.rows.filter((r: { expect?: string }) => r.expect !== undefined);
+    const rows = rowsOf<any>(D.lookupTable.rows, "x402-exact-solana.json durableNonce.lookupTable.rows", {
+      exact: 1,
+      keep: ["the row with the refusal it expects", (r: { expect?: string }) => r.expect !== undefined],
+      leave: ["the row with expectReference, which the next test runs", (r: { expectReference?: unknown }) => r.expectReference !== undefined],
+    });
     expect(rows.length).toBe(1);
     for (const row of rows) {
       expect(row.instruction0Accounts[0], row.case).toBeGreaterThanOrEqual(row.staticKeys);
@@ -414,7 +430,11 @@ describe("x402-exact-solana.json durableNonce", () => {
   });
 
   it("a static nonce account with its sysvar from a lookup table is durable: bound gives H, reference records the nonce", async () => {
-    const rows = D.lookupTable.rows.filter((r: { expectReference?: unknown }) => r.expectReference !== undefined);
+    const rows = rowsOf<any>(D.lookupTable.rows, "x402-exact-solana.json durableNonce.lookupTable.rows", {
+      exact: 1,
+      keep: ["the row with expectReference", (r: { expectReference?: unknown }) => r.expectReference !== undefined],
+      leave: ["the row with the refusal it expects, which the test above runs", (r: { expect?: string }) => r.expect !== undefined],
+    });
     expect(rows.length).toBe(1);
     for (const row of rows) {
       expect(row.liteSvm, row.case).toBe("landed");
@@ -474,7 +494,7 @@ describe("x402-exact-solana.json durableNonce", () => {
 
   it("svmNonceMoved reads the nonce account at a slot at least 150 past fromSlot, and answers that read's slot", async () => {
     const ref: SvmRef = { ...D.reference[0].expect, fromSlot: D.nonceMoved.fromSlot };
-    for (const row of D.nonceMoved.rows) {
+    for (const row of rowsOf(D.nonceMoved.rows, "x402-exact-solana.json durableNonce.nonceMoved.rows")) {
       const reader: SvmReader = {
         ...readerFor(null, landed(new Uint8Array())),
         account: async (address) => {
@@ -502,7 +522,7 @@ describe("x402-exact-solana.json durableNonce", () => {
       fromSlot: D.status.fromSlot,
     };
     const wire = b64(D.status.landedWireBase64);
-    for (const row of D.status.rows) {
+    for (const row of rowsOf(D.status.rows, "x402-exact-solana.json durableNonce.status.rows")) {
       const answers = [...row.transactions];
       let accountReads = 0;
       const reader: SvmReader = {
@@ -693,4 +713,163 @@ describe("SvmReader.blockhashValid", () => {
       expect(pages, JSON.stringify(read)).toEqual([]);
     }
   });
+});
+
+// The agreedRefusals rows that carry only case and expect: each case names its calls, and each call here is one of
+// them, made with the file's fixed data, V2's and V4's wires and V3's two-memo wire.
+describe("x402-exact-solana.json agreedRefusals: the rows that carry only case and expect", () => {
+  type Row = { case: string; choice?: unknown; h?: unknown; expect: string };
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-exact-solana.json agreedRefusals.rows", {
+    keep: ["the rows that carry only case and expect", (r) => Object.keys(r).every((k) => k === "case" || k === "expect")],
+    leave: ["the rows that give build a choice or an h, which the agreedRefusals build test above runs", (r) => "choice" in r || "h" in r],
+  });
+  const advertised = (o: PaymentRequirements = O): PaymentRequired => {
+    const doc = exactSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o);
+    if ("refused" in doc) throw new Error(doc.code);
+    return doc;
+  };
+  /** V1's choice: the advertised option with fixed's payer, decimals, tokenProgram and blockhash as recentBlockhash. */
+  const v1Choice = (doc: PaymentRequired = advertised()) => ({
+    required: doc,
+    accepted: doc.accepts[0]!,
+    payer: V.fixed.payer as string,
+    decimals: V.fixed.decimals as number,
+    tokenProgram: V.fixed.tokenProgram as string,
+    recentBlockhash: V.fixed.blockhash as string,
+  });
+  /** buildSvmMessage's input for V1's message: fixed's keys, amount, decimals and compute budget, with L as the memo. */
+  const v1Message = {
+    feePayer: V.fixed.feePayer as string,
+    payer: V.fixed.payer as string,
+    mint: V.fixed.mint as string,
+    tokenProgram: V.fixed.tokenProgram as string,
+    decimals: V.fixed.decimals as number,
+    payTo: V.fixed.payTo as string,
+    amount: BigInt(V.fixed.amount),
+    recentBlockhash: V.fixed.blockhash as string,
+    memo: V.fixed.L as string,
+    computeUnitLimit: V.fixed.computeUnitLimit as number,
+    computeUnitPrice: BigInt(V.fixed.computeUnitPrice),
+  };
+  const payment = (wire: Uint8Array | string, accepted: PaymentRequirements = V.V2.accepted): Payment => ({
+    x402Version: 2,
+    accepted,
+    payload: { transaction: typeof wire === "string" ? wire : Buffer.from(wire).toString("base64") },
+  });
+  const decoded = (wire: Uint8Array) => {
+    const tx = decodeSvmTx(wire);
+    if ("refused" in tx) throw new Error(tx.code);
+    return tx;
+  };
+  const wireV2 = b64(V.V2.wireBase64);
+  const wireV4 = b64(V.V4.landedWireBase64);
+  const twoMemos = (V.V3 as { case: string; wireBase64: string; accepted: PaymentRequirements }[]).find((r) => r.case === "two L memos")!;
+  const named = { network: V.V4.network, transaction: V.V4.txid };
+  /** V2's message with its Memo instruction taken out, compiled again by @solana/kit, with every signature slot zero. */
+  const noMemo = (): Uint8Array => {
+    const signed = getTransactionDecoder().decode(wireV2);
+    const m = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(signed.messageBytes));
+    const compiled = compileTransactionMessage({ ...m, instructions: m.instructions.filter((ix) => ix.programAddress !== MEMO_V3) });
+    const message = new Uint8Array(getCompiledTransactionMessageEncoder().encode(compiled));
+    const signers = compiled.header.numSignerAccounts;
+    const wire = new Uint8Array(1 + 64 * signers + message.length);
+    wire[0] = signers;
+    wire.set(message, 1 + 64 * signers);
+    return wire;
+  };
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "svmCarrier (and so bound and recover) on a transaction with no top-level Memo instruction, or with two or more": async () => {
+      const none = noMemo();
+      const two = b64(twoMemos.wireBase64);
+      return [
+        svmCarrier(decoded(none)),
+        svmCarrier(decoded(two)),
+        await exactSvm.bound(payment(none)),
+        await exactSvm.bound(payment(two, twoMemos.accepted)),
+        await svmRecover(named, readerFor("finalized", landed(none))),
+        await svmRecover(named, readerFor("finalized", landed(two))),
+      ];
+    },
+    // x402's Solana mainnet network, beside the vectors' devnet.
+    "recover with a reader for another network": async () => [
+      await svmRecover(named, { ...readerFor("finalized", landed(wireV4)), network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" }),
+    ],
+    "recover when the transaction is found at neither finalized nor confirmed": async () => [
+      await svmRecover(named, readerFor(null, landed(wireV4))),
+    ],
+    "recover when the landed transaction's err is not null": async () => {
+      const failed = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
+      return [await svmRecover(named, readerFor("finalized", landed(wireV4, failed.err)))];
+    },
+    // A transaction answer whose wire is the base64 text, not its bytes, is not a landed transaction's shape.
+    "recover when the reader fails or returns a malformed transaction": async () => [
+      await svmRecover(named, readerFor("reader-error", landed(wireV4))),
+      await svmRecover(named, readerFor("finalized", { ...landed(wireV4), wire: V.V4.landedWireBase64 })),
+    ],
+    "build or buildSvmMessage with a malformed key, token program, decimals, amount, compute budget or signature": async () => {
+      const c = v1Choice();
+      const u = await exactSvm.build(c, H);
+      if ("refused" in u) throw new Error(u.code);
+      return [
+        await exactSvm.build({ ...c, payer: "x" }, H),
+        await exactSvm.build({ ...c, tokenProgram: V.fixed.mint }, H),
+        await exactSvm.build({ ...c, decimals: 256 }, H),
+        await exactSvm.build({ ...c, computeUnitLimit: 2 ** 32 }, H),
+        await exactSvm.build({ ...c, computeUnitPrice: 2n ** 64n }, H),
+        u.complete(new Uint8Array(63)),
+        await buildSvmMessage({ ...v1Message, payTo: "x" }),
+        await buildSvmMessage({ ...v1Message, tokenProgram: V.fixed.mint }),
+        await buildSvmMessage({ ...v1Message, decimals: -1 }),
+        await buildSvmMessage({ ...v1Message, amount: 2n ** 64n }),
+        await buildSvmMessage({ ...v1Message, computeUnitLimit: -1 }),
+        await buildSvmMessage({ ...v1Message, computeUnitPrice: -1n }),
+      ];
+    },
+    "advertise or build with an amount that is not a u64 in decimal": async () => {
+      const doc = advertised();
+      const placed = (amount: string) => ({ ...doc.accepts[0]!, amount });
+      const build = (o: PaymentRequirements) => exactSvm.build({ ...v1Choice(doc), required: { ...doc, accepts: [o] }, accepted: o }, H);
+      return [
+        exactSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [{ ...O, amount: "1.5" }] }, H, V.fixed.link, { ...O, amount: "1.5" }),
+        exactSvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [{ ...O, amount: "18446744073709551616" }] }, H, V.fixed.link, { ...O, amount: "18446744073709551616" }),
+        await build(placed("1.5")),
+        await build(placed("18446744073709551616")),
+      ];
+    },
+    "a payload whose transaction is not base64, or whose wire does not decode exactly, or whose signature count differs from the header's":
+      async () => [
+        await exactSvm.bound(payment(`*${V.V2.wireBase64.slice(1)}`)),
+        await exactSvm.bound(payment(Uint8Array.of(...wireV2, 0))),
+        await exactSvm.bound(payment(Uint8Array.of(1, ...wireV2.subarray(1 + 64)))),
+      ],
+    "a wire over 1232 bytes": async () => {
+      const over = new Uint8Array(1233);
+      over.set(wireV2);
+      return [decodeSvmTx(over), await exactSvm.bound(payment(over))];
+    },
+    "a payment whose option fails the pairing's filter": async () => {
+      const accepted = V.V2.accepted as PaymentRequirements;
+      const { feePayer: _feePayer, ...noFeePayer } = accepted.extra!;
+      return [
+        await exactSvm.bound(payment(wireV2, { ...accepted, scheme: "upto" })),
+        await exactSvm.bound(payment(wireV2, { ...accepted, extra: noFeePayer })),
+        await exactSvm.bound(payment(wireV2, { ...accepted, extra: { ...accepted.extra, memo: "m".repeat(257) } })),
+        await exactSvm.reference(payment(wireV2, { ...accepted, scheme: "upto" })),
+      ];
+    },
+  };
+
+  it("names a case for every row that carries only case and expect, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      expect(row.expect, "one refusal code").toMatch(/^[a-z0-9]+\/[a-z0-9-]+$/);
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(refused(row.expect));
+    });
+  }
 });

@@ -50,6 +50,7 @@ import {
 } from "../src/tempo.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { C_E, C_T, H, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
 const P = load("mpp-charge-evm-permit2.json");
@@ -569,7 +570,7 @@ describe("mpp-charge-tempo-memo.json", () => {
     const r = JSON.parse(M.splits.request);
     const sum = (r.methodDetails.splits as { amount: string }[]).reduce((t, x) => t + BigInt(x.amount), 0n);
     expect((BigInt(r.amount) - sum).toString()).toBe(M.splits.expectPrimaryAmount);
-    const rows = M.splits.agreedRefusals.rows as { case: string; splits: unknown; expect: string }[];
+    const rows = rowsOf(M.splits.agreedRefusals.rows as { case: string; splits: unknown; expect: string }[], "mpp-charge-tempo-memo.json splits.agreedRefusals.rows");
     for (const row of rows) {
       expect("splits" in row, row.case).toBe(true);
       expect(row.expect, row.case).toMatch(/^mpp\/(splits|input)-malformed$/);
@@ -658,7 +659,7 @@ describe("mpp-charge-tempo-memo.json", () => {
   });
 
   it("zeroAmount: a charge of amount 0 names no pairing, and nothing is built for it", async () => {
-    for (const r of M.zeroAmount.requests) {
+    for (const r of rowsOf(M.zeroAmount.requests, "mpp-charge-tempo-memo.json zeroAmount.requests")) {
       const c = challenge("tempo", "charge", r);
       expect(pairingsOf(c)).toEqual(M.zeroAmount.expectPairings);
       expect(tempoMemo.advertise([c], H, link, c)).toEqual(M.zeroAmount.expect);
@@ -721,7 +722,7 @@ describe("mpp-charge-tempo-push.json", () => {
   });
 
   it("zeroAmount: a charge of amount 0 names no pairing, and nothing is built for it", async () => {
-    for (const r of PU.zeroAmount.requests) {
+    for (const r of rowsOf(PU.zeroAmount.requests, "mpp-charge-tempo-push.json zeroAmount.requests")) {
       const c = challenge("tempo", "charge", r);
       expect(pairingsOf(c)).toEqual(PU.zeroAmount.expectPairings);
       expect(tempoPush.advertise([c], H, link, c)).toEqual(PU.zeroAmount.expect);
@@ -776,4 +777,41 @@ describe("mpp-charge-tempo-push.json", () => {
     const forged = { ...cred, landed: { transaction: PU.MV13.T_P, blockNumber: 100n, logs: moved.logs } };
     expect(await tempoPush.bound(forged)).toEqual(PU.plant.expect);
   });
+});
+
+// splits.expectCalls: the calls the buyer gate builds for the splits request, in array order (draft-tempo-charge-00
+// L273): the primary recipient's transfer of amount minus the splits' sum (L233), carrying the challenge's attribution
+// memo, then one call per split, transferWithMemo where the split carries a memo (L313-315) and transfer where it does
+// not, each to the request's currency. memoCalldata writes the transferWithMemo calls; no export of the package writes
+// a split's plain transfer call.
+describe("mpp-charge-tempo-memo.json splits.expectCalls", () => {
+  type Call = { to: string; data: string };
+  const r = JSON.parse(M.splits.request);
+  const splits = r.methodDetails.splits as { amount: string; recipient: ViemHex; memo?: ViemHex }[];
+  const primary = BigInt(r.amount) - splits.reduce((t, s) => t + BigInt(s.amount), 0n);
+  const id = placedOf(challenge("tempo", "charge", M.splits.request)).id;
+  const transfers = [
+    { to: r.recipient as ViemHex, amount: primary, memo: attributionMemo(realm, id) as ViemHex | undefined },
+    ...splits.map((s) => ({ to: s.recipient, amount: BigInt(s.amount), memo: s.memo })),
+  ];
+  const transferSelector = keccak256(toBytes("transfer(address,uint256)")).slice(0, 10);
+  const calls = M.splits.expectCalls as Call[];
+
+  it("the calls are the primary transfer, then each split's: transferWithMemo where it carries a memo, transfer where not", () => {
+    expect(calls.map((c) => [c.to, c.data.slice(0, 10)])).toEqual(
+      transfers.map((t) => [r.currency, t.memo === undefined ? transferSelector : TRANSFER_WITH_MEMO_SELECTOR]),
+    );
+  });
+
+  const withMemo = rowsOf(calls, "mpp-charge-tempo-memo.json splits.expectCalls", {
+    keep: ["the transferWithMemo calls", (c) => c.data.startsWith(TRANSFER_WITH_MEMO_SELECTOR)],
+    leave: ["the transfer call of the split without a memo, which no export of the package builds", (c) => c.data.startsWith(transferSelector)],
+  });
+  for (const call of withMemo) {
+    const i = calls.indexOf(call);
+    it(`call ${i}, ${i === 0 ? "the primary transfer" : `split ${i - 1}`}: memoCalldata of its recipient, amount and memo`, () => {
+      const t = transfers[i]!;
+      expect({ to: r.currency, data: memoCalldata(t.to, t.amount, t.memo!) }).toEqual(call);
+    });
+  }
 });

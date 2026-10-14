@@ -21,7 +21,7 @@ import {
 } from "@solana/kit";
 import { decode as decodeXrpl } from "ripple-binary-codec";
 import { Keypair, Networks, TransactionBuilder, xdr as stellarXdr } from "@stellar/stellar-sdk";
-import { canonicalJson, type AtrHash, type Json } from "../src/index.js";
+import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/index.js";
 import { ReaderError } from "../src/evm.js";
 import {
   chargeHedera,
@@ -41,6 +41,7 @@ import type { XrplReader } from "../src/xrpl.js";
 import { stellarLocate, type StellarReader, type StellarRef } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { rowsOf } from "./rows.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
 const MC = load("mpp-challenge.json");
@@ -85,7 +86,7 @@ describe("mpp/charge/hedera through pairingsOf and place", () => {
     expect(doc[0]!.request).toBe(c.request);
   });
   it("the Hedera charge's request checks apply through pairingsOf", () => {
-    for (const row of HE.requests) {
+    for (const row of rowsOf(HE.requests, "mpp-charge-hedera.json requests")) {
       expect(pairingsOf({ ...c, request: b64u(canonicalJson(row.request) as string) }), row.case).toEqual(refused(row.expect));
     }
   });
@@ -164,7 +165,7 @@ describe("mpp-charge-solana.json", () => {
   });
 
   it("refusals", async () => {
-    for (const row of V.refusals) {
+    for (const row of rowsOf(V.refusals, "mpp-charge-solana.json refusals")) {
       const challenge = row.externalId === undefined ? placed : withRequest(placed, { ...V.fixed.request, externalId: row.externalId });
       const payload = row.payload ?? { type: "transaction", transaction: row.wireBase64 };
       expect(await chargeSolana.bound(credential(challenge as never, payload)), row.case).toEqual(refused(row.expect));
@@ -426,7 +427,14 @@ describe("mpp-charge-stellar.json", () => {
         return { envelope: tx.toEnvelope().toXDR("base64"), hash: Buffer.from(tx.hash()).toString("hex") };
       };
       expect(S.write.source).toBe(XST.fixed.payerSeed.slice(0, 2));
-      const written = [S, ...S.refusals.filter((r: { write?: Write }) => r.write !== undefined)];
+      const written = [S, ...rowsOf(S.refusals, "mpp-charge-stellar.json sourceAccount.refusals", {
+        exact: 3,
+        keep: ["the rows that write their own envelope", (r) => r.write !== undefined],
+        leave: [
+          "the rows that present the section's own envelope, which the refusals test below runs",
+          (r) => r.envelope === undefined,
+        ],
+      })];
       expect(written.length).toBe(4);
       for (const w of written) expect(write(w.write), w.case).toEqual({ envelope: w.envelope, hash: w.hash });
       const request = (c: MppChallenge) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
@@ -444,7 +452,7 @@ describe("mpp-charge-stellar.json", () => {
       expect(ref).toEqual(S.expectReference);
       expect(roundTrip(ref)).toEqual(ref);
       const named = S.expectReference as StellarRef & { transaction: string };
-      for (const row of S.status) {
+      for (const row of rowsOf(S.status, "mpp-charge-stellar.json sourceAccount.status")) {
         const envelope = row.envelope === "V3" ? XST.V3.envelope : S.envelope;
         const answer = { status: row.status, ...(row.status === "SUCCESS" ? { envelope, ledger: row.ledger } : {}) };
         expect(await chargeStellar.status(named, readerOf(S.hash, answer)), row.case).toEqual(row.expect);
@@ -467,7 +475,7 @@ describe("mpp-charge-stellar.json", () => {
     });
 
     it("refusals: the sponsored flow, a transaction credential, another source account, a sub-invocation, a malformed hash, and x402", async () => {
-      for (const row of S.refusals) {
+      for (const row of rowsOf(S.refusals, "mpp-charge-stellar.json sourceAccount.refusals")) {
         const challenge = challengeOf(row.challenge);
         const envelope: string = row.envelope ?? S.envelope;
         const hash: string = row.hash ?? S.hash;
@@ -520,7 +528,14 @@ describe("mpp-charge-stellar.json", () => {
   });
 
   it("bound and build read the invocation the payer's entry signs (x402-exact-stellar.json's V4 and V4build rows)", async () => {
-    const signedRows = XST.V4.filter((r: { case: string }) => r.case.includes("the payer's entry signs"));
+    const signedRows = rowsOf(XST.V4, "x402-exact-stellar.json V4", {
+      exact: 5,
+      keep: ["the rows that name the invocation the payer's entry signs", (r) => r.case.includes("the payer's entry signs")],
+      leave: [
+        "the other rows, x402 refusals that stellar.test.ts's V4 test runs through the x402 pairing",
+        (r) => !r.case.includes("the payer's entry signs"),
+      ],
+    });
     expect(signedRows.length).toBe(5);
     for (const row of signedRows) {
       const got = await chargeStellar.bound(credential(placed, { type: "transaction", transaction: row.envelope }));
@@ -530,7 +545,7 @@ describe("mpp-charge-stellar.json", () => {
     const payer: string = XST.fixed.payer;
     const agreeing = await chargeStellar.build({ challenge: placed, simulatedXdr: XST.V2.simulatedXdr, currentLedger: 988, now, payer }, H);
     expect("refused" in agreeing).toBe(false);
-    for (const row of XST.V4build.rows) {
+    for (const row of rowsOf(XST.V4build.rows, "x402-exact-stellar.json V4build.rows")) {
       const u = await chargeStellar.build({ challenge: placed, simulatedXdr: row.simulatedXdr, currentLedger: 988, now, payer }, H);
       expect(u, row.case).toEqual(refused(row.expect));
     }
@@ -652,7 +667,7 @@ describe("mpp-charge-xrpl.json", () => {
   });
 
   it("multisigned: bound and reference refuse a blob that carries Signers", async () => {
-    for (const row of V.multisigned.rows) {
+    for (const row of rowsOf(V.multisigned.rows, "mpp-charge-xrpl.json multisigned.rows")) {
       const cr = credential(placed, { type: "transaction", blob: row.blob });
       expect(await chargeXrpl.bound(cr), row.case).toEqual(refused(row.expect));
       expect(await chargeXrpl.reference(cr), row.case).toEqual(refused(row.expect));
@@ -738,4 +753,289 @@ describe("mpp-charge-nearintents.json", () => {
   it("plant: a transaction credential is refused, never H", async () => {
     expect(await chargeNearIntents.bound(credential(placed, V.plant.payload))).toEqual(refused(V.plant.expect));
   });
+});
+
+// The agreedRefusals rows of the four files above: a case for each row, keyed by its text, gives every call the row
+// names, with inputs from the file's own fixed data and sections; each call is refused with the row's code.
+type AgreedRow = { case: string; expect: string };
+type RequestEdit = (request: { [k: string]: Json }, details: { [k: string]: Json }) => void;
+
+/** `challenge` with its request decoded, changed by `edit` (the request, then its methodDetails), and re-encoded. */
+function editedRequest<C extends MppChallenge>(challenge: C, edit: RequestEdit): C {
+  const request = JSON.parse(Buffer.from(challenge.request, "base64url").toString("utf8"));
+  edit(request, request.methodDetails);
+  return withRequest(challenge, request) as C;
+}
+
+/**
+ * One test that `cases` names every row of `rows` and no other, and one test per row: each call is refused with the
+ * row's code. An expect of two codes, "a or b", gives one call per code, in the order the case names its conditions.
+ */
+function agreedRows(rows: AgreedRow[], cases: Record<string, () => Promise<unknown[]>>): void {
+  it("names a case for every row, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      const codes = row.expect.split(" or ");
+      if (codes.length > 1) expect(results).toEqual(codes.map((code) => refused(code)));
+      else for (const r of results) expect(r).toEqual(refused(row.expect));
+    });
+  }
+}
+
+describe("mpp-charge-solana.json agreedRefusals: every row runs", () => {
+  const V = SO;
+  const H: AtrHash = V.fixed.H;
+  const placed = placedOf(V);
+  const transaction = (wire: string) => ({ type: "transaction", transaction: wire });
+  const push = credential(placed, { type: "signature", signature: V.push.txid });
+  /** A reader on the push section's network whose getTransaction answers `answer`. */
+  const readerOf = (answer: SvmReader["transaction"]): SvmReader => ({
+    network: V.push.network,
+    transaction: answer,
+    signatures: async () => [],
+    blockhashValid: async () => ({ valid: true, slot: 0n }),
+    firstAvailableBlock: async () => 0n,
+    account: async () => {
+      throw new Error("a push credential's read makes no account read");
+    },
+  });
+  const landed: SvmLanded = {
+    wire: Uint8Array.from(Buffer.from(V.push.landedWireBase64, "base64")),
+    err: null,
+    loaded: { writable: [], readonly: [] },
+    inner: [],
+  };
+  const build = (challenge: MppChallenge & { id: string }, payer: string = V.fixed.payer) =>
+    chargeSolana.build({ challenge, payer }, H);
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "pairingsOf with methodDetails.network other than mainnet, devnet or localnet": async () => [
+      pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = "testnet"))),
+      pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = V.push.network))),
+    ],
+    "pairingsOf with amount not a positive u64, currency neither sol nor a key, recipient not a key, externalId over 566 bytes, or feePayer true without feePayerKey":
+      async () => [
+        pairingsOf(editedRequest(V.challenge, (r) => (r["amount"] = "0"))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["amount"] = (1n << 64n).toString()))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["currency"] = "usdc"))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["recipient"] = "seller"))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["externalId"] = "x".repeat(567)))),
+        pairingsOf(editedRequest(V.challenge, (_, d) => delete d["feePayerKey"])),
+      ],
+    // Memo instructions whose data is the split section's label, or H's hex without the LCP prefix.
+    "a credential with no LCP memo among its Memo instructions": async () => [
+      await chargeSolana.bound(credential(placed, transaction(await twoMemoWire(V.split.splitMemo, V.split.splitMemo)))),
+      await chargeSolana.bound(credential(placed, transaction(await twoMemoWire(H, V.split.splitMemo)))),
+    ],
+    // The plant's two L memos, and L with H2's LCP string.
+    "a credential with two or more LCP memos": async () => [
+      await chargeSolana.bound(credential(placed, transaction(V.plant.wireBase64))),
+      await chargeSolana.bound(credential(placed, transaction(await twoMemoWire(V.fixed.L, toLcpString(V.fixed.H2))))),
+    ],
+    "reference on localnet, which has no CAIP-2 network here": async () => [
+      await chargeSolana.reference(credential(editedRequest(placed, (_, d) => (d["network"] = "localnet")), transaction(V.V2.wireBase64))),
+    ],
+    // The reader throws; then it holds the landed wire at finalized and nothing at confirmed, the commitment read.
+    "fetchPresented when the reader fails, or finds nothing at confirmed": async () => [
+      await chargeSolana.fetchPresented(push, readerOf(async () => {
+        throw new ReaderError("transport");
+      })),
+      await chargeSolana.fetchPresented(push, readerOf(async (_, at) => (at === "confirmed" ? { notFound: true, slot: null } : landed))),
+    ],
+    "build with splits or confidential in the request, a malformed payer, or no decimals and tokenProgram for a mint": async () => [
+      await build(editedRequest(placed, (r, d) => (d["splits"] = [{ amount: "1", recipient: r["recipient"]! }]))),
+      await build(editedRequest(placed, (_, d) => (d["confidential"] = true))),
+      await build(placed, "payer"),
+      await build(editedRequest(placed, (_, d) => {
+        delete d["decimals"];
+        delete d["tokenProgram"];
+      })),
+      await build(editedRequest(placed, (_, d) => delete d["decimals"])),
+      await build(editedRequest(placed, (_, d) => delete d["tokenProgram"])),
+    ],
+    "a payload type other than transaction, signature or bundle": async () => [
+      await chargeSolana.bound(credential(placed, { type: "hash", transaction: V.V2.wireBase64 })),
+      await chargeSolana.reference(credential(placed, { type: "hash", transaction: V.V2.wireBase64 })),
+    ],
+  };
+
+  agreedRows(
+    rowsOf(V.agreedRefusals.rows as (AgreedRow & { err?: Json })[], "mpp-charge-solana.json agreedRefusals.rows", {
+      keep: ["the rows the cases above run", (r) => r.err === undefined],
+      leave: [
+        "the row that carries a landed transaction's err, which \"push: fetchPresented refuses a landed transaction that carries an error\" runs",
+        (r) => r.err !== undefined,
+      ],
+    }),
+    cases,
+  );
+});
+
+describe("mpp-charge-stellar.json agreedRefusals: every row runs", () => {
+  const V = ST;
+  const H: AtrHash = V.fixed.H;
+  const placed = placedOf(V);
+  const S = V.sourceAccount;
+  // Push credentials naming the sourceAccount section's hash, under its challenge (feePayer false) and under the same
+  // challenge with feePayer absent.
+  const pushes = [S.challenge, editedRequest(S.challenge, (_, d) => delete d["feePayer"])].map((c) =>
+    credential(c, { type: "hash", hash: S.hash }),
+  );
+  const readerOf = (answer: StellarReader["transaction"]): StellarReader => ({
+    network: "stellar:testnet",
+    transaction: answer,
+    transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
+    latestLedger: async () => 1000,
+  });
+  const fetched = (answer: StellarReader["transaction"]) =>
+    Promise.all(pushes.map((p) => chargeStellar.fetchPresented(p, readerOf(answer))));
+  /** The seller's account with the last character of its checksum changed: G and 55 base32 characters, not a valid strkey. */
+  const badAccount = `${V.fixed.request.recipient.slice(0, -1)}${V.fixed.request.recipient.endsWith("A") ? "B" : "A"}`;
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "pairingsOf with a network other than stellar:pubnet or stellar:testnet, a currency not a C strkey, a recipient neither G nor M, or amount not decimal":
+      async () => [
+        pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = "stellar:futurenet"))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["currency"] = V.fixed.request.recipient))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["recipient"] = V.fixed.request.currency))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["amount"] = "10.5"))),
+      ],
+    "advertise on a recipient that is not a valid G strkey": async () => {
+      const offer = editedRequest(V.challenge, (r) => (r["recipient"] = badAccount));
+      return [chargeStellar.advertise([offer], H, V.fixed.link, offer)];
+    },
+    "fetchPresented under a challenge whose feePayer is false or absent, when the reader fails": () =>
+      fetched(async () => {
+        throw new ReaderError("transport");
+      }),
+    "fetchPresented under a challenge whose feePayer is false or absent, when the transaction is not found or has no envelope":
+      async () => [
+        ...(await fetched(async () => ({ status: "NOT_FOUND", oldestLedger: 1 }))),
+        ...(await fetched(async () => ({ status: "SUCCESS", ledger: 990, oldestLedger: 1 }))),
+      ],
+    "a payload type other than transaction or hash": async () => [
+      await chargeStellar.bound(credential(placed, { type: "signature", transaction: V.V3.envelope })),
+      await chargeStellar.reference(credential(placed, { type: "signature", transaction: V.V3.envelope })),
+    ],
+  };
+
+  agreedRows(
+    rowsOf(V.agreedRefusals.rows as AgreedRow[], "mpp-charge-stellar.json agreedRefusals.rows", {
+      keep: ["the rows the cases above run", (r) => r.expect !== "stellar/tx-failed"],
+      leave: [
+        "the stellar/tx-failed row, which \"push: fetchPresented refuses a transaction the reader reports FAILED\" runs",
+        (r) => r.expect === "stellar/tx-failed",
+      ],
+    }),
+    cases,
+  );
+});
+
+describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
+  const V = XR;
+  const H: AtrHash = V.fixed.H;
+  const placed = placedOf(V);
+  const push = credential(placed, { type: "hash", hash: V.V3.expectReference.transaction });
+  const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment" };
+  const fails = async (): Promise<never> => {
+    throw new ReaderError("transport");
+  };
+  const readerOf = (tx: XrplReader["tx"], txBlob: XrplReader["txBlob"] = async () => V.V3.blob): XrplReader => ({
+    network: "xrpl:1",
+    tx,
+    txBlob,
+    validatedLedger: async () => 1000,
+  });
+  const choice = {
+    challenge: placed,
+    account: V.fixed.account,
+    fee: V.build.fee,
+    sequence: V.build.sequence,
+    lastLedgerSequence: V.build.lastLedgerSequence,
+  };
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "pairingsOf with methodDetails.network other than mainnet, testnet or devnet": async () => [
+      pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = "betanet"))),
+      pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = "xrpl:1"))),
+    ],
+    "pairingsOf with a recipient not shaped as a classic address (r and 24 to 34 base58 characters), a currency neither XRP nor an issued currency nor an MPT, an amount not a positive decimal (whole drops for XRP), an invoiceId not 64 hex digits, or a tag not uint32":
+      async () => [
+        pairingsOf(editedRequest(V.challenge, (r) => (r["recipient"] = `x${V.fixed.request.recipient.slice(1)}`))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["currency"] = "USD"))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["amount"] = "0"))),
+        pairingsOf(editedRequest(V.challenge, (r) => (r["amount"] = "1.5"))),
+        pairingsOf(editedRequest(V.challenge, (_, d) => (d["invoiceId"] = "0x12"))),
+        pairingsOf(editedRequest(V.challenge, (_, d) => (d["destinationTag"] = -1))),
+        pairingsOf(editedRequest(V.challenge, (_, d) => (d["sourceTag"] = 2 ** 32))),
+      ],
+    // The first read throws; then the transaction is found and the blob read throws.
+    "fetchPresented when the reader fails": async () => [
+      await chargeXrpl.fetchPresented(push, readerOf(fails)),
+      await chargeXrpl.fetchPresented(push, readerOf(async () => landed, fails)),
+    ],
+    "fetchPresented when the transaction or its blob is not found": async () => [
+      await chargeXrpl.fetchPresented(push, readerOf(async () => ({ notFound: true, searchedAll: true }))),
+      await chargeXrpl.fetchPresented(push, readerOf(async () => landed, async () => null)),
+    ],
+    // The challenge placed under H2, its invoiceId then set to H's: V3's signed InvoiceID is that invoiceId, and the
+    // challenge's id and opaque name H2.
+    "a signed InvoiceID that is the request's invoiceId but not the echoed challenge's hash": async () => {
+      const underH2 = chargeXrpl.advertise([V.challenge], V.fixed.H2, V.fixed.link, V.challenge);
+      if (!Array.isArray(underH2)) throw new Error(underH2.code);
+      const c = editedRequest(underH2[0]!, (_, d) => (d["invoiceId"] = V.fixed.invoiceId));
+      const cr = credential(c as never, { type: "transaction", blob: V.V3.blob });
+      return [await chargeXrpl.bound(cr), await chargeXrpl.reference(cr)];
+    },
+    "build with an account that is not a string, or a malformed fee, sequence or lastLedgerSequence": async () => [
+      await chargeXrpl.build({ ...choice, account: 7 as unknown as string }, H),
+      await chargeXrpl.build({ ...choice, fee: "1.5" }, H),
+      await chargeXrpl.build({ ...choice, sequence: -1 }, H),
+      await chargeXrpl.build({ ...choice, lastLedgerSequence: 2 ** 32 }, H),
+    ],
+  };
+
+  agreedRows(
+    rowsOf(V.agreedRefusals.rows as AgreedRow[], "mpp-charge-xrpl.json agreedRefusals.rows", {
+      keep: ["the rows the cases above run", (r) => r.expect !== "xrpl/not-validated" && r.expect !== "xrpl/not-success"],
+      leave: [
+        "the xrpl/not-validated and xrpl/not-success rows, which \"push: fetchPresented refuses a transaction not yet validated, and a validated result other than tesSUCCESS\" runs",
+        (r) => r.expect === "xrpl/not-validated" || r.expect === "xrpl/not-success",
+      ],
+    }),
+    cases,
+  );
+});
+
+describe("mpp-charge-nearintents.json agreedRefusals: every row runs", () => {
+  const V = NE;
+  const placed = placedOf(V);
+  /** The bound section's hash credential under the placed challenge with `externalId` echoed as given. */
+  const echoing = (externalId: Json) => credential(editedRequest(placed, (r) => (r["externalId"] = externalId)), V.bound.payload);
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    // A label, and H's hex without the LCP prefix.
+    "bound when the echoed externalId is not an LCP string": async () => [
+      await chargeNearIntents.bound(echoing("invoice 7")),
+      await chargeNearIntents.bound(echoing(V.fixed.H)),
+    ],
+    "bound when the echoed externalId names another hash than the challenge id": async () => [
+      await chargeNearIntents.bound(echoing(toLcpString(V.fixed.H2))),
+    ],
+  };
+
+  agreedRows(
+    rowsOf(V.agreedRefusals.rows as AgreedRow[], "mpp-charge-nearintents.json agreedRefusals.rows", {
+      keep: ["the bound rows", (r) => r.case.startsWith("bound ")],
+      leave: [
+        "the pairingsOf row, which \"pairingsOf refuses an originNetwork that is not CAIP-2, or an externalId that is not a string (agreed row)\" runs",
+        (r) => r.case.startsWith("pairingsOf "),
+      ],
+    }),
+    cases,
+  );
 });

@@ -9,6 +9,9 @@ import { pairingOf, type AtrHash } from "../src/index.js";
 import { decodeBlob, mppInvoiceId, x402InvoiceId, xrplStatus, type XrplReader, type XrplRef } from "../src/xrpl.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
+import { chargeXrpl } from "../src/mpp.js";
+import { vi } from "vitest";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -99,7 +102,7 @@ describe("x402-exact-xrpl.json", () => {
   });
 
   it("V5: status", async () => {
-    for (const row of V.V5.rows) {
+    for (const row of rowsOf(V.V5.rows, "x402-exact-xrpl.json V5.rows")) {
       expect(await xrplStatus(V.V5.ref as XrplRef, readerFor(row.tx, row.validated ?? 0)), row.case).toEqual(row.expect);
     }
   });
@@ -146,7 +149,7 @@ describe("x402-exact-xrpl.json", () => {
   });
 
   it("strictEncoding: a blob that is not the canonical serialization of what it decodes to is refused", async () => {
-    for (const row of V.strictEncoding.rows) {
+    for (const row of rowsOf(V.strictEncoding.rows, "x402-exact-xrpl.json strictEncoding.rows")) {
       expect(() => decode(row.blob), row.case).not.toThrow();
       expect(await decodeBlob(row.blob), row.case).toEqual(refused(row.expect));
       expect(await exactXrpl.bound(payment(row.blob, V.V2.accepted)), row.case).toEqual(refused(row.expect));
@@ -155,7 +158,7 @@ describe("x402-exact-xrpl.json", () => {
 
   it("multisigned: bound and reference refuse a blob that carries Signers", async () => {
     const [three, two] = V.multisigned.rows;
-    for (const row of V.multisigned.rows) {
+    for (const row of rowsOf(V.multisigned.rows, "x402-exact-xrpl.json multisigned.rows")) {
       const d = await decodeBlob(row.blob);
       if ("refused" in d) throw new Error(d.code);
       expect(d.hash, row.case).toBe(row.hash);
@@ -175,4 +178,107 @@ describe("x402-exact-xrpl.json", () => {
     expect(d.hash).toBe(V.plant.hash);
     expect(await exactXrpl.bound(payment(V.plant.blob, V.plant.accepted))).toEqual(refused(V.plant.expect));
   });
+});
+
+// x402-exact-xrpl.json's agreedRefusals rows state each refusal in words. Each case below calls the entry points its row
+// names, once for each condition the row lists, with inputs built from the file's V2 payment and choice, its
+// strictEncoding blobs and V5's ref, and every result is the row's code. The recover row's function is the XRPL rail's
+// recover, which mpp/charge/xrpl exports: x402/exact/xrpl has none.
+describe("x402-exact-xrpl.json agreedRefusals: every row runs", () => {
+  const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [V.V2.accepted] };
+  /** build with V2's choice for H, the option given and any of the choice's fields replaced. */
+  const build = (accepted: PaymentRequirements, choice: Record<string, unknown> = {}) =>
+    exactXrpl.build({ ...V.V2.build, ...choice, required: { ...required, accepts: [accepted] }, accepted } as never, H);
+  /** decodeBlob, bound and reference of V2's payment carrying `blob`. */
+  const read = async (blob: string) => [
+    await decodeBlob(blob),
+    await exactXrpl.bound(payment(blob, V.V2.accepted)),
+    await exactXrpl.reference(payment(blob, V.V2.accepted)),
+  ];
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    // The codec's modules fail to load, as a package that is not installed does, for a fresh import of the xrpl entry point.
+    "decodeBlob when ripple-binary-codec is not installed": async () => {
+      const missing = () => {
+        throw new Error("Cannot find package 'ripple-binary-codec'");
+      };
+      vi.resetModules();
+      vi.doMock("ripple-binary-codec", missing);
+      vi.doMock("ripple-binary-codec/dist/serdes/binary-parser.js", missing);
+      try {
+        const { decodeBlob: withoutCodec } = await import("../src/xrpl.js");
+        return [await withoutCodec(V.V2.blob), await withoutCodec(V.V3.blob)];
+      } finally {
+        vi.doUnmock("ripple-binary-codec");
+        vi.doUnmock("ripple-binary-codec/dist/serdes/binary-parser.js");
+        vi.resetModules();
+      }
+    },
+    "a blob that is not an even number of hex digits, or that the codec cannot decode": async () => [
+      ...(await read(V.V2.blob.slice(0, -1))),
+      ...(await read(`ZZ${V.V2.blob.slice(2)}`)),
+      ...(await read(V.V2.blob.slice(0, -2))),
+      ...(await read("FFFF")),
+    ],
+    "a blob that is not the canonical serialization of what it decodes to (strictEncoding)": async () =>
+      (await Promise.all((V.strictEncoding.rows as { blob: string }[]).map((r) => read(r.blob)))).flat(),
+    "a blob over 4096 hex characters": async () => [
+      ...(await read("00".repeat(2049))),
+      ...(await read(`${V.V2.blob}${"00".repeat(2049 - V.V2.blob.length / 2)}`)),
+    ],
+    "recover when the reader fails or answers malformed": async () => {
+      const ref = { network: V.V5.ref.network, transaction: V.V5.ref.transaction };
+      return [
+        await chargeXrpl.recover(ref, readerFor("reader-error")),
+        await chargeXrpl.recover(ref, readerFor(null)),
+        await chargeXrpl.recover(ref, readerFor("tesSUCCESS")),
+      ];
+    },
+    "build with a malformed fee, sequence, ticket sequence or LastLedgerSequence, or an amount build cannot write": async () => {
+      const ticketed = { ...V.V2.accepted, extra: { ...V.V2.accepted.extra, assetTransferMethod: "ticketSequence" } };
+      expect("refused" in (await build(ticketed, { ticketSequence: 5 }))).toBe(false);
+      return [
+        await build(V.V2.accepted, { fee: "1.2" }),
+        await build(V.V2.accepted, { fee: 12 }),
+        await build(V.V2.accepted, { sequence: -1 }),
+        await build(V.V2.accepted, { sequence: 2 ** 32 }),
+        await build(ticketed, { ticketSequence: -1 }),
+        await build(ticketed, { ticketSequence: 2 ** 32 }),
+        await build(ticketed),
+        await build(V.V2.accepted, { lastLedgerSequence: -1 }),
+        await build(V.V2.accepted, { lastLedgerSequence: 2 ** 32 }),
+        await build({ ...V.V2.accepted, amount: "1.5" }),
+        await build({ ...V.V2.accepted, asset: "USD" }),
+      ];
+    },
+    "a payment whose option fails the pairing's filter": async () => {
+      const extra = V.V2.accepted.extra;
+      const options = [
+        { ...V.V2.accepted, scheme: "upto" },
+        { ...V.V2.accepted, network: "eip155:8453" },
+        { ...V.V2.accepted, extra: { ...extra, areFeesSponsored: true } },
+        { ...V.V2.accepted, extra: { ...extra, assetTransferMethod: "permit2" } },
+        { ...V.V2.accepted, extra: { ...extra, invoiceId: 7 } },
+      ];
+      return (
+        await Promise.all(options.map(async (o) => [await exactXrpl.bound(payment(V.V2.blob, o)), await exactXrpl.reference(payment(V.V2.blob, o))]))
+      ).flat();
+    },
+  };
+
+  const rows = rowsOf(V.agreedRefusals.rows as { case: string; expect: string }[], "x402-exact-xrpl.json agreedRefusals.rows", {
+    exact: Object.keys(cases).length,
+  });
+
+  it("names a case for every row, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(refused(row.expect));
+    });
+  }
 });

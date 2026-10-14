@@ -15,6 +15,9 @@ import {
 } from "../src/cardano.js";
 import { pairingOf } from "../src/index.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
+import { blake2b } from "@noble/hashes/blake2.js";
+import * as cborg from "cborg";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-cardano.json", import.meta.url), "utf8"));
 const H: `0x${string}` = V.fixed.H;
@@ -152,7 +155,7 @@ describe("V3 · the real rail", () => {
 });
 
 describe("V4 · refusals", () => {
-  for (const row of V.V4) {
+  for (const row of rowsOf(V.V4, "x402-exact-cardano.json V4")) {
     it(row.case, async () => {
       const accepted = row.network !== undefined ? { ...O, network: row.network } : O;
       expect(await exactCardano.bound(payment(row.transactionBase64, accepted))).toEqual(refused(row.expectBound));
@@ -168,7 +171,7 @@ describe("V4 · refusals", () => {
 });
 
 describe("V5 · status and recover", () => {
-  for (const row of V.V5.status) {
+  for (const row of rowsOf(V.V5.status, "x402-exact-cardano.json V5.status")) {
     it(`status: ${row.case}`, async () => {
       const r = reader(row.tip ?? V.V5.tip, row.readerError ? "error" : row.tx, undefined, undefined, row.deep);
       expect(plain(await exactCardano.status(refOf(V.V5.ref), r, DEPTH))).toEqual(row.expect);
@@ -292,7 +295,7 @@ describe("V5 · status and recover", () => {
       expect(r.calls).toBe(0);
     }
   });
-  for (const row of V.V5.recover) {
+  for (const row of rowsOf(V.V5.recover, "x402-exact-cardano.json V5.recover")) {
     it(`recover: ${row.case}`, async () => {
       const r = reader(V.V5.tip, { blockHeight: "5216518", slot: "134617000", valid: true }, TX[row.cbor]);
       const got = await exactCardano.recover({ network: "cardano:preprod", txId: row.txId }, r);
@@ -385,8 +388,17 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
 // The agreedRefusals row whose transaction is written {"$repeat": [s, n]}: s repeated n times, each s four UTF-16 code
 // units and three code points. Its length is counted in UTF-16 code units, as the about states.
 describe("x402-exact-cardano.json agreedRefusals: a transaction beyond the BMP over the decoded bound", () => {
-  const rows = (V.agreedRefusals.rows as { case: string; transaction?: { $repeat: [string, number] }; expect: string }[]).filter(
-    (r) => r.transaction !== undefined,
+  const rows = rowsOf(
+    V.agreedRefusals.rows as { case: string; transaction?: { $repeat: [string, number] }; expect: string }[],
+    "x402-exact-cardano.json agreedRefusals.rows",
+    {
+      exact: 1,
+      keep: ["the row whose transaction is an object with $repeat", (r) => r.transaction !== undefined],
+      leave: [
+        "the rows that give no transaction, run by base64.test.ts and the runner at the end of this file",
+        (r) => r.transaction === undefined,
+      ],
+    },
   );
   it("one row, whose text is 87384 UTF-16 code units and 65538 code points", () => {
     expect(rows).toHaveLength(1);
@@ -398,6 +410,192 @@ describe("x402-exact-cardano.json agreedRefusals: a transaction beyond the BMP o
     it(`${r.case}: ${r.expect}`, async () => {
       const [s, n] = r.transaction!.$repeat;
       expect(await decodeCardanoTx(s.repeat(n))).toEqual({ refused: true, code: r.expect });
+    });
+  }
+});
+
+// Each agreedRefusals row that gives no transaction, run from the vector's own data: V2's transaction with one item
+// changed (the items split and encoded again with cborg 6.1.3, each key 7 the Blake2b-256 of the auxiliary data it
+// names), V1's auxiliary data, V4's rows that repeat a key or a label, V3's transaction, and V5's reference, tip and
+// inclusion. The row whose transaction is an object with $repeat runs in the describe block above, and the row for text
+// that is not padded standard base64 in base64.test.ts.
+describe("x402-exact-cardano.json agreedRefusals: every row that gives no transaction runs", () => {
+  type RefusalRow = { case: string; transaction?: { $repeat: [string, number] }; expect: string };
+  const elsewhere = (r: RefusalRow) => r.case.startsWith("a transaction that is not padded standard base64");
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-cardano.json agreedRefusals.rows", {
+    keep: ["the rows that give no transaction, run below", (r) => r.transaction === undefined && !elsewhere(r)],
+    leave: [
+      "the row whose transaction is an object with $repeat, run by the describe block above, and the row for text that is not padded standard base64, run by base64.test.ts",
+      (r) => (typeof r.transaction === "object" && "$repeat" in r.transaction) || elsewhere(r),
+    ],
+  });
+  const TAGS: cborg.TagDecoder[] = [];
+  TAGS[259] = (decode) => decode();
+  /** V2's four items as their bytes: the body, the witness set, the validity bool and the auxiliary data (V1's). */
+  const v2Items = (): [Uint8Array, Uint8Array, Uint8Array, Uint8Array] => {
+    const all = bytesOf(V.V2.transactionBase64);
+    expect(all[0]).toBe(0x84);
+    const out: Uint8Array[] = [];
+    let rest = all.subarray(1);
+    while (rest.length > 0) {
+      const [, after] = cborg.decodeFirst(rest, { useMaps: true, tags: TAGS });
+      out.push(rest.subarray(0, rest.length - after.length));
+      rest = after;
+    }
+    expect([out.length, out[0]![0], Buffer.from(out[3]!).toString("hex")]).toEqual([4, 0xa5, V.V1.auxiliaryDataHex]);
+    return out as [Uint8Array, Uint8Array, Uint8Array, Uint8Array];
+  };
+  const bodyOf = (b: Uint8Array) => cborg.decode(b, { useMaps: true }) as Map<number, unknown>;
+  /** The transaction `[body, witnesses, valid, aux]`, base64. */
+  const tx = (...four: Uint8Array[]) => Buffer.from([0x84, ...four.flatMap((i) => [...i])]).toString("base64");
+  /** `body` with key 7 the Blake2b-256 of `aux`. */
+  const committing = (body: Uint8Array, aux: Uint8Array) =>
+    cborg.encode(new Map([...bodyOf(body), [7, blake2b(aux, { dkLen: 32 })]]));
+  /** The SHA-256 of the empty string (FIPS 180-2): a hash other than H. */
+  const OTHER = "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" as const;
+  /** What a row's expect states: a refusal code, or, for the status row, a settled read with no confirmations. */
+  const wanted = (code: string) =>
+    code === "settled with 0 confirmations" ? expect.objectContaining({ state: "settled", confirmations: 0n }) : refused(code);
+  /** decodeCardanoTx's answer: its refusal, or the hash or refusal it reads from the metadata. */
+  const decoded = async (t: string) => {
+    const d = await decodeCardanoTx(t);
+    return "refused" in d ? d : d.h;
+  };
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    // The body as an array of its entries; key 3 twice; a text key; key 3 as text; key 7 of 31 and 33 bytes and an
+    // integer; and the third item null, then the integer 1.
+    "a body that is not a map, duplicate or non-integer body keys, a non-integer key 3, key 7 not 32 bytes, or the third item not a bool":
+      async () => {
+        const [body, witnesses, valid, aux] = v2Items();
+        const map = bodyOf(body);
+        const entries = body.subarray(1);
+        const key7 = map.get(7) as Uint8Array;
+        const ttl = cborg.encode(map.get(3));
+        const txs = [
+          cborg.encode([...map.entries()]),
+          Uint8Array.from([0xa6, ...entries, ...cborg.encode(3), ...ttl]),
+          Uint8Array.from([0xa6, ...entries, ...cborg.encode("3"), ...ttl]),
+          cborg.encode(new Map([...map, [3, String(map.get(3))]])),
+          cborg.encode(new Map([...map, [7, key7.subarray(0, 31)]])),
+          cborg.encode(new Map([...map, [7, Uint8Array.from([...key7, 0])]])),
+          cborg.encode(new Map([...map, [7, 0]])),
+        ].map((b) => tx(b, witnesses, valid, aux));
+        txs.push(tx(body, witnesses, Uint8Array.of(0xf6), aux), tx(body, witnesses, Uint8Array.of(0x01), aux));
+        const out: unknown[] = [];
+        for (const t of txs) out.push(await decoded(t), await exactCardano.bound(payment(t)));
+        return out;
+      },
+    "key 7 present with nil auxiliary data": async () => {
+      const [body, witnesses, valid] = v2Items();
+      expect(bodyOf(body).get(7)).toHaveLength(32);
+      const t = tx(body, witnesses, valid, Uint8Array.of(0xf6));
+      return [await decoded(t), await exactCardano.bound(payment(t))];
+    },
+    // V1's auxiliary data, #6.259({0: {674: …}}), as a byte string and under tag 258; and with label 675 for 674.
+    "auxiliary data in none of the three metadata forms, or without label 674": async () => {
+      const [body, witnesses, valid, aux] = v2Items();
+      const hex = Buffer.from(aux).toString("hex");
+      expect(hex.slice(0, 18)).toBe("d90103a100a11902a2");
+      const out: unknown[] = [];
+      const label675 = Buffer.from(`${hex.slice(0, 16)}a3${hex.slice(18)}`, "hex");
+      for (const a of [cborg.encode(aux), Buffer.from(`d90102${hex.slice(6)}`, "hex"), label675]) {
+        const t = tx(committing(body, a), witnesses, valid, a);
+        out.push(await decoded(t), await exactCardano.bound(payment(t)));
+      }
+      return out;
+    },
+    "a label-674 map that repeats a key, or metadata that holds label 674 more than once": async () => {
+      const out: unknown[] = [];
+      for (const name of [
+        "label 674 repeats the msg key, the carrier first",
+        "label 674 repeats a key other than msg",
+        "the metadata repeats label 674",
+      ]) {
+        const t: string = V.V4.find((r: { case: string }) => r.case === name).transactionBase64;
+        out.push(await decoded(t), await exactCardano.bound(payment(t)));
+      }
+      return out;
+    },
+    "an option with scheme exact and a cardano: or cip34: network outside the named set": async () => {
+      const out: unknown[] = [];
+      for (const network of ["cardano:sanchonet", "cardano:testnet", "cip34:0-4", "cip34:1-1"]) {
+        const o = { ...O, network };
+        const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [o] };
+        out.push(
+          await exactCardano.bound(payment(V.V2.transactionBase64, o)),
+          await exactCardano.reference(payment(V.V2.transactionBase64, o)),
+          await exactCardano.build({ required: doc, accepted: o }, H),
+          exactCardano.advertise(doc, H, LINK, o),
+        );
+      }
+      return out;
+    },
+    "payload.transaction or payload.nonce not a string": async () => {
+      const out: unknown[] = [];
+      for (const transaction of [7, null, undefined]) {
+        const p = { ...payment(""), payload: { transaction, nonce: V.fixed.nonce } };
+        out.push(await exactCardano.bound(p), await exactCardano.reference(p));
+      }
+      for (const nonce of [7, null, undefined]) {
+        const p = { ...payment(""), payload: { transaction: V.V2.transactionBase64, nonce } };
+        out.push(await exactCardano.bound(p), await exactCardano.reference(p));
+      }
+      return out;
+    },
+    // V2's id, included in V5's block: V3's bytes, whose body hashes to V3's id, and no cbor. V2's bytes give H.
+    "recover on included bytes whose body does not hash to the id, or with no cbor": async () => {
+      const ref = { network: "cardano:preprod" as const, txId: V.V2.expectReference.txId };
+      const included = V.V5.status[0].tx;
+      expect(await exactCardano.recover(ref, reader(V.V5.tip, included, TX["V2"]))).toBe(H);
+      return [
+        await exactCardano.recover(ref, reader(V.V5.tip, included, TX["V3"])),
+        await exactCardano.recover(ref, reader(V.V5.tip, included)),
+      ];
+    },
+    // V5's tip and reference, with the inclusion read 1 and 1,000 blocks above the tip.
+    "status: an inclusion read above the tip read before it": async () => {
+      const out: unknown[] = [];
+      for (const above of [1n, 1000n]) {
+        const blockHeight = (BigInt(V.V5.tip.blockHeight) + above).toString();
+        const r = reader(V.V5.tip, { ...V.V5.status[0].tx, blockHeight });
+        out.push(await exactCardano.status(refOf(V.V5.ref), r, DEPTH));
+      }
+      return out;
+    },
+    // Built for H: V3's transaction, whose bound refuses, and V2's body without key 3, whose bound is H and whose
+    // reference refuses ttl-missing. Built for another hash: V2's transaction, whose bound is H.
+    "complete with a payload whose bound is not the built hash, or whose reference refuses": async () => {
+      const required = exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
+      if ("refused" in required) throw new Error(required.code);
+      const forH = await exactCardano.build({ required, accepted: O }, H);
+      const forOther = await exactCardano.build({ required, accepted: O }, OTHER);
+      if ("refused" in forH) throw new Error(forH.code);
+      if ("refused" in forOther) throw new Error(forOther.code);
+      const [body, witnesses, valid, aux] = v2Items();
+      const map = bodyOf(body);
+      expect(map.delete(3)).toBe(true);
+      const noTtl = tx(cborg.encode(map), witnesses, valid, aux);
+      expect(await exactCardano.bound(payment(noTtl))).toBe(H);
+      expect(await exactCardano.reference(payment(noTtl))).toEqual(refused("cardano/ttl-missing"));
+      const nonce: string = V.fixed.nonce;
+      return [
+        await forH.complete({ transaction: V.V3.transactionBase64, nonce }),
+        await forH.complete({ transaction: noTtl, nonce }),
+        await forOther.complete({ transaction: V.V2.transactionBase64, nonce }),
+      ];
+    },
+  };
+
+  it("names a case for every row it runs, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(wanted(row.expect));
     });
   }
 });

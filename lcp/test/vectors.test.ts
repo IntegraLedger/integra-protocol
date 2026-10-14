@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { domainSeparator, hashStruct, hashTypedData, recoverTypedDataAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { hash, hashEquals, type AtrHash } from "../src/index.js";
+import { hash, hashEquals, isHttpsLink, type AtrHash } from "../src/index.js";
 import { AUTHORIZATION_USED_TOPIC, ReaderError, evmStatus, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
 import {
   exactEip3009,
@@ -14,6 +14,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const P = load("x402-exact-eip155-eip3009.json");
@@ -85,7 +86,7 @@ describe("x402-exact-eip155-eip3009.json", () => {
   });
 
   it("V3", async () => {
-    for (const row of P.V3) {
+    for (const row of rowsOf(P.V3, "x402-exact-eip155-eip3009.json V3")) {
       const c = await requestCommitment({
         method: row.method,
         target: row.target,
@@ -121,17 +122,17 @@ describe("x402-exact-eip155-eip3009.json", () => {
 
   it("V6", async () => {
     const ref = P.V6.ref;
-    for (const row of P.V6.status) {
+    for (const row of rowsOf(P.V6.status, "x402-exact-eip155-eip3009.json V6.status")) {
       expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt)))).toEqual(row.expect);
     }
-    for (const row of P.V6.recover) {
+    for (const row of rowsOf(P.V6.recover, "x402-exact-eip155-eip3009.json V6.recover")) {
       const tx = { network: ref.network, asset: ref.asset, transaction: ref.transaction };
       expect(await exactEip3009.recover(tx, readerFor(row.receipt))).toEqual(row.expect);
     }
   });
 
   it("V6: a named transaction that is not this payment is failed", async () => {
-    for (const row of P.V6.notThisPayment.rows) {
+    for (const row of rowsOf(P.V6.notThisPayment.rows, "x402-exact-eip155-eip3009.json V6.notThisPayment.rows")) {
       expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt))), row.case).toEqual(row.expect);
     }
   });
@@ -140,7 +141,7 @@ describe("x402-exact-eip155-eip3009.json", () => {
     const ref = P.V6.ref;
     const bindingLog = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
     const asEvmRef = { network: ref.network, transaction: ref.transaction, bindingLog, transferLog: ref.transferLog };
-    for (const row of P.V6.pairing.rows) {
+    for (const row of rowsOf(P.V6.pairing.rows, "x402-exact-eip155-eip3009.json V6.pairing.rows", { exact: 7 })) {
       expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt))), row.name).toEqual(row.expect);
       expect(withBigints(await evmStatus(asEvmRef, readerFor(row.receipt))), row.name).toEqual(row.expect);
     }
@@ -163,7 +164,14 @@ describe("x402-exact-eip155-eip3009.json", () => {
   // legal context's info, its legal context or its accepts replaced; build of V1's choice with another option.
   it("agreedRefusals: each row that carries its input", async () => {
     type Row = { case: string; expect: string } & Partial<Record<"choice" | "info" | "legalContext" | "accepts" | "accepted", unknown>>;
-    const rows = (P.agreedRefusals.rows as Row[]).filter((r) => Object.keys(r).length > 2);
+    const rows = rowsOf(P.agreedRefusals.rows as Row[], "x402-exact-eip155-eip3009.json agreedRefusals.rows", {
+      exact: 9,
+      keep: ["the rows that carry their input", (r) => Object.keys(r).length > 2],
+      leave: [
+        'the rows of only case and expect, which "agreedRefusals: each row of only case and expect" runs',
+        (r) => Object.keys(r).length === 2,
+      ],
+    });
     expect(rows.map((r) => Object.keys(r).filter((k) => k !== "case" && k !== "expect"))).toEqual([
       ["choice"], ["choice"], ["info"], ["info"], ["legalContext"], ["info"], ["info"], ["accepts"], ["accepted"],
     ]);
@@ -202,6 +210,90 @@ describe("x402-exact-eip155-eip3009.json", () => {
     const r = exactEip3009.read(doc);
     if ("refused" in r) throw new Error(r.code);
     expect([r.h, r.link]).toEqual([H, at2048]);
+  });
+
+  // The rows of only case and expect: each runs every condition its case names, on V5's document, V1's choice, V1's
+  // unsigned payment and V2's payment, each with the one member the condition names changed.
+  describe("agreedRefusals: each row of only case and expect", () => {
+    type Row = { case: string; expect: string };
+    const rows = rowsOf(P.agreedRefusals.rows as Row[], "x402-exact-eip155-eip3009.json agreedRefusals.rows", {
+      keep: ["the rows of only case and expect", (r) => Object.keys(r).length === 2],
+      leave: [
+        'the rows that carry their input, which "agreedRefusals: each row that carries its input" runs',
+        (r) => Object.keys(r).length > 2,
+      ],
+    });
+    const choice = { required, accepted: O, from: P.fixed.payer as Hex, now: P.fixed.now as number };
+    /** V5's document with the members of its legal context's info that `info` names replaced. */
+    const withInfo = (info: Record<string, unknown>) => {
+      const doc = structuredClone(P.V5.expectDocument);
+      doc.extensions.legalContext.info = { ...doc.extensions.legalContext.info, ...info };
+      return doc;
+    };
+    /** V1's choice with V1's option changed as `over` says, as the one entry of required.accepts and as accepted. */
+    const withOption = (over: Record<string, unknown>) => {
+      const accepted = { ...O, ...over } as PaymentRequirements;
+      return exactEip3009.build({ ...choice, required: { ...required, accepts: [accepted] }, accepted }, H);
+    };
+    /** V2's payment with its signature replaced. */
+    const withSignature = (signature: string) =>
+      ({ ...P.V2.expectPayload, payload: { ...P.V2.expectPayload.payload, signature } }) as PaymentPayload;
+    const over32 = Array.from({ length: 33 }, () => O);
+    const longLink = (link: string) => link + "a".repeat(2049 - link.length);
+    const signature: string = P.V1.expectSignature;
+
+    const cases: Record<string, () => Promise<unknown[]>> = {
+      "read or build with accepts not a list, or over 32 options": async () => [
+        exactEip3009.read({ ...structuredClone(P.V5.expectDocument), accepts: O }),
+        exactEip3009.read({ ...structuredClone(P.V5.expectDocument), accepts: over32 }),
+        await exactEip3009.build({ ...choice, required: { ...required, accepts: O as never } }, H),
+        await exactEip3009.build({ ...choice, required: { ...required, accepts: over32 } }, H),
+      ],
+      "read with a legalContext link over 2048 characters": async () => [
+        exactEip3009.read(withInfo({ legalContextUrl: longLink(P.fixed.link) })),
+        exactEip3009.read(withInfo({ legalContextAgreementUrl: longLink(P.MX.advertise.agreementUrl) })),
+      ],
+      "read with legalContextUrl and legal_context_url present and different": async () => [
+        exactEip3009.read(withInfo({ legal_context_url: `${P.fixed.link}?v=other` })),
+      ],
+      "build with a malformed from, asset, payTo, maxTimeoutSeconds or now, or an amount of 2^256 or more": async () => [
+        await exactEip3009.build({ ...choice, from: "0x1234" }, H),
+        await withOption({ asset: "0x1234" }),
+        await withOption({ payTo: "0x1234" }),
+        await withOption({ maxTimeoutSeconds: 1.5 }),
+        await exactEip3009.build({ ...choice, now: -1 }, H),
+        await withOption({ amount: (2n ** 256n).toString() }),
+      ],
+      "build with a nonce that is not 0x and 64 hex digits": async () => [
+        await exactEip3009.build(choice, H.slice(2) as AtrHash),
+        await exactEip3009.build(choice, H.slice(0, -1) as AtrHash),
+        await exactEip3009.build(choice, `${H.slice(0, -1)}g` as AtrHash),
+      ],
+      "complete with a signature outside 65 to 8192 decoded bytes": async () => {
+        const u = await unsigned();
+        return [u.complete(`0x${"11".repeat(64)}`), u.complete(`0x${"11".repeat(8193)}`)];
+      },
+      "bound with a signature over 8192 decoded bytes, or not 0x and an even number of hex digits": async () => [
+        await exactEip3009.bound(withSignature(`0x${"11".repeat(8193)}`)),
+        await exactEip3009.bound(withSignature(signature.slice(2))),
+        await exactEip3009.bound(withSignature(signature.slice(0, -1))),
+        await exactEip3009.bound(withSignature(`${signature.slice(0, -1)}g`)),
+      ],
+    };
+
+    it("names a case for every row, and no other", () => {
+      expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+    });
+
+    for (const row of rows) {
+      it(row.case, async () => {
+        // Each row's expect is one refusal code.
+        expect(row.expect).toMatch(/^x402\/[a-z0-9-]+$/);
+        const results = await cases[row.case]!();
+        expect(results.length).toBeGreaterThan(0);
+        for (const r of results) expect(r).toEqual({ refused: true, code: row.expect });
+      });
+    }
   });
 });
 
@@ -272,6 +364,91 @@ describe("buyer.json: the rows the core and the binding can check", () => {
     expect(hashEquals(bound as string, await hash(A))).toBe(true);
     expect(hashEquals(bound as string, await hash(C))).toBe(false);
   });
+
+  // The rows below run the parts of the gate's row that this package implements: the hash compared, the read, the
+  // bound and the build. Each outcome is the row's own expect, less the counts of fetches and signer calls, which are
+  // the gate's.
+  const account = B.fixed.account.split(":")[2] as Hex;
+  /** The read of `doc`, and the build of its first option for the fixed account and time with the H read. */
+  const built = async (doc: unknown) => {
+    const read = exactEip3009.read(doc);
+    if ("refused" in read) throw new Error(read.code);
+    const u = await exactEip3009.build(
+      { required: read.offer.required, accepted: read.offer.options[0]!, from: account, now: B.fixed.now },
+      read.h,
+    );
+    if ("refused" in u) throw new Error(u.code);
+    return { read, u };
+  };
+  /** The gate's comparison of a hash it holds with the H it compared: that H when they are equal, else the decline. */
+  const compared = (got: string, h: string, decline: string) => (hashEquals(got, h) ? { h } : { decline });
+
+  it("B2: C, which the link serves, does not hash to the H that D advertises: hash-mismatch", async () => {
+    const r = row("B2");
+    const { read } = await built(B.fixed[r.input.doc]);
+    const served = await hash(fromHex(B.fixed[r.input.serves]));
+    expect(compared(served, read.h, "hash-mismatch")).toEqual({ decline: r.expect.decline });
+  });
+
+  it("B7: the B6 payment checked against A gives A's hash, and against C is signed-not-bound", async () => {
+    const r = row("B7");
+    const { u } = await built(B.fixed.D);
+    const presented = u.complete(row("B6").expect.signature) as PaymentPayload;
+    const got = [];
+    for (const c of rowsOf(r.input.check as { bytes: string; presented: string }[], "buyer.json B7 input.check")) {
+      expect(c.presented).toBe("B6 signed");
+      got.push(compared((await exactEip3009.bound(presented)) as string, await hash(fromHex(B.fixed[c.bytes])), "signed-not-bound"));
+    }
+    expect(got).toEqual(r.expect);
+  });
+
+  it("B9: a payment bound to C's hash is not bound to the H compared, A's: signed-not-bound", async () => {
+    const r = row("B9");
+    expect(compared(B.fixed[r.input.stubBound], await hash(A), "signed-not-bound")).toEqual({ decline: r.expect.decline });
+  });
+
+  it("B10: D with an http link is refused at read with the row's detail, and an http link is not an https link", () => {
+    const r = row("B10");
+    expect(r.input[0].doc).toBe("D with an http:// link");
+    const doc = structuredClone(B.fixed.D);
+    doc.extensions.legalContext.info.legalContextUrl = B.fixed.link.replace("https:", "http:");
+    const read = exactEip3009.read(doc);
+    const first = "refused" in read ? { decline: "offer-unreadable", detail: read.code } : { h: read.h };
+    const link: string = r.input[1].stubRead.link;
+    const second = isHttpsLink(link) ? { link } : { decline: "link-not-https" };
+    expect([first, second]).toEqual(r.expect.map(({ fetches: _, ...e }: { fetches: number }) => e));
+  });
+
+  it("B12: a body of 1 MiB, the most the gate reads, does not hash to the H that D advertises: hash-mismatch", async () => {
+    const r = row("B12");
+    const { read } = await built(B.fixed[r.input.doc]);
+    expect(r.input.bodyLength).toBe(1_048_576);
+    expect(compared(await hash(new Uint8Array(r.input.bodyLength)), read.h, "hash-mismatch")).toEqual(r.expect);
+  });
+
+  it("BA2: the agreement challenge requiredOtherHash advertises C's hash, not the H that D advertises: hash-mismatch", async () => {
+    const r = row("BA2");
+    expect(r.input.agreement).toEqual([{ status: 402, paymentRequired: "requiredOtherHash" }]);
+    const { read } = await built(B.fixed.D);
+    const other = await built(B.fixed.agreement[r.input.agreement[0].paymentRequired]);
+    expect(other.read.h).toBe(await hash(C));
+    expect(compared(other.read.h, read.h, "hash-mismatch")).toEqual({ decline: r.expect.decline });
+  });
+
+  it("BA6: D with the agreement URL after its link reads through the pairing, whose payment is a public proof, and builds B6", async () => {
+    const r = row("BA6");
+    const doc = structuredClone(B.fixed.D);
+    doc.extensions.legalContext.info = { ...doc.extensions.legalContext.info, legalContextAgreementUrl: B.fixed.agreement.url };
+    expect(Object.keys(doc.extensions.legalContext.info)).toEqual(["type", "value", "legalContextUrl", "legalContextAgreementUrl"]);
+    const { read, u } = await built(doc);
+    expect([read.h, read.link, read.agreement]).toEqual([await hash(A), B.fixed.link, B.fixed.agreement.url]);
+    const b6 = row("B6").expect;
+    const signed = u.complete(b6.signature) as PaymentPayload;
+    const isB6 = hashTypedData(forViem(u.typedData)) === b6.digest && signed.payload.signature === b6.signature;
+    // The gate pays the agreement URL only where the pairing's payment is not itself a public proof of H.
+    const outcome = { agreementFetches: exactEip3009.pattern.publicProof ? 0 : 1, paymentSignature: isB6 ? "B6" : signed.payload.signature };
+    expect(outcome).toEqual({ agreementFetches: r.expect.agreementFetches, paymentSignature: r.expect.paymentSignature });
+  });
 });
 
 // docs/concepts/vectors.md: refusal codes are this package's own, and a file's agreedRefusals rows hold the codes for
@@ -279,7 +456,9 @@ describe("buyer.json: the rows the core and the binding can check", () => {
 // member a row carries as true, and a row carries no marker its file's about does not explain.
 describe("every vector file's about names only the markers its rows carry", () => {
   const dir = new URL("../vectors/", import.meta.url);
-  const files = readdirSync(dir).filter((n) => n.endsWith(".json"));
+  const files = rowsOf(readdirSync(dir).filter((n) => n.endsWith(".json")), "vectors/, the .json files", {
+    exact: readdirSync(dir).length,
+  });
   const values = (v: unknown, key: string, out: unknown[] = []): unknown[] => {
     if (Array.isArray(v)) for (const x of v) values(x, key, out);
     else if (typeof v === "object" && v !== null) {

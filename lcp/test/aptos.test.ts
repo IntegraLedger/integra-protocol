@@ -38,6 +38,7 @@ import {
   type AptosRef,
 } from "../src/aptos.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-aptos.json", import.meta.url), "utf8"));
 const H: `0x${string}` = V.fixed.H;
@@ -225,7 +226,7 @@ describe("V3 · bound", () => {
 });
 
 describe("V4 · status", () => {
-  for (const row of V.V4.status) {
+  for (const row of rowsOf(V.V4.status, "x402-exact-aptos.json V4.status")) {
     it(row.case, async () => {
       const r = reader(row);
       expect(plain(await exactAptos.status(refOf(row.ref), r))).toEqual(row.expect);
@@ -297,7 +298,7 @@ describe("V4 · status", () => {
   // same form (V4). Each row's reader would otherwise answer the row's expect.
   it("a ref whose sender, idDigest or named transaction is not 0x and 64 hex digits is unreadable, with nothing read", async () => {
     const named: string = V.V4.status[0].ref.transaction;
-    for (const row of V.V4.status) {
+    for (const row of rowsOf(V.V4.status, "x402-exact-aptos.json V4.status")) {
       for (const key of ["sender", "idDigest", "transaction"] as const) {
         const good: string = row.ref[key] ?? named;
         const forms: unknown[] = [null, 1, {}, [], "", "0x12", good.slice(0, 64), `${good}00`, good.slice(2)];
@@ -315,7 +316,7 @@ describe("V4 · status", () => {
   });
   it("a ref in upper-case hex reads as the vector's ref, and the reader is given the sender and transaction in lowercase", async () => {
     const upper = (s: string) => `0x${s.slice(2).toUpperCase()}` as `0x${string}`;
-    for (const row of V.V4.status) {
+    for (const row of rowsOf(V.V4.status, "x402-exact-aptos.json V4.status")) {
       const ref = refOf(row.ref);
       const shouted: AptosRef = { ...ref, sender: upper(ref.sender), idDigest: upper(ref.idDigest) };
       if (ref.transaction !== undefined) shouted.transaction = upper(ref.transaction);
@@ -402,9 +403,14 @@ type RefusalRow = { case: string; transaction?: { $repeat: [string, number] } | 
 // The agreedRefusals row whose transaction is written {"$repeat": [s, n]}: s repeated n times, each s four UTF-16 code
 // units and three code points. Its length is counted in UTF-16 code units, as the about states.
 describe("x402-exact-aptos.json agreedRefusals: a transaction beyond the BMP over the decoded bound", () => {
-  const rows = (V.agreedRefusals.rows as RefusalRow[]).filter(
-    (r): r is RefusalRow & { transaction: { $repeat: [string, number] } } => typeof r.transaction === "object",
-  );
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-aptos.json agreedRefusals.rows", {
+    exact: 1,
+    keep: ["the row whose transaction is an object with $repeat", (r) => typeof r.transaction === "object"],
+    leave: [
+      "the row whose transaction is text, run by the describe block below, and the rows that give no transaction, run by base64.test.ts, the U+FEFF identifier test above and the runner at the end of this file",
+      (r) => typeof r.transaction === "string" || r.transaction === undefined,
+    ],
+  }) as (RefusalRow & { transaction: { $repeat: [string, number] } })[];
   it("one row, whose text is 87384 UTF-16 code units and 65538 code points", () => {
     expect(rows).toHaveLength(1);
     const [s, n] = rows[0]!.transaction!.$repeat;
@@ -421,9 +427,14 @@ describe("x402-exact-aptos.json agreedRefusals: a transaction beyond the BMP ove
 
 // The agreedRefusals rows whose transaction is a string: the text as given.
 describe("x402-exact-aptos.json agreedRefusals: a transaction given as text", () => {
-  const rows = (V.agreedRefusals.rows as RefusalRow[]).filter(
-    (r): r is RefusalRow & { transaction: string } => typeof r.transaction === "string",
-  );
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-aptos.json agreedRefusals.rows", {
+    exact: 1,
+    keep: ["the row whose transaction is text", (r) => typeof r.transaction === "string"],
+    leave: [
+      "the row whose transaction is an object with $repeat, run by the describe block above, and the rows that give no transaction, run by base64.test.ts, the U+FEFF identifier test above and the runner at the end of this file",
+      (r) => typeof r.transaction === "object" || r.transaction === undefined,
+    ],
+  }) as (RefusalRow & { transaction: string })[];
   it("one row", () => {
     expect(rows).toHaveLength(1);
   });
@@ -431,6 +442,138 @@ describe("x402-exact-aptos.json agreedRefusals: a transaction given as text", ()
     it(`${r.case}: ${r.expect}`, async () => {
       expect(decodeAptosTx(r.transaction)).toEqual({ refused: true, code: r.expect });
       expect(await exactAptos.reference(payment(r.transaction))).toEqual({ refused: true, code: r.expect });
+    });
+  }
+});
+
+// Each agreedRefusals row that gives no transaction, run from the vector's own data: fixture F's RawTransaction with
+// one part changed, the option O and its document, and V4's status row whose bySequence lookup is the real answer.
+// The rows that give a transaction run in the two describe blocks above, the row for text that is not padded standard
+// base64 in base64.test.ts, and the row for a name that is not a Move identifier in "a module, function or struct name
+// with a leading U+FEFF is not a Move identifier" above.
+describe("x402-exact-aptos.json agreedRefusals: every row that gives no transaction runs", () => {
+  const elsewhere = (r: RefusalRow) =>
+    r.case.startsWith("a transaction that is not padded standard base64") ||
+    r.case.startsWith("a module, function or struct name");
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-aptos.json agreedRefusals.rows", {
+    keep: ["the rows that give no transaction, run below", (r) => r.transaction === undefined && !elsewhere(r)],
+    leave: [
+      "the rows that give a transaction, run by the two describe blocks above; the row for text that is not padded standard base64, run by base64.test.ts; and the row for a name that is not a Move identifier, run by the U+FEFF identifier test above",
+      (r) =>
+        typeof r.transaction === "string" ||
+        (typeof r.transaction === "object" && "$repeat" in r.transaction) ||
+        elsewhere(r),
+    ],
+  });
+  /** Both wire forms of `bytes`: base64 of the bytes, and x402's reference form, base64 of the JSON that holds them. */
+  const wires = (bytes: Uint8Array) => [
+    Buffer.from(bytes).toString("base64"),
+    Buffer.from(JSON.stringify({ transaction: Array.from(bytes), senderAuthenticator: [] })).toString("base64"),
+  ];
+  /** Fixture F's RawTransaction with the payload's variant, the ULEB128 after the sender and sequence number, as `uleb`. */
+  const withVariant = (uleb: number[]) => {
+    const b = raw().bcsToBytes();
+    expect(b[40]).toBe(2);
+    return Uint8Array.from([...b.subarray(0, 40), ...uleb, ...b.subarray(41)]);
+  };
+  /** What a row's expect states: a refusal code, or, for the status row, the status pending unreadable. */
+  const wanted = (code: string) =>
+    code === "pending unreadable" ? { state: "pending", why: "unreadable" } : { refused: true, code };
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    // Cut inside the sequence number and before the chain id; the payload's variant as 2^32 (five bytes) and 2^35 (six
+    // bytes), and its value 2 as the two bytes 0x82 0x00.
+    "a RawTransaction prefix that ends early, or a ULEB128 that is over 2^32-1 or not in its shortest form": async () => {
+      const b = raw().bcsToBytes();
+      expect(decodeAptosTx(wires(b)[0]!)).not.toHaveProperty("refused");
+      const out: unknown[] = [];
+      for (const bytes of [
+        b.subarray(0, 39),
+        b.subarray(0, b.length - 1),
+        withVariant([0x80, 0x80, 0x80, 0x80, 0x10]),
+        withVariant([0x80, 0x80, 0x80, 0x80, 0x80, 0x01]),
+        withVariant([0x82, 0x00]),
+      ]) {
+        for (const wire of wires(bytes)) out.push(decodeAptosTx(wire), await exactAptos.reference(payment(wire)));
+      }
+      return out;
+    },
+    "a type argument that is not a struct, or a struct with type arguments": async () => {
+      const generic = new TypeTagStruct(
+        new StructTag(AccountAddress.ONE, new Identifier("fungible_asset"), new Identifier("Metadata"), [parseTypeTag("u8")]),
+      );
+      const out: unknown[] = [];
+      for (const typeArgument of [parseTypeTag("u64"), parseTypeTag("vector<u8>"), generic]) {
+        const r = raw(transferPayload("primary_fungible_store", "transfer", typeArgument));
+        for (const wire of [referenceWire(r), signedWire(r)]) {
+          out.push(decodeAptosTx(wire), await exactAptos.reference(payment(wire)));
+        }
+      }
+      return out;
+    },
+    "an option with scheme exact and an aptos: network whose chain id is not 1 to 255 without a leading zero": async () => {
+      const wire = referenceWire(raw());
+      const out: unknown[] = [];
+      for (const network of ["aptos:0", "aptos:256", "aptos:01", "aptos:1000"]) {
+        const o = { ...O, network };
+        const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [o] };
+        out.push(
+          await exactAptos.bound(payment(wire, undefined, o)),
+          await exactAptos.reference(payment(wire, undefined, o)),
+          await exactAptos.build({ required: doc, accepted: o }, H),
+          exactAptos.advertise(doc, H, LINK, o),
+        );
+      }
+      return out;
+    },
+    "payload.transaction not a string": async () => {
+      const out: unknown[] = [];
+      for (const transaction of [7, null, undefined, Array.from(raw().bcsToBytes())]) {
+        const p = { ...payment(""), payload: { transaction } };
+        out.push(await exactAptos.bound(p), await exactAptos.reference(p));
+      }
+      return out;
+    },
+    // Fixture F on chain 2 for aptos:1, text that is not base64, and a script payload: each reference refuses.
+    "complete with a transaction whose reference refuses": async () => {
+      const required = exactAptos.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
+      if ("refused" in required) throw new Error(required.code);
+      const u = await exactAptos.build({ required, accepted: O }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const script = new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], []));
+      const out: unknown[] = [];
+      for (const transaction of [referenceWire(raw(transferPayload(), 2)), "AAA", signedWire(raw(script))]) {
+        expect(await exactAptos.reference(payment(transaction))).toHaveProperty("refused", true);
+        out.push(u.complete({ transaction }));
+      }
+      return out;
+    },
+    // V4's row whose bySequence lookup is the real answer, which settles; then a ledger for chain 2, and that answer
+    // for another sender (fixture F's fee payer) and for the next sequence number.
+    "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number":
+      async () => {
+        const row = V.V4.status.find((r: { case: string }) => r.case === "byHash null, bySequence the real answer");
+        const ref = refOf(row.ref);
+        expect(plain(await exactAptos.status(ref, reader(row)))).toEqual(row.expect);
+        expect(row.expect.state).toBe("settled");
+        const next = (BigInt(F.sequenceNumber) + 1n).toString();
+        return [
+          await exactAptos.status(ref, reader(row, "aptos:1", 2)),
+          await exactAptos.status(ref, reader({ ...row, bySequence: { ...row.bySequence, sender: F.feePayer } })),
+          await exactAptos.status(ref, reader({ ...row, bySequence: { ...row.bySequence, sequence_number: next } })),
+        ];
+      },
+  };
+
+  it("names a case for every row it runs, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual(wanted(row.expect));
     });
   }
 });

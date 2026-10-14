@@ -11,6 +11,7 @@ import { ReaderError } from "../src/evm.js";
 import { pairingOf } from "../src/index.js";
 import { decodeSuiTx, exactSui, suiCarrier, type SuiReader, type SuiRef } from "../src/sui.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
 const H: `0x${string}` = V.fixed.H;
@@ -233,7 +234,7 @@ describe("V2 · carried", () => {
 });
 
 describe("the Validity expiration", () => {
-  for (const row of V.validity.rows) {
+  for (const row of rowsOf(V.validity.rows, "x402-exact-sui.json validity.rows")) {
     it(row.case, async () => {
       const tx = decodeSuiTx(row.tx.transactionBase64);
       if ("refused" in tx) throw new Error(tx.code);
@@ -249,7 +250,7 @@ describe("the Validity expiration", () => {
 });
 
 describe("V3 · refusals", () => {
-  for (const row of V.V3) {
+  for (const row of rowsOf(V.V3, "x402-exact-sui.json V3")) {
     it(row.case, async () => {
       const b64 = row.zeroBytes !== undefined ? Buffer.alloc(row.zeroBytes).toString("base64") : row.tx.transactionBase64;
       if (row.tx !== undefined) {
@@ -270,7 +271,7 @@ describe("V3 · refusals", () => {
 });
 
 describe("V4 · status and recover", () => {
-  for (const row of V.V4.status) {
+  for (const row of rowsOf(V.V4.status, "x402-exact-sui.json V4.status")) {
     it(`status: ${row.case}`, async () => {
       const ref = refOf({ ...V.V4.ref, network: row.refNetwork ?? V.V4.ref.network });
       const network = row.readerNetwork ?? V.V4.ref.network;
@@ -340,7 +341,7 @@ describe("V4 · status and recover", () => {
   it("status: a ref whose digest is not base58 of 32 bytes, or whose h is not 0x and 64 hex digits, is unreadable", async () => {
     const badHashes: unknown[] = [undefined, null, 1, {}, [], "", "0x12", H.slice(0, 64), `${H}00`, H.slice(2), `0X${H.slice(2)}`];
     badHashes.push(`0xg${H.slice(3)}`);
-    const rows = [...V.V4.status, V.plant];
+    const rows = [...rowsOf(V.V4.status, "x402-exact-sui.json V4.status"), V.plant];
     for (const [key, forms] of [["digest", badDigests], ["h", badHashes]] as const) {
       for (const row of rows) {
         for (const v of forms) {
@@ -362,7 +363,7 @@ describe("V4 · status and recover", () => {
       }
     }
   });
-  for (const row of V.V4.recover) {
+  for (const row of rowsOf(V.V4.recover, "x402-exact-sui.json V4.recover")) {
     it(`recover: ${row.case}`, async () => {
       const r = reader(V.V4.ref.network, row.answer);
       const got = await exactSui.recover({ network: V.V4.ref.network, digest: row.digest }, r);
@@ -489,9 +490,14 @@ type RefusalRow = { case: string; transaction?: { $repeat: [string, number] } | 
 // The agreedRefusals row whose transaction is written {"$repeat": [s, n]}: s repeated n times, each s four UTF-16 code
 // units and three code points. Its length is counted in UTF-16 code units, as the about states.
 describe("x402-exact-sui.json agreedRefusals: a transaction beyond the BMP over the decoded bound", () => {
-  const rows = (V.agreedRefusals.rows as RefusalRow[]).filter(
-    (r): r is RefusalRow & { transaction: { $repeat: [string, number] } } => typeof r.transaction === "object",
-  );
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-sui.json agreedRefusals.rows", {
+    exact: 1,
+    keep: ["the row whose transaction is an object with $repeat", (r) => typeof r.transaction === "object"],
+    leave: [
+      "the row whose transaction is text, run by the describe block below, and the rows that give no transaction, run by base64.test.ts, sui-peer-missing.test.ts and the runner at the end of this file",
+      (r) => typeof r.transaction === "string" || r.transaction === undefined,
+    ],
+  }) as (RefusalRow & { transaction: { $repeat: [string, number] } })[];
   it("one row, whose text is 174764 UTF-16 code units and 131073 code points", () => {
     expect(rows).toHaveLength(1);
     const [s, n] = rows[0]!.transaction!.$repeat;
@@ -508,9 +514,14 @@ describe("x402-exact-sui.json agreedRefusals: a transaction beyond the BMP over 
 
 // The agreedRefusals rows whose transaction is a string: the text as given.
 describe("x402-exact-sui.json agreedRefusals: a transaction given as text", () => {
-  const rows = (V.agreedRefusals.rows as RefusalRow[]).filter(
-    (r): r is RefusalRow & { transaction: string } => typeof r.transaction === "string",
-  );
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-sui.json agreedRefusals.rows", {
+    exact: 1,
+    keep: ["the row whose transaction is text", (r) => typeof r.transaction === "string"],
+    leave: [
+      "the row whose transaction is an object with $repeat, run by the describe block above, and the rows that give no transaction, run by base64.test.ts, sui-peer-missing.test.ts and the runner at the end of this file",
+      (r) => typeof r.transaction === "object" || r.transaction === undefined,
+    ],
+  }) as (RefusalRow & { transaction: string })[];
   it("one row", () => {
     expect(rows).toHaveLength(1);
   });
@@ -518,6 +529,147 @@ describe("x402-exact-sui.json agreedRefusals: a transaction given as text", () =
     it(`${r.case}: ${r.expect}`, async () => {
       expect(decodeSuiTx(r.transaction)).toEqual({ refused: true, code: r.expect });
       expect(await exactSui.bound(payment(r.transaction))).toEqual({ refused: true, code: r.expect });
+    });
+  }
+});
+
+// Each agreedRefusals row that gives no transaction, run from the vector's own data: V2's transaction with one part
+// changed, V1's transaction and answer, the option O and its document. The rows that give a transaction run in the two
+// describe blocks above, the row for text that is not padded standard base64 in base64.test.ts, and the row for a
+// missing @mysten/sui in sui-peer-missing.test.ts.
+describe("x402-exact-sui.json agreedRefusals: every row that gives no transaction runs", () => {
+  const elsewhere = (r: RefusalRow) =>
+    r.case.startsWith("a transaction that is not padded standard base64") || r.expect === "sui/peer-missing";
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-sui.json agreedRefusals.rows", {
+    keep: ["the rows that give no transaction, run below", (r) => r.transaction === undefined && !elsewhere(r)],
+    leave: [
+      "the rows that give a transaction, run by the two describe blocks above; the row for text that is not padded standard base64, run by base64.test.ts; and the row for a missing @mysten/sui, run by sui-peer-missing.test.ts",
+      (r) =>
+        typeof r.transaction === "string" ||
+        (typeof r.transaction === "object" && "$repeat" in r.transaction) ||
+        elsewhere(r),
+    ],
+  });
+  const v2 = bytesOf(V.V2.tx.transactionBase64);
+  const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
+  /** V2's TransactionData, parsed: recipe R, whose first input is the unused Pure input that holds H. */
+  const parsedV2 = () => {
+    const data = bcs.TransactionData.parse(v2);
+    if (data.$kind !== "V1" || data.V1.kind.$kind !== "ProgrammableTransaction") throw new Error("V2 is not programmable");
+    const pureH = { $kind: "Pure", Pure: { bytes: b64(Buffer.from(H.slice(2), "hex")) } };
+    expect(data.V1.kind.ProgrammableTransaction.inputs[0]).toEqual(pureH);
+    return { data, ptb: data.V1.kind.ProgrammableTransaction };
+  };
+  /** V2's transaction with its first input, the unused Pure input, holding `pure` in place of H. */
+  const withPure = (pure: Uint8Array): string => {
+    const { data, ptb } = parsedV2();
+    ptb.inputs[0] = { $kind: "Pure", Pure: { bytes: b64(pure) } };
+    return b64(bcs.TransactionData.serialize(data).toBytes());
+  };
+  /** The SHA-256 of the empty string (FIPS 180-2): a hash other than H. */
+  const OTHER = Buffer.from("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "hex");
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "one unused Pure input that is not exactly 32 bytes": async () => {
+      const h = Buffer.from(H.slice(2), "hex");
+      const out: unknown[] = [];
+      for (const pure of [h.subarray(0, 31), Buffer.concat([h, Uint8Array.of(0)]), new Uint8Array(0)]) {
+        const tx = decodeSuiTx(withPure(pure));
+        if ("refused" in tx) throw new Error(tx.code);
+        expect(tx.unusedPure.map((b) => b.length)).toEqual([pure.length]);
+        out.push(suiCarrier(tx), await exactSui.bound(payment(withPure(pure))));
+      }
+      return out;
+    },
+    // Trailing: V2 with one byte appended. Non-canonical: V2 with its input count, 3, written as the two-byte ULEB128
+    // 0x83 0x00, which @mysten/bcs 2.1.2 refuses as it parses; and V2 with a MoveCall appended whose type argument is a
+    // struct named `S<u8>`, which parses, and which @mysten/sui writes back as the struct S with the type parameter u8.
+    "bytes that parse as TransactionData but do not serialise back to themselves (trailing or non-canonical bytes)":
+      async () => {
+        expect(v2[2]).toBe(3);
+        const { data, ptb } = parsedV2();
+        ptb.commands.push({
+          $kind: "MoveCall",
+          MoveCall: { package: "0x2", module: "m", function: "f", typeArguments: ["0x2::m::Sabcd"], arguments: [] },
+        });
+        const renamed = Buffer.from(bcs.TransactionData.serialize(data).toBytes());
+        const at = renamed.indexOf("Sabcd");
+        expect([at > 0, renamed.indexOf("Sabcd", at + 1)]).toEqual([true, -1]);
+        renamed.write("S<u8>", at);
+        const trailing = Buffer.concat([v2, Uint8Array.of(0)]);
+        const longCount = Buffer.concat([v2.subarray(0, 2), Uint8Array.of(0x83, 0x00), v2.subarray(3)]);
+        expect(() => bcs.TransactionData.parse(trailing)).not.toThrow();
+        expect(() => bcs.TransactionData.parse(longCount)).toThrow("non-canonical");
+        expect(() => bcs.TransactionData.parse(renamed)).not.toThrow();
+        const out: unknown[] = [];
+        for (const bytes of [trailing, longCount, renamed]) {
+          out.push(decodeSuiTx(b64(bytes)), await exactSui.bound(payment(b64(bytes))));
+        }
+        return out;
+      },
+    "an option with scheme exact and a sui: network other than mainnet, testnet or devnet": async () => {
+      const out: unknown[] = [];
+      for (const network of ["sui:localnet", "sui:Testnet", "sui:"]) {
+        const o = { ...O, network };
+        const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [o] };
+        out.push(
+          await exactSui.bound(payment(V.V2.tx.transactionBase64, o)),
+          await exactSui.reference(payment(V.V2.tx.transactionBase64, o)),
+          await exactSui.build({ required: doc, accepted: o }, H),
+          exactSui.advertise(doc, H, LINK, o),
+        );
+      }
+      return out;
+    },
+    "payload.signature not a string, or empty": async () => {
+      const transaction = V.V2.tx.transactionBase64;
+      const out: unknown[] = [];
+      for (const signature of [7, null, undefined, ["AAAA"], ""]) {
+        const p = { ...payment(transaction), payload: { signature, transaction } };
+        out.push(await exactSui.bound(p), await exactSui.reference(p));
+      }
+      return out;
+    },
+    "payload.transaction not a string": async () => {
+      const out: unknown[] = [];
+      for (const transaction of [7, null, undefined, Array.from(v2)]) {
+        const p = { ...payment(""), payload: { signature: "AAAA", transaction } };
+        out.push(await exactSui.bound(p), await exactSui.reference(p));
+      }
+      return out;
+    },
+    // V1's answer, read for V2's digest: its bytes hash to V1's digest.
+    "recover on an answer for another digest, even one that failed": async () => {
+      const answer: Exclude<Answer, null> = V.V4.recover.find((r: { answer: { tx: string } }) => r.answer.tx === "V1").answer;
+      const ref = { network: V.V4.ref.network, digest: V.V2.tx.digest };
+      return [
+        await exactSui.recover(ref, reader(V.V4.ref.network, answer)),
+        await exactSui.recover(ref, reader(V.V4.ref.network, { ...answer, status: "FAILURE" })),
+      ];
+    },
+    // Built for H: V1's transaction, whose bound refuses, and V2's with another hash in its unused Pure input.
+    "complete with a payload whose bound is not the built hash": async () => {
+      const doc = exactSui.advertise(REQUIRED, H, LINK, O) as PaymentRequired;
+      const u = await exactSui.build({ required: doc, accepted: O }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const other = withPure(OTHER);
+      expect(await exactSui.bound(payment(other))).toBe(`0x${OTHER.toString("hex")}`);
+      return [
+        u.complete({ signature: "AAAA", transaction: V.V1.tx.transactionBase64 }),
+        u.complete({ signature: "AAAA", transaction: other }),
+      ];
+    },
+  };
+
+  it("names a case for every row it runs, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r).toEqual({ refused: true, code: row.expect });
     });
   }
 });

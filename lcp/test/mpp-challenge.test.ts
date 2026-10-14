@@ -1,7 +1,7 @@
 // MPP's challenge pieces against mpp-challenge.json. Every expected value is the file's.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { encodePacked, keccak256 } from "viem";
+import { concat, encodePacked, keccak256, toBytes, toHex, toRlp } from "viem";
 import {
   chargeHedera,
   chargeSolana,
@@ -11,6 +11,8 @@ import {
   challengeHash,
   challengeId,
   evmAuthorization,
+  evmHash,
+  evmPermit2,
   evmTransaction,
   issuedDigest,
   network,
@@ -22,18 +24,21 @@ import {
   read,
   sessionHedera,
   sessionResume,
+  tempoMemo,
   tempoPush,
   tie,
   type MppChallenge,
   type MppCredential,
 } from "../src/mpp.js";
 import { ReaderError } from "../src/evm.js";
+import { TIP20_CHANNEL_RESERVE, expiringNonceHash, memoCalldata, tempoChannelId } from "../src/tempo.js";
 import type { HederaEvmReader, HederaReader } from "../src/hedera.js";
 import type { StellarReader } from "../src/stellar.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, load, readerFor, realm } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const sha256 = (s: string) => "0x" + createHash("sha256").update(s).digest("hex");
 
@@ -41,7 +46,7 @@ describe("mpp-challenge.json", () => {
   it("MV1: the id and its inverse", () => {
     expect(challengeId(H, 0)).toBe(V.MV1.expectId);
     expect(challengeH(V.MV1.expectId)).toBe(H);
-    for (const id of V.MV1.notOurs) expect(challengeH(id)).toEqual(V.MV1.expectNotOurs);
+    for (const id of rowsOf(V.MV1.notOurs, "mpp-challenge.json MV1.notOurs")) expect(challengeH(id)).toEqual(V.MV1.expectNotOurs);
     expect(challengeH("ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.00")).toEqual(V.MV1.expectNotOurs);
     expect(challengeH("ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa1.0")).toEqual(V.MV1.expectNotOurs);
     expect(challengeId(H, 32)).toEqual({ refused: true, code: "mpp/challenge-malformed" });
@@ -94,7 +99,7 @@ describe("mpp-challenge.json", () => {
   // MPP's Status Codes and Error Codes tables (draft-httpauth-payment-01 at 08e7dd87, lines 168-176 and 852-864) give
   // each class its status and type.
   it("MV10: problem's status and type for each class of code", () => {
-    for (const row of V.MV10.rows) expect([row.code, problem(row.code)]).toEqual([row.code, row.expect]);
+    for (const row of rowsOf(V.MV10.rows, "mpp-challenge.json MV10.rows")) expect([row.code, problem(row.code)]).toEqual([row.code, row.expect]);
   });
 
   it("MV14: the agreement URL in opaque", async () => {
@@ -258,7 +263,7 @@ describe("mpp-challenge.json", () => {
   });
 
   it("network: each row's challenge, placed and issued, pays on the row's CAIP-2 network or is refused as the row says", () => {
-    const rows = V.network.rows as { case: string; method: string; intent: string; request: string; expect: unknown }[];
+    const rows = rowsOf(V.network.rows, "mpp-challenge.json network.rows") as { case: string; method: string; intent: string; request: string; expect: unknown }[];
     for (const r of rows) {
       const c = challenge(r.method, r.intent, r.request);
       expect([r.case, network(c)]).toEqual([r.case, r.expect]);
@@ -282,7 +287,7 @@ describe("problem", () => {
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
     // 13 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five read-first codes.
     expect(answered500.length).toBe(23);
-    for (const code of REFUSAL_CODES) {
+    for (const code of rowsOf([...REFUSAL_CODES], "REFUSAL_CODES, the codes the package returns")) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);
       if (row !== undefined) expect([code, p]).toEqual([code, row.expect]);
@@ -651,4 +656,255 @@ describe("expires: required where a build writes it into what the payer signs", 
     const { expires: _placedExpires, ...unexpired } = (place([C_E], H, link, C_E) as (MppChallenge & { id: string })[])[0]!;
     expect(await evmAuthorization.build({ challenge: unexpired, from, now: 0, tokenDomain }, H)).toEqual(required);
   });
+});
+
+// Each agreedRefusals row, run through the calls its case names: one call for each condition the case lists. The inputs
+// are the file's `agreedRefusals.inputs`, its fixed challenges and requests, and the fixed values of the vector files of
+// the pairings a row names. A row whose expect is "no refusal" gives no refusal; one whose expect names two codes gives
+// one of them on each call, and each of them on some call.
+describe("mpp-challenge.json agreedRefusals: every row runs", () => {
+  type Row = { case: string; expect: string };
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-challenge.json agreedRefusals.rows", { exact: 22 });
+  const refused = (code: string) => ({ refused: true, code });
+  const i = V.agreedRefusals.inputs;
+  const A = load("mpp-charge-evm-authorization.json");
+  const M = load("mpp-charge-tempo-memo.json");
+  const E = load("mpp-session-evm.json");
+  const U = load("mpp-subscription-tempo.json");
+  const R_E = JSON.parse(V.fixed.R_E);
+  const R_T = JSON.parse(V.fixed.R_T);
+  const placed = (c: MppChallenge, agreementUrl?: string) =>
+    (place([c], H, link, c, agreementUrl) as (MppChallenge & { id: string })[])[0]!;
+  const evmCharge = (request: object) => challenge("evm", "charge", JSON.stringify(request));
+  const tempoCharge = (request: object) => challenge("tempo", "charge", JSON.stringify(request));
+  const chE = placed(C_E);
+  const chT = placed(C_T);
+  /** C_E's request without credentialTypes: the transaction and hash pairings. */
+  const chCalls = placed(evmCharge({ ...R_E, methodDetails: { chainId: R_E.methodDetails.chainId } }));
+  /** C_T's request without supportedModes: the memo and push pairings. */
+  const chPush = placed(tempoCharge({ ...R_T, methodDetails: { chainId: R_T.methodDetails.chainId } }));
+  const from = A.fixed.payer as `0x${string}`;
+  const tokenDomain = A.fixed.tokenDomain as { name: string; version: string };
+  /** The unsigned payment a build gives, which a row completes. */
+  const built = async (u: Promise<unknown>) => {
+    const v = (await u) as { refused?: true; code?: string; complete: (s: `0x${string}`) => unknown };
+    if (v.refused === true) throw new Error(v.code);
+    return v;
+  };
+  /** The authorization credential of mpp-charge-evm-authorization.json's MV5 signature, on C_E as placed. */
+  const credential = async () =>
+    (await built(evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, H))).complete(A.MV5.expectSignature) as MppCredential;
+  /** MV7's transferWithMemo call to C_T's currency, whose memo is C_T's attribution memo as placed. */
+  const memoCall = [R_T.currency, "0x", M.MV7.expectCalldata];
+  /** A signed Tempo transaction (type 0x76) of `calls` on C_T's chain, valid until the file's expiry, as MV7 lays one out. */
+  const tempoWire = (calls: unknown[]) =>
+    concat([
+      "0x76",
+      toRlp([toHex(R_T.methodDetails.chainId), "0x01", "0x02", "0x0186a0", calls, [], "0x", "0x", toHex(V.fixed.expiresUnix), "0x", R_T.currency, "0x", [], `0x${"11".repeat(65)}`] as never),
+    ]);
+  const ZERO = "0x0000000000000000000000000000000000000000" as const;
+  /** A TIP-20 channel reserve descriptor of well-formed values: MV7's payer, C_T's recipient and currency, and H. */
+  const descriptor = {
+    payer: M.fixed.payer,
+    payee: R_T.recipient,
+    operator: ZERO,
+    token: R_T.currency,
+    salt: H,
+    authorizedSigner: ZERO,
+    expiringNonceHash: H,
+    escrow: TIP20_CHANNEL_RESERVE,
+    chainId: R_T.methodDetails.chainId,
+  };
+  /** C_E as placed, with `opaque` holding H's legal context and `map`. */
+  const withOpaque = (map: object) => [{ ...chE, opaque: b64u(JSON.stringify({ legalContext: `lcp:sha256:${H}`, ...map })) }];
+  const withAgreement = (a: string) => withOpaque({ legalContextAgreementUrl: a, legalContextUrl: link });
+  const long = `https://pay.seller.example/${"a".repeat(2030)}`;
+  const longHttp = `http://pay.seller.example/${"a".repeat(2030)}`;
+  const payment = (k: number) => `Payment id="${k}", realm="r", method="m", intent="i", request="e30"`;
+
+  // Each input a row changes is accepted as given, so each refusal below is the change's.
+  it("the inputs the rows change, as given, are accepted", async () => {
+    expect(pairingsOf(evmCharge(R_E))).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/authorization"]);
+    expect(pairingsOf(challenge("evm", "session", E.fixed.request))).toEqual(["mpp/session/evm"]);
+    expect(pairingsOf(challenge("tempo", "subscription", U.fixed.request))).toEqual(["mpp/subscription/tempo"]);
+    expect(await tempoMemo.bound({ challenge: chT, payload: { type: "transaction", signature: tempoWire([memoCall]) } })).toBe(H);
+    expect(memoCalldata(R_T.recipient, BigInt(R_T.amount), M.MV7.expectMemo)).toBe(M.MV7.expectCalldata);
+    expect(tempoChannelId(descriptor)).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(expiringNonceHash(toBytes(tempoWire([memoCall])), M.fixed.payer)).toMatch(/^0x[0-9a-f]{64}$/);
+    const auth = await built(evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, H));
+    for (const bytes of [1, 8192]) expect(auth.complete(`0x${"11".repeat(bytes)}`)).not.toHaveProperty("refused");
+    expect((await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
+    expect((await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
+    const wire = `0x${"11".repeat(65_536)}` as const;
+    expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(wire)).not.toHaveProperty("refused");
+    expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(wire)).not.toHaveProperty("refused");
+    expect(await evmAuthorization.bound(await credential())).toBe(H);
+    expect(parseChallenges(Array.from({ length: 32 }, (_, k) => payment(k)))).toHaveLength(32);
+    const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_T], H, link, C_T, V.fixed.agreementUrl) as MppChallenge[])[1]!];
+    expect(read(agreed)).toMatchObject({ h: H, link, agreement: V.fixed.agreementUrl });
+  });
+
+  const cases: Record<string, () => Promise<unknown[]>> = {
+    "pairingsOf with an EVM charge chainId, currency, recipient or amount malformed, or externalId not a string where a Permit2 pairing is offered":
+      async () => [
+        pairingsOf(evmCharge({ ...R_E, methodDetails: { ...R_E.methodDetails, chainId: 0 } })),
+        pairingsOf(challenge("evm", "charge", i.requestMalformed)),
+        pairingsOf(evmCharge({ ...R_E, recipient: R_E.recipient.slice(0, -1) })),
+        pairingsOf(evmCharge({ ...R_E, amount: "1.5" })),
+        pairingsOf(evmCharge({ ...R_E, externalId: 7 })),
+      ],
+    'pairingsOf with a Tempo charge supportedModes that is not a list of "pull" and "push"': async () => [
+      pairingsOf(challenge("tempo", "charge", i.modesMalformed)),
+      pairingsOf(tempoCharge({ ...R_T, methodDetails: { ...R_T.methodDetails, supportedModes: "pull" } })),
+    ],
+    "pairingsOf with an opaque that does not decode to a flat string map": async () => [
+      pairingsOf({ ...C_E, opaque: b64u(i.opaqueNotFlat) }),
+      pairingsOf({ ...C_E, opaque: "not base64url!" }),
+    ],
+    "pairingsOf with an intent and method this entry point does not serve": async () => [
+      pairingsOf({ ...C_E, method: "no-such-method" }),
+      pairingsOf({ ...C_E, intent: "subscription" }),
+    ],
+    "pairingsOf with a duplicate credentialTypes entry: the entry counts once": async () => {
+      const twice = pairingsOf(challenge("evm", "charge", i.duplicateTypes));
+      const once = JSON.parse(i.duplicateTypes);
+      once.methodDetails.credentialTypes = ["permit2"];
+      expect(twice).toEqual(pairingsOf(challenge("evm", "charge", JSON.stringify(once))));
+      return [twice];
+    },
+    "a Tempo charge challenge with more than one call carrying this challenge's attribution memo": async () => [
+      await tempoMemo.bound({ challenge: chT, payload: { type: "transaction", signature: tempoWire([memoCall, memoCall]) } }),
+    ],
+    "an EVM session challenge whose chainId is absent or not a positive integer": async () => {
+      const r = JSON.parse(E.fixed.request);
+      const { chainId: _chainId, ...noChain } = r.methodDetails;
+      const session = (details: object) => challenge("evm", "session", JSON.stringify({ ...r, methodDetails: details }));
+      return [
+        pairingsOf(session(noChain)),
+        pairingsOf(session({ ...noChain, chainId: 0 })),
+        pairingsOf(session({ ...noChain, chainId: String(E.fixed.chainId) })),
+      ];
+    },
+    "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed": async () => {
+      const r = JSON.parse(U.fixed.request);
+      const subscription = (change: object) => challenge("tempo", "subscription", JSON.stringify({ ...r, ...change }));
+      return [
+        pairingsOf(subscription({ subscriptionExpires: r.subscriptionExpires.slice(0, 10) })),
+        pairingsOf(subscription({ periodUnit: "month" })),
+        pairingsOf(subscription({ periodCount: "0" })),
+      ];
+    },
+    "challengeId, place or build with an H that is not 0x and 64 hex digits, or a position outside 0-31": async () => [
+      challengeId(H.slice(0, -1) as `0x${string}`, 0),
+      place([C_E], H.slice(0, -1) as `0x${string}`, link, C_E),
+      challengeId(H, 32),
+      challengeId(H, -1),
+      place(Array.from({ length: 33 }, () => C_E), H, link, C_E),
+    ],
+    "build with a malformed from, a missing tokenDomain or spender, or a clientId that is not a string": async () => [
+      await evmAuthorization.build({ challenge: chE, from: from.slice(0, -1) as `0x${string}`, now: 0, tokenDomain }, H),
+      await evmAuthorization.build({ challenge: chE, from, now: 0 }, H),
+      await evmPermit2.build({ challenge: chE, from, now: 0 }, H),
+      await tempoMemo.build({ challenge: chT, from, now: 0, clientId: 7 as unknown as string }, H),
+    ],
+    "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction over 64 KiB":
+      async () => {
+        const auth = await built(evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, H));
+        const hash = await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H));
+        const push = await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H));
+        const transaction = await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H));
+        const memo = await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H));
+        const over = `0x${"11".repeat(65_537)}` as const;
+        return [
+          auth.complete("0x"),
+          auth.complete(`0x${"11".repeat(8193)}`),
+          hash.complete(`0x${"11".repeat(31)}`),
+          push.complete(`0x${"11".repeat(33)}`),
+          transaction.complete(over),
+          memo.complete(over),
+        ];
+      },
+    "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects": async () => {
+      const c = await credential();
+      let deep: unknown = "x";
+      for (let k = 0; k < 20; k++) deep = [deep];
+      return [
+        await evmAuthorization.bound({ ...c, payload: { ...c.payload, pad: "x".repeat(70_000) } }),
+        await evmAuthorization.bound({ ...c, payload: { ...c.payload, deep: deep as never } }),
+        await evmAuthorization.bound({ challenge: c.challenge } as MppCredential),
+        await evmAuthorization.bound({ payload: c.payload } as unknown as MppCredential),
+      ];
+    },
+    "bound with a payload type other than the pairing's": async () => {
+      const c = await credential();
+      return [
+        await tempoMemo.bound({ challenge: chT, payload: { type: "hash", hash: H } }),
+        await evmAuthorization.bound({ ...c, payload: { ...c.payload, type: "permit2" } }),
+        await evmPermit2.bound(c),
+      ];
+    },
+    "a WWW-Authenticate value over 8 KiB, not following RFC 9110's grammar, or over 32 Payment challenges": async () => [
+      parseChallenges([`Payment ${"a".repeat(8192)}`]),
+      parseChallenges([i.headerBroken]),
+      parseChallenges(Array.from({ length: 33 }, (_, k) => payment(k))),
+    ],
+    "a Payment challenge with a duplicate parameter, or a required parameter missing or empty": async () => [
+      parseChallenges([i.headerDuplicate]),
+      parseChallenges([i.headerEmptyId.replace('id="", ', "")]),
+      parseChallenges([i.headerEmptyId]),
+    ],
+    "memoCalldata, tempoChannelId or expiringNonceHash with a malformed address, amount or hash": async () => [
+      memoCalldata(R_T.recipient.slice(0, -1), BigInt(R_T.amount), M.MV7.expectMemo),
+      memoCalldata(R_T.recipient, -1n, M.MV7.expectMemo),
+      memoCalldata(R_T.recipient, 1n << 256n, M.MV7.expectMemo),
+      memoCalldata(R_T.recipient, BigInt(R_T.amount), M.MV7.expectMemo.slice(0, -2)),
+      tempoChannelId({ ...descriptor, payer: R_T.recipient.slice(0, -1) }),
+      tempoChannelId({ ...descriptor, salt: H.slice(0, -2) as `0x${string}` }),
+      tempoChannelId({ ...descriptor, expiringNonceHash: H.slice(0, -2) as `0x${string}` }),
+      expiringNonceHash(toBytes(tempoWire([memoCall])), M.fixed.payer.slice(0, -1)),
+    ],
+    "read with two challenges whose links or agreement URLs differ": async () => [
+      read([chE, (place([C_E, C_T], H, `${link}?other`, C_T) as MppChallenge[])[1]!]),
+      read([placed(C_E, V.fixed.agreementUrl), (place([C_E, C_T], H, link, C_T, `${V.fixed.agreementUrl}?other`) as MppChallenge[])[1]!]),
+    ],
+    "read with a legalContextAgreementUrl of at most 2048 characters that parses as an absolute URL whose scheme is not https":
+      async () => ["http://pay.seller.example/agreement", "HTTP://pay.seller.example/agreement", "ftp://pay.seller.example/a"].map((a) => read(withAgreement(a))),
+    "read with a legalContextAgreementUrl that is not a string, does not parse as an absolute URL (the empty string, https:// alone), is an https URL the link rule refuses, or is over 2048 characters":
+      async () => ["", "https://", "not a url", "https://u@pay.seller.example/", long, longHttp].map((a) => read(withAgreement(a))),
+    "place with a link or agreement URL that is not an https link; or read with no challenge read and a legalContextUrl in a challenge whose id derives from its legalContext, of at most 2048 characters that parses as an absolute URL whose scheme is not https: the same split as the agreement URL":
+      async () => [
+        place([C_E], H, "http://atr.seller.example/x", C_E),
+        place([C_E], H, "not a url", C_E),
+        place([C_E], H, link, C_E, "http://pay.seller.example/agreement"),
+        place([C_E], H, link, C_E, "not a url"),
+        ...["http://atr.seller.example/x", "HTTP://atr.seller.example/x", "ftp://atr.seller.example/x"].map((u) => read(withOpaque({ legalContextUrl: u }))),
+      ],
+    "place with a link or agreement URL that is an https link over 2048 characters; or read with no challenge read, no legalContextUrl of another scheme and one that is absent, does not parse as an absolute URL, is an https URL the link rule refuses, or is over 2048 characters, in a challenge whose id derives from its legalContext":
+      async () => [
+        place([C_E], H, long, C_E),
+        place([C_E], H, link, C_E, long),
+        read(withOpaque({})),
+        ...["", "https://", "not a url", "https://u@atr.seller.example/", long, longHttp].map((u) => read(withOpaque({ legalContextUrl: u }))),
+      ],
+    "sessionResume of a challenge of no session pairing": async () => [sessionResume(C_E), sessionResume(C_T)],
+  };
+
+  it("names a case for every row, and no other", () => {
+    expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      const results = await cases[row.case]!();
+      expect(results.length).toBeGreaterThan(0);
+      if (row.expect === "no refusal") {
+        for (const r of results) expect(r).not.toHaveProperty("refused");
+        return;
+      }
+      // One code, or "a or b": every call gives one of the codes, and each code is some call's.
+      const codes = row.expect.split(" or ");
+      for (const r of results) expect(codes.map(refused)).toContainEqual(r);
+      for (const code of codes) expect(results).toContainEqual(refused(code));
+    });
+  }
 });
