@@ -165,6 +165,10 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     };
     const [at, over] = [resized(4096), resized(4097)];
     expect([at.length, over.length]).toEqual([4096, 4097]);
+    // The vector rows that pin the bound for every runner are these two extrinsics.
+    const overRow = V.V3.refusals.find((r: { case: string }) => r.case.startsWith("V3 resized to 4,097 bytes, one over"));
+    expect([V.V3.atBound.extrinsic, overRow.extrinsic]).toEqual([toHex(at), toHex(over)]);
+    expect(await exactPolkadotRemark.bound(presentedOf(V.V3.atBound.extrinsic, V.V3.atBound.call))).toBe(V.V3.atBound.expectBound);
     expect(await exactPolkadotRemark.bound(presentedOf(toHex(at), V.V2.expectCall))).toBe(V.V3.expectBound);
     const tooLarge = { refused: true, code: "polkadot/extrinsic-too-large" };
     const malformed = { refused: true, code: "polkadot/extrinsic-malformed" };
