@@ -378,8 +378,11 @@
    {
     "case": "the raw extrinsic at the timepoint carries an upper-case remark",
     "raw": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144",
+    "change": {
+     "hash": "0x2655c5cb2c9150c0c65b390f9f825fb370bf5d68a7f02ed1f8ed343e5d6786bd"
+    },
     "expect": "polkadot/remark-not-lcp",
-    "source": "profile rule 3: R is the 77 ASCII bytes lcp:sha256: followed by H, and rule 1 writes H as 0x lowercase hex; frame_system's remark_with_event emits Remarked with hash = BlakeTwo256 of the remark's bytes as signed, so an upper-case remark's event never carries the hash of H's LCP string"
+    "source": "profile rule 3: R is the 77 ASCII bytes lcp:sha256: followed by H, and rule 1 writes H as 0x lowercase hex; frame_system's remark_with_event emits Remarked with hash = BlakeTwo256 of the remark's bytes as signed, so an upper-case remark's event never carries the hash of H's LCP string; the record's hash is the raw bytes' BLAKE2b-256, so the bytes are the extrinsic's"
    }
   ],
   "recoverReads": [
@@ -401,16 +404,26 @@
     "finalized": "100",
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "expect": "polkadot/not-found",
-    "source": "Polkadot SDK: once a block is finalized it can never be reverted, so a block at a finalized height other than the canonical one is not on the chain; the status row of this fixture is pending"
+    "expect": "polkadot/not-located",
+    "source": "Polkadot SDK: once a block is finalized it can never be reverted, so a block at a finalized height other than the canonical one is not on the chain, and the timepoint names no extrinsic there; polkadotLocate finds the extrinsic by its hash; the status row of this fixture is pending not-located"
    },
    {
     "case": "the canonical block at 100 has nothing at index 2",
     "finalized": "100",
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "canonicalMissing": true,
-    "expect": "polkadot/not-found",
+    "expect": "polkadot/not-located",
     "source": "as the row above"
+   },
+   {
+    "case": "the block's extrinsics hold no entry at index 2",
+    "finalized": "100",
+    "raws": [
+     "0x00",
+     "0x04"
+    ],
+    "expect": "polkadot/not-located",
+    "source": "Sidecar: /blocks/{block}/extrinsics-raw answers every extrinsic of the block, and a block hash names one block, so a list with no entry at the index shows the timepoint names no extrinsic on any later read"
    },
    {
     "case": "Transferred of asset 1984 at the named position: no transfer of the call's asset",
@@ -453,6 +466,66 @@
     },
     "expect": "polkadot/no-transfer",
     "source": "the plant's record: an event of another asset is not the transfer of asset 1337 that the call names"
+   },
+   {
+    "case": "Transferred of asset 1984 at the named position, finalized 99: the block is above the finalized height",
+    "finalized": "99",
+    "change": {
+     "events": [
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1984",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": "polkadot/not-final",
+    "source": "Sidecar: /blocks/head/header answers the most recently finalized block; a block above it can be replaced (GRANDPA finalizes blocks; until then a fork can replace one), so its record gives no verdict yet, as the status rows with finalized 99 read it (at head)"
+   },
+   {
+    "case": "success false: the extrinsic did not dispatch",
+    "finalized": "100",
+    "change": {
+     "success": false
+    },
+    "expect": "polkadot/no-remark",
+    "source": "Sidecar's extrinsic record: success false is a dispatch that failed, in which batch_all applies neither call, so no Remarked event is emitted; the block is at the finalized height, as the status row success false reads it (failed at finalized)"
+   },
+   {
+    "case": "success false, finalized 99: the block is above the finalized height",
+    "finalized": "99",
+    "change": {
+     "success": false
+    },
+    "expect": "polkadot/not-final",
+    "source": "as the row Transferred of asset 1984 at the named position, finalized 99; the status row success false, finalized 99 is failed at head"
    },
    {
     "case": "a utility.batch of the remark and a system.remark whose data is the profile call: it ends with the profile call and moves nothing",

@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 491 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 492 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -45,7 +45,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`casper`](#casper) | 13 | Casper (`@integraledger/lcp/casper`). |
 | [`ccd`](#ccd) | 17 | Concordium (`@integraledger/lcp/ccd`). |
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
-| [`polkadot`](#polkadot) | 18 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
+| [`polkadot`](#polkadot) | 19 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 13 | Starknet (`@integraledger/lcp/starknet`). |
 | [`sui`](#sui) | 11 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
@@ -615,19 +615,20 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/address-not-id` | The Polkadot extrinsic's signer is not a `MultiAddress::Id` of 32 bytes. |
 | `polkadot/call-not-profile` | The Polkadot call is not exactly the profile's `batchAll` of `transferKeepAlive` then `remarkWithEvent` with a remark of the fixed length, or the presented `call` is not lowercase hex, or the recovered extrinsic does not end with that call after its signature. |
 | `polkadot/call-not-suffix` | The signed Polkadot extrinsic does not end, after its signature, with the call it is checked against: the presented `call` for `bound` and `reference`, or the profile call `build` made for `complete`. |
-| `polkadot/extrinsic-malformed` | A Polkadot extrinsic is not lowercase hex whose compact length prefix matches its length, or the raw extrinsic a recovery reads is not hex. |
+| `polkadot/extrinsic-malformed` | A Polkadot extrinsic is not lowercase hex whose compact length prefix matches its length. |
 | `polkadot/extrinsic-too-large` | A Polkadot extrinsic, or the raw extrinsic a recovery reads, is longer than 4,096 bytes. |
-| `polkadot/hash-mismatch` | The chain's record of the Polkadot extrinsic has a hash other than that of the raw bytes read. |
 | `polkadot/network-unsupported` | A Polkadot option's network starts with `polkadot:` but is not one this package supports. |
-| `polkadot/no-remark` | The Polkadot extrinsic did not dispatch successfully with a `Remarked` event for its remark. |
-| `polkadot/no-transfer` | The recovered Polkadot extrinsic's record carries no `Transferred` event of the asset its profile call names. |
-| `polkadot/not-found` | **Read to repeat.** The Polkadot reader found no block (for `polkadotRecover`, also block extrinsics that are not an array), no extrinsic at the index, or no well-formed record of the extrinsic, or, for a recovery, the finalized chain has reached the named block's height and the canonical block there is another block that does not hold the same extrinsic at that index. |
+| `polkadot/no-remark` | The Polkadot extrinsic `polkadotRecover` reads, in a block the finalized chain holds, did not dispatch successfully with a `Remarked` event for its remark. |
+| `polkadot/no-transfer` | The recovered Polkadot extrinsic's record, in a block the finalized chain holds, carries no `Transferred` event of the asset its profile call names. |
+| `polkadot/not-final` | **Read to repeat.** The extrinsic `polkadotRecover` reads did not dispatch with its remark or the asset transfer, in a block above the finalized height: a read to repeat, since that block can be replaced. |
+| `polkadot/not-found` | **Read to repeat.** The Polkadot reader holds no block for the timepoint given to `polkadotRecover`, or no record of the extrinsic at its index. |
+| `polkadot/not-located` | The timepoint given to `polkadotRecover` names no extrinsic: its block holds none at that index, or the finalized chain holds another block at that height without the same extrinsic at that index. `polkadotLocate` finds the extrinsic by its hash. |
 | `polkadot/not-signed-v4` | The Polkadot extrinsic is not a signed version 4 extrinsic. |
 | `polkadot/option-malformed` | A Polkadot option does not name the `lcp-assets-remark` transfer method, names another flow, or has an invalid asset id, amount or timeout (1 to 3600 seconds), or the choice given to `build` is not an object. |
 | `polkadot/range` | `polkadotLocate` is given a block range that is not non-negative bigints in order spanning at most 256 blocks. |
 | `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
-| `polkadot/unreadable` | **Read to repeat.** The Polkadot reader threw, returned a finalized height that is not a bigint or a record of the canonical block that is not an extrinsic's, or, to `polkadotLocate`, returned block extrinsics that are not an array. |
+| `polkadot/unreadable` | **Read to repeat.** The Polkadot reader threw, or answered out of its documented form: to `polkadotRecover`, block extrinsics that are not an array, an entry there that is not a hex string, a record that is not an extrinsic's, raw bytes whose BLAKE2b-256 is not the hash of the chain's record of them, or a finalized height that is not a bigint; to `polkadotLocate`, block extrinsics that are not an array. |
 | `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names, or the reference given to `polkadotLocate` has an `extrinsicHash` that is not `0x` and 64 hex digits, or the reference given to `polkadotRecover` names a `transaction` that is not a `<block hash>-<index>` timepoint. |
 
 ## starknet

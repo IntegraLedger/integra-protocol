@@ -261,13 +261,19 @@ ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reade
 
 > **polkadotRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-The hash from the landed extrinsic alone, for anyone holding its timepoint. Its raw bytes must end with the profile
-call, after the signature, whose remark is the hash's LCP string with lowercase hex. The chain's record of it must
-have the same hash; the record read is then chosen as `polkadotStatus` chooses it, and a named block that the
-finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at its height, is
-`polkadot/not-found`. That record must show the extrinsic dispatched with the `Remarked` event for the remark and a
-`Transferred` event of the call's asset. A ref whose `transaction` is not a `<block hash>-<index>` timepoint is
-`polkadot/wrong-reader`, with nothing read. At most four calls.
+The hash from the landed extrinsic alone, for anyone holding its timepoint. It reads the block's raw extrinsics, then
+the chain's record of the extrinsic at the index, and ties the two before anything else: the raw bytes' BLAKE2b-256
+must be the record's hash. A block or a record the reader does not have is `polkadot/not-found`, and a block whose
+extrinsics hold no entry at the index is `polkadot/not-located`. Extrinsics that are not an array, an entry that is
+not a hex string, a record that is not an extrinsic's, or raw bytes whose hash is not the record's are
+`polkadot/unreadable`. The bytes so tied must end with the profile call, after the signature, whose remark is the
+hash's LCP string with lowercase hex. The record read is then chosen as `polkadotStatus` chooses it, and a named
+block that the finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at
+its height, is `polkadot/not-located`. That record must show the extrinsic dispatched with the `Remarked` event for
+the remark and a `Transferred` event of the call's asset: one that does not is `polkadot/no-remark` or
+`polkadot/no-transfer` once the finalized chain holds its block, and `polkadot/not-final` while the block is above the
+finalized height, since that block can be replaced. A ref whose `transaction` is not a `<block hash>-<index>`
+timepoint is `polkadot/wrong-reader`, with nothing read. At most four calls.
 
 #### Parameters
 

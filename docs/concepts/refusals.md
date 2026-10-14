@@ -107,8 +107,9 @@ rests on a read of the rail that may answer differently later, with nothing for 
 payment may already have moved, so do not ask the buyer to pay again. These are each reader's `<rail>/unreadable` (the
 reader failed, or answered out of its documented form) and `<rail>/not-found` (no landed transaction for the reference
 yet), and the codes of a transaction that is not final yet: `casper/not-executed`, `ccd/not-finalized`,
-`xrpl/not-validated`, `tempo/not-final` and `hedera/not-final` (a revert above the reader's `finalized` mark), and
-`svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`). The
+`xrpl/not-validated`, `tempo/not-final` and `hedera/not-final` (a revert above the reader's `finalized` mark),
+`svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`) and
+`polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above the finalized height). The
 [refusal code reference](../reference/refusals.md) marks each of them.
 
 Every other code is false. A verdict, such as `evm/reverted`, gives the same answer on every read. A call you must change

@@ -150,7 +150,11 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   // docs/reference/refusals.md: polkadot/extrinsic-too-large is an extrinsic, or the raw extrinsic a recovery reads,
   // longer than 4,096 bytes; polkadot/extrinsic-malformed is text that is not hex. The resized extrinsics keep V3's
   // signed preamble and its call, with zero bytes added before the call where the extensions sit, under a SCALE
-  // Compact<u32> length prefix in its two-byte mode, ((n << 2) | 1) little-endian for n from 64 to 16,383.
+  // Compact<u32> length prefix in its two-byte mode, ((n << 2) | 1) little-endian for n from 64 to 16,383. recover reads
+  // a raw extrinsic only when the chain's record of it has its BLAKE2b-256 as its hash (the Polkadot SDK hashes an
+  // extrinsic's SCALE bytes with BlakeTwo256), so the record here carries the raw's hash; Sidecar answers each raw
+  // extrinsic as hex, so raw text that is not hex, or bytes whose hash is not the record's, is the reader's answer out
+  // of its documented form.
   it("V3 resized: over 4,096 bytes is polkadot/extrinsic-too-large at bound, reference, complete and recover", async () => {
     const v3 = fromHex(V.V3.extrinsic);
     expect(v3[0]! & 3).toBe(1);
@@ -181,16 +185,21 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     );
 
     const transaction = `${V.V4.block}-${V.V4.index}`;
-    const recoverWith = (raw: string) => {
+    const recoverWith = (raw: string, recordHash?: string) => {
       const raws = [...V.V4.raw];
       raws[V.V4.index] = raw;
-      const reader: PolkadotReader = { ...readerOf({ finalized: "100" }), rawExtrinsics: async () => raws };
+      const change = recordHash === undefined ? {} : { change: { hash: recordHash as `0x${string}` } };
+      const reader: PolkadotReader = { ...readerOf({ finalized: "100", ...change }), rawExtrinsics: async () => raws };
       return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
     };
-    expect(await recoverWith(toHex(over))).toEqual(tooLarge);
-    expect(await recoverWith(toHex(over).toUpperCase().replace("0X", "0x"))).toEqual(tooLarge);
-    expect(await recoverWith(`0x${"zz".repeat(4097)}`)).toEqual(malformed);
-    expect(await recoverWith(toHex(at))).toEqual({ refused: true, code: "polkadot/hash-mismatch" });
+    const unreadable = { refused: true, code: "polkadot/unreadable" };
+    const b2 = (b: Uint8Array) => toHex(blake2b(b, { dkLen: 32 }));
+    expect(await recoverWith(toHex(over), b2(over))).toEqual(tooLarge);
+    expect(await recoverWith(toHex(over).toUpperCase().replace("0X", "0x"), b2(over))).toEqual(tooLarge);
+    expect(await recoverWith(`0x${"zz".repeat(4097)}`)).toEqual(unreadable);
+    expect(await recoverWith(toHex(at), b2(at))).toBe(V.V3.atBound.expectBound);
+    expect(await recoverWith(toHex(over))).toEqual(unreadable);
+    expect(await recoverWith(toHex(at))).toEqual(unreadable);
   });
 
   // The genesis hash that names a network is implicit data of the signed payload (frame_system's CheckGenesis signed
@@ -284,7 +293,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     for (const row of rowsOf(V.V4.recoverRefusals, "x402-exact-polkadot-lcp-assets-remark.json V4.recoverRefusals")) {
       const raw = [...V.V4.raw];
       raw[V.V4.index] = row.raw;
-      const upper: PolkadotReader = { ...reader, rawExtrinsics: async () => raw };
+      const upper: PolkadotReader = { ...readerOf({ finalized: "100", ...row }), rawExtrinsics: async () => raw };
       expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, upper), row.case).toEqual({
         refused: true,
         code: row.expect,
@@ -296,12 +305,39 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const transaction = `${V.V4.block}-${V.V4.index}`;
     expect(V.V4.recoverReads.length).toBeGreaterThan(0);
     for (const row of rowsOf(V.V4.recoverReads, "x402-exact-polkadot-lcp-assets-remark.json V4.recoverReads")) {
-      const raw = [...V.V4.raw];
+      const raw = [...(row.raws ?? V.V4.raw)];
       if (row.raw !== undefined) raw[V.V4.index] = row.raw;
       const reader: PolkadotReader = { ...readerOf(row), rawExtrinsics: async () => raw };
       const got = await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
       expect(typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
     }
+  });
+
+  // Sidecar answers /blocks/{block}/extrinsics-raw with the block's extrinsics as an array of hex strings, and
+  // /blocks/{block}/extrinsics/{index} with the extrinsic's record, whose hash is the BLAKE2b-256 of its SCALE bytes
+  // (the Polkadot SDK's BlakeTwo256). An answer out of that form is unreadable, a read to repeat (docs/guides/rails.md,
+  // "Reading settlement"); a block or a record the reader does not have yet is not-found; each is answered before the
+  // raw bytes are decoded.
+  it("V4: recover refuses an answer out of Sidecar's form as polkadot/unreadable, and one it does not have as polkadot/not-found", async () => {
+    const transaction = `${V.V4.block}-${V.V4.index}`;
+    const recoverWith = (raws: unknown, record: (r: PolkadotReader) => PolkadotReader["extrinsic"] = (r) => r.extrinsic) => {
+      const base = readerOf({ finalized: "100" });
+      const reader: PolkadotReader = { ...base, rawExtrinsics: async () => raws as readonly `0x${string}`[] | null, extrinsic: record(base) };
+      return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
+    };
+    const withRaw = (raw: unknown) => V.V4.raw.map((r: string, i: number) => (i === V.V4.index ? raw : r));
+    const unreadable = { refused: true, code: "polkadot/unreadable" };
+    const notFound = { refused: true, code: "polkadot/not-found" };
+    expect(await recoverWith(V.V4.raw)).toBe(V.V4.recover.expect);
+    expect(await recoverWith({ 2: V.V4.raw[V.V4.index] })).toEqual(unreadable);
+    expect(await recoverWith(withRaw(7))).toEqual(unreadable);
+    expect(await recoverWith(withRaw(V.V4.raw[V.V4.index].slice(2)))).toEqual(unreadable);
+    expect(await recoverWith(withRaw(`${V.V4.raw[V.V4.index]}0`))).toEqual(unreadable);
+    expect(await recoverWith(V.V4.raw, () => async () => ({ hash: V.V4.extrinsicAt.hash }) as never)).toEqual(unreadable);
+    const other = { ...V.V4.extrinsicAt, at: { ...V.V4.extrinsicAt.at, height: 100n }, hash: `0x${"cc".repeat(32)}` };
+    expect(await recoverWith(V.V4.raw, () => async () => other)).toEqual(unreadable);
+    expect(await recoverWith(null)).toEqual(notFound);
+    expect(await recoverWith(V.V4.raw, () => async () => null)).toEqual(notFound);
   });
 
   it("plant: a transfer of another asset at the named position is never the settlement", async () => {

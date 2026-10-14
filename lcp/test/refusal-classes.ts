@@ -25,6 +25,7 @@ export const READS_TO_REPEAT: readonly string[] = [
   "hedera/unreadable",
   "near/not-found",
   "near/unreadable",
+  "polkadot/not-final",
   "polkadot/not-found",
   "polkadot/unreadable",
   "stacks/not-found",
@@ -145,7 +146,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   polkadot: [
     "address-malformed", "address-not-id", "call-not-profile", "call-not-suffix", "extrinsic-malformed",
-    "extrinsic-too-large", "hash-mismatch", "network-unsupported", "no-remark", "no-transfer", "not-signed-v4",
+    "extrinsic-too-large", "network-unsupported", "no-remark", "no-transfer", "not-located", "not-signed-v4",
     "option-malformed", "range", "remark-not-lcp", "signature-malformed", "wrong-reader",
   ],
   stacks: ["no-memo", "not-success", "wrong-reader"],

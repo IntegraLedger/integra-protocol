@@ -20,7 +20,7 @@ describe("readToRepeat", () => {
   });
 
   it("answers true for each read to repeat", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 40 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 41 })) {
       expect([code, readToRepeat(code)]).toEqual([code, true]);
     }
   });
