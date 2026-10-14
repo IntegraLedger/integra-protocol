@@ -543,3 +543,20 @@ describe("usdc/stacks status and recover (M4b)", () => {
 function withBigints(v: unknown): unknown {
   return JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 }
+
+// The agreedRefusals rows: M4's signed transaction with its payload replaced. The decode and re-serialisation are
+// @stacks/transactions 7.6.0's, the decoder P2 names; the rows give its outcome for payload types 7 and 8.
+describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
+  const rows = V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[];
+  it("each wire is M4's up to its payload", () => {
+    const m4 = S.deserializeTransaction(Buffer.from(V.M4.wireHex.slice(2), "hex"));
+    const prefix = V.M4.wireHex.slice(0, V.M4.wireHex.length - 2 * S.serializePayloadBytes(m4.payload).length);
+    for (const r of rows) expect(r.wireHex.startsWith(prefix), r.case).toBe(true);
+    expect(rows.map((r) => r.wireHex.slice(prefix.length, prefix.length + 2))).toEqual(["07", "08"]);
+  });
+  for (const r of rows) {
+    it(`${r.case}: ${r.expect}`, async () => {
+      expect(await chargeUsdcStacks.bound(credential(Buffer.from(r.wireHex.slice(2), "hex")))).toEqual({ refused: true, code: r.expect });
+    });
+  }
+});

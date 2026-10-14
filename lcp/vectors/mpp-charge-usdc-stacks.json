@@ -507,6 +507,21 @@
   "publicProof": true,
   "proves": "The payer signed a Stacks transaction calling a contract's `transfer` with this ATR's hash as its fourth (memo) argument. The chain verified the signature, the transaction executed with status success, and the memo is in the mined transaction on chain. This does not show that the contract is a SIP-010 token, or that amount, payee, asset or timing match the ATR's content."
  },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation, as this package applies them. Each row's wireHex is M4's signed transaction with its payload replaced, sent as the credential's transaction (base64, stacks_transaction_v1); the outcome is @stacks/transactions 7.6.0's: deserializeTransaction reads the tenure change (payload type 7) whose last 20-byte field ends the transaction one byte short and serializes it back to the same bytes, a transaction that is not a contract call; it reads the Nakamoto coinbase (payload type 8) whose recipient is a Clarity uint, and that does not serialize back to the same bytes.",
+  "rows": [
+   {
+    "case": "a tenure change whose last 20-byte field is 19 bytes, the end of the transaction",
+    "wireHex": "0x80800000000400751e76e8199196d454941c45d1b3a323f1433bd6000000000000000000000000000003e80000f0648e9ea0216b4603e41c41ff38edbee7d1af46a5429207104301d6e535cad2064914e9b208c7ab8e67fa6a94bd6ec0ec2667eedeb2803ed95a9d31e7e0ca3c01020000000101021a751e76e8199196d454941c45d1b3a323f1433bd61a6d78de7b0625dfbfc16c3a8a5735f6dc3dc3f2ce0575736463780b75736463782d746f6b656e0100000000000f4240070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "expect": "mpp/stacks-memo-not-h"
+   },
+   {
+    "case": "a Nakamoto coinbase whose recipient is a Clarity uint",
+    "wireHex": "0x80800000000400751e76e8199196d454941c45d1b3a323f1433bd6000000000000000000000000000003e80000f0648e9ea0216b4603e41c41ff38edbee7d1af46a5429207104301d6e535cad2064914e9b208c7ab8e67fa6a94bd6ec0ec2667eedeb2803ed95a9d31e7e0ca3c01020000000101021a751e76e8199196d454941c45d1b3a323f1433bd61a6d78de7b0625dfbfc16c3a8a5735f6dc3dc3f2ce0575736463780b75736463782d746f6b656e0100000000000f424008000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "expect": "mpp/stacks-tx-malformed"
+   }
+  ]
+ },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [
