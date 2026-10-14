@@ -26,10 +26,13 @@
   }
  },
  "ES2": {
+  "case": "The hash opening's two calls, which the payer's signer broadcasts in order: approve(escrow, deposit) to the currency, then the escrow's open with H as the salt and the zero address as authorizedSigner (draft-evm-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/evm/draft-evm-session-00.md L494 and L517-523, and its client-paid path L1069-1070). expectApproveCalldata is approve(address,uint256) of fixed.escrow and fixed.deposit; expectOpenCalldata is open(address,address,uint128,bytes32,address) of fixed.recipient, fixed.usdc, fixed.deposit, fixed.H and the zero address. Each is computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of the signature followed by encode of its argument types; expectOpenCalldata is the same bytes as ES9's first case's input, viem 2.57.4's encodeFunctionData",
   "expectOpenLength": 164,
   "expectOpenSelector": "0xc79ea485",
   "expectDeposit": "0x4c4b40",
-  "expectHOccurrences": 1
+  "expectHOccurrences": 1,
+  "expectApproveCalldata": "0x095ea7b30000000000000000000000001234567890abcdef1234567890abcdef1234567800000000000000000000000000000000000000000000000000000000004c4b40",
+  "expectOpenCalldata": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
  },
  "ES3": {
   "expectNonce": "0xee33b37ec8b7776cb32cebe2ac57f888cdd51bdcfdc5983dafe9270696de1993"

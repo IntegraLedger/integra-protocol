@@ -5,10 +5,12 @@ import { describe, expect, it } from "vitest";
 import {
   concat,
   encodeAbiParameters,
+  encodeFunctionData,
   fromRlp,
   hashTypedData,
   isAddress,
   keccak256,
+  parseAbi,
   parseSignature,
   recoverAddress,
   serializeCompactSignature,
@@ -118,8 +120,29 @@ describe("mpp-session-evm.json", () => {
     affix(evmChannelId({ ...c, salt: H2 }) as string, E.ES1.expectChannelIdH2);
   });
 
-  it("ES2: the hash open's calls", async () => {
+  // ES2's calldata is eth-abi 6.0.0's approve(address,uint256) and draft-evm-session-00's open(address payee, address
+  // token, uint128 deposit, bytes32 salt, address authorizedSigner) (tempoxyz/mpp-specs 08e7dd87, L494 and L517-523);
+  // viem 2.57.4's encodeFunctionData re-derives each, and build's whole funding is held to them.
+  it("ES2: the hash open's calls, byte for byte as eth-abi and viem encode approve and the escrow's open", async () => {
+    const abi = parseAbi([
+      "function approve(address spender, uint256 amount)",
+      "function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)",
+    ]);
+    expect(encodeFunctionData({ abi, functionName: "approve", args: [f.escrow, deposit] })).toBe(E.ES2.expectApproveCalldata);
+    expect(encodeFunctionData({ abi, functionName: "open", args: [f.recipient, f.usdc, deposit, H, ZERO] })).toBe(
+      E.ES2.expectOpenCalldata,
+    );
+    expect(E.ES9.cases[0].transaction.input).toBe(E.ES2.expectOpenCalldata);
     const u = await build("hash");
+    expect(u.funding).toEqual({
+      kind: "evm-calls",
+      chainId: 84532,
+      calls: [
+        { to: f.usdc, data: E.ES2.expectApproveCalldata },
+        { to: f.escrow, data: E.ES2.expectOpenCalldata },
+      ],
+      broadcast: true,
+    });
     if (u.funding.kind !== "evm-calls") throw new Error("not evm-calls");
     const [approve, open] = u.funding.calls;
     expect(approve!.to).toBe(f.usdc);
