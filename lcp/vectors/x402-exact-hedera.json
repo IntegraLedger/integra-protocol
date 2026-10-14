@@ -353,6 +353,42 @@
     }
    },
    "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "an option with assetTransferMethod null, neither absent nor cryptoTransfer",
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "1000",
+    "asset": "0.0.0",
+    "payTo": "0.0.1234",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "0.0.1235",
+     "assetTransferMethod": null
+    }
+   },
+   "expect": "hedera/option-malformed",
+   "expectRead": "x402/no-payable-option"
+  },
+  {
+   "case": "x402-exact-hedera-transfer-executor.json's option with assetTransferMethod null, not transferExecutor",
+   "option": {
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "100000000",
+    "asset": "0.0.0",
+    "payTo": "0.0.4001",
+    "maxTimeoutSeconds": 120,
+    "extra": {
+     "assetTransferMethod": null,
+     "executors": [
+      "0.0.7000"
+     ]
+    }
+   },
+   "expect": "hedera/option-malformed",
+   "expectRead": "x402/no-payable-option"
   }
  ],
  "tokenBuild": {

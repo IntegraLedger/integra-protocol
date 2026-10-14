@@ -199,6 +199,39 @@ describe("x402-exact-hedera.json", () => {
     }
   });
 
+  // P2's option check: assetTransferMethod absent or "cryptoTransfer" names this pairing, "transferExecutor" the
+  // executor pairing, and any other value, null included, is hedera/option-malformed: at advertise (the row above) and
+  // at each pairing's build. read skips such an option, as any other that fails the check.
+  it("the null assetTransferMethod rows: each pairing's build refuses with the row's code", async () => {
+    const rows = (V.refusals as { case: string; option?: PaymentRequirements; expect: string; expectRead?: string }[]).filter(
+      (r) => r.option !== undefined && r.option.extra?.["assetTransferMethod"] === null,
+    );
+    expect(rows).toHaveLength(2);
+    const [exact, executor] = rows as { case: string; option: PaymentRequirements; expect: string }[];
+    const exactBuilt = await exactHedera.build(
+      {
+        required: { ...required, accepts: [exact!.option] },
+        accepted: exact!.option,
+        payer: V.fixed.payer,
+        node: V.fixed.node,
+        validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
+        maxFee: BigInt(V.fixed.maxFee),
+      },
+      H,
+    );
+    expect(exactBuilt).toEqual({ refused: true, code: exact!.expect });
+    const doc = { x402Version: 2 as const, resource: X.fixed.resource, accepts: [executor!.option] };
+    const executorBuilt = await exactHederaExecutor.build({ required: doc, accepted: executor!.option, now: X.fixed.now }, H);
+    expect(executorBuilt).toEqual({ refused: true, code: executor!.expect });
+    const legalContext = { info: { type: "sha256", value: H, legalContextUrl: V.fixed.link } };
+    for (const r of rows) {
+      const d = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [r.option!], extensions: { legalContext } };
+      expect(r.expectRead).toBe("x402/no-payable-option");
+      expect(exactHedera.read(d as never)).toEqual({ refused: true, code: r.expectRead });
+      expect(exactHederaExecutor.read(d as never)).toEqual({ refused: true, code: r.expectRead });
+    }
+  });
+
   it("token build: expected_decimals is written when given, even zero", async () => {
     const token = { ...O, asset: V.tokenBuild.asset };
     expect(hex((await unsigned(token, 6)).request.bodyBytes)).toBe(V.tokenBuild.expectBodyBytesDecimals6);
