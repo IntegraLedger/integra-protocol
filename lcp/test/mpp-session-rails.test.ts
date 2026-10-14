@@ -18,7 +18,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { decode as decodeXrpl, encode as encodeXrpl } from "ripple-binary-codec";
-import { hashTypedData } from "viem";
+import { encodeAbiParameters, encodeFunctionData, hashTypedData, keccak256, parseAbi, parseAbiParameters, type Hex as ViemHex } from "viem";
 import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/index.js";
 import type { EvmReceipt } from "../src/evm.js";
 import { ReaderError } from "../src/evm.js";
@@ -98,17 +98,57 @@ const asReceipt = (r: { status: number; blockNumber: string; logs: EvmReceipt["l
 });
 
 describe("mpp/session/hedera", () => {
-  it("HS1: the channel id, and with salt H2", () => {
+  // HS1's ids are eth-abi 6.0.0's encoding and eth-utils 6.0.0's keccak of the escrow's computeChannelId
+  // (draft-hedera-session-00 L351-371; HederaStreamChannel.sol L307-314 at tomrowbo/mppx-hedera b5193b42). viem 2.57.4
+  // re-derives both here, and hederaChannelId is held to them whole.
+  it("HS1: the channel id, and with salt H2, byte for byte as viem encodes the escrow's computeChannelId", () => {
     const base = { payer: V.fixed.payer, payee: V.fixed.payee, token: V.fixed.token, authorizedSigner: "0x0000000000000000000000000000000000000000" as const, escrow: V.fixed.escrow, chainId: 296 as const };
+    const computeChannelId = (salt: ViemHex) =>
+      keccak256(
+        encodeAbiParameters(parseAbiParameters("address, address, address, bytes32, address, address, uint256"), [
+          base.payer.toLowerCase(),
+          base.payee,
+          base.token,
+          salt,
+          base.authorizedSigner,
+          base.escrow.toLowerCase(),
+          BigInt(base.chainId),
+        ]),
+      );
+    expect([computeChannelId(H), computeChannelId(V.fixed.H2)]).toEqual([V.HS1.expectChannelId, V.HS1.expectChannelIdH2]);
+    expect([V.HS1.expectChannelIdH2.slice(0, 10), V.HS1.expectChannelIdH2.slice(-4)]).toEqual([V.HS1.expectChannelIdH2Prefix, V.HS1.expectChannelIdH2Suffix]);
     expect(hederaChannelId({ ...base, salt: H })).toBe(V.HS1.expectChannelId);
-    const other = hederaChannelId({ ...base, salt: V.fixed.H2 });
-    expect(other.startsWith(V.HS1.expectChannelIdH2Prefix) && other.endsWith(V.HS1.expectChannelIdH2Suffix)).toBe(true);
+    expect(hederaChannelId({ ...base, salt: V.fixed.H2 })).toBe(V.HS1.expectChannelIdH2);
   });
 
-  it("HS2: build's calls and the zero voucher's digest", async () => {
-    const u = await sessionHedera.build({ challenge: C_H, from: V.fixed.payer, now: 1790000000, deposit: BigInt(V.HS2.deposit) }, H);
+  // HS2's calldata are eth-abi 6.0.0's encodings of ERC-20 approve and the escrow's open (draft-hedera-session-00
+  // L417-445), and its digest is eth-account 0.14.0's of the draft's Voucher (L1068-1142). viem 2.57.4 re-derives each
+  // here, and build's two calls and its voucher are held to them whole.
+  it("HS2: build's approve and open calldata, byte for byte as viem encodes them, and the zero voucher's digest", async () => {
+    const escrow = V.fixed.escrow.toLowerCase() as ViemHex;
+    const deposit = BigInt(V.HS2.deposit);
+    const approveData = encodeFunctionData({
+      abi: parseAbi(["function approve(address spender, uint256 amount)"]),
+      functionName: "approve",
+      args: [escrow, deposit],
+    });
+    const openData = encodeFunctionData({
+      abi: parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]),
+      functionName: "open",
+      args: [V.fixed.payee, V.fixed.token, deposit, H, "0x0000000000000000000000000000000000000000"],
+    });
+    expect([approveData, openData]).toEqual([V.HS2.expectApproveCalldata, V.HS2.expectOpenCalldata]);
+    const zeroVoucher = hashTypedData({
+      domain: { name: "Hedera Stream Channel", version: "1", chainId: 296, verifyingContract: escrow },
+      primaryType: "Voucher",
+      types: { Voucher: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint128" }] },
+      message: { channelId: V.HS1.expectChannelId, cumulativeAmount: 0n },
+    });
+    expect(zeroVoucher).toBe(V.HS2.expectVoucherDigest);
+    const u = await sessionHedera.build({ challenge: C_H, from: V.fixed.payer, now: 1790000000, deposit }, H);
     if ("refused" in u) throw new Error(u.code);
     const [approve, open] = u.request.calls;
+    expect([approve!.data, open!.data]).toEqual([V.HS2.expectApproveCalldata, V.HS2.expectOpenCalldata]);
     expect((approve!.data.length - 2) / 2).toBe(V.HS2.expectApproveLength);
     expect(approve!.data.startsWith(V.HS2.expectApprovePrefix) && approve!.data.endsWith(V.HS2.expectApproveSuffix)).toBe(true);
     expect(approve!.data).toContain(V.HS2.expectApproveContains);

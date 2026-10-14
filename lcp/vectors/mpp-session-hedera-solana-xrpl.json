@@ -214,12 +214,17 @@
   }
  ],
  "HS1": {
+  "case": "The channel id of HS2's opening, with salt H, and with salt H2: fixed.payer as the payer, SS1's hedera recipient and currency, a zero authorizedSigner, the escrow and chain 296. It is the escrow's computeChannelId, keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, address(this), block.chainid)) (draft-hedera-session-00 L351-371 at tempoxyz/mpp-specs 08e7dd87; contracts/src/HederaStreamChannel.sol L307-314 at tomrowbo/mppx-hedera b5193b42, the reference escrow the draft names). expectChannelId and expectChannelIdH2 are computed with eth-abi 6.0.0's encode and eth-utils 6.0.0's keccak on Python 3.12.3; expectChannelIdH2Prefix and expectChannelIdH2Suffix are expectChannelIdH2's first 4 bytes and last 2.",
   "expectChannelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+  "expectChannelIdH2": "0xcc607d1808472f8f8e03a4a2dbb5a84ed8cc6c66a393dc97bf5bdc6afbcba9d1",
   "expectChannelIdH2Prefix": "0xcc607d18",
   "expectChannelIdH2Suffix": "a9d1"
  },
  "HS2": {
+  "case": "build(...) with SS1's placed C_H, from fixed.payer and deposit 10000000. calls[0].data is expectApproveCalldata: ERC-20 approve(address,uint256) of the escrow for the deposit, the approval the draft requires before open (draft-hedera-session-00 L441-445 at tempoxyz/mpp-specs 08e7dd87) and the reference client sends (packages/mppx-hedera/src/client/session.ts L213-220 at tomrowbo/mppx-hedera b5193b42). calls[1].data is expectOpenCalldata: the escrow's open(address,address,uint128,bytes32,address) (draft L417-439) with SS1's recipient and currency, the deposit, H as the salt and a zero authorizedSigner. Both are encoded with eth-utils 6.0.0's function_signature_to_4byte_selector and eth-abi 6.0.0's encode on Python 3.12.3; the lengths, prefixes, suffix, selector and salt bytes are of them. expectVoucherDigest is the EIP-712 digest of Voucher(bytes32 channelId,uint128 cumulativeAmount) under the domain {name \"Hedera Stream Channel\", version \"1\", chainId 296, verifyingContract the escrow}, with HS1's expectChannelId and cumulativeAmount 0 (draft L1068-1142; HederaStreamChannel.sol L26, L36-39 and L367-370), computed with eth-account 0.14.0's encode_typed_data and eth-utils' keccak.",
   "deposit": "10000000",
+  "expectApproveCalldata": "0x095ea7b30000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae0000000000000000000000000000000000000000000000000000000000989680",
+  "expectOpenCalldata": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000",
   "expectApproveLength": 68,
   "expectApprovePrefix": "0x095ea7b3",
   "expectApproveSuffix": "989680",

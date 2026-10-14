@@ -188,7 +188,10 @@ describe("mpp/session/hedera: buildWithin", () => {
   const within = { ...R.SS1.hedera.challenge, id: "seller-own-id" };
   const w = (cumulativeAmount: bigint, action = "voucher") => ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
 
-  it("hederaVoucher under \"Hedera Stream Channel\": HS2's digest at 0, and the draft's payload", async () => {
+  // HS2's digest is eth-account 0.14.0's of the draft's Voucher at 0 (draft-hedera-session-00 L1068-1142); viem
+  // re-derives it here, and buildWithin's voucher at 0 is held to it.
+  it("hederaVoucher under \"Hedera Stream Channel\": HS2's digest at 0, as viem hashes the draft's voucher, and the draft's payload", async () => {
+    expect(draftVoucher("Hedera Stream Channel", "uint128", 296, R.fixed.escrow, R.HS1.expectChannelId, 0n)).toBe(R.HS2.expectVoucherDigest);
     expect(hashTypedData(forViem(eip712Of(unsigned(await sessionHedera.buildWithin(w(0n), H)))))).toBe(R.HS2.expectVoucherDigest);
     const at = unsigned(await sessionHedera.buildWithin(w(25n, "close"), H));
     const td = eip712Of(at);
