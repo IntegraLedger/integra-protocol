@@ -95,10 +95,10 @@ let codec: Promise<{ c: Codec; BinaryParser: Parser } | undefined> | undefined;
 
 /** The codec and its `BinaryParser`, loaded together on first use; undefined when the peer is not installed. */
 function loadCodec(): Promise<{ c: Codec; BinaryParser: Parser } | undefined> {
-  codec ??= Promise.all([import("ripple-binary-codec"), import("ripple-binary-codec/dist/serdes/binary-parser.js")]).then(
-    ([c, p]) => ({ c, BinaryParser: p.BinaryParser }),
-    () => undefined,
-  );
+  codec ??= Promise.all([
+    import("ripple-binary-codec").catch(() => undefined),
+    import("ripple-binary-codec/dist/serdes/binary-parser.js").catch(() => undefined),
+  ]).then(([c, p]) => (c === undefined || p === undefined ? undefined : { c, BinaryParser: p.BinaryParser }));
   return codec;
 }
 

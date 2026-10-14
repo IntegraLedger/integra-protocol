@@ -30,9 +30,13 @@ import {
 
 const peer:
   | { bcs: typeof SuiBcs; toBase58: (b: Uint8Array) => string; isTransactionDigest: (d: string) => boolean }
-  | undefined = await Promise.all([import("@mysten/sui/bcs"), import("@mysten/sui/utils")]).then(
-  ([b, u]) => ({ bcs: b.bcs, toBase58: u.toBase58, isTransactionDigest: u.isValidTransactionDigest }),
-  () => undefined,
+  | undefined = await Promise.all([
+  import("@mysten/sui/bcs").catch(() => undefined),
+  import("@mysten/sui/utils").catch(() => undefined),
+]).then(([b, u]) =>
+  b === undefined || u === undefined
+    ? undefined
+    : { bcs: b.bcs, toBase58: u.toBase58, isTransactionDigest: u.isValidTransactionDigest },
 );
 
 export type SuiNetwork = "sui:mainnet" | "sui:testnet" | "sui:devnet";

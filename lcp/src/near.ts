@@ -29,12 +29,9 @@ import {
 
 /** The optional peers, loaded once; undefined when either is not installed, and every function needing them refuses. */
 const peer: { near: typeof NearApi; borsh: typeof Borsh } | undefined = await Promise.all([
-  import("near-api-js"),
-  import("borsh"),
-]).then(
-  ([near, borsh]) => ({ near, borsh }),
-  () => undefined,
-);
+  import("near-api-js").catch(() => undefined),
+  import("borsh").catch(() => undefined),
+]).then(([near, borsh]) => (near === undefined || borsh === undefined ? undefined : { near, borsh }));
 
 /** x402's NEAR network identifiers. */
 export type NearNetwork = "near:mainnet" | "near:testnet";
