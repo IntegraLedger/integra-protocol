@@ -263,10 +263,10 @@ is settled. The delegate is that instrument when its sender, key and nonce are t
 on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
 the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
 every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
-empty relayer list, a reader for another network, or a delegate whose arguments are not base64 is pending. A ref
-whose nonce, asset, payer, public key or digest is malformed is pending `unreadable`, with nothing read: the asset and
-the payer must be account ids of 2 to 64 lowercase letters, digits, `.`, `_` or `-`, and the public key `ed25519:`
-and the base58 of 32 bytes or `secp256k1:` and of 64.
+empty relayer list, a reader for another network, or a delegate whose arguments are not base64 in its canonical form
+(RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed is pending
+`unreadable`, with nothing read: the asset and the payer must be account ids of 2 to 64 lowercase letters, digits,
+`.`, `_` or `-`, and the public key `ed25519:` and the base58 of 32 bytes or `secp256k1:` and of 64.
 
 #### Parameters
 

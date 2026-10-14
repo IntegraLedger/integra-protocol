@@ -357,10 +357,11 @@ The core's hash over the ASCII of `payer`: the payer's identity, never shown in 
 
 Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
 records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
-not this instrument, and any other result is failed with that result. A failed read, or a reader for another
-network, is pending. A ref whose `expectMemo` is not a string is pending `unreadable`, with nothing read. It never
-answers expired: a transaction id that no entry uses stays pending `not-found`, and `validUntil` is not read, so the
-caller decides when to stop reading.
+not this instrument, and any other result is failed with that result. A failed read, a reader for another network,
+or a SUCCESS entry whose `memo_base64` is not base64 in its canonical form (RFC 4648 §3.5) is pending. A ref whose
+`expectMemo` is not a string is pending `unreadable`, with nothing read. It never answers expired: a transaction id
+that no entry uses stays pending `not-found`, and `validUntil` is not read, so the caller decides when to stop
+reading.
 
 #### Parameters
 
