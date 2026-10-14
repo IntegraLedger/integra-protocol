@@ -8,8 +8,10 @@ import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58 } from "@scure/base";
 import {
+  compileTransactionMessage,
   decompileTransactionMessage,
   getCompiledTransactionMessageDecoder,
+  getCompiledTransactionMessageEncoder,
   isSignerRole,
   isWritableRole,
 } from "@solana/kit";
@@ -348,7 +350,10 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(V.ES1.eventAuthority).not.toBe(V.ES1.wrongCurveTest);
   });
 
-  it("ES2 and ES3: the opening build, decompiled with its seller memo then binding memo (steward payment-channels/open.ts:464-467 at 751590a2), and the voucher", async () => {
+  // ES2's message and wire are solders' compilation, the account keys of each class in byte order. build's message is
+  // held byte for byte to buildMessageSha256: @solana/kit's compilation of the same message, the steward SDK's order
+  // (typescript/packages/mechanisms/svm/src/payment-channels/open.ts L501-516 at x402 751590a2).
+  it("ES2 and ES3: the opening build, decompiled with its seller memo then binding memo (steward payment-channels/open.ts:464-467 at 751590a2), byte for byte as @solana/kit compiles it, and the voucher", async () => {
     expect(
       hex(openInstructionData({ salt: 42n, deposit: 100000n, gracePeriod: 3600, openSlot: BigInt(S.openSlot), recipient: S.payTo })),
     ).toBe(V.ES2.openInstructionData);
@@ -375,12 +380,19 @@ describe("x402-batch-settlement.json: SVM", () => {
     const [txReq, voucherReq] = u.requests;
     if (txReq?.kind !== "solana-message" || voucherReq?.kind !== "ed25519-raw") throw new Error("request kinds");
     expect(txReq.message.length).toBe(V.ES2.messageLength);
-    const expected = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(
-      (() => {
-        const w = b64(V.ES2.wireBase64);
-        return w.subarray(1 + 64 * w[0]!);
-      })(),
-    ));
+    const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+    const wire = b64(V.ES2.wireBase64);
+    const wireMessage = wire.subarray(1 + 64 * wire[0]!);
+    expect([wire.length, sha256(wire).slice(0, 8), wireMessage.length, sha256(wireMessage)]).toEqual([
+      V.ES2.wireLength,
+      V.ES2.wireSha256Prefix,
+      V.ES2.messageLength,
+      V.ES2.messageSha256,
+    ]);
+    const expected = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(wireMessage));
+    const byKit = Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(expected)));
+    expect(sha256(byKit)).toBe(V.ES2.buildMessageSha256);
+    expect(sha256(txReq.message)).toBe(V.ES2.buildMessageSha256);
     const got = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(txReq.message));
     type Ix = { programAddress: string; accounts?: readonly { address: string; role: number }[]; data?: Uint8Array };
     const shape = (m: typeof got) =>
