@@ -14,7 +14,8 @@ import {
   type Hex,
 } from "./evm-abi.js";
 import type { EvmReader } from "./evm.js";
-import { readReceipt } from "./receipt.js";
+import { finalAt } from "./internal/evm.js";
+import { readReceiptAtMark } from "./receipt.js";
 import { isAddress, isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpBytes, rlpDecode, rlpList, rlpUint, rlpUintBytes, type RlpItem } from "./rlp.js";
@@ -358,15 +359,20 @@ function withinScopes(l: RlpItem, calls: boolean): boolean {
 
 /**
  * Reads the transaction's receipt and returns topic 2 of its one `KeyAuthorizationWitness` log from the account
- * keychain. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash, or a reader for
- * another network than the ref names, is `tempo/wrong-reader`, with nothing read. One call.
+ * keychain: none is `tempo/no-witness`, and more than one `tempo/ambiguous`. A failed read is `tempo/unreadable`, no
+ * receipt `tempo/not-found` and a revert `tempo/reverted`, as `readReceiptAtMark` answers. A revert,
+ * `tempo/no-witness` and `tempo/ambiguous` are given only where the receipt's block is at or below the reader's
+ * `finalized` mark: above it, or where that mark cannot be read, each is `tempo/not-final`, a read to repeat, since a
+ * block above the mark can be replaced by one in which the transaction succeeds or holds other logs. The mark is read
+ * only for those. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash, or a reader
+ * for another network than the ref names, is `tempo/wrong-reader`, with nothing read. At most two calls.
  */
 export async function witnessRecover(
   ref: { network: string; transaction: Hex },
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || normalHash(ref.transaction) === null) return refusal("tempo/wrong-reader");
-  const receipt = await readReceipt(ref.network, ref.transaction, reader);
+  const receipt = await readReceiptAtMark(ref.network, ref.transaction, reader);
   if (isRefusal(receipt)) return receipt;
   const witnesses: Hex[] = [];
   for (const log of receipt.logs) {
@@ -376,6 +382,7 @@ export async function witnessRecover(
     if (w === null) return refusal("tempo/unreadable");
     witnesses.push(w);
   }
+  if (witnesses.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("tempo/not-final");
   if (witnesses.length === 0) return refusal("tempo/no-witness");
   if (witnesses.length > 1) return refusal("tempo/ambiguous");
   return witnesses[0]!;

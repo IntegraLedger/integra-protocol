@@ -34,6 +34,7 @@ import {
   KEY_AUTHORIZATION_WITNESS_TOPIC,
   KEY_REVOKED_TOPIC,
   RECEIVE_POLICY_GUARD,
+  TIP20_CHANNEL_RESERVE,
   TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
 import { BATCH_SETTLEMENT, CHANNEL_CREATED_TOPIC, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
@@ -523,13 +524,14 @@ describe("a fetchPresented revert is refused only at or below the finalized mark
   });
 });
 
-// An EVM `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap without the one use it reads H
-// from, gives a verdict a block above the mark can change, and a refusal names no mark: the verdict only where the
-// receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read,
-// `evm/not-final`, a read to repeat (docs/guides/rails.md, "Reading settlement"). The settle calls are viem's encodings
+// An EVM or Tempo `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap without the one use it
+// reads H from, gives a verdict a block above the mark can change, and a refusal names no mark: the verdict only where
+// the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the
+// rail's not-final code, a read to repeat (docs/guides/rails.md, "Reading settlement"). The TIP-20 channel reserve's
+// `ChannelOpened` carries the salt in data word 3 (TIP-1034). The settle calls are viem's encodings
 // of the x402 Permit2 proxies' `settle` (x402 contracts/evm/src/x402ExactPermit2Proxy.sol, x402UptoPermit2Proxy.sol),
 // and the open call draft-evm-session-00's `open`.
-describe("an EVM recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
+describe("an EVM or Tempo recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
   const PERMIT = {
     name: "permit",
     type: "tuple",
@@ -580,6 +582,10 @@ describe("an EVM recover gives a revert or a verdict read from the chain only at
     log(DELEGATION_MANAGER, [REDEEMED_DELEGATION_TOPIC, topic(PAYER), topic(STRANGER)], ("0x" +
       [hex64(PAYER), hex64(STRANGER), hex64("0x0"), hex64("0x0"), hex64("0x0"), salt.slice(2)].join("")) as Hex);
   const created = log(BATCH_SETTLEMENT, [CHANNEL_CREATED_TOPIC, CHANNEL]);
+  const reserveOpened = (salt: Hex) =>
+    log(TIP20_CHANNEL_RESERVE, [CHANNEL_OPENED_V2_TOPIC, CHANNEL, topic(PAYER), topic(PAYEE)], ("0x" +
+      [hex64(TOKEN), hex64(PAYEE), hex64(uint(VALUE)), salt.slice(2)].join("")) as Hex);
+  const witnessOf = (h: Hex) => log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PAYER), h]);
   const openCall: EvmTransaction = {
     from: PAYER,
     to: sessionEscrow,
@@ -642,6 +648,29 @@ describe("an EVM recover gives a revert or a verdict read from the chain only at
       ],
       "evm/not-final",
     ],
+    [
+      "mpp/session/tempo",
+      TEMPO,
+      {},
+      [
+        { why: "tempo/reverted", logs: [reserveOpened(H)], reverted: true },
+        // A v1 escrow's `ChannelOpened`, from another contract and with no salt word: no opening of the reserve.
+        { why: "tempo/open-not-found", logs: [log(sessionEscrow, [CHANNEL_OPENED_V2_TOPIC, CHANNEL, topic(PAYER), topic(PAYEE)])] },
+        { why: "tempo/ambiguous", logs: [reserveOpened(H), reserveOpened(NONCE)] },
+      ],
+      "tempo/not-final",
+    ],
+    [
+      "mpp/subscription/tempo",
+      TEMPO,
+      {},
+      [
+        { why: "tempo/reverted", logs: [witnessOf(H)], reverted: true },
+        { why: "tempo/no-witness", logs: [transfer(PAYER, PAYEE)] },
+        { why: "tempo/ambiguous", logs: [witnessOf(H), witnessOf(NONCE)] },
+      ],
+      "tempo/not-final",
+    ],
   ];
   const recoverOf = (id: string) =>
     (BINDINGS.find((b) => b.id === id) as unknown as { recover: (ref: object, reader: EvmReader) => Promise<unknown> }).recover;
@@ -680,8 +709,8 @@ describe("an EVM recover gives a revert or a verdict read from the chain only at
     }
   }
 
-  it("covers every EVM pairing with a recover", () => {
-    const evm = BINDINGS.filter((b) => /eip155|\/evm/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function");
+  it("covers every EVM and Tempo pairing with a recover", () => {
+    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function");
     expect(new Set(RECOVERS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
   });
 

@@ -199,7 +199,9 @@ bitmap at the receipt's block (`evm/no-authorization-use`, `evm/no-leaf`, `evm/n
 `evm/no-permit2-settle`, `evm/nonce-not-used`, `evm/ambiguous`, and `evm/no-open-call` for an open call whose receipt
 holds no `Transfer` from its payer): the verdict at or below it, and `evm/not-final`, a read to repeat, above it or
 where it cannot be read. A transaction whose own call is not an escrow open call is `evm/no-open-call` on every read,
-since its calldata is its own. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
+since its calldata is its own. A Tempo `recover` (`mpp/session/tempo` and `mpp/subscription/tempo`) places a revert,
+`tempo/open-not-found`, `tempo/no-witness` and `tempo/ambiguous` by the same mark, with `tempo/not-final` above it or
+where it cannot be read. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
 mark they reached, or none.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
@@ -391,7 +393,8 @@ Where H is only in calldata, `recover` reads the transaction as well as its rece
 
 `mpp/session/tempo` reads only the receipt: the salt is data word 3 of the `ChannelOpened` log of the TIP-20 channel
 reserve (TIP-1034). A v1 escrow's `ChannelOpened` carries no salt, and the reader does not show a Tempo transaction's
-calls, so a v1 opening is refused (`tempo/open-not-found`).
+calls, so a v1 opening is refused (`tempo/open-not-found`, once its block is at or below the reader's `finalized`
+mark).
 
 ## Where the payment is not a public proof
 

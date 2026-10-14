@@ -68,7 +68,7 @@ import {
 } from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { keyAccount } from "./internal/tempo.js";
-import { readReceipt } from "./receipt.js";
+import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   ACCESS_KEY_SPEND_TOPIC,
@@ -1087,12 +1087,16 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
  * carries no salt, and its open call sits among the Tempo transaction's calls, which the reader does not show: a v1
  * opening, like a receipt with no such log, is `tempo/open-not-found`. Logs giving more than one salt are
  * `tempo/ambiguous`. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash (with
- * nothing read), or a reader for another network than the ref names, is `tempo/wrong-reader`; a failed read is `tempo/unreadable`, no receipt `tempo/not-found` and a revert
- * `tempo/reverted`, as `readReceipt` answers. One call.
+ * nothing read), or a reader for another network than the ref names, is `tempo/wrong-reader`; a failed read is
+ * `tempo/unreadable`, no receipt `tempo/not-found` and a revert `tempo/reverted`, as `readReceiptAtMark` answers. A
+ * revert, `tempo/open-not-found` and `tempo/ambiguous` are given only where the receipt's block is at or below the
+ * reader's `finalized` mark: above it, or where that mark cannot be read, each is `tempo/not-final`, a read to repeat,
+ * since a block above the mark can be replaced by one in which the transaction succeeds or holds other logs. The mark
+ * is read only for those. At most two calls.
  */
 async function tempoRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || normalHash(ref.transaction) === null) return refusal("tempo/wrong-reader");
-  const receipt = await readReceipt(ref.network, ref.transaction, reader);
+  const receipt = await readReceiptAtMark(ref.network, ref.transaction, reader);
   if (isRefusal(receipt)) return receipt;
   const salts = new Set<string>();
   for (const l of receipt.logs) {
@@ -1103,6 +1107,7 @@ async function tempoRecover(ref: { network: string; transaction: Hex }, reader: 
     const salt = data === undefined ? undefined : wordAt(data, 3);
     if (salt !== undefined) salts.add(hexOf(salt));
   }
+  if (salts.size !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("tempo/not-final");
   if (salts.size === 0) return refusal("tempo/open-not-found");
   if (salts.size > 1) return refusal("tempo/ambiguous");
   return [...salts][0]! as AtrHash;
