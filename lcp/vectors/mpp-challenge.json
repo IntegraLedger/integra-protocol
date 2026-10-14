@@ -102,7 +102,7 @@
    { "case": "a Tempo charge challenge with more than one call carrying this challenge's attribution memo", "expect": "tempo/ambiguous" },
    { "case": "an EVM session challenge whose chainId is absent or not a positive integer", "expect": "mpp/chain-id-required" },
    { "case": "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed", "expect": "mpp/request-malformed" },
-   { "case": "challengeId, place or build with an H that is not 0x and 64 hex digits, or a position outside 0-31", "expect": "mpp/challenge-malformed" },
+   { "case": "challengeId or place with an H that is not 0x and 64 hex digits, or a position outside 0-31", "expect": "mpp/challenge-malformed" },
    { "case": "build with a malformed from, a missing tokenDomain or spender, or a clientId that is not a string", "expect": "mpp/input-malformed" },
    { "case": "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction over 64 KiB", "expect": "mpp/credential-malformed" },
    { "case": "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects", "expect": "mpp/credential-malformed" },
@@ -112,10 +112,11 @@
    { "case": "memoCalldata, tempoChannelId or expiringNonceHash with a malformed address, amount or hash", "expect": "tempo/tx-malformed or tempo/descriptor-mismatch" },
    { "case": "read with two challenges whose links or agreement URLs differ", "expect": "mpp/legal-context-conflict" },
    { "case": "read with a legalContextAgreementUrl of at most 2048 characters that parses as an absolute URL whose scheme is not https", "expect": "mpp/link-not-https" },
-   { "case": "read with a legalContextAgreementUrl that is not a string, does not parse as an absolute URL (the empty string, https:// alone), is an https URL the link rule refuses, or is over 2048 characters", "expect": "mpp/legal-context-malformed" },
+   { "case": "read with a legalContextAgreementUrl that does not parse as an absolute URL (the empty string, https:// alone), is an https URL the link rule refuses, or is over 2048 characters", "expect": "mpp/legal-context-malformed" },
    { "case": "place with a link or agreement URL that is not an https link; or read with no challenge read and a legalContextUrl in a challenge whose id derives from its legalContext, of at most 2048 characters that parses as an absolute URL whose scheme is not https: the same split as the agreement URL", "expect": "mpp/link-not-https" },
    { "case": "place with a link or agreement URL that is an https link over 2048 characters; or read with no challenge read, no legalContextUrl of another scheme and one that is absent, does not parse as an absolute URL, is an https URL the link rule refuses, or is over 2048 characters, in a challenge whose id derives from its legalContext", "expect": "mpp/legal-context-malformed" },
-   { "case": "sessionResume of a challenge of no session pairing", "expect": "mpp/not-this-pairing" }
+   { "case": "sessionResume of a challenge of no session pairing", "expect": "mpp/not-this-pairing" },
+   { "case": "build with an H the challenge's id does not derive from, such as one that is not 0x and 64 hex digits", "expect": "mpp/id-not-ours" }
   ],
   "inputs": {
    "requestMalformed": "{\"amount\":\"10000\",\"currency\":\"0x036C\",\"methodDetails\":{\"chainId\":84532},\"recipient\":\"0x209693Bc6afc0C5328bA36FaF03C514EF312287C\"}",

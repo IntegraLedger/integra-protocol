@@ -825,7 +825,7 @@
   "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h.",
   "rows": [
    {
-    "case": "bound, reference or ref with a channelConfig member missing or malformed, or a deposit amount that is not decimal",
+    "case": "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal",
     "expect": "x402/payload-malformed"
    },
    {
@@ -841,11 +841,11 @@
     "expect": "evm/field-malformed"
    },
    {
-    "case": "complete with a signature count other than the requests', or an EVM signature that is not 0x hex",
+    "case": "EVM complete with a signature count other than the requests', or a signature that is not 0x hex",
     "expect": "x402/signature-malformed"
    },
    {
-    "case": "SVM complete with a signature that is not 64 bytes of base58, or a build input out of range",
+    "case": "SVM complete with a signature count other than the requests', or a signature that is not 64 bytes of base58, or a build input out of range",
     "expect": "svm/input-malformed"
    },
    {

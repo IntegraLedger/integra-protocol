@@ -690,8 +690,9 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
   const svmVoucherPayment = (config: unknown) => svmPayment({ type: "voucher", channelConfig: config, voucher: svmVoucher });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
-    // The EVM pairing's bound and reference read the deposit amount; channel.ref and the Solana pairing do not read it.
-    "bound, reference or ref with a channelConfig member missing or malformed, or a deposit amount that is not decimal": async () => {
+    // The EVM bound and reference read the deposit amount: the reference's transfer digest holds it. channel.ref reads
+    // no deposit, and the Solana pairing reads the opening's deposit from its transaction.
+    "bound, reference or ref with a channelConfig member missing or malformed, or EVM bound or reference with a deposit amount that is not decimal": async () => {
       const { payment } = await evmOpening();
       const p = payment.payload as Record<string, any>;
       const { salt: _salt, ...evmNoSalt } = p["channelConfig"];
@@ -745,9 +746,8 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
         batchChannelCreated({ ...V.EB8.log, data: word(5, "f".repeat(64)) }, 84532),
       ];
     },
-    // The EVM completes, the opening's and buildWithin's. The Solana completes refuse a signature count other than the
-    // requests' as svm/input-malformed, as the ES6 test above shows for buildWithin's refund.
-    "complete with a signature count other than the requests', or an EVM signature that is not 0x hex": async () => {
+    // The EVM completes, the opening's and buildWithin's.
+    "EVM complete with a signature count other than the requests', or a signature that is not 0x hex": async () => {
       const { u } = await evmOpening();
       const doc = evmDoc();
       const within = unwrap(
@@ -767,14 +767,20 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
         within.complete([s2.slice(2)]),
       ];
     },
-    "SVM complete with a signature that is not 64 bytes of base58, or a build input out of range": async () => {
+    // The opening asks for two signatures and the voucher for one.
+    "SVM complete with a signature count other than the requests', or a signature that is not 64 bytes of base58, or a build input out of range": async () => {
       const doc = svmDoc();
       const c = es2Choice(doc);
       const u = unwrap(await batchSvm.build(c, H));
       const within = { required: doc, accepted: doc.accepts[0]!, channelConfig: V.ES4.config, maxClaimableAmount: 1000n };
       const w = unwrap(await batchSvm.buildWithin(within, H));
       const sig = base58.encode(new Uint8Array(64).fill(1));
+      expect([u.requests.length, w.requests.length]).toEqual([2, 1]);
       return [
+        u.complete([sig]),
+        u.complete([sig, sig, sig]),
+        w.complete([]),
+        w.complete([sig, sig]),
         u.complete(["x", sig]),
         u.complete([sig, base58.encode(new Uint8Array(63).fill(1))]),
         u.complete([`0x${"ab".repeat(64)}`, sig]),

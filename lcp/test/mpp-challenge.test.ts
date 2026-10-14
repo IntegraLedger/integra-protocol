@@ -241,7 +241,7 @@ describe("mpp-challenge.json", () => {
     expect(await issuedDigest(null as unknown as MppChallenge)).toEqual({ refused: true, code: "mpp/challenge-malformed" });
     const rows = V.agreedRefusals.rows as { case: string; expect: string }[];
     const notHttps = rows.find((r) => r.case.startsWith("read with a legalContextAgreementUrl of at most 2048"))!.expect;
-    const malformed = rows.find((r) => r.case.startsWith("read with a legalContextAgreementUrl that is not a string"))!.expect;
+    const malformed = rows.find((r) => r.case.startsWith("read with a legalContextAgreementUrl that does not parse"))!.expect;
     // A challenge of no session pairing names no channel to resume; a session challenge with no channelId names a new
     // channel and gives null (mpp-session-evm.json's ES8 reads one that names it).
     const notSession = rows.find((r) => r.case === "sessionResume of a challenge of no session pairing")!.expect;
@@ -664,7 +664,6 @@ describe("expires: required where a build writes it into what the payer signs", 
 // one of them on each call, and each of them on some call.
 describe("mpp-challenge.json agreedRefusals: every row runs", () => {
   type Row = { case: string; expect: string };
-  const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-challenge.json agreedRefusals.rows", { exact: 22 });
   const refused = (code: string) => ({ refused: true, code });
   const i = V.agreedRefusals.inputs;
   const A = load("mpp-charge-evm-authorization.json");
@@ -794,7 +793,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
         pairingsOf(subscription({ periodCount: "0" })),
       ];
     },
-    "challengeId, place or build with an H that is not 0x and 64 hex digits, or a position outside 0-31": async () => [
+    "challengeId or place with an H that is not 0x and 64 hex digits, or a position outside 0-31": async () => [
       challengeId(H.slice(0, -1) as `0x${string}`, 0),
       place([C_E], H.slice(0, -1) as `0x${string}`, link, C_E),
       challengeId(H, 32),
@@ -869,7 +868,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     ],
     "read with a legalContextAgreementUrl of at most 2048 characters that parses as an absolute URL whose scheme is not https":
       async () => ["http://pay.seller.example/agreement", "HTTP://pay.seller.example/agreement", "ftp://pay.seller.example/a"].map((a) => read(withAgreement(a))),
-    "read with a legalContextAgreementUrl that is not a string, does not parse as an absolute URL (the empty string, https:// alone), is an https URL the link rule refuses, or is over 2048 characters":
+    "read with a legalContextAgreementUrl that does not parse as an absolute URL (the empty string, https:// alone), is an https URL the link rule refuses, or is over 2048 characters":
       async () => ["", "https://", "not a url", "https://u@pay.seller.example/", long, longHttp].map((a) => read(withAgreement(a))),
     "place with a link or agreement URL that is not an https link; or read with no challenge read and a legalContextUrl in a challenge whose id derives from its legalContext, of at most 2048 characters that parses as an absolute URL whose scheme is not https: the same split as the agreement URL":
       async () => [
@@ -887,10 +886,35 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
         ...["", "https://", "not a url", "https://u@atr.seller.example/", long, longHttp].map((u) => read(withOpaque({ legalContextUrl: u }))),
       ],
     "sessionResume of a challenge of no session pairing": async () => [sessionResume(C_E), sessionResume(C_T)],
+    // H with its last hex digit changed is well formed, and the placed challenges' ids derive from H.
+    "build with an H the challenge's id does not derive from, such as one that is not 0x and 64 hex digits": async () => {
+      const other = `${H.slice(0, -1)}${H.endsWith("e") ? "f" : "e"}` as `0x${string}`;
+      const results = [];
+      for (const h of [other, H.slice(0, -1), H.slice(2)] as `0x${string}`[]) {
+        results.push(
+          await evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, h),
+          await evmHash.build({ challenge: chCalls, from, now: 0 }, h),
+          await evmTransaction.build({ challenge: chCalls, from, now: 0 }, h),
+          await tempoMemo.build({ challenge: chT, from, now: 0 }, h),
+          await tempoPush.build({ challenge: chPush, from, now: 0 }, h),
+        );
+      }
+      return results;
+    },
   };
+
+  const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-challenge.json agreedRefusals.rows", { exact: Object.keys(cases).length });
 
   it("names a case for every row, and no other", () => {
     expect(Object.keys(cases).sort()).toEqual(rows.map((r) => r.case).sort());
+  });
+
+  // MPP's opaque is a flat string-to-string map (draft-httpauth-payment-01), so an agreement URL that is not a string
+  // makes the opaque no opaque: read reads no challenge from it.
+  it("read with a legalContextAgreementUrl that is not a string reads no challenge", () => {
+    for (const a of [7, null, [link], { url: link }]) {
+      expect(read(withOpaque({ legalContextAgreementUrl: a, legalContextUrl: link }))).toEqual(refused("mpp/no-legal-context"));
+    }
   });
 
   for (const row of rows) {
