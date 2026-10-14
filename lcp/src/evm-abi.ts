@@ -1,6 +1,7 @@
 /**
- * Byte helpers for the EVM entry points: strict hex, 32-byte ABI words, and keccak-256. Nothing here allocates more
- * than its input's size and nothing throws on a caller's value: malformed input gives `undefined`.
+ * Byte helpers for the EVM entry points: strict hex, 32-byte ABI words, and keccak-256. `bytesOf` answers a value that
+ * is not strict hex with `undefined`, and `sameBytes` answers false; the word writers and the other helpers take values
+ * their callers have already checked.
  */
 import { keccak_256 } from "@noble/hashes/sha3.js";
 
