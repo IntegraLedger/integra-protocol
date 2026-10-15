@@ -3,7 +3,7 @@
 // build output) and in the pages under docs/ (except the generated API pages) against the built lcp package.
 //
 // A fence opens with three or more backticks or tildes, indented or not, and closes with at least as many of the same
-// character at the same indentation. A sample is a fence whose info string starts with `ts` or `typescript` and does
+// character, indented or not. A sample is a fence whose info string starts with `ts` or `typescript` and does
 // not contain `no-check`. A fence whose info string starts with another TypeScript or JavaScript name (`tsx`, `mts`,
 // `cts`, `js`, `jsx`, `mjs`, `cjs`, `javascript`, or `ts` or `typescript` with a capital letter) fails unless it
 // contains `no-check`, so no sample leaves the run by its label. Each sample is a complete ESM program. It is written
@@ -64,7 +64,7 @@ function fences(text) {
     const open = /^([ \t]*)(`{3,}|~{3,})(.*)$/.exec(lines[i]);
     if (open === null) continue;
     const [, indent, marker, info] = open;
-    const close = new RegExp(`^${indent}${marker[0]}{${marker.length},}[ \\t]*$`);
+    const close = new RegExp(`^[ \\t]*${marker[0]}{${marker.length},}[ \\t]*$`);
     const body = [];
     let j = i + 1;
     while (j < lines.length && !close.test(lines[j])) {
