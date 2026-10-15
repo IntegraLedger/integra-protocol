@@ -182,23 +182,43 @@ jobs:
           }
           console.log(`node ${process.version}: each of the ${jobs} jobs that runs a step fetches ${url} first and checks it against ${digests[0]}`);
           JS
-      - name: The install policy, in the workspace and the site
+      - name: The install policy, in the workspace and the site, their lockfiles and the workflows
         run: |
           set -eu
           for f in pnpm-workspace.yaml website/pnpm-workspace.yaml; do
             grep -qx 'minimumReleaseAge: 1440' "$f"
             grep -qx 'trustPolicy: no-downgrade' "$f"
             grep -qx 'strictDepBuilds: true' "$f"
-            other=$(grep -E '^[A-Za-z]' "$f" | sed 's/:.*//' | grep -vxE 'packages|minimumReleaseAge|trustPolicy|strictDepBuilds|allowBuilds|minimumReleaseAgeExclude|overrides' || true)
-            inline=$(grep -E '^(allowBuilds|minimumReleaseAgeExclude): *[^ ]' "$f" || true)
-            allowed=$(awk '/^[A-Za-z]/ { block = ($0 == "allowBuilds:"); next } block && NF && $NF != "false"' "$f")
-            excluded=$(awk '/^[A-Za-z]/ { block = ($0 == "minimumReleaseAgeExclude:"); next } block && NF' "$f" | grep -vxF '  - "@integraledger/*"' || true)
-            if [ -n "$other$inline$allowed$excluded" ]; then
-              printf '%s weakens the install policy:\n%s\n' "$f" "$(printf '%s\n' "$other" "$inline" "$allowed" "$excluded" | grep .)"
+            # Every line that starts a setting is one of these seven, so no other setting is read, in any spelling.
+            top=$(grep -vE '^( |#|$)' "$f" | grep -vxE 'packages:|minimumReleaseAge: 1440|trustPolicy: no-downgrade|strictDepBuilds: true|allowBuilds:|minimumReleaseAgeExclude:|overrides:' || true)
+            # Under allowBuilds every entry is a denial; under minimumReleaseAgeExclude the one entry is @integraledger/*;
+            # under packages the entries are "*" and "!website"; under overrides each entry is a registry version, which
+            # minimumReleaseAge and trustPolicy read (a file, link or git source has no release date to read).
+            entries=$(awk '/^[^ #]/ { key = $0; next } /^ *(#|$)/ { next }
+              (key == "allowBuilds:" && !/^  [^ ]+: false$/) ||
+              (key == "minimumReleaseAgeExclude:" && $0 != "  - \"@integraledger/*\"") ||
+              (key == "packages:" && $0 != "  - \"*\"" && $0 != "  - \"!website\"") ||
+              (key == "overrides:" && !/^  ("[^"]+"|[A-Za-z0-9][A-Za-z0-9._@\/>-]*): [~^]?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$/)' "$f")
+            if [ -n "$top$entries" ]; then
+              printf '%s weakens the install policy:\n%s\n' "$f" "$(printf '%s\n' "$top" "$entries" | grep .)"
               exit 1
             fi
           done
-          echo "pnpm-workspace.yaml and website/pnpm-workspace.yaml set minimumReleaseAge 1440 (excluding only @integraledger/*), trustPolicy no-downgrade and strictDepBuilds, and allow no dependency build"
+          # The workspace is every folder but the site, so pnpm -r builds, type-checks and tests every package.
+          workspace=$(awk '/^[^ #]/ { key = $0; next } key == "packages:" && /^  - /' pnpm-workspace.yaml)
+          # Every package in both lockfiles comes from the registry by its integrity, and every dependency a manifest
+          # names is a registry version: no file, directory, link, git or tarball.
+          exotic=$(grep -nE '^ +resolution:' pnpm-lock.yaml website/pnpm-lock.yaml | grep -vE ':[0-9]+: +resolution: \{integrity: sha512-[A-Za-z0-9+/]+={0,2}\}$' || true)
+          exotic="$exotic$(grep -nE '^ +version: ' pnpm-lock.yaml website/pnpm-lock.yaml | grep -vE ':[0-9]+: +version: [0-9]' || true)"
+          # No workflow sets pnpm's settings around the files: by an environment variable, a command-line setting or the
+          # configuration command, by its name, its alias or its shorthands for reading and writing one key, each of which
+          # may follow options. The patterns are bracketed so that this step does not match itself.
+          around=$(grep -niE 'pnpm[_]config_|--config[.]|\bpnpm[[:space:]].*[[:space:]](config|c|get|set)([[:space:]]|$)' .github/workflows/*.yml || true)
+          if [ "$workspace" != "$(printf '  - "*"\n  - "!website"')" ] || [ -n "$exotic$around" ]; then
+            printf 'the install policy is weakened outside the settings:\npnpm-workspace.yaml packages:\n%s\n%s\n' "$workspace" "$(printf '%s\n' "$exotic" "$around" | grep . || true)"
+            exit 1
+          fi
+          echo "pnpm-workspace.yaml and website/pnpm-workspace.yaml set minimumReleaseAge 1440 (excluding only @integraledger/*), trustPolicy no-downgrade and strictDepBuilds, allow no dependency build and override only to registry versions; the workspace is every folder but website; both lockfiles take every package from the registry; no workflow sets pnpm's settings"
       - name: Fetch pnpm
         run: |
           set -eu
