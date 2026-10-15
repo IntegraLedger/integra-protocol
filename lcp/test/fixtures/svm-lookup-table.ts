@@ -26,10 +26,10 @@ const PROGRAM = "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX";
 const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 /**
- * A `settleAndSeal` close (data 04; accounts the payee as fee payer and signer, the channel, the Rent sysvar) with the
- * channel taken from the table, behind one zero signature slot, as base64.
+ * A `settleAndSeal` close (data 04; accounts the payee as fee payer and signer, the channel, the Rent sysvar) with each
+ * account `table` holds taken from the table (the channel, by default), behind one zero signature slot, as base64.
  */
-export function tableClose(payee: string, channel: string, recentBlockhash: string): string {
+export function tableClose(payee: string, channel: string, recentBlockhash: string, table: readonly string[] = [channel]): string {
   const message = pipe(
     createTransactionMessage({ version: 0 }),
     (m) => setTransactionMessageFeePayer(address(payee), m),
@@ -50,7 +50,7 @@ export function tableClose(payee: string, channel: string, recentBlockhash: stri
         m,
       ),
   );
-  const compressed = compressTransactionMessageUsingAddressLookupTables(message, { [address(TABLE)]: [address(channel)] });
+  const compressed = compressTransactionMessageUsingAddressLookupTables(message, { [address(TABLE)]: table.map((a) => address(a)) });
   const bytes = new Uint8Array(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(compressed)));
   const wire = new Uint8Array(1 + 64 + bytes.length);
   wire[0] = 1;

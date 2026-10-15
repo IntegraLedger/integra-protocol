@@ -418,10 +418,10 @@
      }
     },
     {
-     "case": "loadedAddresses.writable [payee]: the close names another account",
+     "case": "loadedAddresses.writable [SV3.payer], a key the message does not hold: the close names another account",
      "loaded": {
       "writable": [
-       "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+       "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
       ],
       "readonly": []
      },
@@ -461,6 +461,19 @@
      "loaded": {
       "writable": [
        "1111111111111111111111111111111"
+      ],
+      "readonly": []
+     },
+     "expect": {
+      "state": "pending",
+      "why": "unreadable"
+     }
+    },
+    {
+     "case": "loadedAddresses.writable [payee]: the fee payer, static key 0, loaded again. The runtime refuses a transaction that loads one account twice (AccountLoadedTwice from validate_account_locks over the static keys and the resolved addresses: anza-xyz/agave f516a892, tag v3.0.14, accounts-db/src/account_locks.rs:160-170 and transaction-view/src/resolved_transaction_view.rs:194-198), so no landed transaction lists it",
+     "loaded": {
+      "writable": [
+       "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
       ],
       "readonly": []
      },

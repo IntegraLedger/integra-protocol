@@ -219,10 +219,13 @@ sign (`not-this-instrument`), no single `open` or `top_up` payment-channels inst
 a reported close whose instructions do not close the channel (`not-a-close`). An account a transaction takes from an
 address lookup table, such as an inner instruction's program or a session close's channel, is read from the addresses
 the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `meta.loadedAddresses`), so no table is
-read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups name
-reads as pending `unreadable`. The Solana `recover`s and
-`fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and `svm/not-final`, a read
-to repeat, from the read at `confirmed` alone.
+read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups name, or
+repeat a static key or each other (the runtime refuses a transaction that loads one account twice), reads as pending
+`unreadable`. The signature fixes a table's address and an index into it, not the entry there, so a session close
+whose `settleAndSeal` or `seal` names its channel account through a table, and does not name the channel, is
+`not-a-close` only from the read at `finalized`, and pending `not-final` from the read at `confirmed` alone. The Solana
+`recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and
+`svm/not-final`, a read to repeat, from the read at `confirmed` alone.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another

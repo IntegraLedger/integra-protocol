@@ -740,8 +740,11 @@ function isLanded(v: unknown): v is SvmLanded {
  * keys, then the addresses its address lookup tables loaded, writable, then read-only, as `loaded` lists them
  * (`getTransaction`'s `meta.loadedAddresses`). A table can supply any account but a signer or a top-level instruction's
  * program, so this is how a read finds such an account without reading the table. Null when the wire does not decode,
- * or when `loaded` does not hold 32-byte keys in exactly the numbers the message's lookups name: that answer is out of
- * its documented form.
+ * when `loaded` does not hold 32-byte keys in exactly the numbers the message's lookups name, or when a loaded key
+ * repeats a static key or another loaded key: the runtime refuses a transaction that loads one account twice
+ * (`AccountLoadedTwice`, from `validate_account_locks` over the static keys and the resolved addresses; anza-xyz/agave
+ * f516a892, tag v3.0.14, `accounts-db/src/account_locks.rs:160-170`, `accounts-db/src/accounts.rs:510` and
+ * `transaction-view/src/resolved_transaction_view.rs:194-198`), so that answer is out of its documented form.
  */
 export function decodeLanded(landed: SvmLanded): { tx: SvmTx; keys: readonly Uint8Array[] } | null {
   const d = decode(landed.wire);
@@ -751,6 +754,12 @@ export function decodeLanded(landed: SvmLanded): { tx: SvmTx; keys: readonly Uin
     list.length === n && list.every((k) => k instanceof Uint8Array && k.length === 32);
   if (!isKeyList(writable, d.loads.writable) || !isKeyList(readonly, d.loads.readonly)) return null;
   const { requiredSignatures: _, loads: __, ...tx } = d;
+  const seen = new Set(tx.keys.map(keyString));
+  for (const key of [...writable, ...readonly]) {
+    const k = keyString(key);
+    if (seen.has(k)) return null;
+    seen.add(k);
+  }
   return { tx, keys: [...tx.keys, ...writable, ...readonly] };
 }
 
@@ -771,13 +780,14 @@ function movesValue(tx: SvmTx, landed: SvmLanded, keys: readonly Uint8Array[]): 
  * is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message. An error, or
  * no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the read at
  * `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither documented
- * shape (a landed wire that does not decode, or `loaded` addresses other than 32-byte keys in the numbers the message's
- * lookups name, included), or a reader for another network is pending `unreadable`. A ref whose `digest` is not a
- * string is pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once
- * `svmNonceMoved` names a slot and the node's first available block is at or before `fromSlot`, is read once more at
- * `finalized`; when that lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it
- * is failed `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is
- * pending `not-found`. At most two calls, or five for a durable-nonce reference.
+ * shape (a landed wire that does not decode, `loaded` addresses other than 32-byte keys in the numbers the message's
+ * lookups name, or a loaded address that repeats a static key or another loaded address, included), or a reader for
+ * another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`, with nothing
+ * read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's first available
+ * block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot at or past the
+ * context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can never land. A
+ * lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
+ * durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
   return settledBy(ref, reader, { execution: (tx, landed, keys) => (movesValue(tx, landed, keys) ? null : "no-transfer") });

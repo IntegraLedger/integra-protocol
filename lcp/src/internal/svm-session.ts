@@ -25,7 +25,10 @@ const OPEN_SIGNER_ACCOUNT = 4;
 const OPEN_CHANNEL_ACCOUNT = 5;
 
 export type SvmCloseRef = { phase: "close"; network: SolanaNetwork; program: string; channel: string; transaction: string };
-/** A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one. */
+/**
+ * A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one, or a
+ * close whose channel account, named through an address lookup table, is not the channel, seen only at `confirmed`.
+ */
 export type SvmCloseStatus =
   | { state: "settled"; commitment: "confirmed" | "finalized" }
   | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
@@ -119,13 +122,17 @@ function isWellFormed(s: unknown): s is string {
  * transaction's address lookup tables loaded (`loaded`, as `getTransaction` lists them), since a table can supply it:
  * draft-solana-session-00 has a close bundled with a `distribute` of many recipients sent as a version-0 transaction
  * with an address lookup table. A landed transaction without such an instruction is failed `not-a-close` from a read at
- * either commitment, since the signature fixes its instructions. One with such an instruction that landed with an
- * error is failed `err` only from the read at `finalized`, and pending `not-final` from the read at `confirmed`, since
- * a block that is not finalized can be replaced and the transaction can land in another block and execute otherwise.
- * Not found at either is pending `not-found`; a failed read, or an answer of neither documented shape (a landed wire
- * that does not decode, or `loaded` addresses other than 32-byte keys in the numbers the message's lookups name,
- * included), is pending `unreadable`. A ref whose program or channel is not the base58 of a 32-byte key is pending
- * `unreadable`, with nothing read. At most two calls.
+ * either commitment, since the signature fixes its instructions, unless a `settleAndSeal` or `seal` of `program` in it
+ * names its channel account through a table: the signature fixes only the table and the index, and an entry written in
+ * a block that is not finalized can differ on another fork, so that transaction is failed `not-a-close` only from the
+ * read at `finalized`, and pending `not-final` from the read at `confirmed`. One with such an instruction that landed
+ * with an error is failed `err` only from the read at `finalized`, and pending `not-final` from the read at
+ * `confirmed`, since a block that is not finalized can be replaced and the transaction can land in another block and
+ * execute otherwise. Not found at either is pending `not-found`; a failed read, or an answer of neither documented
+ * shape (a landed wire that does not decode, `loaded` addresses other than 32-byte keys in the numbers the message's
+ * lookups name, or a loaded address that repeats a static key or another loaded address, included), is pending
+ * `unreadable`. A ref whose program or channel is not the base58 of a 32-byte key is pending `unreadable`, with nothing
+ * read. At most two calls.
  */
 export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promise<SvmCloseStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
@@ -138,12 +145,17 @@ export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promi
   const decoded = decodeLanded(read.landed);
   if (decoded === null) return { state: "pending", why: "unreadable" };
   const { tx, keys } = decoded;
-  const closes = tx.instructions.some((ix) => {
-    if (!sameKey(tx.keys[ix.program], programKey)) return false;
+  const channelAt = tx.instructions.flatMap((ix) => {
+    if (!sameKey(tx.keys[ix.program], programKey)) return [];
     const at = ix.data[0] === SETTLE_AND_SEAL_DISCRIMINATOR ? 1 : ix.data[0] === SEAL_DISCRIMINATOR ? 0 : -1;
-    return at !== -1 && sameKey(keys[ix.accounts[at] ?? -1], channelKey);
+    const index = at === -1 ? undefined : ix.accounts[at];
+    return index === undefined ? [] : [index];
   });
-  if (!closes) return { state: "failed", why: "not-a-close" };
+  if (!channelAt.some((index) => sameKey(keys[index], channelKey))) {
+    const fromTable = channelAt.some((index) => index >= tx.keys.length);
+    if (fromTable && read.commitment === "confirmed") return { state: "pending", why: "not-final" };
+    return { state: "failed", why: "not-a-close" };
+  }
   const { err } = read.landed;
   if (err === null || err === undefined) return { state: "settled", commitment: read.commitment };
   return read.commitment === "finalized" ? { state: "failed", why: "err" } : { state: "pending", why: "not-final" };

@@ -586,6 +586,13 @@ describe("mpp/session/solana", () => {
     const answering = (a: unknown): SvmReader => ({ ...readerOf(sealed), transaction: async () => a as never });
     expect(await sessionSolana.status(ref, answering({ notFound: true, slot: 1150n }))).toEqual({ state: "pending", why: "not-found" });
     expect(await sessionSolana.status(ref, answering(null))).toEqual({ state: "pending", why: "unreadable" });
+    // A landed answer holds SvmLanded's four members (getTransaction's transaction, meta.err, meta.loadedAddresses and
+    // meta.innerInstructions), so one without err, loaded or inner is of neither documented shape.
+    for (const missing of ["err", "loaded", "inner"]) {
+      const partial: Record<string, unknown> = { ...landedSvm(sealed) };
+      delete partial[missing];
+      expect(await sessionSolana.status(ref, answering(partial)), missing).toEqual({ state: "pending", why: "unreadable" });
+    }
     // Solana's commitment levels (solana.com/docs/rpc, "Configuring State Commitment"): a block at `confirmed` has been
     // voted on by a supermajority of the cluster, and one at `finalized` has reached maximum lockout. A block that is not
     // finalized can be replaced, and the close can land in another block and execute otherwise, so an error is a
@@ -622,7 +629,7 @@ describe("mpp/session/solana", () => {
     if ("refused" in close) throw new Error(close.code);
     const ref = { ...close, transaction: "sig" };
     type Row = { case: string; loaded: { writable: string[]; readonly: string[] }; expect: unknown };
-    for (const row of rowsOf(t.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV4.tableClose.rows", { exact: 5 })) {
+    for (const row of rowsOf(t.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV4.tableClose.rows", { exact: 6 })) {
       const loaded = { writable: row.loaded.writable.map((k) => base58.decode(k)), readonly: row.loaded.readonly.map((k) => base58.decode(k)) };
       const reader: SvmReader = {
         network: close.network,
@@ -636,6 +643,73 @@ describe("mpp/session/solana", () => {
       };
       expect(await sessionSolana.status(ref, reader), row.case).toEqual(row.expect);
     }
+  });
+
+  /** A close's reader: `landed(commitment)` answers the transaction call at that commitment; no account is read. */
+  const closeReader = (network: SvmReader["network"], landed: (commitment: "finalized" | "confirmed") => unknown): SvmReader => ({
+    network,
+    transaction: async (_sig, commitment) => landed(commitment) as never,
+    signatures: async () => [],
+    blockhashValid: async () => ({ valid: true, slot: 0n }),
+    firstAvailableBlock: async () => 0n,
+    account: async () => {
+      throw new Error("a close read reads no account");
+    },
+  });
+  const keysOf = (keys: readonly string[]) => keys.map((k) => base58.decode(k));
+
+  // @solana/kit 8.4.0 writes the close with a table holding its channel and the Rent sysvar: the message's lookup loads
+  // one writable and one read-only address. The runtime refuses a transaction that loads one account twice, whether it
+  // repeats a static key or another loaded address (AccountLoadedTwice from validate_account_locks over the static keys
+  // and the resolved addresses: anza-xyz/agave f516a892, tag v3.0.14, accounts-db/src/account_locks.rs:160-170 and its
+  // test_validate_account_locks_duplicate_dynamic, accounts-db/src/accounts.rs:510,
+  // transaction-view/src/resolved_transaction_view.rs:194-198), so no landed transaction lists such a repeat.
+  it("SV4.tableClose's close with two table entries: loaded addresses that repeat an account are pending unreadable", async () => {
+    const payee = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
+    const rent = "SysvarRent111111111111111111111111111111111";
+    const base64 = tableClose(payee, V.SV2.channel, "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k", [V.SV2.channel, rent]);
+    const w = Uint8Array.from(Buffer.from(base64, "base64"));
+    const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(65));
+    if (compiled.version !== 0) throw new Error("the close is a v0 message");
+    expect([compiled.staticAccounts, compiled.addressTableLookups]).toEqual([
+      [payee, "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"],
+      [{ lookupTableAddress: TABLE, writableIndexes: [0], readonlyIndexes: [1] }],
+    ]);
+    const close = sessionSolana.closeRef(C_S, V.SV2.channel);
+    if ("refused" in close) throw new Error(close.code);
+    const ref = { ...close, transaction: "sig" };
+    const landed = (writable: string[], readonly: string[]) =>
+      closeReader(close.network, () => ({ wire: w, err: null, loaded: { writable: keysOf(writable), readonly: keysOf(readonly) }, inner: [] }));
+    expect(await sessionSolana.status(ref, landed([V.SV2.channel], [rent]))).toEqual({ state: "settled", commitment: "finalized" });
+    for (const [writable, readonly, about] of [
+      [[V.SV2.channel], [V.SV2.channel], "the channel loaded twice"],
+      [[V.SV2.channel], [payee], "the fee payer, a static key, loaded"],
+    ] as const) {
+      expect(await sessionSolana.status(ref, landed([...writable], [...readonly])), about).toEqual({ state: "pending", why: "unreadable" });
+    }
+  });
+
+  // The signature fixes a table's address and an index into it, not the entry there: an entry written in a block that
+  // is not finalized can differ on another fork, since such a block can be replaced (solana.com/docs/rpc, "Configuring
+  // State Commitment"). So SV4.tableClose with another key at its channel's table index (SV4.tableClose.rows[1]'s) is
+  // not-a-close only from the read at finalized; the same close that names the channel is settled at confirmed.
+  it("SV4.tableClose: a table entry that is not the channel is failed not-a-close only from the read at finalized", async () => {
+    const t = V.SV4.tableClose;
+    const w = Uint8Array.from(Buffer.from(t.wireBase64, "base64"));
+    const close = sessionSolana.closeRef(C_S, V.SV2.channel);
+    if ("refused" in close) throw new Error(close.code);
+    const ref = { ...close, transaction: "sig" };
+    const at = (commitment: "finalized" | "confirmed", writable: string[]) =>
+      closeReader(close.network, (c) =>
+        commitment === "confirmed" && c === "finalized"
+          ? { notFound: true, slot: null }
+          : { wire: w, err: null, loaded: { writable: keysOf(writable), readonly: [] }, inner: [] },
+      );
+    const [named, other] = [t.rows[0].loaded.writable, t.rows[1].loaded.writable];
+    expect(named).toEqual([V.SV2.channel]);
+    expect(await sessionSolana.status(ref, at("confirmed", other))).toEqual({ state: "pending", why: "not-final" });
+    expect(await sessionSolana.status(ref, at("finalized", other))).toEqual({ state: "failed", why: "not-a-close" });
+    expect(await sessionSolana.status(ref, at("confirmed", named))).toEqual({ state: "settled", commitment: "confirmed" });
   });
 
   // An opening's status reads its transfer among the instructions over the static keys and the loaded addresses; SV2's

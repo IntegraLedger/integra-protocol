@@ -595,8 +595,11 @@ function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
  * open's `authorizedSigner` (account 4) to equal the challenged `operator`: a static key other than the challenge's
  * `operator`, or an account from an address lookup table, is `svm/signer-not-operator`. For `client`, the client
  * chooses that signer. The draft has the server resolve a version-0 message's address lookup table entries before it
- * broadcasts (Settlement Procedure, Open, step 9). These checks take no reader and read no table, so an account 4 or 5
- * named through a table is refused, never taken as read; `status` reads a landed transaction's table addresses.
+ * broadcasts (Settlement Procedure, Open, step 9). These checks take no reader and read no table: an `open` that names
+ * its channel (account 5) through a table is `svm/open-not-found`, and one that names its `authorizedSigner` (account 4)
+ * through a table is `svm/signer-not-operator` for `operator`. For `client`, `bound`, `reference` and `complete` do not
+ * read account 4, and `buildWithin`, which names it as the voucher signer, refuses such an opening with
+ * `svm/open-not-found`. `status` reads a landed transaction's table addresses.
  */
 function solanaOpening(
   presented: MppCredential,

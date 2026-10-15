@@ -265,7 +265,8 @@ CAIP-2: `solana:` and 32 base58 characters.
 
 > **SvmCloseStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"not-final"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-a-close"`; \}
 
-A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one.
+A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one, or a
+close whose channel account, named through an address lookup table, is not the channel, seen only at `confirmed`.
 
 ***
 
@@ -802,13 +803,14 @@ from the static keys or from the addresses the transaction's lookup tables loade
 is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message. An error, or
 no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the read at
 `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither documented
-shape (a landed wire that does not decode, or `loaded` addresses other than 32-byte keys in the numbers the message's
-lookups name, included), or a reader for another network is pending `unreadable`. A ref whose `digest` is not a
-string is pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once
-`svmNonceMoved` names a slot and the node's first available block is at or before `fromSlot`, is read once more at
-`finalized`; when that lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it
-is failed `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is
-pending `not-found`. At most two calls, or five for a durable-nonce reference.
+shape (a landed wire that does not decode, `loaded` addresses other than 32-byte keys in the numbers the message's
+lookups name, or a loaded address that repeats a static key or another loaded address, included), or a reader for
+another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`, with nothing
+read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's first available
+block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot at or past the
+context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can never land. A
+lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
+durable-nonce reference.
 
 #### Parameters
 
