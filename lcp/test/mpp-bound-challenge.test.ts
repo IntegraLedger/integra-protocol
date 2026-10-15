@@ -335,3 +335,32 @@ describe("the MPP vector files' boundChallenge rows", () => {
     expect(await pairing.bound({ ...credential, challenge: row.challenge })).toEqual({ refused: true, code: row.expect });
   });
 });
+
+// MPP's core: `opaque` is base64url, without padding, of a JSON object; this package reads it as a map of strings
+// (`mpp/opaque-malformed`). A placed challenge whose `opaque` does not read is one `pairingsOfPlaced` names no pairing
+// for, and the pairing whose `bound` binds the credential refuses it with that code.
+const OPAQUES = rowsOf<[string, string]>(
+  [
+    ["not base64url", "!!"],
+    ["base64url of a JSON array", Buffer.from("[]", "utf8").toString("base64url")],
+    ["base64url of an object with a number member", Buffer.from('{"n":1}', "utf8").toString("base64url")],
+  ],
+  "the opaque values that do not read",
+  { exact: 3 },
+);
+
+describe("a placed challenge whose opaque does not read", () => {
+  it.each(OPAQUES)("opaque %s: pairingsOfPlaced names none, and bound refuses mpp/opaque-malformed", async (_, opaque) => {
+    let presented = 0;
+    for (const { credential } of CREDENTIALS) {
+      for (const pairing of MPP) {
+        if (typeof (await pairing.bound(credential)) !== "string") continue;
+        const challenge = { ...credential.challenge, opaque };
+        expect(pairingsOfPlaced(challenge)).toEqual([]);
+        expect(await pairing.bound({ ...credential, challenge })).toEqual({ refused: true, code: "mpp/opaque-malformed" });
+        presented++;
+      }
+    }
+    expect(presented).toBe(21);
+  });
+});

@@ -181,3 +181,16 @@ describe("a Lightning challenge without its invoice: build and bound give the co
     expect(await binding.bound({ challenge: changed, payload: { action: "open", preimage: "00".repeat(32) } })).toEqual({ refused: true, code });
   });
 });
+
+// A placed challenge whose `opaque` does not decode as a JSON object of strings (`mpp/opaque-malformed`): no pairing
+// `pairingsOfPlaced` names, and `build` refuses it with that code.
+describe("a placed challenge whose opaque does not read", () => {
+  it.each(Object.keys(FILE))("%s: pairingsOfPlaced names none, and build refuses mpp/opaque-malformed", async (pairing) => {
+    const row = b2(FILE[pairing]!, pairing);
+    const own = row.input.doc.find((c) => pairingsOfPlaced(c).includes(pairing as never))!;
+    const changed = { ...own, opaque: "!!" };
+    expect(pairingsOfPlaced(changed)).toEqual([]);
+    if (pairing === "mpp/charge/hedera") return;
+    expect(await BUILD[pairing]!(row, changed)).toEqual({ refused: true, code: "mpp/opaque-malformed" });
+  });
+});

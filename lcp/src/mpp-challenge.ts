@@ -461,15 +461,14 @@ export function pairingsOf(c: MppChallenge): readonly MppPairingId[] | Refusal {
 }
 
 /**
- * The pairings a placed challenge offers: `pairingsOf`'s checks over the challenge with its `opaque` removed, so the LCP
- * members `place` wrote are not read as an occupied carrier, and with the carrier the seller writes after `place`
- * required where `pairingsOf` takes a challenge without it (the Lightning invoice). These are the pairings whose `build`
- * takes the challenge and whose `bound` and `reference` take it echoed. None when the challenge does not read.
+ * The pairings a placed challenge offers: `pairingsOf`'s checks over the challenge with the LCP members `place` writes
+ * allowed in its `opaque`, which must decode as a map of strings, so they are not read as an occupied carrier, and
+ * with the carrier the seller writes after `place` required where `pairingsOf` takes a challenge without it (the
+ * Lightning invoice). These are the pairings whose `build` takes the challenge and whose `bound` and `reference` take it
+ * echoed. None when the challenge does not read.
  */
 export function pairingsOfPlaced(c: MppChallenge): readonly MppPairingId[] {
-  if (!isObject(c)) return [];
-  const { opaque: _placed, ...issued } = c;
-  const checked = checkChallenge(issued, false, true);
+  const checked = checkChallenge(c, true, true);
   return isRefusal(checked) ? [] : checked.pairings;
 }
 
