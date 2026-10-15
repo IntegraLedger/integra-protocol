@@ -39,7 +39,7 @@ describe("MX: a challenge mixing a public-proof pairing and one without", () => 
   it("each offer's pairing advertises the agreement URL, in either order, and the document carries it once", () => {
     for (const order of [offers, [...offers].reverse()]) {
       const placed = place(order, agreementUrl);
-      expect(canonicalJson(placed as Json)).toBe(canonicalJson(MX.expectDocument));
+      expect(canonicalJson(placed)).toBe(canonicalJson(MX.expectDocument));
       expect(placed).toEqual(MX.expectDocument);
       const info = (placed as { extensions: { legalContext: { info: object } } }).extensions.legalContext.info;
       expect(Object.keys(info)).toEqual(Object.keys(MX.expectDocument.extensions.legalContext.info));
@@ -119,7 +119,7 @@ describe("every x402 pairing takes the agreement URL", () => {
         extensions: { ...without.extensions, legalContext: { ...without.extensions!["legalContext"], info: { ...info, legalContextAgreementUrl: A } } },
       };
       const withA = b.advertise(doc, h, link, option, A) as PaymentRequired;
-      expect(canonicalJson(withA as unknown as Json)).toBe(canonicalJson(expected as unknown as Json));
+      expect(canonicalJson(withA)).toBe(canonicalJson(expected));
       expect(Object.keys(withA.extensions!["legalContext"]!.info as object)).toEqual([
         "type",
         "value",

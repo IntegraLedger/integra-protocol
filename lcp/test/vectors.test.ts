@@ -105,7 +105,7 @@ describe("x402-exact-eip155-eip3009.json", () => {
         body: new TextEncoder().encode(row.bodyUtf8),
       });
       expect(c).toEqual(row.expectCommitment);
-      const d = await issuedDigest(c as never);
+      const d = await issuedDigest(c);
       if (row.expectIssuedDigest !== undefined) expect(d).toBe(row.expectIssuedDigest);
       if (row.expectIssuedDigestNot !== undefined) expect(d).not.toBe(row.expectIssuedDigestNot);
     }

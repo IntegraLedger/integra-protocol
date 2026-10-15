@@ -187,7 +187,7 @@ describe("V3 request commitment", () => {
       query: "symbol=ETH&size=2",
       bodyDigest: "0x1974ed74c4b07a90af58a2e387aa1625aa666a7a245b1308879f04bf66142961",
     });
-    expect(await issuedDigest(c as never)).toBe("0x78e63d10013bb5b8f1290361fb31a9217ebc74d78c8103be31883a0bbbc08e1a");
+    expect(await issuedDigest(c)).toBe("0x78e63d10013bb5b8f1290361fb31a9217ebc74d78c8103be31883a0bbbc08e1a");
   });
   it("GET with no body", async () => {
     const c = await requestCommitment({ method: "GET", target: "/v1/report", body: new Uint8Array() });
@@ -197,14 +197,14 @@ describe("V3 request commitment", () => {
       query: "",
       bodyDigest: "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     });
-    expect(await issuedDigest(c as never)).toBe("0x4f12d0075d3e63361bdeeac695015e16184bcd567c15f78c37333232c3d9933d");
+    expect(await issuedDigest(c)).toBe("0x4f12d0075d3e63361bdeeac695015e16184bcd567c15f78c37333232c3d9933d");
   });
   it("reordered body members are a different commitment", async () => {
     const a = await requestCommitment({ method: "POST", target: "/v1/quote?symbol=ETH&size=2", body: enc('{"qty":"2","side":"buy"}') });
     expect((a as { bodyDigest: string }).bodyDigest).toBe(
       "0x8d5bc8c472ea91fbafd5761318d5546fab5fb95c4573d981dfd8d03400fcfe85",
     );
-    expect(await issuedDigest(a as never)).not.toBe(
+    expect(await issuedDigest(a)).not.toBe(
       "0x78e63d10013bb5b8f1290361fb31a9217ebc74d78c8103be31883a0bbbc08e1a",
     );
   });

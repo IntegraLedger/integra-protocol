@@ -196,7 +196,7 @@ async function buildDelegated(choice: AcpChoice, h: AtrHash): Promise<Unsigned |
     allowance: { ...built },
     complete(request: Presented): Presented | Refusal {
       if (!isObject(request)) return refusal("acp/allowance-changed");
-      const given = canonicalJson(request["allowance"] as Json);
+      const given = canonicalJson(request["allowance"]);
       if (typeof given !== "string" || given !== kept) return refusal("acp/allowance-changed");
       return request;
     },

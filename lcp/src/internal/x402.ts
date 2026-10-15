@@ -251,7 +251,7 @@ export function isOffered(accepts: readonly PaymentRequirements[], offer: Paymen
 
 export function sameJson(a: unknown, b: unknown): boolean {
   if (a === undefined || b === undefined) return false;
-  const x = canonicalJson(a as Json);
-  const y = canonicalJson(b as Json);
+  const x = canonicalJson(a);
+  const y = canonicalJson(b);
   return typeof x === "string" && x === y;
 }

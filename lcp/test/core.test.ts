@@ -18,6 +18,7 @@ import {
   type Json,
 } from "../src/index.js";
 import { isHashWithNonHttpsLink } from "../src/internal/core.js";
+import { rowsOf } from "./rows.js";
 
 type Vector = {
   name: string;
@@ -223,7 +224,7 @@ describe("V5 plants: refusals", () => {
       },
       list: ["a", "b"],
     };
-    const out = await assemble(v1.id!, ["bind", value as never], content);
+    const out = await assemble(v1.id!, ["bind", value], content);
     if ("refused" in out) throw new Error(out.code);
     expect(reads).toBe(1);
     expect(out.atrHash).toBe(row.expectHash);
@@ -236,7 +237,7 @@ describe("V5 plants: refusals", () => {
         return ++reads === 1 ? "x" : () => 1;
       },
     };
-    const out = await assemble(v1.id!, ["bind", value as never], []);
+    const out = await assemble(v1.id!, ["bind", value], []);
     if ("refused" in out) throw new Error(out.code);
     expect(reads).toBe(1);
     // V1's head layout (atrVersion, id, the binding slot) holding the binding part JSON.stringify writes for
@@ -427,14 +428,37 @@ describe("digestJson", () => {
   it("refuses an enumerable symbol-keyed property and reads no non-enumerable property", async () => {
     const key = Symbol("k");
     const shown = { a: 1, [key]: 2 };
-    expect(canonicalJson(shown as never)).toEqual({ refused: true, code: "core/content-not-json" });
-    expect(await digestJson(shown as never)).toEqual({ refused: true, code: "core/content-not-json" });
+    expect(canonicalJson(shown)).toEqual({ refused: true, code: "core/content-not-json" });
+    expect(await digestJson(shown)).toEqual({ refused: true, code: "core/content-not-json" });
     const hidden = { a: 1 };
     Object.defineProperty(hidden, key, { value: 2 });
     Object.defineProperty(hidden, "b", { value: 3 });
     expect(canonicalJson(hidden)).toBe('{"a":1}');
     expect(JSON.stringify(hidden)).toBe('{"a":1}');
     expect(await digestJson(hidden)).toBe(await digestJson({ a: 1 }));
+  });
+  // A schema library's inferred type, such as zod's z.infer of an object with an optional member, types that member
+  // `T | undefined`, which is no JSON value. canonicalJson, digestJson and assemble's binding value take a value of any
+  // type, with no cast, and check it at run time: an undefined member, a Map, a cycle, a bigint and a function are not
+  // JSON (RFC 8259 has no such value), each refused. The expected digest is sha256sum over {"amount":"10000"}.
+  it("canonicalJson, digestJson and assemble take a value of any type and refuse one that is not JSON", async () => {
+    type Parsed = { amount: string; note?: string | undefined; tags?: string[] | undefined };
+    const given: Parsed = { amount: "10000" };
+    expect(canonicalJson(given)).toBe('{"amount":"10000"}');
+    expect(await digestJson(given)).toBe("0x0f4f66898ff7501c5d29ef96859dbb0cef139965e4d1b2c51f9ace613f49d657");
+    const id = "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40";
+    const bound = await assemble(id, ["bind", given], []);
+    if ("refused" in bound) throw new Error(bound.code);
+    expect(new TextDecoder().decode(bound.bytes)).toBe(`{"atrVersion":"1","id":"${id}","bind":{"amount":"10000"}}`);
+    const unset: Parsed = { amount: "10000", note: undefined };
+    const cycle: { [k: string]: unknown } = { a: 1 };
+    cycle["self"] = cycle;
+    const notJson = [unset, new Map([["amount", "10000"]]), cycle, 10000n, () => "10000", undefined];
+    for (const v of rowsOf(notJson, "values that are not JSON", { exact: 6 })) {
+      expect(canonicalJson(v)).toEqual({ refused: true, code: "core/content-not-json" });
+      expect(await digestJson(v)).toEqual({ refused: true, code: "core/content-not-json" });
+      expect(await assemble(id, ["bind", v], [])).toEqual({ refused: true, code: "core/binding-not-json" });
+    }
   });
   it("canonicalJson is the form digestJson hashes", async () => {
     const text = canonicalJson(O);

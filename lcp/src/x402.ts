@@ -195,8 +195,11 @@ export async function requestCommitment(r: HttpRequest): Promise<RequestCommitme
   return { method: r.method, path, query, bodyDigest: await hash(r.body) };
 }
 
-/** SHA-256 over the RFC 8785 form of an issued option or request commitment. */
-export async function issuedDigest(v: PaymentRequirements | RequestCommitment): Promise<Hex | Refusal> {
+/**
+ * SHA-256 over the RFC 8785 form of an issued option or request commitment. Takes any value and refuses one that is not
+ * JSON as `core/content-not-json`, as `digestJson` does.
+ */
+export async function issuedDigest(v: unknown): Promise<Hex | Refusal> {
   return digestJson(v);
 }
 

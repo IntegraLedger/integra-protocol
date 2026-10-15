@@ -83,7 +83,7 @@ export interface CcdUnsigned {
    * Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@concordium/web-sdk`,
    * `JSON.parse(Transaction.toJSONString(tx))`. A value that is not a JSON object is `ccd/transaction-malformed`.
    */
-  complete(signedTransaction: Json): CcdPaymentPayload | Refusal;
+  complete(signedTransaction: unknown): CcdPaymentPayload | Refusal;
 }
 
 const ID = "x402/exact/ccd" as const;
@@ -304,7 +304,7 @@ async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
       memo,
       expiresBy: now + accepted.maxTimeoutSeconds,
     },
-    complete(signedTransaction: Json): CcdPaymentPayload | Refusal {
+    complete(signedTransaction: unknown): CcdPaymentPayload | Refusal {
       if (!isObject(signedTransaction) || jsonSize(signedTransaction) === undefined) {
         return refusal("ccd/transaction-malformed");
       }
@@ -440,7 +440,7 @@ function transferOf(t: Signed["transfer"]): { receiver: Uint8Array; amount: bigi
 
 /** The UTF-8 length of a JSON value's serialization, or undefined for a value that is not JSON (a bigint, say). */
 function jsonSize(v: unknown): number | undefined {
-  const text = canonicalJson(v as Json);
+  const text = canonicalJson(v);
   return typeof text === "string" ? utf8.encode(text).length : undefined;
 }
 

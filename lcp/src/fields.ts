@@ -1,5 +1,5 @@
 /** Shape checks for JSON objects, EVM and hash values, shared by the entry points. */
-import { canonicalJson, fromRawBytes, MAX_JSON_DEPTH, toRawBytes, type AtrHash, type Json } from "./internal/core.js";
+import { canonicalJson, fromRawBytes, MAX_JSON_DEPTH, toRawBytes, type AtrHash } from "./internal/core.js";
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -62,8 +62,8 @@ export function deepFreeze<T>(v: T): T {
 /** True when `a` and `b` are both JSON values with the same RFC 8785 form. */
 export function sameJson(a: unknown, b: unknown): boolean {
   if (a === undefined || b === undefined) return false;
-  const x = canonicalJson(a as Json);
-  const y = canonicalJson(b as Json);
+  const x = canonicalJson(a);
+  const y = canonicalJson(b);
   return typeof x === "string" && x === y;
 }
 

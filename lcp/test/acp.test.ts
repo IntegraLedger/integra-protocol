@@ -1,7 +1,7 @@
 // Runs acp-checkout.json through the acp entry point. Every expected value is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { assemble, canonicalJson, type AtrHash, type Json } from "../src/index.js";
+import { assemble, canonicalJson, type AtrHash } from "../src/index.js";
 import { delegated, issuedDigest, tie, undelegated, type Presented, type Session, type Unsigned } from "../src/acp.js";
 import { rowsOf } from "./rows.js";
 
@@ -26,7 +26,7 @@ describe("acp-checkout.json", () => {
   it("V1: the slot is the acp value in A, and assembling A's parts gives A and H", async () => {
     const slot = tie(V.V1.options);
     expect(slot).toEqual(V.V1.expectSlot);
-    expect(canonicalJson(slot[1] as unknown as Json)).toBe(V.V1.expectSlotText);
+    expect(canonicalJson(slot[1])).toBe(V.V1.expectSlotText);
     expect(V.fixed.A).toContain(`"acp":${V.V1.expectSlotText}`);
     expect(V.fixed.A).not.toContain(H.slice(2));
     const a = V.V1.assemble;

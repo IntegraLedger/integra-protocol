@@ -203,7 +203,7 @@ Each entry point is imported by its subpath. The core:
 | `toRawBytes(h)`, `fromRawBytes(b)` | H as 32 raw bytes, and back. |
 | `isHttpsLink(s)` | The one rule every link to an ATR meets. |
 | `isOtherSchemeLink(s)` | True for a link of at most 2048 characters that parses as an absolute URL whose scheme is not `https`. |
-| `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. |
+| `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. Each takes a value of any type and refuses one that is not JSON (`core/content-not-json`). |
 | `parseJson(text)` | JSON reading capped at 64 levels of nesting. |
 | `fromBase64(s)`, `base64Bytes(s, maxBytes)`, `toBase64(b)` | Padded standard base64 (RFC 4648 §4) read in its canonical form only (RFC 4648 §3.5), or null; read with a bound on its size, checked before decoding, or `"too-large"` or `"malformed"`; and written: the one base64 rule every rail's bytes are read by. |
 | `BINDINGS` | Every pairing this package implements. |

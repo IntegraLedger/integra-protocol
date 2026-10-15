@@ -92,7 +92,9 @@ A pairing of protocol, scheme and rail.
 
 > **Json** = `string` \| `number` \| `boolean` \| `null` \| readonly [`Json`](#json)[] \| \{\[`k`: `string`\]: [`Json`](#json); \}
 
-A JSON value. Numbers in a binding value must be safe integers.
+A JSON value: what `parseJson` reads, and what `canonicalJson`, `digestJson` and `assemble`'s binding value accept.
+These three take `unknown` and refuse, at run time, a value that is not JSON. Numbers in a binding value must be safe
+integers.
 
 ***
 
@@ -180,7 +182,7 @@ behind an accessor included.
 | Parameter | Type |
 | ------ | ------ |
 | `id` | `string` |
-| `binding` | readonly \[`string`, [`Json`](#json)\] |
+| `binding` | readonly \[`string`, `unknown`\] |
 | `content` | readonly readonly \[`string`, `Uint8Array`\<`ArrayBufferLike`\>\][] |
 | `limits?` | \{ `maxBytes?`: `number`; \} |
 | `limits.maxBytes?` | `number` |
@@ -216,13 +218,13 @@ The size is read from the text's length before anything is decoded, so a text pa
 > **canonicalJson**(`v`): `string` \| [`CoreRefusal`](#corerefusal)
 
 The RFC 8785 form of `v`: object members sorted by the UTF-16 code units of their names, recursively, and every
-primitive written as `JSON.stringify` writes it. Refuses what `digestJson` refuses.
+primitive written as `JSON.stringify` writes it. Takes any value and refuses what `digestJson` refuses.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `v` | [`Json`](#json) |
+| `v` | `unknown` |
 
 #### Returns
 
@@ -234,14 +236,14 @@ primitive written as `JSON.stringify` writes it. Refuses what `digestJson` refus
 
 > **digestJson**(`v`): `Promise`\<`` `0x${string}` `` \| [`CoreRefusal`](#corerefusal)\>
 
-SHA-256 over the RFC 8785 form of `v`. Refuses a value deeper than 64 levels, a non-finite number, a string with
-an unpaired surrogate, or anything that is not a JSON value.
+SHA-256 over the RFC 8785 form of `v`. Takes any value and refuses, as `core/content-not-json`, a value deeper than
+64 levels, a non-finite number, a string with an unpaired surrogate, or anything else that is not a JSON value.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `v` | [`Json`](#json) |
+| `v` | `unknown` |
 
 #### Returns
 

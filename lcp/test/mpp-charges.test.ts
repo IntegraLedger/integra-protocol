@@ -59,7 +59,7 @@ const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const fromHex = (s: string) => Uint8Array.from(Buffer.from(s, "hex"));
 
 function withRequest(c: MppChallenge, request: unknown): MppChallenge {
-  return { ...c, request: b64u(canonicalJson(request as never) as string) };
+  return { ...c, request: b64u(canonicalJson(request) as string) };
 }
 function placedOf(V: { place: { expect: MppChallenge & { id: string } } }): MppChallenge & { id: string } {
   return V.place.expect;

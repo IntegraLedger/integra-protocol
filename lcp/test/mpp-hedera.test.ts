@@ -19,7 +19,7 @@ function placed(request: unknown = V.fixed.request): MppChallenge & { id: string
     realm: V.fixed.realm,
     method: "hedera",
     intent: "charge",
-    request: b64u(canonicalJson(request as never) as string),
+    request: b64u(canonicalJson(request) as string),
     expires: V.fixed.expires,
     opaque: b64u(canonicalJson({ legalContext: toLcpString(H), legalContextUrl: V.fixed.link }) as string),
   };

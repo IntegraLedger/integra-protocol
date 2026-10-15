@@ -83,7 +83,7 @@ export async function usdcRequestHash(requestParam: string): Promise<Hex | Refus
     return refusal("mpp/request-malformed");
   }
   if (parsed === undefined) return refusal("mpp/request-malformed");
-  if (canonicalJson(parsed as Json) !== text) return refusal("mpp/request-not-jcs");
+  if (canonicalJson(parsed) !== text) return refusal("mpp/request-not-jcs");
   return keccakHex(bytes);
 }
 

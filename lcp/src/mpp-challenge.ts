@@ -1154,7 +1154,7 @@ export function decodeObject(s: string): { [k: string]: Json } | undefined {
   }
   const v = parseJson(text);
   if (!isObject(v) || depthOf(v, 0) > MAX_JSON_DEPTH) return undefined;
-  if (typeof canonicalJson(v as Json) !== "string") return undefined;
+  if (typeof canonicalJson(v) !== "string") return undefined;
   return v as { [k: string]: Json };
 }
 

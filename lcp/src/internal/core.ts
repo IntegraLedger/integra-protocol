@@ -11,7 +11,11 @@ import { refusal } from "../refusal.js";
 /** `0x` followed by 64 hex digits. Every hash this module emits is lowercase. */
 export type AtrHash = `0x${string}`;
 
-/** A JSON value. Numbers in a binding value must be safe integers. */
+/**
+ * A JSON value: what `parseJson` reads, and what `canonicalJson`, `digestJson` and `assemble`'s binding value accept.
+ * These three take `unknown` and refuse, at run time, a value that is not JSON. Numbers in a binding value must be safe
+ * integers.
+ */
 export type Json = string | number | boolean | null | readonly Json[] | { readonly [k: string]: Json };
 
 export type CoreRefusal = {
@@ -65,7 +69,7 @@ export function newAtrId(): string {
  */
 export async function assemble(
   id: string,
-  binding: readonly [slot: string, value: Json],
+  binding: readonly [slot: string, value: unknown],
   content: readonly (readonly [slot: string, bytes: Uint8Array])[],
   limits?: { maxBytes?: number },
 ): Promise<{ bytes: Uint8Array; atrHash: AtrHash } | CoreRefusal> {
@@ -159,10 +163,10 @@ export async function hash(bytes: Uint8Array): Promise<AtrHash> {
 }
 
 /**
- * SHA-256 over the RFC 8785 form of `v`. Refuses a value deeper than 64 levels, a non-finite number, a string with
- * an unpaired surrogate, or anything that is not a JSON value.
+ * SHA-256 over the RFC 8785 form of `v`. Takes any value and refuses, as `core/content-not-json`, a value deeper than
+ * 64 levels, a non-finite number, a string with an unpaired surrogate, or anything else that is not a JSON value.
  */
-export async function digestJson(v: Json): Promise<`0x${string}` | CoreRefusal> {
+export async function digestJson(v: unknown): Promise<`0x${string}` | CoreRefusal> {
   const text = canonicalJson(v);
   if (typeof text !== "string") return text;
   return hash(utf8.encode(text));
@@ -170,9 +174,9 @@ export async function digestJson(v: Json): Promise<`0x${string}` | CoreRefusal> 
 
 /**
  * The RFC 8785 form of `v`: object members sorted by the UTF-16 code units of their names, recursively, and every
- * primitive written as `JSON.stringify` writes it. Refuses what `digestJson` refuses.
+ * primitive written as `JSON.stringify` writes it. Takes any value and refuses what `digestJson` refuses.
  */
-export function canonicalJson(v: Json): string | CoreRefusal {
+export function canonicalJson(v: unknown): string | CoreRefusal {
   return writeJson(v, 0, false, true) ?? refusal("core/content-not-json");
 }
 

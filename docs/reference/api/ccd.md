@@ -97,7 +97,7 @@ Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@con
 
 | Parameter | Type |
 | ------ | ------ |
-| `signedTransaction` | [`Json`](index.md#json) |
+| `signedTransaction` | `unknown` |
 
 ###### Returns
 
