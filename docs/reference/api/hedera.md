@@ -207,16 +207,12 @@ A reader of a Hedera network's JSON-RPC relay: an `EvmReader` on a `hedera:` net
 
 ### HederaSessionRef
 
-> **HederaSessionRef** = `Omit`\<[`EvmRef`](evm.md#evmref), `"network"`\> & `object`
+> **HederaSessionRef** = \{ `bindingLog`: `NonNullable`\<[`EvmRef`](evm.md#evmref)\[`"bindingLog"`\]\>; `escrow?`: `never`; `network`: `HederaNetwork`; `transaction`: [`Hex`](evm.md#hex); \} \| \{ `bindingLog?`: `never`; `escrow`: [`Hex`](evm.md#hex); `network`: `HederaNetwork`; `transaction`: [`Hex`](evm.md#hex); \}
 
-The opening's read keys: the reported open transaction and its `ChannelOpened` log from the escrow.
-
-#### Type Declaration
-
-| Name | Type |
-| ------ | ------ |
-| `network` | `HederaNetwork` |
-| `transaction` | [`Hex`](evm.md#hex) |
+The opening's read keys: the reported open transaction, and either its `ChannelOpened` log from the escrow naming the
+channel (`bindingLog`), or, where the channel is not known, the escrow alone (`escrow`, the challenge's
+`methodDetails.escrowContract`, lowercase), whose one `ChannelOpened` log in the transaction `recover` and `status`
+read.
 
 ***
 
