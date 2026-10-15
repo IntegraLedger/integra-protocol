@@ -600,9 +600,10 @@ function wireT(calldata: string): Uint8Array {
 
 describe("mpp-charge-tempo-memo.json", () => {
   // Each splits row replaces only methodDetails.splits of the splits request, whose primary amount is amount minus the
-  // splits' sum (draft-tempo-charge-00 L233), and the Tempo charge build refuses it with the row's code. The last row's
-  // splits is present and null: present, so not the absent case, and not a list of entries.
-  it("splits: the request leaves the primary its remainder, and build refuses each refusal row with its code", async () => {
+  // splits' sum (draft-tempo-charge-00 L233), and pairingsOf and the Tempo charge build refuse it with the row's code,
+  // build given the splits request as placed with the row's request in its place. The last row's splits is present and
+  // null: present, so not the absent case, and not a list of entries.
+  it("splits: the request leaves the primary its remainder, and pairingsOf and build refuse each refusal row with its code", async () => {
     const r = JSON.parse(M.splits.request);
     const sum = (r.methodDetails.splits as { amount: string }[]).reduce((t, x) => t + BigInt(x.amount), 0n);
     expect((BigInt(r.amount) - sum).toString()).toBe(M.splits.expectPrimaryAmount);
@@ -610,7 +611,9 @@ describe("mpp-charge-tempo-memo.json", () => {
     for (const row of rows) {
       expect("splits" in row, row.case).toBe(true);
       expect(row.expect, row.case).toMatch(/^mpp\/(splits|input)-malformed$/);
-      const c = placedOf(challenge("tempo", "charge", JSON.stringify({ ...r, methodDetails: { ...r.methodDetails, splits: row.splits } })));
+      const issued = challenge("tempo", "charge", JSON.stringify({ ...r, methodDetails: { ...r.methodDetails, splits: row.splits } }));
+      expect(pairingsOf(issued), row.case).toEqual({ refused: true, code: row.expect });
+      const c = { ...placedOf(challenge("tempo", "charge", M.splits.request)), request: issued.request };
       expect(await tempoMemo.build({ challenge: c, from: A.fixed.payer, now: A.fixed.now }, H), row.case).toEqual({ refused: true, code: row.expect });
     }
     expect(rows.at(-1)).toEqual({ case: "splits present and null", splits: null, expect: "mpp/splits-malformed" });

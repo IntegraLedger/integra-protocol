@@ -18,7 +18,7 @@ import {
   type Json,
 } from "./core.js";
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
-import { isAddress, normalHash } from "./fields.js";
+import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { b64uDecode, b64uEncode } from "./internal/base64url.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
@@ -555,6 +555,12 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c
   return listed;
 }
 
+/**
+ * `charge` on `tempo`: `currency` and `recipient` addresses and `amount` a decimal, else `mpp/request-malformed`; a zero
+ * `amount` names none. Then the modes `supportedModes` and `feePayer` leave, and `splits` as `tempoSplits` reads them,
+ * which `build` writes after the primary transfer of `amount` less their sum (draft-tempo-charge-00 L233): a sum of
+ * `amount` or more leaves the primary transfer nothing, `mpp/input-malformed`, the code the Permit2 charge gives.
+ */
 function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
@@ -576,7 +582,42 @@ function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json })
   const out: MppPairingId[] = [];
   if (pull) out.push("mpp/charge/tempo/memo");
   if (push) out.push("mpp/charge/tempo/push");
-  return out.length === 0 ? refusal("mpp/modes-pull-only") : out;
+  if (out.length === 0) return refusal("mpp/modes-pull-only");
+  const splits = tempoSplits(d);
+  if (isRefusal(splits)) return splits;
+  const split = (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
+  return BigInt(r["amount"] as string) - split > 0n ? out : refusal("mpp/input-malformed");
+}
+
+const MAX_TEMPO_SPLITS = 10;
+const BYTES32_HEX = /^0x[0-9a-fA-F]{64}$/;
+
+/** A Tempo charge split as its `build` writes it: the recipient, the amount and, when present, the memo. */
+export interface TempoSplit {
+  to: Hex;
+  amount: bigint;
+  memo?: Hex;
+}
+
+/**
+ * A Tempo charge's `methodDetails.splits`, as draft-tempo-charge-00's Split Payments section gives them: absent, or 1 to
+ * 10 entries, each an address `recipient`, a decimal `amount` above zero and, when present, a `bytes32` hex `memo`;
+ * otherwise `mpp/splits-malformed`.
+ */
+export function tempoSplits(details: { [k: string]: Json }): TempoSplit[] | undefined | Refusal {
+  const splits = details["splits"];
+  if (splits === undefined) return undefined;
+  if (!Array.isArray(splits) || splits.length < 1 || splits.length > MAX_TEMPO_SPLITS) return refusal("mpp/splits-malformed");
+  const out: TempoSplit[] = [];
+  for (const s of splits) {
+    if (!isObject(s) || !isAddress(s["recipient"])) return refusal("mpp/splits-malformed");
+    const amount = uint256Of(s["amount"]);
+    if (amount === undefined || amount === 0n) return refusal("mpp/splits-malformed");
+    const memo = s["memo"];
+    if (memo !== undefined && (typeof memo !== "string" || !BYTES32_HEX.test(memo))) return refusal("mpp/splits-malformed");
+    out.push(memo === undefined ? { to: s["recipient"] as Hex, amount } : { to: s["recipient"] as Hex, amount, memo: memo as Hex });
+  }
+  return out;
 }
 
 function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {

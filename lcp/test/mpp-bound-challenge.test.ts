@@ -235,7 +235,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("each credential is bound by one pairing, each pairing that binds binds one, and each change is presented to it", () => {
     expect(PRESENTED.map((p) => p.pairing.id).sort()).toEqual([...BINDING].sort());
-    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 3940 });
+    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 3961 });
   });
 
   it("pairingsOfPlaced names the pairing exactly where pairingsOf names it, with the Lightning invoice written", () => {
@@ -253,7 +253,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge pairingsOfPlaced does not name, bound and reference refuse with the code pairingsOf gives", () => {
     const refused = rowsOf(answers, "every answer", {
-      exact: 1711,
+      exact: 1718,
       keep: ["the challenges pairingsOfPlaced does not name for the pairing", (a) => !a.named],
       leave: ["the challenges it names", (a) => a.named],
     });
@@ -269,7 +269,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 2229,
+      exact: 2243,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -291,7 +291,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([2014, 215]);
+    expect([bindings, named.length - bindings]).toEqual([2026, 217]);
     const listed = [COMPARES, REFERENCE_READS].flatMap((m) => Object.entries(m).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`)));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);
@@ -319,7 +319,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundChallenge.rows, `${f} boundChallenge.rows`).map((row, i) => ({ file: f, i, row, credential: at(v, row.credential) as MppCredential }));
   }),
   "every MPP vector file's boundChallenge rows",
-  { exact: 42 },
+  { exact: 43 },
 );
 
 describe("the MPP vector files' boundChallenge rows", () => {

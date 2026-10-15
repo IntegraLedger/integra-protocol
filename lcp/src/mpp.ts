@@ -48,12 +48,14 @@ import {
   pushedField,
   read,
   requestAddress,
+  tempoSplits,
   tie,
   type Checked,
   type Echoed,
   type MppChallenge,
   type MppChoice,
   type MppCredential,
+  type TempoSplit,
 } from "./mpp-challenge.js";
 import { chargeHedera } from "./hedera.js";
 import { chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
@@ -692,30 +694,6 @@ function transferCalldata(to: Hex, amount: bigint): Hex {
 
 // ── mpp/charge/tempo/memo and mpp/charge/tempo/push.
 
-const MAX_TEMPO_SPLITS = 10;
-const BYTES32_HEX = /^0x[0-9a-fA-F]{64}$/;
-
-/**
- * A Tempo charge's `methodDetails.splits`, as draft-tempo-charge-00's Split Payments section gives them: absent, or 1 to
- * 10 entries, each an address `recipient`, a decimal `amount` above zero and, when present, a `bytes32` hex `memo`;
- * otherwise `mpp/splits-malformed`.
- */
-function tempoSplits(details: { [k: string]: Json }): { to: Hex; amount: bigint; memo?: Hex }[] | undefined | Refusal {
-  const splits = details["splits"];
-  if (splits === undefined) return undefined;
-  if (!Array.isArray(splits) || splits.length < 1 || splits.length > MAX_TEMPO_SPLITS) return refusal("mpp/splits-malformed");
-  const out: { to: Hex; amount: bigint; memo?: Hex }[] = [];
-  for (const s of splits) {
-    if (!isObject(s) || !isAddress(s["recipient"])) return refusal("mpp/splits-malformed");
-    const amount = uint256Of(s["amount"]);
-    if (amount === undefined || amount === 0n) return refusal("mpp/splits-malformed");
-    const memo = s["memo"];
-    if (memo !== undefined && (typeof memo !== "string" || !BYTES32_HEX.test(memo))) return refusal("mpp/splits-malformed");
-    out.push(memo === undefined ? { to: s["recipient"] as Hex, amount } : { to: s["recipient"] as Hex, amount, memo: memo as Hex });
-  }
-  return out;
-}
-
 function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
     const o = offerFor(choice, h, pairing);
@@ -725,11 +703,9 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
     const clientId: unknown = choice.clientId;
     if (clientId !== undefined && (typeof clientId !== "string" || !clientId.isWellFormed())) return refusal("mpp/input-malformed");
     const chainId = chainOf(o);
-    const splits = tempoSplits(o.details);
-    if (isRefusal(splits)) return splits;
+    const splits = tempoSplits(o.details) as TempoSplit[] | undefined;
     const amount = BigInt(str(o.request["amount"]));
     const primary = amount - (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
-    if (primary <= 0n) return refusal("mpp/input-malformed");
     const memo = attributionMemo(choice.challenge.realm, choice.challenge.id, clientId);
     const data = memoCalldata(str(o.request["recipient"]) as Hex, primary, memo);
     if (typeof data !== "string") return data;

@@ -173,7 +173,8 @@ to the same filter. `pairingsOf` makes every check `build`, `bound` and `referen
 Lightning, that the invoice decodes with one `h` field and no `d`, carries the request's payment hash and the currency
 of the `network` the challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or
 `confidential` transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on
-Permit2, an `amount` above its `splits`; on the XRP Ledger charge, no `memos`; the XRPL session recipient's checksum;
+Permit2 and the Tempo charges, an `amount` above its `splits`, and on Tempo their form; on the XRP Ledger charge, no
+`memos`; the XRPL session recipient's checksum;
 the Tempo subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s EVM and Gateway
 profiles, a request in its RFC 8785 form. So no pairing binds a payment presented under a challenge `pairingsOf` would
 not name for it. Of a challenge the filter takes, each function reads only the request members its own read keys or
