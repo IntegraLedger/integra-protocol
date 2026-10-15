@@ -77,6 +77,62 @@
     "refused": true,
     "code": "x402/permission-context-malformed"
    }
+  },
+  "case": "complete with the delegation manager fixed.delegationManager gives expectPayload. expectPayload is x402 v2's PaymentPayload written by hand from the specifications (x402-foundation/x402 751590a2): its members in the order of specs/x402-specification-v2.md \u00a75.2.1 (x402Version, resource, accepted, payload, extensions), the ERC-7710 payload as specs/schemes/exact/scheme_exact_evm.md L243-280 writes it (delegationManager, permissionContext, delegator), and extensions the document's own, echoed (L150: the legal context's info and its JSON Schema); accepted and resource are x402-exact-eip155-erc7710-salt.json's fixed option and resource, delegator its payer, and permissionContext the ABI encoding of the one-delegation array [fixed.leaf with EV8.expectSignature], computed with eth-abi 6.0.0 as encode of (address,address,bytes32,(address,bytes,bytes)[],uint256,bytes)[], whose length and SHA-256 are EV8's expectContextBytes and expectContextSha256. Python 3.12.3's json.dumps of that object, compact, is the JSON text of expectPayload.",
+  "expectPayload": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "assetTransferMethod": "erc7710"
+    }
+   },
+   "payload": {
+    "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+    "permissionContext": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000c0ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00000000000000000000000000000000000000000000000000000000000001c0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000001111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000212340000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004152e21ce507e7f91787a40856cd0e81947c930fe966198c6834022db264856285463115b864d12bc5b7c7309fa09de3c48fcdbf2c7e766cd2f8bf4e39570e2cce1b00000000000000000000000000000000000000000000000000000000000000",
+    "delegator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
   }
  },
  "EV9": {

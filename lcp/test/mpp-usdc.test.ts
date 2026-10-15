@@ -338,6 +338,22 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
     const cred = u.complete({ source: GW.M5.source, ...GW.M5.payload, burnIntent, signature });
     if ("refused" in cred) throw new Error(cred.code);
     expect(cred.payload).toEqual({ ...GW.M5.payload, authorization: { format: "circle-gateway-v1", transfer: { burnIntent, signature } } });
+    // The credential is held whole, as JSON text, to the Gateway Transfer credential the usdc draft writes
+    // (draft-usdc-charge-00, blob ec7fc1868b, L615-636 and A.4 L1304-1349): challenge, source, then M5's payload, its
+    // members in the draft's order, with the signature made here.
+    const byHand = {
+      challenge,
+      source: GW.M5.source,
+      payload: {
+        type: "transfer",
+        sourceNetwork: GW.M5.payload.sourceNetwork,
+        destinationNetwork: GW.M5.payload.destinationNetwork,
+        maxFee: GW.M5.payload.maxFee,
+        authorization: { format: "circle-gateway-v1", transfer: { burnIntent, signature } },
+      },
+    };
+    expect(JSON.stringify(GW.M5.payload)).toBe(JSON.stringify({ ...byHand.payload, authorization: GW.M5.payload.authorization }));
+    expect(JSON.stringify(cred)).toBe(JSON.stringify(byHand));
     expect(await chargeUsdcGateway.bound(cred)).toBe(GW.M5.expectBound);
   });
 

@@ -796,9 +796,21 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     expect((ctx.length - 2) / 2).toBe(ES.EV8.expectContextBytes);
     expect(sha256(ctx)).toBe(ES.EV8.expectContextSha256);
   });
-  it("EV8: pairingOfPayment names the level; bound gives H at the salt level and refuses another manager", async () => {
+  // EV7's and EV8's expectPayload are x402 v2's PaymentPayload written by hand (x402 751590a2,
+  // specs/x402-specification-v2.md §5.2.1, specs/schemes/exact/scheme_exact_evm.md L243-280): the ERC-7710 payload, then
+  // the document's extensions, echoed. complete's payment is held to each whole, as JSON text.
+  const envelope = (manager: Hex, context: Hex) => ({
+    x402Version: 2,
+    resource: f.resource,
+    accepted: f.option,
+    payload: { delegationManager: manager, permissionContext: context, delegator: f.payer },
+    extensions: documentOf(f).extensions,
+  });
+  it("EV8: pairingOfPayment names the level; complete gives x402's PaymentPayload; bound gives H at the salt level and refuses another manager", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
     const p = await payment(ctx, ES.fixed.delegationManager);
+    expect(JSON.stringify(ES.EV8.expectPayload)).toBe(JSON.stringify(envelope(ES.fixed.delegationManager, ctx)));
+    expect(JSON.stringify(p)).toBe(JSON.stringify(ES.EV8.expectPayload));
     expect(pairingOfPayment(p)).toBe(ES.EV8.expectPairingOfPayment);
     expect(await exactErc7710Salt.bound(p)).toBe(ES.EV8.expectBound);
     const other = await payment(ctx, ES.EV8.otherManager.manager);
@@ -811,9 +823,11 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
       expect(await exactErc7710Salt.bound(await payment(c, ES.fixed.delegationManager))).toEqual(ES.EV8.malformedContext.expect);
     }
   });
-  it("EV7: the unsigned level reads H from the echoed extension, and its record claims nothing", async () => {
+  it("EV7: complete gives x402's PaymentPayload; the unsigned level reads H from the echoed extension, and its record claims nothing", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
     const p = await payment(ctx, ERC7710.EV7.otherManager);
+    expect(JSON.stringify(ERC7710.EV7.expectPayload)).toBe(JSON.stringify(envelope(ERC7710.EV7.otherManager, ctx)));
+    expect(JSON.stringify(p)).toBe(JSON.stringify(ERC7710.EV7.expectPayload));
     expect(pairingOfPayment(p)).toBe(ERC7710.EV7.expectPairingOfPayment);
     expect(await exactErc7710.bound(p)).toBe(ERC7710.EV7.expectBound);
     const bare = structuredClone(p);
